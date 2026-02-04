@@ -58,3 +58,6 @@ Thumbs.db
 appsettings.Local.json
 appsettings.*.Local.json
 nul
+
+# Claude Code local settings (may contain tokens)
+.claude/settings.local.json
