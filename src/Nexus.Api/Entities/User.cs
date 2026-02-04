@@ -1,8 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Nexus.Api.Entities;
 
 /// <summary>
 /// Represents a user in the system.
 /// Users are scoped to a single tenant.
+/// Uses optimistic concurrency via RowVersion to prevent concurrent XP/balance updates.
 /// </summary>
 public class User : ITenantEntity
 {
@@ -31,6 +34,13 @@ public class User : ITenantEntity
     /// Current level based on XP.
     /// </summary>
     public int Level { get; set; } = 1;
+
+    /// <summary>
+    /// Optimistic concurrency token - automatically updated on each save.
+    /// Prevents lost updates when concurrent operations modify user data (e.g., XP, balance).
+    /// </summary>
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 
     // Navigation
     public Tenant? Tenant { get; set; }

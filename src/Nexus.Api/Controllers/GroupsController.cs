@@ -63,6 +63,7 @@ public class GroupsController : ControllerBase
         var totalPages = (int)Math.Ceiling(total / (double)limit);
 
         var groups = await query
+            .AsNoTracking()
             .OrderByDescending(g => g.CreatedAt)
             .Skip((page - 1) * limit)
             .Take(limit)
@@ -74,8 +75,10 @@ public class GroupsController : ControllerBase
                 g.IsPrivate,
                 g.ImageUrl,
                 g.CreatedAt,
-                created_by = new { g.CreatedBy!.Id, g.CreatedBy.FirstName, g.CreatedBy.LastName },
-                member_count = g.Members.Count
+                created_by = g.CreatedBy != null
+                    ? new { g.CreatedBy.Id, g.CreatedBy.FirstName, g.CreatedBy.LastName }
+                    : null,
+                member_count = _db.GroupMembers.Count(gm => gm.GroupId == g.Id)
             })
             .ToListAsync();
 
@@ -102,6 +105,7 @@ public class GroupsController : ControllerBase
         if (userId == null) return Unauthorized();
 
         var groups = await _db.GroupMembers
+            .AsNoTracking()
             .Where(gm => gm.UserId == userId)
             .OrderByDescending(gm => gm.JoinedAt)
             .Select(gm => new
@@ -114,7 +118,7 @@ public class GroupsController : ControllerBase
                 gm.Group.CreatedAt,
                 my_role = gm.Role,
                 joined_at = gm.JoinedAt,
-                member_count = gm.Group.Members.Count
+                member_count = _db.GroupMembers.Count(m => m.GroupId == gm.GroupId)
             })
             .ToListAsync();
 
@@ -131,6 +135,7 @@ public class GroupsController : ControllerBase
         if (userId == null) return Unauthorized();
 
         var group = await _db.Groups
+            .AsNoTracking()
             .Where(g => g.Id == id)
             .Select(g => new
             {
@@ -141,8 +146,10 @@ public class GroupsController : ControllerBase
                 g.ImageUrl,
                 g.CreatedAt,
                 g.UpdatedAt,
-                created_by = new { g.CreatedBy!.Id, g.CreatedBy.FirstName, g.CreatedBy.LastName },
-                member_count = g.Members.Count
+                created_by = g.CreatedBy != null
+                    ? new { g.CreatedBy.Id, g.CreatedBy.FirstName, g.CreatedBy.LastName }
+                    : null,
+                member_count = _db.GroupMembers.Count(gm => gm.GroupId == g.Id)
             })
             .FirstOrDefaultAsync();
 
@@ -153,6 +160,7 @@ public class GroupsController : ControllerBase
 
         // Check if current user is a member
         var membership = await _db.GroupMembers
+            .AsNoTracking()
             .Where(gm => gm.GroupId == id && gm.UserId == userId)
             .Select(gm => new { gm.Role, gm.JoinedAt })
             .FirstOrDefaultAsync();
@@ -355,15 +363,16 @@ public class GroupsController : ControllerBase
         }
 
         var members = await _db.GroupMembers
+            .AsNoTracking()
             .Where(gm => gm.GroupId == id)
             .OrderBy(gm => gm.Role == Group.Roles.Owner ? 0 : gm.Role == Group.Roles.Admin ? 1 : 2)
             .ThenBy(gm => gm.JoinedAt)
             .Select(gm => new
             {
-                gm.User!.Id,
-                gm.User.FirstName,
-                gm.User.LastName,
-                gm.User.Email,
+                id = gm.User != null ? gm.User.Id : 0,
+                first_name = gm.User != null ? gm.User.FirstName : "",
+                last_name = gm.User != null ? gm.User.LastName : "",
+                email = gm.User != null ? gm.User.Email : "",
                 gm.Role,
                 joined_at = gm.JoinedAt
             })

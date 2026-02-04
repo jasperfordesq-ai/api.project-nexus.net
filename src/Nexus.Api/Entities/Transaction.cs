@@ -1,8 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Nexus.Api.Entities;
 
 /// <summary>
 /// Represents a time credit transaction between users.
 /// Implements tenant isolation via ITenantEntity.
+/// Uses optimistic concurrency via RowVersion to prevent concurrent modification issues.
 /// </summary>
 public class Transaction : ITenantEntity
 {
@@ -16,6 +19,13 @@ public class Transaction : ITenantEntity
     public TransactionStatus Status { get; set; } = TransactionStatus.Completed;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Optimistic concurrency token - automatically updated on each save.
+    /// Prevents lost updates when concurrent transactions modify the same record.
+    /// </summary>
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 
     // Navigation properties
     public Tenant? Tenant { get; set; }
