@@ -46,9 +46,10 @@ public class EventsControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("title").GetString().Should().Be("Community Meetup");
-        content.GetProperty("location").GetString().Should().Be("Community Center");
-        content.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        var evt = content.GetProperty("event");
+        evt.GetProperty("title").GetString().Should().Be("Community Meetup");
+        evt.GetProperty("location").GetString().Should().Be("Community Center");
+        evt.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
     }
 
     [Fact]
@@ -126,7 +127,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // RSVP to the event
         await Client.PostAsJsonAsync($"/api/events/{eventId}/rsvp", new { status = "going" });
@@ -160,7 +161,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.GetAsync($"/api/events/{eventId}");
@@ -169,7 +170,7 @@ public class EventsControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("title").GetString().Should().Be("Detail Test Event");
+        content.GetProperty("event").GetProperty("title").GetString().Should().Be("Detail Test Event");
     }
 
     [Fact]
@@ -202,7 +203,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.PutAsJsonAsync($"/api/events/{eventId}", new
@@ -215,7 +216,7 @@ public class EventsControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("title").GetString().Should().Be("Updated Event Title");
+        content.GetProperty("event").GetProperty("title").GetString().Should().Be("Updated Event Title");
     }
 
     [Fact]
@@ -231,7 +232,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // Switch to member user
         await AuthenticateAsMemberAsync();
@@ -263,7 +264,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // Switch to member
         await AuthenticateAsMemberAsync();
@@ -291,7 +292,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // RSVP first
         await Client.PostAsJsonAsync($"/api/events/{eventId}/rsvp", new { status = "going" });
@@ -316,7 +317,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // RSVP
         await Client.PostAsJsonAsync($"/api/events/{eventId}/rsvp", new { status = "going" });
@@ -348,7 +349,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.PutAsync($"/api/events/{eventId}/cancel", null);
@@ -374,7 +375,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // Switch to other-tenant user
         await AuthenticateAsOtherTenantUserAsync();
@@ -399,7 +400,7 @@ public class EventsControllerTests : IntegrationTestBase
             ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var eventId = createContent.GetProperty("id").GetInt32();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
 
         // Switch to other-tenant user
         await AuthenticateAsOtherTenantUserAsync();
@@ -409,6 +410,77 @@ public class EventsControllerTests : IntegrationTestBase
 
         // Assert
         response.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.BadRequest);
+    }
+
+    #endregion
+
+    #region Input Validation
+
+    [Fact]
+    public async Task CreateEvent_WithInvalidImageUrl_ReturnsBadRequest()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/api/events", new
+        {
+            title = "Test Event",
+            starts_at = DateTime.UtcNow.AddDays(1),
+            ends_at = DateTime.UtcNow.AddDays(1).AddHours(2),
+            image_url = "not-a-valid-url"
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateEvent_WithValidImageUrl_ReturnsCreated()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/api/events", new
+        {
+            title = "Event With Image",
+            starts_at = DateTime.UtcNow.AddDays(1),
+            ends_at = DateTime.UtcNow.AddDays(1).AddHours(2),
+            image_url = "https://example.com/event-banner.png"
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var evt = content.GetProperty("event");
+        evt.GetProperty("imageUrl").GetString().Should().Be("https://example.com/event-banner.png");
+    }
+
+    [Fact]
+    public async Task UpdateEvent_WithInvalidImageUrl_ReturnsBadRequest()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/events", new
+        {
+            title = "Update Test Event",
+            starts_at = DateTime.UtcNow.AddDays(1),
+            ends_at = DateTime.UtcNow.AddDays(1).AddHours(2)
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var eventId = createContent.GetProperty("event").GetProperty("id").GetInt32();
+
+        // Act
+        var response = await Client.PutAsJsonAsync($"/api/events/{eventId}", new
+        {
+            image_url = "invalid-url"
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     #endregion

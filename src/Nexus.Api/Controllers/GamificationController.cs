@@ -265,6 +265,7 @@ public class GamificationController : ControllerBase
             total = await query.CountAsync();
 
             var usersData = await query
+                .AsNoTracking()
                 .OrderByDescending(u => u.TotalXp)
                 .ThenBy(u => u.Id) // Secondary sort for consistency
                 .Skip((page - 1) * limit)
@@ -279,7 +280,8 @@ public class GamificationController : ControllerBase
                     },
                     total_xp = u.TotalXp,
                     level = u.Level,
-                    badges_earned = u.UserBadges.Count
+                    // Use subquery to count badges - avoids N+1
+                    badges_earned = _db.UserBadges.Count(ub => ub.UserId == u.Id)
                 })
                 .ToListAsync();
 

@@ -1,0 +1,221 @@
+# =============================================================================
+# Docker Compose - NEXUS Full Stack Production Deployment
+# =============================================================================
+# Deploys: API Backend + Modern Frontend + UK Frontend + PostgreSQL + RabbitMQ
+#
+# Usage:
+#   docker compose -f compose.production.yml up -d --build
+#
+# Required environment variables (set in .env.production or environment):
+#   - JWT_SECRET: Secure 32+ character secret for JWT signing
+#   - POSTGRES_PASSWORD: Database password (default: postgres for dev)
+#
+# Optional environment variables:
+#   - API_DOMAIN: API domain (default: localhost)
+#   - MODERN_FRONTEND_DOMAIN: Modern frontend domain (default: localhost)
+#   - UK_FRONTEND_DOMAIN: UK frontend domain (default: localhost)
+# =============================================================================
+
+name: nexus-production
+
+services:
+  # ---------------------------------------------------------------------------
+  # API Backend (ASP.NET Core 8)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-api
+    ports:
+      - "5080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=nexus_prod;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}
+      - Jwt__Secret=${JWT_SECRET:?JWT_SECRET is required}
+      - Jwt__Issuer=${API_DOMAIN:-localhost}
+      - Jwt__Audience=${API_DOMAIN:-localhost}
+      # CORS - Allow both frontends
+      - Cors__AllowedOrigins__0=http://${API_DOMAIN:-localhost}:5080
+      - Cors__AllowedOrigins__1=http://${MODERN_FRONTEND_DOMAIN:-localhost}:5170
+      - Cors__AllowedOrigins__2=http://${UK_FRONTEND_DOMAIN:-localhost}:5180
+      - Cors__AllowedOrigins__3=https://${API_DOMAIN:-localhost}
+      - Cors__AllowedOrigins__4=https://${MODERN_FRONTEND_DOMAIN:-localhost}
+      - Cors__AllowedOrigins__5=https://${UK_FRONTEND_DOMAIN:-localhost}
+      # Rate limiting (production values)
+      - RateLimiting__Auth__PermitLimit=5
+      - RateLimiting__Auth__WindowSeconds=60
+      - RateLimiting__General__PermitLimit=100
+      - RateLimiting__General__WindowSeconds=60
+      # RabbitMQ
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Port=5672
+      - RabbitMq__Username=${RABBITMQ_USER:-guest}
+      - RabbitMq__Password=${RABBITMQ_PASSWORD:-guest}
+      - RabbitMq__VirtualHost=/
+      - RabbitMq__ExchangeName=nexus.events
+      - RabbitMq__Enabled=true
+      # Llama AI service
+      - LlamaService__BaseUrl=http://llama-service:11434
+      - LlamaService__Model=llama3.2:3b
+      - LlamaService__TimeoutSeconds=180
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nexus-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Modern Frontend (Next.js + HeroUI)
+  # ---------------------------------------------------------------------------
+  modern-frontend:
+    build:
+      context: ../nexus-modern-frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - NEXT_PUBLIC_API_URL=http://${API_DOMAIN:-localhost}:5080
+    container_name: nexus-modern-frontend
+    ports:
+      - "5170:3002"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://${API_DOMAIN:-localhost}:5080
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - nexus-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3002 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # UK Frontend (Express + GOV.UK Design System)
+  # ---------------------------------------------------------------------------
+  uk-frontend:
+    build:
+      context: ../nexus-uk-frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: nexus-uk-frontend
+    ports:
+      - "5180:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - API_URL=http://api:8080
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - nexus-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Database (PostgreSQL 16)
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16.4-bookworm
+    container_name: nexus-db
+    environment:
+      POSTGRES_DB: nexus_prod
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - nexus-db-data:/var/lib/postgresql/data
+    networks:
+      - nexus-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nexus_prod"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Message Broker (RabbitMQ)
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: nexus-rabbitmq
+    ports:
+      - "15672:15672"  # Management UI only (AMQP internal)
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - nexus-rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - nexus-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # AI Service (Ollama with Llama 3.2)
+  # ---------------------------------------------------------------------------
+  llama-service:
+    image: ollama/ollama:latest
+    container_name: nexus-llama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    volumes:
+      - nexus-llama-models:/root/.ollama
+    networks:
+      - nexus-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+
+# -----------------------------------------------------------------------------
+# Networks
+# -----------------------------------------------------------------------------
+networks:
+  nexus-net:
+    name: nexus-net
+    driver: bridge
+
+# -----------------------------------------------------------------------------
+# Volumes
+# -----------------------------------------------------------------------------
+volumes:
+  nexus-db-data:
+    name: nexus-db-data
+  nexus-rabbitmq-data:
+    name: nexus-rabbitmq-data
+  nexus-llama-models:
+    name: nexus-llama-models

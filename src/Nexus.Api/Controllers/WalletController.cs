@@ -321,6 +321,10 @@ public class WalletController : ControllerBase
 
             // Load sender info for response
             var sender = await _db.Users.FindAsync(senderId.Value);
+            if (sender == null)
+            {
+                return StatusCode(500, new { error = "Sender data unavailable" });
+            }
 
             _logger.LogInformation("Transfer of {Amount} hours from user {SenderId} to user {ReceiverId} completed (transaction {TransactionId})",
                 request.Amount, senderId, request.ReceiverId, transaction.Id);
@@ -334,7 +338,7 @@ public class WalletController : ControllerBase
                 type = "sent",
                 sender = new
                 {
-                    id = sender!.Id,
+                    id = sender.Id,
                     first_name = sender.FirstName,
                     last_name = sender.LastName
                 },

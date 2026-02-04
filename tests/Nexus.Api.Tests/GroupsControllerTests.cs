@@ -41,8 +41,8 @@ public class GroupsControllerTests : IntegrationTestBase
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         var group = content.GetProperty("group");
-        group.GetProperty("Name").GetString().Should().Be("Test Community Group");
-        group.GetProperty("Id").GetInt32().Should().BeGreaterThan(0);
+        group.GetProperty("name").GetString().Should().Be("Test Community Group");
+        group.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class GroupsControllerTests : IntegrationTestBase
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         var groups = content.GetProperty("data").EnumerateArray().ToList();
-        groups.Should().Contain(g => g.GetProperty("Name").GetString() == "My Group Test");
+        groups.Should().Contain(g => g.GetProperty("name").GetString() == "My Group Test");
     }
 
     #endregion
@@ -145,7 +145,7 @@ public class GroupsControllerTests : IntegrationTestBase
             description = "Testing group details"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var groupId = createContent.GetProperty("group").GetProperty("Id").GetInt32();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.GetAsync($"/api/groups/{groupId}");
@@ -154,7 +154,7 @@ public class GroupsControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("group").GetProperty("Name").GetString().Should().Be("Detail Test Group");
+        content.GetProperty("group").GetProperty("name").GetString().Should().Be("Detail Test Group");
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public class GroupsControllerTests : IntegrationTestBase
             name = "Update Test Group"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var groupId = createContent.GetProperty("group").GetProperty("Id").GetInt32();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.PutAsJsonAsync($"/api/groups/{groupId}", new
@@ -198,7 +198,7 @@ public class GroupsControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("group").GetProperty("Name").GetString().Should().Be("Updated Group Name");
+        content.GetProperty("group").GetProperty("name").GetString().Should().Be("Updated Group Name");
     }
 
     [Fact]
@@ -212,7 +212,7 @@ public class GroupsControllerTests : IntegrationTestBase
             name = "Admin's Group"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var groupId = createContent.GetProperty("group").GetProperty("Id").GetInt32();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
 
         // Switch to member user
         await AuthenticateAsMemberAsync();
@@ -243,7 +243,7 @@ public class GroupsControllerTests : IntegrationTestBase
             is_public = true
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var groupId = createContent.GetProperty("group").GetProperty("Id").GetInt32();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
 
         // Switch to member user
         await AuthenticateAsMemberAsync();
@@ -267,7 +267,7 @@ public class GroupsControllerTests : IntegrationTestBase
             is_public = true
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var groupId = createContent.GetProperty("group").GetProperty("Id").GetInt32();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
 
         await AuthenticateAsMemberAsync();
         await Client.PostAsync($"/api/groups/{groupId}/join", null);
@@ -294,7 +294,7 @@ public class GroupsControllerTests : IntegrationTestBase
             name = "Tenant Isolated Group"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var groupId = createContent.GetProperty("group").GetProperty("Id").GetInt32();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
 
         // Switch to other-tenant user
         await AuthenticateAsOtherTenantUserAsync();
@@ -304,6 +304,71 @@ public class GroupsControllerTests : IntegrationTestBase
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    #endregion
+
+    #region Input Validation
+
+    [Fact]
+    public async Task CreateGroup_WithInvalidImageUrl_ReturnsBadRequest()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Test Group",
+            image_url = "not-a-valid-url"
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateGroup_WithValidImageUrl_ReturnsCreated()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Group With Image",
+            image_url = "https://example.com/group-image.jpg"
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var group = content.GetProperty("group");
+        group.GetProperty("imageUrl").GetString().Should().Be("https://example.com/group-image.jpg");
+    }
+
+    [Fact]
+    public async Task UpdateGroup_WithInvalidImageUrl_ReturnsBadRequest()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Update Test Group"
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Act
+        var response = await Client.PutAsJsonAsync($"/api/groups/{groupId}", new
+        {
+            image_url = "invalid-url"
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     #endregion

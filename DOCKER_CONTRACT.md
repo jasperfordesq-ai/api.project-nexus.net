@@ -149,20 +149,22 @@ docker compose ps
    docker compose build api && docker compose up -d api
    ```
 
-## Fallback: Non-Docker Workflow
+## Important: Docker-Only Development
 
-The non-Docker workflow is preserved for cases where Docker isn't available:
+**This project uses Docker exclusively for local development.** Do NOT use `dotnet run` or other direct execution methods.
+
+Why Docker-only:
+
+- **Consistency**: Same environment for all developers and CI/CD
+- **Dependencies**: All services (PostgreSQL, RabbitMQ, Ollama) are containerized
+- **No host pollution**: No need to install PostgreSQL, .NET SDK, etc. on your machine
+- **Reproducibility**: `docker compose up -d` always works the same way
+
+If you see suggestions to use `dotnet run`, `dotnet watch`, or direct execution, ignore them. Always use:
 
 ```bash
-# Start PostgreSQL on port 5434 (host)
-docker-compose up -d  # Old docker-compose.yml (just Postgres)
-
-# Run API directly
-$env:ASPNETCORE_ENVIRONMENT="Development"
-dotnet run --project src/Nexus.Api
+docker compose build api && docker compose up -d api
 ```
-
-Note: The old `docker-compose.yml` only runs PostgreSQL on port 5434 for the non-Docker workflow.
 
 ## Troubleshooting
 

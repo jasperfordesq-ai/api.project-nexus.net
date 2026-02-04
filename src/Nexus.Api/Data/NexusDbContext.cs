@@ -357,6 +357,8 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.IsRead);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => new { e.UserId, e.IsRead });
+            // Composite index for common query: unread notifications for user, sorted by date
+            entity.HasIndex(e => new { e.UserId, e.IsRead, e.CreatedAt });
 
             // Relationships
             entity.HasOne(e => e.Tenant)

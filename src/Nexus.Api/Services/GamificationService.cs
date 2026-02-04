@@ -25,59 +25,89 @@ public class GamificationService
 
     /// <summary>
     /// Award XP to a user and check for level up.
+    /// Handles concurrency conflicts with retry logic.
     /// </summary>
     public async Task<XpAwardResult> AwardXpAsync(int userId, int amount, string source, int? referenceId = null, string? description = null)
     {
-        var user = await _db.Users.FindAsync(userId);
-        if (user == null)
+        const int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            return new XpAwardResult { Success = false, Error = "User not found" };
+            try
+            {
+                var user = await _db.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return new XpAwardResult { Success = false, Error = "User not found" };
+                }
+
+                var previousLevel = user.Level;
+                var previousXp = user.TotalXp;
+
+                // Create XP log entry
+                var xpLog = new XpLog
+                {
+                    UserId = userId,
+                    Amount = amount,
+                    Source = source,
+                    ReferenceId = referenceId,
+                    Description = description
+                };
+                _db.XpLogs.Add(xpLog);
+
+                // Update user's total XP
+                user.TotalXp += amount;
+                if (user.TotalXp < 0) user.TotalXp = 0; // Prevent negative XP
+
+                // Recalculate level
+                var newLevel = User.CalculateLevelFromXp(user.TotalXp);
+                var leveledUp = newLevel > previousLevel;
+                user.Level = newLevel;
+
+                await _db.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "User {UserId} awarded {Amount} XP for {Source}. Total: {TotalXp}, Level: {Level}",
+                    userId, amount, source, user.TotalXp, user.Level);
+
+                if (leveledUp)
+                {
+                    _logger.LogInformation("User {UserId} leveled up from {OldLevel} to {NewLevel}!", userId, previousLevel, newLevel);
+                }
+
+                return new XpAwardResult
+                {
+                    Success = true,
+                    Amount = amount,
+                    PreviousXp = previousXp,
+                    NewXp = user.TotalXp,
+                    PreviousLevel = previousLevel,
+                    NewLevel = newLevel,
+                    LeveledUp = leveledUp
+                };
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex, "Concurrency conflict awarding XP to user {UserId}, attempt {Attempt}/{MaxRetries}",
+                    userId, attempt, maxRetries);
+
+                if (attempt == maxRetries)
+                {
+                    _logger.LogError(ex, "Failed to award XP to user {UserId} after {MaxRetries} attempts", userId, maxRetries);
+                    return new XpAwardResult { Success = false, Error = "Concurrency conflict - please try again" };
+                }
+
+                // Detach the entity to get fresh data on next attempt
+                foreach (var entry in _db.ChangeTracker.Entries())
+                {
+                    entry.State = EntityState.Detached;
+                }
+
+                // Brief delay before retry
+                await Task.Delay(50 * attempt);
+            }
         }
 
-        var previousLevel = user.Level;
-        var previousXp = user.TotalXp;
-
-        // Create XP log entry
-        var xpLog = new XpLog
-        {
-            UserId = userId,
-            Amount = amount,
-            Source = source,
-            ReferenceId = referenceId,
-            Description = description
-        };
-        _db.XpLogs.Add(xpLog);
-
-        // Update user's total XP
-        user.TotalXp += amount;
-        if (user.TotalXp < 0) user.TotalXp = 0; // Prevent negative XP
-
-        // Recalculate level
-        var newLevel = User.CalculateLevelFromXp(user.TotalXp);
-        var leveledUp = newLevel > previousLevel;
-        user.Level = newLevel;
-
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation(
-            "User {UserId} awarded {Amount} XP for {Source}. Total: {TotalXp}, Level: {Level}",
-            userId, amount, source, user.TotalXp, user.Level);
-
-        if (leveledUp)
-        {
-            _logger.LogInformation("User {UserId} leveled up from {OldLevel} to {NewLevel}!", userId, previousLevel, newLevel);
-        }
-
-        return new XpAwardResult
-        {
-            Success = true,
-            Amount = amount,
-            PreviousXp = previousXp,
-            NewXp = user.TotalXp,
-            PreviousLevel = previousLevel,
-            NewLevel = newLevel,
-            LeveledUp = leveledUp
-        };
+        return new XpAwardResult { Success = false, Error = "Unexpected error" };
     }
 
     /// <summary>

@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -180,6 +181,10 @@ public class FeedController : ControllerBase
 
         // Load user for response
         var user = await _db.Users.FindAsync(userId);
+        if (user == null)
+        {
+            return StatusCode(500, new { error = "User data unavailable" });
+        }
 
         return CreatedAtAction(nameof(GetPost), new { id = post.Id }, new
         {
@@ -192,7 +197,7 @@ public class FeedController : ControllerBase
                 post.ImageUrl,
                 post.IsPinned,
                 post.CreatedAt,
-                user = new { user!.Id, user.FirstName, user.LastName },
+                user = new { user.Id, user.FirstName, user.LastName },
                 group_id = post.GroupId,
                 like_count = 0,
                 comment_count = 0,
@@ -473,6 +478,10 @@ public class FeedController : ControllerBase
         await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.CommentAdded, XpLog.Sources.CommentAdded, comment.Id, "Added a comment");
 
         var user = await _db.Users.FindAsync(userId);
+        if (user == null)
+        {
+            return StatusCode(500, new { error = "User data unavailable" });
+        }
 
         _logger.LogInformation("User {UserId} commented on post {PostId}", userId, id);
 
@@ -485,7 +494,7 @@ public class FeedController : ControllerBase
                 comment.Id,
                 comment.Content,
                 comment.CreatedAt,
-                user = new { user!.Id, user.FirstName, user.LastName }
+                user = new { user.Id, user.FirstName, user.LastName }
             }
         });
     }
@@ -545,6 +554,7 @@ public class CreatePostRequest
     public string Content { get; set; } = string.Empty;
 
     [JsonPropertyName("image_url")]
+    [Url(ErrorMessage = "ImageUrl must be a valid URL")]
     public string? ImageUrl { get; set; }
 
     [JsonPropertyName("group_id")]
@@ -557,6 +567,7 @@ public class UpdatePostRequest
     public string? Content { get; set; }
 
     [JsonPropertyName("image_url")]
+    [Url(ErrorMessage = "ImageUrl must be a valid URL")]
     public string? ImageUrl { get; set; }
 }
 

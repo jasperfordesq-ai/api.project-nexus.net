@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -668,6 +669,7 @@ public class CreateEventRequest
     public int? GroupId { get; set; }
 
     [JsonPropertyName("image_url")]
+    [Url(ErrorMessage = "ImageUrl must be a valid URL")]
     public string? ImageUrl { get; set; }
 }
 
@@ -692,6 +694,7 @@ public class UpdateEventRequest
     public int? MaxAttendees { get; set; }
 
     [JsonPropertyName("image_url")]
+    [Url(ErrorMessage = "ImageUrl must be a valid URL")]
     public string? ImageUrl { get; set; }
 }
 

@@ -44,6 +44,9 @@
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="2.3.0" />
     <PackageReference Include="Serilog.Enrichers.Thread" Version="3.1.0" />
+
+    <!-- Real-time Messaging (SignalR) -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="8.0.11" />
   </ItemGroup>
 
   <ItemGroup>
