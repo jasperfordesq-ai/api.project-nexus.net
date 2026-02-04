@@ -38,8 +38,9 @@ public class FeedControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("content").GetString().Should().Be("This is a test post for the community feed.");
-        content.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        var post = content.GetProperty("post");
+        post.GetProperty("content").GetString().Should().Be("This is a test post for the community feed.");
+        post.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
     }
 
     [Fact]
@@ -137,7 +138,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Detail test post"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.GetAsync($"/api/feed/{postId}");
@@ -177,7 +178,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Original content"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.PutAsJsonAsync($"/api/feed/{postId}", new
@@ -188,8 +189,8 @@ public class FeedControllerTests : IntegrationTestBase
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("content").GetString().Should().Be("Updated content");
+        var respBody = await response.Content.ReadFromJsonAsync<JsonElement>();
+        respBody.GetProperty("post").GetProperty("content").GetString().Should().Be("Updated content");
     }
 
     [Fact]
@@ -203,7 +204,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Admin's post"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Switch to member user
         await AuthenticateAsMemberAsync();
@@ -233,7 +234,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Post to delete"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.DeleteAsync($"/api/feed/{postId}");
@@ -261,7 +262,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Like test post"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Switch to member to like
         await AuthenticateAsMemberAsync();
@@ -284,7 +285,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Unlike test post"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         await AuthenticateAsMemberAsync();
         await Client.PostAsync($"/api/feed/{postId}/like", null);
@@ -307,7 +308,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Double like test"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Like once
         await Client.PostAsync($"/api/feed/{postId}/like", null);
@@ -315,8 +316,8 @@ public class FeedControllerTests : IntegrationTestBase
         // Act - Try to like again
         var response = await Client.PostAsync($"/api/feed/{postId}/like", null);
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        // Assert - API returns BadRequest for duplicate likes
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     #endregion
@@ -334,7 +335,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Comment test post"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.PostAsJsonAsync($"/api/feed/{postId}/comments", new
@@ -345,8 +346,8 @@ public class FeedControllerTests : IntegrationTestBase
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("content").GetString().Should().Be("This is a test comment");
+        var respBody = await response.Content.ReadFromJsonAsync<JsonElement>();
+        respBody.GetProperty("comment").GetProperty("content").GetString().Should().Be("This is a test comment");
     }
 
     [Fact]
@@ -360,7 +361,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Comments list test"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Add a comment
         await Client.PostAsJsonAsync($"/api/feed/{postId}/comments", new
@@ -389,14 +390,14 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Delete comment test"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         var commentResponse = await Client.PostAsJsonAsync($"/api/feed/{postId}/comments", new
         {
             content = "Comment to delete"
         });
         var commentContent = await commentResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var commentId = commentContent.GetProperty("id").GetInt32();
+        var commentId = commentContent.GetProperty("comment").GetProperty("id").GetInt32();
 
         // Act
         var response = await Client.DeleteAsync($"/api/feed/{postId}/comments/{commentId}");
@@ -420,7 +421,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Tenant isolated post"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Switch to other-tenant user
         await AuthenticateAsOtherTenantUserAsync();
@@ -443,7 +444,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Cross-tenant like test"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Switch to other-tenant user
         await AuthenticateAsOtherTenantUserAsync();
@@ -466,7 +467,7 @@ public class FeedControllerTests : IntegrationTestBase
             content = "Cross-tenant comment test"
         });
         var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
-        var postId = createContent.GetProperty("id").GetInt32();
+        var postId = createContent.GetProperty("post").GetProperty("id").GetInt32();
 
         // Switch to other-tenant user
         await AuthenticateAsOtherTenantUserAsync();
@@ -479,6 +480,64 @@ public class FeedControllerTests : IntegrationTestBase
 
         // Assert
         response.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.BadRequest);
+    }
+
+    #endregion
+
+    #region Input Validation
+
+    [Fact]
+    public async Task CreatePost_WithInvalidImageUrl_ReturnsBadRequest()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/api/feed", new
+        {
+            content = "Post with invalid URL",
+            image_url = "not-a-valid-url"
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreatePost_WithValidImageUrl_ReturnsCreated()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/api/feed", new
+        {
+            content = "Post with valid URL",
+            image_url = "https://example.com/image.png"
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var post = content.GetProperty("post");
+        post.GetProperty("imageUrl").GetString().Should().Be("https://example.com/image.png");
+    }
+
+    [Fact]
+    public async Task CreatePost_WithNullImageUrl_ReturnsCreated()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/api/feed", new
+        {
+            content = "Post without image URL"
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     #endregion

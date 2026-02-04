@@ -13,6 +13,7 @@ using Nexus.Api.Clients;
 using Nexus.Api.Configuration;
 using Nexus.Api.Data;
 using Nexus.Api.HealthChecks;
+using Nexus.Api.Hubs;
 using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 using Nexus.Messaging;
@@ -22,6 +23,24 @@ using Polly.Extensions.Http;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// =============================================================================
+// DOCKER-ONLY DEVELOPMENT CHECK
+// =============================================================================
+// This project is designed to run in Docker. Running directly with `dotnet run`
+// is not supported and may cause configuration issues.
+var isRunningInDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+var isTestEnvironment = builder.Environment.EnvironmentName == "Testing";
+if (!isRunningInDocker && !isTestEnvironment && builder.Environment.IsDevelopment())
+{
+    Console.ForegroundColor = ConsoleColor.Yellow;
+    Console.WriteLine("╔════════════════════════════════════════════════════════════════════╗");
+    Console.WriteLine("║  WARNING: Running outside Docker is not supported.                 ║");
+    Console.WriteLine("║  Please use: docker compose up -d                                  ║");
+    Console.WriteLine("║  See DOCKER_CONTRACT.md for details.                               ║");
+    Console.WriteLine("╚════════════════════════════════════════════════════════════════════╝");
+    Console.ResetColor();
+}
 
 // =============================================================================
 // SERILOG CONFIGURATION (Production only)
@@ -109,6 +128,11 @@ builder.Services.AddScoped<ContentModerationService>();
 // AI Notification service
 builder.Services.AddScoped<AiNotificationService>();
 
+// Real-time messaging (SignalR)
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserConnectionService, UserConnectionService>();
+builder.Services.AddScoped<IRealTimeMessagingService, RealTimeMessagingService>();
+
 // Event publishing (RabbitMQ)
 builder.Services.AddEventPublishing(builder.Configuration);
 
@@ -166,7 +190,6 @@ builder.Services.AddHttpClient<ILlamaClient, LlamaClient>(client =>
 // JWT Authentication
 // CRITICAL: Secret must be provided via environment variable in production
 var jwtSecret = builder.Configuration["Jwt:Secret"];
-var isTestEnvironment = builder.Environment.EnvironmentName == "Testing";
 if (!isTestEnvironment && (string.IsNullOrEmpty(jwtSecret) || jwtSecret.Contains("REPLACE")))
 {
     throw new InvalidOperationException(
@@ -210,6 +233,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             // Minimal clock skew for security (allows 1 min drift between servers)
             ClockSkew = TimeSpan.FromMinutes(1)
+        };
+
+        // SignalR JWT Authentication
+        // WebSockets cannot send custom headers, so the token is sent via query string
+        // The client connects with: /hubs/messages?access_token=<jwt>
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                // Only read token from query string for hub paths
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -268,7 +311,9 @@ builder.Services.AddCors(options =>
                 // - Authorization: JWT Bearer token
                 // - Content-Type: JSON request bodies
                 // - X-Api-Version: API versioning header
-                .WithHeaders("Authorization", "Content-Type", "X-Api-Version")
+                // - X-Requested-With: Required by SignalR client
+                // - X-SignalR-User-Agent: SignalR connection metadata
+                .WithHeaders("Authorization", "Content-Type", "X-Api-Version", "X-Requested-With", "X-SignalR-User-Agent")
                 // Performance: Cache preflight responses for 30 minutes
                 // Reduces OPTIONS requests from browsers
                 .SetPreflightMaxAge(TimeSpan.FromMinutes(30));
@@ -372,6 +417,11 @@ app.UseMiddleware<TenantResolutionMiddleware>();
 // Map controllers and health checks
 app.MapControllers();
 app.MapHealthChecks("/health");
+
+// Map SignalR hubs
+// Endpoint: /hubs/messages
+// WebSocket connection: ws://localhost:5080/hubs/messages?access_token=<jwt>
+app.MapHub<MessagesHub>("/hubs/messages");
 
 // =============================================================================
 // RUN

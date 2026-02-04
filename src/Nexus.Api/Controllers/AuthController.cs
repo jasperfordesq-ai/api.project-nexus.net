@@ -659,10 +659,23 @@ public class AuthController : ControllerBase
         return HttpContext.Connection.RemoteIpAddress?.ToString();
     }
 
+    private static readonly System.Text.RegularExpressions.Regex EmailRegex = new(
+        @"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
+        System.Text.RegularExpressions.RegexOptions.Compiled,
+        TimeSpan.FromMilliseconds(250)); // ReDoS protection
+
     private static bool IsValidEmail(string email)
     {
+        if (string.IsNullOrWhiteSpace(email) || email.Length > 254)
+            return false;
+
         try
         {
+            // First validate with regex (RFC 5322 compliant pattern)
+            if (!EmailRegex.IsMatch(email))
+                return false;
+
+            // Then use MailAddress for additional validation
             var addr = new System.Net.Mail.MailAddress(email);
             return addr.Address == email.Trim();
         }

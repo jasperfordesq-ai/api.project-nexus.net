@@ -119,6 +119,7 @@ See `.claude/production-server.md` for deployment commands.
 
 ### Previous Phase Achievements
 
+**Real-Time Messaging:** SignalR WebSocket hub for instant message delivery ✓
 **Admin APIs:** Dashboard, user management, content moderation, categories, config, roles (19 endpoints) ✓
 **Phase 14:** Reviews (user and listing reviews - 7 endpoints) ✓
 **Phase 13:** Gamification (XP, levels, badges, leaderboards - 6 endpoints) ✓
@@ -127,7 +128,7 @@ See `.claude/production-server.md` for deployment commands.
 **Phase 10:** Notifications (in-app notifications, auto-triggers) ✓
 **Phase 9:** Connections (friend requests, accept/decline, mutual auto-accept) ✓
 **Phase 8:** Auth Enhancements (logout, refresh, register, password reset) ✓
-**Phase 7:** Messages WRITE (send, mark read) ✓
+**Phase 7:** Messages WRITE (send, mark read) + real-time notifications ✓
 **Phase 6:** Messages READ (conversations, unread count) ✓
 **Phase 5:** Wallet WRITE (credit transfers) ✓
 **Phase 4:** Wallet READ (balance, transactions) ✓
@@ -239,7 +240,11 @@ Or configure in `appsettings.Production.json`:
 - Origins are sanitized (trailing slashes removed, validated as valid URLs)
 - `AllowCredentials()` is NOT used (JWT Bearer auth doesn't need it)
 
-## Commands (Docker-First)
+## Commands (Docker-Only)
+
+**⚠️ Docker is REQUIRED for local development. Do NOT use `dotnet run` directly.**
+
+The API will display a warning if started outside of Docker. Tests can still run on the host using `dotnet test` (they use Testcontainers).
 
 ```bash
 # Start the full stack (API + PostgreSQL)
@@ -310,6 +315,7 @@ dotnet test
 | Endpoint                      | Method | Auth | Description                      |
 | ----------------------------- | ------ | ---- | -------------------------------- |
 | /health                       | GET    | No   | Health check                     |
+| /hubs/messages                | WS     | Yes  | SignalR real-time messaging hub  |
 | /api/auth/login               | POST   | No   | Login (returns access + refresh) |
 | /api/auth/logout              | POST   | Yes  | Logout (revoke refresh tokens)   |
 | /api/auth/refresh             | POST   | No   | Refresh access token             |
@@ -461,11 +467,15 @@ src/
       (... entity files ...)
     HealthChecks/
       LlamaHealthCheck.cs
+    Hubs/
+      MessagesHub.cs
     Services/
       GamificationService.cs
       AiService.cs
       ContentModerationService.cs
       AiNotificationService.cs
+      UserConnectionService.cs
+      RealTimeMessagingService.cs
     Middleware/
       TenantResolutionMiddleware.cs
     Migrations/

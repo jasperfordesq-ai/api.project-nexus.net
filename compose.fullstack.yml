@@ -1,49 +1,48 @@
 # =============================================================================
-# Docker Compose - Nexus Backend (Isolated Stack)
+# Docker Compose - NEXUS Full Stack LOCAL Development
 # =============================================================================
-# This is the SOURCE OF TRUTH for running the backend locally.
+# Runs ALL services locally for development: Backend + Both Frontends
 #
-# ISOLATION: This stack uses its own network and volumes, completely
-# independent from any other Docker projects on this machine.
+# Usage:
+#   docker compose -f compose.fullstack.yml up -d --build
 #
-# Quick start:
-#   export JWT_SECRET="YourSecure32CharacterSecretHere!"  # or set in .env
-#   docker compose up -d
-#   docker compose logs -f api
+# Services:
+#   - API:              http://localhost:5080  (+ Swagger at /swagger)
+#   - Modern Frontend:  http://localhost:5170  (Next.js + HeroUI)
+#   - UK Frontend:      http://localhost:5180  (Express + GOV.UK)
+#   - RabbitMQ UI:      http://localhost:15672 (guest/guest)
+#   - Ollama API:       http://localhost:11434
 #
-# IMPORTANT: JWT_SECRET must be set via environment variable or .env file
+# After first start, pull the AI model:
+#   docker compose -f compose.fullstack.yml exec llama-service ollama pull llama3.2:3b
 # =============================================================================
 
-name: nexus-backend
+name: nexus-fullstack
 
 services:
   # ---------------------------------------------------------------------------
-  # API Service (ASP.NET Core 8)
+  # API Backend (ASP.NET Core 8)
   # ---------------------------------------------------------------------------
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nexus-backend-api
+    container_name: nexus-fullstack-api
     ports:
-      - "5080:8080"  # Host:Container - Access at http://localhost:5080
+      - "5080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=nexus_dev;Username=postgres;Password=postgres
-      # JWT_SECRET MUST be provided via environment variable or .env file
-      # DO NOT hardcode secrets here - the app will fail to start without this
       - Jwt__Secret=${JWT_SECRET:?JWT_SECRET environment variable is required}
       - Jwt__Issuer=
       - Jwt__Audience=
       - Cors__AllowedOrigins__0=http://localhost:5080
       - Cors__AllowedOrigins__1=http://localhost:5170
       - Cors__AllowedOrigins__2=http://localhost:5180
-      # Rate limiting (relaxed for development)
       - RateLimiting__Auth__PermitLimit=10
       - RateLimiting__Auth__WindowSeconds=60
       - RateLimiting__General__PermitLimit=200
       - RateLimiting__General__WindowSeconds=60
-      # RabbitMQ configuration
       - RabbitMq__Host=rabbitmq
       - RabbitMq__Port=5672
       - RabbitMq__Username=guest
@@ -51,7 +50,6 @@ services:
       - RabbitMq__VirtualHost=/
       - RabbitMq__ExchangeName=nexus.events
       - RabbitMq__Enabled=true
-      # Llama AI service configuration
       - LlamaService__BaseUrl=http://llama-service:11434
       - LlamaService__Model=llama3.2:3b
       - LlamaService__TimeoutSeconds=180
@@ -63,7 +61,7 @@ services:
       llama-service:
         condition: service_started
     networks:
-      - nexus-backend-net
+      - nexus-fullstack-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:8080/health || exit 1"]
@@ -73,23 +71,71 @@ services:
       retries: 3
 
   # ---------------------------------------------------------------------------
+  # Modern Frontend (Next.js + HeroUI) - Development Mode
+  # ---------------------------------------------------------------------------
+  modern-frontend:
+    build:
+      context: ../nexus-modern-frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: nexus-fullstack-modern
+    ports:
+      - "5170:3002"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:5080
+    volumes:
+      # Mount source for hot reload (exclude node_modules)
+      - ../nexus-modern-frontend/src:/app/src:ro
+      - ../nexus-modern-frontend/public:/app/public:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - nexus-fullstack-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # UK Frontend (Express + GOV.UK) - Development Mode
+  # ---------------------------------------------------------------------------
+  uk-frontend:
+    build:
+      context: ../nexus-uk-frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: nexus-fullstack-uk
+    ports:
+      - "5180:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - API_URL=http://api:8080
+      - SESSION_SECRET=dev-session-secret-not-for-production
+    volumes:
+      # Mount source for hot reload
+      - ../nexus-uk-frontend/src:/app/src:ro
+      - ../nexus-uk-frontend/public:/app/public
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - nexus-fullstack-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
   # Database (PostgreSQL 16)
   # ---------------------------------------------------------------------------
   db:
     image: postgres:16.4-bookworm
-    container_name: nexus-backend-db
-    # DB is internal-only by default (no host port exposed)
-    # Uncomment the next two lines if you need direct DB access from host:
-    # ports:
-    #   - "5435:5432"
+    container_name: nexus-fullstack-db
     environment:
       POSTGRES_DB: nexus_dev
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
-      - nexus-backend-db-data:/var/lib/postgresql/data
+      - nexus-fullstack-db-data:/var/lib/postgresql/data
     networks:
-      - nexus-backend-net
+      - nexus-fullstack-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d nexus_dev"]
@@ -102,17 +148,17 @@ services:
   # ---------------------------------------------------------------------------
   rabbitmq:
     image: rabbitmq:3.13-management
-    container_name: nexus-backend-rabbitmq
+    container_name: nexus-fullstack-rabbitmq
     ports:
-      - "5672:5672"   # AMQP protocol
-      - "15672:15672" # Management UI (http://localhost:15672)
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     volumes:
-      - nexus-backend-rabbitmq-data:/var/lib/rabbitmq
+      - nexus-fullstack-rabbitmq-data:/var/lib/rabbitmq
     networks:
-      - nexus-backend-net
+      - nexus-fullstack-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
@@ -121,29 +167,26 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # AI Service (Ollama with Llama 3.2)
-  # ---------------------------------------------------------------------------
-  # NOTE: After starting, you must pull the model:
-  #   docker compose exec llama-service ollama pull llama3.2:3b
+  # AI Service (Ollama)
   # ---------------------------------------------------------------------------
   llama-service:
     image: ollama/ollama:latest
-    container_name: nexus-backend-llama
+    container_name: nexus-fullstack-llama
     ports:
-      - "11434:11434"  # Ollama API port
+      - "11434:11434"
     environment:
       - OLLAMA_HOST=0.0.0.0
     volumes:
-      - nexus-backend-llama-models:/root/.ollama
+      - nexus-fullstack-llama-models:/root/.ollama
     networks:
-      - nexus-backend-net
+      - nexus-fullstack-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
-      interval: 60s
-      timeout: 30s
-      start_period: 180s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -152,20 +195,20 @@ services:
           memory: 4G
 
 # -----------------------------------------------------------------------------
-# Networks (isolated from other Docker projects)
+# Networks
 # -----------------------------------------------------------------------------
 networks:
-  nexus-backend-net:
-    name: nexus-backend-net
+  nexus-fullstack-net:
+    name: nexus-fullstack-net
     driver: bridge
 
 # -----------------------------------------------------------------------------
-# Volumes (persistent, isolated)
+# Volumes
 # -----------------------------------------------------------------------------
 volumes:
-  nexus-backend-db-data:
-    name: nexus-backend-db-data
-  nexus-backend-rabbitmq-data:
-    name: nexus-backend-rabbitmq-data
-  nexus-backend-llama-models:
-    name: nexus-backend-llama-models
+  nexus-fullstack-db-data:
+    name: nexus-fullstack-db-data
+  nexus-fullstack-rabbitmq-data:
+    name: nexus-fullstack-rabbitmq-data
+  nexus-fullstack-llama-models:
+    name: nexus-fullstack-llama-models

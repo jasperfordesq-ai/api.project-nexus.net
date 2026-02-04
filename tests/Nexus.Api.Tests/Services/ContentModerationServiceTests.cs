@@ -6,7 +6,10 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
+using Nexus.Api.Clients;
+using Nexus.Api.Configuration;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Services;
@@ -37,9 +40,17 @@ public class ContentModerationServiceTests : IDisposable
         _db = new NexusDbContext(options, tenantContext);
         _loggerMock = new Mock<ILogger<ContentModerationService>>();
 
-        // Create mock AiService - needs to be created with null parameters since it requires real dependencies
-        // We'll use a wrapper approach instead
-        _aiServiceMock = new Mock<AiService>(MockBehavior.Loose, null!, null!, null!);
+        // Create mock AiService with proper mock dependencies
+        // AiService constructor: (ILlamaClient, NexusDbContext, IOptions<LlamaServiceOptions>, ILogger<AiService>)
+        var llamaClientMock = new Mock<ILlamaClient>();
+        var llamaOptionsMock = Options.Create(new LlamaServiceOptions { BaseUrl = "http://test" });
+        var aiLoggerMock = new Mock<ILogger<AiService>>();
+        _aiServiceMock = new Mock<AiService>(
+            MockBehavior.Loose,
+            llamaClientMock.Object,
+            _db,
+            llamaOptionsMock,
+            aiLoggerMock.Object);
 
         _service = new ContentModerationService(_aiServiceMock.Object, _db, _loggerMock.Object);
     }

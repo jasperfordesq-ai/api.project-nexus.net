@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
@@ -24,11 +25,16 @@ public class MessagesController : ControllerBase
 {
     private readonly NexusDbContext _db;
     private readonly ILogger<MessagesController> _logger;
+    private readonly IRealTimeMessagingService _realTimeMessaging;
 
-    public MessagesController(NexusDbContext db, ILogger<MessagesController> logger)
+    public MessagesController(
+        NexusDbContext db,
+        ILogger<MessagesController> logger,
+        IRealTimeMessagingService realTimeMessaging)
     {
         _db = db;
         _logger = logger;
+        _realTimeMessaging = realTimeMessaging;
     }
 
     /// <summary>
@@ -320,9 +326,42 @@ public class MessagesController : ControllerBase
 
         // Load sender for response
         var sender = await _db.Users.FindAsync(userId.Value);
+        if (sender == null)
+        {
+            return StatusCode(500, new { error = "Sender data unavailable" });
+        }
 
         _logger.LogInformation("User {SenderId} sent message {MessageId} to user {RecipientId}",
             userId.Value, message.Id, request.RecipientId);
+
+        // Send real-time notification to the recipient
+        var notification = new MessageNotification
+        {
+            Id = message.Id,
+            ConversationId = conversation.Id,
+            Content = message.Content,
+            Sender = new SenderInfo
+            {
+                Id = sender.Id,
+                FirstName = sender.FirstName,
+                LastName = sender.LastName
+            },
+            IsRead = message.IsRead,
+            CreatedAt = message.CreatedAt
+        };
+
+        // Fire-and-forget: don't block the HTTP response on SignalR delivery
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _realTimeMessaging.NotifyNewMessageAsync(request.RecipientId, notification);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send real-time notification for message {MessageId}", message.Id);
+            }
+        });
 
         return CreatedAtAction(nameof(GetConversation), new { id = conversation.Id }, new
         {
@@ -331,7 +370,7 @@ public class MessagesController : ControllerBase
             content = message.Content,
             sender = new
             {
-                id = sender!.Id,
+                id = sender.Id,
                 first_name = sender.FirstName,
                 last_name = sender.LastName
             },
@@ -394,6 +433,22 @@ public class MessagesController : ControllerBase
 
         _logger.LogInformation("User {UserId} marked {Count} messages as read in conversation {ConversationId}",
             userId.Value, markedCount, id);
+
+        // Notify the other participant that messages were read
+        if (markedCount > 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _realTimeMessaging.NotifyMessagesReadAsync(id, userId.Value, markedCount);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send read notification for conversation {ConversationId}", id);
+                }
+            });
+        }
 
         return Ok(new
         {

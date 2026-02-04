@@ -13,11 +13,12 @@ public class CacheService
     private readonly IMemoryCache _cache;
     private readonly ILogger<CacheService> _logger;
 
-    // Cache durations
-    private static readonly TimeSpan CategoryCacheDuration = TimeSpan.FromMinutes(15);
-    private static readonly TimeSpan RoleCacheDuration = TimeSpan.FromMinutes(30);
-    private static readonly TimeSpan ConfigCacheDuration = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(30);
+    // Cache durations - kept short to reduce stale data risk
+    // All cached data is explicitly invalidated on mutation
+    private static readonly TimeSpan CategoryCacheDuration = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan RoleCacheDuration = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan ConfigCacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(15);
 
     public CacheService(IMemoryCache cache, ILogger<CacheService> logger)
     {
@@ -48,8 +49,8 @@ public class CacheService
         var value = await factory();
 
         var options = new MemoryCacheEntryOptions()
-            .SetAbsoluteExpiration(expiration ?? TimeSpan.FromMinutes(15))
-            .SetSlidingExpiration(TimeSpan.FromMinutes(5));
+            .SetAbsoluteExpiration(expiration ?? TimeSpan.FromMinutes(10))
+            .SetSlidingExpiration(TimeSpan.FromMinutes(3));
 
         _cache.Set(cacheKey, value, options);
         return value;

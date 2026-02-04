@@ -273,7 +273,7 @@ Return up to {maxResults} results sorted by relevance. Only JSON, no markdown.";
     /// <summary>
     /// Moderate content for appropriateness.
     /// </summary>
-    public async Task<ModerationResult> ModerateContent(
+    public virtual async Task<ModerationResult> ModerateContent(
         string content,
         string contentType = "listing",
         CancellationToken ct = default)

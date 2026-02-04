@@ -52,56 +52,82 @@ public class AdminController : ControllerBase
 
     /// <summary>
     /// Get admin dashboard metrics.
+    /// Optimized to use batched queries for better performance.
     /// </summary>
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboard()
     {
         var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
 
-        var userCount = await _db.Users.CountAsync();
-        var activeUserCount = await _db.Users.CountAsync(u => u.IsActive);
-        var newUsersLast30Days = await _db.Users.CountAsync(u => u.CreatedAt >= thirtyDaysAgo);
+        // Batch user stats into single query
+        var userStats = await _db.Users
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Active = g.Count(u => u.IsActive),
+                NewLast30Days = g.Count(u => u.CreatedAt >= thirtyDaysAgo)
+            })
+            .FirstOrDefaultAsync() ?? new { Total = 0, Active = 0, NewLast30Days = 0 };
 
-        var listingCount = await _db.Listings.CountAsync();
-        var activeListingCount = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Active);
-        var pendingListingCount = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Pending);
+        // Batch listing stats into single query
+        var listingStats = await _db.Listings
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Active = g.Count(l => l.Status == ListingStatus.Active),
+                Pending = g.Count(l => l.Status == ListingStatus.Pending)
+            })
+            .FirstOrDefaultAsync() ?? new { Total = 0, Active = 0, Pending = 0 };
 
-        var transactionCount = await _db.Transactions.CountAsync();
-        var transactionsLast30Days = await _db.Transactions.CountAsync(t => t.CreatedAt >= thirtyDaysAgo);
-        var totalCreditsTransferred = await _db.Transactions
-            .Where(t => t.Status == TransactionStatus.Completed)
-            .SumAsync(t => t.Amount);
+        // Batch transaction stats into single query
+        var transactionStats = await _db.Transactions
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Last30Days = g.Count(t => t.CreatedAt >= thirtyDaysAgo),
+                TotalCredits = g.Where(t => t.Status == TransactionStatus.Completed).Sum(t => t.Amount)
+            })
+            .FirstOrDefaultAsync() ?? new { Total = 0, Last30Days = 0, TotalCredits = 0m };
 
-        var categoryCount = await _db.Categories.CountAsync();
-        var groupCount = await _db.Groups.CountAsync();
-        var eventCount = await _db.Events.CountAsync(e => !e.IsCancelled);
+        // Batch community stats - these are simpler, run in parallel
+        var categoryCountTask = _db.Categories.AsNoTracking().CountAsync();
+        var groupCountTask = _db.Groups.AsNoTracking().CountAsync();
+        var eventCountTask = _db.Events.AsNoTracking().CountAsync(e => !e.IsCancelled);
+
+        await Task.WhenAll(categoryCountTask, groupCountTask, eventCountTask);
 
         return Ok(new
         {
             users = new
             {
-                total = userCount,
-                active = activeUserCount,
-                suspended = userCount - activeUserCount,
-                new_last_30_days = newUsersLast30Days
+                total = userStats.Total,
+                active = userStats.Active,
+                suspended = userStats.Total - userStats.Active,
+                new_last_30_days = userStats.NewLast30Days
             },
             listings = new
             {
-                total = listingCount,
-                active = activeListingCount,
-                pending_review = pendingListingCount
+                total = listingStats.Total,
+                active = listingStats.Active,
+                pending_review = listingStats.Pending
             },
             transactions = new
             {
-                total = transactionCount,
-                last_30_days = transactionsLast30Days,
-                total_credits_transferred = totalCreditsTransferred
+                total = transactionStats.Total,
+                last_30_days = transactionStats.Last30Days,
+                total_credits_transferred = transactionStats.TotalCredits
             },
             community = new
             {
-                categories = categoryCount,
-                groups = groupCount,
-                upcoming_events = eventCount
+                categories = await categoryCountTask,
+                groups = await groupCountTask,
+                upcoming_events = await eventCountTask
             }
         });
     }
