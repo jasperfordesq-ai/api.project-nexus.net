@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose:*)",
+      "Bash(grep:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "Bash(ls:*)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet sln add:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet add package:*)",
+      "Bash(dotnet add:*)",
+      "Bash(dotnet add reference:*)",
+      "Bash(export JWT_SECRET=\"TestSecretKeyForDevelopment123!\")",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(JWT_SECRET=test-secret-for-migrations-only-not-production-use dotnet ef migrations add:*)",
+      "Bash(set \"Jwt__Secret=test-secret-for-migrations-only-not-production-use\")",
+      "Bash(ADMIN_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidGVuYW50X2lkIjoiMSIsInJvbGUiOiJhZG1pbiIsImVtYWlsIjoiYWRtaW5AYWNtZS50ZXN0IiwiaWF0IjoxNzcwMTQ1OTQ5LCJleHAiOjE3NzAxNTMxNDl9.d0KsIfoGmw2Emat0xsmj-GdOJxQqyhJazkd3UrRrPaU\":*)",
+      "Bash(dir /b \"c:\\\\xampp\\\\htdocs\\\\asp.net-backend\\\\*.yml\")",
+      "Bash(dir /b \"c:\\\\xampp\\\\htdocs\\\\nexus-modern-frontend\\\\*.yml\")",
+      "Bash(dir /s /b \"c:\\\\xampp\\\\htdocs\\\\*docker-compose*\")",
+      "Bash(docker ps:*)",
+      "Bash(docker logs:*)"
+    ]
+  }
+}

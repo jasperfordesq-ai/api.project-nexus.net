@@ -1,0 +1,60 @@
+# =============================================================================
+# Git Ignore - Nexus Backend
+# =============================================================================
+
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet
+**/packages/
+*.nupkg
+
+# Test results
+**/TestResults/
+*.trx
+
+# Local environment files (keep .env.docker as template)
+.env
+.env.local
+.env.*.local
+!.env.docker
+
+# Database backups (NEVER commit)
+backups/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets (should never be committed)
+**/secrets/
+*.pfx
+*.key
+*.pem
+
+# ASP.NET Core
+appsettings.Local.json
+appsettings.*.Local.json
+nul
