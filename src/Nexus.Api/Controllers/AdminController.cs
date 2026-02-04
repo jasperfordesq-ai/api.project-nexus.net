@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Services;
 using Nexus.Contracts.Events;
 using Nexus.Messaging;
 
@@ -29,17 +30,20 @@ public class AdminController : ControllerBase
     private readonly TenantContext _tenantContext;
     private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<AdminController> _logger;
+    private readonly CacheService _cache;
 
     public AdminController(
         NexusDbContext db,
         TenantContext tenantContext,
         IEventPublisher eventPublisher,
-        ILogger<AdminController> logger)
+        ILogger<AdminController> logger,
+        CacheService cache)
     {
         _db = db;
         _tenantContext = tenantContext;
         _eventPublisher = eventPublisher;
         _logger = logger;
+        _cache = cache;
     }
 
     private int? GetCurrentUserId() => User.GetUserId();
@@ -245,6 +249,17 @@ public class AdminController : ControllerBase
         {
             return BadRequest(new { error = "Cannot change your own admin role" });
         }
+
+        // Input validation
+        var errors = new List<string>();
+        if (request.FirstName != null && request.FirstName.Length > 100)
+            errors.Add("FirstName must be 100 characters or less");
+        if (request.LastName != null && request.LastName.Length > 100)
+            errors.Add("LastName must be 100 characters or less");
+        if (request.Email != null && request.Email.Length > 255)
+            errors.Add("Email must be 255 characters or less");
+        if (errors.Count > 0)
+            return BadRequest(new { error = "Validation failed", details = errors });
 
         var updated = false;
 
@@ -620,13 +635,22 @@ public class AdminController : ControllerBase
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
 
+        // Input validation
+        var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            return BadRequest(new { error = "Name is required" });
-        }
+            errors.Add("Name is required");
+        else if (request.Name.Length > 100)
+            errors.Add("Name must be 100 characters or less");
+        if (request.Description != null && request.Description.Length > 1000)
+            errors.Add("Description must be 1000 characters or less");
+        if (request.Slug != null && request.Slug.Length > 100)
+            errors.Add("Slug must be 100 characters or less");
+        if (errors.Count > 0)
+            return BadRequest(new { error = "Validation failed", details = errors });
 
         // Generate slug from name if not provided
-        var slug = request.Slug ?? GenerateSlug(request.Name);
+        // Note: request.Name is validated non-null above
+        var slug = request.Slug ?? GenerateSlug(request.Name!);
 
         // Check for duplicate slug
         var slugExists = await _db.Categories.AnyAsync(c => c.Slug == slug);
@@ -647,7 +671,7 @@ public class AdminController : ControllerBase
 
         var category = new Category
         {
-            Name = request.Name.Trim(),
+            Name = request.Name!.Trim(),
             Description = request.Description?.Trim(),
             Slug = slug,
             ParentCategoryId = request.ParentCategoryId,
@@ -660,6 +684,9 @@ public class AdminController : ControllerBase
 
         _logger.LogInformation("Admin {AdminId} created category {CategoryId}: {Name}",
             adminUserId, category.Id, category.Name);
+
+        // Invalidate category cache
+        _cache.InvalidateCategories(category.TenantId);
 
         await _eventPublisher.PublishAsync(new CategoryCreatedEvent
         {
@@ -705,6 +732,17 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { error = "Category not found" });
         }
+
+        // Input validation
+        var errors = new List<string>();
+        if (request.Name != null && request.Name.Length > 100)
+            errors.Add("Name must be 100 characters or less");
+        if (request.Description != null && request.Description.Length > 1000)
+            errors.Add("Description must be 1000 characters or less");
+        if (request.Slug != null && request.Slug.Length > 100)
+            errors.Add("Slug must be 100 characters or less");
+        if (errors.Count > 0)
+            return BadRequest(new { error = "Validation failed", details = errors });
 
         var updated = false;
 
@@ -764,6 +802,9 @@ public class AdminController : ControllerBase
             await _db.SaveChangesAsync();
 
             _logger.LogInformation("Admin {AdminId} updated category {CategoryId}", adminUserId, id);
+
+            // Invalidate category cache
+            _cache.InvalidateCategories(category.TenantId);
 
             await _eventPublisher.PublishAsync(new CategoryUpdatedEvent
             {
@@ -825,8 +866,12 @@ public class AdminController : ControllerBase
             return BadRequest(new { error = $"Cannot delete category with {category.ChildCategories.Count} subcategories. Delete or reassign subcategories first." });
         }
 
+        var tenantId = category.TenantId;
         _db.Categories.Remove(category);
         await _db.SaveChangesAsync();
+
+        // Invalidate category cache
+        _cache.InvalidateCategories(tenantId);
 
         _logger.LogInformation("Admin {AdminId} deleted category {CategoryId}: {Name}",
             adminUserId, id, category.Name);
@@ -912,6 +957,9 @@ public class AdminController : ControllerBase
 
         await _db.SaveChangesAsync();
 
+        // Invalidate config cache
+        _cache.InvalidateConfig(_tenantContext.GetTenantIdOrThrow());
+
         _logger.LogInformation("Admin {AdminId} updated config. Created: {Created}, Updated: {Updated}",
             adminUserId, created.Count, updated.Count);
 
@@ -961,13 +1009,22 @@ public class AdminController : ControllerBase
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
 
+        // Input validation
+        var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            return BadRequest(new { error = "Name is required" });
-        }
+            errors.Add("Name is required");
+        else if (request.Name.Length > 50)
+            errors.Add("Name must be 50 characters or less");
+        if (request.Description != null && request.Description.Length > 500)
+            errors.Add("Description must be 500 characters or less");
+        if (request.Permissions != null && request.Permissions.Length > 4000)
+            errors.Add("Permissions must be 4000 characters or less");
+        if (errors.Count > 0)
+            return BadRequest(new { error = "Validation failed", details = errors });
 
         // Check for duplicate name
-        var nameExists = await _db.Roles.AnyAsync(r => r.Name == request.Name.ToLower());
+        // Note: request.Name is validated non-null above
+        var nameExists = await _db.Roles.AnyAsync(r => r.Name == request.Name!.ToLower());
         if (nameExists)
         {
             return BadRequest(new { error = "Role with this name already exists" });
@@ -975,7 +1032,7 @@ public class AdminController : ControllerBase
 
         var role = new Role
         {
-            Name = request.Name.ToLower().Trim(),
+            Name = request.Name!.ToLower().Trim(),
             Description = request.Description?.Trim(),
             Permissions = request.Permissions ?? "[]",
             IsSystem = false
@@ -983,6 +1040,9 @@ public class AdminController : ControllerBase
 
         _db.Roles.Add(role);
         await _db.SaveChangesAsync();
+
+        // Invalidate role cache
+        _cache.InvalidateRoles(role.TenantId);
 
         _logger.LogInformation("Admin {AdminId} created role {RoleId}: {Name}",
             adminUserId, role.Id, role.Name);
@@ -1024,6 +1084,17 @@ public class AdminController : ControllerBase
             return BadRequest(new { error = "Cannot rename system roles" });
         }
 
+        // Input validation
+        var errors = new List<string>();
+        if (request.Name != null && request.Name.Length > 50)
+            errors.Add("Name must be 50 characters or less");
+        if (request.Description != null && request.Description.Length > 500)
+            errors.Add("Description must be 500 characters or less");
+        if (request.Permissions != null && request.Permissions.Length > 4000)
+            errors.Add("Permissions must be 4000 characters or less");
+        if (errors.Count > 0)
+            return BadRequest(new { error = "Validation failed", details = errors });
+
         var updated = false;
 
         if (request.Name != null && request.Name != role.Name)
@@ -1053,6 +1124,9 @@ public class AdminController : ControllerBase
         {
             role.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+
+            // Invalidate role cache
+            _cache.InvalidateRoles(role.TenantId);
 
             _logger.LogInformation("Admin {AdminId} updated role {RoleId}", adminUserId, id);
         }
@@ -1100,8 +1174,12 @@ public class AdminController : ControllerBase
             return BadRequest(new { error = $"Cannot delete role with {usersWithRole} users. Reassign users first." });
         }
 
+        var tenantId = role.TenantId;
         _db.Roles.Remove(role);
         await _db.SaveChangesAsync();
+
+        // Invalidate role cache
+        _cache.InvalidateRoles(tenantId);
 
         _logger.LogInformation("Admin {AdminId} deleted role {RoleId}: {Name}",
             adminUserId, id, role.Name);

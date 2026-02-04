@@ -511,10 +511,10 @@ public class FeedController : ControllerBase
         // Can delete if: comment author, post author, or group admin/owner
         var canDelete = comment.UserId == userId || comment.Post!.UserId == userId;
 
-        if (!canDelete && comment.Post.GroupId.HasValue)
+        if (!canDelete && comment.Post!.GroupId.HasValue)
         {
             var membership = await _db.GroupMembers
-                .FirstOrDefaultAsync(gm => gm.GroupId == comment.Post.GroupId && gm.UserId == userId);
+                .FirstOrDefaultAsync(gm => gm.GroupId == comment.Post!.GroupId && gm.UserId == userId);
 
             canDelete = membership != null && (membership.Role == Group.Roles.Admin || membership.Role == Group.Roles.Owner);
         }
