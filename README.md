@@ -52,4 +52,4 @@ open http://localhost:5080/swagger
 ## Source Code
 
 The complete source code for this project is available at:
-https://github.com/jasperford/project-nexus
+<https://github.com/jasperfordesq-ai/api.project-nexus.net>
