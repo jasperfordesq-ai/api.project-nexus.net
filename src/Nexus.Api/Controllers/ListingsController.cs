@@ -70,6 +70,7 @@ public class ListingsController : ControllerBase
 
         // Get paginated results with user info
         var listings = await query
+            .AsNoTracking()
             .OrderByDescending(l => l.CreatedAt)
             .Skip(skip)
             .Take(limit)
@@ -87,12 +88,14 @@ public class ListingsController : ControllerBase
                 expires_at = l.ExpiresAt,
                 created_at = l.CreatedAt,
                 updated_at = l.UpdatedAt,
-                user = new
-                {
-                    id = l.User!.Id,
-                    first_name = l.User.FirstName,
-                    last_name = l.User.LastName
-                }
+                user = l.User != null
+                    ? new
+                    {
+                        id = l.User.Id,
+                        first_name = l.User.FirstName,
+                        last_name = l.User.LastName
+                    }
+                    : null
             })
             .ToListAsync();
 
@@ -119,8 +122,33 @@ public class ListingsController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var listing = await _db.Listings
-            .Include(l => l.User)
-            .FirstOrDefaultAsync(l => l.Id == id);
+            .AsNoTracking()
+            .Where(l => l.Id == id)
+            .Select(l => new
+            {
+                id = l.Id,
+                title = l.Title,
+                description = l.Description,
+                type = l.Type.ToString().ToLowerInvariant(),
+                status = l.Status.ToString().ToLowerInvariant(),
+                category_id = l.CategoryId,
+                location = l.Location,
+                estimated_hours = l.EstimatedHours,
+                is_featured = l.IsFeatured,
+                view_count = l.ViewCount,
+                expires_at = l.ExpiresAt,
+                created_at = l.CreatedAt,
+                updated_at = l.UpdatedAt,
+                user = l.User != null
+                    ? new
+                    {
+                        id = l.User.Id,
+                        first_name = l.User.FirstName,
+                        last_name = l.User.LastName
+                    }
+                    : null
+            })
+            .FirstOrDefaultAsync();
 
         if (listing == null)
         {
@@ -129,25 +157,20 @@ public class ListingsController : ControllerBase
 
         return Ok(new
         {
-            id = listing.Id,
-            title = listing.Title,
-            description = listing.Description,
-            type = listing.Type.ToString().ToLowerInvariant(),
-            status = listing.Status.ToString().ToLowerInvariant(),
-            category_id = listing.CategoryId,
-            location = listing.Location,
-            estimated_hours = listing.EstimatedHours,
-            is_featured = listing.IsFeatured,
-            view_count = listing.ViewCount,
-            expires_at = listing.ExpiresAt,
-            created_at = listing.CreatedAt,
-            updated_at = listing.UpdatedAt,
-            user = new
-            {
-                id = listing.User!.Id,
-                first_name = listing.User.FirstName,
-                last_name = listing.User.LastName
-            }
+            listing.id,
+            listing.title,
+            listing.description,
+            listing.type,
+            listing.status,
+            listing.category_id,
+            listing.location,
+            listing.estimated_hours,
+            listing.is_featured,
+            listing.view_count,
+            listing.expires_at,
+            listing.created_at,
+            listing.updated_at,
+            listing.user
         });
     }
 

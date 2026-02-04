@@ -84,6 +84,10 @@ public class NexusDbContext : DbContext
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Optimistic concurrency control
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion();
+
             // CRITICAL: Global query filter for tenant isolation
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
@@ -136,6 +140,10 @@ public class NexusDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Amount).HasPrecision(10, 2);
             entity.Property(e => e.Description).HasMaxLength(500);
+
+            // Optimistic concurrency control
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion();
 
             // Enum conversion
             entity.Property(e => e.Status)

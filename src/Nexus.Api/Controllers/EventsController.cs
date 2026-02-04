@@ -77,6 +77,7 @@ public class EventsController : ControllerBase
         var totalPages = (int)Math.Ceiling(total / (double)limit);
 
         var events = await query
+            .AsNoTracking()
             .OrderBy(e => e.StartsAt)
             .Skip((page - 1) * limit)
             .Take(limit)
@@ -91,9 +92,13 @@ public class EventsController : ControllerBase
                 max_attendees = e.MaxAttendees,
                 e.ImageUrl,
                 e.CreatedAt,
-                created_by = new { e.CreatedBy!.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName },
-                group = e.GroupId != null ? new { e.Group!.Id, e.Group.Name } : null,
-                rsvp_count = e.Rsvps.Count(r => r.Status == Event.RsvpStatus.Going)
+                created_by = e.CreatedBy != null
+                    ? new { e.CreatedBy.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName }
+                    : null,
+                group = e.GroupId != null && e.Group != null
+                    ? new { e.Group.Id, e.Group.Name }
+                    : null,
+                rsvp_count = _db.EventRsvps.Count(r => r.EventId == e.Id && r.Status == Event.RsvpStatus.Going)
             })
             .ToListAsync();
 
@@ -120,7 +125,8 @@ public class EventsController : ControllerBase
         if (userId == null) return Unauthorized();
 
         var events = await _db.EventRsvps
-            .Where(r => r.UserId == userId && !r.Event!.IsCancelled)
+            .AsNoTracking()
+            .Where(r => r.UserId == userId && r.Event != null && !r.Event.IsCancelled)
             .OrderBy(r => r.Event!.StartsAt)
             .Select(r => new
             {
@@ -133,8 +139,10 @@ public class EventsController : ControllerBase
                 r.Event.ImageUrl,
                 my_rsvp = r.Status,
                 responded_at = r.RespondedAt,
-                group = r.Event.GroupId != null ? new { r.Event.Group!.Id, r.Event.Group.Name } : null,
-                rsvp_count = r.Event.Rsvps.Count(rsvp => rsvp.Status == Event.RsvpStatus.Going)
+                group = r.Event.GroupId != null && r.Event.Group != null
+                    ? new { r.Event.Group.Id, r.Event.Group.Name }
+                    : null,
+                rsvp_count = _db.EventRsvps.Count(rsvp => rsvp.EventId == r.EventId && rsvp.Status == Event.RsvpStatus.Going)
             })
             .ToListAsync();
 
@@ -151,6 +159,7 @@ public class EventsController : ControllerBase
         if (userId == null) return Unauthorized();
 
         var eventEntity = await _db.Events
+            .AsNoTracking()
             .Where(e => e.Id == id)
             .Select(e => new
             {
@@ -165,13 +174,17 @@ public class EventsController : ControllerBase
                 e.IsCancelled,
                 e.CreatedAt,
                 e.UpdatedAt,
-                created_by = new { e.CreatedBy!.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName },
-                group = e.GroupId != null ? new { e.Group!.Id, e.Group.Name } : null,
+                created_by = e.CreatedBy != null
+                    ? new { e.CreatedBy.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName }
+                    : null,
+                group = e.GroupId != null && e.Group != null
+                    ? new { e.Group.Id, e.Group.Name }
+                    : null,
                 rsvp_counts = new
                 {
-                    going = e.Rsvps.Count(r => r.Status == Event.RsvpStatus.Going),
-                    maybe = e.Rsvps.Count(r => r.Status == Event.RsvpStatus.Maybe),
-                    not_going = e.Rsvps.Count(r => r.Status == Event.RsvpStatus.NotGoing)
+                    going = _db.EventRsvps.Count(r => r.EventId == e.Id && r.Status == Event.RsvpStatus.Going),
+                    maybe = _db.EventRsvps.Count(r => r.EventId == e.Id && r.Status == Event.RsvpStatus.Maybe),
+                    not_going = _db.EventRsvps.Count(r => r.EventId == e.Id && r.Status == Event.RsvpStatus.NotGoing)
                 }
             })
             .FirstOrDefaultAsync();
@@ -183,6 +196,7 @@ public class EventsController : ControllerBase
 
         // Get current user's RSVP
         var myRsvp = await _db.EventRsvps
+            .AsNoTracking()
             .Where(r => r.EventId == id && r.UserId == userId)
             .Select(r => new { r.Status, r.RespondedAt })
             .FirstOrDefaultAsync();
