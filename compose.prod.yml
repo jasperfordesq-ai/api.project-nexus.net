@@ -1,0 +1,21 @@
+# Production overrides - deploy as compose.override.yml on production server
+# This file configures production-specific settings (CORS, rate limits)
+#
+# Usage on production:
+#   cp compose.prod.yml compose.override.yml
+#   docker compose up -d
+
+services:
+  api:
+    environment:
+      # CORS - production domains
+      - Cors__AllowedOrigins__0=https://app.project-nexus.net
+      - Cors__AllowedOrigins__1=https://uk.project-nexus.net
+      - Cors__AllowedOrigins__2=https://api.project-nexus.net
+      - Cors__AllowedOrigins__3=http://localhost:5170
+      - Cors__AllowedOrigins__4=http://localhost:5180
+      # Rate limiting - production values
+      - RateLimiting__Auth__PermitLimit=30
+      - RateLimiting__Auth__WindowSeconds=60
+      - RateLimiting__General__PermitLimit=500
+      - RateLimiting__General__WindowSeconds=60
