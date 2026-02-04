@@ -6,6 +6,51 @@ This is the **new** ASP.NET Core 8 backend for Project NEXUS, a timebanking/comm
 
 **This is NOT a migration of the PHP codebase. This is a clean implementation.**
 
+## License and Attribution (MANDATORY)
+
+This software is licensed under the **GNU Affero General Public License v3** (AGPL-3.0-or-later).
+
+### Creator
+
+- **Jasper Ford** - Creator and primary author
+
+### Founders of the Originating Time Bank
+
+- **Jasper Ford**
+- **Mary Casey**
+
+### Research Foundation
+
+This software is informed by and builds upon a social impact study commissioned by the **West Cork Development Partnership**.
+
+### Acknowledgements
+
+- **West Cork Development Partnership**
+- **Fergal Conlon**, SICAP Manager
+
+### Source File Headers
+
+All new source files MUST include this header:
+
+```csharp
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+```
+
+### Key Files
+
+- `LICENSE` - Full AGPL v3 license text
+- `NOTICE` - Attribution and credits (must be preserved in all distributions)
+- `README.md` - Credits and Origins section
+
+### AGPL Compliance Requirements
+
+1. Source code must be made available to network users
+2. NOTICE file attributions must be preserved in all copies
+3. About page must display license info and source code link
+
 ## Development Workflow (MANDATORY - NO EXCEPTIONS)
 
 **NEVER modify production directly. All changes go through local first.**
