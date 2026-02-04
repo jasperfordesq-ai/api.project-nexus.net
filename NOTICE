@@ -15,9 +15,107 @@ Acknowledgements:
 - West Cork Development Partnership
 - Fergal Conlon, SICAP Manager
 
-These attributions and notices must be preserved in all copies,
-modified versions, and network-accessible deployments of this software,
-in accordance with Section 7(b) of the GNU Affero General Public License v3.
+================================================================================
+REQUIRED ATTRIBUTION NOTICE (Section 7(b) of AGPL v3)
+================================================================================
+
+In accordance with Section 7(b) of the GNU Affero General Public License v3,
+any application that uses, modifies, or is based on this software MUST display
+the following attribution in a user-visible location:
+
+1. ABOUT PAGE (Required)
+   The application's About page (or equivalent) MUST include:
+
+   "Powered by Project NEXUS
+    Created by Jasper Ford
+    Licensed under AGPL v3 - https://github.com/jasperfordesq-ai/api.project-nexus.net"
+
+2. FOOTER ATTRIBUTION (Required)
+   The application's footer (visible on all pages) MUST include:
+
+   "Built on Project NEXUS by Jasper Ford"
+
+   This text must link to: https://github.com/jasperfordesq-ai/api.project-nexus.net
+
+3. SOURCE CODE LINK (Required by AGPL Section 13)
+   A clearly visible link to the source code repository must be provided,
+   accessible to all users of the network application.
+
+These attribution requirements apply to:
+- Direct deployments of this software
+- Modified versions of this software
+- Applications that incorporate substantial portions of this code
+- SaaS or hosted versions accessible over a network
+
+Removal or obscuring of these attributions is a violation of the license.
+
+================================================================================
+PROHIBITION OF MISREPRESENTATION (Section 7(c) of AGPL v3)
+================================================================================
+
+You may NOT:
+- Claim to be the original author of this software
+- Remove, alter, or obscure any copyright notices or author attributions
+- Present this software as your own creation
+- Imply endorsement by the original author without written permission
+
+Modified versions MUST be clearly marked as modified. Any modified version
+must prominently display:
+
+   "This software is a modified version of Project NEXUS.
+    Original software created by Jasper Ford.
+    This modified version is not endorsed by the original author."
+
+================================================================================
+NAME AND TRADEMARK RESTRICTIONS (Sections 7(d) and 7(e) of AGPL v3)
+================================================================================
+
+Without explicit written permission from Jasper Ford, you may NOT:
+- Use the names "Project NEXUS", "Jasper Ford", or "Mary Casey" for
+  publicity, marketing, or endorsement purposes
+- Use any logos, branding, or trademarks associated with this project
+- Imply that your product or service is officially affiliated with,
+  endorsed by, or sponsored by Project NEXUS or its creators
+
+The attribution requirements above are permitted and required uses.
+All other uses of names and marks require separate written permission.
+
+================================================================================
+INDEMNIFICATION (Section 7(f) of AGPL v3)
+================================================================================
+
+By using, modifying, or distributing this software, you agree to indemnify,
+defend, and hold harmless Jasper Ford, Mary Casey, and any contributors from
+and against any and all claims, damages, losses, costs, and expenses
+(including reasonable legal fees) arising from:
+
+- Your use, modification, or distribution of this software
+- Your violation of this license or any applicable laws
+- Any claims that your modifications infringe third-party rights
+- Any liability arising from your deployment of this software
+
+This indemnification obligation survives termination of the license.
+
+================================================================================
+ENHANCED WARRANTY DISCLAIMER (Section 7(a) of AGPL v3)
+================================================================================
+
+IN ADDITION TO THE STANDARD AGPL WARRANTY DISCLAIMER:
+
+THIS SOFTWARE IS PROVIDED FOR COMMUNITY TIMEBANKING PURPOSES. THE AUTHORS
+MAKE NO REPRESENTATIONS REGARDING SUITABILITY FOR ANY PARTICULAR PURPOSE,
+INCLUDING BUT NOT LIMITED TO FINANCIAL, LEGAL, OR REGULATORY COMPLIANCE.
+
+YOU ARE SOLELY RESPONSIBLE FOR:
+- Compliance with all applicable laws in your jurisdiction
+- Data protection and privacy (GDPR, CCPA, etc.)
+- Financial regulations if handling credits or transactions
+- Proper security measures for your deployment
+
+THE AUTHORS ACCEPT NO LIABILITY FOR ANY DAMAGES ARISING FROM YOUR USE,
+INCLUDING LOSS OF DATA, BUSINESS INTERRUPTION, OR REGULATORY PENALTIES.
+
+================================================================================
 
 License
 
