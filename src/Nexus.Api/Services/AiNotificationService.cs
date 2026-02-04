@@ -57,7 +57,7 @@ public class AiNotificationService
             {
                 // Check if this listing might match their needs
                 var userListings = string.Join(", ", user.Listings);
-                var isMatch = await IsListingMatchAsync(newListing, userListings, ct);
+                var isMatch = IsListingMatch(newListing, userListings);
 
                 if (isMatch)
                 {
@@ -336,10 +336,9 @@ public class AiNotificationService
     /// <summary>
     /// Check if a new listing matches a user's existing listings/interests.
     /// </summary>
-    private async Task<bool> IsListingMatchAsync(
+    private static bool IsListingMatch(
         Listing newListing,
-        string userListings,
-        CancellationToken ct)
+        string userListings)
     {
         // Simple keyword matching for efficiency
         // In a production system, you might want to use embeddings for semantic similarity

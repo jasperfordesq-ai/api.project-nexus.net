@@ -19,8 +19,24 @@ using Nexus.Messaging;
 using Nexus.Api.Extensions;
 using Polly;
 using Polly.Extensions.Http;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// =============================================================================
+// SERILOG CONFIGURATION (Production only)
+// =============================================================================
+// In Production, Serilog reads config from appsettings.Production.json
+// Features: structured JSON logging, file rotation, enrichers
+// In Development, uses default console logging for simplicity
+if (!builder.Environment.IsDevelopment())
+{
+    Log.Logger = new LoggerConfiguration()
+        .ReadFrom.Configuration(builder.Configuration)
+        .CreateLogger();
+
+    builder.Host.UseSerilog();
+}
 
 // =============================================================================
 // SERVICES
@@ -55,6 +71,18 @@ builder.Services.AddSwaggerGen(options =>
 // Rate Limiting
 builder.Services.AddRateLimitingPolicies(builder.Configuration);
 
+// Response Compression - reduces bandwidth by 70% for JSON responses
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = new[]
+    {
+        "application/json",
+        "text/json",
+        "application/json; charset=utf-8"
+    };
+});
+
 // PostgreSQL + EF Core
 builder.Services.AddDbContext<NexusDbContext>((sp, options) =>
 {
@@ -64,6 +92,10 @@ builder.Services.AddDbContext<NexusDbContext>((sp, options) =>
 
 // TenantContext - scoped per request
 builder.Services.AddScoped<TenantContext>();
+
+// In-memory caching for static data (categories, roles, config)
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<CacheService>();
 
 // Gamification service
 builder.Services.AddScoped<GamificationService>();
@@ -174,7 +206,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             // Signature: Always validate (HS256 - must match PHP)
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret!)),
 
             // Minimal clock skew for security (allows 1 min drift between servers)
             ClockSkew = TimeSpan.FromMinutes(1)
@@ -285,20 +317,29 @@ if (app.Environment.IsDevelopment())
 // =============================================================================
 // MIDDLEWARE PIPELINE (order matters!)
 // =============================================================================
-// 1. Swagger (dev only)
-// 2. HTTPS redirect (prod only)
-// 3. Rate Limiting - MUST be early to protect all endpoints
-// 4. CORS
-// 5. Authentication - parses JWT, populates HttpContext.User
-// 6. Authorization - checks [Authorize] attributes
-// 7. TenantResolution - reads tenant_id from JWT claims (MUST be after auth)
-// 8. Controllers
+// 1. Exception Handling - MUST be first to catch all errors
+// 2. Response Compression - compress responses early
+// 3. Swagger (dev only)
+// 4. HTTPS redirect (prod only)
+// 5. Rate Limiting - MUST be early to protect all endpoints
+// 6. CORS
+// 7. Authentication - parses JWT, populates HttpContext.User
+// 8. Authorization - checks [Authorize] attributes
+// 9. TenantResolution - reads tenant_id from JWT claims (MUST be after auth)
+// 10. Controllers
 // =============================================================================
+
+// Global exception handling - MUST be first in pipeline
+// In Development: returns full exception details
+// In Production: returns generic error message (no sensitive details)
+app.UseExceptionHandling();
+
+// Response compression - reduces bandwidth by 70% for JSON payloads
+app.UseResponseCompression();
 
 // Development only
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }
