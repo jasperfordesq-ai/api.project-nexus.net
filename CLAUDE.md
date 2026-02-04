@@ -190,6 +190,55 @@ Phase 0 intentionally avoids:
 
 Keep it simple. Add abstractions only when proven necessary.
 
+### 4. CORS Configuration (CRITICAL)
+
+**CORS origins are NOT configured in appsettings.json** - they MUST be set via environment variables.
+
+#### Why?
+
+- `appsettings.json` has empty `Cors.AllowedOrigins` array by design
+- Production and Development need different origins
+- Origins are configured in `compose.yml` (local) or deployment environment (production)
+
+#### Local Development (compose.yml)
+
+```yaml
+environment:
+  - Cors__AllowedOrigins__0=http://localhost:5080
+  - Cors__AllowedOrigins__1=http://localhost:5170
+  - Cors__AllowedOrigins__2=http://localhost:5180
+```
+
+#### Production
+
+Set via environment variables in your deployment:
+
+```bash
+Cors__AllowedOrigins__0=https://uk.project-nexus.net
+Cors__AllowedOrigins__1=https://ie.project-nexus.net
+Cors__AllowedOrigins__2=https://app.project-nexus.net
+```
+
+Or configure in `appsettings.Production.json`:
+
+```json
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://uk.project-nexus.net",
+      "https://ie.project-nexus.net"
+    ]
+  }
+}
+```
+
+#### Security Behavior
+
+- **Production**: App fails to start if no origins configured
+- **Development**: Warning logged, cross-origin requests blocked (same-origin/Swagger still works)
+- Origins are sanitized (trailing slashes removed, validated as valid URLs)
+- `AllowCredentials()` is NOT used (JWT Bearer auth doesn't need it)
+
 ## Commands (Docker-First)
 
 ```bash
