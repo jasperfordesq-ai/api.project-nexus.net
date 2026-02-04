@@ -15,9 +15,41 @@ Acknowledgements:
 - West Cork Development Partnership
 - Fergal Conlon, SICAP Manager
 
-These attributions and notices must be preserved in all copies,
-modified versions, and network-accessible deployments of this software,
-in accordance with Section 7(b) of the GNU Affero General Public License v3.
+================================================================================
+REQUIRED ATTRIBUTION NOTICE (Section 7(b) of AGPL v3)
+================================================================================
+
+In accordance with Section 7(b) of the GNU Affero General Public License v3,
+any application that uses, modifies, or is based on this software MUST display
+the following attribution in a user-visible location:
+
+1. ABOUT PAGE (Required)
+   The application's About page (or equivalent) MUST include:
+
+   "Powered by Project NEXUS
+    Created by Jasper Ford
+    Licensed under AGPL v3 - https://github.com/jasperfordesq-ai/api.project-nexus.net"
+
+2. FOOTER ATTRIBUTION (Required)
+   The application's footer (visible on all pages) MUST include:
+
+   "Built on Project NEXUS by Jasper Ford"
+
+   This text must link to: https://github.com/jasperfordesq-ai/api.project-nexus.net
+
+3. SOURCE CODE LINK (Required by AGPL Section 13)
+   A clearly visible link to the source code repository must be provided,
+   accessible to all users of the network application.
+
+These attribution requirements apply to:
+- Direct deployments of this software
+- Modified versions of this software
+- Applications that incorporate substantial portions of this code
+- SaaS or hosted versions accessible over a network
+
+Removal or obscuring of these attributions is a violation of the license.
+
+================================================================================
 
 License
 
