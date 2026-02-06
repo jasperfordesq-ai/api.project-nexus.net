@@ -1125,3 +1125,4 @@ Based on ENTITY_MAPPING.md dependencies:
 | 2026-02-02 | 14 | Reviews (user and listing reviews with ratings) |
 | 2026-02-02 | 15 | Search (unified search, suggestions, member directory) |
 | 2026-02-02 | - | Backlog expanded per MIGRATION_GAP_MAP.md |
+| 2026-02-06 | AI | Security audit: authorization, circuit breaker, JSON parsing, logging |
