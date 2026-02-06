@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 using Nexus.Api.Clients;
+using Nexus.Api.Configuration;
 
 namespace Nexus.Api.HealthChecks;
 
@@ -9,11 +11,16 @@ namespace Nexus.Api.HealthChecks;
 public class LlamaHealthCheck : IHealthCheck
 {
     private readonly ILlamaClient _llamaClient;
+    private readonly LlamaServiceOptions _options;
     private readonly ILogger<LlamaHealthCheck> _logger;
 
-    public LlamaHealthCheck(ILlamaClient llamaClient, ILogger<LlamaHealthCheck> logger)
+    public LlamaHealthCheck(
+        ILlamaClient llamaClient,
+        IOptions<LlamaServiceOptions> options,
+        ILogger<LlamaHealthCheck> logger)
     {
         _llamaClient = llamaClient;
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -25,13 +32,33 @@ public class LlamaHealthCheck : IHealthCheck
         {
             var models = await _llamaClient.GetModelsAsync(cancellationToken);
 
-            if (models.Models.Count > 0)
+            if (models.Models.Count == 0)
             {
-                var modelNames = string.Join(", ", models.Models.Select(m => m.Name));
-                return HealthCheckResult.Healthy($"Llama service has {models.Models.Count} model(s): {modelNames}");
+                return HealthCheckResult.Degraded(
+                    $"Llama service is running but has no models loaded. Run: docker compose exec llama-service ollama pull {_options.Model}");
             }
 
-            return HealthCheckResult.Degraded("Llama service is running but has no models loaded. Run: docker compose exec llama-service ollama pull llama3.2:3b");
+            var modelNames = models.Models.Select(m => m.Name).ToList();
+            var modelNamesStr = string.Join(", ", modelNames);
+
+            // Check if the configured model is available
+            var configuredModelBase = _options.Model.Split(':')[0]; // e.g., "llama3.2" from "llama3.2:3b"
+            var hasConfiguredModel = modelNames.Any(m =>
+                m.Equals(_options.Model, StringComparison.OrdinalIgnoreCase) ||
+                m.StartsWith(configuredModelBase, StringComparison.OrdinalIgnoreCase));
+
+            if (!hasConfiguredModel)
+            {
+                _logger.LogWarning(
+                    "Configured model '{ConfiguredModel}' not found. Available models: {AvailableModels}",
+                    _options.Model, modelNamesStr);
+
+                return HealthCheckResult.Degraded(
+                    $"Configured model '{_options.Model}' not loaded. Available: {modelNamesStr}. " +
+                    $"Run: docker compose exec llama-service ollama pull {_options.Model}");
+            }
+
+            return HealthCheckResult.Healthy($"Llama service healthy with {models.Models.Count} model(s): {modelNamesStr}");
         }
         catch (HttpRequestException ex)
         {

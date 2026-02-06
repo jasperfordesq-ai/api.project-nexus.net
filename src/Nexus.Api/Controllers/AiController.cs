@@ -13,6 +13,7 @@ using Nexus.Api.Clients;
 using Nexus.Api.Configuration;
 using Nexus.Api.Entities;
 using Nexus.Api.Services;
+using Polly.CircuitBreaker;
 
 namespace Nexus.Api.Controllers;
 
@@ -159,6 +160,15 @@ public class AiController : ControllerBase
                 response.EvalCount,
                 response.Model
             ));
+        }
+        catch (BrokenCircuitException ex)
+        {
+            _logger.LogWarning(ex, "AI service circuit breaker is open - too many recent failures");
+            return StatusCode(503, new {
+                error = "AI service is temporarily unavailable due to high error rate. Please try again in a few minutes.",
+                retryAfter = 60,
+                circuitBreakerOpen = true
+            });
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
         {
@@ -416,7 +426,9 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            _logger.LogWarning("GetMyProfileSuggestions: Failed to extract user ID. Claim value: {ClaimValue}, Claims: {Claims}",
+                userIdClaim, string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}")));
+            return Unauthorized(new { error = "Unable to identify user" });
         }
 
         try
@@ -522,7 +534,9 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            _logger.LogWarning("StartConversation: Failed to extract user ID. Claim value: {ClaimValue}",
+                userIdClaim);
+            return Unauthorized(new { error = "Unable to identify user" });
         }
 
         if (request.Title?.Length > 255)
@@ -575,6 +589,16 @@ public class AiController : ControllerBase
         [FromBody] AiSendMessageRequest request,
         CancellationToken ct)
     {
+        // Extract and validate user ID for authorization
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            _logger.LogWarning("Failed to extract user ID from claims for SendMessage. Claims present: {Claims}",
+                string.Join(", ", User.Claims.Select(c => c.Type)));
+            return Unauthorized(new { error = "Unable to identify user" });
+        }
+
         if (string.IsNullOrWhiteSpace(request.Message))
         {
             return BadRequest(new { error = "Message is required" });
@@ -595,8 +619,12 @@ public class AiController : ControllerBase
 
         try
         {
-            var response = await _aiService.SendMessage(conversationId, sanitizedMessage, ct);
+            var response = await _aiService.SendMessage(conversationId, userId, sanitizedMessage, ct);
             return Ok(response);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return NotFound(new { error = "Conversation not found" }); // Don't reveal it exists but user doesn't own it
         }
         catch (InvalidOperationException)
         {
@@ -636,7 +664,9 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            _logger.LogWarning("ListConversations: Failed to extract user ID. Claim value: {ClaimValue}",
+                userIdClaim);
+            return Unauthorized(new { error = "Unable to identify user" });
         }
 
         if (limit < 1) limit = 1;
@@ -658,7 +688,9 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            _logger.LogWarning("ArchiveConversation: Failed to extract user ID. Claim value: {ClaimValue}",
+                userIdClaim);
+            return Unauthorized(new { error = "Unable to identify user" });
         }
 
         var success = await _aiService.ArchiveConversation(conversationId, userId, ct);
@@ -810,7 +842,9 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            _logger.LogWarning("GenerateBio: Failed to extract user ID. Claim value: {ClaimValue}",
+                userIdClaim);
+            return Unauthorized(new { error = "Unable to identify user" });
         }
 
         try
@@ -845,7 +879,9 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            _logger.LogWarning("GetChallenges: Failed to extract user ID. Claim value: {ClaimValue}",
+                userIdClaim);
+            return Unauthorized(new { error = "Unable to identify user" });
         }
 
         if (count < 1) count = 1;
@@ -917,7 +953,9 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            _logger.LogWarning("GetSkillRecommendations: Failed to extract user ID. Claim value: {ClaimValue}",
+                userIdClaim);
+            return Unauthorized(new { error = "Unable to identify user" });
         }
 
         try

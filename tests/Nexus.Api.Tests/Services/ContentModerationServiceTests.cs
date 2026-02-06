@@ -41,7 +41,7 @@ public class ContentModerationServiceTests : IDisposable
         _loggerMock = new Mock<ILogger<ContentModerationService>>();
 
         // Create mock AiService with proper mock dependencies
-        // AiService constructor: (ILlamaClient, NexusDbContext, IOptions<LlamaServiceOptions>, ILogger<AiService>)
+        // AiService constructor: (ILlamaClient, NexusDbContext, TenantContext, IOptions<LlamaServiceOptions>, ILogger<AiService>)
         var llamaClientMock = new Mock<ILlamaClient>();
         var llamaOptionsMock = Options.Create(new LlamaServiceOptions { BaseUrl = "http://test" });
         var aiLoggerMock = new Mock<ILogger<AiService>>();
@@ -49,6 +49,7 @@ public class ContentModerationServiceTests : IDisposable
             MockBehavior.Loose,
             llamaClientMock.Object,
             _db,
+            tenantContext,
             llamaOptionsMock,
             aiLoggerMock.Object);
 

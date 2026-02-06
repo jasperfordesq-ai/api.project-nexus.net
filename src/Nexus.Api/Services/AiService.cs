@@ -19,19 +19,34 @@ public class AiService
 {
     private readonly ILlamaClient _llamaClient;
     private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
     private readonly LlamaServiceOptions _options;
     private readonly ILogger<AiService> _logger;
 
     public AiService(
         ILlamaClient llamaClient,
         NexusDbContext db,
+        TenantContext tenantContext,
         IOptions<LlamaServiceOptions> options,
         ILogger<AiService> logger)
     {
         _llamaClient = llamaClient;
         _db = db;
+        _tenantContext = tenantContext;
         _options = options.Value;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Validates that tenant context is resolved. Call before any database operations.
+    /// </summary>
+    private void EnsureTenantContext()
+    {
+        if (!_tenantContext.IsResolved)
+        {
+            _logger.LogError("Tenant context not resolved for AiService operation");
+            throw new InvalidOperationException("Tenant context must be resolved before accessing data");
+        }
     }
 
     /// <summary>
@@ -63,27 +78,21 @@ Only respond with the JSON, nothing else.";
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
+        var (result, success, error) = TryParseAiResponse<ListingSuggestions>(response, "SuggestListingImprovements");
+
+        if (success)
+            return result;
+
+        // Return sensible defaults based on input
+        return new ListingSuggestions
         {
-            // Parse the JSON response
-            var suggestions = System.Text.Json.JsonSerializer.Deserialize<ListingSuggestions>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return suggestions ?? new ListingSuggestions();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to parse AI listing suggestions");
-            return new ListingSuggestions
-            {
-                ImprovedTitle = title,
-                ImprovedDescription = description ?? "",
-                SuggestedTags = new List<string>(),
-                EstimatedHours = 1.0m,
-                Tips = new List<string> { "Try adding more details to your listing" }
-            };
-        }
+            ImprovedTitle = title,
+            ImprovedDescription = description ?? "",
+            SuggestedTags = new List<string>(),
+            EstimatedHours = 1.0m,
+            Tips = new List<string> { "Try adding more details to your listing" },
+            ParseError = error // Include error info for debugging
+        };
     }
 
     /// <summary>
@@ -94,6 +103,8 @@ Only respond with the JSON, nothing else.";
         int maxResults = 5,
         CancellationToken ct = default)
     {
+        EnsureTenantContext();
+
         var listing = await _db.Listings
             .Include(l => l.User)
             .FirstOrDefaultAsync(l => l.Id == listingId, ct);
@@ -149,37 +160,32 @@ Return up to {maxResults} matches, sorted by score. Only JSON, no markdown.";
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
-        {
-            var matches = System.Text.Json.JsonSerializer.Deserialize<List<AiMatch>>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            ) ?? new List<AiMatch>();
+        var (matches, success, error) = TryParseAiResponse<List<AiMatch>>(response, "FindMatchesForListing");
 
-            // Enrich with user data
-            var result = new List<MatchedUser>();
-            foreach (var match in matches.Take(maxResults))
-            {
-                var user = otherUsers.FirstOrDefault(u => u.Id == match.UserId);
-                if (user != null)
-                {
-                    result.Add(new MatchedUser
-                    {
-                        UserId = user.Id,
-                        Name = $"{user.FirstName} {user.LastName}",
-                        Level = user.Level,
-                        MatchScore = match.Score,
-                        MatchReason = match.Reason
-                    });
-                }
-            }
-            return result;
-        }
-        catch (Exception ex)
+        if (!success)
         {
-            _logger.LogWarning(ex, "Failed to parse AI matches");
+            _logger.LogWarning("FindMatchesForListing: Returning empty results due to parse failure: {Error}", error);
             return new List<MatchedUser>();
         }
+
+        // Enrich with user data
+        var result = new List<MatchedUser>();
+        foreach (var match in matches.Take(maxResults))
+        {
+            var user = otherUsers.FirstOrDefault(u => u.Id == match.UserId);
+            if (user != null)
+            {
+                result.Add(new MatchedUser
+                {
+                    UserId = user.Id,
+                    Name = $"{user.FirstName} {user.LastName}",
+                    Level = user.Level,
+                    MatchScore = match.Score,
+                    MatchReason = match.Reason
+                });
+            }
+        }
+        return result;
     }
 
     /// <summary>
@@ -190,6 +196,8 @@ Return up to {maxResults} matches, sorted by score. Only JSON, no markdown.";
         int maxResults = 10,
         CancellationToken ct = default)
     {
+        EnsureTenantContext();
+
         // First, get active listings from the database
         var listings = await _db.Listings
             .Include(l => l.User)
@@ -236,38 +244,33 @@ Return up to {maxResults} results sorted by relevance. Only JSON, no markdown.";
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
-        {
-            var aiResults = System.Text.Json.JsonSerializer.Deserialize<List<AiSearchResult>>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            ) ?? new List<AiSearchResult>();
+        var (aiResults, success, error) = TryParseAiResponse<List<AiSearchResult>>(response, "SmartSearch");
 
-            var results = new List<SearchResult>();
-            foreach (var aiResult in aiResults.Take(maxResults))
-            {
-                var listing = listings.FirstOrDefault(l => l.Id == aiResult.ListingId);
-                if (listing != null)
-                {
-                    results.Add(new SearchResult
-                    {
-                        ListingId = listing.Id,
-                        Title = listing.Title,
-                        Description = listing.Description,
-                        Type = listing.Type.ToString(),
-                        UserName = listing.UserName,
-                        Relevance = aiResult.Relevance,
-                        MatchReason = aiResult.Reason
-                    });
-                }
-            }
-            return results;
-        }
-        catch (Exception ex)
+        if (!success)
         {
-            _logger.LogWarning(ex, "Failed to parse AI search results");
+            _logger.LogWarning("SmartSearch: Returning empty results due to parse failure: {Error}", error);
             return new List<SearchResult>();
         }
+
+        var results = new List<SearchResult>();
+        foreach (var aiResult in aiResults.Take(maxResults))
+        {
+            var listing = listings.FirstOrDefault(l => l.Id == aiResult.ListingId);
+            if (listing != null)
+            {
+                results.Add(new SearchResult
+                {
+                    ListingId = listing.Id,
+                    Title = listing.Title,
+                    Description = listing.Description,
+                    Type = listing.Type.ToString(),
+                    UserName = listing.UserName,
+                    Relevance = aiResult.Relevance,
+                    MatchReason = aiResult.Reason
+                });
+            }
+        }
+        return results;
     }
 
     /// <summary>
@@ -302,19 +305,14 @@ Only JSON, no markdown.";
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
-        {
-            var result = System.Text.Json.JsonSerializer.Deserialize<ModerationResult>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return result ?? new ModerationResult { IsApproved = true, Severity = "none" };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to parse AI moderation result");
-            return new ModerationResult { IsApproved = true, Severity = "unknown" };
-        }
+        var (result, success, error) = TryParseAiResponse<ModerationResult>(response, "ModerateContent");
+
+        if (success)
+            return result;
+
+        // On parse failure, default to approved but flag as unknown severity for review
+        _logger.LogWarning("ModerateContent: Parse failed, defaulting to approved with unknown severity. Error: {Error}", error);
+        return new ModerationResult { IsApproved = true, Severity = "unknown" };
     }
 
     /// <summary>
@@ -363,19 +361,13 @@ Only JSON, no markdown.";
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
-        {
-            var suggestions = System.Text.Json.JsonSerializer.Deserialize<ProfileSuggestions>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return suggestions ?? new ProfileSuggestions();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to parse AI profile suggestions");
-            return new ProfileSuggestions();
-        }
+        var (suggestions, success, error) = TryParseAiResponse<ProfileSuggestions>(response, "SuggestProfileEnhancements");
+
+        if (success)
+            return suggestions;
+
+        _logger.LogInformation("SuggestProfileEnhancements: Using empty suggestions. Parse error: {Error}", error);
+        return new ProfileSuggestions();
     }
 
     /// <summary>
@@ -383,6 +375,8 @@ Only JSON, no markdown.";
     /// </summary>
     public async Task<CommunityInsights> GetCommunityInsights(CancellationToken ct = default)
     {
+        EnsureTenantContext();
+
         // Gather community statistics
         var totalUsers = await _db.Users.CountAsync(u => u.IsActive, ct);
         var totalListings = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Active, ct);
@@ -423,29 +417,22 @@ Health score is 0-100. Only JSON, no markdown.";
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
+        var (insights, success, error) = TryParseAiResponse<CommunityInsights>(response, "GetCommunityInsights");
+
+        if (success)
         {
-            var insights = System.Text.Json.JsonSerializer.Deserialize<CommunityInsights>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            if (insights != null)
-            {
-                insights.TotalActiveUsers = totalUsers;
-                insights.TotalActiveListings = totalListings;
-            }
-            return insights ?? new CommunityInsights();
+            insights.TotalActiveUsers = totalUsers;
+            insights.TotalActiveListings = totalListings;
+            return insights;
         }
-        catch (Exception ex)
+
+        _logger.LogInformation("GetCommunityInsights: Using default insights. Parse error: {Error}", error);
+        return new CommunityInsights
         {
-            _logger.LogWarning(ex, "Failed to parse AI community insights");
-            return new CommunityInsights
-            {
-                TotalActiveUsers = totalUsers,
-                TotalActiveListings = totalListings,
-                Summary = "Unable to generate insights at this time."
-            };
-        }
+            TotalActiveUsers = totalUsers,
+            TotalActiveListings = totalListings,
+            Summary = "Unable to generate insights at this time."
+        };
     }
 
     /// <summary>
@@ -503,17 +490,41 @@ Text to translate:
     /// <summary>
     /// Send a message in an existing conversation and get AI response.
     /// </summary>
+    /// <param name="conversationId">The conversation ID.</param>
+    /// <param name="userId">The user ID (for authorization).</param>
+    /// <param name="userMessage">The message to send.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The AI response.</returns>
+    /// <exception cref="UnauthorizedAccessException">Thrown if user doesn't own the conversation.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if conversation not found or inactive.</exception>
     public async Task<ConversationResponse> SendMessage(
         int conversationId,
+        int userId,
         string userMessage,
         CancellationToken ct = default)
     {
+        // First check if conversation exists and is active
         var conversation = await _db.AiConversations
-            .Include(c => c.Messages.OrderBy(m => m.CreatedAt).Take(20)) // Last 20 messages for context
             .FirstOrDefaultAsync(c => c.Id == conversationId && c.IsActive, ct);
 
         if (conversation == null)
             throw new InvalidOperationException("Conversation not found or inactive");
+
+        // Verify user owns this conversation
+        if (conversation.UserId != userId)
+        {
+            _logger.LogWarning("User {UserId} attempted to access conversation {ConversationId} owned by {OwnerId}",
+                userId, conversationId, conversation.UserId);
+            throw new UnauthorizedAccessException("User does not own this conversation");
+        }
+
+        // Now load the recent messages for context (proper server-side filtering)
+        var recentMessages = await _db.AiMessages
+            .Where(m => m.ConversationId == conversationId)
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(20)
+            .OrderBy(m => m.CreatedAt) // Re-order chronologically for the AI
+            .ToListAsync(ct);
 
         // Add user message
         var userMsg = new AiMessage
@@ -531,8 +542,8 @@ Text to translate:
             new("system", BuildSystemPrompt(conversation.Context))
         };
 
-        // Add conversation history
-        foreach (var msg in conversation.Messages)
+        // Add conversation history (already ordered chronologically)
+        foreach (var msg in recentMessages)
         {
             messages.Add(new OllamaChatMessage(msg.Role, msg.Content));
         }
@@ -560,7 +571,7 @@ Text to translate:
         conversation.TotalTokensUsed += response.EvalCount;
 
         // Auto-generate title if not set (first message)
-        if (string.IsNullOrEmpty(conversation.Title) && conversation.Messages.Count == 0)
+        if (string.IsNullOrEmpty(conversation.Title) && recentMessages.Count == 0)
         {
             conversation.Title = await GenerateConversationTitle(userMessage, response.Message.Content, ct);
         }
@@ -649,17 +660,46 @@ Text to translate:
     {
         try
         {
+            // Safely truncate messages for the prompt
+            var truncatedUserMsg = string.IsNullOrEmpty(userMessage)
+                ? "(empty)"
+                : userMessage.Substring(0, Math.Min(100, userMessage.Length));
+            var truncatedAiResponse = string.IsNullOrEmpty(aiResponse)
+                ? "(empty)"
+                : aiResponse.Substring(0, Math.Min(100, aiResponse.Length));
+
             var prompt = $@"Generate a very short title (3-6 words) for this conversation:
-User: {userMessage.Substring(0, Math.Min(100, userMessage.Length))}
-Assistant: {aiResponse.Substring(0, Math.Min(100, aiResponse.Length))}
+User: {truncatedUserMsg}
+Assistant: {truncatedAiResponse}
 
 Just respond with the title, nothing else.";
 
             var response = await CallAiAsync(prompt, ct);
-            return response.Trim().Trim('"').Substring(0, Math.Min(100, response.Length));
+
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogWarning("AI returned empty response for conversation title generation");
+                return "New Conversation";
+            }
+
+            var trimmed = response.Trim().Trim('"');
+            return string.IsNullOrEmpty(trimmed)
+                ? "New Conversation"
+                : trimmed.Substring(0, Math.Min(100, trimmed.Length));
         }
-        catch
+        catch (HttpRequestException ex)
         {
+            _logger.LogWarning(ex, "Failed to generate conversation title due to AI service error");
+            return "New Conversation";
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Conversation title generation timed out");
+            return "New Conversation";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unexpected error generating conversation title");
             return "New Conversation";
         }
     }
@@ -695,6 +735,61 @@ Just respond with the title, nothing else.";
         return response.Message.Content;
     }
 
+    /// <summary>
+    /// Safely parse JSON from AI response with logging.
+    /// </summary>
+    /// <typeparam name="T">The type to deserialize to.</typeparam>
+    /// <param name="response">The AI response string.</param>
+    /// <param name="operationName">Name of the operation for logging.</param>
+    /// <returns>Parsed result or fallback.</returns>
+    private (T Result, bool Success, string? Error) TryParseAiResponse<T>(string response, string operationName) where T : new()
+    {
+        if (string.IsNullOrWhiteSpace(response))
+        {
+            _logger.LogWarning("{Operation}: AI returned empty response", operationName);
+            return (new T(), false, "AI returned empty response");
+        }
+
+        try
+        {
+            // Try to extract JSON if wrapped in markdown code blocks
+            var jsonContent = response.Trim();
+            if (jsonContent.StartsWith("```json"))
+            {
+                jsonContent = jsonContent.Substring(7);
+                var endIndex = jsonContent.IndexOf("```");
+                if (endIndex > 0)
+                    jsonContent = jsonContent.Substring(0, endIndex);
+            }
+            else if (jsonContent.StartsWith("```"))
+            {
+                jsonContent = jsonContent.Substring(3);
+                var endIndex = jsonContent.IndexOf("```");
+                if (endIndex > 0)
+                    jsonContent = jsonContent.Substring(0, endIndex);
+            }
+
+            var result = System.Text.Json.JsonSerializer.Deserialize<T>(
+                jsonContent.Trim(),
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            );
+
+            if (result == null)
+            {
+                _logger.LogWarning("{Operation}: JSON deserialization returned null", operationName);
+                return (new T(), false, "Deserialization returned null");
+            }
+
+            return (result, true, null);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogWarning(ex, "{Operation}: Failed to parse AI JSON response. Response preview: {Preview}",
+                operationName, response.Length > 200 ? response.Substring(0, 200) + "..." : response);
+            return (new T(), false, $"Invalid JSON format: {ex.Message}");
+        }
+    }
+
     // =========================================================================
     // SMART REPLY SUGGESTIONS
     // =========================================================================
@@ -728,26 +823,22 @@ Respond with JSON only:
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
+        var (result, success, error) = TryParseAiResponse<SmartReplySuggestions>(response, "GenerateSmartReplies");
+
+        if (success && result.Suggestions.Any())
+            return result;
+
+        // Return sensible defaults
+        _logger.LogInformation("GenerateSmartReplies: Using default suggestions. Parse error: {Error}", error);
+        return new SmartReplySuggestions
         {
-            var result = System.Text.Json.JsonSerializer.Deserialize<SmartReplySuggestions>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return result ?? new SmartReplySuggestions();
-        }
-        catch
-        {
-            return new SmartReplySuggestions
+            Suggestions = new List<ReplySuggestion>
             {
-                Suggestions = new List<ReplySuggestion>
-                {
-                    new() { Text = "Thanks for reaching out! I'd love to help.", Tone = "friendly", Intent = "accept" },
-                    new() { Text = "Could you tell me more about what you need?", Tone = "friendly", Intent = "inquire" },
-                    new() { Text = "When would work best for you?", Tone = "friendly", Intent = "schedule" }
-                }
-            };
-        }
+                new() { Text = "Thanks for reaching out! I'd love to help.", Tone = "friendly", Intent = "accept" },
+                new() { Text = "Could you tell me more about what you need?", Tone = "friendly", Intent = "inquire" },
+                new() { Text = "When would work best for you?", Tone = "friendly", Intent = "schedule" }
+            }
+        };
     }
 
     // =========================================================================
@@ -779,24 +870,19 @@ Generate a compelling listing. Respond with JSON only:
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
+        var (result, success, error) = TryParseAiResponse<GeneratedListing>(response, "GenerateListingFromKeywords");
+
+        if (success && !string.IsNullOrEmpty(result.Title))
+            return result;
+
+        _logger.LogInformation("GenerateListingFromKeywords: Using default listing. Parse error: {Error}", error);
+        return new GeneratedListing
         {
-            var result = System.Text.Json.JsonSerializer.Deserialize<GeneratedListing>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return result ?? new GeneratedListing { Title = keywords, Description = "" };
-        }
-        catch
-        {
-            return new GeneratedListing
-            {
-                Title = keywords,
-                Description = $"I am {typeStr} related to: {keywords}",
-                SuggestedTags = new List<string>(),
-                EstimatedHours = 1.0m
-            };
-        }
+            Title = keywords,
+            Description = $"I am {typeStr} related to: {keywords}",
+            SuggestedTags = new List<string>(),
+            EstimatedHours = 1.0m
+        };
     }
 
     // =========================================================================
@@ -826,23 +912,18 @@ Respond with JSON only:
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
+        var (result, success, error) = TryParseAiResponse<SentimentAnalysis>(response, "AnalyzeSentiment");
+
+        if (success)
+            return result;
+
+        _logger.LogInformation("AnalyzeSentiment: Using default result. Parse error: {Error}", error);
+        return new SentimentAnalysis
         {
-            var result = System.Text.Json.JsonSerializer.Deserialize<SentimentAnalysis>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return result ?? new SentimentAnalysis { Sentiment = "neutral" };
-        }
-        catch
-        {
-            return new SentimentAnalysis
-            {
-                Sentiment = "neutral",
-                Confidence = 0.5,
-                Tone = "unknown"
-            };
-        }
+            Sentiment = "neutral",
+            Confidence = 0.5,
+            Tone = "unknown"
+        };
     }
 
     // =========================================================================
@@ -898,24 +979,19 @@ Generate 3 bio options of different lengths. Respond with JSON only:
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
+        var (result, success, error) = TryParseAiResponse<GeneratedBio>(response, "GenerateBio");
+
+        if (success && !string.IsNullOrEmpty(result.Short))
+            return result;
+
+        _logger.LogInformation("GenerateBio: Using default bio. Parse error: {Error}", error);
+        return new GeneratedBio
         {
-            var result = System.Text.Json.JsonSerializer.Deserialize<GeneratedBio>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return result ?? new GeneratedBio();
-        }
-        catch
-        {
-            return new GeneratedBio
-            {
-                Short = $"Hi, I'm {user.FirstName}! I love helping my community.",
-                Medium = $"Hi, I'm {user.FirstName}! I'm a Level {user.Level} member who loves connecting with neighbors and sharing skills.",
-                Long = $"Hi, I'm {user.FirstName}! As a Level {user.Level} community member, I believe in the power of mutual aid. I enjoy {(offers.Any() ? $"offering {offers.First()}" : "helping others")} and am always looking to learn new things.",
-                Tagline = "Neighbor helping neighbor!"
-            };
-        }
+            Short = $"Hi, I'm {user.FirstName}! I love helping my community.",
+            Medium = $"Hi, I'm {user.FirstName}! I'm a Level {user.Level} member who loves connecting with neighbors and sharing skills.",
+            Long = $"Hi, I'm {user.FirstName}! As a Level {user.Level} community member, I believe in the power of mutual aid. I enjoy {(offers.Any() ? $"offering {offers.First()}" : "helping others")} and am always looking to learn new things.",
+            Tagline = "Neighbor helping neighbor!"
+        };
     }
 
     // =========================================================================
@@ -983,18 +1059,13 @@ Respond with JSON only:
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
-        {
-            var result = System.Text.Json.JsonSerializer.Deserialize<PersonalizedChallenges>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return result ?? GenerateDefaultChallenges(user.Level);
-        }
-        catch
-        {
-            return GenerateDefaultChallenges(user.Level);
-        }
+        var (result, success, error) = TryParseAiResponse<PersonalizedChallenges>(response, "GenerateChallenges");
+
+        if (success && result.Challenges.Any())
+            return result;
+
+        _logger.LogInformation("GenerateChallenges: Using default challenges. Parse error: {Error}", error);
+        return GenerateDefaultChallenges(user.Level);
     }
 
     private static PersonalizedChallenges GenerateDefaultChallenges(int level)
@@ -1043,18 +1114,13 @@ Respond with JSON only:
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
-        {
-            var result = System.Text.Json.JsonSerializer.Deserialize<ConversationSummaryResult>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return result ?? new ConversationSummaryResult { Summary = "Unable to summarize." };
-        }
-        catch
-        {
-            return new ConversationSummaryResult { Summary = "Unable to summarize conversation." };
-        }
+        var (result, success, error) = TryParseAiResponse<ConversationSummaryResult>(response, "SummarizeConversation");
+
+        if (success && !string.IsNullOrEmpty(result.Summary))
+            return result;
+
+        _logger.LogInformation("SummarizeConversation: Using default result. Parse error: {Error}", error);
+        return new ConversationSummaryResult { Summary = "Unable to summarize conversation." };
     }
 
     // =========================================================================
@@ -1068,6 +1134,8 @@ Respond with JSON only:
         int userId,
         CancellationToken ct = default)
     {
+        EnsureTenantContext();
+
         var user = await _db.Users.FindAsync(new object[] { userId }, ct);
         if (user == null)
             return new SkillRecommendations();
@@ -1113,18 +1181,13 @@ Respond with JSON only:
 
         var response = await CallAiAsync(prompt, ct);
 
-        try
-        {
-            var result = System.Text.Json.JsonSerializer.Deserialize<SkillRecommendations>(
-                response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-            return result ?? new SkillRecommendations();
-        }
-        catch
-        {
-            return new SkillRecommendations();
-        }
+        var (result, success, error) = TryParseAiResponse<SkillRecommendations>(response, "GetSkillRecommendations");
+
+        if (success)
+            return result;
+
+        _logger.LogInformation("GetSkillRecommendations: Using empty recommendations. Parse error: {Error}", error);
+        return new SkillRecommendations();
     }
 }
 
@@ -1139,6 +1202,12 @@ public class ListingSuggestions
     public List<string> SuggestedTags { get; set; } = new();
     public decimal EstimatedHours { get; set; }
     public List<string> Tips { get; set; } = new();
+
+    /// <summary>
+    /// If AI parsing failed, contains the error message. Null on success.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ParseError { get; set; }
 }
 
 public class MatchedUser

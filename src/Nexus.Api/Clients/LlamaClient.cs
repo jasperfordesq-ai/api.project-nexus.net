@@ -23,11 +23,34 @@ public class LlamaClient : ILlamaClient
         _logger.LogInformation("Sending chat request with {MessageCount} messages to model {Model}",
             request.Messages.Count, request.Model);
 
-        var response = await _httpClient.PostAsJsonAsync("/api/chat", request, ct);
-        response.EnsureSuccessStatusCode();
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsJsonAsync("/api/chat", request, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to connect to Llama service at {BaseAddress}. Is the service running?",
+                _httpClient.BaseAddress);
+            throw;
+        }
 
-        var result = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(ct)
-            ?? throw new InvalidOperationException("Failed to deserialize chat response");
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Llama service returned {StatusCode}: {ErrorContent}",
+                (int)response.StatusCode, errorContent.Length > 500 ? errorContent.Substring(0, 500) : errorContent);
+            response.EnsureSuccessStatusCode(); // Throws with status code info
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(ct);
+        if (result == null)
+        {
+            var content = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Failed to deserialize chat response. Response content: {Content}",
+                content.Length > 500 ? content.Substring(0, 500) : content);
+            throw new InvalidOperationException("Failed to deserialize chat response from Llama service");
+        }
 
         _logger.LogInformation("Chat response received: {EvalCount} tokens evaluated in {Duration}ms",
             result.EvalCount, result.TotalDuration / 1_000_000);
@@ -40,8 +63,24 @@ public class LlamaClient : ILlamaClient
     {
         _logger.LogInformation("Generating embeddings for model {Model}", request.Model);
 
-        var response = await _httpClient.PostAsJsonAsync("/api/embeddings", request, ct);
-        response.EnsureSuccessStatusCode();
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsJsonAsync("/api/embeddings", request, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to connect to Llama service for embeddings");
+            throw;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Llama embedding service returned {StatusCode}: {ErrorContent}",
+                (int)response.StatusCode, errorContent.Length > 500 ? errorContent.Substring(0, 500) : errorContent);
+            response.EnsureSuccessStatusCode();
+        }
 
         return await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(ct)
             ?? throw new InvalidOperationException("Failed to deserialize embedding response");
