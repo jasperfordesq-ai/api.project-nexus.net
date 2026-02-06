@@ -32,10 +32,30 @@ CANONICAL ATTRIBUTION WORDING
 1. ABOUT PAGE (Required)
    The application's About page (or equivalent) MUST include:
 
-   "Powered by Project NEXUS
-    Created by Jasper Ford
-    Licensed under AGPL v3"
-    [Link to: https://github.com/jasperfordesq-ai/api.project-nexus.net]
+   a) Header attribution:
+      "Powered by Project NEXUS
+       Created by Jasper Ford
+       Licensed under AGPL v3"
+      [Link to: https://github.com/jasperfordesq-ai/api.project-nexus.net]
+
+   b) FULL CONTRIBUTOR LIST (Required):
+      The About page MUST display ALL contributors listed in CONTRIBUTORS.md
+      (or contributors.json). This includes:
+      - Creator (Jasper Ford)
+      - Founders (Jasper Ford, Mary Casey)
+      - All Contributors (with their roles)
+      - Research Foundation acknowledgement
+      - All Acknowledgements
+
+      The contributor list must be rendered programmatically from the
+      canonical source file (contributors.json) to ensure consistency
+      and prevent accidental omissions.
+
+      Displaying only a subset of contributors, or linking to the file
+      instead of displaying the full list, is NOT compliant.
+
+   c) If the application has multiple About screens (tenant, public, admin),
+      ALL must include the full contributor list.
 
 2. FOOTER ATTRIBUTION (Required)
    The application's footer (visible on all pages) MUST include:
