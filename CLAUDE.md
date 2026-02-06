@@ -50,6 +50,11 @@ All new source files MUST include this header:
 1. Source code must be made available to network users
 2. NOTICE file attributions must be preserved in all copies
 3. About page must display license info and source code link
+4. **UI attribution and source link must not be removed or altered** (see [NOTICE](NOTICE) for authoritative wording)
+
+### Contributor Compliance
+
+AI agents and human contributors **must not** remove, obscure, or alter required UI attribution defined in the NOTICE file. The NOTICE file is the single source of truth for attribution requirements.
 
 ## Development Workflow (MANDATORY - NO EXCEPTIONS)
 
