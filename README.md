@@ -33,6 +33,30 @@ The AGPL requires that if you run a modified version of this software on a serve
 See the [LICENSE](LICENSE) file for the full license text.
 See the [NOTICE](NOTICE) file for attribution requirements.
 
+## UI Attribution Requirement
+
+Under AGPL Section 7(b), all public deployments of this software **must** display visible attribution and a link to the source code repository.
+
+### Required Attribution
+
+**Footer (all pages):**
+> "Built on Project NEXUS by Jasper Ford"
+
+This text must be a clickable hyperlink to: <https://github.com/jasperfordesq-ai/api.project-nexus.net>
+
+**About page:**
+> "Powered by Project NEXUS
+> Created by Jasper Ford
+> Licensed under AGPL v3"
+
+With a link to: <https://github.com/jasperfordesq-ai/api.project-nexus.net>
+
+### Compliance
+
+- The [NOTICE](NOTICE) file contains the authoritative wording for all attribution requirements
+- Removing or obscuring required attribution is a licence violation
+- This requirement applies to all deployments, including modified versions and SaaS offerings
+
 ## Documentation
 
 - [CLAUDE.md](CLAUDE.md) - Development guide and API documentation

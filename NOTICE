@@ -16,30 +16,39 @@ Acknowledgements:
 - Fergal Conlon, SICAP Manager
 
 ================================================================================
-REQUIRED ATTRIBUTION NOTICE (Section 7(b) of AGPL v3)
+REQUIRED UI ATTRIBUTION (AGPL Section 7(b))
 ================================================================================
 
 In accordance with Section 7(b) of the GNU Affero General Public License v3,
 any application that uses, modifies, or is based on this software MUST display
-the following attribution in a user-visible location:
+the following attribution in a user-visible location.
+
+CANONICAL ATTRIBUTION WORDING
+-----------------------------
 
 1. ABOUT PAGE (Required)
    The application's About page (or equivalent) MUST include:
 
    "Powered by Project NEXUS
     Created by Jasper Ford
-    Licensed under AGPL v3 - https://github.com/jasperfordesq-ai/api.project-nexus.net"
+    Licensed under AGPL v3"
+    [Link to: https://github.com/jasperfordesq-ai/api.project-nexus.net]
 
 2. FOOTER ATTRIBUTION (Required)
    The application's footer (visible on all pages) MUST include:
 
    "Built on Project NEXUS by Jasper Ford"
 
-   This text must link to: https://github.com/jasperfordesq-ai/api.project-nexus.net
+   This text MUST be a clickable hyperlink to:
+   https://github.com/jasperfordesq-ai/api.project-nexus.net
 
 3. SOURCE CODE LINK (Required by AGPL Section 13)
-   A clearly visible link to the source code repository must be provided,
-   accessible to all users of the network application.
+   A clearly visible link to the complete source code repository must be
+   provided, accessible to all users of the network application:
+   https://github.com/jasperfordesq-ai/api.project-nexus.net
+
+SCOPE OF REQUIREMENTS
+---------------------
 
 These attribution requirements apply to:
 - Direct deployments of this software
@@ -47,7 +56,7 @@ These attribution requirements apply to:
 - Applications that incorporate substantial portions of this code
 - SaaS or hosted versions accessible over a network
 
-Removal or obscuring of these attributions is a violation of the license.
+Removal, obscuring, or modification of these attributions is a licence violation.
 
 ================================================================================
 PROHIBITION OF MISREPRESENTATION (Section 7(c) of AGPL v3)

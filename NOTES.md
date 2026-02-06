@@ -86,6 +86,15 @@ Completed: 2026-02-02
 
 ## Decisions
 
+### D007: UI Attribution Requirements Clarified
+
+**Date:** 2026-02-06
+**Status:** Documented
+**Context:** AGPL Section 7(b) UI attribution and source-link requirements were already present in NOTICE but not cross-referenced in other documentation.
+**Action:** Clarified and documented requirements across NOTICE, README.md, and CLAUDE.md. No legal changes made—existing requirements were made more visible and explicit.
+
+---
+
 ### D001: PostgreSQL as Primary Database
 
 **Date:** 2026-02-02
