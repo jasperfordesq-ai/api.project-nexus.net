@@ -15,6 +15,10 @@ The originating time bank initiative was co-founded by:
 - **Jasper Ford**
 - **Mary Casey**
 
+### Contributors
+
+- **Steven J. Kelly** - Community insight, product thinking
+
 ### Research Foundation
 
 This software is informed by and builds upon a social impact study commissioned by the **West Cork Development Partnership**.

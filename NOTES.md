@@ -86,6 +86,49 @@ Completed: 2026-02-02
 
 ## Decisions
 
+### D008: Broker Approval Workflow (Phase 16)
+
+**Date:** 2026-02-06
+**Status:** Planned
+**Origin:** Feature request from Crewkerne Timebank (Matt)
+**Context:** Current system allows direct peer-to-peer exchanges. Crewkerne (and likely other UK timebanks) require broker oversight for safeguarding and insurance compliance. A "broker" must review and approve matches before exchanges can proceed.
+
+**Decision:** Add Phase 16 to roadmap with:
+- New "broker" role
+- New "Match" entity to track interest/approval workflow
+- Member endpoints for expressing interest
+- Broker endpoints for reviewing and approving/rejecting matches
+- Integration with wallet transfers (require approved match)
+- Configurable per-tenant (some timebanks may not need this)
+
+**Open Questions (awaiting Matt's response):**
+1. Should ALL exchanges require broker approval, or only certain types?
+2. What member information should brokers see? (health notes, insurance category?)
+3. How quickly do brokers typically review? (affects reminder timing)
+4. Multiple brokers per tenant, or single?
+5. Can members be "pre-approved" for certain service types?
+6. What happens if broker doesn't respond in X days?
+
+**Effort Estimate:** 3-5 days development + testing
+
+---
+
+### D009: User Preferences / Light-Dark Mode (Phase 17)
+
+**Date:** 2026-02-06
+**Status:** Planned
+**Origin:** Feature request from Crewkerne Timebank (Matt)
+**Context:** Users asked if they can select light mode. Currently no user-level preferences exist - only tenant-wide theme config.
+
+**Decision:** Add Phase 17 to roadmap with:
+- New "UserPreference" entity
+- GET/PUT /api/users/me/preferences endpoints
+- Support for theme (light/dark/system), notification settings, locale
+
+**Effort Estimate:** 2-3 hours
+
+---
+
 ### D007: UI Attribution Requirements Clarified
 
 **Date:** 2026-02-06
