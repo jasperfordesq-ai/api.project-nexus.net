@@ -13,7 +13,7 @@ The LLaMA service is an internal AI assistant that helps users with tasks like:
 - Summarizing conversation threads
 - Generating helpful prompts
 
-It runs on `localhost:8000` and is never exposed to the public internet.
+It runs on `localhost:8000` (port 11434 for Ollama) and is never exposed to the public internet.
 
 ---
 
@@ -119,14 +119,45 @@ The API can enforce per-user or per-tenant quotas. Without it, there's no way to
 
 1. Add a new endpoint in the ASP.NET API (e.g., `/api/ai/suggest`)
 2. Validate the user's JWT token
-3. Check rate limits
-4. Sanitize the user's input
-5. Call the LLaMA service from the API
-6. Sanitize the response
-7. Log the interaction
-8. Return the response to the browser
+3. **Verify user authorization** (e.g., user owns the conversation)
+4. Check rate limits
+5. Sanitize the user's input
+6. Call the LLaMA service from the API
+7. Sanitize the response
+8. Log the interaction
+9. Return the response to the browser
 
 Never expose the LLaMA service directly. Always go through the API.
+
+---
+
+## Security Audit (2026-02-06)
+
+The following security improvements were implemented:
+
+### Authorization
+
+- **Conversation ownership verification**: Users can only access their own AI conversations. The `SendMessage` endpoint now validates that `conversation.UserId == userId` before proceeding.
+- **Consistent claim extraction**: All user-specific endpoints now log detailed claim information on extraction failure for debugging.
+
+### Resilience
+
+- **Circuit breaker handling**: Added `BrokenCircuitException` handling to return 503 with `circuitBreakerOpen: true` when the AI service has too many failures.
+- **TenantContext validation**: AiService now validates that tenant context is resolved before any database operations.
+
+### Error Handling
+
+- **Standardized JSON parsing**: Created `TryParseAiResponse<T>` helper method used across 13+ AI response parsing operations with consistent logging.
+- **Specific exception handling**: Replaced bare `catch (Exception)` blocks with specific exception handlers (HttpRequestException, TaskCanceledException).
+
+### Observability
+
+- **Enhanced LlamaClient logging**: Error responses now include the response body (truncated to 500 chars) for debugging.
+- **Health check model verification**: Health check now verifies the *configured* model is loaded, not just any model.
+
+### Query Optimization
+
+- **Server-side filtering**: Fixed LINQ query in `SendMessage` that was loading all conversation messages before filtering. Now uses proper `Where().OrderByDescending().Take()` pattern.
 
 ---
 

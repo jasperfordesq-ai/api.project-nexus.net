@@ -86,6 +86,53 @@ Completed: 2026-02-02
 
 ## Decisions
 
+### D010: AI Service Security Audit & Hardening
+
+**Date:** 2026-02-06
+**Status:** Complete
+**Origin:** Proactive security audit of AI service implementation
+**Context:** Comprehensive review of AiService, AiController, LlamaClient, and related components.
+
+**Issues Identified and Fixed:**
+
+1. **Critical - Authorization Bypass** (FIXED)
+   - SendMessage endpoint allowed users to access any conversation by ID
+   - Fix: Added `conversation.UserId != userId` check with UnauthorizedAccessException
+
+2. **High - LINQ Query Efficiency** (FIXED)
+   - Messages were loaded client-side with `Include().Take()`
+   - Fix: Proper server-side filtering with `Where().OrderByDescending().Take()`
+
+3. **High - Silent JSON Parse Failures** (FIXED)
+   - JSON parse errors returned empty defaults without logging
+   - Fix: Created `TryParseAiResponse<T>` helper used across 13+ methods
+
+4. **High - Bare Catch Blocks** (FIXED)
+   - `GenerateConversationTitle` caught all exceptions silently
+   - Fix: Specific handlers for HttpRequestException, TaskCanceledException
+
+5. **Medium - Missing Tenant Validation** (FIXED)
+   - AiService didn't validate tenant context before DB operations
+   - Fix: Added `EnsureTenantContext()` method called before queries
+
+6. **Medium - Circuit Breaker Handling** (FIXED)
+   - No handling for BrokenCircuitException from Polly
+   - Fix: Returns 503 with `circuitBreakerOpen: true` for client retry logic
+
+7. **Low - Health Check Model Verification** (FIXED)
+   - Health check only verified Ollama was running, not configured model
+   - Fix: Now verifies the specific configured model is loaded
+
+**Files Modified:**
+
+- `src/Nexus.Api/Controllers/AiController.cs`
+- `src/Nexus.Api/Services/AiService.cs`
+- `src/Nexus.Api/Clients/LlamaClient.cs`
+- `src/Nexus.Api/HealthChecks/LlamaHealthCheck.cs`
+- `tests/Nexus.Api.Tests/Services/ContentModerationServiceTests.cs`
+
+---
+
 ### D008: Broker Approval Workflow (Phase 16)
 
 **Date:** 2026-02-06
