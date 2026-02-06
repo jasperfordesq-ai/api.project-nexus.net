@@ -55,6 +55,13 @@ services:
       - LlamaService__BaseUrl=http://llama-service:11434
       - LlamaService__Model=llama3.2:3b
       - LlamaService__TimeoutSeconds=180
+      # Gmail email service configuration (optional - disabled by default for local dev)
+      - Gmail__ClientId=${GMAIL_CLIENT_ID:-}
+      - Gmail__ClientSecret=${GMAIL_CLIENT_SECRET:-}
+      - Gmail__RefreshToken=${GMAIL_REFRESH_TOKEN:-}
+      - Gmail__SenderEmail=${GMAIL_SENDER_EMAIL:-}
+      - Gmail__SenderName=${GMAIL_SENDER_NAME:-Project NEXUS}
+      - Gmail__Enabled=${GMAIL_ENABLED:-false}
     depends_on:
       db:
         condition: service_healthy

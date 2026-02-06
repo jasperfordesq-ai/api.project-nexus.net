@@ -16,6 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Middleware;
+using Nexus.Api.Services;
 using Nexus.Contracts.Events;
 using Nexus.Messaging;
 
@@ -36,18 +37,25 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _config;
     private readonly ILogger<AuthController> _logger;
     private readonly IEventPublisher _eventPublisher;
+    private readonly IEmailService _emailService;
 
     // Refresh token validity (7 days default)
     private const int RefreshTokenExpiryDays = 7;
     // Password reset token validity (1 hour)
     private const int PasswordResetExpiryMinutes = 60;
 
-    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher)
+    public AuthController(
+        NexusDbContext db,
+        IConfiguration config,
+        ILogger<AuthController> logger,
+        IEventPublisher eventPublisher,
+        IEmailService emailService)
     {
         _db = db;
         _config = config;
         _logger = logger;
         _eventPublisher = eventPublisher;
+        _emailService = emailService;
     }
 
     /// <summary>
@@ -362,6 +370,22 @@ public class AuthController : ControllerBase
             IsActive = user.IsActive
         });
 
+        // Send welcome email (fire and forget - don't block registration)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendWelcomeEmailAsync(
+                    user.Email,
+                    $"{user.FirstName} {user.LastName}",
+                    tenant.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send welcome email for user {UserId}", user.Id);
+            }
+        });
+
         // Auto-login: generate tokens
         var accessToken = GenerateJwt(user);
         var (refreshToken, refreshTokenHash) = GenerateRefreshToken();
@@ -465,8 +489,23 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("Password reset requested for user {UserId}", user.Id);
 
-        // In production, send email here
-        // For development, return the token in the response
+        // Build reset URL
+        var baseUrl = _config["App:FrontendUrl"] ?? "https://app.project-nexus.net";
+        var resetUrl = $"{baseUrl}/reset-password?token={Uri.EscapeDataString(resetToken)}";
+
+        // Send password reset email
+        var emailSent = await _emailService.SendPasswordResetEmailAsync(
+            user.Email,
+            resetToken,
+            $"{user.FirstName} {user.LastName}",
+            resetUrl);
+
+        if (!emailSent)
+        {
+            _logger.LogWarning("Failed to send password reset email for user {UserId}", user.Id);
+        }
+
+        // In development, also return the token in the response for testing
         if (_config.GetValue<bool>("IsDevelopment", false) ||
             Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
         {
@@ -475,7 +514,8 @@ public class AuthController : ControllerBase
                 success = true,
                 message = "Password reset token generated",
                 reset_token = resetToken, // Only in development!
-                expires_in = PasswordResetExpiryMinutes * 60
+                expires_in = PasswordResetExpiryMinutes * 60,
+                email_sent = emailSent
             });
         }
 

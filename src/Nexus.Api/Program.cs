@@ -128,6 +128,11 @@ builder.Services.AddScoped<ContentModerationService>();
 // AI Notification service
 builder.Services.AddScoped<AiNotificationService>();
 
+// Email service (Gmail API)
+builder.Services.Configure<GmailOptions>(
+    builder.Configuration.GetSection(GmailOptions.SectionName));
+builder.Services.AddSingleton<IEmailService, GmailEmailService>();
+
 // Real-time messaging (SignalR)
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserConnectionService, UserConnectionService>();
