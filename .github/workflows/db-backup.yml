@@ -1,0 +1,63 @@
+# Copyright © 2024–2026 Jasper Ford
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Database Backup
+
+on:
+  schedule:
+    # Daily at 03:00 UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      retention_count:
+        description: 'Number of backups to keep'
+        required: false
+        type: number
+        default: 30
+
+jobs:
+  backup:
+    name: Production DB Backup
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create database backup
+        run: |
+          RETENTION=${{ github.event.inputs.retention_count || 30 }}
+          ssh -i ~/.ssh/deploy_key azureuser@${{ secrets.PRODUCTION_HOST }} << BACKUP_EOF
+            set -e
+            cd /opt/nexus-backend
+            TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
+            BACKUP_DIR="backups"
+            mkdir -p "\$BACKUP_DIR"
+
+            echo "Creating backup..."
+            sudo docker compose exec -T db pg_dump \
+              -U postgres \
+              -d nexus_prod \
+              --clean \
+              --if-exists \
+              | gzip > "\${BACKUP_DIR}/nexus_prod_\${TIMESTAMP}.sql.gz"
+
+            SIZE=\$(ls -lh "\${BACKUP_DIR}/nexus_prod_\${TIMESTAMP}.sql.gz" | awk '{print \$5}')
+            echo "Backup created: nexus_prod_\${TIMESTAMP}.sql.gz (\$SIZE)"
+
+            # Rotate old backups
+            ls -t \${BACKUP_DIR}/nexus_prod_*.sql.gz 2>/dev/null | tail -n +\$(($RETENTION + 1)) | xargs -r rm --
+            echo "Rotated backups (keeping last $RETENTION)"
+
+            echo "Current backups:"
+            ls -lh \${BACKUP_DIR}/nexus_prod_*.sql.gz 2>/dev/null || echo "No backups found"
+          BACKUP_EOF
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

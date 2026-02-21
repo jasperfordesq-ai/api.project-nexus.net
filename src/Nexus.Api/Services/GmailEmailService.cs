@@ -3,13 +3,9 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-using System.Net.Mail;
+using System.Net.Http.Headers;
 using System.Text;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Auth.OAuth2.Flows;
-using Google.Apis.Gmail.v1;
-using Google.Apis.Gmail.v1.Data;
-using Google.Apis.Services;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using Nexus.Api.Configuration;
@@ -23,7 +19,9 @@ public class GmailEmailService : IEmailService
 {
     private readonly GmailOptions _options;
     private readonly ILogger<GmailEmailService> _logger;
-    private GmailService? _gmailService;
+    private readonly HttpClient _httpClient;
+    private string? _accessToken;
+    private DateTime _tokenExpiry = DateTime.MinValue;
 
     public GmailEmailService(
         IOptions<GmailOptions> options,
@@ -31,6 +29,7 @@ public class GmailEmailService : IEmailService
     {
         _options = options.Value;
         _logger = logger;
+        _httpClient = new HttpClient();
     }
 
     /// <inheritdoc />
@@ -55,7 +54,12 @@ public class GmailEmailService : IEmailService
 
         try
         {
-            var service = await GetGmailServiceAsync(ct);
+            var accessToken = await GetAccessTokenAsync(ct);
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                _logger.LogError("Failed to get Gmail API access token");
+                return false;
+            }
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_options.SenderName, _options.SenderEmail));
@@ -72,12 +76,22 @@ public class GmailEmailService : IEmailService
 
             var rawMessage = await GetRawMessageAsync(message);
 
-            var gmailMessage = new Message
-            {
-                Raw = rawMessage
-            };
+            // Send via Gmail API directly
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(new { raw = rawMessage }),
+                Encoding.UTF8,
+                "application/json");
 
-            await service.Users.Messages.Send(gmailMessage, "me").ExecuteAsync(ct);
+            var response = await _httpClient.SendAsync(request, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogError("Gmail API error ({StatusCode}): {Error}", response.StatusCode, errorContent);
+                return false;
+            }
 
             _logger.LogInformation("Email sent successfully to {To} with subject: {Subject}", to, subject);
             return true;
@@ -249,9 +263,17 @@ Project NEXUS on behalf of {tenantName}
 
         try
         {
-            var service = await GetGmailServiceAsync(ct);
-            var profile = await service.Users.GetProfile("me").ExecuteAsync(ct);
-            return !string.IsNullOrEmpty(profile.EmailAddress);
+            var accessToken = await GetAccessTokenAsync(ct);
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                return false;
+            }
+
+            var request = new HttpRequestMessage(HttpMethod.Get, "https://gmail.googleapis.com/gmail/v1/users/me/profile");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            var response = await _httpClient.SendAsync(request, ct);
+            return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
@@ -260,43 +282,63 @@ Project NEXUS on behalf of {tenantName}
         }
     }
 
-    private async Task<GmailService> GetGmailServiceAsync(CancellationToken ct)
+    /// <summary>
+    /// Gets an access token, refreshing if necessary.
+    /// Uses direct HTTP calls to Google OAuth2 endpoint (same as PHP implementation).
+    /// </summary>
+    private async Task<string?> GetAccessTokenAsync(CancellationToken ct)
     {
-        if (_gmailService != null)
+        // Return cached token if still valid
+        if (!string.IsNullOrEmpty(_accessToken) && DateTime.UtcNow < _tokenExpiry)
         {
-            return _gmailService;
+            return _accessToken;
         }
 
-        var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+        try
         {
-            ClientSecrets = new ClientSecrets
+            var content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
-                ClientId = _options.ClientId,
-                ClientSecret = _options.ClientSecret
-            },
-            Scopes = new[] { GmailService.Scope.GmailSend }
-        });
+                ["client_id"] = _options.ClientId,
+                ["client_secret"] = _options.ClientSecret,
+                ["refresh_token"] = _options.RefreshToken,
+                ["grant_type"] = "refresh_token"
+            });
 
-        var token = new Google.Apis.Auth.OAuth2.Responses.TokenResponse
-        {
-            RefreshToken = _options.RefreshToken
-        };
+            var response = await _httpClient.PostAsync("https://oauth2.googleapis.com/token", content, ct);
+            var responseBody = await response.Content.ReadAsStringAsync(ct);
 
-        var credential = new UserCredential(flow, "user", token);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Gmail token refresh failed (HTTP {StatusCode}): {Response}",
+                    (int)response.StatusCode, responseBody);
+                return null;
+            }
 
-        // Refresh the token if needed
-        if (credential.Token.IsStale)
-        {
-            await credential.RefreshTokenAsync(ct);
+            using var doc = JsonDocument.Parse(responseBody);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("access_token", out var tokenElement))
+            {
+                _accessToken = tokenElement.GetString();
+                var expiresIn = root.TryGetProperty("expires_in", out var expiresElement)
+                    ? expiresElement.GetInt32()
+                    : 3600;
+
+                // Cache for slightly less than expiry to be safe
+                _tokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn - 100);
+
+                _logger.LogDebug("Gmail access token refreshed, expires in {ExpiresIn}s", expiresIn);
+                return _accessToken;
+            }
+
+            _logger.LogError("Gmail token response missing access_token: {Response}", responseBody);
+            return null;
         }
-
-        _gmailService = new GmailService(new BaseClientService.Initializer
+        catch (Exception ex)
         {
-            HttpClientInitializer = credential,
-            ApplicationName = "Project NEXUS"
-        });
-
-        return _gmailService;
+            _logger.LogError(ex, "Failed to refresh Gmail access token");
+            return null;
+        }
     }
 
     private static async Task<string> GetRawMessageAsync(MimeMessage message)
