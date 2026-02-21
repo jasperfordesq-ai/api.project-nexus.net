@@ -41,10 +41,14 @@ public class GmailEmailService : IEmailService
         string? textBody = null,
         CancellationToken ct = default)
     {
+        // Create safe log identifiers upfront to avoid logging user-provided values directly
+        var safeRecipient = MaskEmail(to);
+        var safeSubjectLength = subject?.Length ?? 0;
+
         if (!_options.Enabled)
         {
-            _logger.LogWarning("Email sending is disabled. Would have sent to: {To}, Subject: {Subject}",
-                SanitizeLogValue(to), SanitizeLogValue(subject));
+            _logger.LogWarning("Email sending is disabled. Would have sent to: {To}, SubjectLength: {SubjectLength}",
+                safeRecipient, safeSubjectLength);
             return true; // Return success since this is intentional
         }
 
@@ -95,19 +99,17 @@ public class GmailEmailService : IEmailService
                 return false;
             }
 
-            _logger.LogInformation("Email sent successfully to {To} with subject: {Subject}",
-                SanitizeLogValue(to), SanitizeLogValue(subject));
+            _logger.LogInformation("Email sent successfully to {To}", safeRecipient);
             return true;
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP error sending email to {To}", SanitizeLogValue(to));
+            _logger.LogError(ex, "HTTP error sending email to {To}", safeRecipient);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {To} with subject: {Subject}",
-                SanitizeLogValue(to), SanitizeLogValue(subject));
+            _logger.LogError(ex, "Failed to send email to {To}", safeRecipient);
             return false;
         }
     }
@@ -372,17 +374,20 @@ Project NEXUS on behalf of {tenantName}
     }
 
     /// <summary>
-    /// Sanitizes user-provided values for safe logging by removing newlines and control characters.
-    /// Prevents log injection attacks.
+    /// Masks an email address for safe logging (e.g., "user@example.com" → "u***@example.com").
+    /// Produces a new string that cannot be used for log injection.
     /// </summary>
-    private static string SanitizeLogValue(string value)
+    private static string MaskEmail(string email)
     {
-        if (string.IsNullOrEmpty(value))
-            return value;
+        if (string.IsNullOrEmpty(email))
+            return "[empty]";
 
-        return value
-            .Replace("\r", "")
-            .Replace("\n", "")
-            .Replace("\t", " ");
+        var atIndex = email.IndexOf('@');
+        if (atIndex <= 0)
+            return "[invalid-email]";
+
+        var localPart = email[0];
+        var domain = email.Substring(atIndex);
+        return $"{localPart}***{domain}";
     }
 }
