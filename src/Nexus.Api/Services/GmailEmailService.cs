@@ -24,12 +24,13 @@ public class GmailEmailService : IEmailService
     private DateTime _tokenExpiry = DateTime.MinValue;
 
     public GmailEmailService(
+        HttpClient httpClient,
         IOptions<GmailOptions> options,
         ILogger<GmailEmailService> logger)
     {
+        _httpClient = httpClient;
         _options = options.Value;
         _logger = logger;
-        _httpClient = new HttpClient();
     }
 
     /// <inheritdoc />
@@ -42,7 +43,8 @@ public class GmailEmailService : IEmailService
     {
         if (!_options.Enabled)
         {
-            _logger.LogWarning("Email sending is disabled. Would have sent to: {To}, Subject: {Subject}", to, subject);
+            _logger.LogWarning("Email sending is disabled. Would have sent to: {To}, Subject: {Subject}",
+                SanitizeLogValue(to), SanitizeLogValue(subject));
             return true; // Return success since this is intentional
         }
 
@@ -61,7 +63,7 @@ public class GmailEmailService : IEmailService
                 return false;
             }
 
-            var message = new MimeMessage();
+            using var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_options.SenderName, _options.SenderEmail));
             message.To.Add(new MailboxAddress(null, to));
             message.Subject = subject;
@@ -77,7 +79,7 @@ public class GmailEmailService : IEmailService
             var rawMessage = await GetRawMessageAsync(message);
 
             // Send via Gmail API directly
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
             request.Content = new StringContent(
                 JsonSerializer.Serialize(new { raw = rawMessage }),
@@ -93,12 +95,19 @@ public class GmailEmailService : IEmailService
                 return false;
             }
 
-            _logger.LogInformation("Email sent successfully to {To} with subject: {Subject}", to, subject);
+            _logger.LogInformation("Email sent successfully to {To} with subject: {Subject}",
+                SanitizeLogValue(to), SanitizeLogValue(subject));
             return true;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error sending email to {To}", SanitizeLogValue(to));
+            return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {To} with subject: {Subject}", to, subject);
+            _logger.LogError(ex, "Failed to send email to {To} with subject: {Subject}",
+                SanitizeLogValue(to), SanitizeLogValue(subject));
             return false;
         }
     }
@@ -269,11 +278,16 @@ Project NEXUS on behalf of {tenantName}
                 return false;
             }
 
-            var request = new HttpRequestMessage(HttpMethod.Get, "https://gmail.googleapis.com/gmail/v1/users/me/profile");
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://gmail.googleapis.com/gmail/v1/users/me/profile");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
             var response = await _httpClient.SendAsync(request, ct);
             return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Gmail health check failed due to HTTP error");
+            return false;
         }
         catch (Exception ex)
         {
@@ -296,7 +310,7 @@ Project NEXUS on behalf of {tenantName}
 
         try
         {
-            var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            using var content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["client_id"] = _options.ClientId,
                 ["client_secret"] = _options.ClientSecret,
@@ -334,6 +348,11 @@ Project NEXUS on behalf of {tenantName}
             _logger.LogError("Gmail token response missing access_token: {Response}", responseBody);
             return null;
         }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error refreshing Gmail access token");
+            return null;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to refresh Gmail access token");
@@ -350,5 +369,20 @@ Project NEXUS on behalf of {tenantName}
             .Replace('+', '-')
             .Replace('/', '_')
             .Replace("=", "");
+    }
+
+    /// <summary>
+    /// Sanitizes user-provided values for safe logging by removing newlines and control characters.
+    /// Prevents log injection attacks.
+    /// </summary>
+    private static string SanitizeLogValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
+
+        return value
+            .Replace("\r", "")
+            .Replace("\n", "")
+            .Replace("\t", " ");
     }
 }

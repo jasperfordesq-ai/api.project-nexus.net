@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Nexus.Api.Clients;
@@ -695,6 +696,11 @@ Just respond with the title, nothing else.";
         catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
             _logger.LogWarning(ex, "Conversation title generation timed out");
+            return "New Conversation";
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse AI response for conversation title");
             return "New Conversation";
         }
         catch (Exception ex)

@@ -380,6 +380,10 @@ public class AuthController : ControllerBase
                     $"{user.FirstName} {user.LastName}",
                     tenant.Name);
             }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "HTTP error sending welcome email for user {UserId}", user.Id);
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to send welcome email for user {UserId}", user.Id);
