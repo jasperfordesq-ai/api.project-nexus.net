@@ -308,6 +308,365 @@ public class GroupsControllerTests : IntegrationTestBase
 
     #endregion
 
+    #region Delete Group
+
+    [Fact]
+    public async Task DeleteGroup_AsOwner_ReturnsOk()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Delete Test Group"
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Act
+        var response = await Client.DeleteAsync($"/api/groups/{groupId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Verify deleted
+        var getResponse = await Client.GetAsync($"/api/groups/{groupId}");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteGroup_NotOwner_ReturnsForbidden()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Admin Owned Group",
+            is_public = true
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Member joins and tries to delete
+        await AuthenticateAsMemberAsync();
+        await Client.PostAsync($"/api/groups/{groupId}/join", null);
+        var response = await Client.DeleteAsync($"/api/groups/{groupId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    #endregion
+
+    #region Members Management
+
+    [Fact]
+    public async Task GetGroupMembers_ExistingGroup_ReturnsMembers()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Members List Group"
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Act
+        var response = await Client.GetAsync($"/api/groups/{groupId}/members");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("data").GetArrayLength().Should().BeGreaterThan(0); // At least the owner
+    }
+
+    [Fact]
+    public async Task AddMember_AsOwner_ReturnsOk()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Add Member Group"
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Act - admin adds member
+        var response = await Client.PostAsJsonAsync($"/api/groups/{groupId}/members", new
+        {
+            user_id = TestData.MemberUser.Id
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AddMember_NotOwnerOrAdmin_ReturnsForbidden()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "No Add Permission Group",
+            is_public = true
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Member joins, then tries to add another member
+        await AuthenticateAsMemberAsync();
+        await Client.PostAsync($"/api/groups/{groupId}/join", null);
+
+        var response = await Client.PostAsJsonAsync($"/api/groups/{groupId}/members", new
+        {
+            user_id = TestData.AdminUser.Id
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task AddMember_AlreadyMember_ReturnsConflict()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Duplicate Member Group",
+            is_public = true
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Add member first time
+        await Client.PostAsJsonAsync($"/api/groups/{groupId}/members", new
+        {
+            user_id = TestData.MemberUser.Id
+        });
+
+        // Act - try again
+        var response = await Client.PostAsJsonAsync($"/api/groups/{groupId}/members", new
+        {
+            user_id = TestData.MemberUser.Id
+        });
+
+        // Assert - controller returns 400 for already-member
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task RemoveMember_AsOwner_ReturnsOk()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Remove Member Group"
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Add member
+        await Client.PostAsJsonAsync($"/api/groups/{groupId}/members", new
+        {
+            user_id = TestData.MemberUser.Id
+        });
+
+        // Act - remove member
+        var response = await Client.DeleteAsync($"/api/groups/{groupId}/members/{TestData.MemberUser.Id}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_AsOwner_ReturnsOk()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Role Update Group"
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Add member
+        await Client.PostAsJsonAsync($"/api/groups/{groupId}/members", new
+        {
+            user_id = TestData.MemberUser.Id
+        });
+
+        // Act - promote to admin
+        var response = await Client.PutAsJsonAsync(
+            $"/api/groups/{groupId}/members/{TestData.MemberUser.Id}/role",
+            new { role = "admin" });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_NotOwner_ReturnsForbidden()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "No Role Change Group",
+            is_public = true
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Member joins and tries to change roles
+        await AuthenticateAsMemberAsync();
+        await Client.PostAsync($"/api/groups/{groupId}/join", null);
+
+        var response = await Client.PutAsJsonAsync(
+            $"/api/groups/{groupId}/members/{TestData.AdminUser.Id}/role",
+            new { role = "member" });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task TransferOwnership_AsOwner_ReturnsOk()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Transfer Ownership Group"
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Add member first
+        await Client.PostAsJsonAsync($"/api/groups/{groupId}/members", new
+        {
+            user_id = TestData.MemberUser.Id
+        });
+
+        // Act
+        var response = await Client.PutAsJsonAsync($"/api/groups/{groupId}/transfer-ownership", new
+        {
+            new_owner_id = TestData.MemberUser.Id
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task TransferOwnership_NotOwner_ReturnsForbidden()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "No Transfer Group",
+            is_public = true
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Member joins and tries to transfer
+        await AuthenticateAsMemberAsync();
+        await Client.PostAsync($"/api/groups/{groupId}/join", null);
+
+        var response = await Client.PutAsJsonAsync($"/api/groups/{groupId}/transfer-ownership", new
+        {
+            new_owner_id = TestData.MemberUser.Id
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task TransferOwnership_ToNonMember_ReturnsNotFound()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Transfer Non-Member Group"
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Act - transfer to user not in the group
+        var response = await Client.PutAsJsonAsync($"/api/groups/{groupId}/transfer-ownership", new
+        {
+            new_owner_id = TestData.MemberUser.Id
+        });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task JoinGroup_PrivateGroup_ReturnsForbidden()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Private Group",
+            is_private = true
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Act - member tries to join private group
+        await AuthenticateAsMemberAsync();
+        var response = await Client.PostAsync($"/api/groups/{groupId}/join", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task LeaveGroup_AsOwner_ReturnsBadRequest()
+    {
+        // Arrange
+        await AuthenticateAsAdminAsync();
+
+        var createResponse = await Client.PostAsJsonAsync("/api/groups", new
+        {
+            name = "Owner Leave Group"
+        });
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var groupId = createContent.GetProperty("group").GetProperty("id").GetInt32();
+
+        // Act - owner tries to leave
+        var response = await Client.DeleteAsync($"/api/groups/{groupId}/leave");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    #endregion
+
     #region Input Validation
 
     [Fact]
