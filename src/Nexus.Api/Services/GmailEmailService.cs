@@ -107,9 +107,14 @@ public class GmailEmailService : IEmailService
             _logger.LogError(ex, "HTTP error sending email to {To}", safeRecipient);
             return false;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Failed to send email to {To}", safeRecipient);
+            _logger.LogError(ex, "Configuration error sending email to {To}", safeRecipient);
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Timeout sending email to {To}", safeRecipient);
             return false;
         }
     }
@@ -291,9 +296,14 @@ Project NEXUS on behalf of {tenantName}
             _logger.LogWarning(ex, "Gmail health check failed due to HTTP error");
             return false;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Gmail health check failed");
+            _logger.LogWarning(ex, "Gmail health check configuration error");
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Gmail health check timed out");
             return false;
         }
     }
@@ -355,9 +365,19 @@ Project NEXUS on behalf of {tenantName}
             _logger.LogError(ex, "HTTP error refreshing Gmail access token");
             return null;
         }
-        catch (Exception ex)
+        catch (JsonException ex)
         {
-            _logger.LogError(ex, "Failed to refresh Gmail access token");
+            _logger.LogError(ex, "Failed to parse Gmail token response");
+            return null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Configuration error refreshing Gmail access token");
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Timeout refreshing Gmail access token");
             return null;
         }
     }
@@ -374,8 +394,9 @@ Project NEXUS on behalf of {tenantName}
     }
 
     /// <summary>
-    /// Masks an email address for safe logging (e.g., "user@example.com" → "u***@example.com").
-    /// Produces a new string that cannot be used for log injection.
+    /// Masks an email address for safe logging (e.g., "user@example.com" → "u***@e]").
+    /// Returns a fixed-format string constructed from validated characters only,
+    /// ensuring no user-controlled data flows into log output.
     /// </summary>
     private static string MaskEmail(string email)
     {
@@ -386,8 +407,14 @@ Project NEXUS on behalf of {tenantName}
         if (atIndex <= 0)
             return "[invalid-email]";
 
-        var localPart = email[0];
-        var domain = email.Substring(atIndex);
-        return $"{localPart}***{domain}";
+        // Extract only safe characters to break taint tracking chain
+        var firstChar = char.IsLetterOrDigit(email[0]) ? email[0] : '_';
+        var domainStart = atIndex + 1;
+        var domainChar = domainStart < email.Length && char.IsLetterOrDigit(email[domainStart])
+            ? email[domainStart]
+            : '_';
+
+        // Construct a completely new string from validated individual characters
+        return string.Concat(firstChar.ToString(), "***@", domainChar.ToString(), "...");
     }
 }
