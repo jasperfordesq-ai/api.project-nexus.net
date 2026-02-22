@@ -10,7 +10,7 @@
 
 set -e
 
-SERVER="azureuser@20.224.171.253"
+SERVER="${NEXUS_DEPLOY_HOST:?ERROR: NEXUS_DEPLOY_HOST not set. Export it as user@host (e.g. export NEXUS_DEPLOY_HOST=azureuser@your-server-ip)}"
 REMOTE_DIR="/opt/nexus-backend"
 
 # Detect SSH key location
@@ -71,23 +71,50 @@ ssh -i "$SSH_KEY" "$SERVER" << 'EOF'
   set -e
   cd /opt/nexus-backend
   [ ! -f compose.override.yml ] && cp compose.prod.yml compose.override.yml
+
+  # Tag current image so we can rollback on failure
+  CURRENT_IMAGE=$(sudo docker compose images api --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | head -1)
+  if [ -n "$CURRENT_IMAGE" ] && [ "$CURRENT_IMAGE" != ":" ]; then
+    sudo docker tag "$CURRENT_IMAGE" "${CURRENT_IMAGE%%:*}:rollback" 2>/dev/null || true
+    echo "Tagged current image for rollback: ${CURRENT_IMAGE%%:*}:rollback"
+  fi
+
   sudo docker compose build --no-cache api
   sudo docker compose up -d api
 
   echo "Waiting for health check..."
+  HEALTHY=false
   for i in $(seq 1 18); do
     sleep 5
     STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5080/health || echo "000")
     if [ "$STATUS" = "200" ]; then
       echo ""
       echo "Deploy successful! Health check passed after $((i * 5)) seconds."
-      exit 0
+      HEALTHY=true
+      break
     fi
     echo "  Attempt $i: HTTP $STATUS"
   done
 
-  echo ""
-  echo "WARNING: Health check failed after 90 seconds."
-  echo "Check logs: sudo docker compose logs --tail 50 api"
-  exit 1
+  if [ "$HEALTHY" = "false" ]; then
+    echo ""
+    echo "Health check failed after 90 seconds. Attempting rollback..."
+    ROLLBACK_IMAGE="${CURRENT_IMAGE%%:*}:rollback"
+    if sudo docker image inspect "$ROLLBACK_IMAGE" > /dev/null 2>&1; then
+      sudo docker tag "$ROLLBACK_IMAGE" "$CURRENT_IMAGE"
+      sudo docker compose up -d api
+      sleep 15
+      RSTATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5080/health || echo "000")
+      if [ "$RSTATUS" = "200" ]; then
+        echo "Rollback successful - previous version restored."
+      else
+        echo "WARNING: Rollback may have failed. Manual intervention needed."
+        echo "Check logs: sudo docker compose logs --tail 50 api"
+      fi
+    else
+      echo "No rollback image available. Manual intervention needed."
+      echo "Check logs: sudo docker compose logs --tail 50 api"
+    fi
+    exit 1
+  fi
 EOF
