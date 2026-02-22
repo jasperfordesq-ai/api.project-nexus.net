@@ -15,6 +15,7 @@ COPY src/Nexus.Api/Nexus.Api.csproj src/Nexus.Api/
 COPY src/Nexus.Contracts/Nexus.Contracts.csproj src/Nexus.Contracts/
 COPY src/Nexus.Messaging/Nexus.Messaging.csproj src/Nexus.Messaging/
 COPY tests/Nexus.Api.Tests/Nexus.Api.Tests.csproj tests/Nexus.Api.Tests/
+COPY tests/Nexus.Messaging.Tests/Nexus.Messaging.Tests.csproj tests/Nexus.Messaging.Tests/
 
 # Restore dependencies
 RUN dotnet restore
