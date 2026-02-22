@@ -77,12 +77,21 @@ jobs:
           path: "**/*.trx"
           retention-days: 30
 
+      - name: Merge coverage reports
+        if: always()
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          reportgenerator \
+            -reports:"**/coverage.cobertura.xml" \
+            -targetdir:coverage-merged \
+            -reporttypes:Cobertura
+
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage
-          path: "**/coverage.cobertura.xml"
+          path: coverage-merged/Cobertura.xml
           retention-days: 30
 
   docker:
