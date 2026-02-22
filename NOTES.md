@@ -86,6 +86,105 @@ Completed: 2026-02-02
 
 ## Decisions
 
+### D010: AI Service Security Audit & Hardening
+
+**Date:** 2026-02-06
+**Status:** Complete
+**Origin:** Proactive security audit of AI service implementation
+**Context:** Comprehensive review of AiService, AiController, LlamaClient, and related components.
+
+**Issues Identified and Fixed:**
+
+1. **Critical - Authorization Bypass** (FIXED)
+   - SendMessage endpoint allowed users to access any conversation by ID
+   - Fix: Added `conversation.UserId != userId` check with UnauthorizedAccessException
+
+2. **High - LINQ Query Efficiency** (FIXED)
+   - Messages were loaded client-side with `Include().Take()`
+   - Fix: Proper server-side filtering with `Where().OrderByDescending().Take()`
+
+3. **High - Silent JSON Parse Failures** (FIXED)
+   - JSON parse errors returned empty defaults without logging
+   - Fix: Created `TryParseAiResponse<T>` helper used across 13+ methods
+
+4. **High - Bare Catch Blocks** (FIXED)
+   - `GenerateConversationTitle` caught all exceptions silently
+   - Fix: Specific handlers for HttpRequestException, TaskCanceledException
+
+5. **Medium - Missing Tenant Validation** (FIXED)
+   - AiService didn't validate tenant context before DB operations
+   - Fix: Added `EnsureTenantContext()` method called before queries
+
+6. **Medium - Circuit Breaker Handling** (FIXED)
+   - No handling for BrokenCircuitException from Polly
+   - Fix: Returns 503 with `circuitBreakerOpen: true` for client retry logic
+
+7. **Low - Health Check Model Verification** (FIXED)
+   - Health check only verified Ollama was running, not configured model
+   - Fix: Now verifies the specific configured model is loaded
+
+**Files Modified:**
+
+- `src/Nexus.Api/Controllers/AiController.cs`
+- `src/Nexus.Api/Services/AiService.cs`
+- `src/Nexus.Api/Clients/LlamaClient.cs`
+- `src/Nexus.Api/HealthChecks/LlamaHealthCheck.cs`
+- `tests/Nexus.Api.Tests/Services/ContentModerationServiceTests.cs`
+
+---
+
+### D008: Broker Approval Workflow (Phase 16)
+
+**Date:** 2026-02-06
+**Status:** Planned
+**Origin:** Feature request from Crewkerne Timebank (Matt)
+**Context:** Current system allows direct peer-to-peer exchanges. Crewkerne (and likely other UK timebanks) require broker oversight for safeguarding and insurance compliance. A "broker" must review and approve matches before exchanges can proceed.
+
+**Decision:** Add Phase 16 to roadmap with:
+- New "broker" role
+- New "Match" entity to track interest/approval workflow
+- Member endpoints for expressing interest
+- Broker endpoints for reviewing and approving/rejecting matches
+- Integration with wallet transfers (require approved match)
+- Configurable per-tenant (some timebanks may not need this)
+
+**Open Questions (awaiting Matt's response):**
+1. Should ALL exchanges require broker approval, or only certain types?
+2. What member information should brokers see? (health notes, insurance category?)
+3. How quickly do brokers typically review? (affects reminder timing)
+4. Multiple brokers per tenant, or single?
+5. Can members be "pre-approved" for certain service types?
+6. What happens if broker doesn't respond in X days?
+
+**Effort Estimate:** 3-5 days development + testing
+
+---
+
+### D009: User Preferences / Light-Dark Mode (Phase 17)
+
+**Date:** 2026-02-06
+**Status:** Planned
+**Origin:** Feature request from Crewkerne Timebank (Matt)
+**Context:** Users asked if they can select light mode. Currently no user-level preferences exist - only tenant-wide theme config.
+
+**Decision:** Add Phase 17 to roadmap with:
+- New "UserPreference" entity
+- GET/PUT /api/users/me/preferences endpoints
+- Support for theme (light/dark/system), notification settings, locale
+
+**Effort Estimate:** 2-3 hours
+
+---
+
+### D007: UI Attribution Requirements Clarified
+
+**Date:** 2026-02-06
+**Status:** Documented
+**Context:** AGPL Section 7(b) UI attribution and source-link requirements were already present in NOTICE but not cross-referenced in other documentation.
+**Action:** Clarified and documented requirements across NOTICE, README.md, and CLAUDE.md. No legal changes made—existing requirements were made more visible and explicit.
+
+---
+
 ### D001: PostgreSQL as Primary Database
 
 **Date:** 2026-02-02

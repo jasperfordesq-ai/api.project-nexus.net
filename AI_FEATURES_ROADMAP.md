@@ -40,6 +40,18 @@ This document outlines all planned and potential AI features for the Nexus timeb
 | Weekly Summary Generation | (internal) | ✅ Done |
 | Engagement Reminders | (internal) | ✅ Done |
 
+### Phase 3.5: Security & Reliability Hardening (Complete - 2026-02-06)
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Conversation Authorization | Users can only access their own AI conversations | ✅ Done |
+| Circuit Breaker Handling | Graceful 503 response when AI service fails repeatedly | ✅ Done |
+| Tenant Context Validation | All AI operations validate tenant context before DB access | ✅ Done |
+| Standardized JSON Parsing | `TryParseAiResponse<T>` helper with consistent error handling | ✅ Done |
+| Enhanced Error Logging | LlamaClient logs response bodies on failure | ✅ Done |
+| Health Check Model Verification | Verifies configured model is loaded, not just any model | ✅ Done |
+| Query Optimization | Server-side filtering for conversation messages | ✅ Done |
+
 ---
 
 ## 🚀 Planned Features

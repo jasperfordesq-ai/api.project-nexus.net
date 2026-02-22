@@ -1,0 +1,147 @@
+# Copyright © 2024–2026 Jasper Ford
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Specific commit SHA to deploy (leave empty for latest main)'
+        required: false
+        type: string
+      skip_backup:
+        description: 'Skip pre-deployment database backup'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit_sha || github.sha }}
+
+      - name: Determine deploy version
+        id: version
+        run: |
+          SHA="${{ github.event.inputs.commit_sha || github.sha }}"
+          SHORT_SHA="${SHA:0:7}"
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date -u +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Pre-deployment database backup
+        if: ${{ github.event.inputs.skip_backup != 'true' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key azureuser@${{ secrets.PRODUCTION_HOST }} << 'BACKUP_EOF'
+            set -e
+            cd /opt/nexus-backend
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            mkdir -p backups
+            sudo docker compose exec -T db pg_dump -U postgres -d nexus_prod --clean --if-exists > "backups/pre_deploy_${TIMESTAMP}.sql"
+            echo "Backup created: pre_deploy_${TIMESTAMP}.sql"
+            # Keep only the 10 most recent pre-deploy backups
+            ls -t backups/pre_deploy_*.sql 2>/dev/null | tail -n +11 | xargs -r rm --
+          BACKUP_EOF
+
+      - name: Upload source to production
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            --exclude='.git' \
+            --exclude='backups/' \
+            --exclude='.env' \
+            --exclude='compose.override.yml' \
+            --exclude='*.md' \
+            --exclude='.claude/' \
+            --exclude='tests/' \
+            --exclude='.github/' \
+            --exclude='backend_prod_dump.sql' \
+            ./ azureuser@${{ secrets.PRODUCTION_HOST }}:/opt/nexus-backend/
+
+      - name: Deploy containers
+        id: deploy
+        run: |
+          ssh -i ~/.ssh/deploy_key azureuser@${{ secrets.PRODUCTION_HOST }} << 'DEPLOY_EOF'
+            set -e
+            cd /opt/nexus-backend
+
+            # Ensure production override is in place
+            if [ ! -f compose.override.yml ]; then
+              cp compose.prod.yml compose.override.yml
+            fi
+
+            # Build and restart the API container
+            sudo docker compose build --no-cache api
+            sudo docker compose up -d api
+
+            # Wait for health check (up to 90 seconds)
+            echo "Waiting for health check..."
+            for i in $(seq 1 18); do
+              sleep 5
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5080/health || echo "000")
+              if [ "$STATUS" = "200" ]; then
+                echo "Health check passed after $((i * 5)) seconds"
+                exit 0
+              fi
+              echo "Attempt $i: HTTP $STATUS - retrying..."
+            done
+
+            echo "Health check failed after 90 seconds"
+            exit 1
+          DEPLOY_EOF
+
+      - name: Rollback on failure
+        if: failure() && steps.deploy.outcome == 'failure'
+        run: |
+          ssh -i ~/.ssh/deploy_key azureuser@${{ secrets.PRODUCTION_HOST }} << 'ROLLBACK_EOF'
+            set -e
+            cd /opt/nexus-backend
+            echo "Deployment failed - rolling back..."
+            sudo docker compose up -d api
+            sleep 15
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5080/health || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Rollback successful - service restored"
+            else
+              echo "WARNING: Rollback may have failed - manual intervention needed"
+            fi
+          ROLLBACK_EOF
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "::notice::Deployed ${{ steps.version.outputs.short_sha }} to production successfully"
+          else
+            echo "::error::Deployment of ${{ steps.version.outputs.short_sha }} FAILED - check logs"
+          fi
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

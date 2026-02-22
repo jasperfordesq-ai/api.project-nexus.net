@@ -58,3 +58,14 @@ Thumbs.db
 appsettings.Local.json
 appsettings.*.Local.json
 nul
+
+# Claude Code local settings (may contain tokens/credentials)
+.claude/settings.local.json
+.claude/credentials*
+.claude/*-secrets*
+
+# Database dumps (NEVER commit)
+*.sql
+
+# Diff/patch files that may contain secrets
+pr2_diff.txt

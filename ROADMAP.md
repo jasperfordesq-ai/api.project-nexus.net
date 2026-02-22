@@ -82,6 +82,8 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | 13 | Gamification | ✅ COMPLETE | 6 endpoints |
 | 14 | Reviews | ✅ COMPLETE | 7 endpoints |
 | 15 | Search | ✅ COMPLETE | 3 endpoints |
+| 16 | Broker Approval | 📋 PLANNED | ~12 endpoints |
+| 17 | User Preferences | 📋 PLANNED | 2 endpoints |
 
 ---
 
@@ -599,6 +601,200 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 
 ---
 
+## Phase 16: Broker Approval Workflow (PLANNED)
+
+**Objective:** Enable broker/coordinator oversight of matches between members for safeguarding and insurance compliance.
+
+**Origin:** Feature request from Crewkerne Timebank (Matt) - 2026-02-06
+
+**Business Context:**
+Timebanks with safeguarding requirements need a coordinator ("Broker") to approve matches before exchanges proceed. This ensures:
+- Member suitability (mobility, mental health considerations)
+- Insurance scheme compliance
+- Appropriate matching (skills, location, availability)
+
+### New Role: Broker
+
+A broker is a trusted coordinator who reviews and approves/rejects match requests. They have access to member profiles and can see relevant health/accessibility notes.
+
+### New Entity: Match
+
+Represents an expression of interest from one member in another member's listing.
+
+```csharp
+public class Match : ITenantEntity
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+    public int ListingId { get; set; }           // The listing being responded to
+    public int RequesterId { get; set; }          // User expressing interest
+    public int ListingOwnerId { get; set; }       // Owner of the listing
+    public MatchStatus Status { get; set; }       // Pending, Approved, Rejected, Completed, Cancelled
+    public int? ReviewedByBrokerId { get; set; }  // Broker who reviewed
+    public DateTime? ReviewedAt { get; set; }
+    public string? BrokerNotes { get; set; }      // Internal notes from broker
+    public string? RejectionReason { get; set; }  // Reason if rejected (shown to users)
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+}
+
+public enum MatchStatus
+{
+    Pending,      // Awaiting broker review
+    Approved,     // Broker approved, exchange can proceed
+    Rejected,     // Broker rejected
+    Completed,    // Exchange completed successfully
+    Cancelled     // Cancelled by either party
+}
+```
+
+### Endpoints
+
+**Member Endpoints:**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| POST | /api/matches | Express interest in a listing |
+| GET | /api/matches/my | List my match requests (sent and received) |
+| GET | /api/matches/{id} | Get match details |
+| PUT | /api/matches/{id}/cancel | Cancel a pending match |
+| PUT | /api/matches/{id}/complete | Mark match as completed (after exchange) |
+
+**Broker Endpoints:**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/broker/matches/pending | List matches awaiting review |
+| GET | /api/broker/matches | List all matches (with filters) |
+| PUT | /api/broker/matches/{id}/approve | Approve a match |
+| PUT | /api/broker/matches/{id}/reject | Reject a match with reason |
+
+### Workflow
+
+```
+1. Member A posts listing (offer/request)
+2. Member B sees listing and clicks "I'm interested"
+   → POST /api/matches { listing_id: 123 }
+   → Match created with status: Pending
+   → Notification sent to broker(s)
+
+3. Broker reviews match:
+   - Sees both member profiles
+   - Checks suitability (notes, accessibility, insurance)
+   → PUT /api/broker/matches/{id}/approve
+   OR
+   → PUT /api/broker/matches/{id}/reject { reason: "..." }
+
+4. If Approved:
+   → Both members notified
+   → Members can now message and arrange exchange
+   → After exchange: PUT /api/matches/{id}/complete
+   → Time credits transferred
+
+5. If Rejected:
+   → Both members notified with reason
+   → Match closed
+```
+
+### Configuration Options (TenantConfig)
+
+| Key | Type | Description |
+| --- | ---- | ----------- |
+| `broker.enabled` | boolean | Whether broker approval is required |
+| `broker.autoApproveConnections` | boolean | Skip review for already-connected members |
+| `broker.autoApproveCategories` | int[] | Category IDs that don't require review |
+| `broker.reminderHours` | int | Hours before reminder sent to broker |
+
+### Open Questions (Gather from Matt)
+
+- [ ] Q1: Should ALL exchanges require broker approval, or only certain types?
+- [ ] Q2: What member information should brokers see? (health notes, insurance category?)
+- [ ] Q3: How quickly do brokers typically review? (affects reminder timing)
+- [ ] Q4: Multiple brokers per tenant, or single?
+- [ ] Q5: Can members be "pre-approved" for certain service types?
+- [ ] Q6: What happens if broker doesn't respond in X days? (auto-approve? escalate?)
+
+### Deliverables
+
+- [ ] Match entity with tenant isolation
+- [ ] MatchStatus enum
+- [ ] Add "broker" role support
+- [ ] POST /api/matches endpoint
+- [ ] GET /api/matches/my endpoint
+- [ ] GET /api/matches/{id} endpoint
+- [ ] PUT /api/matches/{id}/cancel endpoint
+- [ ] PUT /api/matches/{id}/complete endpoint
+- [ ] GET /api/broker/matches/pending endpoint
+- [ ] GET /api/broker/matches endpoint
+- [ ] PUT /api/broker/matches/{id}/approve endpoint
+- [ ] PUT /api/broker/matches/{id}/reject endpoint
+- [ ] Broker notification on new match
+- [ ] Member notification on approval/rejection
+- [ ] TenantConfig options for broker workflow
+- [ ] Integration with wallet transfer (require approved match)
+- [ ] PHASE16_EXECUTION.md with test scripts
+
+---
+
+## Phase 17: User Preferences (PLANNED)
+
+**Objective:** Store user-level preferences including theme (light/dark mode), notification settings, and layout options.
+
+**Origin:** Feature request from Crewkerne Timebank (Matt) - 2026-02-06
+
+### New Entity: UserPreference
+
+```csharp
+public class UserPreference : ITenantEntity
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+    public int UserId { get; set; }
+    public string Theme { get; set; } = "system";  // "light", "dark", "system"
+    public bool EmailNotifications { get; set; } = true;
+    public bool PushNotifications { get; set; } = true;
+    public string? Locale { get; set; }  // e.g., "en-GB", "en-US"
+    public DateTime UpdatedAt { get; set; }
+}
+```
+
+### Endpoints
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/users/me/preferences | Get current user's preferences |
+| PUT | /api/users/me/preferences | Update preferences |
+
+### Request/Response
+
+**GET /api/users/me/preferences**
+```json
+{
+  "theme": "dark",
+  "email_notifications": true,
+  "push_notifications": true,
+  "locale": "en-GB"
+}
+```
+
+**PUT /api/users/me/preferences**
+```json
+{
+  "theme": "light"
+}
+```
+(Partial updates supported - only specified fields are changed)
+
+### Deliverables
+
+- [ ] UserPreference entity with tenant isolation
+- [ ] GET /api/users/me/preferences endpoint
+- [ ] PUT /api/users/me/preferences endpoint
+- [ ] Auto-create preferences on first access
+- [ ] PHASE17_EXECUTION.md with test scripts
+
+---
+
 ## Future Phases (Backlog)
 
 ### File/Image Uploads (P2)
@@ -929,3 +1125,4 @@ Based on ENTITY_MAPPING.md dependencies:
 | 2026-02-02 | 14 | Reviews (user and listing reviews with ratings) |
 | 2026-02-02 | 15 | Search (unified search, suggestions, member directory) |
 | 2026-02-02 | - | Backlog expanded per MIGRATION_GAP_MAP.md |
+| 2026-02-06 | AI | Security audit: authorization, circuit breaker, JSON parsing, logging |

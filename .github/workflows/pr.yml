@@ -1,0 +1,215 @@
+# Copyright © 2024–2026 Jasper Ford
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: PR Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  migration-check:
+    name: Migration Drift Check
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nexus_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Restore dependencies
+        run: dotnet restore Nexus.sln
+
+      - name: Build
+        run: dotnet build Nexus.sln --no-restore --configuration Release
+
+      - name: Check for pending model changes
+        run: |
+          echo "=== Checking for uncommitted model changes ==="
+          cd src/Nexus.Api
+
+          # has-pending-model-changes returns 0 if there ARE pending changes (confusing but true)
+          # We need to negate: if the command succeeds, there's drift
+          if dotnet ef migrations has-pending-model-changes 2>&1; then
+            echo ""
+            echo "::error::DbContext has changes not captured in a migration!"
+            echo "::error::Run 'make migrate NAME=DescriptiveName' to create a migration."
+            echo ""
+            echo "The EF Core model has been modified but no migration exists for the changes."
+            echo "This will cause schema drift between the codebase and database."
+            exit 1
+          else
+            echo "OK: Model matches the last migration snapshot."
+          fi
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=nexus_test;Username=postgres;Password=postgres"
+          JWT_SECRET: "ci-test-secret-key-that-is-long-enough-for-hs256"
+          ASPNETCORE_ENVIRONMENT: Testing
+
+      - name: Verify migrations apply cleanly
+        run: |
+          echo "=== Applying all migrations to fresh database ==="
+          cd src/Nexus.Api
+          dotnet ef database update
+          echo "OK: All migrations apply cleanly."
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=nexus_test;Username=postgres;Password=postgres"
+          JWT_SECRET: "ci-test-secret-key-that-is-long-enough-for-hs256"
+          ASPNETCORE_ENVIRONMENT: Testing
+
+      - name: Check migration files match schema changes in PR
+        run: |
+          echo "=== Checking if entity changes have corresponding migrations ==="
+
+          # Get files changed in this PR
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD 2>/dev/null || git diff --name-only HEAD~1 2>/dev/null || echo "")
+
+          # Check if any entity files were changed
+          ENTITY_CHANGES=$(echo "$CHANGED_FILES" | grep -E 'src/Nexus.Api/(Entities|Data/NexusDbContext)' || true)
+          MIGRATION_CHANGES=$(echo "$CHANGED_FILES" | grep -E 'src/Nexus.Api/Migrations/' || true)
+
+          if [ -n "$ENTITY_CHANGES" ] && [ -z "$MIGRATION_CHANGES" ]; then
+            echo ""
+            echo "::warning::Entity/DbContext files changed but no new migration found in this PR."
+            echo ""
+            echo "Changed entity files:"
+            echo "$ENTITY_CHANGES"
+            echo ""
+            echo "If these changes affect the database schema, run:"
+            echo "  make migrate NAME=DescriptiveName"
+            echo ""
+            echo "If the changes are code-only (no schema impact), this warning can be ignored."
+          elif [ -n "$ENTITY_CHANGES" ] && [ -n "$MIGRATION_CHANGES" ]; then
+            echo "OK: Entity changes detected with corresponding migration(s)."
+            echo ""
+            echo "Entity changes:"
+            echo "$ENTITY_CHANGES"
+            echo ""
+            echo "Migration changes:"
+            echo "$MIGRATION_CHANGES"
+          else
+            echo "OK: No entity/schema changes detected in this PR."
+          fi
+
+  coverage:
+    name: Coverage Check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nexus_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore Nexus.sln
+
+      - name: Test with coverage
+        run: |
+          dotnet test Nexus.sln --no-restore --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=nexus_test;Username=postgres;Password=postgres"
+          JWT_SECRET: "ci-test-secret-key-that-is-long-enough-for-hs256"
+
+      - name: Merge coverage reports
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          reportgenerator \
+            -reports:"**/coverage.cobertura.xml" \
+            -targetdir:coverage-merged \
+            -reporttypes:Cobertura
+
+      - name: Coverage report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage-merged/Cobertura.xml
+          badge: true
+          format: markdown
+          output: both
+          thresholds: '40 60'
+
+      - name: Add coverage comment to PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          path: code-coverage-results.md

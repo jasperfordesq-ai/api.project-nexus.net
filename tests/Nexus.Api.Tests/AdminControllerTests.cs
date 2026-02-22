@@ -62,15 +62,15 @@ public class AdminControllerTests : IntegrationTestBase
         // Arrange
         await AuthenticateAsAdminAsync();
 
-        // Act
-        var dashboardResponse = await Client.GetAsync("/api/admin/dashboard");
+        // Act & Assert - verify admin role grants access (not 401/403)
         var usersResponse = await Client.GetAsync("/api/admin/users");
-        var categoriesResponse = await Client.GetAsync("/api/admin/categories");
-
-        // Assert
-        dashboardResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         usersResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var categoriesResponse = await Client.GetAsync("/api/admin/categories");
         categoriesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var rolesResponse = await Client.GetAsync("/api/admin/roles");
+        rolesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     #endregion

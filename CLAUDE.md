@@ -50,6 +50,11 @@ All new source files MUST include this header:
 1. Source code must be made available to network users
 2. NOTICE file attributions must be preserved in all copies
 3. About page must display license info and source code link
+4. **UI attribution and source link must not be removed or altered** (see [NOTICE](NOTICE) for authoritative wording)
+
+### Contributor Compliance
+
+AI agents and human contributors **must not** remove, obscure, or alter required UI attribution defined in the NOTICE file. The NOTICE file is the single source of truth for attribution requirements.
 
 ## Development Workflow (MANDATORY - NO EXCEPTIONS)
 
@@ -248,33 +253,58 @@ The API will display a warning if started outside of Docker. Tests can still run
 
 ```bash
 # Start the full stack (API + PostgreSQL)
-docker compose up -d
+make up                      # or: docker compose up -d
 
 # View API logs
-docker compose logs -f api
+make logs                    # or: docker compose logs -f api
 
 # Rebuild after code changes
-docker compose build api && docker compose up -d api
+make rebuild                 # or: docker compose build api && docker compose up -d api
 
 # Stop the stack
-docker compose down
+make down                    # or: docker compose down
 
 # Reset database (destroys data)
-docker compose down -v && docker compose up -d
-
-# Run EF migrations inside container
-docker compose exec api dotnet ef migrations add <Name>
-docker compose exec api dotnet ef database update
+make reset-db                # or: docker compose down -v && docker compose up -d
 
 # Access database directly
 docker compose exec db psql -U postgres -d nexus_dev
 
-# Backup database
-scripts\db-backup.bat
-
 # Run tests (on host, not in Docker)
-dotnet test
+make test                    # or: dotnet test
 ```
+
+### Database Migrations (Canonical Workflow)
+
+**All schema changes MUST go through `make migrate`. See [docs/database-migrations.md](docs/database-migrations.md) for full documentation.**
+
+```bash
+# Create + apply a new migration locally
+make migrate NAME=AddNewFeature
+
+# Apply pending migrations locally (no new migration)
+make migrate-apply
+
+# Show migration status
+make migrate-status
+
+# Check for schema drift (local only, or vs production)
+make drift-check
+
+# Apply migrations on production (with automatic backup)
+export NEXUS_DEPLOY_HOST=azureuser@your-server
+make migrate-prod
+
+# Backup production database
+make backup-prod-db
+```
+
+### CI Migration Gate
+
+PRs to `main` are automatically checked for:
+- **Pending model changes** (entity changes without migration) → blocks merge
+- **Migration integrity** (all migrations apply cleanly) → blocks merge
+- **Entity/migration consistency** (entity files changed but no migration) → warning
 
 ## Local Development Setup (Docker Only)
 
@@ -511,3 +541,4 @@ tests/
 - AI_SERVICE_BOUNDARY.md - Security boundary for LLaMA AI service
 - RECOVERY_GUIDE.md - How to verify and recover when things break
 - MASTER_DEPLOYMENT_CHECKLIST.md - Single source of truth for deployment
+- [docs/database-migrations.md](docs/database-migrations.md) - Database migration workflow and drift prevention
