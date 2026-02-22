@@ -61,3 +61,9 @@ nul
 
 # Claude Code local settings (may contain tokens)
 .claude/settings.local.json
+
+# Database dumps (NEVER commit)
+*.sql
+
+# Diff/patch files that may contain secrets
+pr2_diff.txt
