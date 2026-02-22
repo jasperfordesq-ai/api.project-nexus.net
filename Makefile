@@ -180,6 +180,12 @@ endif
 # Convenience
 # ---------------------------------------------------------------------------
 
+## Install git hooks (credential scanning)
+install-hooks:
+	@cp hooks/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "Git hooks installed."
+
 ## Rebuild and restart the API container
 rebuild:
 	$(COMPOSE) build api && $(COMPOSE) up -d api
@@ -235,6 +241,9 @@ help:
 	@echo ""
 	@echo "DRIFT CHECK:"
 	@echo "  make drift-check          Compare local vs production migrations"
+	@echo ""
+	@echo "SETUP:"
+	@echo "  make install-hooks        Install git hooks (credential scanning)"
 	@echo ""
 	@echo "OPERATIONS:"
 	@echo "  make rebuild              Rebuild + restart API"
