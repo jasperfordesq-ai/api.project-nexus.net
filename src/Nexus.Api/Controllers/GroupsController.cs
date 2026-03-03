@@ -91,7 +91,7 @@ public class GroupsController : ControllerBase
                 page,
                 limit,
                 total,
-                total_pages = totalPages
+                pages = totalPages
             }
         });
     }

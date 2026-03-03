@@ -121,7 +121,7 @@ public class MessagesController : ControllerBase
                 page,
                 limit,
                 total,
-                total_pages = totalPages
+                pages = totalPages
             }
         });
     }
@@ -209,7 +209,7 @@ public class MessagesController : ControllerBase
                 page,
                 limit,
                 total,
-                total_pages = totalPages
+                pages = totalPages
             },
             created_at = conversation.CreatedAt,
             updated_at = conversation.UpdatedAt

@@ -91,7 +91,7 @@ public class FeedController : ControllerBase
                 page,
                 limit,
                 total,
-                total_pages = totalPages
+                pages = totalPages
             }
         });
     }
@@ -434,7 +434,7 @@ public class FeedController : ControllerBase
                 page,
                 limit,
                 total,
-                total_pages = totalPages
+                pages = totalPages
             }
         });
     }

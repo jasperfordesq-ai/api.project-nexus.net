@@ -56,7 +56,7 @@ public class MembersController : ControllerBase
         // Apply name filter if provided
         if (!string.IsNullOrWhiteSpace(query.Q))
         {
-            var searchTerm = query.Q.ToLowerInvariant();
+            var searchTerm = EscapeLikePattern(query.Q.ToLowerInvariant());
             usersQuery = usersQuery.Where(u =>
                 EF.Functions.ILike(u.FirstName, $"%{searchTerm}%") ||
                 EF.Functions.ILike(u.LastName, $"%{searchTerm}%"));
@@ -88,5 +88,16 @@ public class MembersController : ControllerBase
         };
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Escapes LIKE/ILIKE wildcard characters in user input to prevent wildcard injection.
+    /// </summary>
+    private static string EscapeLikePattern(string input)
+    {
+        return input
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
     }
 }

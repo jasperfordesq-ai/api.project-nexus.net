@@ -334,7 +334,7 @@ public class GamificationController : ControllerBase
                 page,
                 limit,
                 total,
-                total_pages = totalPages
+                pages = totalPages
             }
         });
     }
@@ -381,7 +381,7 @@ public class GamificationController : ControllerBase
                 page,
                 limit,
                 total,
-                total_pages = totalPages
+                pages = totalPages
             }
         });
     }

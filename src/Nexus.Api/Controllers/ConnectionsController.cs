@@ -287,7 +287,7 @@ public class ConnectionsController : ControllerBase
         // Only the addressee can accept
         if (connection.AddresseeId != userId)
         {
-            return Forbid();
+            return StatusCode(403, new { error = "Only the addressee can accept this connection request" });
         }
 
         if (connection.Status != Connection.Statuses.Pending)
@@ -353,7 +353,7 @@ public class ConnectionsController : ControllerBase
         // Only the addressee can decline
         if (connection.AddresseeId != userId)
         {
-            return Forbid();
+            return StatusCode(403, new { error = "Only the addressee can decline this connection request" });
         }
 
         if (connection.Status != Connection.Statuses.Pending)
@@ -392,7 +392,7 @@ public class ConnectionsController : ControllerBase
         // Only participants can remove
         if (connection.RequesterId != userId && connection.AddresseeId != userId)
         {
-            return Forbid();
+            return StatusCode(403, new { error = "Only participants can remove this connection" });
         }
 
         // For pending requests, only the requester can cancel

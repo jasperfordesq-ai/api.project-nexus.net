@@ -69,7 +69,7 @@ public class HealthController : ControllerBase
                 timestamp = DateTime.UtcNow
             });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return StatusCode(503, new
             {
@@ -78,7 +78,6 @@ public class HealthController : ControllerBase
                 {
                     database = "unhealthy"
                 },
-                error = ex.Message,
                 timestamp = DateTime.UtcNow
             });
         }
