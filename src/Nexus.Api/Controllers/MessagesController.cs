@@ -24,15 +24,18 @@ namespace Nexus.Api.Controllers;
 public class MessagesController : ControllerBase
 {
     private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
     private readonly ILogger<MessagesController> _logger;
     private readonly IRealTimeMessagingService _realTimeMessaging;
 
     public MessagesController(
         NexusDbContext db,
+        TenantContext tenantContext,
         ILogger<MessagesController> logger,
         IRealTimeMessagingService realTimeMessaging)
     {
         _db = db;
+        _tenantContext = tenantContext;
         _logger = logger;
         _realTimeMessaging = realTimeMessaging;
     }
@@ -355,7 +358,7 @@ public class MessagesController : ControllerBase
         {
             try
             {
-                await _realTimeMessaging.NotifyNewMessageAsync(request.RecipientId, notification);
+                await _realTimeMessaging.NotifyNewMessageAsync(_tenantContext.GetTenantIdOrThrow(), request.RecipientId, notification);
             }
             catch (Exception ex)
             {

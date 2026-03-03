@@ -3,12 +3,12 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
+using Nexus.Api.Extensions;
 
 namespace Nexus.Api.Controllers;
 
@@ -39,15 +39,14 @@ public class UsersController : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> GetMe()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value;
-        if (!int.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
         {
             return Unauthorized(new { error = "Invalid token" });
         }
 
-        // Tenant filter is automatically applied
-        var user = await _db.Users.FindAsync(userId);
+        // Tenant filter is automatically applied via FirstOrDefaultAsync (FindAsync bypasses query filters)
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
 
         if (user == null)
         {
@@ -147,9 +146,8 @@ public class UsersController : ControllerBase
     [HttpPatch("me")]
     public async Task<IActionResult> UpdateMe([FromBody] UpdateProfileRequest request)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value;
-        if (!int.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
         {
             return Unauthorized(new { error = "Invalid token" });
         }
@@ -186,8 +184,8 @@ public class UsersController : ControllerBase
             return BadRequest(new { error = "Validation failed", details = errors });
         }
 
-        // Find user (tenant filter applied)
-        var user = await _db.Users.FindAsync(userId);
+        // Find user (tenant filter applied via FirstOrDefaultAsync)
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
 
         if (user == null)
         {

@@ -6,9 +6,11 @@
 using System.Text;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Nexus.Api.Clients;
 using Nexus.Api.Configuration;
 using Nexus.Api.Data;
@@ -61,8 +63,15 @@ if (!builder.Environment.IsDevelopment())
 // SERVICES
 // =============================================================================
 
-// Add controllers
+// Add controllers with request body size limit
 builder.Services.AddControllers();
+
+// Global request body size limit (5MB) to prevent abuse
+// Individual endpoints can override with [RequestSizeLimit] attribute
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 5 * 1024 * 1024; // 5MB
+});
 
 // API Versioning
 builder.Services.AddApiVersioning(options =>
@@ -85,12 +94,33 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new() { Title = "Nexus API", Version = "v1" });
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter your token below.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 // Rate Limiting
 builder.Services.AddRateLimitingPolicies(builder.Configuration);
 
 // Response Compression - reduces bandwidth by 70% for JSON responses
+// Note: EnableForHttps is safe here because we use JWT Bearer tokens (not cookies).
+// BREACH attacks only affect cookie-based auth where secrets are reflected in responses.
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -105,7 +135,6 @@ builder.Services.AddResponseCompression(options =>
 // PostgreSQL + EF Core
 builder.Services.AddDbContext<NexusDbContext>((sp, options) =>
 {
-    var tenantContext = sp.GetRequiredService<TenantContext>();
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
@@ -374,7 +403,14 @@ if (app.Environment.IsDevelopment())
 // 10. Controllers
 // =============================================================================
 
-// Global exception handling - MUST be first in pipeline
+// Forwarded Headers - MUST be first to ensure correct client IPs behind reverse proxy (nginx)
+// Without this, HttpContext.Connection.RemoteIpAddress shows the proxy IP, not the real client
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+// Global exception handling - MUST be early in pipeline
 // In Development: returns full exception details
 // In Production: returns generic error message (no sensitive details)
 app.UseExceptionHandling();

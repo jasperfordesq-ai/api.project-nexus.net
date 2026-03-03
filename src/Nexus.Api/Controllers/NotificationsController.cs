@@ -42,7 +42,7 @@ public class NotificationsController : ControllerBase
         [FromQuery] bool? unread_only = null)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (page < 1) page = 1;
         if (limit < 1) limit = 1;
@@ -103,7 +103,7 @@ public class NotificationsController : ControllerBase
     public async Task<IActionResult> GetUnreadCount()
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var count = await _db.Notifications
             .Where(n => n.UserId == userId && !n.IsRead)
@@ -119,7 +119,7 @@ public class NotificationsController : ControllerBase
     public async Task<IActionResult> GetNotification(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var notification = await _db.Notifications
             .Where(n => n.Id == id && n.UserId == userId)
@@ -151,7 +151,7 @@ public class NotificationsController : ControllerBase
     public async Task<IActionResult> MarkAsRead(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var notification = await _db.Notifications
             .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
@@ -190,7 +190,7 @@ public class NotificationsController : ControllerBase
     public async Task<IActionResult> MarkAllAsRead()
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var now = DateTime.UtcNow;
         var count = await _db.Notifications
@@ -216,7 +216,7 @@ public class NotificationsController : ControllerBase
     public async Task<IActionResult> DeleteNotification(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var notification = await _db.Notifications
             .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);

@@ -40,7 +40,7 @@ public class ConnectionsController : ControllerBase
         [FromQuery] int limit = 20)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (page < 1) page = 1;
         if (limit < 1) limit = 1;
@@ -100,7 +100,7 @@ public class ConnectionsController : ControllerBase
     public async Task<IActionResult> GetPendingRequests()
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         // Incoming requests (where current user is the addressee)
         var incoming = await _db.Connections
@@ -138,7 +138,7 @@ public class ConnectionsController : ControllerBase
     public async Task<IActionResult> SendConnectionRequest([FromBody] SendConnectionRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         // Validate: cannot connect to yourself
         if (request.UserId == userId)
@@ -196,11 +196,18 @@ public class ConnectionsController : ControllerBase
 
                     await _db.SaveChangesAsync();
 
-                    // Award XP and check badges for both users (mutual connection)
-                    await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.ConnectionMade, XpLog.Sources.ConnectionMade, existingConnection.Id, "Made a connection");
-                    await _gamification.AwardXpAsync(request.UserId, XpLog.Amounts.ConnectionMade, XpLog.Sources.ConnectionMade, existingConnection.Id, "Made a connection");
-                    await _gamification.CheckAndAwardBadgesAsync(userId.Value, "connection_accepted");
-                    await _gamification.CheckAndAwardBadgesAsync(request.UserId, "connection_accepted");
+                    // Award XP and check badges for both users (mutual connection - non-critical)
+                    try
+                    {
+                        await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.ConnectionMade, XpLog.Sources.ConnectionMade, existingConnection.Id, "Made a connection");
+                        await _gamification.AwardXpAsync(request.UserId, XpLog.Amounts.ConnectionMade, XpLog.Sources.ConnectionMade, existingConnection.Id, "Made a connection");
+                        await _gamification.CheckAndAwardBadgesAsync(userId.Value, "connection_accepted");
+                        await _gamification.CheckAndAwardBadgesAsync(request.UserId, "connection_accepted");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to award XP/badges for connection {ConnectionId}", existingConnection.Id);
+                    }
 
                     _logger.LogInformation("Connection auto-accepted between users {UserId} and {TargetUserId}",
                         userId, request.UserId);
@@ -298,7 +305,7 @@ public class ConnectionsController : ControllerBase
     public async Task<IActionResult> AcceptConnection(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var connection = await _db.Connections.FindAsync(id);
         if (connection == null)
@@ -335,11 +342,18 @@ public class ConnectionsController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // Award XP and check badges for both users
-        await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.ConnectionMade, XpLog.Sources.ConnectionMade, connection.Id, "Made a connection");
-        await _gamification.AwardXpAsync(connection.RequesterId, XpLog.Amounts.ConnectionMade, XpLog.Sources.ConnectionMade, connection.Id, "Made a connection");
-        await _gamification.CheckAndAwardBadgesAsync(userId.Value, "connection_accepted");
-        await _gamification.CheckAndAwardBadgesAsync(connection.RequesterId, "connection_accepted");
+        // Award XP and check badges for both users (non-critical)
+        try
+        {
+            await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.ConnectionMade, XpLog.Sources.ConnectionMade, connection.Id, "Made a connection");
+            await _gamification.AwardXpAsync(connection.RequesterId, XpLog.Amounts.ConnectionMade, XpLog.Sources.ConnectionMade, connection.Id, "Made a connection");
+            await _gamification.CheckAndAwardBadgesAsync(userId.Value, "connection_accepted");
+            await _gamification.CheckAndAwardBadgesAsync(connection.RequesterId, "connection_accepted");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for connection {ConnectionId}", connection.Id);
+        }
 
         _logger.LogInformation("Connection {ConnectionId} accepted by user {UserId}", id, userId);
 
@@ -364,7 +378,7 @@ public class ConnectionsController : ControllerBase
     public async Task<IActionResult> DeclineConnection(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var connection = await _db.Connections.FindAsync(id);
         if (connection == null)
@@ -403,7 +417,7 @@ public class ConnectionsController : ControllerBase
     public async Task<IActionResult> RemoveConnection(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var connection = await _db.Connections.FindAsync(id);
         if (connection == null)

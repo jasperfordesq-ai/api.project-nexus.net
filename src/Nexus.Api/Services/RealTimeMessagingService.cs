@@ -10,13 +10,14 @@ namespace Nexus.Api.Services;
 
 /// <summary>
 /// Interface for sending real-time message notifications via SignalR.
+/// All methods require tenantId to ensure tenant-isolated connection lookups.
 /// </summary>
 public interface IRealTimeMessagingService
 {
     /// <summary>
     /// Notify a user that they received a new message.
     /// </summary>
-    Task NotifyNewMessageAsync(int recipientUserId, MessageNotification notification);
+    Task NotifyNewMessageAsync(int tenantId, int recipientUserId, MessageNotification notification);
 
     /// <summary>
     /// Notify participants in a conversation that messages were read.
@@ -26,7 +27,7 @@ public interface IRealTimeMessagingService
     /// <summary>
     /// Notify a user that their unread count has changed.
     /// </summary>
-    Task NotifyUnreadCountChangedAsync(int userId, int newUnreadCount);
+    Task NotifyUnreadCountChangedAsync(int tenantId, int userId, int newUnreadCount);
 
     /// <summary>
     /// Broadcast a message to all participants in a conversation.
@@ -76,37 +77,51 @@ public class RealTimeMessagingService : IRealTimeMessagingService
         _logger = logger;
     }
 
-    public async Task NotifyNewMessageAsync(int recipientUserId, MessageNotification notification)
+    public async Task NotifyNewMessageAsync(int tenantId, int recipientUserId, MessageNotification notification)
     {
-        var connectionIds = _connectionService.GetConnections(recipientUserId);
+        var connectionIds = _connectionService.GetConnections(tenantId, recipientUserId);
         if (connectionIds.Count == 0)
         {
-            _logger.LogDebug("User {UserId} has no active connections, skipping real-time notification",
-                recipientUserId);
+            _logger.LogDebug("User {UserId} (tenant {TenantId}) has no active connections, skipping real-time notification",
+                recipientUserId, tenantId);
             return;
         }
 
         _logger.LogInformation("Sending real-time message notification to user {UserId} ({ConnectionCount} connections)",
             recipientUserId, connectionIds.Count);
 
-        await _hubContext.Clients.Clients(connectionIds).SendAsync("ReceiveMessage", notification);
+        try
+        {
+            await _hubContext.Clients.Clients(connectionIds).SendAsync("ReceiveMessage", notification);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send real-time notification to user {UserId}", recipientUserId);
+        }
 
         // Also broadcast to the conversation group (for UI updates in both participants' views)
-        var groupName = MessagesHub.GetConversationGroupName(notification.ConversationId);
-        await _hubContext.Clients.Group(groupName).SendAsync("ConversationUpdated", new
+        try
         {
-            conversation_id = notification.ConversationId,
-            last_message = new
+            var groupName = MessagesHub.GetConversationGroupName(notification.ConversationId);
+            await _hubContext.Clients.Group(groupName).SendAsync("ConversationUpdated", new
             {
-                id = notification.Id,
-                content = notification.Content.Length > 100
-                    ? notification.Content[..100] + "..."
-                    : notification.Content,
-                sender_id = notification.Sender.Id,
-                is_read = notification.IsRead,
-                created_at = notification.CreatedAt
-            }
-        });
+                conversation_id = notification.ConversationId,
+                last_message = new
+                {
+                    id = notification.Id,
+                    content = notification.Content.Length > 100
+                        ? notification.Content[..100] + "..."
+                        : notification.Content,
+                    sender_id = notification.Sender.Id,
+                    is_read = notification.IsRead,
+                    created_at = notification.CreatedAt
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to broadcast conversation update for conversation {ConversationId}", notification.ConversationId);
+        }
     }
 
     public async Task NotifyMessagesReadAsync(int conversationId, int readByUserId, int markedReadCount)
@@ -123,9 +138,9 @@ public class RealTimeMessagingService : IRealTimeMessagingService
         });
     }
 
-    public async Task NotifyUnreadCountChangedAsync(int userId, int newUnreadCount)
+    public async Task NotifyUnreadCountChangedAsync(int tenantId, int userId, int newUnreadCount)
     {
-        var connectionIds = _connectionService.GetConnections(userId);
+        var connectionIds = _connectionService.GetConnections(tenantId, userId);
         if (connectionIds.Count == 0)
         {
             return;
@@ -134,10 +149,17 @@ public class RealTimeMessagingService : IRealTimeMessagingService
         _logger.LogDebug("Sending unread count update to user {UserId}: {Count}",
             userId, newUnreadCount);
 
-        await _hubContext.Clients.Clients(connectionIds).SendAsync("UnreadCountUpdated", new
+        try
         {
-            unread_count = newUnreadCount
-        });
+            await _hubContext.Clients.Clients(connectionIds).SendAsync("UnreadCountUpdated", new
+            {
+                unread_count = newUnreadCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send unread count update to user {UserId}", userId);
+        }
     }
 
     public async Task BroadcastToConversationAsync(int conversationId, string eventName, object data)

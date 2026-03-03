@@ -780,7 +780,7 @@ public class NexusDbContext : DbContext
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
 
-        // AiMessage configuration (no tenant filter - linked via conversation)
+        // AiMessage configuration with tenant filter (defense-in-depth)
         modelBuilder.Entity<AiMessage>(entity =>
         {
             entity.ToTable("ai_messages");
@@ -789,14 +789,23 @@ public class NexusDbContext : DbContext
             entity.Property(e => e.Content).HasColumnType("text").IsRequired();
 
             // Indexes
+            entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.ConversationId);
             entity.HasIndex(e => e.CreatedAt);
 
             // Relationships
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             entity.HasOne(e => e.Conversation)
                 .WithMany(c => c.Messages)
                 .HasForeignKey(e => e.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // CRITICAL: Global query filter for tenant isolation
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
 
         // Category configuration with tenant filter

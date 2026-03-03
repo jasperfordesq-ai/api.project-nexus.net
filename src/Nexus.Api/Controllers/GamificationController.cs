@@ -38,7 +38,7 @@ public class GamificationController : ControllerBase
     public async Task<IActionResult> GetProfile()
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var user = await _db.Users
             .Where(u => u.Id == userId)
@@ -89,7 +89,7 @@ public class GamificationController : ControllerBase
     public async Task<IActionResult> GetUserProfile(int userId)
     {
         var currentUserId = GetCurrentUserId();
-        if (currentUserId == null) return Unauthorized();
+        if (currentUserId == null) return Unauthorized(new { error = "Invalid token" });
 
         var user = await _db.Users
             .Where(u => u.Id == userId)
@@ -119,7 +119,7 @@ public class GamificationController : ControllerBase
     public async Task<IActionResult> GetBadges()
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var badges = await _db.Badges
             .Where(b => b.IsActive)
@@ -162,7 +162,7 @@ public class GamificationController : ControllerBase
     public async Task<IActionResult> GetMyBadges()
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var badges = await _db.UserBadges
             .Where(ub => ub.UserId == userId)
@@ -196,7 +196,7 @@ public class GamificationController : ControllerBase
         [FromQuery] string period = "all")
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (page < 1) page = 1;
         if (limit < 1) limit = 1;
@@ -348,7 +348,7 @@ public class GamificationController : ControllerBase
         [FromQuery] int limit = 20)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (page < 1) page = 1;
         if (limit < 1) limit = 1;

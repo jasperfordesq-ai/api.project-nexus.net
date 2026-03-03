@@ -226,7 +226,7 @@ public class AiNotificationService
     {
         try
         {
-            var user = await _db.Users.FindAsync(new object[] { userId }, ct);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
             if (user == null) return null;
 
             // Check last activity
