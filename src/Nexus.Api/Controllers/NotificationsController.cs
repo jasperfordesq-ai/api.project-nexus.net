@@ -193,19 +193,11 @@ public class NotificationsController : ControllerBase
         if (userId == null) return Unauthorized();
 
         var now = DateTime.UtcNow;
-        var unreadNotifications = await _db.Notifications
+        var count = await _db.Notifications
             .Where(n => n.UserId == userId && !n.IsRead)
-            .ToListAsync();
-
-        var count = unreadNotifications.Count;
-
-        foreach (var notification in unreadNotifications)
-        {
-            notification.IsRead = true;
-            notification.ReadAt = now;
-        }
-
-        await _db.SaveChangesAsync();
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(n => n.IsRead, true)
+                .SetProperty(n => n.ReadAt, now));
 
         _logger.LogInformation("User {UserId} marked {Count} notifications as read", userId, count);
 

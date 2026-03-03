@@ -244,6 +244,11 @@ public class WalletController : ControllerBase
             return BadRequest(new { error = "Amount must be greater than zero" });
         }
 
+        if (request.Amount > 99999.99m)
+        {
+            return BadRequest(new { error = "Amount exceeds maximum transfer limit" });
+        }
+
         // Validate sender != receiver
         if (request.ReceiverId == senderId.Value)
         {

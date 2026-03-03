@@ -42,16 +42,16 @@ public class MessagesHub : Hub
     public override async Task OnConnectedAsync()
     {
         var userId = GetUserId();
-        if (userId.HasValue)
-        {
-            _connectionService.AddConnection(userId.Value, Context.ConnectionId);
-            _logger.LogInformation("User {UserId} connected to MessagesHub with connection {ConnectionId}",
-                userId.Value, Context.ConnectionId);
-        }
-        else
+        if (!userId.HasValue)
         {
             _logger.LogWarning("Unauthenticated connection attempt to MessagesHub");
+            await base.OnConnectedAsync();
+            return;
         }
+
+        _connectionService.AddConnection(userId.Value, Context.ConnectionId);
+        _logger.LogInformation("User {UserId} connected to MessagesHub with connection {ConnectionId}",
+            userId.Value, Context.ConnectionId);
 
         await base.OnConnectedAsync();
     }

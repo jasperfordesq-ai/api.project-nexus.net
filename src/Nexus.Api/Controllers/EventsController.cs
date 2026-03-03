@@ -364,12 +364,22 @@ public class EventsController : ControllerBase
 
         if (request.StartsAt.HasValue)
         {
+            if (request.StartsAt.Value <= DateTime.UtcNow)
+            {
+                return BadRequest(new { error = "Event start time must be in the future" });
+            }
             eventEntity.StartsAt = request.StartsAt.Value;
         }
 
         if (request.EndsAt.HasValue)
         {
             eventEntity.EndsAt = request.EndsAt.Value;
+        }
+
+        // Validate end is after start (check after both may have been updated)
+        if (eventEntity.EndsAt.HasValue && eventEntity.EndsAt.Value <= eventEntity.StartsAt)
+        {
+            return BadRequest(new { error = "Event end time must be after start time" });
         }
 
         if (request.MaxAttendees.HasValue)

@@ -266,6 +266,11 @@ public class MessagesController : ControllerBase
             return BadRequest(new { error = "Message content is required" });
         }
 
+        if (request.Content.Trim().Length == 0)
+        {
+            return BadRequest(new { error = "Message content is required" });
+        }
+
         if (request.Content.Length > 5000)
         {
             return BadRequest(new { error = "Message content must be 5000 characters or less" });
@@ -413,23 +418,15 @@ public class MessagesController : ControllerBase
             return NotFound(new { error = "Conversation not found" });
         }
 
-        // Mark all unread messages from the other participant as read
+        // Mark all unread messages from the other participant as read using batch update
         var now = DateTime.UtcNow;
-        var unreadMessages = await _db.Messages
+        var markedCount = await _db.Messages
             .Where(m => m.ConversationId == id
                 && m.SenderId != userId.Value
                 && !m.IsRead)
-            .ToListAsync();
-
-        var markedCount = unreadMessages.Count;
-
-        foreach (var message in unreadMessages)
-        {
-            message.IsRead = true;
-            message.ReadAt = now;
-        }
-
-        await _db.SaveChangesAsync();
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(m => m.IsRead, true)
+                .SetProperty(m => m.ReadAt, now));
 
         _logger.LogInformation("User {UserId} marked {Count} messages as read in conversation {ConversationId}",
             userId.Value, markedCount, id);
