@@ -130,12 +130,19 @@ public class RealTimeMessagingService : IRealTimeMessagingService
 
         _logger.LogDebug("Broadcasting MessageRead event to conversation {ConversationId}", conversationId);
 
-        await _hubContext.Clients.Group(groupName).SendAsync("MessageRead", new
+        try
         {
-            conversation_id = conversationId,
-            read_by_user_id = readByUserId,
-            marked_read = markedReadCount
-        });
+            await _hubContext.Clients.Group(groupName).SendAsync("MessageRead", new
+            {
+                conversation_id = conversationId,
+                read_by_user_id = readByUserId,
+                marked_read = markedReadCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to broadcast MessageRead event for conversation {ConversationId}", conversationId);
+        }
     }
 
     public async Task NotifyUnreadCountChangedAsync(int tenantId, int userId, int newUnreadCount)
@@ -165,6 +172,13 @@ public class RealTimeMessagingService : IRealTimeMessagingService
     public async Task BroadcastToConversationAsync(int conversationId, string eventName, object data)
     {
         var groupName = MessagesHub.GetConversationGroupName(conversationId);
-        await _hubContext.Clients.Group(groupName).SendAsync(eventName, data);
+        try
+        {
+            await _hubContext.Clients.Group(groupName).SendAsync(eventName, data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to broadcast {EventName} to conversation {ConversationId}", eventName, conversationId);
+        }
     }
 }

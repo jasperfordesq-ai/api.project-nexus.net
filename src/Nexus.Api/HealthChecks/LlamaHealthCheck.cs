@@ -36,7 +36,7 @@ public class LlamaHealthCheck : IHealthCheck
                 return HealthCheckResult.Healthy($"Llama service has {models.Models.Count} model(s): {modelNames}");
             }
 
-            return HealthCheckResult.Degraded("Llama service is running but has no models loaded. Run: docker compose exec llama-service ollama pull llama3.2:3b");
+            return HealthCheckResult.Unhealthy("Llama service is running but has no models loaded. AI features are unavailable. Run: docker compose exec llama-service ollama pull llama3.2:3b");
         }
         catch (HttpRequestException ex)
         {

@@ -285,6 +285,9 @@ public class EventsController : ControllerBase
             ImageUrl = request.ImageUrl?.Trim()
         };
 
+        // Use transaction to ensure event + creator RSVP are created atomically
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
         _db.Events.Add(eventEntity);
         await _db.SaveChangesAsync();
 
@@ -298,6 +301,7 @@ public class EventsController : ControllerBase
 
         _db.EventRsvps.Add(rsvp);
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         // Award XP and check badges for creating an event (non-critical)
         try

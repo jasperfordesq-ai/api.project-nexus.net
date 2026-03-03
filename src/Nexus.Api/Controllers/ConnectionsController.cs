@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -183,7 +184,7 @@ public class ConnectionsController : ControllerBase
                         Type = Notification.Types.ConnectionAccepted,
                         Title = "Connection accepted",
                         Body = $"{currentUser?.FirstName} {currentUser?.LastName} is now connected with you",
-                        Data = $"{{\"connection_id\":{existingConnection.Id},\"user_id\":{userId}}}"
+                        Data = JsonSerializer.Serialize(new { connection_id = existingConnection.Id, user_id = userId })
                     });
                     _db.Notifications.Add(new Notification
                     {
@@ -191,7 +192,7 @@ public class ConnectionsController : ControllerBase
                         Type = Notification.Types.ConnectionAccepted,
                         Title = "Connection accepted",
                         Body = $"You are now connected with {targetUser.FirstName} {targetUser.LastName}",
-                        Data = $"{{\"connection_id\":{existingConnection.Id},\"user_id\":{request.UserId}}}"
+                        Data = JsonSerializer.Serialize(new { connection_id = existingConnection.Id, user_id = request.UserId })
                     });
 
                     await _db.SaveChangesAsync();
@@ -277,7 +278,7 @@ public class ConnectionsController : ControllerBase
             Type = Notification.Types.ConnectionRequest,
             Title = "New connection request",
             Body = $"{currentUser?.FirstName} {currentUser?.LastName} wants to connect with you",
-            Data = $"{{\"connection_id\":{connection.Id},\"from_user_id\":{userId}}}"
+            Data = JsonSerializer.Serialize(new { connection_id = connection.Id, from_user_id = userId })
         });
 
         await _db.SaveChangesAsync();
@@ -337,7 +338,7 @@ public class ConnectionsController : ControllerBase
             Type = Notification.Types.ConnectionAccepted,
             Title = "Connection accepted",
             Body = $"{currentUser?.FirstName} {currentUser?.LastName} accepted your connection request",
-            Data = $"{{\"connection_id\":{connection.Id},\"user_id\":{userId}}}"
+            Data = JsonSerializer.Serialize(new { connection_id = connection.Id, user_id = userId })
         });
 
         await _db.SaveChangesAsync();
