@@ -35,7 +35,9 @@
 .env
 .env.local
 .env.*.local
+.env.production
 !.env.docker
+!.env.production.example
 
 # Database backups (NEVER commit)
 backups/

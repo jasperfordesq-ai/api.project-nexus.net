@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Nexus.Api.Clients;
 using Nexus.Api.Configuration;
 using Nexus.Api.Entities;
+using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -593,9 +594,12 @@ public class AiController : ControllerBase
             return BadRequest(new { error = "Invalid message content detected" });
         }
 
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized();
+
         try
         {
-            var response = await _aiService.SendMessage(conversationId, sanitizedMessage, ct);
+            var response = await _aiService.SendMessage(conversationId, sanitizedMessage, ct, userId: userId);
             return Ok(response);
         }
         catch (InvalidOperationException)
@@ -618,10 +622,13 @@ public class AiController : ControllerBase
         [FromQuery] int limit = 50,
         CancellationToken ct = default)
     {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized();
+
         if (limit < 1) limit = 1;
         if (limit > 100) limit = 100;
 
-        var messages = await _aiService.GetConversationHistory(conversationId, limit, ct);
+        var messages = await _aiService.GetConversationHistory(conversationId, limit, ct, userId: userId);
         return Ok(messages);
     }
 

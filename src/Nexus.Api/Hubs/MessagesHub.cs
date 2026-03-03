@@ -5,6 +5,8 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Data;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Hubs;
@@ -28,11 +30,13 @@ public class MessagesHub : Hub
 {
     private readonly ILogger<MessagesHub> _logger;
     private readonly IUserConnectionService _connectionService;
+    private readonly NexusDbContext _db;
 
-    public MessagesHub(ILogger<MessagesHub> logger, IUserConnectionService connectionService)
+    public MessagesHub(ILogger<MessagesHub> logger, IUserConnectionService connectionService, NexusDbContext db)
     {
         _logger = logger;
         _connectionService = connectionService;
+        _db = db;
     }
 
     public override async Task OnConnectedAsync()
@@ -73,6 +77,7 @@ public class MessagesHub : Hub
 
     /// <summary>
     /// Join a conversation group to receive real-time updates for that conversation.
+    /// Validates that the user is a participant in the conversation before allowing subscription.
     /// </summary>
     public async Task JoinConversation(int conversationId)
     {
@@ -80,6 +85,18 @@ public class MessagesHub : Hub
         if (!userId.HasValue)
         {
             _logger.LogWarning("Unauthenticated user tried to join conversation {ConversationId}", conversationId);
+            return;
+        }
+
+        // Verify the user is a participant in this conversation
+        var isParticipant = await _db.Conversations
+            .AnyAsync(c => c.Id == conversationId &&
+                          (c.Participant1Id == userId.Value || c.Participant2Id == userId.Value));
+
+        if (!isParticipant)
+        {
+            _logger.LogWarning("User {UserId} attempted to join conversation {ConversationId} without being a participant",
+                userId.Value, conversationId);
             return;
         }
 

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 namespace Nexus.Api.Entities;
 
 /// <summary>
@@ -64,6 +69,7 @@ public class Badge : ITenantEntity
         public const string CommunityBuilder = "community_builder";   // Created a group
         public const string EventOrganizer = "event_organizer";       // Created 5 events
         public const string PopularPost = "popular_post";             // Post with 10+ likes
+        public const string FirstReview = "first_review";               // First review left
         public const string Veteran = "veteran";                       // Account 1 year old
     }
 }

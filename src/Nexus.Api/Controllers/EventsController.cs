@@ -111,7 +111,7 @@ public class EventsController : ControllerBase
                 page,
                 limit,
                 total,
-                total_pages = totalPages
+                pages = totalPages
             }
         });
     }

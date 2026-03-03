@@ -212,7 +212,7 @@ Return up to {maxResults} matches, sorted by score. Only JSON, no markdown.";
             return new List<SearchResult>();
 
         var listingsContext = string.Join("\n", listings.Select(l =>
-            $"[{l.Id}] {l.Type}: \"{l.Title}\" - {l.Description?.Take(100) ?? "No description"} (by {l.UserName})"));
+            $"[{l.Id}] {l.Type}: \"{l.Title}\" - {(l.Description != null ? l.Description[..Math.Min(100, l.Description.Length)] : "No description")} (by {l.UserName})"));
 
         var prompt = $@"You are a search assistant for a timebanking platform.
 
@@ -506,11 +506,15 @@ Text to translate:
     public async Task<ConversationResponse> SendMessage(
         int conversationId,
         string userMessage,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        int? userId = null)
     {
-        var conversation = await _db.AiConversations
-            .Include(c => c.Messages.OrderBy(m => m.CreatedAt).Take(20)) // Last 20 messages for context
-            .FirstOrDefaultAsync(c => c.Id == conversationId && c.IsActive, ct);
+        var query = _db.AiConversations
+            .Include(c => c.Messages.OrderBy(m => m.CreatedAt).Take(20)); // Last 20 messages for context
+
+        var conversation = userId.HasValue
+            ? await query.FirstOrDefaultAsync(c => c.Id == conversationId && c.IsActive && c.UserId == userId.Value, ct)
+            : await query.FirstOrDefaultAsync(c => c.Id == conversationId && c.IsActive, ct);
 
         if (conversation == null)
             throw new InvalidOperationException("Conversation not found or inactive");
@@ -582,8 +586,18 @@ Text to translate:
     public async Task<List<ConversationMessage>> GetConversationHistory(
         int conversationId,
         int limit = 50,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        int? userId = null)
     {
+        // If userId provided, verify conversation ownership
+        if (userId.HasValue)
+        {
+            var ownsConversation = await _db.AiConversations
+                .AnyAsync(c => c.Id == conversationId && c.UserId == userId.Value, ct);
+            if (!ownsConversation)
+                return new List<ConversationMessage>();
+        }
+
         var messages = await _db.AiMessages
             .Where(m => m.ConversationId == conversationId)
             .OrderByDescending(m => m.CreatedAt)
@@ -656,7 +670,8 @@ Assistant: {aiResponse.Substring(0, Math.Min(100, aiResponse.Length))}
 Just respond with the title, nothing else.";
 
             var response = await CallAiAsync(prompt, ct);
-            return response.Trim().Trim('"').Substring(0, Math.Min(100, response.Length));
+            var trimmed = response.Trim().Trim('"');
+            return trimmed[..Math.Min(100, trimmed.Length)];
         }
         catch
         {

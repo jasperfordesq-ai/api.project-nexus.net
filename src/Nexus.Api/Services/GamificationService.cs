@@ -181,6 +181,9 @@ public class GamificationService
                 await CheckFirstTransactionBadge(userId);
                 await CheckHelpfulNeighborBadge(userId);
                 break;
+            case "review_left":
+                await CheckFirstReviewBadge(userId);
+                break;
             case "post_created":
                 await CheckFirstPostBadge(userId);
                 break;
@@ -235,6 +238,15 @@ public class GamificationService
         if (postCount == 1)
         {
             await AwardBadgeAsync(userId, Badge.Slugs.FirstPost);
+        }
+    }
+
+    private async Task CheckFirstReviewBadge(int userId)
+    {
+        var reviewCount = await _db.Reviews.CountAsync(r => r.ReviewerId == userId);
+        if (reviewCount == 1)
+        {
+            await AwardBadgeAsync(userId, Badge.Slugs.FirstReview);
         }
     }
 

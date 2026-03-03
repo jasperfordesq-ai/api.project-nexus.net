@@ -71,7 +71,7 @@ public class SearchController : ControllerBase
             return BadRequest(new { error = "Search query must not exceed 100 characters" });
         }
 
-        var searchTerm = query.Q.ToLowerInvariant();
+        var searchTerm = EscapeLikePattern(query.Q.ToLowerInvariant());
         var type = query.Type.ToLowerInvariant();
         var skip = (query.Page - 1) * query.Limit;
 
@@ -310,7 +310,7 @@ public class SearchController : ControllerBase
             return BadRequest(new { error = "Search query must not exceed 100 characters" });
         }
 
-        var searchTerm = query.Q.ToLowerInvariant();
+        var searchTerm = EscapeLikePattern(query.Q.ToLowerInvariant());
         var suggestions = new List<SearchSuggestionDto>();
         var remaining = query.Limit;
 
@@ -398,5 +398,16 @@ public class SearchController : ControllerBase
 
         // Ensure we don't exceed limit and return flat array
         return Ok(suggestions.Take(query.Limit).ToList());
+    }
+
+    /// <summary>
+    /// Escapes LIKE/ILIKE wildcard characters in user input to prevent wildcard injection.
+    /// </summary>
+    private static string EscapeLikePattern(string input)
+    {
+        return input
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
     }
 }
