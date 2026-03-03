@@ -226,6 +226,157 @@ public class UsersController : ControllerBase
             last_login_at = user.LastLoginAt
         });
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // GDPR compliance
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// GDPR Article 20 — Data portability.
+    /// Returns all personal data held for the current user as a JSON document.
+    /// </summary>
+    [HttpGet("me/data-export")]
+    public async Task<IActionResult> DataExport(CancellationToken ct)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value, ct);
+        if (user == null) return NotFound(new { error = "User not found" });
+
+        var listings = await _db.Listings
+            .Where(l => l.UserId == userId.Value)
+            .Select(l => new { l.Id, l.Title, l.Type, l.Status, l.CreatedAt })
+            .ToListAsync(ct);
+
+        var sentTransactions = await _db.Transactions
+            .Where(t => t.SenderId == userId.Value)
+            .Select(t => new { t.Id, t.ReceiverId, t.Amount, t.Description, t.CreatedAt })
+            .ToListAsync(ct);
+
+        var receivedTransactions = await _db.Transactions
+            .Where(t => t.ReceiverId == userId.Value)
+            .Select(t => new { t.Id, t.SenderId, t.Amount, t.Description, t.CreatedAt })
+            .ToListAsync(ct);
+
+        var messages = await _db.Messages
+            .Where(m => m.SenderId == userId.Value)
+            .Select(m => new { m.Id, m.ConversationId, m.Content, m.CreatedAt })
+            .ToListAsync(ct);
+
+        var notifications = await _db.Notifications
+            .Where(n => n.UserId == userId.Value)
+            .Select(n => new { n.Id, n.Type, n.Title, n.Body, n.CreatedAt, n.IsRead })
+            .ToListAsync(ct);
+
+        var connections = await _db.Connections
+            .Where(c => c.RequesterId == userId.Value || c.AddresseeId == userId.Value)
+            .Select(c => new { c.Id, c.RequesterId, c.AddresseeId, c.Status })
+            .ToListAsync(ct);
+
+        var badges = await _db.UserBadges
+            .Where(b => b.UserId == userId.Value)
+            .Select(b => new { b.Id, b.BadgeId, b.EarnedAt })
+            .ToListAsync(ct);
+
+        var xpLogs = await _db.XpLogs
+            .Where(x => x.UserId == userId.Value)
+            .Select(x => new { x.Id, x.Amount, x.Source, x.Description, x.CreatedAt })
+            .ToListAsync(ct);
+
+        var reviews = await _db.Reviews
+            .Where(r => r.ReviewerId == userId.Value)
+            .Select(r => new { r.Id, r.TargetUserId, r.TargetListingId, r.Rating, r.Comment, r.CreatedAt })
+            .ToListAsync(ct);
+
+        var export = new
+        {
+            exported_at = DateTime.UtcNow,
+            profile = new
+            {
+                id = user.Id,
+                email = user.Email,
+                first_name = user.FirstName,
+                last_name = user.LastName,
+                role = user.Role,
+                created_at = user.CreatedAt,
+                last_login_at = user.LastLoginAt,
+                total_xp = user.TotalXp,
+                level = user.Level
+            },
+            listings,
+            transactions = new { sent = sentTransactions, received = receivedTransactions },
+            messages,
+            notifications,
+            connections,
+            badges,
+            xp_logs = xpLogs,
+            reviews
+        };
+
+        return Ok(export);
+    }
+
+    /// <summary>
+    /// GDPR Article 17 — Right to erasure.
+    /// Anonymises all personal data for the current user and revokes all active tokens.
+    /// Content authored by the user (listings, messages, transactions) is retained
+    /// but de-linked from any identifiable information. Financial records are kept
+    /// intact as required by law.
+    /// </summary>
+    [HttpDelete("me")]
+    public async Task<IActionResult> DeleteAccount(CancellationToken ct)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value, ct);
+        if (user == null) return NotFound(new { error = "User not found" });
+
+        // 1. Anonymise the user record — remove all PII
+        var anonymousEmail = $"deleted_{user.Id}@deleted.nexus";
+        user.Email = anonymousEmail;
+        user.FirstName = "Deleted";
+        user.LastName = "User";
+        user.PasswordHash = string.Empty; // Prevents login
+        user.IsActive = false;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        // 2. Revoke all refresh tokens
+        var refreshTokens = await _db.RefreshTokens
+            .IgnoreQueryFilters()
+            .Where(t => t.UserId == userId.Value && t.RevokedAt == null)
+            .ToListAsync(ct);
+
+        foreach (var token in refreshTokens)
+        {
+            token.RevokedAt = DateTime.UtcNow;
+            token.RevokedReason = "account_deleted";
+        }
+
+        // 3. Invalidate all password reset tokens
+        var resetTokens = await _db.PasswordResetTokens
+            .IgnoreQueryFilters()
+            .Where(t => t.UserId == userId.Value && t.UsedAt == null)
+            .ToListAsync(ct);
+
+        foreach (var token in resetTokens)
+        {
+            token.UsedAt = DateTime.UtcNow;
+        }
+
+        // 4. Delete notifications (purely personal, no legal retention requirement)
+        var userNotifications = await _db.Notifications
+            .Where(n => n.UserId == userId.Value)
+            .ToListAsync(ct);
+        _db.Notifications.RemoveRange(userNotifications);
+
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("User {UserId} account anonymised (GDPR deletion request)", userId.Value);
+
+        return Ok(new { success = true, message = "Your account data has been deleted" });
+    }
 }
 
 /// <summary>

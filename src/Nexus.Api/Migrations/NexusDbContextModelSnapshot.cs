@@ -295,6 +295,8 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("TenantId", "Participant1Id", "Participant2Id")
                         .IsUnique();
 
+                    b.HasIndex("UpdatedAt");
+
                     b.ToTable("conversations", (string)null);
                 });
 
@@ -361,6 +363,10 @@ namespace Nexus.Api.Migrations
 
                     b.HasIndex("TenantId");
 
+                    b.HasIndex("EndsAt");
+
+                    b.HasIndex("TenantId", "StartsAt", "IsCancelled");
+
                     b.ToTable("events", (string)null);
                 });
 
@@ -401,6 +407,8 @@ namespace Nexus.Api.Migrations
 
                     b.HasIndex("TenantId", "EventId", "UserId")
                         .IsUnique();
+
+                    b.HasIndex("RespondedAt");
 
                     b.ToTable("event_rsvps", (string)null);
                 });
@@ -451,6 +459,8 @@ namespace Nexus.Api.Migrations
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("TenantId", "IsPinned", "CreatedAt");
+
                     b.ToTable("feed_posts", (string)null);
                 });
 
@@ -496,6 +506,10 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("Name");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("IsPrivate");
+
+                    b.HasIndex("TenantId", "CreatedAt");
 
                     b.ToTable("groups", (string)null);
                 });
@@ -621,6 +635,10 @@ namespace Nexus.Api.Migrations
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("TenantId", "Status", "CreatedAt");
+
                     b.ToTable("listings", (string)null);
                 });
 
@@ -665,6 +683,8 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("TenantId");
 
                     b.HasIndex("ConversationId", "IsRead");
+
+                    b.HasIndex("ConversationId", "CreatedAt");
 
                     b.ToTable("messages", (string)null);
                 });
@@ -721,6 +741,8 @@ namespace Nexus.Api.Migrations
 
                     b.HasIndex("UserId", "IsRead");
 
+                    b.HasIndex("UserId", "IsRead", "CreatedAt");
+
                     b.ToTable("notifications", (string)null);
                 });
 
@@ -758,7 +780,8 @@ namespace Nexus.Api.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.HasIndex("TokenHash");
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -886,7 +909,8 @@ namespace Nexus.Api.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.HasIndex("TokenHash");
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 

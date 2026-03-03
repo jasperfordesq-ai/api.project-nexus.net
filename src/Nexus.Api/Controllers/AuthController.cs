@@ -16,6 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Middleware;
+using Nexus.Api.Services;
 using Nexus.Contracts.Events;
 using Nexus.Messaging;
 
@@ -36,18 +37,20 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _config;
     private readonly ILogger<AuthController> _logger;
     private readonly IEventPublisher _eventPublisher;
+    private readonly IEmailService _emailService;
 
     // Refresh token validity (7 days default)
     private const int RefreshTokenExpiryDays = 7;
     // Password reset token validity (1 hour)
     private const int PasswordResetExpiryMinutes = 60;
 
-    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher)
+    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, IEmailService emailService)
     {
         _db = db;
         _config = config;
         _logger = logger;
         _eventPublisher = eventPublisher;
+        _emailService = emailService;
     }
 
     /// <summary>
@@ -465,18 +468,19 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("Password reset requested for user {UserId}", user.Id);
 
-        // In production, send email here
-        // For development, return the token in the response
-        if (_config.GetValue<bool>("IsDevelopment", false) ||
-            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+        // Build the reset URL and send the email.
+        // NullEmailService is used in development (logs URL instead of sending).
+        var appBaseUrl = _config["Email:AppBaseUrl"]?.TrimEnd('/') ?? "http://localhost:5170";
+        var resetUrl = $"{appBaseUrl}/reset-password?token={Uri.EscapeDataString(resetToken)}&tenant={Uri.EscapeDataString(tenant.Slug)}";
+
+        try
         {
-            return Ok(new
-            {
-                success = true,
-                message = "Password reset token generated",
-                reset_token = resetToken, // Only in development!
-                expires_in = PasswordResetExpiryMinutes * 60
-            });
+            await _emailService.SendPasswordResetEmailAsync(user.Email, user.FirstName ?? "there", resetUrl);
+        }
+        catch (Exception ex)
+        {
+            // Email failure is non-fatal: the token is saved, so the user can retry.
+            _logger.LogError(ex, "Failed to send password reset email to user {UserId}", user.Id);
         }
 
         return Ok(successResponse);

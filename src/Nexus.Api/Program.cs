@@ -166,6 +166,17 @@ builder.Services.AddScoped<ContentModerationService>();
 // AI Notification service
 builder.Services.AddScoped<AiNotificationService>();
 
+// Email service
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+if (builder.Environment.IsDevelopment() || isTestEnvironment)
+{
+    builder.Services.AddScoped<IEmailService, NullEmailService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+}
+
 // Real-time messaging (SignalR)
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserConnectionService, UserConnectionService>();
