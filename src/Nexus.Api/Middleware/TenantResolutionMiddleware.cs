@@ -3,6 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Nexus.Api.Data;
 
 namespace Nexus.Api.Middleware;
@@ -15,12 +17,21 @@ namespace Nexus.Api.Middleware;
 /// - X-Tenant-ID header is ONLY allowed for unauthenticated requests (e.g., login)
 ///   OR in Development environment for testing.
 /// - This prevents authenticated users from spoofing tenant context via headers.
+///
+/// TENANT VALIDATION:
+/// - After resolving the tenant_id, validates that the tenant exists and is active.
+/// - Uses a short-lived in-memory cache (60s) to avoid hitting the database on every request.
+/// - Invalid/inactive tenants are rejected with 403 Forbidden.
 /// </summary>
 public class TenantResolutionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<TenantResolutionMiddleware> _logger;
     private readonly IHostEnvironment _environment;
+
+    // Cache key prefix for tenant validation
+    private const string TenantCachePrefix = "tenant_valid:";
+    private static readonly TimeSpan TenantCacheDuration = TimeSpan.FromSeconds(60);
 
     // Paths that don't require tenant resolution (they handle it themselves)
     private static readonly HashSet<string> _excludedPaths = new(StringComparer.OrdinalIgnoreCase)
@@ -46,7 +57,7 @@ public class TenantResolutionMiddleware
         _environment = environment;
     }
 
-    public async Task InvokeAsync(HttpContext context, TenantContext tenantContext)
+    public async Task InvokeAsync(HttpContext context, TenantContext tenantContext, NexusDbContext db, IMemoryCache cache)
     {
         var path = context.Request.Path.Value ?? "";
 
@@ -63,6 +74,21 @@ public class TenantResolutionMiddleware
 
         if (tenantId.HasValue)
         {
+            // Validate tenant exists and is active (cached for 60s)
+            var isValid = await ValidateTenantAsync(tenantId.Value, db, cache);
+            if (!isValid)
+            {
+                _logger.LogWarning("Tenant {TenantId} is invalid or inactive for path {Path}",
+                    tenantId.Value, path);
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = "Tenant inactive",
+                    message = "Your tenant account is not active"
+                });
+                return;
+            }
+
             tenantContext.SetTenant(tenantId.Value);
             _logger.LogDebug("Tenant resolved: {TenantId} from {Source} for path {Path}",
                 tenantId.Value, source, path);
@@ -78,6 +104,28 @@ public class TenantResolutionMiddleware
             error = "Tenant context required",
             message = "Authentication required with valid tenant_id claim"
         });
+    }
+
+    /// <summary>
+    /// Validates that a tenant exists and is active, using a short-lived cache to avoid
+    /// hitting the database on every request.
+    /// </summary>
+    private static async Task<bool> ValidateTenantAsync(int tenantId, NexusDbContext db, IMemoryCache cache)
+    {
+        var cacheKey = TenantCachePrefix + tenantId;
+
+        if (cache.TryGetValue(cacheKey, out bool isActive))
+        {
+            return isActive;
+        }
+
+        // Query without tenant filter (Tenant entity doesn't have one)
+        var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId);
+
+        isActive = tenant is { IsActive: true };
+
+        cache.Set(cacheKey, isActive, TenantCacheDuration);
+        return isActive;
     }
 
     private (int? TenantId, string Source) ResolveTenantIdSecure(HttpContext context)

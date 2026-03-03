@@ -45,10 +45,13 @@ public class AiConversation : ITenantEntity
 
 /// <summary>
 /// Represents a single message in an AI conversation.
+/// Has its own TenantId and query filter for defense-in-depth,
+/// even though it's always accessed via AiConversation navigation.
 /// </summary>
-public class AiMessage
+public class AiMessage : ITenantEntity
 {
     public int Id { get; set; }
+    public int TenantId { get; set; }
     public int ConversationId { get; set; }
 
     /// <summary>
@@ -68,6 +71,7 @@ public class AiMessage
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation property
+    // Navigation properties
+    public Tenant? Tenant { get; set; }
     public AiConversation? Conversation { get; set; }
 }

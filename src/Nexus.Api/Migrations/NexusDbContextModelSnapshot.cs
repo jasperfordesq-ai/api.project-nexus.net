@@ -92,6 +92,9 @@ namespace Nexus.Api.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("TokensUsed")
                         .HasColumnType("integer");
 
@@ -100,6 +103,8 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("ConversationId");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("ai_messages", (string)null);
                 });
@@ -1299,7 +1304,15 @@ namespace Nexus.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Conversation");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.Badge", b =>

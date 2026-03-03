@@ -63,8 +63,15 @@ if (!builder.Environment.IsDevelopment())
 // SERVICES
 // =============================================================================
 
-// Add controllers
+// Add controllers with request body size limit
 builder.Services.AddControllers();
+
+// Global request body size limit (5MB) to prevent abuse
+// Individual endpoints can override with [RequestSizeLimit] attribute
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 5 * 1024 * 1024; // 5MB
+});
 
 // API Versioning
 builder.Services.AddApiVersioning(options =>
@@ -112,6 +119,8 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddRateLimitingPolicies(builder.Configuration);
 
 // Response Compression - reduces bandwidth by 70% for JSON responses
+// Note: EnableForHttps is safe here because we use JWT Bearer tokens (not cookies).
+// BREACH attacks only affect cookie-based auth where secrets are reflected in responses.
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;

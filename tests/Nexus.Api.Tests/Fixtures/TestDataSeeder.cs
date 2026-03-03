@@ -160,6 +160,8 @@ public static class TestDataSeeder
         // This is faster and avoids FK constraint issues
         await db.Database.ExecuteSqlRawAsync(@"
             TRUNCATE TABLE
+                ai_messages,
+                ai_conversations,
                 xp_logs,
                 user_badges,
                 post_comments,
@@ -179,6 +181,9 @@ public static class TestDataSeeder
                 password_reset_tokens,
                 refresh_tokens,
                 badges,
+                categories,
+                tenant_configs,
+                roles,
                 users,
                 tenants
             RESTART IDENTITY CASCADE;
