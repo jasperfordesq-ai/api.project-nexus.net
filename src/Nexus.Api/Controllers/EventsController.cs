@@ -650,7 +650,7 @@ public class EventsController : ControllerBase
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
         }
-        catch (Exception) when (transaction.GetDbTransaction().Connection != null)
+        catch (Exception)
         {
             await transaction.RollbackAsync();
             throw;
