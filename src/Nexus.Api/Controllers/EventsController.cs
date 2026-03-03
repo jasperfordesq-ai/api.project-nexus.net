@@ -609,37 +609,52 @@ public class EventsController : ControllerBase
             return BadRequest(new { error = $"Invalid RSVP status. Valid values: {string.Join(", ", validStatuses)}" });
         }
 
-        // Check capacity for "going" RSVPs
-        if (request.Status == Event.RsvpStatus.Going && eventEntity.MaxAttendees.HasValue)
+        // Use SERIALIZABLE transaction to prevent race condition on capacity check
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable);
+
+        try
         {
-            var goingCount = eventEntity.Rsvps.Count(r => r.Status == Event.RsvpStatus.Going && r.UserId != userId);
-            if (goingCount >= eventEntity.MaxAttendees.Value)
+            // Re-query going count inside transaction for accurate capacity check
+            if (request.Status == Event.RsvpStatus.Going && eventEntity.MaxAttendees.HasValue)
             {
-                return BadRequest(new { error = "Event is at maximum capacity" });
+                var goingCount = await _db.EventRsvps.CountAsync(
+                    r => r.EventId == id && r.Status == Event.RsvpStatus.Going && r.UserId != userId);
+                if (goingCount >= eventEntity.MaxAttendees.Value)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest(new { error = "Event is at maximum capacity" });
+                }
             }
-        }
 
-        // Check for existing RSVP
-        var existingRsvp = await _db.EventRsvps
-            .FirstOrDefaultAsync(r => r.EventId == id && r.UserId == userId);
+            // Check for existing RSVP
+            var existingRsvp = await _db.EventRsvps
+                .FirstOrDefaultAsync(r => r.EventId == id && r.UserId == userId);
 
-        if (existingRsvp != null)
-        {
-            existingRsvp.Status = request.Status;
-            existingRsvp.RespondedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            var rsvp = new EventRsvp
+            if (existingRsvp != null)
             {
-                EventId = id,
-                UserId = userId.Value,
-                Status = request.Status
-            };
-            _db.EventRsvps.Add(rsvp);
-        }
+                existingRsvp.Status = request.Status;
+                existingRsvp.RespondedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                var rsvp = new EventRsvp
+                {
+                    EventId = id,
+                    UserId = userId.Value,
+                    Status = request.Status
+                };
+                _db.EventRsvps.Add(rsvp);
+            }
 
-        await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (Exception) when (transaction.GetDbTransaction().Connection != null)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
 
         _logger.LogInformation("User {UserId} RSVP'd {Status} to event {EventId}", userId, request.Status, id);
 

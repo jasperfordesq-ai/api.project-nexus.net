@@ -50,6 +50,7 @@ public class Badge : ITenantEntity
     public int SortOrder { get; set; } = 0;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 
     // Navigation properties
     public Tenant? Tenant { get; set; }

@@ -38,12 +38,21 @@ public interface IUserConnectionService
 ///
 /// Uses a composite (tenantId, userId) key to prevent cross-tenant connection lookups.
 /// Supports multiple connections per user (multiple browser tabs, devices).
+/// Tracks connection timestamps to enable cleanup of stale entries.
 /// </summary>
 public class UserConnectionService : IUserConnectionService
 {
     // (tenantId, userId) -> set of connectionIds
     private readonly Dictionary<(int TenantId, int UserId), HashSet<string>> _userConnections = new();
+    // connectionId -> timestamp when added (for stale connection cleanup)
+    private readonly Dictionary<string, DateTime> _connectionTimestamps = new();
     private readonly object _lock = new();
+
+    /// <summary>
+    /// Maximum age of a connection before it's considered stale (24 hours).
+    /// SignalR connections should be refreshed more frequently than this.
+    /// </summary>
+    private static readonly TimeSpan StaleConnectionThreshold = TimeSpan.FromHours(24);
 
     public void AddConnection(int tenantId, int userId, string connectionId)
     {
@@ -56,6 +65,7 @@ public class UserConnectionService : IUserConnectionService
                 _userConnections[key] = connections;
             }
             connections.Add(connectionId);
+            _connectionTimestamps[connectionId] = DateTime.UtcNow;
         }
     }
 
@@ -67,6 +77,7 @@ public class UserConnectionService : IUserConnectionService
             if (_userConnections.TryGetValue(key, out var connections))
             {
                 connections.Remove(connectionId);
+                _connectionTimestamps.Remove(connectionId);
 
                 // Clean up empty entries
                 if (connections.Count == 0)
@@ -96,6 +107,57 @@ public class UserConnectionService : IUserConnectionService
         {
             var key = (tenantId, userId);
             return _userConnections.TryGetValue(key, out var connections) && connections.Count > 0;
+        }
+    }
+
+    /// <summary>
+    /// Remove connections that are older than the stale threshold.
+    /// Should be called periodically (e.g., via a background service) to prevent memory leaks
+    /// from connections that were never properly cleaned up (e.g., abrupt disconnects).
+    /// </summary>
+    /// <returns>Number of stale connections removed.</returns>
+    public int PurgeStaleConnections()
+    {
+        lock (_lock)
+        {
+            var cutoff = DateTime.UtcNow - StaleConnectionThreshold;
+            var staleConnections = _connectionTimestamps
+                .Where(kvp => kvp.Value < cutoff)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var connectionId in staleConnections)
+            {
+                _connectionTimestamps.Remove(connectionId);
+
+                // Find and remove from user connections
+                var keysToClean = new List<(int, int)>();
+                foreach (var (key, connections) in _userConnections)
+                {
+                    if (connections.Remove(connectionId) && connections.Count == 0)
+                    {
+                        keysToClean.Add(key);
+                    }
+                }
+
+                foreach (var key in keysToClean)
+                {
+                    _userConnections.Remove(key);
+                }
+            }
+
+            return staleConnections.Count;
+        }
+    }
+
+    /// <summary>
+    /// Get the total number of tracked connections (for diagnostics).
+    /// </summary>
+    public int GetTotalConnectionCount()
+    {
+        lock (_lock)
+        {
+            return _connectionTimestamps.Count;
         }
     }
 }

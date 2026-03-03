@@ -287,8 +287,11 @@ public class AiNotificationService
 
     /// <summary>
     /// Generate community milestone notification.
+    /// IMPORTANT: This method may be called from background jobs where tenant context is not set.
+    /// The tenantId parameter ensures tenant isolation regardless of TenantContext state.
     /// </summary>
     public async Task<List<Notification>> GenerateCommunityMilestoneNotificationsAsync(
+        int? tenantId = null,
         CancellationToken ct = default)
     {
         var notifications = new List<Notification>();
@@ -303,9 +306,14 @@ public class AiNotificationService
 
             if (userMilestone > 0 && insights.TotalActiveUsers == userMilestone)
             {
-                // Only notify users within the current tenant scope
-                var activeUsers = await _db.Users
-                    .Where(u => u.IsActive)
+                // Explicitly filter by tenant to ensure isolation even without tenant context
+                var usersQuery = _db.Users.Where(u => u.IsActive);
+                if (tenantId.HasValue)
+                {
+                    usersQuery = usersQuery.Where(u => u.TenantId == tenantId.Value);
+                }
+
+                var activeUsers = await usersQuery
                     .Take(500) // Limit to prevent memory issues in large tenants
                     .ToListAsync(ct);
 

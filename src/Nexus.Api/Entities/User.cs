@@ -23,6 +23,7 @@ public class User : ITenantEntity
     public string Role { get; set; } = "member";
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
 
     // Suspension tracking (for admin)
