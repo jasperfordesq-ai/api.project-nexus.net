@@ -47,6 +47,7 @@ public class ListingsController : ControllerBase
         [FromQuery] string? type = null,
         [FromQuery] string? status = null)
     {
+        if (page < 1) page = 1;
         limit = Math.Clamp(limit, 1, 100);
         var skip = (page - 1) * limit;
 

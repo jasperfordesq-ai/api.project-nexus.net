@@ -44,6 +44,7 @@ public class ReviewsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
+        if (page < 1) page = 1;
         limit = Math.Clamp(limit, 1, 100);
         var skip = (page - 1) * limit;
 
@@ -200,6 +201,7 @@ public class ReviewsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
+        if (page < 1) page = 1;
         limit = Math.Clamp(limit, 1, 100);
         var skip = (page - 1) * limit;
 

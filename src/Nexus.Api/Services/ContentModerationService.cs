@@ -279,7 +279,7 @@ public class ContentModerationService
             Suggestions = result.Suggestions
         };
 
-        switch (result.Severity.ToLowerInvariant())
+        switch ((result.Severity ?? "none").ToLowerInvariant())
         {
             case "critical":
                 outcome.IsApproved = false;

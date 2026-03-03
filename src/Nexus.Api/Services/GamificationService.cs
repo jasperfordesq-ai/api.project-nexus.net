@@ -96,8 +96,12 @@ public class GamificationService
                     return new XpAwardResult { Success = false, Error = "Concurrency conflict - please try again" };
                 }
 
-                // Detach the entity to get fresh data on next attempt
-                foreach (var entry in _db.ChangeTracker.Entries())
+                // Detach only the affected entities to get fresh data on next attempt
+                foreach (var entry in _db.ChangeTracker.Entries<User>().Where(e => e.Entity.Id == userId))
+                {
+                    entry.State = EntityState.Detached;
+                }
+                foreach (var entry in _db.ChangeTracker.Entries<XpLog>().Where(e => e.Entity.UserId == userId))
                 {
                     entry.State = EntityState.Detached;
                 }
@@ -131,14 +135,24 @@ public class GamificationService
             return new BadgeAwardResult { Success = false, Error = "User already has this badge", AlreadyEarned = true };
         }
 
-        // Award the badge
+        // Award the badge - use try/catch to handle concurrent duplicate inserts
         var userBadge = new UserBadge
         {
             UserId = userId,
             BadgeId = badge.Id
         };
         _db.UserBadges.Add(userBadge);
-        await _db.SaveChangesAsync();
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Unique constraint violation - another request already awarded this badge
+            _db.Entry(userBadge).State = EntityState.Detached;
+            return new BadgeAwardResult { Success = false, Error = "User already has this badge", AlreadyEarned = true };
+        }
 
         _logger.LogInformation("User {UserId} earned badge '{BadgeSlug}' ({BadgeName})", userId, badgeSlug, badge.Name);
 
