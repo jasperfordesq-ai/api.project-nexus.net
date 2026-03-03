@@ -166,9 +166,16 @@ public class ReviewsController : ControllerBase
         _db.Reviews.Add(review);
         await _db.SaveChangesAsync();
 
-        // Award XP for leaving a review
-        await _gamification.AwardXpAsync(currentUserId.Value, XpLog.Amounts.ReviewLeft, XpLog.Sources.ReviewLeft, review.Id, $"Left review for user {targetUser.FirstName}");
-        await _gamification.CheckAndAwardBadgesAsync(currentUserId.Value, "review_left");
+        // Award XP for leaving a review (non-critical)
+        try
+        {
+            await _gamification.AwardXpAsync(currentUserId.Value, XpLog.Amounts.ReviewLeft, XpLog.Sources.ReviewLeft, review.Id, $"Left review for user {targetUser.FirstName}");
+            await _gamification.CheckAndAwardBadgesAsync(currentUserId.Value, "review_left");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for review {ReviewId}", review.Id);
+        }
 
         // Load reviewer info for response
         await _db.Entry(review).Reference(r => r.Reviewer).LoadAsync();
@@ -325,9 +332,16 @@ public class ReviewsController : ControllerBase
         _db.Reviews.Add(review);
         await _db.SaveChangesAsync();
 
-        // Award XP for leaving a review
-        await _gamification.AwardXpAsync(currentUserId.Value, XpLog.Amounts.ReviewLeft, XpLog.Sources.ReviewLeft, review.Id, $"Left review for listing: {listing.Title}");
-        await _gamification.CheckAndAwardBadgesAsync(currentUserId.Value, "review_left");
+        // Award XP for leaving a review (non-critical)
+        try
+        {
+            await _gamification.AwardXpAsync(currentUserId.Value, XpLog.Amounts.ReviewLeft, XpLog.Sources.ReviewLeft, review.Id, $"Left review for listing: {listing.Title}");
+            await _gamification.CheckAndAwardBadgesAsync(currentUserId.Value, "review_left");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for review {ReviewId}", review.Id);
+        }
 
         // Load reviewer info for response
         await _db.Entry(review).Reference(r => r.Reviewer).LoadAsync();

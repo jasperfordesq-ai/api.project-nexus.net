@@ -45,7 +45,7 @@ public class GroupsController : ControllerBase
         [FromQuery] string? search = null)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (page < 1) page = 1;
         if (limit < 1) limit = 1;
@@ -103,7 +103,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> GetMyGroups()
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var groups = await _db.GroupMembers
             .AsNoTracking()
@@ -133,7 +133,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> GetGroup(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var group = await _db.Groups
             .AsNoTracking()
@@ -180,7 +180,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> CreateGroup([FromBody] CreateGroupRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (string.IsNullOrWhiteSpace(request.Name))
         {
@@ -215,9 +215,16 @@ public class GroupsController : ControllerBase
         _db.GroupMembers.Add(membership);
         await _db.SaveChangesAsync();
 
-        // Award XP and check badges for creating a group
-        await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.GroupCreated, XpLog.Sources.GroupCreated, group.Id, $"Created group: {group.Name}");
-        await _gamification.CheckAndAwardBadgesAsync(userId.Value, "group_created");
+        // Award XP and check badges for creating a group (non-critical)
+        try
+        {
+            await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.GroupCreated, XpLog.Sources.GroupCreated, group.Id, $"Created group: {group.Name}");
+            await _gamification.CheckAndAwardBadgesAsync(userId.Value, "group_created");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for group {GroupId}", group.Id);
+        }
 
         _logger.LogInformation("User {UserId} created group {GroupId}: {GroupName}", userId, group.Id, group.Name);
 
@@ -245,7 +252,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> UpdateGroup(int id, [FromBody] UpdateGroupRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var group = await _db.Groups.FirstOrDefaultAsync(g => g.Id == id);
         if (group == null)
@@ -319,7 +326,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> DeleteGroup(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var group = await _db.Groups.FirstOrDefaultAsync(g => g.Id == id);
         if (group == null)
@@ -355,7 +362,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> GetGroupMembers(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var groupExists = await _db.Groups.AnyAsync(g => g.Id == id);
         if (!groupExists)
@@ -389,7 +396,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> JoinGroup(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var group = await _db.Groups.FirstOrDefaultAsync(g => g.Id == id);
         if (group == null)
@@ -445,7 +452,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> LeaveGroup(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var membership = await _db.GroupMembers
             .FirstOrDefaultAsync(gm => gm.GroupId == id && gm.UserId == userId);
@@ -480,7 +487,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> AddMember(int id, [FromBody] AddMemberRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var group = await _db.Groups.FirstOrDefaultAsync(g => g.Id == id);
         if (group == null)
@@ -547,7 +554,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> RemoveMember(int id, int memberId)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         // Check if user is admin or owner
         var currentMembership = await _db.GroupMembers
@@ -597,7 +604,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> UpdateMemberRole(int id, int memberId, [FromBody] UpdateRoleRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         // Check if user is owner
         var currentMembership = await _db.GroupMembers
@@ -654,7 +661,7 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> TransferOwnership(int id, [FromBody] TransferOwnershipRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         // Check if user is owner
         var currentMembership = await _db.GroupMembers

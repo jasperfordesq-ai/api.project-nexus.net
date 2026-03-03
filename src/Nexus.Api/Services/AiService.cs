@@ -22,6 +22,11 @@ public class AiService
     private readonly LlamaServiceOptions _options;
     private readonly ILogger<AiService> _logger;
 
+    private static readonly System.Text.Json.JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public AiService(
         ILlamaClient llamaClient,
         NexusDbContext db,
@@ -695,9 +700,18 @@ Just respond with the title, nothing else.";
 
     /// <summary>
     /// Helper method to call the AI with a prompt.
+    /// Enforces MaxPromptLength to prevent excessive resource usage.
     /// </summary>
     private async Task<string> CallAiAsync(string prompt, CancellationToken ct)
     {
+        // Enforce prompt length limit
+        if (prompt.Length > _options.MaxPromptLength)
+        {
+            _logger.LogWarning("Prompt truncated from {OriginalLength} to {MaxLength} characters",
+                prompt.Length, _options.MaxPromptLength);
+            prompt = prompt[.._options.MaxPromptLength];
+        }
+
         var messages = new List<OllamaChatMessage>
         {
             new("system", "You are a helpful AI assistant for a timebanking community platform. Always respond with valid JSON when asked for JSON. Be concise and accurate."),
@@ -707,7 +721,25 @@ Just respond with the title, nothing else.";
         var request = new OllamaChatRequest(_options.Model, messages, false);
         var response = await _llamaClient.ChatAsync(request, ct);
 
-        return response.Message.Content;
+        return response.Message?.Content
+            ?? throw new InvalidOperationException("AI returned empty response");
+    }
+
+    /// <summary>
+    /// Sanitizes user input for inclusion in AI prompts.
+    /// Wraps content in clear delimiters to reduce prompt injection risk.
+    /// </summary>
+    private static string SanitizeForPrompt(string userInput, int maxLength = 500)
+    {
+        if (string.IsNullOrEmpty(userInput))
+            return string.Empty;
+
+        // Truncate to max length
+        if (userInput.Length > maxLength)
+            userInput = userInput[..maxLength];
+
+        // Wrap in delimiters to separate user content from system instructions
+        return $"```\n{userInput}\n```";
     }
 
     // =========================================================================
@@ -1083,7 +1115,7 @@ Respond with JSON only:
         int userId,
         CancellationToken ct = default)
     {
-        var user = await _db.Users.FindAsync(new object[] { userId }, ct);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
         if (user == null)
             return new SkillRecommendations();
 

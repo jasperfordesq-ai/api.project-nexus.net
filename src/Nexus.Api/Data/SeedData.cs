@@ -373,6 +373,16 @@ public static class SeedData
 
         db.Groups.AddRange(groups);
 
+        // Create group owner memberships (group creators should be members with owner role)
+        var groupMembers = new List<GroupMember>
+        {
+            new GroupMember { Id = 1, TenantId = 1, GroupId = 1, UserId = 1, Role = Group.Roles.Owner, JoinedAt = DateTime.UtcNow.AddDays(-10) },
+            new GroupMember { Id = 2, TenantId = 1, GroupId = 2, UserId = 1, Role = Group.Roles.Owner, JoinedAt = DateTime.UtcNow.AddDays(-8) },
+            new GroupMember { Id = 3, TenantId = 2, GroupId = 3, UserId = 2, Role = Group.Roles.Owner, JoinedAt = DateTime.UtcNow.AddDays(-7) }
+        };
+
+        db.GroupMembers.AddRange(groupMembers);
+
         // Create events for search testing
         var events = new List<Event>
         {
@@ -549,6 +559,18 @@ public static class SeedData
                     Icon = "🎖️",
                     XpReward = 100,
                     SortOrder = 10,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Badge
+                {
+                    Id = badgeId++,
+                    TenantId = tenantId,
+                    Slug = Badge.Slugs.FirstReview,
+                    Name = "First Review",
+                    Description = "Left your first review for a member or listing",
+                    Icon = "⭐",
+                    XpReward = 20,
+                    SortOrder = 11,
                     CreatedAt = DateTime.UtcNow
                 }
             });
@@ -774,6 +796,7 @@ public static class SeedData
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('messages', 'Id'), (SELECT MAX(\"Id\") FROM messages))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('connections', 'Id'), (SELECT MAX(\"Id\") FROM connections))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('groups', 'Id'), (SELECT MAX(\"Id\") FROM groups))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('group_members', 'Id'), (SELECT MAX(\"Id\") FROM group_members))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('events', 'Id'), (SELECT MAX(\"Id\") FROM events))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('badges', 'Id'), (SELECT MAX(\"Id\") FROM badges))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('reviews', 'Id'), (SELECT MAX(\"Id\") FROM reviews))");

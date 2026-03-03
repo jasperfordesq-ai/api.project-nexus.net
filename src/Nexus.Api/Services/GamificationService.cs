@@ -34,7 +34,7 @@ public class GamificationService
         {
             try
             {
-                var user = await _db.Users.FindAsync(userId);
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
                 if (user == null)
                 {
                     return new XpAwardResult { Success = false, Error = "User not found" };
@@ -316,7 +316,7 @@ public class GamificationService
 
     private async Task CheckVeteranBadge(int userId)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user != null && user.CreatedAt <= DateTime.UtcNow.AddYears(-1))
         {
             await AwardBadgeAsync(userId, Badge.Slugs.Veteran);

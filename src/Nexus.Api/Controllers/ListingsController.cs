@@ -262,9 +262,16 @@ public class ListingsController : ControllerBase
         _db.Listings.Add(listing);
         await _db.SaveChangesAsync();
 
-        // Award XP and check badges for creating a listing
-        await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.ListingCreated, XpLog.Sources.ListingCreated, listing.Id, $"Created listing: {listing.Title}");
-        await _gamification.CheckAndAwardBadgesAsync(userId.Value, "listing_created");
+        // Award XP and check badges for creating a listing (non-critical)
+        try
+        {
+            await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.ListingCreated, XpLog.Sources.ListingCreated, listing.Id, $"Created listing: {listing.Title}");
+            await _gamification.CheckAndAwardBadgesAsync(userId.Value, "listing_created");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for listing {ListingId}", listing.Id);
+        }
 
         // Reload with user info for response
         await _db.Entry(listing).Reference(l => l.User).LoadAsync();

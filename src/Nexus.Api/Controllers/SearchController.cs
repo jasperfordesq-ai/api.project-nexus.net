@@ -266,13 +266,14 @@ public class SearchController : ControllerBase
             }
         }
 
-        // Calculate total for "all" type
+        // For "all" type, total is the sum of returned items (pagination not supported for "all")
         if (type == "all")
         {
             totalCount = result.Listings.Count + result.Users.Count + result.Groups.Count + result.Events.Count;
         }
 
-        result.Pagination = PaginationDto.Create(query.Page, query.Limit, totalCount);
+        // Note: For type="all", pagination reflects per-type limits, not true cross-type paging
+        result.Pagination = PaginationDto.Create(type == "all" ? 1 : query.Page, query.Limit, totalCount);
 
         return Ok(result);
     }

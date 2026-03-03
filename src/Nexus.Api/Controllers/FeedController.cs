@@ -45,7 +45,7 @@ public class FeedController : ControllerBase
         [FromQuery] int? group_id = null)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (page < 1) page = 1;
         if (limit < 1) limit = 1;
@@ -103,7 +103,7 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> GetPost(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var post = await _db.FeedPosts
             .Where(p => p.Id == id)
@@ -138,7 +138,7 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> CreatePost([FromBody] CreatePostRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (string.IsNullOrWhiteSpace(request.Content))
         {
@@ -175,9 +175,16 @@ public class FeedController : ControllerBase
 
         _logger.LogInformation("User {UserId} created post {PostId}", userId, post.Id);
 
-        // Award XP and check badges for creating a post
-        await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.PostCreated, XpLog.Sources.PostCreated, post.Id, "Created a post");
-        await _gamification.CheckAndAwardBadgesAsync(userId.Value, "post_created");
+        // Award XP and check badges for creating a post (non-critical)
+        try
+        {
+            await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.PostCreated, XpLog.Sources.PostCreated, post.Id, "Created a post");
+            await _gamification.CheckAndAwardBadgesAsync(userId.Value, "post_created");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for post {PostId}", post.Id);
+        }
 
         // Load user for response
         var user = await _db.Users.FindAsync(userId);
@@ -213,7 +220,7 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> UpdatePost(int id, [FromBody] UpdatePostRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id);
         if (post == null)
@@ -273,7 +280,7 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> DeletePost(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id);
         if (post == null)
@@ -316,7 +323,7 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> LikePost(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id);
         if (post == null)
@@ -344,8 +351,15 @@ public class FeedController : ControllerBase
 
         var likeCount = await _db.PostLikes.CountAsync(l => l.PostId == id);
 
-        // Check if post author should earn popular post badge
-        await _gamification.CheckAndAwardBadgesAsync(post.UserId, "post_liked");
+        // Check if post author should earn popular post badge (non-critical)
+        try
+        {
+            await _gamification.CheckAndAwardBadgesAsync(post.UserId, "post_liked");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check badges for post {PostId} like", post.Id);
+        }
 
         _logger.LogInformation("User {UserId} liked post {PostId}", userId, id);
 
@@ -364,7 +378,7 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> UnlikePost(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var like = await _db.PostLikes
             .FirstOrDefaultAsync(l => l.PostId == id && l.UserId == userId);
@@ -396,7 +410,7 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> GetComments(int id, [FromQuery] int page = 1, [FromQuery] int limit = 50)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var postExists = await _db.FeedPosts.AnyAsync(p => p.Id == id);
         if (!postExists)
@@ -446,7 +460,7 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id);
         if (post == null)
@@ -474,8 +488,15 @@ public class FeedController : ControllerBase
         _db.PostComments.Add(comment);
         await _db.SaveChangesAsync();
 
-        // Award XP for adding a comment
-        await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.CommentAdded, XpLog.Sources.CommentAdded, comment.Id, "Added a comment");
+        // Award XP for adding a comment (non-critical)
+        try
+        {
+            await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.CommentAdded, XpLog.Sources.CommentAdded, comment.Id, "Added a comment");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP for comment {CommentId}", comment.Id);
+        }
 
         var user = await _db.Users.FindAsync(userId);
         if (user == null)
@@ -506,7 +527,7 @@ public class FeedController : ControllerBase
     public async Task<IActionResult> DeleteComment(int id, int commentId)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var comment = await _db.PostComments
             .Include(c => c.Post)

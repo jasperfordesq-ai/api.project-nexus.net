@@ -73,13 +73,13 @@ public class CacheService
 
     /// <summary>
     /// Remove all items matching a prefix for a tenant.
+    /// NOTE: IMemoryCache does not support enumeration, so this method is a no-op.
+    /// Use the specific Invalidate* methods (e.g., InvalidateCategories) instead.
     /// </summary>
+    [Obsolete("Use specific Invalidate* methods instead. IMemoryCache does not support prefix-based removal.")]
     public void RemoveByPrefix(string prefix, int tenantId)
     {
-        // Note: IMemoryCache doesn't support enumeration, so we track keys we set
-        // For now, callers must explicitly remove known keys
-        // In production, consider using IDistributedCache with Redis for better control
-        _logger.LogDebug("Cache invalidation requested: {Prefix} for tenant {TenantId}", prefix, tenantId);
+        _logger.LogWarning("RemoveByPrefix is a no-op. Use specific Invalidate* methods instead. Prefix: {Prefix}, TenantId: {TenantId}", prefix, tenantId);
     }
 
     #endregion

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
+using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Hubs;
@@ -14,6 +15,11 @@ namespace Nexus.Api.Hubs;
 /// <summary>
 /// SignalR hub for real-time messaging.
 /// Handles WebSocket connections and broadcasts new messages to recipients.
+///
+/// TENANT ISOLATION: SignalR hub methods do NOT go through the TenantResolutionMiddleware
+/// on each invocation (only the initial WebSocket upgrade request does). Therefore, this hub
+/// explicitly extracts tenant_id from JWT claims and passes it to the connection service
+/// and query filters to ensure proper tenant isolation.
 ///
 /// Client events (server → client):
 /// - ReceiveMessage: New message received
@@ -31,27 +37,36 @@ public class MessagesHub : Hub
     private readonly ILogger<MessagesHub> _logger;
     private readonly IUserConnectionService _connectionService;
     private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
 
-    public MessagesHub(ILogger<MessagesHub> logger, IUserConnectionService connectionService, NexusDbContext db)
+    public MessagesHub(
+        ILogger<MessagesHub> logger,
+        IUserConnectionService connectionService,
+        NexusDbContext db,
+        TenantContext tenantContext)
     {
         _logger = logger;
         _connectionService = connectionService;
         _db = db;
+        _tenantContext = tenantContext;
     }
 
     public override async Task OnConnectedAsync()
     {
         var userId = GetUserId();
-        if (!userId.HasValue)
+        var tenantId = GetTenantId();
+        if (!userId.HasValue || !tenantId.HasValue)
         {
-            _logger.LogWarning("Unauthenticated connection attempt to MessagesHub");
-            await base.OnConnectedAsync();
+            _logger.LogWarning("Connection attempt to MessagesHub without valid user/tenant claims. Aborting");
+            Context.Abort();
             return;
         }
 
-        _connectionService.AddConnection(userId.Value, Context.ConnectionId);
-        _logger.LogInformation("User {UserId} connected to MessagesHub with connection {ConnectionId}",
-            userId.Value, Context.ConnectionId);
+        EnsureTenantContext(tenantId.Value);
+
+        _connectionService.AddConnection(tenantId.Value, userId.Value, Context.ConnectionId);
+        _logger.LogInformation("User {UserId} (tenant {TenantId}) connected to MessagesHub with connection {ConnectionId}",
+            userId.Value, tenantId.Value, Context.ConnectionId);
 
         await base.OnConnectedAsync();
     }
@@ -59,11 +74,12 @@ public class MessagesHub : Hub
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var userId = GetUserId();
-        if (userId.HasValue)
+        var tenantId = GetTenantId();
+        if (userId.HasValue && tenantId.HasValue)
         {
-            _connectionService.RemoveConnection(userId.Value, Context.ConnectionId);
-            _logger.LogInformation("User {UserId} disconnected from MessagesHub. Connection {ConnectionId}",
-                userId.Value, Context.ConnectionId);
+            _connectionService.RemoveConnection(tenantId.Value, userId.Value, Context.ConnectionId);
+            _logger.LogInformation("User {UserId} (tenant {TenantId}) disconnected from MessagesHub. Connection {ConnectionId}",
+                userId.Value, tenantId.Value, Context.ConnectionId);
         }
 
         if (exception != null)
@@ -78,25 +94,30 @@ public class MessagesHub : Hub
     /// <summary>
     /// Join a conversation group to receive real-time updates for that conversation.
     /// Validates that the user is a participant in the conversation before allowing subscription.
+    /// Explicitly checks tenant_id from JWT to prevent cross-tenant access.
     /// </summary>
     public async Task JoinConversation(int conversationId)
     {
         var userId = GetUserId();
-        if (!userId.HasValue)
+        var tenantId = GetTenantId();
+        if (!userId.HasValue || !tenantId.HasValue)
         {
             _logger.LogWarning("Unauthenticated user tried to join conversation {ConversationId}", conversationId);
             return;
         }
 
-        // Verify the user is a participant in this conversation
+        EnsureTenantContext(tenantId.Value);
+
+        // Verify the user is a participant in this conversation within their tenant
         var isParticipant = await _db.Conversations
             .AnyAsync(c => c.Id == conversationId &&
+                          c.TenantId == tenantId.Value &&
                           (c.Participant1Id == userId.Value || c.Participant2Id == userId.Value));
 
         if (!isParticipant)
         {
-            _logger.LogWarning("User {UserId} attempted to join conversation {ConversationId} without being a participant",
-                userId.Value, conversationId);
+            _logger.LogWarning("User {UserId} (tenant {TenantId}) attempted to join conversation {ConversationId} without being a participant",
+                userId.Value, tenantId.Value, conversationId);
             return;
         }
 
@@ -115,8 +136,9 @@ public class MessagesHub : Hub
         var groupName = GetConversationGroupName(conversationId);
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
 
-        _logger.LogDebug("Connection {ConnectionId} left conversation group {GroupName}",
-            Context.ConnectionId, groupName);
+        var userId = GetUserId();
+        _logger.LogDebug("User {UserId} (connection {ConnectionId}) left conversation group {GroupName}",
+            userId, Context.ConnectionId, groupName);
     }
 
     /// <summary>
@@ -129,11 +151,24 @@ public class MessagesHub : Hub
 
     private int? GetUserId()
     {
-        var userIdClaim = Context.User?.FindFirst("sub")?.Value;
-        if (int.TryParse(userIdClaim, out var userId))
+        return Context.User?.GetUserId();
+    }
+
+    private int? GetTenantId()
+    {
+        return Context.User?.GetTenantId();
+    }
+
+    /// <summary>
+    /// Ensures the TenantContext is set for the current hub invocation scope.
+    /// SignalR hub method calls don't re-execute the HTTP middleware pipeline,
+    /// so we must set the tenant context from JWT claims on each invocation.
+    /// </summary>
+    private void EnsureTenantContext(int tenantId)
+    {
+        if (!_tenantContext.IsResolved)
         {
-            return userId;
+            _tenantContext.SetTenant(tenantId);
         }
-        return null;
     }
 }

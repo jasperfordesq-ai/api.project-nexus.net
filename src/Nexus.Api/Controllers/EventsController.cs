@@ -47,7 +47,7 @@ public class EventsController : ControllerBase
         [FromQuery] string? search = null)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (page < 1) page = 1;
         if (limit < 1) limit = 1;
@@ -125,7 +125,7 @@ public class EventsController : ControllerBase
         [FromQuery] int limit = 20)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (page < 1) page = 1;
         if (limit < 1) limit = 1;
@@ -179,7 +179,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> GetEvent(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var eventEntity = await _db.Events
             .AsNoTracking()
@@ -238,7 +238,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> CreateEvent([FromBody] CreateEventRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (string.IsNullOrWhiteSpace(request.Title))
         {
@@ -299,9 +299,16 @@ public class EventsController : ControllerBase
         _db.EventRsvps.Add(rsvp);
         await _db.SaveChangesAsync();
 
-        // Award XP and check badges for creating an event
-        await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.EventCreated, XpLog.Sources.EventCreated, eventEntity.Id, $"Created event: {eventEntity.Title}");
-        await _gamification.CheckAndAwardBadgesAsync(userId.Value, "event_created");
+        // Award XP and check badges for creating an event (non-critical)
+        try
+        {
+            await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.EventCreated, XpLog.Sources.EventCreated, eventEntity.Id, $"Created event: {eventEntity.Title}");
+            await _gamification.CheckAndAwardBadgesAsync(userId.Value, "event_created");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for event {EventId}", eventEntity.Id);
+        }
 
         _logger.LogInformation("User {UserId} created event {EventId}: {Title}", userId, eventEntity.Id, eventEntity.Title);
 
@@ -333,7 +340,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> UpdateEvent(int id, [FromBody] UpdateEventRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var eventEntity = await _db.Events.FirstOrDefaultAsync(e => e.Id == id);
         if (eventEntity == null)
@@ -446,7 +453,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> CancelEvent(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var eventEntity = await _db.Events.FirstOrDefaultAsync(e => e.Id == id);
         if (eventEntity == null)
@@ -490,7 +497,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> DeleteEvent(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var eventEntity = await _db.Events.FirstOrDefaultAsync(e => e.Id == id);
         if (eventEntity == null)
@@ -533,7 +540,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> GetEventRsvps(int id, [FromQuery] string? status = null)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var eventExists = await _db.Events.AnyAsync(e => e.Id == id);
         if (!eventExists)
@@ -570,7 +577,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> Rsvp(int id, [FromBody] RsvpRequest request)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var eventEntity = await _db.Events
             .Include(e => e.Rsvps)
@@ -652,7 +659,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> RemoveRsvp(int id)
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         var rsvp = await _db.EventRsvps
             .FirstOrDefaultAsync(r => r.EventId == id && r.UserId == userId);

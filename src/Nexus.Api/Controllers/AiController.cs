@@ -417,7 +417,7 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            return Unauthorized(new { error = "Invalid token" });
         }
 
         try
@@ -523,7 +523,7 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            return Unauthorized(new { error = "Invalid token" });
         }
 
         if (request.Title?.Length > 255)
@@ -595,7 +595,7 @@ public class AiController : ControllerBase
         }
 
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         try
         {
@@ -623,7 +623,7 @@ public class AiController : ControllerBase
         CancellationToken ct = default)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (limit < 1) limit = 1;
         if (limit > 100) limit = 100;
@@ -643,7 +643,7 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            return Unauthorized(new { error = "Invalid token" });
         }
 
         if (limit < 1) limit = 1;
@@ -665,7 +665,7 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            return Unauthorized(new { error = "Invalid token" });
         }
 
         var success = await _aiService.ArchiveConversation(conversationId, userId, ct);
@@ -817,7 +817,7 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            return Unauthorized(new { error = "Invalid token" });
         }
 
         try
@@ -852,7 +852,7 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            return Unauthorized(new { error = "Invalid token" });
         }
 
         if (count < 1) count = 1;
@@ -924,7 +924,7 @@ public class AiController : ControllerBase
             ?? User.FindFirst("sub")?.Value;
         if (!int.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized();
+            return Unauthorized(new { error = "Invalid token" });
         }
 
         try

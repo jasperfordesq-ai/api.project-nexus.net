@@ -52,8 +52,7 @@ public class TenantResolutionMiddleware
 
         // Skip tenant resolution for excluded paths
         if (_excludedPaths.Any(p => path.Equals(p, StringComparison.OrdinalIgnoreCase) ||
-                                    path.StartsWith(p + "/", StringComparison.OrdinalIgnoreCase) ||
-                                    path.StartsWith(p + "?", StringComparison.OrdinalIgnoreCase)))
+                                    path.StartsWith(p + "/", StringComparison.OrdinalIgnoreCase)))
         {
             await _next(context);
             return;
