@@ -22,6 +22,10 @@ public class SecurityHeadersMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // Remove headers that leak server technology details
+        context.Response.Headers.Remove("X-Powered-By");
+        context.Response.Headers.Remove("Server");
+
         // X-Content-Type-Options: Prevents MIME type sniffing
         context.Response.Headers["X-Content-Type-Options"] = "nosniff";
 

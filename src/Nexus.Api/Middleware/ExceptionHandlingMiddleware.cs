@@ -60,6 +60,7 @@ public class ExceptionHandlingMiddleware
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "unauthorized"),
             InvalidOperationException => (HttpStatusCode.Conflict, "conflict"),
             KeyNotFoundException => (HttpStatusCode.NotFound, "not_found"),
+            FileNotFoundException => (HttpStatusCode.NotFound, "not_found"),
             NotSupportedException => (HttpStatusCode.NotImplemented, "not_implemented"),
             TimeoutException => (HttpStatusCode.GatewayTimeout, "timeout"),
             OperationCanceledException => (HttpStatusCode.ServiceUnavailable, "cancelled"),

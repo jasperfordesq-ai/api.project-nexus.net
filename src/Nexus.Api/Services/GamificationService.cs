@@ -27,14 +27,14 @@ public class GamificationService
     /// Award XP to a user and check for level up.
     /// Handles concurrency conflicts with retry logic.
     /// </summary>
-    public async Task<XpAwardResult> AwardXpAsync(int userId, int amount, string source, int? referenceId = null, string? description = null)
+    public async Task<XpAwardResult> AwardXpAsync(int userId, int amount, string source, int? referenceId = null, string? description = null, CancellationToken ct = default)
     {
         const int maxRetries = 3;
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
-                var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
                 if (user == null)
                 {
                     return new XpAwardResult { Success = false, Error = "User not found" };
@@ -63,7 +63,7 @@ public class GamificationService
                 var leveledUp = newLevel > previousLevel;
                 user.Level = newLevel;
 
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(ct);
 
                 _logger.LogInformation(
                     "User {UserId} awarded {Amount} XP for {Source}. Total: {TotalXp}, Level: {Level}",
@@ -117,10 +117,10 @@ public class GamificationService
     /// <summary>
     /// Award a badge to a user if they don't already have it.
     /// </summary>
-    public async Task<BadgeAwardResult> AwardBadgeAsync(int userId, string badgeSlug)
+    public async Task<BadgeAwardResult> AwardBadgeAsync(int userId, string badgeSlug, CancellationToken ct = default)
     {
         // Find the badge
-        var badge = await _db.Badges.FirstOrDefaultAsync(b => b.Slug == badgeSlug && b.IsActive);
+        var badge = await _db.Badges.FirstOrDefaultAsync(b => b.Slug == badgeSlug && b.IsActive, ct);
         if (badge == null)
         {
             return new BadgeAwardResult { Success = false, Error = "Badge not found" };
@@ -128,7 +128,7 @@ public class GamificationService
 
         // Check if user already has this badge
         var existingBadge = await _db.UserBadges
-            .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badge.Id);
+            .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badge.Id, ct);
 
         if (existingBadge != null)
         {
@@ -145,9 +145,10 @@ public class GamificationService
 
         try
         {
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) == true
+            || ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
         {
             // Unique constraint violation - another request already awarded this badge
             _db.Entry(userBadge).State = EntityState.Detached;
@@ -303,10 +304,11 @@ public class GamificationService
 
     private async Task CheckPopularPostBadge(int userId)
     {
-        // Check if user has any post with 10+ likes
+        // Check if user has any post with 10+ likes using a subquery count
+        // to avoid loading Likes navigation collections into memory
         var hasPopularPost = await _db.FeedPosts
             .Where(p => p.UserId == userId)
-            .AnyAsync(p => p.Likes.Count >= 10);
+            .AnyAsync(p => _db.PostLikes.Count(l => l.PostId == p.Id) >= 10);
 
         if (hasPopularPost)
         {

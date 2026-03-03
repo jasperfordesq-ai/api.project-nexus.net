@@ -71,6 +71,7 @@ builder.Services.AddControllers();
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 5 * 1024 * 1024; // 5MB
+    options.AddServerHeader = false; // Don't expose server technology in headers
 });
 
 // API Versioning
@@ -133,9 +134,17 @@ builder.Services.AddResponseCompression(options =>
 });
 
 // PostgreSQL + EF Core
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!isTestEnvironment && string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException(
+        "DefaultConnection must be configured. " +
+        "Set ConnectionStrings__DefaultConnection environment variable.");
+}
+
 builder.Services.AddDbContext<NexusDbContext>((sp, options) =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseNpgsql(connectionString);
 });
 
 // TenantContext - scoped per request
@@ -161,6 +170,7 @@ builder.Services.AddScoped<AiNotificationService>();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserConnectionService, UserConnectionService>();
 builder.Services.AddScoped<IRealTimeMessagingService, RealTimeMessagingService>();
+builder.Services.AddHostedService<StaleConnectionCleanupService>();
 
 // Event publishing (RabbitMQ)
 builder.Services.AddEventPublishing(builder.Configuration);
@@ -293,7 +303,7 @@ builder.Services.AddAuthorization(options =>
 
 // Health checks
 builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
+    .AddNpgSql(connectionString ?? "Host=localhost") // Validated above; fallback only for test environment
     .AddCheck<LlamaHealthCheck>("llama", tags: new[] { "ready" });
 
 // CORS - Only browser origins, no internal services

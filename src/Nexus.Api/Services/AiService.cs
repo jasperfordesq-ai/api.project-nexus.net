@@ -73,7 +73,7 @@ Only respond with the JSON, nothing else.";
             // Parse the JSON response
             var suggestions = System.Text.Json.JsonSerializer.Deserialize<ListingSuggestions>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return suggestions ?? new ListingSuggestions();
         }
@@ -158,7 +158,7 @@ Return up to {maxResults} matches, sorted by score. Only JSON, no markdown.";
         {
             var matches = System.Text.Json.JsonSerializer.Deserialize<List<AiMatch>>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             ) ?? new List<AiMatch>();
 
             // Enrich with user data
@@ -245,7 +245,7 @@ Return up to {maxResults} results sorted by relevance. Only JSON, no markdown.";
         {
             var aiResults = System.Text.Json.JsonSerializer.Deserialize<List<AiSearchResult>>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             ) ?? new List<AiSearchResult>();
 
             var results = new List<SearchResult>();
@@ -311,7 +311,7 @@ Only JSON, no markdown.";
         {
             var result = System.Text.Json.JsonSerializer.Deserialize<ModerationResult>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return result ?? new ModerationResult { IsApproved = true, Severity = "none" };
         }
@@ -372,7 +372,7 @@ Only JSON, no markdown.";
         {
             var suggestions = System.Text.Json.JsonSerializer.Deserialize<ProfileSuggestions>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return suggestions ?? new ProfileSuggestions();
         }
@@ -432,7 +432,7 @@ Health score is 0-100. Only JSON, no markdown.";
         {
             var insights = System.Text.Json.JsonSerializer.Deserialize<CommunityInsights>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             if (insights != null)
             {
@@ -692,7 +692,7 @@ Just respond with the title, nothing else.";
 
         if (!string.IsNullOrEmpty(context))
         {
-            basePrompt += $"\n\nConversation context: {context}";
+            basePrompt += $"\n\nConversation context: {SanitizeForPrompt(context)}";
         }
 
         return basePrompt;
@@ -779,7 +779,7 @@ Respond with JSON only:
         {
             var result = System.Text.Json.JsonSerializer.Deserialize<SmartReplySuggestions>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return result ?? new SmartReplySuggestions();
         }
@@ -830,7 +830,7 @@ Generate a compelling listing. Respond with JSON only:
         {
             var result = System.Text.Json.JsonSerializer.Deserialize<GeneratedListing>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return result ?? new GeneratedListing { Title = keywords, Description = "" };
         }
@@ -877,7 +877,7 @@ Respond with JSON only:
         {
             var result = System.Text.Json.JsonSerializer.Deserialize<SentimentAnalysis>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return result ?? new SentimentAnalysis { Sentiment = "neutral" };
         }
@@ -949,7 +949,7 @@ Generate 3 bio options of different lengths. Respond with JSON only:
         {
             var result = System.Text.Json.JsonSerializer.Deserialize<GeneratedBio>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return result ?? new GeneratedBio();
         }
@@ -1034,7 +1034,7 @@ Respond with JSON only:
         {
             var result = System.Text.Json.JsonSerializer.Deserialize<PersonalizedChallenges>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return result ?? GenerateDefaultChallenges(user.Level);
         }
@@ -1094,7 +1094,7 @@ Respond with JSON only:
         {
             var result = System.Text.Json.JsonSerializer.Deserialize<ConversationSummaryResult>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return result ?? new ConversationSummaryResult { Summary = "Unable to summarize." };
         }
@@ -1164,7 +1164,7 @@ Respond with JSON only:
         {
             var result = System.Text.Json.JsonSerializer.Deserialize<SkillRecommendations>(
                 response,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                _jsonOptions
             );
             return result ?? new SkillRecommendations();
         }

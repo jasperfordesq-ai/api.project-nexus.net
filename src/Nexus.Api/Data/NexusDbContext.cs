@@ -115,6 +115,9 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+            // Composite index for common listing feed queries (status + sort by newest)
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -177,6 +180,9 @@ public class NexusDbContext : DbContext
                 .HasForeignKey(e => e.ListingId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // Check constraint: transaction amounts must be positive
+            entity.ToTable(t => t.HasCheckConstraint("CK_transactions_amount_positive", "\"Amount\" > 0"));
+
             // CRITICAL: Global query filter for tenant isolation
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
@@ -191,6 +197,7 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.Participant1Id);
             entity.HasIndex(e => e.Participant2Id);
+            entity.HasIndex(e => e.UpdatedAt);
             entity.HasIndex(e => new { e.TenantId, e.Participant1Id, e.Participant2Id }).IsUnique();
 
             // Relationships
@@ -226,6 +233,8 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.SenderId);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => new { e.ConversationId, e.IsRead });
+            // Composite index for paginated message loads (conversation + chronological order)
+            entity.HasIndex(e => new { e.ConversationId, e.CreatedAt });
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -260,7 +269,7 @@ public class NexusDbContext : DbContext
             // Indexes
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => e.TokenHash);
+            entity.HasIndex(e => e.TokenHash).IsUnique();
             entity.HasIndex(e => e.ExpiresAt);
 
             // Relationships
@@ -288,7 +297,7 @@ public class NexusDbContext : DbContext
             // Indexes
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => e.TokenHash);
+            entity.HasIndex(e => e.TokenHash).IsUnique();
             entity.HasIndex(e => e.ExpiresAt);
 
             // Relationships
@@ -388,6 +397,9 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.CreatedById);
             entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.IsPrivate);
+            // Composite index for group listings
+            entity.HasIndex(e => new { e.TenantId, e.CreatedAt });
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -453,7 +465,10 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.CreatedById);
             entity.HasIndex(e => e.GroupId);
             entity.HasIndex(e => e.StartsAt);
+            entity.HasIndex(e => e.EndsAt);
             entity.HasIndex(e => e.IsCancelled);
+            // Composite index for event listing queries
+            entity.HasIndex(e => new { e.TenantId, e.StartsAt, e.IsCancelled });
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -525,6 +540,8 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.GroupId);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => e.IsPinned);
+            // Composite index for feed ordering (pinned first, then newest)
+            entity.HasIndex(e => new { e.TenantId, e.IsPinned, e.CreatedAt });
 
             // Relationships
             entity.HasOne(e => e.Tenant)
