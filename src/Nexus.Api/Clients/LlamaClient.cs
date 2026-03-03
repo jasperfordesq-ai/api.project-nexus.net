@@ -28,8 +28,27 @@ public class LlamaClient : ILlamaClient
         _logger.LogInformation("Sending chat request with {MessageCount} messages to model {Model}",
             request.Messages.Count, request.Model);
 
-        var response = await _httpClient.PostAsJsonAsync("/api/chat", request, ct);
-        response.EnsureSuccessStatusCode();
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsJsonAsync("/api/chat", request, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Llama service unreachable for chat request");
+            throw new InvalidOperationException("AI service is currently unavailable. Please try again later.", ex);
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "Llama chat request timed out");
+            throw new TimeoutException("AI service request timed out. Please try again later.", ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Llama chat request failed with status {StatusCode}", response.StatusCode);
+            throw new InvalidOperationException($"AI service returned error: {response.StatusCode}");
+        }
 
         var result = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(ct)
             ?? throw new InvalidOperationException("Failed to deserialize chat response");
@@ -45,8 +64,27 @@ public class LlamaClient : ILlamaClient
     {
         _logger.LogInformation("Generating embeddings for model {Model}", request.Model);
 
-        var response = await _httpClient.PostAsJsonAsync("/api/embeddings", request, ct);
-        response.EnsureSuccessStatusCode();
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsJsonAsync("/api/embeddings", request, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Llama service unreachable for embedding request");
+            throw new InvalidOperationException("AI service is currently unavailable. Please try again later.", ex);
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "Llama embedding request timed out");
+            throw new TimeoutException("AI service request timed out. Please try again later.", ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Llama embedding request failed with status {StatusCode}", response.StatusCode);
+            throw new InvalidOperationException($"AI service returned error: {response.StatusCode}");
+        }
 
         return await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(ct)
             ?? throw new InvalidOperationException("Failed to deserialize embedding response");
@@ -57,8 +95,27 @@ public class LlamaClient : ILlamaClient
     {
         _logger.LogDebug("Fetching available models from Ollama");
 
-        var response = await _httpClient.GetAsync("/api/tags", ct);
-        response.EnsureSuccessStatusCode();
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync("/api/tags", ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Llama service unreachable when fetching models");
+            throw;
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "Llama models request timed out");
+            throw new TimeoutException("AI service request timed out.", ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Llama models request failed with status {StatusCode}", response.StatusCode);
+            throw new HttpRequestException($"AI service returned error: {response.StatusCode}");
+        }
 
         var result = await response.Content.ReadFromJsonAsync<OllamaTagsResponse>(ct)
             ?? throw new InvalidOperationException("Failed to deserialize models response");

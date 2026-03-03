@@ -201,6 +201,9 @@ public class GroupsController : ControllerBase
             ImageUrl = request.ImageUrl?.Trim()
         };
 
+        // Use transaction to ensure group + owner membership are created atomically
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
         _db.Groups.Add(group);
         await _db.SaveChangesAsync();
 
@@ -214,6 +217,7 @@ public class GroupsController : ControllerBase
 
         _db.GroupMembers.Add(membership);
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         // Award XP and check badges for creating a group (non-critical)
         try

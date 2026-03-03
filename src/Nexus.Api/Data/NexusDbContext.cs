@@ -487,6 +487,7 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.EventId);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.RespondedAt);
             // Unique constraint: one RSVP per user per event
             entity.HasIndex(e => new { e.TenantId, e.EventId, e.UserId }).IsUnique();
 
@@ -624,6 +625,7 @@ public class NexusDbContext : DbContext
             // Indexes
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.Slug);
+            entity.HasIndex(e => e.IsActive);
             // Unique constraint: slug per tenant
             entity.HasIndex(e => new { e.TenantId, e.Slug }).IsUnique();
 
@@ -735,12 +737,12 @@ public class NexusDbContext : DbContext
             entity.HasOne(e => e.TargetUser)
                 .WithMany()
                 .HasForeignKey(e => e.TargetUserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.TargetListing)
                 .WithMany()
                 .HasForeignKey(e => e.TargetListingId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Ensure a review targets at least one entity (user or listing)
             entity.ToTable(t => t.HasCheckConstraint(
@@ -821,6 +823,7 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.Slug);
             entity.HasIndex(e => e.ParentCategoryId);
+            entity.HasIndex(e => e.IsActive);
             // Unique constraint: slug per tenant
             entity.HasIndex(e => new { e.TenantId, e.Slug }).IsUnique();
 

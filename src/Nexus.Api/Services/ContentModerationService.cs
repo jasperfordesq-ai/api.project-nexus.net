@@ -210,8 +210,10 @@ public class ContentModerationService
                 var result = await _aiService.ModerateContent(item.Content, item.ContentType, ct);
                 outcomes.Add(ProcessModerationResult(result, item.ContentType, item.EntityId));
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
+                    item.ContentType, item.EntityId);
                 outcomes.Add(new ContentModerationOutcome
                 {
                     IsApproved = true,

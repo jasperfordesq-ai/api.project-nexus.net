@@ -434,6 +434,50 @@ public static class SeedData
 
         db.Events.AddRange(events);
 
+        // Create event RSVPs (creators automatically RSVP as going)
+        var eventRsvps = new List<EventRsvp>
+        {
+            new EventRsvp { Id = 1, TenantId = 1, EventId = 1, UserId = 1, Status = Event.RsvpStatus.Going, RespondedAt = DateTime.UtcNow.AddDays(-5) },
+            new EventRsvp { Id = 2, TenantId = 1, EventId = 2, UserId = 3, Status = Event.RsvpStatus.Going, RespondedAt = DateTime.UtcNow.AddDays(-3) },
+            new EventRsvp { Id = 3, TenantId = 2, EventId = 3, UserId = 2, Status = Event.RsvpStatus.Going, RespondedAt = DateTime.UtcNow.AddDays(-2) },
+            // Charlie RSVPs to Alice's gardening workshop
+            new EventRsvp { Id = 4, TenantId = 1, EventId = 1, UserId = 3, Status = Event.RsvpStatus.Going, RespondedAt = DateTime.UtcNow.AddDays(-4) }
+        };
+
+        db.EventRsvps.AddRange(eventRsvps);
+
+        // Create feed posts for testing social feed
+        var feedPosts = new List<FeedPost>
+        {
+            new FeedPost
+            {
+                Id = 1,
+                TenantId = 1,
+                UserId = 1,  // Alice
+                Content = "Just completed my first home repair exchange! This timebanking community is amazing.",
+                CreatedAt = DateTime.UtcNow.AddDays(-4)
+            },
+            new FeedPost
+            {
+                Id = 2,
+                TenantId = 1,
+                UserId = 3,  // Charlie
+                GroupId = 1,  // Community Gardeners group
+                Content = "Great turnout at today's garden meetup! We planted tomatoes, peppers, and herbs.",
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            },
+            new FeedPost
+            {
+                Id = 3,
+                TenantId = 2,
+                UserId = 2,  // Bob
+                Content = "Looking forward to the upcoming cooking class! Who's joining?",
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            }
+        };
+
+        db.FeedPosts.AddRange(feedPosts);
+
         // Create badges for gamification (for both tenants)
         var badges = new List<Badge>();
         var badgeId = 1;
@@ -798,13 +842,15 @@ public static class SeedData
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('groups', 'Id'), (SELECT MAX(\"Id\") FROM groups))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('group_members', 'Id'), (SELECT MAX(\"Id\") FROM group_members))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('events', 'Id'), (SELECT MAX(\"Id\") FROM events))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('event_rsvps', 'Id'), (SELECT MAX(\"Id\") FROM event_rsvps))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('feed_posts', 'Id'), (SELECT MAX(\"Id\") FROM feed_posts))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('badges', 'Id'), (SELECT MAX(\"Id\") FROM badges))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('reviews', 'Id'), (SELECT MAX(\"Id\") FROM reviews))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('categories', 'Id'), (SELECT MAX(\"Id\") FROM categories))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('roles', 'Id'), (SELECT MAX(\"Id\") FROM roles))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('tenant_configs', 'Id'), (SELECT MAX(\"Id\") FROM tenant_configs))");
 
-        logger.LogInformation("Seeded {TenantCount} tenants, {UserCount} users, {ListingCount} listings, {TransactionCount} transactions, {ConversationCount} conversations, {MessageCount} messages, {ConnectionCount} connections, {GroupCount} groups, {EventCount} events, {BadgeCount} badges, {ReviewCount} reviews, {CategoryCount} categories, {RoleCount} roles, {ConfigCount} configs",
-            2, 3, listings.Count, transactions.Count, conversations.Count, messages.Count, connections.Count, groups.Count, events.Count, badges.Count, reviews.Count, categories.Count, roles.Count, tenantConfigs.Count);
+        logger.LogInformation("Seeded {TenantCount} tenants, {UserCount} users, {ListingCount} listings, {TransactionCount} transactions, {ConversationCount} conversations, {MessageCount} messages, {ConnectionCount} connections, {GroupCount} groups, {EventCount} events, {RsvpCount} RSVPs, {PostCount} posts, {BadgeCount} badges, {ReviewCount} reviews, {CategoryCount} categories, {RoleCount} roles, {ConfigCount} configs",
+            2, 3, listings.Count, transactions.Count, conversations.Count, messages.Count, connections.Count, groups.Count, events.Count, eventRsvps.Count, feedPosts.Count, badges.Count, reviews.Count, categories.Count, roles.Count, tenantConfigs.Count);
     }
 }
