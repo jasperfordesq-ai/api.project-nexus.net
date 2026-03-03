@@ -17,10 +17,12 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<NexusDbCon
 {
     public NexusDbContext CreateDbContext(string[] args)
     {
-        // Use a default connection string for design-time operations
-        // This can be overridden by environment variable or command line args
+        // Connection string for design-time operations (EF migrations)
+        // MUST be provided via environment variable - see compose.yml for Docker setup
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Port=5434;Database=nexus_dev;Username=postgres;Password=postgres";
+            ?? throw new InvalidOperationException(
+                "ConnectionStrings__DefaultConnection environment variable is required for design-time operations. "
+                + "Run EF commands inside Docker: docker compose exec api dotnet ef ...");
 
         var optionsBuilder = new DbContextOptionsBuilder<NexusDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

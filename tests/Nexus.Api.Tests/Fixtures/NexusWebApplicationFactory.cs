@@ -29,8 +29,10 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
 
     public string ConnectionString => _postgres.GetConnectionString();
 
-    // Test JWT secret (32+ characters as required)
-    private const string TestJwtSecret = "TestSecretKeyForIntegrationTests123!";
+    // Test JWT secret - generated deterministically to avoid hardcoded secrets in source control
+    private static readonly string TestJwtSecret = Convert.ToBase64String(
+        System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes("nexus-test-environment-jwt")));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

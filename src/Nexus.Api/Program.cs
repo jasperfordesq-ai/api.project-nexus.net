@@ -225,10 +225,12 @@ if (!isTestEnvironment && (string.IsNullOrEmpty(jwtSecret) || jwtSecret.Contains
         "Jwt:Secret must be configured via environment variable. " +
         "Set JWT_SECRET or Jwt__Secret environment variable.");
 }
-// For testing, use a default secret if not configured
+// For testing, generate a deterministic secret if not configured via environment
 if (isTestEnvironment && string.IsNullOrEmpty(jwtSecret))
 {
-    jwtSecret = "TestSecretKeyForIntegrationTests123!";
+    jwtSecret = Convert.ToBase64String(
+        System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes("nexus-test-environment-jwt")));
 }
 
 // Check if issuer/audience are configured (PHP may not set these)
