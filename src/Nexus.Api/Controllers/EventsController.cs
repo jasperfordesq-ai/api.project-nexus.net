@@ -120,15 +120,27 @@ public class EventsController : ControllerBase
     /// GET /api/events/my - List events the current user has RSVP'd to.
     /// </summary>
     [HttpGet("my")]
-    public async Task<IActionResult> GetMyEvents()
+    public async Task<IActionResult> GetMyEvents(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20)
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized();
 
-        var events = await _db.EventRsvps
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 1;
+        if (limit > 100) limit = 100;
+
+        var query = _db.EventRsvps
             .AsNoTracking()
-            .Where(r => r.UserId == userId && r.Event != null && !r.Event.IsCancelled)
+            .Where(r => r.UserId == userId && r.Event != null && !r.Event.IsCancelled);
+
+        var total = await query.CountAsync();
+
+        var events = await query
             .OrderBy(r => r.Event!.StartsAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
             .Select(r => new
             {
                 r.Event!.Id,
@@ -147,7 +159,17 @@ public class EventsController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(new { data = events });
+        return Ok(new
+        {
+            data = events,
+            pagination = new
+            {
+                page,
+                limit,
+                total,
+                pages = (int)Math.Ceiling((double)total / limit)
+            }
+        });
     }
 
     /// <summary>

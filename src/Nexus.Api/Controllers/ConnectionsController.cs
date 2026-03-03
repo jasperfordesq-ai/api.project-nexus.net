@@ -34,10 +34,17 @@ public class ConnectionsController : ControllerBase
     /// Returns accepted connections and pending requests (both incoming and outgoing)
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetConnections([FromQuery] string? status = null)
+    public async Task<IActionResult> GetConnections(
+        [FromQuery] string? status = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20)
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized();
+
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 1;
+        if (limit > 100) limit = 100;
 
         var query = _db.Connections
             .Include(c => c.Requester)
@@ -50,8 +57,12 @@ public class ConnectionsController : ControllerBase
             query = query.Where(c => c.Status == status);
         }
 
+        var total = await query.CountAsync();
+
         var connections = await query
             .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
             .Select(c => new
             {
                 c.Id,
@@ -69,7 +80,17 @@ public class ConnectionsController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(new { connections });
+        return Ok(new
+        {
+            connections,
+            pagination = new
+            {
+                page,
+                limit,
+                total,
+                pages = (int)Math.Ceiling((double)total / limit)
+            }
+        });
     }
 
     /// <summary>
@@ -240,8 +261,9 @@ public class ConnectionsController : ControllerBase
         };
 
         _db.Connections.Add(connection);
+        await _db.SaveChangesAsync();
 
-        // Notify the addressee about the connection request
+        // Notify the addressee about the connection request (after save so connection.Id is assigned)
         _db.Notifications.Add(new Notification
         {
             UserId = request.UserId,

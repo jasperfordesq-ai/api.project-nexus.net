@@ -266,11 +266,6 @@ public class MessagesController : ControllerBase
             return BadRequest(new { error = "Message content is required" });
         }
 
-        if (request.Content.Trim().Length == 0)
-        {
-            return BadRequest(new { error = "Message content is required" });
-        }
-
         if (request.Content.Length > 5000)
         {
             return BadRequest(new { error = "Message content must be 5000 characters or less" });

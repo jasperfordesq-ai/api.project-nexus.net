@@ -147,6 +147,7 @@ public class AdminController : ControllerBase
         [FromQuery] string? status = null,
         [FromQuery] string? search = null)
     {
+        if (page < 1) page = 1;
         limit = Math.Clamp(limit, 1, 100);
         var skip = (page - 1) * limit;
 
@@ -471,6 +472,7 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
+        if (page < 1) page = 1;
         limit = Math.Clamp(limit, 1, 100);
         var skip = (page - 1) * limit;
 

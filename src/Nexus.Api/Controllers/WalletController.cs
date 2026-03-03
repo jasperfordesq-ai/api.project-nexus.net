@@ -88,6 +88,7 @@ public class WalletController : ControllerBase
             return Unauthorized(new { error = "Invalid token" });
         }
 
+        if (page < 1) page = 1;
         limit = Math.Clamp(limit, 1, 100);
         var skip = (page - 1) * limit;
 
