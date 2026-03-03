@@ -43,7 +43,7 @@ public class AiNotificationService
             var targetType = newListing.Type == ListingType.Offer ? ListingType.Request : ListingType.Offer;
 
             var potentialUsers = await _db.Users
-                .Where(u => u.Id != newListing.UserId && u.IsActive)
+                .Where(u => u.Id != newListing.UserId && u.IsActive && u.TenantId == newListing.TenantId)
                 .Select(u => new
                 {
                     u.Id,
@@ -303,8 +303,10 @@ public class AiNotificationService
 
             if (userMilestone > 0 && insights.TotalActiveUsers == userMilestone)
             {
+                // Only notify users within the current tenant scope
                 var activeUsers = await _db.Users
                     .Where(u => u.IsActive)
+                    .Take(500) // Limit to prevent memory issues in large tenants
                     .ToListAsync(ct);
 
                 foreach (var user in activeUsers)

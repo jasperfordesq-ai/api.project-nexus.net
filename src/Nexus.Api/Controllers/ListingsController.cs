@@ -221,6 +221,28 @@ public class ListingsController : ControllerBase
             return BadRequest(new { error = "Tenant context not resolved" });
         }
 
+        // Validate category exists in this tenant if provided
+        if (request.CategoryId.HasValue)
+        {
+            var categoryExists = await _db.Categories.AnyAsync(c => c.Id == request.CategoryId.Value);
+            if (!categoryExists)
+            {
+                return BadRequest(new { error = "Category not found" });
+            }
+        }
+
+        // Validate estimated hours bounds
+        if (request.EstimatedHours.HasValue && (request.EstimatedHours.Value <= 0 || request.EstimatedHours.Value > 1000))
+        {
+            return BadRequest(new { error = "Estimated hours must be between 0 and 1000" });
+        }
+
+        // Validate expiration date is in the future
+        if (request.ExpiresAt.HasValue && request.ExpiresAt.Value <= DateTime.UtcNow)
+        {
+            return BadRequest(new { error = "Expiration date must be in the future" });
+        }
+
         var listing = new Listing
         {
             TenantId = _tenantContext.TenantId.Value,
@@ -341,6 +363,11 @@ public class ListingsController : ControllerBase
         }
         if (request.CategoryId.HasValue)
         {
+            var categoryExists = await _db.Categories.AnyAsync(c => c.Id == request.CategoryId.Value);
+            if (!categoryExists)
+            {
+                return BadRequest(new { error = "Category not found" });
+            }
             listing.CategoryId = request.CategoryId;
         }
         if (request.Location != null)
@@ -349,10 +376,18 @@ public class ListingsController : ControllerBase
         }
         if (request.EstimatedHours.HasValue)
         {
+            if (request.EstimatedHours.Value <= 0 || request.EstimatedHours.Value > 1000)
+            {
+                return BadRequest(new { error = "Estimated hours must be between 0 and 1000" });
+            }
             listing.EstimatedHours = request.EstimatedHours;
         }
         if (request.ExpiresAt.HasValue)
         {
+            if (request.ExpiresAt.Value <= DateTime.UtcNow)
+            {
+                return BadRequest(new { error = "Expiration date must be in the future" });
+            }
             listing.ExpiresAt = request.ExpiresAt;
         }
 

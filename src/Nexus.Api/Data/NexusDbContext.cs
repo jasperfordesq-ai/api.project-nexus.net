@@ -742,6 +742,11 @@ public class NexusDbContext : DbContext
                 .HasForeignKey(e => e.TargetListingId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Ensure a review targets at least one entity (user or listing)
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_reviews_has_target",
+                "\"TargetUserId\" IS NOT NULL OR \"TargetListingId\" IS NOT NULL"));
+
             // CRITICAL: Global query filter for tenant isolation
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });

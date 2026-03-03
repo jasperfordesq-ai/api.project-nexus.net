@@ -145,6 +145,11 @@ public class FeedController : ControllerBase
             return BadRequest(new { error = "Post content is required" });
         }
 
+        if (request.Content.Trim().Length == 0)
+        {
+            return BadRequest(new { error = "Post content is required" });
+        }
+
         if (request.Content.Length > 5000)
         {
             return BadRequest(new { error = "Post content cannot exceed 5000 characters" });
