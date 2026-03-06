@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Nexus.Api.Migrations
 {
     /// <inheritdoc />
+    [Migration("20260303120000_AddAiMessageTenantId")]
     public partial class AddAiMessageTenantId : Migration
     {
         /// <inheritdoc />

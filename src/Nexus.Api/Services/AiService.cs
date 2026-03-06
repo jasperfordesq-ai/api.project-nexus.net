@@ -1048,7 +1048,7 @@ Respond with JSON only:
     {
         return new PersonalizedChallenges
         {
-            Challenges = new List<Challenge>
+            Challenges = new List<AiChallengeSuggestion>
             {
                 new() { Title = "Make a Connection", Description = "Connect with a new community member", XpReward = 25, Difficulty = "easy", Category = "social", Target = 1, Unit = "connection" },
                 new() { Title = "Share Your Skills", Description = "Create a new listing offering your help", XpReward = 50, Difficulty = "medium", Category = "listings", Target = 1, Unit = "listing" },
@@ -1331,11 +1331,11 @@ public class GeneratedBio
 // Personalized Challenges DTOs
 public class PersonalizedChallenges
 {
-    public List<Challenge> Challenges { get; set; } = new();
+    public List<AiChallengeSuggestion> Challenges { get; set; } = new();
     public string MotivationalMessage { get; set; } = "";
 }
 
-public class Challenge
+public class AiChallengeSuggestion
 {
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";

@@ -148,6 +148,68 @@ builder.Services.AddSingleton<CacheService>();
 // Gamification service
 builder.Services.AddScoped<GamificationService>();
 
+// Exchange workflow service
+builder.Services.AddScoped<ExchangeService>();
+
+// Smart Matching service
+builder.Services.AddScoped<MatchingService>();
+
+// Volunteering service
+builder.Services.AddScoped<VolunteerService>();
+
+// Wallet features (limits, donations, alerts, export)
+builder.Services.AddScoped<WalletFeatureService>();
+
+// Listing features (analytics, favorites, tags)
+builder.Services.AddScoped<ListingFeatureService>();
+
+// Group features (announcements, policies, discussions, files)
+builder.Services.AddScoped<GroupFeatureService>();
+
+// Gamification V2 (challenges, streaks, seasons, daily rewards)
+builder.Services.AddScoped<ChallengeService>();
+builder.Services.AddScoped<StreakService>();
+builder.Services.AddScoped<LeaderboardSeasonService>();
+builder.Services.AddScoped<DailyRewardService>();
+
+// Phase 23: Skills & Endorsements
+builder.Services.AddScoped<SkillService>();
+
+// Phase 24: Audit Logging
+builder.Services.AddScoped<AuditLogService>();
+
+// Phase 25: Email Notifications
+builder.Services.AddScoped<IEmailService, GmailEmailService>();
+builder.Services.AddScoped<EmailNotificationService>();
+
+// Phase 26: Content Reporting
+builder.Services.AddScoped<ContentReportService>();
+
+// Phase 27: GDPR
+builder.Services.AddScoped<GdprService>();
+
+// Phase 28: Location/Geocoding
+builder.Services.AddScoped<LocationService>();
+
+// Phase 29: Feed Ranking
+builder.Services.AddScoped<FeedRankingService>();
+
+// Phase 30: Admin CRM & Analytics
+builder.Services.AddScoped<AdminAnalyticsService>();
+builder.Services.AddScoped<AdminCrmService>();
+
+// Phase 31: Newsletter
+builder.Services.AddScoped<NewsletterService>();
+
+// Phase 32: Cookie Consent
+builder.Services.AddScoped<CookieConsentService>();
+
+// Phase 33: Push Notifications
+builder.Services.AddScoped<PushNotificationService>();
+
+// Phase 34: i18n / Translation
+builder.Services.AddScoped<TranslationService>();
+
 // AI service (requires ILlamaClient, NexusDbContext)
 builder.Services.AddScoped<AiService>();
 

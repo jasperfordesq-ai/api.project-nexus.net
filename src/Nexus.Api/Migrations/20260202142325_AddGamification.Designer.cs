@@ -67,6 +67,9 @@ namespace Nexus.Api.Migrations
                     b.Property<int>("XpReward")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Slug");

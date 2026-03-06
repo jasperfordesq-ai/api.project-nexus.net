@@ -47,6 +47,94 @@ public class NexusDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<TenantConfig> TenantConfigs => Set<TenantConfig>();
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Exchange> Exchanges => Set<Exchange>();
+    public DbSet<ExchangeRating> ExchangeRatings => Set<ExchangeRating>();
+
+    // Phase 17: Smart Matching
+    public DbSet<MatchPreference> MatchPreferences => Set<MatchPreference>();
+    public DbSet<MatchResult> MatchResults => Set<MatchResult>();
+
+    // Phase 18: Volunteering
+    public DbSet<VolunteerOpportunity> VolunteerOpportunities => Set<VolunteerOpportunity>();
+    public DbSet<VolunteerShift> VolunteerShifts => Set<VolunteerShift>();
+    public DbSet<VolunteerApplication> VolunteerApplications => Set<VolunteerApplication>();
+    public DbSet<VolunteerCheckIn> VolunteerCheckIns => Set<VolunteerCheckIn>();
+
+    // Phase 19: Wallet expansion
+    public DbSet<TransactionCategory> TransactionCategories => Set<TransactionCategory>();
+    public DbSet<TransactionLimit> TransactionLimits => Set<TransactionLimit>();
+    public DbSet<BalanceAlert> BalanceAlerts => Set<BalanceAlert>();
+    public DbSet<CreditDonation> CreditDonations => Set<CreditDonation>();
+
+    // Phase 20: Listings expansion
+    public DbSet<ListingAnalytics> ListingAnalytics => Set<ListingAnalytics>();
+    public DbSet<ListingFavorite> ListingFavorites => Set<ListingFavorite>();
+    public DbSet<ListingTag> ListingTags => Set<ListingTag>();
+
+    // Phase 21: Groups expansion
+    public DbSet<GroupAnnouncement> GroupAnnouncements => Set<GroupAnnouncement>();
+    public DbSet<GroupPolicy> GroupPolicies => Set<GroupPolicy>();
+    public DbSet<GroupFile> GroupFiles => Set<GroupFile>();
+    public DbSet<GroupDiscussion> GroupDiscussions => Set<GroupDiscussion>();
+    public DbSet<GroupDiscussionReply> GroupDiscussionReplies => Set<GroupDiscussionReply>();
+
+    // Phase 22: Gamification expansion
+    public DbSet<Challenge> Challenges => Set<Challenge>();
+    public DbSet<ChallengeParticipant> ChallengeParticipants => Set<ChallengeParticipant>();
+    public DbSet<Streak> Streaks => Set<Streak>();
+    public DbSet<LeaderboardSeason> LeaderboardSeasons => Set<LeaderboardSeason>();
+    public DbSet<LeaderboardEntry> LeaderboardEntries => Set<LeaderboardEntry>();
+    public DbSet<DailyReward> DailyRewards => Set<DailyReward>();
+
+    // Phase 23: Skills & Endorsements
+    public DbSet<Skill> Skills => Set<Skill>();
+    public DbSet<UserSkill> UserSkills => Set<UserSkill>();
+    public DbSet<Endorsement> Endorsements => Set<Endorsement>();
+
+    // Phase 24: Audit Logging
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    // Phase 25: Email Notifications
+    public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
+    public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
+    public DbSet<DigestPreference> DigestPreferences => Set<DigestPreference>();
+
+    // Phase 26: Content Reporting
+    public DbSet<ContentReport> ContentReports => Set<ContentReport>();
+    public DbSet<UserWarning> UserWarnings => Set<UserWarning>();
+
+    // Phase 27: GDPR
+    public DbSet<DataExportRequest> DataExportRequests => Set<DataExportRequest>();
+    public DbSet<DataDeletionRequest> DataDeletionRequests => Set<DataDeletionRequest>();
+    public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
+
+    // Phase 28: Geocoding
+    public DbSet<UserLocation> UserLocations => Set<UserLocation>();
+
+    // Phase 29: Feed Ranking
+    public DbSet<FeedBookmark> FeedBookmarks => Set<FeedBookmark>();
+    public DbSet<PostShare> PostShares => Set<PostShare>();
+
+    // Phase 30: Admin CRM
+    public DbSet<AdminNote> AdminNotes => Set<AdminNote>();
+
+    // Phase 31: Newsletter
+    public DbSet<Newsletter> Newsletters => Set<Newsletter>();
+    public DbSet<NewsletterSubscription> NewsletterSubscriptions => Set<NewsletterSubscription>();
+
+    // Phase 32: Cookie Consent
+    public DbSet<CookieConsent> CookieConsents => Set<CookieConsent>();
+    public DbSet<CookiePolicy> CookiePolicies => Set<CookiePolicy>();
+
+    // Phase 33: Push Notifications
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<PushNotificationLog> PushNotificationLogs => Set<PushNotificationLog>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+
+    // Phase 34: i18n
+    public DbSet<Translation> Translations => Set<Translation>();
+    public DbSet<SupportedLocale> SupportedLocales => Set<SupportedLocale>();
+    public DbSet<UserLanguagePreference> UserLanguagePreferences => Set<UserLanguagePreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -888,6 +976,900 @@ public class NexusDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             // CRITICAL: Global query filter for tenant isolation
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // Exchange configuration with tenant filter
+        modelBuilder.Entity<Exchange>(entity =>
+        {
+            entity.ToTable("exchanges");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RequestMessage).HasMaxLength(2000);
+            entity.Property(e => e.DeclineReason).HasMaxLength(1000);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.Property(e => e.AgreedHours).HasPrecision(10, 2);
+            entity.Property(e => e.ActualHours).HasPrecision(10, 2);
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion();
+
+            // Indexes
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.ListingId);
+            entity.HasIndex(e => e.InitiatorId);
+            entity.HasIndex(e => e.ListingOwnerId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.GroupId);
+
+            // Relationships
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Listing)
+                .WithMany()
+                .HasForeignKey(e => e.ListingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Initiator)
+                .WithMany()
+                .HasForeignKey(e => e.InitiatorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.ListingOwner)
+                .WithMany()
+                .HasForeignKey(e => e.ListingOwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Provider)
+                .WithMany()
+                .HasForeignKey(e => e.ProviderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Receiver)
+                .WithMany()
+                .HasForeignKey(e => e.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Transaction)
+                .WithMany()
+                .HasForeignKey(e => e.TransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Group)
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // CRITICAL: Global query filter for tenant isolation
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // ExchangeRating configuration with tenant filter
+        modelBuilder.Entity<ExchangeRating>(entity =>
+        {
+            entity.ToTable("exchange_ratings");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Comment).HasMaxLength(2000);
+
+            // Indexes
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.ExchangeId);
+            entity.HasIndex(e => e.RaterId);
+            entity.HasIndex(e => e.RatedUserId);
+            // One rating per rater per exchange
+            entity.HasIndex(e => new { e.TenantId, e.ExchangeId, e.RaterId }).IsUnique();
+
+            // Relationships
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Exchange)
+                .WithMany(ex => ex.Ratings)
+                .HasForeignKey(e => e.ExchangeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Rater)
+                .WithMany()
+                .HasForeignKey(e => e.RaterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.RatedUser)
+                .WithMany()
+                .HasForeignKey(e => e.RatedUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Rating must be 1-5
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_exchange_ratings_valid_range",
+                "\"Rating\" >= 1 AND \"Rating\" <= 5"));
+
+            // CRITICAL: Global query filter for tenant isolation
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 17: Smart Matching
+        // =================================================================
+        modelBuilder.Entity<MatchPreference>(entity =>
+        {
+            entity.ToTable("match_preferences");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PreferredCategories).HasColumnType("text");
+            entity.Property(e => e.AvailableDays).HasColumnType("text");
+            entity.Property(e => e.AvailableTimeSlots).HasMaxLength(500);
+            entity.Property(e => e.SkillsOffered).HasColumnType("text");
+            entity.Property(e => e.SkillsWanted).HasColumnType("text");
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<MatchResult>(entity =>
+        {
+            entity.ToTable("match_results");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Score).HasPrecision(5, 4);
+            entity.Property(e => e.Reasons).HasColumnType("text");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.MatchedUserId);
+            entity.HasIndex(e => e.Score);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.MatchedUser).WithMany().HasForeignKey(e => e.MatchedUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.MatchedListing).WithMany().HasForeignKey(e => e.MatchedListingId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 18: Volunteering
+        // =================================================================
+        modelBuilder.Entity<VolunteerOpportunity>(entity =>
+        {
+            entity.ToTable("volunteer_opportunities");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasColumnType("text");
+            entity.Property(e => e.Location).HasMaxLength(500);
+            entity.Property(e => e.SkillsRequired).HasColumnType("text");
+            entity.Property(e => e.CreditReward).HasPrecision(10, 2);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.OrganizerId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.StartsAt);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Organizer).WithMany().HasForeignKey(e => e.OrganizerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Category).WithMany().HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<VolunteerShift>(entity =>
+        {
+            entity.ToTable("volunteer_shifts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Location).HasMaxLength(500);
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.OpportunityId);
+            entity.HasIndex(e => e.StartsAt);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Opportunity).WithMany(o => o.Shifts).HasForeignKey(e => e.OpportunityId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<VolunteerApplication>(entity =>
+        {
+            entity.ToTable("volunteer_applications");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Message).HasMaxLength(2000);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.OpportunityId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => new { e.TenantId, e.OpportunityId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Opportunity).WithMany(o => o.Applications).HasForeignKey(e => e.OpportunityId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReviewedBy).WithMany().HasForeignKey(e => e.ReviewedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<VolunteerCheckIn>(entity =>
+        {
+            entity.ToTable("volunteer_check_ins");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.HoursLogged).HasPrecision(10, 2);
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.ShiftId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Shift).WithMany(s => s.CheckIns).HasForeignKey(e => e.ShiftId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Transaction).WithMany().HasForeignKey(e => e.TransactionId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 19: Wallet expansion
+        // =================================================================
+        modelBuilder.Entity<TransactionCategory>(entity =>
+        {
+            entity.ToTable("transaction_categories");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Color).HasMaxLength(7);
+            entity.Property(e => e.Icon).HasMaxLength(50);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<TransactionLimit>(entity =>
+        {
+            entity.ToTable("transaction_limits");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.MaxDailyAmount).HasPrecision(10, 2);
+            entity.Property(e => e.MaxSingleAmount).HasPrecision(10, 2);
+            entity.Property(e => e.MinBalance).HasPrecision(10, 2);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<BalanceAlert>(entity =>
+        {
+            entity.ToTable("balance_alerts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ThresholdAmount).HasPrecision(10, 2);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<CreditDonation>(entity =>
+        {
+            entity.ToTable("credit_donations");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasPrecision(10, 2);
+            entity.Property(e => e.Message).HasMaxLength(500);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.DonorId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Donor).WithMany().HasForeignKey(e => e.DonorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Recipient).WithMany().HasForeignKey(e => e.RecipientId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Transaction).WithMany().HasForeignKey(e => e.TransactionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 20: Listings expansion
+        // =================================================================
+        modelBuilder.Entity<ListingAnalytics>(entity =>
+        {
+            entity.ToTable("listing_analytics");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.ListingId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Listing).WithMany().HasForeignKey(e => e.ListingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ListingFavorite>(entity =>
+        {
+            entity.ToTable("listing_favorites");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.ListingId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Listing).WithMany().HasForeignKey(e => e.ListingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ListingTag>(entity =>
+        {
+            entity.ToTable("listing_tags");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Tag).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.TagType).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.ListingId, e.Tag }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Listing).WithMany().HasForeignKey(e => e.ListingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 21: Groups expansion
+        // =================================================================
+        modelBuilder.Entity<GroupAnnouncement>(entity =>
+        {
+            entity.ToTable("group_announcements");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Content).HasColumnType("text").IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.GroupId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Author).WithMany().HasForeignKey(e => e.AuthorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<GroupPolicy>(entity =>
+        {
+            entity.ToTable("group_policies");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Key).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Value).HasColumnType("text").IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.GroupId, e.Key }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<GroupFile>(entity =>
+        {
+            entity.ToTable("group_files");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FileName).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.FileUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.ContentType).HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.GroupId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.UploadedBy).WithMany().HasForeignKey(e => e.UploadedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<GroupDiscussion>(entity =>
+        {
+            entity.ToTable("group_discussions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Content).HasColumnType("text").IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.GroupId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Author).WithMany().HasForeignKey(e => e.AuthorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<GroupDiscussionReply>(entity =>
+        {
+            entity.ToTable("group_discussion_replies");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Content).HasColumnType("text").IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.DiscussionId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Discussion).WithMany(d => d.Replies).HasForeignKey(e => e.DiscussionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Author).WithMany().HasForeignKey(e => e.AuthorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 22: Gamification expansion
+        // =================================================================
+        modelBuilder.Entity<Challenge>(entity =>
+        {
+            entity.ToTable("challenges");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasColumnType("text");
+            entity.Property(e => e.TargetAction).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.ChallengeType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Difficulty).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.StartsAt);
+            entity.HasIndex(e => e.EndsAt);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Badge).WithMany().HasForeignKey(e => e.BadgeId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ChallengeParticipant>(entity =>
+        {
+            entity.ToTable("challenge_participants");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.ChallengeId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Challenge).WithMany(c => c.Participants).HasForeignKey(e => e.ChallengeId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<Streak>(entity =>
+        {
+            entity.ToTable("streaks");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StreakType).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.StreakType }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<LeaderboardSeason>(entity =>
+        {
+            entity.ToTable("leaderboard_seasons");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.PrizeDescription).HasMaxLength(1000);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.Status);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<LeaderboardEntry>(entity =>
+        {
+            entity.ToTable("leaderboard_entries");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.SeasonId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.SeasonId, e.Score });
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Season).WithMany(s => s.Entries).HasForeignKey(e => e.SeasonId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<DailyReward>(entity =>
+        {
+            entity.ToTable("daily_rewards");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.ClaimedAt);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 23: Skills & Endorsements
+        // =================================================================
+        modelBuilder.Entity<Skill>(entity =>
+        {
+            entity.ToTable("skills");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Slug).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Slug }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Category).WithMany().HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<UserSkill>(entity =>
+        {
+            entity.ToTable("user_skills");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProficiencyLevel).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.SkillId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Skill).WithMany().HasForeignKey(e => e.SkillId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<Endorsement>(entity =>
+        {
+            entity.ToTable("endorsements");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Comment).HasMaxLength(500);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserSkillId, e.EndorserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.UserSkill).WithMany(us => us.Endorsements).HasForeignKey(e => e.UserSkillId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Endorser).WithMany().HasForeignKey(e => e.EndorserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.EndorsedUser).WithMany().HasForeignKey(e => e.EndorsedUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 24: Audit Logging
+        // =================================================================
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("audit_logs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Action).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.EntityType).HasMaxLength(100);
+            entity.Property(e => e.OldValues).HasColumnType("text");
+            entity.Property(e => e.NewValues).HasColumnType("text");
+            entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            entity.Property(e => e.Metadata).HasColumnType("text");
+            entity.Property(e => e.Severity).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Action);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.Severity);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 25: Email Notifications
+        // =================================================================
+        modelBuilder.Entity<EmailTemplate>(entity =>
+        {
+            entity.ToTable("email_templates");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Key).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Subject).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.BodyHtml).HasColumnType("text").IsRequired();
+            entity.Property(e => e.BodyText).HasColumnType("text");
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Key }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<EmailLog>(entity =>
+        {
+            entity.ToTable("email_logs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ToEmail).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Subject).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.TemplateKey).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<DigestPreference>(entity =>
+        {
+            entity.ToTable("digest_preferences");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Frequency).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 26: Content Reporting
+        // =================================================================
+        modelBuilder.Entity<ContentReport>(entity =>
+        {
+            entity.ToTable("content_reports");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ContentType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(2000);
+            entity.Property(e => e.ReviewNotes).HasMaxLength(2000);
+            entity.Property(e => e.ActionTaken).HasMaxLength(500);
+            entity.Property(e => e.Reason).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.ReporterId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Reporter).WithMany().HasForeignKey(e => e.ReporterId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReviewedBy).WithMany().HasForeignKey(e => e.ReviewedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<UserWarning>(entity =>
+        {
+            entity.ToTable("user_warnings");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Reason).HasMaxLength(2000).IsRequired();
+            entity.Property(e => e.Severity).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.IssuedBy).WithMany().HasForeignKey(e => e.IssuedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Report).WithMany().HasForeignKey(e => e.ReportId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 27: GDPR
+        // =================================================================
+        modelBuilder.Entity<DataExportRequest>(entity =>
+        {
+            entity.ToTable("data_export_requests");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Format).HasMaxLength(20);
+            entity.Property(e => e.FileUrl).HasMaxLength(1000);
+            entity.Property(e => e.ErrorMessage).HasMaxLength(1000);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<DataDeletionRequest>(entity =>
+        {
+            entity.ToTable("data_deletion_requests");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Reason).HasMaxLength(2000);
+            entity.Property(e => e.DataRetainedReason).HasMaxLength(1000);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ReviewedBy).WithMany().HasForeignKey(e => e.ReviewedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ConsentRecord>(entity =>
+        {
+            entity.ToTable("consent_records");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ConsentType).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.ConsentType }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 28: Geocoding / Location
+        // =================================================================
+        modelBuilder.Entity<UserLocation>(entity =>
+        {
+            entity.ToTable("user_locations");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.City).HasMaxLength(255);
+            entity.Property(e => e.Region).HasMaxLength(255);
+            entity.Property(e => e.Country).HasMaxLength(100);
+            entity.Property(e => e.PostalCode).HasMaxLength(20);
+            entity.Property(e => e.FormattedAddress).HasMaxLength(500);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.Latitude, e.Longitude });
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 29: Feed Ranking
+        // =================================================================
+        modelBuilder.Entity<FeedBookmark>(entity =>
+        {
+            entity.ToTable("feed_bookmarks");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.PostId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Post).WithMany().HasForeignKey(e => e.PostId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<PostShare>(entity =>
+        {
+            entity.ToTable("post_shares");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SharedTo).HasMaxLength(50);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.PostId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Post).WithMany().HasForeignKey(e => e.PostId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 30: Admin CRM
+        // =================================================================
+        modelBuilder.Entity<AdminNote>(entity =>
+        {
+            entity.ToTable("admin_notes");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Content).HasColumnType("text").IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(50);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Admin).WithMany().HasForeignKey(e => e.AdminId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 31: Newsletter
+        // =================================================================
+        modelBuilder.Entity<Newsletter>(entity =>
+        {
+            entity.ToTable("newsletters");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Subject).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.ContentHtml).HasColumnType("text").IsRequired();
+            entity.Property(e => e.ContentText).HasColumnType("text");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.Status);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<NewsletterSubscription>(entity =>
+        {
+            entity.ToTable("newsletter_subscriptions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Source).HasMaxLength(50);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Email }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 32: Cookie Consent
+        // =================================================================
+        modelBuilder.Entity<CookieConsent>(entity =>
+        {
+            entity.ToTable("cookie_consents");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SessionId).HasMaxLength(100);
+            entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.SessionId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<CookiePolicy>(entity =>
+        {
+            entity.ToTable("cookie_policies");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Version).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.ContentHtml).HasColumnType("text").IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Version }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 33: Push Notifications
+        // =================================================================
+        modelBuilder.Entity<PushSubscription>(entity =>
+        {
+            entity.ToTable("push_subscriptions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DeviceToken).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Platform).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.DeviceName).HasMaxLength(255);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.DeviceToken }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<PushNotificationLog>(entity =>
+        {
+            entity.ToTable("push_notification_logs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Body).HasMaxLength(1000);
+            entity.Property(e => e.Data).HasColumnType("text");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ErrorMessage).HasMaxLength(1000);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Subscription).WithMany().HasForeignKey(e => e.SubscriptionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<NotificationPreference>(entity =>
+        {
+            entity.ToTable("notification_preferences");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.NotificationType).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.NotificationType }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 34: i18n / Translation
+        // =================================================================
+        modelBuilder.Entity<Translation>(entity =>
+        {
+            entity.ToTable("translations");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Locale).HasMaxLength(10).IsRequired();
+            entity.Property(e => e.Key).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Value).HasColumnType("text").IsRequired();
+            entity.Property(e => e.Namespace).HasMaxLength(100);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Locale, e.Key }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ApprovedBy).WithMany().HasForeignKey(e => e.ApprovedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<SupportedLocale>(entity =>
+        {
+            entity.ToTable("supported_locales");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Locale).HasMaxLength(10).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.NativeName).HasMaxLength(100).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Locale }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<UserLanguagePreference>(entity =>
+        {
+            entity.ToTable("user_language_preferences");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PreferredLocale).HasMaxLength(10).IsRequired();
+            entity.Property(e => e.FallbackLocale).HasMaxLength(10);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
 
