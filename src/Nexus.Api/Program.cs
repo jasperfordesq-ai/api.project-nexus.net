@@ -210,6 +210,15 @@ builder.Services.AddScoped<PushNotificationService>();
 // Phase 34: i18n / Translation
 builder.Services.AddScoped<TranslationService>();
 
+// Phase 35: Federation
+builder.Services.AddScoped<FederationService>();
+
+// Phase 36: Predictive Staffing
+builder.Services.AddScoped<PredictiveStaffingService>();
+
+// Phase 37: System Admin
+builder.Services.AddScoped<SystemAdminService>();
+
 // AI service (requires ILlamaClient, NexusDbContext)
 builder.Services.AddScoped<AiService>();
 

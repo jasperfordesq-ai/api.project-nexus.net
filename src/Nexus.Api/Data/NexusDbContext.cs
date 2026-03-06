@@ -136,6 +136,21 @@ public class NexusDbContext : DbContext
     public DbSet<SupportedLocale> SupportedLocales => Set<SupportedLocale>();
     public DbSet<UserLanguagePreference> UserLanguagePreferences => Set<UserLanguagePreference>();
 
+    // Phase 35: Federation
+    public DbSet<FederationPartner> FederationPartners => Set<FederationPartner>();
+    public DbSet<FederatedListing> FederatedListings => Set<FederatedListing>();
+    public DbSet<FederatedExchange> FederatedExchanges => Set<FederatedExchange>();
+    public DbSet<FederationAuditLog> FederationAuditLogs => Set<FederationAuditLog>();
+
+    // Phase 36: Predictive Staffing
+    public DbSet<StaffingPrediction> StaffingPredictions => Set<StaffingPrediction>();
+    public DbSet<VolunteerAvailability> VolunteerAvailabilities => Set<VolunteerAvailability>();
+
+    // Phase 37: Advanced Admin
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<ScheduledTask> ScheduledTasks => Set<ScheduledTask>();
+    public DbSet<PlatformAnnouncement> PlatformAnnouncements => Set<PlatformAnnouncement>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -1870,6 +1885,141 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 35: Federation
+        // =================================================================
+        modelBuilder.Entity<FederationPartner>(entity =>
+        {
+            entity.ToTable("federation_partners");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.CreditExchangeRate).HasPrecision(10, 4);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.PartnerTenantId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.PartnerTenant).WithMany().HasForeignKey(e => e.PartnerTenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.RequestedBy).WithMany().HasForeignKey(e => e.RequestedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ApprovedBy).WithMany().HasForeignKey(e => e.ApprovedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederatedListing>(entity =>
+        {
+            entity.ToTable("federated_listings");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasColumnType("text");
+            entity.Property(e => e.ListingType).HasMaxLength(20);
+            entity.Property(e => e.OwnerDisplayName).HasMaxLength(255);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.SourceTenantId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SourceTenant).WithMany().HasForeignKey(e => e.SourceTenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederatedExchange>(entity =>
+        {
+            entity.ToTable("federated_exchanges");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RemoteUserDisplayName).HasMaxLength(255);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.AgreedHours).HasPrecision(10, 2);
+            entity.Property(e => e.ActualHours).HasPrecision(10, 2);
+            entity.Property(e => e.CreditExchangeRate).HasPrecision(10, 4);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.HasIndex(e => e.TenantId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.PartnerTenant).WithMany().HasForeignKey(e => e.PartnerTenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.LocalUser).WithMany().HasForeignKey(e => e.LocalUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.LocalTransaction).WithMany().HasForeignKey(e => e.LocalTransactionId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederationAuditLog>(entity =>
+        {
+            entity.ToTable("federation_audit_logs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Action).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.EntityType).HasMaxLength(50);
+            entity.Property(e => e.Details).HasColumnType("text");
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 36: Predictive Staffing
+        // =================================================================
+        modelBuilder.Entity<StaffingPrediction>(entity =>
+        {
+            entity.ToTable("staffing_predictions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ShortfallRisk).HasPrecision(5, 4);
+            entity.Property(e => e.Factors).HasColumnType("text");
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.PredictedDate);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Opportunity).WithMany().HasForeignKey(e => e.OpportunityId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<VolunteerAvailability>(entity =>
+        {
+            entity.ToTable("volunteer_availabilities");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.DayOfWeek });
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // =================================================================
+        // Phase 37: Advanced Admin
+        // =================================================================
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.ToTable("system_settings");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Key).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Value).HasColumnType("text").IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Category).HasMaxLength(50);
+            entity.HasIndex(e => e.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<ScheduledTask>(entity =>
+        {
+            entity.ToTable("scheduled_tasks");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TaskName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.CronExpression).HasMaxLength(50);
+            entity.Property(e => e.Parameters).HasColumnType("text");
+            entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.TaskName);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<PlatformAnnouncement>(entity =>
+        {
+            entity.ToTable("platform_announcements");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Content).HasColumnType("text").IsRequired();
+            entity.Property(e => e.Type).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
 
