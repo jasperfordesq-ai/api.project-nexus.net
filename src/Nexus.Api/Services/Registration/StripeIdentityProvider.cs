@@ -156,8 +156,13 @@ public class StripeIdentityProvider : IIdentityVerificationProvider
         var dataObject = root.GetProperty("data").GetProperty("object");
         var result = MapStripeStatus(dataObject);
 
-        _logger.LogInformation("Stripe webhook processed: type={EventType}, decision={Decision}",
-            eventType, result.Decision);
+        // Extract session ID for matching
+        var sessionId = dataObject.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
+        if (sessionId != null)
+            result = result with { ExternalSessionId = sessionId };
+
+        _logger.LogInformation("Stripe webhook processed: type={EventType}, session={SessionId}, decision={Decision}",
+            eventType, sessionId, result.Decision);
 
         return Task.FromResult<VerificationStatusResult?>(result);
     }

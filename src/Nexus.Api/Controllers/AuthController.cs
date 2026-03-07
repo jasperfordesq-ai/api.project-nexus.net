@@ -100,14 +100,32 @@ public class AuthController : ControllerBase
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u =>
                 u.TenantId == tenant.Id &&
-                u.Email == request.Email &&
-                u.IsActive);
+                u.Email == request.Email);
 
         if (user == null)
         {
             _logger.LogWarning("Login failed: user not found for {Email} in tenant {TenantId}",
                 request.Email, tenant.Id);
             return Unauthorized(new { error = "Invalid credentials" });
+        }
+
+        // Check registration/account status before password verification
+        if (user.RegistrationStatus == Nexus.Api.Entities.RegistrationStatus.Rejected)
+        {
+            _logger.LogWarning("Login failed: user {Email} registration was rejected", request.Email);
+            return Unauthorized(new { error = "Your registration has been rejected. Contact support for details." });
+        }
+
+        if (user.RegistrationStatus == Nexus.Api.Entities.RegistrationStatus.PendingAdminReview)
+        {
+            _logger.LogWarning("Login failed: user {Email} is pending admin review", request.Email);
+            return Unauthorized(new { error = "Your registration is pending approval by an administrator." });
+        }
+
+        if (!user.IsActive && user.RegistrationStatus != Nexus.Api.Entities.RegistrationStatus.PendingVerification)
+        {
+            _logger.LogWarning("Login failed: user {Email} account is inactive", request.Email);
+            return Unauthorized(new { error = "Your account is not active. Contact support for assistance." });
         }
 
         // Step 3: Verify password (using BCrypt - same as PHP)

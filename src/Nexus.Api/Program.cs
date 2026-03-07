@@ -387,9 +387,11 @@ builder.Services.AddAuthorization(options =>
 });
 
 // Health checks
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
-    .AddCheck<LlamaHealthCheck>("llama", tags: new[] { "ready" });
+var healthChecks = builder.Services.AddHealthChecks();
+var defaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!string.IsNullOrEmpty(defaultConnectionString))
+    healthChecks.AddNpgSql(defaultConnectionString);
+healthChecks.AddCheck<LlamaHealthCheck>("llama", tags: new[] { "ready" });
 
 // CORS - Only browser origins, no internal services
 // Note: AllowCredentials() is NOT used since we use JWT Bearer tokens (not cookies)

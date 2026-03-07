@@ -249,6 +249,16 @@ public class RegistrationOrchestrator
         if (user.RegistrationStatus != RegistrationStatus.VerificationFailed)
             return VerificationStartResult.Fail($"User is not in VerificationFailed status (current: {user.RegistrationStatus}).");
 
+        // Enforce retry limit (max 3 attempts)
+        const int maxRetries = 3;
+        var failedAttempts = await _db.IdentityVerificationSessions
+            .IgnoreQueryFilters()
+            .CountAsync(s => s.UserId == userId && s.TenantId == tenantId
+                && s.Status == VerificationSessionStatus.Failed);
+
+        if (failedAttempts >= maxRetries)
+            return VerificationStartResult.Fail($"Maximum verification attempts ({maxRetries}) exceeded. Contact support.");
+
         if (!IsValidTransition(RegistrationStatus.VerificationFailed, RegistrationStatus.PendingVerification))
             return VerificationStartResult.Fail("State transition not allowed.");
 
@@ -308,17 +318,29 @@ public class RegistrationOrchestrator
             return false;
         }
 
-        // Find the active session for this tenant+provider
-        // In production, you'd match by ExternalSessionId from the webhook body
-        var session = await _db.IdentityVerificationSessions
-            .IgnoreQueryFilters()
-            .Include(s => s.User)
-            .Where(s => s.TenantId == tenantId
-                     && s.Provider == providerType
-                     && s.Status == VerificationSessionStatus.Created
-                        || s.Status == VerificationSessionStatus.InProgress)
-            .OrderByDescending(s => s.CreatedAt)
-            .FirstOrDefaultAsync();
+        // Match session by ExternalSessionId when provider returns it, otherwise fall back to latest active
+        IdentityVerificationSession? session;
+        if (!string.IsNullOrEmpty(result.ExternalSessionId))
+        {
+            session = await _db.IdentityVerificationSessions
+                .IgnoreQueryFilters()
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.TenantId == tenantId
+                    && s.Provider == providerType
+                    && s.ExternalSessionId == result.ExternalSessionId);
+        }
+        else
+        {
+            session = await _db.IdentityVerificationSessions
+                .IgnoreQueryFilters()
+                .Include(s => s.User)
+                .Where(s => s.TenantId == tenantId
+                         && s.Provider == providerType
+                         && (s.Status == VerificationSessionStatus.Created
+                             || s.Status == VerificationSessionStatus.InProgress))
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
 
         if (session == null)
         {
