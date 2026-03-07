@@ -162,6 +162,9 @@ public class NexusDbContext : DbContext
     // TOTP Backup Codes
     public DbSet<TotpBackupCode> TotpBackupCodes => Set<TotpBackupCode>();
 
+    // File Uploads
+    public DbSet<FileUpload> FileUploads => Set<FileUpload>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -2170,6 +2173,33 @@ public class NexusDbContext : DbContext
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            entity.HasIndex(e => e.UserId);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // File Uploads
+        modelBuilder.Entity<FileUpload>(entity =>
+        {
+            entity.ToTable("file_uploads");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OriginalFilename).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.StoredFilename).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.FilePath).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.ContentType).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Category).HasConversion<string>().HasMaxLength(30);
+            entity.Property(e => e.EntityType).HasMaxLength(50);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.EntityType, e.EntityId });
             entity.HasIndex(e => e.UserId);
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });

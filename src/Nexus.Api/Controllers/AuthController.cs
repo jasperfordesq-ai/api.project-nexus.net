@@ -396,7 +396,7 @@ public class AuthController : ControllerBase
         _logger.LogInformation("New user {UserId} registered in tenant {TenantId} with status {Status}",
             user.Id, tenant.Id, registrationResult.Status);
 
-        // Send welcome email (non-blocking)
+        // Send welcome or verification email (non-blocking)
         if (registrationResult.Status == RegistrationStatus.Active)
         {
             _ = Task.Run(async () =>
@@ -411,6 +411,29 @@ public class AuthController : ControllerBase
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to send welcome email for user {UserId}", user.Id);
+                }
+            });
+        }
+        else if (registrationResult.Status == RegistrationStatus.PendingVerification)
+        {
+            // Generate and send verification code
+            var code = GenerateVerificationCode();
+            user.EmailVerificationCode = code;
+            user.EmailVerificationCodeExpiresAt = DateTime.UtcNow.AddMinutes(30);
+            await _db.SaveChangesAsync();
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailService.SendEmailAsync(
+                        user.Email,
+                        "Verify your email - Project NEXUS",
+                        $"<h2>Welcome to Project NEXUS!</h2><p>Your verification code is: <strong>{code}</strong></p><p>This code expires in 30 minutes.</p>");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send verification email for user {UserId}", user.Id);
                 }
             });
         }
@@ -695,6 +718,109 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Verify email address using 6-digit code sent during registration.
+    /// </summary>
+    [HttpPost("verify-email")]
+    [Authorize]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+        if (!int.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { error = "Invalid token" });
+
+        if (string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(new { error = "Verification code is required" });
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return NotFound(new { error = "User not found" });
+
+        if (user.EmailVerified)
+            return Ok(new { success = true, message = "Email is already verified" });
+
+        if (string.IsNullOrEmpty(user.EmailVerificationCode))
+            return BadRequest(new { error = "No verification code pending. Request a new one." });
+
+        if (user.EmailVerificationCodeExpiresAt < DateTime.UtcNow)
+            return BadRequest(new { error = "Verification code has expired. Request a new one." });
+
+        if (user.EmailVerificationCode != request.Code.Trim())
+            return BadRequest(new { error = "Invalid verification code" });
+
+        user.EmailVerified = true;
+        user.EmailVerifiedAt = DateTime.UtcNow;
+        user.EmailVerificationCode = null;
+        user.EmailVerificationCodeExpiresAt = null;
+
+        // If user was pending verification, activate them
+        if (user.RegistrationStatus == RegistrationStatus.PendingVerification)
+        {
+            user.RegistrationStatus = RegistrationStatus.Active;
+            user.IsActive = true;
+        }
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Email verified for user {UserId}", userId);
+        return Ok(new { success = true, message = "Email verified successfully" });
+    }
+
+    /// <summary>
+    /// Resend email verification code.
+    /// </summary>
+    [HttpPost("resend-verification")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    public async Task<IActionResult> ResendVerification()
+    {
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+        if (!int.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { error = "Invalid token" });
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return NotFound(new { error = "User not found" });
+
+        if (user.EmailVerified)
+            return Ok(new { success = true, message = "Email is already verified" });
+
+        // Generate 6-digit code
+        var code = GenerateVerificationCode();
+        user.EmailVerificationCode = code;
+        user.EmailVerificationCodeExpiresAt = DateTime.UtcNow.AddMinutes(30);
+        await _db.SaveChangesAsync();
+
+        // Send verification email (fire-and-forget)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendEmailAsync(
+                    user.Email,
+                    "Verify your email - Project NEXUS",
+                    $"<h2>Email Verification</h2><p>Your verification code is: <strong>{code}</strong></p><p>This code expires in 30 minutes.</p>");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send verification email for user {UserId}", userId);
+            }
+        });
+
+        _logger.LogInformation("Verification code resent for user {UserId}", userId);
+        return Ok(new { success = true, message = "Verification code sent to your email" });
+    }
+
+    private static string GenerateVerificationCode()
+    {
+        var bytes = new byte[4];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
+        var number = BitConverter.ToUInt32(bytes) % 1000000;
+        return number.ToString("D6");
+    }
+
     #region Private Methods
 
     private async Task<Tenant?> ResolveTenantAsync(string? slug, int? id)
@@ -815,6 +941,12 @@ public record ForgotPasswordRequest
 
     [System.Text.Json.Serialization.JsonPropertyName("tenant_id")]
     public int? TenantId { get; init; }
+}
+
+public record VerifyEmailRequest
+{
+    [System.Text.Json.Serialization.JsonPropertyName("code")]
+    public string Code { get; init; } = string.Empty;
 }
 
 public record ResetPasswordRequest

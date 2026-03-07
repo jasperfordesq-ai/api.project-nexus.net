@@ -31,6 +31,12 @@ public class User : ITenantEntity
     /// </summary>
     public RegistrationStatus RegistrationStatus { get; set; } = RegistrationStatus.Active;
 
+    // Email verification
+    public bool EmailVerified { get; set; }
+    public string? EmailVerificationCode { get; set; }
+    public DateTime? EmailVerificationCodeExpiresAt { get; set; }
+    public DateTime? EmailVerifiedAt { get; set; }
+
     // TOTP 2FA
     public bool TwoFactorEnabled { get; set; }
     public string? TotpSecretEncrypted { get; set; }
