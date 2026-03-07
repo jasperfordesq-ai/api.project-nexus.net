@@ -266,6 +266,24 @@ public class PasskeyService
 
         if (passkey == null) return false;
 
+        // Guard: don't allow deleting the last passkey if user has no password
+        var user = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId);
+
+        if (user != null && string.IsNullOrEmpty(user.PasswordHash))
+        {
+            var passkeyCount = await _db.UserPasskeys
+                .IgnoreQueryFilters()
+                .CountAsync(p => p.UserId == userId && p.TenantId == tenantId);
+
+            if (passkeyCount <= 1)
+            {
+                throw new InvalidOperationException(
+                    "Cannot delete your only passkey when no password is set. Add a password or another passkey first.");
+            }
+        }
+
         _db.UserPasskeys.Remove(passkey);
         await _db.SaveChangesAsync();
 

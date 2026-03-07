@@ -307,15 +307,23 @@ public class PasskeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeletePasskey(int id)
     {
         var (userId, tenantId) = GetUserContext();
         if (userId == 0) return Unauthorized(new { error = "Invalid token" });
 
-        var deleted = await _passkeyService.DeletePasskeyAsync(id, userId, tenantId);
-        if (!deleted) return NotFound(new { error = "Passkey not found" });
+        try
+        {
+            var deleted = await _passkeyService.DeletePasskeyAsync(id, userId, tenantId);
+            if (!deleted) return NotFound(new { error = "Passkey not found" });
 
-        return Ok(new { success = true, message = "Passkey deleted" });
+            return Ok(new { success = true, message = "Passkey deleted" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
     }
 
     /// <summary>
