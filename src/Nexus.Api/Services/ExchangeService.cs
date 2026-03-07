@@ -19,6 +19,7 @@ public class ExchangeService
     private readonly TenantContext _tenantContext;
     private readonly GamificationService _gamification;
     private readonly ILogger<ExchangeService> _logger;
+    private readonly IConfiguration _configuration;
 
     // Valid state transitions: from -> allowed destinations
     private static readonly Dictionary<ExchangeStatus, ExchangeStatus[]> ValidTransitions = new()
@@ -34,12 +35,13 @@ public class ExchangeService
         [ExchangeStatus.Expired] = Array.Empty<ExchangeStatus>(),
     };
 
-    public ExchangeService(NexusDbContext db, TenantContext tenantContext, GamificationService gamification, ILogger<ExchangeService> logger)
+    public ExchangeService(NexusDbContext db, TenantContext tenantContext, GamificationService gamification, ILogger<ExchangeService> logger, IConfiguration configuration)
     {
         _db = db;
         _tenantContext = tenantContext;
         _gamification = gamification;
         _logger = logger;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -87,12 +89,14 @@ public class ExchangeService
             receiverId = listing.UserId;
         }
 
-        // V1 rule: hours must be between 0.25 and 24
+        // Configurable hour limits (defaults match V1)
+        var minHours = _configuration.GetValue("ExchangeLimits:MinHours", 0.25m);
+        var maxHours = _configuration.GetValue("ExchangeLimits:MaxHours", 24.0m);
         var hours = agreedHours ?? listing.EstimatedHours ?? 1.0m;
-        if (hours < 0.25m)
-            return (null, "Minimum exchange duration is 0.25 hours (15 minutes)");
-        if (hours > 24.0m)
-            return (null, "Maximum exchange duration is 24 hours");
+        if (hours < minHours)
+            return (null, $"Minimum exchange duration is {minHours} hours");
+        if (hours > maxHours)
+            return (null, $"Maximum exchange duration is {maxHours} hours");
 
         var exchange = new Exchange
         {

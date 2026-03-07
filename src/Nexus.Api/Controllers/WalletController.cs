@@ -27,13 +27,15 @@ public class WalletController : ControllerBase
     private readonly TenantContext _tenantContext;
     private readonly ILogger<WalletController> _logger;
     private readonly GamificationService _gamification;
+    private readonly IConfiguration _configuration;
 
-    public WalletController(NexusDbContext db, TenantContext tenantContext, ILogger<WalletController> logger, GamificationService gamification)
+    public WalletController(NexusDbContext db, TenantContext tenantContext, ILogger<WalletController> logger, GamificationService gamification, IConfiguration configuration)
     {
         _db = db;
         _tenantContext = tenantContext;
         _logger = logger;
         _gamification = gamification;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -239,27 +241,33 @@ public class WalletController : ControllerBase
             return BadRequest(new { error = "Tenant context not resolved" });
         }
 
-        // V1-aligned validation: minimum 0.01, maximum 500 per transaction (configurable)
-        if (request.Amount < 0.01m)
+        // Configurable transaction limits (defaults match V1)
+        var minTransfer = _configuration.GetValue("TransactionLimits:MinTransferAmount", 0.01m);
+        var maxSingle = _configuration.GetValue("TransactionLimits:MaxSingleTransfer", 500m);
+        var dailyLimit = _configuration.GetValue("TransactionLimits:DailyLimit", 1000m);
+        var weeklyLimit = _configuration.GetValue("TransactionLimits:WeeklyLimit", 3000m);
+        var monthlyLimit = _configuration.GetValue("TransactionLimits:MonthlyLimit", 10000m);
+
+        if (request.Amount < minTransfer)
         {
-            return BadRequest(new { error = "Minimum transfer amount is 0.01 credits" });
+            return BadRequest(new { error = $"Minimum transfer amount is {minTransfer} credits" });
         }
 
-        if (request.Amount > 500m)
+        if (request.Amount > maxSingle)
         {
-            return BadRequest(new { error = "Maximum single transfer is 500 credits" });
+            return BadRequest(new { error = $"Maximum single transfer is {maxSingle} credits" });
         }
 
-        // V1 hierarchical limits: daily/weekly/monthly per user
+        // Hierarchical limits: daily/weekly/monthly per user
         var now = DateTime.UtcNow;
         var dailySent = await _db.Transactions
             .Where(t => t.SenderId == senderId.Value && t.Status == TransactionStatus.Completed
                 && t.CreatedAt >= now.Date)
             .SumAsync(t => t.Amount);
 
-        if (dailySent + request.Amount > 1000m)
+        if (dailySent + request.Amount > dailyLimit)
         {
-            return BadRequest(new { error = "Daily transfer limit of 1,000 credits exceeded", daily_sent = dailySent });
+            return BadRequest(new { error = $"Daily transfer limit of {dailyLimit:N0} credits exceeded", daily_sent = dailySent });
         }
 
         var weeklySent = await _db.Transactions
@@ -267,9 +275,9 @@ public class WalletController : ControllerBase
                 && t.CreatedAt >= now.AddDays(-7))
             .SumAsync(t => t.Amount);
 
-        if (weeklySent + request.Amount > 3000m)
+        if (weeklySent + request.Amount > weeklyLimit)
         {
-            return BadRequest(new { error = "Weekly transfer limit of 3,000 credits exceeded", weekly_sent = weeklySent });
+            return BadRequest(new { error = $"Weekly transfer limit of {weeklyLimit:N0} credits exceeded", weekly_sent = weeklySent });
         }
 
         var monthlySent = await _db.Transactions
@@ -277,9 +285,9 @@ public class WalletController : ControllerBase
                 && t.CreatedAt >= now.AddDays(-30))
             .SumAsync(t => t.Amount);
 
-        if (monthlySent + request.Amount > 10000m)
+        if (monthlySent + request.Amount > monthlyLimit)
         {
-            return BadRequest(new { error = "Monthly transfer limit of 10,000 credits exceeded", monthly_sent = monthlySent });
+            return BadRequest(new { error = $"Monthly transfer limit of {monthlyLimit:N0} credits exceeded", monthly_sent = monthlySent });
         }
 
         // Validate sender != receiver

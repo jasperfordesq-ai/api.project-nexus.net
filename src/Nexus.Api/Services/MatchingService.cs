@@ -19,17 +19,17 @@ public class MatchingService
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<MatchingService> _logger;
+    private readonly IConfiguration _configuration;
 
-    /// <summary>
-    /// Maximum number of matches to store per computation run.
-    /// </summary>
-    private const int MaxMatchesPerRun = 50;
+    private int MaxMatchesPerRun => _configuration.GetValue("MatchingDefaults:MaxMatchesPerRun", 50);
+    private int ActivityCutoffDays => _configuration.GetValue("MatchingDefaults:ActivityCutoffDays", 90);
 
-    public MatchingService(NexusDbContext db, TenantContext tenantContext, ILogger<MatchingService> logger)
+    public MatchingService(NexusDbContext db, TenantContext tenantContext, ILogger<MatchingService> logger, IConfiguration configuration)
     {
         _db = db;
         _tenantContext = tenantContext;
         _logger = logger;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -111,7 +111,7 @@ public class MatchingService
             .ToDictionaryAsync(x => x.UserId);
 
         // Load recent exchange activity counts (last 90 days)
-        var activityCutoff = DateTime.UtcNow.AddDays(-90);
+        var activityCutoff = DateTime.UtcNow.AddDays(-ActivityCutoffDays);
         var candidateActivity = await _db.Exchanges
             .Where(e => candidateIds.Contains(e.InitiatorId) || candidateIds.Contains(e.ListingOwnerId))
             .Where(e => e.Status == ExchangeStatus.Completed && e.CompletedAt >= activityCutoff)
