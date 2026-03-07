@@ -152,7 +152,7 @@ public class SystemAdminController : ControllerBase
     /// POST /api/admin/system/announcements - Create a new announcement.
     /// </summary>
     [HttpPost("announcements")]
-    public async Task<IActionResult> CreateAnnouncement([FromBody] CreateAnnouncementRequest request)
+    public async Task<IActionResult> CreateAnnouncement([FromBody] CreateSystemAnnouncementRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Title))
             return BadRequest(new { error = "title is required" });
@@ -327,7 +327,7 @@ public class SystemAdminController : ControllerBase
         public DateTime? UpdatedAt { get; set; }
     }
 
-    public class CreateAnnouncementRequest
+    public class CreateSystemAnnouncementRequest
     {
         [JsonPropertyName("title")]
         public string Title { get; set; } = string.Empty;

@@ -160,6 +160,9 @@ public static class TestDataSeeder
         // This is faster and avoids FK constraint issues
         await db.Database.ExecuteSqlRawAsync(@"
             TRUNCATE TABLE
+                identity_verification_events,
+                identity_verification_sessions,
+                tenant_registration_policies,
                 ai_messages,
                 ai_conversations,
                 xp_logs,
