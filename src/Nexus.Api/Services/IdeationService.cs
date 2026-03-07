@@ -108,7 +108,8 @@ public class IdeationService
         {
             participant.IsCompleted = true;
             participant.CompletedAt = DateTime.UtcNow;
-            try { await _gamification.AwardXpAsync(userId, participant.Challenge.XpReward, "challenge_completed", challengeId, $"Completed: {participant.Challenge.Title}"); } catch { }
+            try { await _gamification.AwardXpAsync(userId, participant.Challenge.XpReward, "challenge_completed", challengeId, $"Completed: {participant.Challenge.Title}"); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to award XP for challenge {ChallengeId}", challengeId); }
         }
         await _db.SaveChangesAsync();
         return (true, null);

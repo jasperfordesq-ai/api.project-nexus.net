@@ -117,7 +117,7 @@ public class GoalService
             {
                 await _gamification.AwardXpAsync(userId, XpLog.Amounts.GoalCompleted, XpLog.Sources.GoalCompleted, goalId, $"Completed goal: {goal.Title}");
             }
-            catch { /* non-critical */ }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to award XP for goal {GoalId}", goalId); }
         }
 
         await _db.SaveChangesAsync();
@@ -148,7 +148,7 @@ public class GoalService
             {
                 await _gamification.AwardXpAsync(userId, XpLog.Amounts.GoalCompleted, XpLog.Sources.GoalCompleted, goalId, $"Completed goal: {goal.Title}");
             }
-            catch { /* non-critical */ }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to award XP for goal {GoalId}", goalId); }
         }
 
         await _db.SaveChangesAsync();
