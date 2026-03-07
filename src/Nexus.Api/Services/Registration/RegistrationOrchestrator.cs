@@ -254,7 +254,8 @@ public class RegistrationOrchestrator
         var failedAttempts = await _db.IdentityVerificationSessions
             .IgnoreQueryFilters()
             .CountAsync(s => s.UserId == userId && s.TenantId == tenantId
-                && s.Status == VerificationSessionStatus.Failed);
+                && (s.Status == VerificationSessionStatus.Failed
+                    || s.Status == VerificationSessionStatus.Cancelled));
 
         if (failedAttempts >= maxRetries)
             return VerificationStartResult.Fail($"Maximum verification attempts ({maxRetries}) exceeded. Contact support.");
@@ -477,6 +478,11 @@ public class RegistrationOrchestrator
                     session.User.RegistrationStatus = RegistrationStatus.VerificationFailed;
                 }
             }
+            else if (result.Status == VerificationSessionStatus.Cancelled)
+            {
+                // Cancelled sessions allow the user to retry verification
+                session.User.RegistrationStatus = RegistrationStatus.VerificationFailed;
+            }
 
             session.User.UpdatedAt = DateTime.UtcNow;
         }
@@ -492,7 +498,7 @@ public class RegistrationOrchestrator
         {
             var emailStatus = result.Status == VerificationSessionStatus.Completed && result.Decision == "approved"
                 ? "verification_approved"
-                : result.Status == VerificationSessionStatus.Failed
+                : result.Status is VerificationSessionStatus.Failed or VerificationSessionStatus.Cancelled
                     ? "verification_failed"
                     : null;
 

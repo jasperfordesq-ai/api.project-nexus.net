@@ -113,6 +113,16 @@ public class MockProviderUnitTests
     }
 
     [Fact]
+    public async Task ProcessWebhook_CancelledBody_ReturnsNull()
+    {
+        // Mock provider only recognizes "approved" and "declined"
+        var payload = new WebhookPayload { RawBody = "cancelled", Headers = new() };
+        var result = await _provider.ProcessWebhookAsync(payload, null);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
     public void VerifyWebhookSignature_NoSecret_ReturnsTrue()
     {
         var payload = new WebhookPayload { RawBody = "test", Headers = new() };

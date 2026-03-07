@@ -233,6 +233,7 @@ builder.Services.AddFido2(options =>
 builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<TotpService>();
+builder.Services.AddScoped<FileUploadService>();
 
 // Registration Policy Engine
 builder.Services.AddSingleton<IIdentityVerificationProvider, MockIdentityVerificationProvider>();
