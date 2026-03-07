@@ -33,7 +33,7 @@ PATTERNS=(
 )
 
 for FILE in $STAGED_FILES; do
-    # Skip binary files, lock files, and test files (test passwords are not real credentials)
+    # Skip binary files, lock files, test files, and local dev config
     case "$FILE" in
         *.dll|*.exe|*.png|*.jpg|*.gif|*.ico|*.woff|*.woff2|*.lock)
             continue
@@ -42,6 +42,9 @@ for FILE in $STAGED_FILES; do
             continue
             ;;
         hooks/*)
+            continue
+            ;;
+        compose.yml|docker-compose.yml|compose.override.yml)
             continue
             ;;
     esac

@@ -67,23 +67,29 @@ public class TotpController : ControllerBase
     }
 
     /// <summary>
-    /// Verify setup code and enable 2FA.
+    /// Verify setup code and enable 2FA. Returns backup codes (shown only once).
     /// </summary>
     [HttpPost("verify-setup")]
     public async Task<IActionResult> VerifySetup([FromBody] TotpCodeRequest request)
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = User.GetTenantId();
+        if (userId == null || tenantId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (string.IsNullOrWhiteSpace(request.Code))
             return BadRequest(new { error = "Verification code is required" });
 
-        var (success, error) = await _totpService.VerifyAndEnableAsync(userId.Value, request.Code.Trim());
+        var (success, backupCodes, error) = await _totpService.VerifyAndEnableAsync(userId.Value, tenantId.Value, request.Code.Trim());
 
         if (!success)
             return BadRequest(new { error });
 
-        return Ok(new { success = true, message = "Two-factor authentication enabled" });
+        return Ok(new
+        {
+            success = true,
+            message = "Two-factor authentication enabled. Save your backup codes securely.",
+            backup_codes = backupCodes
+        });
     }
 
     /// <summary>
@@ -124,6 +130,73 @@ public class TotpController : ControllerBase
             return BadRequest(new { error });
 
         return Ok(new { success = true, message = "Two-factor authentication disabled" });
+    }
+    /// <summary>
+    /// Verify a backup code during login (alternative to TOTP code).
+    /// </summary>
+    [HttpPost("verify-backup")]
+    public async Task<IActionResult> VerifyBackup([FromBody] TotpCodeRequest request)
+    {
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+        if (userId == null || tenantId == null) return Unauthorized(new { error = "Invalid token" });
+
+        if (string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(new { error = "Backup code is required" });
+
+        var (valid, error) = await _totpService.ValidateBackupCodeAsync(userId.Value, tenantId.Value, request.Code.Trim());
+
+        if (!valid)
+            return BadRequest(new { error });
+
+        return Ok(new { success = true, message = "Backup code verified" });
+    }
+
+    /// <summary>
+    /// Regenerate backup codes. Invalidates all existing codes.
+    /// Requires a valid TOTP code for security.
+    /// </summary>
+    [HttpPost("backup-codes/regenerate")]
+    public async Task<IActionResult> RegenerateBackupCodes([FromBody] TotpCodeRequest request)
+    {
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+        if (userId == null || tenantId == null) return Unauthorized(new { error = "Invalid token" });
+
+        if (string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(new { error = "TOTP code is required to regenerate backup codes" });
+
+        // Verify TOTP code first
+        var (valid, verifyError) = await _totpService.ValidateLoginCodeAsync(userId.Value, request.Code.Trim());
+        if (!valid)
+            return BadRequest(new { error = verifyError });
+
+        var (codes, error) = await _totpService.GenerateBackupCodesAsync(userId.Value, tenantId.Value);
+
+        if (codes == null)
+            return BadRequest(new { error });
+
+        return Ok(new
+        {
+            success = true,
+            message = "Backup codes regenerated. Save these securely — they replace all previous codes.",
+            backup_codes = codes
+        });
+    }
+
+    /// <summary>
+    /// Get count of remaining unused backup codes.
+    /// </summary>
+    [HttpGet("backup-codes/count")]
+    public async Task<IActionResult> GetBackupCodeCount()
+    {
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+        if (userId == null || tenantId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var count = await _totpService.GetRemainingBackupCodeCountAsync(userId.Value, tenantId.Value);
+
+        return Ok(new { remaining_codes = count });
     }
 }
 

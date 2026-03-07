@@ -23,6 +23,7 @@ These features are **fully implemented** in the ASP.NET backend (Phases 0-15). F
 - **Search** - Unified search, autocomplete suggestions, member directory
 - **AI Features** - Chat, listing suggestions, matching, moderation, translations
 - **Admin Dashboard** - User management, content moderation, categories, roles
+- **Registration Policy Engine** - Tenant-configurable registration modes, identity verification, admin approval queue
 
 ---
 
@@ -317,6 +318,21 @@ Returns user info if token is valid, 401 if invalid/expired.
 | POST | /api/auth/forgot-password | No | Request password reset token |
 | POST | /api/auth/reset-password | No | Reset password with token |
 | GET | /api/auth/validate | Yes | Validate token and get user info |
+
+### Registration Policy - ✅ IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/registration/config?tenant_slug=X | No | Get tenant's public registration config |
+| POST | /api/registration/verify/start | Yes | Start identity verification session |
+| GET | /api/registration/verify/status | Yes | Get current verification session status |
+| POST | /api/registration/webhook/{tenantId}?provider=X | No | Provider webhook callback |
+| GET | /api/registration/admin/policy | Admin | Get full registration policy |
+| PUT | /api/registration/admin/policy | Admin | Update registration policy |
+| GET | /api/registration/admin/pending | Admin | List users pending approval |
+| PUT | /api/registration/admin/users/{id}/approve | Admin | Approve user registration |
+| PUT | /api/registration/admin/users/{id}/reject | Admin | Reject user registration |
+| GET | /api/registration/admin/options | Admin | List available modes, providers, levels |
 
 ### Users - ✅ IMPLEMENTED
 
@@ -1782,3 +1798,569 @@ Key differences:
 - SignalR supports multiple transports (WebSocket, SSE, Long Polling)
 - SignalR provides typed RPC-style method invocation
 - SignalR handles connection negotiation and fallbacks
+
+---
+
+## Registration Policy Engine - ✅ IMPLEMENTED
+
+The Registration Policy Engine enables each tenant to independently configure how users register. This includes standard registration, admin approval flows, identity verification via third-party providers, government/eID (future), and invite-only modes.
+
+**Both frontends (React modern and GOV.UK) must consume the same backend API.** The registration UI adapts dynamically based on the tenant's configured policy.
+
+### Core Concept
+
+Each tenant has a **registration policy** that determines:
+1. **Registration Mode** - How users sign up (standard, with approval, verified identity, invite-only)
+2. **Verification Provider** - Which identity verification service is used (if any)
+3. **Verification Level** - How thorough the check is (document only, document + selfie, etc.)
+4. **Post-Verification Action** - What happens after verification passes (auto-activate, send to admin, etc.)
+
+### Registration Modes
+
+| Mode | Value | Description | Frontend Behavior |
+|------|-------|-------------|-------------------|
+| Standard | `0` | Normal email + password registration | Show standard form, user gets tokens immediately |
+| StandardWithApproval | `1` | Register then wait for admin | Show form + "awaiting review" message, no tokens until approved |
+| VerifiedIdentity | `2` | Register then verify identity via provider | Show form, then redirect to verification flow |
+| GovernmentId | `3` | Register via government/eID (future) | Show form + gov ID instructions |
+| InviteOnly | `4` | Closed registration, invite code required | Show form with invite code field, or "registration closed" |
+
+### Step-by-Step Frontend Flow
+
+#### 1. Fetch Tenant Registration Config (Before Showing Form)
+
+```
+GET /api/registration/config?tenant_slug=acme
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "mode": "Standard",
+    "mode_value": 0,
+    "requires_verification": false,
+    "requires_approval": false,
+    "requires_invite": false,
+    "verification_level": "None",
+    "provider_name": null,
+    "registration_message": null
+  }
+}
+```
+
+Use this to render the correct form variant:
+
+```typescript
+// Pseudocode for form rendering logic
+const config = await fetchRegistrationConfig(tenantSlug);
+
+if (config.data.requires_invite) {
+  showInviteCodeField();
+}
+if (config.data.registration_message) {
+  showInfoBanner(config.data.registration_message);
+}
+if (config.data.requires_verification) {
+  showVerificationNotice(config.data.provider_name);
+}
+if (config.data.requires_approval) {
+  showApprovalNotice();
+}
+```
+
+#### 2. Submit Registration
+
+```
+POST /api/auth/register
+```
+
+**Request (standard):**
+```json
+{
+  "email": "new@example.com",
+  "password": "SecurePassword123!",
+  "first_name": "Jane",
+  "last_name": "Doe",
+  "tenant_slug": "acme"
+}
+```
+
+**Request (invite-only — includes invite_code):**
+```json
+{
+  "email": "new@example.com",
+  "password": "SecurePassword123!",
+  "first_name": "Jane",
+  "last_name": "Doe",
+  "tenant_slug": "acme",
+  "invite_code": "SECRET123"
+}
+```
+
+#### 3. Handle Response Based on registration_status
+
+**Standard mode (Active immediately):**
+```json
+{
+  "success": true,
+  "registration_status": "Active",
+  "registration_message": null,
+  "access_token": "eyJhbGci...",
+  "refresh_token": "dGhpcyBp...",
+  "token_type": "Bearer",
+  "expires_in": 7200,
+  "user": {
+    "id": 42,
+    "email": "new@example.com",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "role": "member",
+    "tenant_id": 1,
+    "tenant_slug": "acme"
+  }
+}
+```
+
+**Approval mode (PendingAdminReview — no tokens):**
+```json
+{
+  "success": true,
+  "registration_status": "PendingAdminReview",
+  "registration_message": "Your account will be reviewed by an administrator.",
+  "user": {
+    "id": 43,
+    "email": "new@example.com",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "role": "member",
+    "tenant_id": 1,
+    "tenant_slug": "acme"
+  }
+}
+```
+
+**Verification mode (PendingVerification — tokens issued for verification flow):**
+```json
+{
+  "success": true,
+  "registration_status": "PendingVerification",
+  "registration_message": "Please verify your identity to complete registration.",
+  "requires_verification": true,
+  "access_token": "eyJhbGci...",
+  "refresh_token": "dGhpcyBp...",
+  "token_type": "Bearer",
+  "expires_in": 7200,
+  "user": {
+    "id": 44,
+    "email": "new@example.com",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "role": "member",
+    "tenant_id": 1,
+    "tenant_slug": "acme"
+  }
+}
+```
+
+**Invite-only with bad code (400):**
+```json
+{
+  "error": "Invalid or missing invite code."
+}
+```
+
+#### Frontend Routing Logic
+
+```typescript
+async function handleRegistrationResponse(response) {
+  const data = await response.json();
+
+  switch (data.registration_status) {
+    case 'Active':
+      // Store tokens, redirect to dashboard
+      storeTokens(data.access_token, data.refresh_token);
+      router.push('/dashboard');
+      break;
+
+    case 'PendingAdminReview':
+      // Show "awaiting approval" screen — no tokens to store
+      router.push('/registration/pending-approval');
+      break;
+
+    case 'PendingVerification':
+      // Store tokens (needed for verification API calls), start verification
+      storeTokens(data.access_token, data.refresh_token);
+      router.push('/registration/verify');
+      break;
+
+    default:
+      showError('Unexpected registration status');
+  }
+}
+```
+
+#### 4. Identity Verification Flow (When PendingVerification)
+
+After registration returns `PendingVerification`, the user has a JWT token and must complete verification.
+
+**Start verification session:**
+```
+POST /api/registration/verify/start
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "session_id": 7,
+    "status": "Created",
+    "redirect_url": "https://verify.provider.com/session/abc123",
+    "sdk_token": null,
+    "expires_at": "2026-03-07T15:00:00Z"
+  }
+}
+```
+
+**Frontend handling:**
+```typescript
+const session = await startVerification();
+
+if (session.data.redirect_url) {
+  // Redirect-based provider (e.g. Stripe Identity, Veriff)
+  // Open in new tab or redirect
+  window.location.href = session.data.redirect_url;
+} else if (session.data.sdk_token) {
+  // Embedded SDK provider (e.g. Persona, Jumio)
+  // Initialize provider's JS SDK with the token
+  initProviderSdk(session.data.sdk_token);
+}
+```
+
+**Poll verification status (after redirect back or periodically):**
+```
+GET /api/registration/verify/status
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "session_id": 7,
+    "status": "Completed",
+    "provider": "Mock",
+    "level": "DocumentOnly",
+    "decision": "approved",
+    "decision_reason": "Mock: auto-approved",
+    "created_at": "2026-03-07T14:00:00Z",
+    "completed_at": "2026-03-07T14:02:00Z",
+    "expires_at": "2026-03-07T15:00:00Z"
+  }
+}
+```
+
+**Verification status values:**
+
+| Status | Meaning | Frontend Action |
+|--------|---------|-----------------|
+| `Created` | Session created, not started | Show "Start verification" or redirect |
+| `InProgress` | Provider is processing | Show spinner, poll every 5s |
+| `Completed` | Verification passed | Check user status — may be Active or PendingAdminReview |
+| `Failed` | Verification failed | Show error, offer retry |
+| `Expired` | Session timed out | Show expired message, offer new session |
+| `Cancelled` | Session was cancelled | Show cancelled state |
+
+```typescript
+// Polling example
+async function pollVerificationStatus() {
+  const interval = setInterval(async () => {
+    const status = await getVerificationStatus();
+
+    switch (status.data.status) {
+      case 'Completed':
+        clearInterval(interval);
+        // Re-check login status — user may now be Active
+        const loginResponse = await refreshToken();
+        if (loginResponse.ok) {
+          router.push('/dashboard');
+        } else {
+          router.push('/registration/pending-approval');
+        }
+        break;
+
+      case 'Failed':
+        clearInterval(interval);
+        showError(status.data.decision_reason);
+        showRetryButton();
+        break;
+
+      case 'Expired':
+        clearInterval(interval);
+        showExpiredMessage();
+        break;
+
+      // Created, InProgress — keep polling
+    }
+  }, 5000); // Poll every 5 seconds
+}
+```
+
+### Admin Settings UI
+
+#### Fetch Available Options
+
+```
+GET /api/registration/admin/options
+Authorization: Bearer <admin-token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "modes": [
+      { "value": 0, "name": "Standard" },
+      { "value": 1, "name": "StandardWithApproval" },
+      { "value": 2, "name": "VerifiedIdentity" },
+      { "value": 3, "name": "GovernmentId" },
+      { "value": 4, "name": "InviteOnly" }
+    ],
+    "providers": [
+      { "value": 0, "name": "None" },
+      { "value": 1, "name": "Mock" },
+      { "value": 10, "name": "Veriff" },
+      { "value": 11, "name": "Jumio" },
+      { "value": 12, "name": "Persona" },
+      { "value": 13, "name": "Entrust" },
+      { "value": 14, "name": "Trulioo" },
+      { "value": 15, "name": "Yoti" },
+      { "value": 16, "name": "StripeIdentity" },
+      { "value": 17, "name": "UkCertified" },
+      { "value": 18, "name": "EudiWallet" },
+      { "value": 99, "name": "Custom" }
+    ],
+    "verification_levels": [
+      { "value": 0, "name": "None" },
+      { "value": 1, "name": "DocumentOnly" },
+      { "value": 2, "name": "DocumentAndSelfie" },
+      { "value": 3, "name": "AuthoritativeDataMatch" },
+      { "value": 4, "name": "ReusableDigitalId" },
+      { "value": 5, "name": "ManualReviewFallback" }
+    ],
+    "post_verification_actions": [
+      { "value": 0, "name": "ActivateAutomatically" },
+      { "value": 1, "name": "SendToAdminForApproval" },
+      { "value": 2, "name": "GrantLimitedAccess" },
+      { "value": 3, "name": "RejectOnFailure" }
+    ]
+  }
+}
+```
+
+#### Fetch Current Policy
+
+```
+GET /api/registration/admin/policy
+Authorization: Bearer <admin-token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "mode": "StandardWithApproval",
+    "mode_value": 1,
+    "provider": "None",
+    "provider_value": 0,
+    "verification_level": "None",
+    "verification_level_value": 0,
+    "post_verification_action": "ActivateAutomatically",
+    "post_verification_action_value": 0,
+    "has_provider_config": false,
+    "custom_webhook_url": null,
+    "custom_provider_name": null,
+    "registration_message": "Your account will be reviewed by an administrator.",
+    "invite_code": null,
+    "max_invite_uses": null,
+    "invite_uses_count": 0,
+    "is_active": true,
+    "updated_at": "2026-03-07T10:00:00Z",
+    "updated_by_user_id": 1
+  }
+}
+```
+
+#### Update Policy
+
+```
+PUT /api/registration/admin/policy
+Authorization: Bearer <admin-token>
+Content-Type: application/json
+
+{
+  "mode": 2,
+  "provider": 1,
+  "verification_level": 1,
+  "post_verification_action": 0,
+  "registration_message": "Please verify your identity to join our community."
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Registration policy updated"
+}
+```
+
+#### Admin Settings Form Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Registration Settings                                   │
+│                                                          │
+│  Registration Method:                                    │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ Standard Registration + Admin Approval          ▼   ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                          │
+│  ─── Shown when "Verified Identity" selected ───         │
+│                                                          │
+│  Identity Provider:                                      │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ Mock Provider (Development)                     ▼   ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                          │
+│  Verification Level:                                     │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ Document Only                                   ▼   ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                          │
+│  After Verification:                                     │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ Activate Automatically                          ▼   ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                          │
+│  ─── Shown when "Invite Only" selected ───               │
+│                                                          │
+│  Invite Code:                                            │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ SECRET123                                           ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                          │
+│  Max Uses (blank = unlimited):                           │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ 100                                                 ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                          │
+│  ─── Always shown ───                                    │
+│                                                          │
+│  Registration Message (shown to users):                  │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ Welcome! Your account will be reviewed before       ││
+│  │ activation.                                         ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                          │
+│  [ Save Settings ]                                       │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Conditional field visibility:**
+```typescript
+const showProviderFields = mode === 'VerifiedIdentity' || mode === 'GovernmentId';
+const showInviteFields = mode === 'InviteOnly';
+```
+
+### Admin Approval Queue
+
+```
+GET /api/registration/admin/pending?page=1&limit=20
+Authorization: Bearer <admin-token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 43,
+      "email": "pending@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "registration_status": "PendingAdminReview",
+      "created_at": "2026-03-07T09:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "pages": 1
+  }
+}
+```
+
+**Approve:**
+```
+PUT /api/registration/admin/users/43/approve
+Authorization: Bearer <admin-token>
+```
+
+**Reject:**
+```
+PUT /api/registration/admin/users/43/reject
+Authorization: Bearer <admin-token>
+Content-Type: application/json
+
+{
+  "reason": "Unable to verify identity through alternative means."
+}
+```
+
+### GOV.UK Frontend Notes
+
+The GOV.UK frontend should follow GDS (Government Digital Service) patterns:
+
+1. **Use GDS form components** - text inputs, radios, selects from govuk-frontend
+2. **Step-by-step navigation** - Use the GDS "step by step" pattern for multi-step registration
+3. **Status tags** - Use `govuk-tag` for registration status (e.g. `govuk-tag--yellow` for "Pending")
+4. **Error summary** - Show all validation errors at the top of the page per GDS convention
+5. **Confirmation page** - After registration, show a GDS confirmation page with a panel:
+   - "Active" → "Registration complete" (green panel)
+   - "PendingAdminReview" → "Registration submitted" (blue panel) + "What happens next" section
+   - "PendingVerification" → "Verify your identity" + continue button
+
+### Error Responses
+
+| Status | Error | Cause |
+|--------|-------|-------|
+| 400 | "Invalid or missing invite code." | InviteOnly mode, wrong/missing code |
+| 400 | "Invite code has reached its maximum usage limit." | Invite exhausted |
+| 400 | "User is not in PendingVerification status" | Verification start on wrong state |
+| 400 | "No verification provider configured for this tenant." | Provider not set |
+| 400 | "Invalid provider" | Bad webhook provider param |
+| 400 | "Cannot approve user. Check registration status." | Approve on non-pending user |
+| 401 | Unauthorized | Missing/invalid token |
+| 403 | Forbidden | Non-admin calling admin endpoint |
+| 404 | "Tenant not found" | Invalid tenant_slug |
+| 404 | "No verification session found" | Status check before session created |
+
+### State Machine Reference
+
+```
+Standard:           Register → Active
+WithApproval:       Register → PendingAdminReview → Active | Rejected
+VerifiedIdentity:   Register → PendingVerification → [Verification] → Active | PendingAdminReview | VerificationFailed
+GovernmentId:       Register → PendingVerification → [Verification] → Active | PendingAdminReview | VerificationFailed
+InviteOnly:         Register (+ code) → Active
+```

@@ -6,6 +6,7 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using OtpNet;
 
 namespace Nexus.Api.Services;
@@ -22,6 +23,8 @@ public class TotpService
 
     private const int TotpStep = 30; // 30-second window
     private const int TotpDigits = 6;
+    private const int BackupCodeCount = 10;
+    private const int BackupCodeLength = 8; // 8-digit numeric codes
 
     public TotpService(NexusDbContext db, IConfiguration config, ILogger<TotpService> logger)
     {
@@ -63,33 +66,36 @@ public class TotpService
     }
 
     /// <summary>
-    /// Verify a TOTP code and enable 2FA if valid.
+    /// Verify a TOTP code and enable 2FA if valid. Returns backup codes.
     /// </summary>
-    public async Task<(bool Success, string? Error)> VerifyAndEnableAsync(int userId, string code)
+    public async Task<(bool Success, List<string>? BackupCodes, string? Error)> VerifyAndEnableAsync(int userId, int tenantId, string code)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
-            return (false, "User not found");
+            return (false, null, "User not found");
 
         if (user.TwoFactorEnabled)
-            return (false, "Two-factor authentication is already enabled");
+            return (false, null, "Two-factor authentication is already enabled");
 
         if (string.IsNullOrEmpty(user.TotpSecretEncrypted))
-            return (false, "No TOTP secret found. Call setup first.");
+            return (false, null, "No TOTP secret found. Call setup first.");
 
         var secret = DecryptSecret(user.TotpSecretEncrypted);
         if (secret == null)
-            return (false, "Failed to decrypt TOTP secret");
+            return (false, null, "Failed to decrypt TOTP secret");
 
         if (!ValidateCode(secret, code))
-            return (false, "Invalid verification code");
+            return (false, null, "Invalid verification code");
 
         user.TwoFactorEnabled = true;
         user.TwoFactorEnabledAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
+        // Auto-generate backup codes
+        var (backupCodes, _) = await GenerateBackupCodesAsync(userId, tenantId);
+
         _logger.LogInformation("TOTP 2FA enabled for user {UserId}", userId);
-        return (true, null);
+        return (true, backupCodes, null);
     }
 
     /// <summary>
@@ -137,6 +143,14 @@ public class TotpService
         user.TwoFactorEnabled = false;
         user.TotpSecretEncrypted = null;
         user.TwoFactorEnabledAt = null;
+
+        // Remove backup codes
+        var backupCodes = await _db.TotpBackupCodes
+            .IgnoreQueryFilters()
+            .Where(c => c.UserId == userId)
+            .ToListAsync();
+        _db.TotpBackupCodes.RemoveRange(backupCodes);
+
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("TOTP 2FA disabled for user {UserId}", userId);
@@ -162,6 +176,111 @@ public class TotpService
         // VerificationWindow of 1 allows ±1 step (±30s) for clock drift
         return totp.VerifyTotp(code, out _, new VerificationWindow(previous: 1, future: 1));
     }
+
+    #region Backup Codes
+
+    /// <summary>
+    /// Generate backup codes for a user. Replaces any existing codes.
+    /// Returns the plaintext codes (only shown once).
+    /// </summary>
+    public async Task<(List<string>? Codes, string? Error)> GenerateBackupCodesAsync(int userId, int tenantId)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return (null, "User not found");
+
+        if (!user.TwoFactorEnabled)
+            return (null, "Two-factor authentication must be enabled first");
+
+        // Remove existing backup codes
+        var existing = await _db.TotpBackupCodes
+            .IgnoreQueryFilters()
+            .Where(c => c.UserId == userId && c.TenantId == tenantId)
+            .ToListAsync();
+        _db.TotpBackupCodes.RemoveRange(existing);
+
+        // Generate new codes
+        var plaintextCodes = new List<string>();
+        for (int i = 0; i < BackupCodeCount; i++)
+        {
+            var code = GenerateNumericCode(BackupCodeLength);
+            plaintextCodes.Add(code);
+
+            _db.TotpBackupCodes.Add(new TotpBackupCode
+            {
+                UserId = userId,
+                TenantId = tenantId,
+                CodeHash = BCrypt.Net.BCrypt.HashPassword(code),
+                IsUsed = false,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Generated {Count} backup codes for user {UserId}", BackupCodeCount, userId);
+
+        return (plaintextCodes, null);
+    }
+
+    /// <summary>
+    /// Validate a backup code for login. Each code can only be used once.
+    /// </summary>
+    public async Task<(bool Valid, string? Error)> ValidateBackupCodeAsync(int userId, int tenantId, string code)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return (false, "User not found");
+
+        if (!user.TwoFactorEnabled)
+            return (false, "Two-factor authentication is not enabled");
+
+        var unusedCodes = await _db.TotpBackupCodes
+            .IgnoreQueryFilters()
+            .Where(c => c.UserId == userId && c.TenantId == tenantId && !c.IsUsed)
+            .ToListAsync();
+
+        var normalizedInput = code.Replace("-", "").Replace(" ", "").Trim();
+
+        foreach (var backupCode in unusedCodes)
+        {
+            if (BCrypt.Net.BCrypt.Verify(normalizedInput, backupCode.CodeHash))
+            {
+                backupCode.IsUsed = true;
+                backupCode.UsedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+
+                _logger.LogInformation("Backup code used for user {UserId}, {Remaining} remaining",
+                    userId, unusedCodes.Count - 1);
+                return (true, null);
+            }
+        }
+
+        return (false, "Invalid backup code");
+    }
+
+    /// <summary>
+    /// Get count of remaining (unused) backup codes.
+    /// </summary>
+    public async Task<int> GetRemainingBackupCodeCountAsync(int userId, int tenantId)
+    {
+        return await _db.TotpBackupCodes
+            .IgnoreQueryFilters()
+            .CountAsync(c => c.UserId == userId && c.TenantId == tenantId && !c.IsUsed);
+    }
+
+    private static string GenerateNumericCode(int length)
+    {
+        var bytes = new byte[4];
+        var code = new char[length];
+        for (int i = 0; i < length; i++)
+        {
+            RandomNumberGenerator.Fill(bytes);
+            code[i] = (char)('0' + (BitConverter.ToUInt32(bytes) % 10));
+        }
+        return new string(code);
+    }
+
+    #endregion
 
     #region Secret Encryption (AES-256-GCM)
 

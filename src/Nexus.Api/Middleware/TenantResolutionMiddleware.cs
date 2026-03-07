@@ -43,8 +43,10 @@ public class TenantResolutionMiddleware
         "/api/auth/login",           // Login determines tenant from credentials
         "/api/auth/register",        // Register determines tenant from request body
         "/api/auth/refresh",         // Refresh determines tenant from token lookup
-        "/api/auth/forgot-password", // Forgot password determines tenant from request body
-        "/api/auth/reset-password"   // Reset password determines tenant from token lookup
+        "/api/auth/forgot-password",           // Forgot password determines tenant from request body
+        "/api/auth/reset-password",            // Reset password determines tenant from token lookup
+        "/api/passkeys/authenticate/begin",    // Passkey auth determines tenant from request body
+        "/api/passkeys/authenticate/finish"    // Passkey auth determines tenant from session
     };
 
     public TenantResolutionMiddleware(

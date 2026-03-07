@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -182,6 +183,96 @@ public class PasskeysControllerTests : IntegrationTestBase
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    #endregion
+
+    #region TokenService Integration Tests
+
+    [Fact]
+    public async Task Login_ReturnsJwt_WithExpectedClaimsStructure()
+    {
+        // This verifies TokenService generates JWTs with the correct claims
+        // (same structure as before the refactor: sub, tenant_id, role, email, iat)
+        var response = await Client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = "admin@test.com",
+            password = TestDataSeeder.TestPassword,
+            tenant_slug = "test-tenant"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var accessToken = content.GetProperty("access_token").GetString()!;
+        content.GetProperty("expires_in").GetInt32().Should().BeGreaterThan(0);
+
+        // Decode JWT and verify claims structure (don't validate signature)
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(accessToken);
+
+        jwt.Claims.Should().Contain(c => c.Type == "sub");
+        jwt.Claims.Should().Contain(c => c.Type == "tenant_id");
+        jwt.Claims.Should().Contain(c => c.Type == "role");
+        jwt.Claims.Should().Contain(c => c.Type == "email");
+        jwt.Claims.Should().Contain(c => c.Type == "iat");
+    }
+
+    [Fact]
+    public async Task Login_TokenWorksForPasskeyEndpoints()
+    {
+        // Verify the TokenService-generated JWT is accepted by passkey endpoints
+        var token = await GetAuthTokenAsync();
+
+        // Use it on passkey list endpoint
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/passkeys");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await Client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // And on passkey register begin
+        using var regRequest = new HttpRequestMessage(HttpMethod.Post, "/api/passkeys/register/begin");
+        regRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var regResponse = await Client.SendAsync(regRequest);
+        regResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Refresh_ReturnsNewTokenWithSameClaimsStructure()
+    {
+        // Login to get a refresh token
+        var loginResponse = await Client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = "admin@test.com",
+            password = TestDataSeeder.TestPassword,
+            tenant_slug = "test-tenant"
+        });
+
+        var loginContent = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var refreshToken = loginContent.GetProperty("refresh_token").GetString()!;
+
+        // Use refresh to get a new access token
+        var refreshResponse = await Client.PostAsJsonAsync("/api/auth/refresh", new
+        {
+            refresh_token = refreshToken
+        });
+
+        refreshResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var refreshContent = await refreshResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var newAccessToken = refreshContent.GetProperty("access_token").GetString()!;
+        refreshContent.GetProperty("expires_in").GetInt32().Should().BeGreaterThan(0);
+
+        // Verify the refreshed token has the same claims structure
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(newAccessToken);
+
+        jwt.Claims.Should().Contain(c => c.Type == "sub");
+        jwt.Claims.Should().Contain(c => c.Type == "tenant_id");
+        jwt.Claims.Should().Contain(c => c.Type == "role");
+        jwt.Claims.Should().Contain(c => c.Type == "email");
     }
 
     #endregion

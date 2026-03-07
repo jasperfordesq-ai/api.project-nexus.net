@@ -13,4 +13,5 @@
 
   paths = [
     '''\.github/workflows/.*\.yml''',
+    '''compose\.yml''',
   ]

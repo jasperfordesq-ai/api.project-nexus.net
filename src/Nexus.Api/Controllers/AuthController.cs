@@ -3,16 +3,12 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Middleware;
@@ -40,13 +36,14 @@ public class AuthController : ControllerBase
     private readonly IEventPublisher _eventPublisher;
     private readonly RegistrationOrchestrator _registrationOrchestrator;
     private readonly IEmailService _emailService;
+    private readonly TokenService _tokenService;
 
     // Refresh token validity (7 days default)
     private const int RefreshTokenExpiryDays = 7;
     // Password reset token validity (1 hour)
     private const int PasswordResetExpiryMinutes = 60;
 
-    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator, IEmailService emailService)
+    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator, IEmailService emailService, TokenService tokenService)
     {
         _db = db;
         _config = config;
@@ -54,6 +51,7 @@ public class AuthController : ControllerBase
         _eventPublisher = eventPublisher;
         _registrationOrchestrator = registrationOrchestrator;
         _emailService = emailService;
+        _tokenService = tokenService;
     }
 
     /// <summary>
@@ -127,7 +125,7 @@ public class AuthController : ControllerBase
             user.LastLoginAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            var tempToken = GenerateJwt(user);
+            var tempToken = _tokenService.GenerateJwt(user);
 
             _logger.LogInformation("User {UserId} requires 2FA for tenant {TenantId}", user.Id, tenant.Id);
 
@@ -145,8 +143,8 @@ public class AuthController : ControllerBase
         user.LastLoginAt = DateTime.UtcNow;
 
         // Step 6: Generate tokens
-        var accessToken = GenerateJwt(user);
-        var (refreshToken, refreshTokenHash) = GenerateRefreshToken();
+        var accessToken = _tokenService.GenerateJwt(user);
+        var (refreshToken, refreshTokenHash) = TokenService.GenerateRefreshToken();
 
         // Step 7: Store refresh token
         var refreshTokenEntity = new RefreshToken
@@ -170,7 +168,7 @@ public class AuthController : ControllerBase
             access_token = accessToken,
             refresh_token = refreshToken,
             token_type = "Bearer",
-            expires_in = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120) * 60,
+            expires_in = _tokenService.AccessTokenExpirySeconds,
             user = new
             {
                 id = user.Id,
@@ -201,7 +199,7 @@ public class AuthController : ControllerBase
         if (!string.IsNullOrEmpty(request?.RefreshToken))
         {
             // Revoke specific refresh token
-            var tokenHash = HashToken(request.RefreshToken);
+            var tokenHash = TokenService.HashToken(request.RefreshToken);
             var token = await _db.RefreshTokens
                 .FirstOrDefaultAsync(t => t.UserId == userId && t.TokenHash == tokenHash && t.RevokedAt == null);
 
@@ -244,7 +242,7 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = "Refresh token is required" });
         }
 
-        var tokenHash = HashToken(request.RefreshToken);
+        var tokenHash = TokenService.HashToken(request.RefreshToken);
 
         // Find the refresh token (ignore tenant filter - we'll verify manually)
         var refreshToken = await _db.RefreshTokens
@@ -275,8 +273,8 @@ public class AuthController : ControllerBase
         refreshToken.RevokedReason = "rotation";
 
         // Generate new tokens
-        var accessToken = GenerateJwt(refreshToken.User);
-        var (newRefreshToken, newRefreshTokenHash) = GenerateRefreshToken();
+        var accessToken = _tokenService.GenerateJwt(refreshToken.User);
+        var (newRefreshToken, newRefreshTokenHash) = TokenService.GenerateRefreshToken();
 
         // Store new refresh token
         var newRefreshTokenEntity = new RefreshToken
@@ -299,7 +297,7 @@ public class AuthController : ControllerBase
             access_token = accessToken,
             refresh_token = newRefreshToken,
             token_type = "Bearer",
-            expires_in = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120) * 60
+            expires_in = _tokenService.AccessTokenExpirySeconds
         });
     }
 
@@ -420,8 +418,8 @@ public class AuthController : ControllerBase
         // Only issue tokens if the user is immediately active
         if (registrationResult.Status == RegistrationStatus.Active)
         {
-            var accessToken = GenerateJwt(user);
-            var (refreshToken, refreshTokenHash) = GenerateRefreshToken();
+            var accessToken = _tokenService.GenerateJwt(user);
+            var (refreshToken, refreshTokenHash) = TokenService.GenerateRefreshToken();
 
             var refreshTokenEntity = new RefreshToken
             {
@@ -438,13 +436,13 @@ public class AuthController : ControllerBase
             responseData["access_token"] = accessToken;
             responseData["refresh_token"] = refreshToken;
             responseData["token_type"] = "Bearer";
-            responseData["expires_in"] = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120) * 60;
+            responseData["expires_in"] = _tokenService.AccessTokenExpirySeconds;
         }
         else if (registrationResult.Status == RegistrationStatus.PendingVerification)
         {
             // Issue a limited token so the user can call the verification endpoints
-            var accessToken = GenerateJwt(user);
-            var (refreshToken, refreshTokenHash) = GenerateRefreshToken();
+            var accessToken = _tokenService.GenerateJwt(user);
+            var (refreshToken, refreshTokenHash) = TokenService.GenerateRefreshToken();
 
             var refreshTokenEntity = new RefreshToken
             {
@@ -461,7 +459,7 @@ public class AuthController : ControllerBase
             responseData["access_token"] = accessToken;
             responseData["refresh_token"] = refreshToken;
             responseData["token_type"] = "Bearer";
-            responseData["expires_in"] = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120) * 60;
+            responseData["expires_in"] = _tokenService.AccessTokenExpirySeconds;
             responseData["requires_verification"] = true;
         }
 
@@ -521,7 +519,7 @@ public class AuthController : ControllerBase
         }
 
         // Generate new reset token
-        var (resetToken, resetTokenHash) = GenerateRefreshToken(); // Reuse the same generation method
+        var (resetToken, resetTokenHash) = TokenService.GenerateRefreshToken(); // Reuse the same generation method
 
         var passwordResetToken = new PasswordResetToken
         {
@@ -596,7 +594,7 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = "Password must be at least 8 characters" });
         }
 
-        var tokenHash = HashToken(request.Token);
+        var tokenHash = TokenService.HashToken(request.Token);
 
         // Find the reset token
         var resetToken = await _db.PasswordResetTokens
@@ -694,54 +692,6 @@ public class AuthController : ControllerBase
         }
 
         return null;
-    }
-
-    private string GenerateJwt(User user)
-    {
-        var secret = _config["Jwt:Secret"]
-            ?? throw new InvalidOperationException("JWT secret not configured");
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var expiryMinutes = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120);
-        var expires = DateTime.UtcNow.AddMinutes(expiryMinutes);
-
-        // Claims must match PHP structure for interoperability
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim("tenant_id", user.TenantId.ToString()),
-            new Claim("role", user.Role),
-            new Claim("email", user.Email),
-            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
-            claims: claims,
-            expires: expires,
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    private static (string token, string hash) GenerateRefreshToken()
-    {
-        var randomBytes = new byte[64];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(randomBytes);
-        var token = Convert.ToBase64String(randomBytes);
-        var hash = HashToken(token);
-        return (token, hash);
-    }
-
-    private static string HashToken(string token)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-        return Convert.ToBase64String(bytes);
     }
 
     private string? GetClientIp()

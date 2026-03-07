@@ -291,6 +291,38 @@ Or configure in `appsettings.Production.json`:
 - Origins are sanitized (trailing slashes removed, validated as valid URLs)
 - `AllowCredentials()` is NOT used (JWT Bearer auth doesn't need it)
 
+### 5. WebAuthn/Passkey (FIDO2) Configuration
+
+Passkeys require correct RP ID and origin configuration. Misconfigured values will cause silent registration/authentication failures.
+
+#### Local Development (compose.yml)
+
+```yaml
+environment:
+  - Fido2__ServerDomain=localhost
+  - Fido2__ServerName=Project NEXUS
+  - Fido2__Origins__0=http://localhost:5080
+  - Fido2__Origins__1=http://localhost:5170
+  - Fido2__Origins__2=http://localhost:5180
+```
+
+#### Production
+
+```bash
+Fido2__ServerDomain=project-nexus.net
+Fido2__ServerName=Project NEXUS
+Fido2__Origins__0=https://app.project-nexus.net
+Fido2__Origins__1=https://uk.project-nexus.net
+Fido2__Origins__2=https://ie.project-nexus.net
+```
+
+**Rules:**
+- `ServerDomain` must match the domain users access (RP ID in WebAuthn spec)
+- `Origins` must be HTTPS in production (WebAuthn requires secure context)
+- Origins must match CORS allowed origins
+- Cross-device QR flows only work over HTTPS with valid certificates
+- Max 10 passkeys per user (enforced server-side)
+
 ## Commands (Docker-Only)
 
 **⚠️ Docker is REQUIRED for local development. Do NOT use `dotnet run` directly.**
@@ -379,6 +411,13 @@ dotnet test
 | /api/auth/2fa/verify-setup    | POST   | Yes  | Verify code and enable 2FA       |
 | /api/auth/2fa/verify          | POST   | Yes  | Verify TOTP code (login)         |
 | /api/auth/2fa/disable         | POST   | Yes  | Disable 2FA                      |
+| /api/passkeys/register/begin  | POST   | Yes  | Begin passkey registration        |
+| /api/passkeys/register/finish | POST   | Yes  | Complete passkey registration     |
+| /api/passkeys/authenticate/begin  | POST | No | Begin passkey authentication     |
+| /api/passkeys/authenticate/finish | POST | No | Complete passkey authentication  |
+| /api/passkeys                 | GET    | Yes  | List user's passkeys             |
+| /api/passkeys/{id}            | PUT    | Yes  | Rename passkey                   |
+| /api/passkeys/{id}            | DELETE | Yes  | Delete passkey                   |
 | /api/users                    | GET    | Yes  | List users (tenant-scoped)       |
 | /api/users/{id}               | GET    | Yes  | Get user by ID                   |
 | /api/users/me                 | GET    | Yes  | Get current user                 |

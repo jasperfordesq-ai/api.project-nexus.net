@@ -231,11 +231,14 @@ builder.Services.AddFido2(options =>
         ?? new HashSet<string> { "http://localhost:5080" };
 });
 builder.Services.AddScoped<PasskeyService>();
+builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<TotpService>();
 
 // Registration Policy Engine
 builder.Services.AddSingleton<IIdentityVerificationProvider, MockIdentityVerificationProvider>();
+builder.Services.AddSingleton<IIdentityVerificationProvider, StripeIdentityProvider>();
 builder.Services.AddSingleton<IdentityVerificationProviderFactory>();
+builder.Services.AddSingleton<ProviderConfigEncryption>();
 builder.Services.AddScoped<RegistrationOrchestrator>();
 
 // AI service (requires ILlamaClient, NexusDbContext)

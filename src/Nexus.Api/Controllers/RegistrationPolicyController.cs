@@ -28,17 +28,20 @@ public class RegistrationPolicyController : ControllerBase
 {
     private readonly NexusDbContext _db;
     private readonly RegistrationOrchestrator _orchestrator;
+    private readonly ProviderConfigEncryption _encryption;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<RegistrationPolicyController> _logger;
 
     public RegistrationPolicyController(
         NexusDbContext db,
         RegistrationOrchestrator orchestrator,
+        ProviderConfigEncryption encryption,
         TenantContext tenantContext,
         ILogger<RegistrationPolicyController> logger)
     {
         _db = db;
         _orchestrator = orchestrator;
+        _encryption = encryption;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -52,6 +55,9 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpGet("config")]
     [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPublicConfig([FromQuery] string? tenant_slug, [FromQuery] int? tenant_id)
     {
         int tenantId;
@@ -104,6 +110,9 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpPost("verify/start")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> StartVerification()
     {
         var userId = GetUserId();
@@ -135,6 +144,9 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpGet("verify/status")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetVerificationStatus()
     {
         var userId = GetUserId();
@@ -166,11 +178,48 @@ public class RegistrationPolicyController : ControllerBase
     }
 
     /// <summary>
+    /// Retry identity verification for a user whose previous attempt failed or expired.
+    /// Transitions the user from VerificationFailed back to PendingVerification and creates a new session.
+    /// </summary>
+    [HttpPost("verify/retry")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RetryVerification()
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
+        var result = await _orchestrator.RetryVerificationAsync(userId.Value, tenantId);
+
+        if (!result.IsSuccess)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                session_id = result.Session!.Id,
+                status = result.Session.Status.ToString(),
+                redirect_url = result.ProviderResult!.RedirectUrl,
+                sdk_token = result.ProviderResult.SdkToken,
+                expires_at = result.Session.ExpiresAt
+            }
+        });
+    }
+
+    /// <summary>
     /// Webhook callback endpoint for verification providers.
     /// </summary>
     [HttpPost("webhook/{tenantId:int}")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Webhook(int tenantId, [FromQuery] string? provider)
     {
         if (!Enum.TryParse<VerificationProvider>(provider, true, out var providerType))
@@ -207,6 +256,9 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpGet("admin/policy")]
     [Authorize(Roles = "admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetPolicy()
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
@@ -245,6 +297,9 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpPut("admin/policy")]
     [Authorize(Roles = "admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdatePolicy([FromBody] UpdateRegistrationPolicyRequest request)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
@@ -274,7 +329,7 @@ public class RegistrationPolicyController : ControllerBase
         if (request.PostVerificationAction.HasValue)
             existing.PostVerificationAction = request.PostVerificationAction.Value;
         if (request.ProviderConfig != null)
-            existing.ProviderConfigEncrypted = request.ProviderConfig; // TODO: encrypt in production
+            existing.ProviderConfigEncrypted = _encryption.Encrypt(request.ProviderConfig);
         if (request.CustomWebhookUrl != null)
             existing.CustomWebhookUrl = request.CustomWebhookUrl;
         if (request.CustomProviderName != null)
@@ -303,6 +358,9 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpGet("admin/pending")]
     [Authorize(Roles = "admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetPendingRegistrations([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
@@ -341,6 +399,10 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpPut("admin/users/{userId:int}/approve")]
     [Authorize(Roles = "admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ApproveRegistration(int userId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
@@ -359,6 +421,10 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpPut("admin/users/{userId:int}/reject")]
     [Authorize(Roles = "admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> RejectRegistration(int userId, [FromBody] RejectRegistrationRequest? request)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
@@ -377,6 +443,9 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpGet("admin/options")]
     [Authorize(Roles = "admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public IActionResult GetOptions()
     {
         return Ok(new

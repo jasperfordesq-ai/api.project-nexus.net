@@ -23,6 +23,9 @@ public class PasskeyService
     private readonly NexusDbContext _db;
     private readonly ILogger<PasskeyService> _logger;
 
+    // Maximum passkeys per user to prevent unbounded credential storage
+    private const int MaxPasskeysPerUser = 10;
+
     public PasskeyService(IFido2 fido2, NexusDbContext db, ILogger<PasskeyService> logger)
     {
         _fido2 = fido2;
@@ -36,6 +39,17 @@ public class PasskeyService
     /// </summary>
     public async Task<CredentialCreateOptions> BeginRegistrationAsync(User user)
     {
+        // Enforce passkey count limit
+        var existingCount = await _db.UserPasskeys
+            .IgnoreQueryFilters()
+            .CountAsync(p => p.UserId == user.Id && p.TenantId == user.TenantId);
+
+        if (existingCount >= MaxPasskeysPerUser)
+        {
+            throw new InvalidOperationException(
+                $"Maximum of {MaxPasskeysPerUser} passkeys per user reached. Remove an existing passkey first.");
+        }
+
         // Build the Fido2User from our domain user
         var fido2User = new Fido2User
         {
@@ -99,8 +113,12 @@ public class PasskeyService
             }
         );
 
-        // In fido2-net-lib v4, MakeNewCredentialAsync returns RegisteredPublicKeyCredential directly
-        var isDiscoverable = false;
+        // Infer discoverability: if we requested resident key and the authenticator
+        // didn't explicitly reject it, treat the credential as discoverable.
+        // fido2-net-lib v4 doesn't expose credProps from the response, so we infer
+        // from the original request's ResidentKey setting.
+        var isDiscoverable = options.AuthenticatorSelection?.ResidentKey is
+            ResidentKeyRequirement.Required or ResidentKeyRequirement.Preferred;
 
         // Extract transports if available
         string? transports = null;

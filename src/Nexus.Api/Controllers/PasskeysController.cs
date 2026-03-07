@@ -3,11 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using Asp.Versioning;
 using Fido2NetLib;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Middleware;
 using Nexus.Api.Services;
@@ -35,7 +31,7 @@ public class PasskeysController : ControllerBase
 {
     private readonly PasskeyService _passkeyService;
     private readonly NexusDbContext _db;
-    private readonly IConfiguration _config;
+    private readonly TokenService _tokenService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<PasskeysController> _logger;
 
@@ -45,13 +41,13 @@ public class PasskeysController : ControllerBase
     public PasskeysController(
         PasskeyService passkeyService,
         NexusDbContext db,
-        IConfiguration config,
+        TokenService tokenService,
         IMemoryCache cache,
         ILogger<PasskeysController> logger)
     {
         _passkeyService = passkeyService;
         _db = db;
-        _config = config;
+        _tokenService = tokenService;
         _cache = cache;
         _logger = logger;
     }
@@ -66,18 +62,28 @@ public class PasskeysController : ControllerBase
     /// </summary>
     [HttpPost("register/begin")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> BeginRegistration()
     {
         var user = await GetCurrentUserAsync();
         if (user == null) return Unauthorized(new { error = "User not found" });
 
-        var options = await _passkeyService.BeginRegistrationAsync(user);
+        try
+        {
+            var options = await _passkeyService.BeginRegistrationAsync(user);
 
-        // Store options by user ID (registration requires auth so this is safe)
-        var cacheKey = $"passkey:reg:{user.Id}:{user.TenantId}";
-        _cache.Set(cacheKey, options, ChallengeTtl);
+            // Store options by user ID (registration requires auth so this is safe)
+            var cacheKey = $"passkey:reg:{user.Id}:{user.TenantId}";
+            _cache.Set(cacheKey, options, ChallengeTtl);
 
-        return Ok(options);
+            return Ok(options);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Maximum"))
+        {
+            return Conflict(new { error = ex.Message });
+        }
     }
 
     /// <summary>
@@ -85,6 +91,9 @@ public class PasskeysController : ControllerBase
     /// </summary>
     [HttpPost("register/finish")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> FinishRegistration([FromBody] PasskeyRegistrationFinishRequest request)
     {
         var user = await GetCurrentUserAsync();
@@ -143,6 +152,7 @@ public class PasskeysController : ControllerBase
     [HttpPost("authenticate/begin")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> BeginAuthentication([FromBody] PasskeyAuthBeginRequest? request)
     {
         int? tenantId = null;
@@ -180,6 +190,9 @@ public class PasskeysController : ControllerBase
     [HttpPost("authenticate/finish")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> FinishAuthentication([FromBody] PasskeyAuthFinishRequest request)
     {
         if (string.IsNullOrEmpty(request.SessionId))
@@ -207,8 +220,8 @@ public class PasskeysController : ControllerBase
             var tenant = await _db.Tenants.FindAsync(user.TenantId);
 
             // Generate JWT (same as password login)
-            var accessToken = GenerateJwt(user);
-            var (refreshToken, refreshTokenHash) = GenerateRefreshToken();
+            var accessToken = _tokenService.GenerateJwt(user);
+            var (refreshToken, refreshTokenHash) = TokenService.GenerateRefreshToken();
 
             // Store refresh token
             var refreshTokenEntity = new Entities.RefreshToken
@@ -229,7 +242,7 @@ public class PasskeysController : ControllerBase
                 access_token = accessToken,
                 refresh_token = refreshToken,
                 token_type = "Bearer",
-                expires_in = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120) * 60,
+                expires_in = _tokenService.AccessTokenExpirySeconds,
                 user = new
                 {
                     id = user.Id,
@@ -263,6 +276,8 @@ public class PasskeysController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ListPasskeys()
     {
         var (userId, tenantId) = GetUserContext();
@@ -289,6 +304,9 @@ public class PasskeysController : ControllerBase
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeletePasskey(int id)
     {
         var (userId, tenantId) = GetUserContext();
@@ -305,6 +323,10 @@ public class PasskeysController : ControllerBase
     /// </summary>
     [HttpPut("{id}")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RenamePasskey(int id, [FromBody] RenamePasskeyRequest request)
     {
         var (userId, tenantId) = GetUserContext();
@@ -351,46 +373,6 @@ public class PasskeysController : ControllerBase
         return (0, 0);
     }
 
-    private string GenerateJwt(Entities.User user)
-    {
-        var secret = _config["Jwt:Secret"]
-            ?? throw new InvalidOperationException("JWT secret not configured");
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var expiryMinutes = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120);
-        var expires = DateTime.UtcNow.AddMinutes(expiryMinutes);
-
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim("tenant_id", user.TenantId.ToString()),
-            new Claim("role", user.Role),
-            new Claim("email", user.Email),
-            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
-            claims: claims,
-            expires: expires,
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    private static (string token, string hash) GenerateRefreshToken()
-    {
-        var randomBytes = new byte[64];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(randomBytes);
-        var token = Convert.ToBase64String(randomBytes);
-        var hash = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
-        return (token, hash);
-    }
 }
 
 // =========================================================================

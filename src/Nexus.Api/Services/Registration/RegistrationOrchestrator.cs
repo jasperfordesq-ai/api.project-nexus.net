@@ -6,6 +6,7 @@
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 using Nexus.Contracts.Events;
 using Nexus.Messaging;
 
@@ -20,22 +21,48 @@ public class RegistrationOrchestrator
 {
     private readonly NexusDbContext _db;
     private readonly IdentityVerificationProviderFactory _providerFactory;
+    private readonly ProviderConfigEncryption _encryption;
     private readonly IEventPublisher _eventPublisher;
+    private readonly EmailNotificationService _emailNotification;
     private readonly IConfiguration _config;
     private readonly ILogger<RegistrationOrchestrator> _logger;
+
+    // Valid state transitions for the registration state machine
+    private static readonly Dictionary<RegistrationStatus, HashSet<RegistrationStatus>> ValidTransitions = new()
+    {
+        [RegistrationStatus.PendingRegistration] = new() { RegistrationStatus.PendingVerification, RegistrationStatus.PendingAdminReview, RegistrationStatus.Active, RegistrationStatus.Rejected },
+        [RegistrationStatus.PendingVerification] = new() { RegistrationStatus.Active, RegistrationStatus.PendingAdminReview, RegistrationStatus.VerificationFailed, RegistrationStatus.LimitedAccess, RegistrationStatus.Rejected },
+        [RegistrationStatus.PendingAdminReview] = new() { RegistrationStatus.Active, RegistrationStatus.Rejected },
+        [RegistrationStatus.VerificationFailed] = new() { RegistrationStatus.PendingVerification, RegistrationStatus.Rejected },
+        [RegistrationStatus.LimitedAccess] = new() { RegistrationStatus.Active, RegistrationStatus.Rejected },
+        [RegistrationStatus.Active] = new() { }, // Terminal (suspension is a different mechanism)
+        [RegistrationStatus.Rejected] = new() { }, // Terminal
+    };
 
     public RegistrationOrchestrator(
         NexusDbContext db,
         IdentityVerificationProviderFactory providerFactory,
+        ProviderConfigEncryption encryption,
         IEventPublisher eventPublisher,
+        EmailNotificationService emailNotification,
         IConfiguration config,
         ILogger<RegistrationOrchestrator> logger)
     {
         _db = db;
         _providerFactory = providerFactory;
+        _encryption = encryption;
         _eventPublisher = eventPublisher;
+        _emailNotification = emailNotification;
         _config = config;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Validates whether a state transition is allowed.
+    /// </summary>
+    public static bool IsValidTransition(RegistrationStatus from, RegistrationStatus to)
+    {
+        return ValidTransitions.TryGetValue(from, out var allowed) && allowed.Contains(to);
     }
 
     /// <summary>
@@ -137,6 +164,12 @@ public class RegistrationOrchestrator
             IsActive = user.IsActive
         });
 
+        // Send registration status email
+        if (initialStatus == RegistrationStatus.PendingAdminReview)
+            await SendStatusChangeEmailAsync(user, "pending_approval");
+        else if (initialStatus == RegistrationStatus.PendingVerification)
+            await SendStatusChangeEmailAsync(user, "pending_verification");
+
         return RegistrationResult.Success(user, initialStatus, policy.RegistrationMessage);
     }
 
@@ -167,8 +200,12 @@ public class RegistrationOrchestrator
         var provider = _providerFactory.GetProvider(policy.Provider);
         var callbackUrl = BuildWebhookCallbackUrl(tenantId);
 
+        var decryptedConfig = !string.IsNullOrEmpty(policy.ProviderConfigEncrypted)
+            ? _encryption.Decrypt(policy.ProviderConfigEncrypted)
+            : null;
+
         var sessionResult = await provider.CreateSessionAsync(
-            userId, tenantId, policy.VerificationLevel, callbackUrl, policy.ProviderConfigEncrypted);
+            userId, tenantId, policy.VerificationLevel, callbackUrl, decryptedConfig);
 
         var session = new IdentityVerificationSession
         {
@@ -194,6 +231,36 @@ public class RegistrationOrchestrator
             session.Id, userId, policy.Provider);
 
         return VerificationStartResult.Success(session, sessionResult);
+    }
+
+    /// <summary>
+    /// Retries identity verification for a user whose previous attempt failed or expired.
+    /// Transitions VerificationFailed -> PendingVerification and creates a new session.
+    /// </summary>
+    public async Task<VerificationStartResult> RetryVerificationAsync(int userId, int tenantId)
+    {
+        var user = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId);
+
+        if (user == null)
+            return VerificationStartResult.Fail("User not found.");
+
+        if (user.RegistrationStatus != RegistrationStatus.VerificationFailed)
+            return VerificationStartResult.Fail($"User is not in VerificationFailed status (current: {user.RegistrationStatus}).");
+
+        if (!IsValidTransition(RegistrationStatus.VerificationFailed, RegistrationStatus.PendingVerification))
+            return VerificationStartResult.Fail("State transition not allowed.");
+
+        // Transition back to PendingVerification
+        user.RegistrationStatus = RegistrationStatus.PendingVerification;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("User {UserId} retrying verification (VerificationFailed -> PendingVerification)", userId);
+
+        // Start a new verification session
+        return await StartVerificationAsync(userId, tenantId);
     }
 
     /// <summary>
@@ -273,9 +340,10 @@ public class RegistrationOrchestrator
 
         if (user == null) return false;
 
-        if (user.RegistrationStatus != RegistrationStatus.PendingAdminReview)
+        if (!IsValidTransition(user.RegistrationStatus, RegistrationStatus.Active))
         {
-            _logger.LogWarning("Cannot approve user {UserId}: status is {Status}", userId, user.RegistrationStatus);
+            _logger.LogWarning("Cannot approve user {UserId}: invalid transition from {Status} to Active",
+                userId, user.RegistrationStatus);
             return false;
         }
 
@@ -293,6 +361,8 @@ public class RegistrationOrchestrator
             ActivatedByUserId = adminUserId
         });
 
+        await SendStatusChangeEmailAsync(user, "approved");
+
         return true;
     }
 
@@ -307,10 +377,10 @@ public class RegistrationOrchestrator
 
         if (user == null) return false;
 
-        if (user.RegistrationStatus != RegistrationStatus.PendingAdminReview
-            && user.RegistrationStatus != RegistrationStatus.PendingVerification)
+        if (!IsValidTransition(user.RegistrationStatus, RegistrationStatus.Rejected))
         {
-            _logger.LogWarning("Cannot reject user {UserId}: status is {Status}", userId, user.RegistrationStatus);
+            _logger.LogWarning("Cannot reject user {UserId}: invalid transition from {Status} to Rejected",
+                userId, user.RegistrationStatus);
             return false;
         }
 
@@ -323,6 +393,8 @@ public class RegistrationOrchestrator
 
         _logger.LogInformation("Admin {AdminId} rejected registration for user {UserId}. Reason: {Reason}",
             adminUserId, userId, reason);
+
+        await SendStatusChangeEmailAsync(user, "rejected", reason);
 
         return true;
     }
@@ -393,6 +465,19 @@ public class RegistrationOrchestrator
             "Verification session {SessionId} updated: {PreviousStatus} -> {NewStatus}, decision={Decision}",
             session.Id, previousStatus, result.Status, result.Decision);
 
+        // Send email notification about verification outcome
+        if (session.User != null)
+        {
+            var emailStatus = result.Status == VerificationSessionStatus.Completed && result.Decision == "approved"
+                ? "verification_approved"
+                : result.Status == VerificationSessionStatus.Failed
+                    ? "verification_failed"
+                    : null;
+
+            if (emailStatus != null)
+                await SendStatusChangeEmailAsync(session.User, emailStatus, result.DecisionReason);
+        }
+
         return true;
     }
 
@@ -418,6 +503,28 @@ public class RegistrationOrchestrator
 
         _db.IdentityVerificationEvents.Add(evt);
         await _db.SaveChangesAsync();
+    }
+
+    private async Task SendStatusChangeEmailAsync(User user, string status, string? reason = null)
+    {
+        try
+        {
+            var placeholders = new Dictionary<string, string>
+            {
+                ["user_name"] = user.FirstName ?? "User",
+                ["email"] = user.Email,
+                ["status"] = status
+            };
+            if (reason != null)
+                placeholders["reason"] = reason;
+
+            await _emailNotification.SendTemplatedEmailAsync(user.Id, $"registration_{status}", placeholders);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send registration status email to user {UserId} for status {Status}",
+                user.Id, status);
+        }
     }
 
     private string BuildWebhookCallbackUrl(int tenantId)

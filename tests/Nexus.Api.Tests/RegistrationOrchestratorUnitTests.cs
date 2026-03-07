@@ -4,6 +4,8 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexus.Api.Entities;
 using Nexus.Api.Services.Registration;
 
@@ -223,5 +225,124 @@ public class RegistrationStateTests
         providers.Should().Contain(VerificationProvider.Veriff);
         providers.Should().Contain(VerificationProvider.EudiWallet);
         providers.Should().Contain(VerificationProvider.Custom);
+    }
+}
+
+/// <summary>
+/// Unit tests for state transition guard clauses.
+/// </summary>
+public class StateTransitionGuardTests
+{
+    [Theory]
+    [InlineData(RegistrationStatus.PendingAdminReview, RegistrationStatus.Active, true)]
+    [InlineData(RegistrationStatus.PendingAdminReview, RegistrationStatus.Rejected, true)]
+    [InlineData(RegistrationStatus.PendingVerification, RegistrationStatus.Active, true)]
+    [InlineData(RegistrationStatus.PendingVerification, RegistrationStatus.VerificationFailed, true)]
+    [InlineData(RegistrationStatus.PendingVerification, RegistrationStatus.PendingAdminReview, true)]
+    [InlineData(RegistrationStatus.PendingVerification, RegistrationStatus.LimitedAccess, true)]
+    [InlineData(RegistrationStatus.VerificationFailed, RegistrationStatus.PendingVerification, true)]
+    [InlineData(RegistrationStatus.LimitedAccess, RegistrationStatus.Active, true)]
+    // Invalid transitions
+    [InlineData(RegistrationStatus.Active, RegistrationStatus.Rejected, false)]
+    [InlineData(RegistrationStatus.Active, RegistrationStatus.PendingVerification, false)]
+    [InlineData(RegistrationStatus.Rejected, RegistrationStatus.Active, false)]
+    [InlineData(RegistrationStatus.Rejected, RegistrationStatus.PendingAdminReview, false)]
+    public void IsValidTransition_ReturnsExpected(RegistrationStatus from, RegistrationStatus to, bool expected)
+    {
+        RegistrationOrchestrator.IsValidTransition(from, to).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Active_IsTerminal()
+    {
+        // Active should not transition to any other status
+        foreach (var status in Enum.GetValues<RegistrationStatus>())
+        {
+            if (status == RegistrationStatus.Active) continue;
+            RegistrationOrchestrator.IsValidTransition(RegistrationStatus.Active, status).Should().BeFalse(
+                $"Active should not transition to {status}");
+        }
+    }
+
+    [Fact]
+    public void Rejected_IsTerminal()
+    {
+        foreach (var status in Enum.GetValues<RegistrationStatus>())
+        {
+            if (status == RegistrationStatus.Rejected) continue;
+            RegistrationOrchestrator.IsValidTransition(RegistrationStatus.Rejected, status).Should().BeFalse(
+                $"Rejected should not transition to {status}");
+        }
+    }
+}
+
+/// <summary>
+/// Unit tests for ProviderConfigEncryption.
+/// </summary>
+public class ProviderConfigEncryptionTests
+{
+    [Fact]
+    public void Encrypt_Decrypt_RoundTrip()
+    {
+        var encryption = CreateEncryption("my-test-encryption-key-32chars!");
+        var plaintext = "{\"secret_key\": \"sk_live_abc123\", \"webhook_secret\": \"whsec_xyz\"}";
+
+        var encrypted = encryption.Encrypt(plaintext);
+        encrypted.Should().NotBe(plaintext);
+
+        var decrypted = encryption.Decrypt(encrypted);
+        decrypted.Should().Be(plaintext);
+    }
+
+    [Fact]
+    public void Encrypt_ProducesDifferentOutputEachTime()
+    {
+        var encryption = CreateEncryption("my-test-key");
+        var plaintext = "test data";
+
+        var encrypted1 = encryption.Encrypt(plaintext);
+        var encrypted2 = encryption.Encrypt(plaintext);
+
+        // Different nonces should produce different ciphertext
+        encrypted1.Should().NotBe(encrypted2);
+
+        // But both should decrypt to the same value
+        encryption.Decrypt(encrypted1).Should().Be(plaintext);
+        encryption.Decrypt(encrypted2).Should().Be(plaintext);
+    }
+
+    [Fact]
+    public void NoKey_ReturnsPlaintext()
+    {
+        var encryption = CreateEncryption(null);
+        encryption.IsEnabled.Should().BeFalse();
+
+        var plaintext = "some config";
+        encryption.Encrypt(plaintext).Should().Be(plaintext);
+        encryption.Decrypt(plaintext).Should().Be(plaintext);
+    }
+
+    [Fact]
+    public void Decrypt_NonBase64_ReturnsSameString()
+    {
+        var encryption = CreateEncryption("my-test-key");
+        // Non-base64 string should be returned as-is (backward compat with pre-encryption data)
+        var plaintext = "{\"auto_approve\": true}";
+        encryption.Decrypt(plaintext).Should().Be(plaintext);
+    }
+
+    private static ProviderConfigEncryption CreateEncryption(string? key)
+    {
+        var configBuilder = new ConfigurationBuilder();
+        if (key != null)
+        {
+            configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Registration:EncryptionKey"] = key
+            });
+        }
+        return new ProviderConfigEncryption(
+            configBuilder.Build(),
+            NullLogger<ProviderConfigEncryption>.Instance);
     }
 }

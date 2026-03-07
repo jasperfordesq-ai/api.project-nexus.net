@@ -98,6 +98,16 @@ End point: System live, verified, and documented.
   - Consult: FRONTEND_INTEGRATION.md (CORS Configuration section)
   - Success: All frontend domains listed, no internal services
 
+- [ ] **Configure WebAuthn/Passkey (FIDO2) settings**
+  - Set `Fido2__ServerDomain` to your production domain (e.g., `project-nexus.net`)
+  - Set `Fido2__ServerName` to `Project NEXUS`
+  - Set `Fido2__Origins__0` to `https://app.project-nexus.net` (and additional origins as needed)
+  - IMPORTANT: `ServerDomain` must match the domain users access the site from
+  - IMPORTANT: `Origins` must use HTTPS in production — passkeys require secure context
+  - Note: Cross-device QR code flows (e.g., scanning from phone to sign in on desktop)
+    only work over HTTPS with a valid certificate. This cannot be tested on localhost.
+  - Success: Passkey registration and authentication work from the frontend
+
 - [ ] **Create systemd service for API**
   - Consult: PLESK_DEPLOYMENT.md (Process Management section)
   - Success: Service file exists at /etc/systemd/system/nexus-api.service
