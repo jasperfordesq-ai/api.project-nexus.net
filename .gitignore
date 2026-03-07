@@ -60,3 +60,6 @@ Thumbs.db
 appsettings.Local.json
 appsettings.*.Local.json
 nul
+_nul
+.claude/worktrees/
+.claude/settings.local.json
