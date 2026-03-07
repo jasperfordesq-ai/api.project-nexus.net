@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build
 # -----------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:8.0.404-bookworm-slim AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0.311-bookworm-slim AS build
 WORKDIR /src
 
 # Copy solution and project files first (better layer caching)
@@ -32,7 +32,7 @@ RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime (uses SDK for dev — EF migrations need dotnet tool)
 # -----------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:8.0.404-bookworm-slim AS runtime
+FROM mcr.microsoft.com/dotnet/sdk:9.0.311-bookworm-slim AS runtime
 WORKDIR /app
 
 # Install curl for health checks, EF tools, and create non-root user
