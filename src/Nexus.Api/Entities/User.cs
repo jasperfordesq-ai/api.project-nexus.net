@@ -26,6 +26,11 @@ public class User : ITenantEntity
     public DateTime? UpdatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
 
+    /// <summary>
+    /// Registration lifecycle state. Defaults to Active for backward compatibility.
+    /// </summary>
+    public RegistrationStatus RegistrationStatus { get; set; } = RegistrationStatus.Active;
+
     // Suspension tracking (for admin)
     public DateTime? SuspendedAt { get; set; }
     public string? SuspensionReason { get; set; }

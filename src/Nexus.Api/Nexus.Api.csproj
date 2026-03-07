@@ -47,6 +47,12 @@
 
     <!-- Real-time Messaging (SignalR) -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="8.0.11" />
+
+    <!-- Email (MimeKit for Gmail service) -->
+    <PackageReference Include="MimeKit" Version="4.8.0" />
+
+    <!-- WebAuthn/Passkeys (FIDO2) -->
+    <PackageReference Include="Fido2.AspNet" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup>
