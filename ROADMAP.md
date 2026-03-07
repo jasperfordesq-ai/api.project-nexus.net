@@ -18,7 +18,7 @@ This roadmap outlines the incremental migration from the legacy PHP application 
 
 Based on MIGRATION_GAP_MAP.md analysis of ~300 legacy features (updated 2026-03-07, deep V1 source audit):
 
-**NOTE:** Phases 16-37 were scaffolded on 2026-03-06 and integration-tested on 2026-03-07. Phase 38 (Federation Core) built on 2026-03-07. All 32 feature domains now have code with 592/592 tests passing. **Migration Score: 660/1,000.**
+**NOTE:** Phases 0-15 fully tested. Phases 16-37 integration-tested. Phases 38-48 built (Federation, Jobs, KB, Legal, Preferences, Lockdown, Polls, Goals, Availability, Ideation). Business logic hardened with V1 rules (gamification, exchange, wallet, analytics). **434 endpoints, 53 controllers, 57 services, 108 entities. Migration Score: ~710/1,000.**
 
 ### Must-Have Parity (Blocks Production)
 
@@ -65,16 +65,17 @@ Based on MIGRATION_GAP_MAP.md analysis of ~300 legacy features (updated 2026-03-
 | Federation External API | ✅ Done | Phase 38c (10 external endpoints, 32 tests pass) |
 | Federation Gateway + 3-Layer Gating | ✅ Done | Phase 38a (FederationGatewayService, System→Tenant→User) |
 | Federation JWT + API Middleware | ✅ Done | Phase 38b (HKDF-derived keys, API Key + Bearer auth) |
-| Jobs Module | Not started | Phase 40 (25 endpoints, full job vacancies) |
-| Legal Document Acceptance | Not started | Phase 41 (6 endpoints, GDPR compliance) |
-| Knowledge Base | Not started | Phase 42 (8 endpoints) |
-| User Self-Service | Not started | Phase 43 (preferences, notifications, sessions) |
-| Member Availability | Not started | Phase 44 (8 endpoints, scheduling) |
-| Endorsements + Verification Badges | Not started | Phase 45 (7 endpoints) |
-| Polls Module | Not started | Phase 46 (10 endpoints, ranked voting) |
-| Goals Module | Not started | Phase 47 (22 endpoints) |
-| Ideation & Challenges | Not started | Phase 48 (22 endpoints) |
-| Threaded Comments V2 | Not started | Phase 49 (5 endpoints, reusable) |
+| Jobs Module | ✅ Done | Phase 39 (14 endpoints: CRUD, applications, saved jobs) |
+| Legal Documents | ✅ Done | Phase 40 (6 endpoints: versioned docs, acceptance tracking) |
+| Knowledge Base | ✅ Done | Phase 41 (6 endpoints: articles, categories, search) |
+| User Preferences | ✅ Done | Phase 42 (5 endpoints: theme, language, timezone, privacy) |
+| Emergency Lockdown | ✅ Done | Phase 43 (LockdownService + middleware) |
+| Member Availability | ✅ Done | Phase 44 (8 endpoints: schedule, exceptions) |
+| Endorsements + Verification Badges | Existing | Already in SkillsController (endorse/unendorse) |
+| Polls Module | ✅ Done | Phase 46 (5 endpoints: single/multiple/ranked voting) |
+| Goals Module | ✅ Done | Phase 47 (7 endpoints: milestones, progress, auto-complete) |
+| Ideation & Challenges | ✅ Done | Phase 48 (9 endpoints: ideas, voting, challenges) |
+| Threaded Comments | ✅ Done | Built into FeedController (parent/reply support) |
 | Blog, Pages, Resources | Not started | Phase 50 (content management) |
 
 ### Nice-to-Have Parity (Post-Launch)
@@ -91,7 +92,7 @@ Based on MIGRATION_GAP_MAP.md analysis of ~300 legacy features (updated 2026-03-
 | Predictive Staffing | ✅ Tested | StaffingController (6 endpoints) |
 | Listing Features | ✅ Tested | ListingFeaturesController (10 endpoints) |
 
-**Summary (updated 2026-03-07):** 375 endpoints across 44 controllers, 47 services, 95 entities. Phases 0-15 fully tested. Phases 16-37 integration-tested. Phase 38 (Federation Core) complete. 592/592 tests pass. Passkeys, TOTP, Registration Policy, Gmail Email, File Upload, Federation Core complete. V1 confirmed at 251 services, 199 controllers, 1,300+ endpoints. ~320 total V1 features identified. **Migration Score: 660/1,000** (~165 features Done+Tested, ~155 Missing).
+**Summary (updated 2026-03-07):** 434 endpoints across 53 controllers, 57 services, 108 entities. Phases 0-15 fully tested. Phases 16-37 integration-tested. Phases 38-48 built (Federation, Jobs, KB, Legal, Preferences, Lockdown, Polls, Goals, Availability, Ideation). Business logic hardened with V1 rules. 24 EF migrations applied. Docker builds pass. V1 confirmed at 251 services, 199 controllers, 1,300+ endpoints. ~320 total V1 features identified. **Migration Score: ~710/1,000** (~200 features Done/Tested, ~120 Missing).
 
 ---
 

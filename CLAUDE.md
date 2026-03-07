@@ -90,9 +90,11 @@ See `.claude/production-server.md` for deployment commands.
 **Email Service (Gmail API) - WIRED** (OAuth2, password reset + welcome emails wired into AuthController)
 **TOTP 2FA - COMPLETE** (8 endpoints: setup, verify-setup, verify, disable, status + login flow integration)
 **File Upload - COMPLETE** (6 endpoints: upload, download, list, delete, metadata, user files)
-**Total: 375 endpoints, 44 controllers, 47 services, 95 entities** (verified 2026-03-07)
-**Migration Score: 660/1,000** (~165 features Done+Tested, ~155 Missing out of ~320 V1 features)
-**Status: All phases tested. Federation core built. 592/592 tests pass. EF migrations applied. Email wired. TOTP 2FA live.**
+**Phases 38-48 BUILT** (Jobs, KB, Legal, Preferences, Lockdown, Polls, Goals, Availability, Ideation)
+**Business Logic HARDENED** (V1 gamification rules, exchange validation, wallet limits, SROI analytics)
+**Total: 434 endpoints, 53 controllers, 57 services, 108 entities** (verified 2026-03-07)
+**Migration Score: ~710/1,000** (~200 features Done/Tested, ~120 Missing out of ~320 V1 features)
+**Status: All phases built. 24 EF migrations applied. Docker builds pass.**
 
 ### Admin API Endpoints (19) - Requires admin role
 
@@ -205,11 +207,15 @@ The legacy PHP platform (V1) has grown significantly. V2 progress after federati
 | Predictive Staffing | 1 service | Done (PredictiveStaffingService, 6 endpoints) |
 | Super Admin | 5 services | Done (SystemAdminController, 8 endpoints) |
 | Location/Geo | 1 service | Done (LocationService, 6 endpoints) |
-| Jobs | 1 service | Missing (Phase 40, 17 endpoints) |
-| Goals | 5 services | Missing (Phase 47, 15 endpoints) |
-| Ideation/Challenges | 5 services | Missing (Phase 48, 22 endpoints) |
-| Polls | 3 services | Missing (Phase 46, 10 endpoints) |
-| Knowledge Base | 1 service | Missing (Phase 42, 8 endpoints) |
+| Jobs | 1 service | Done (JobService, 14 endpoints: CRUD, applications, saved jobs) |
+| Goals | 1 service | Done (GoalService, 7 endpoints: milestones, progress, auto-complete) |
+| Ideation/Challenges | 1 service | Done (IdeationService, 9 endpoints: ideas, voting, challenges) |
+| Polls | 1 service | Done (PollService, 5 endpoints: single/multiple/ranked voting) |
+| Knowledge Base | 1 service | Done (KnowledgeBaseService, 6 endpoints: articles, categories) |
+| Legal Documents | 1 service | Done (LegalDocumentService, 6 endpoints: versioned docs, acceptance) |
+| User Preferences | 1 service | Done (UserPreferencesService, 5 endpoints: theme, language, timezone) |
+| Member Availability | 1 service | Done (AvailabilityService, 8 endpoints: schedule, exceptions) |
+| Emergency Lockdown | 1 service | Done (LockdownService + middleware: admin kill switch) |
 | Enterprise/Governance | 8 services | Missing (Phase 51, 20 endpoints) |
 | Org Wallets | 2 services | Missing (Phase 52, 11 endpoints) |
 
