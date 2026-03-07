@@ -251,6 +251,7 @@ builder.Services.AddScoped<KnowledgeBaseService>();
 builder.Services.AddScoped<UserPreferencesService>();
 builder.Services.AddScoped<PollService>();
 builder.Services.AddScoped<GoalService>();
+builder.Services.AddScoped<AvailabilityService>();
 
 // Registration Policy Engine
 builder.Services.AddSingleton<IIdentityVerificationProvider, MockIdentityVerificationProvider>();
