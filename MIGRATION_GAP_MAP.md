@@ -2,7 +2,7 @@
 
 **Purpose**: Cross-reference legacy features against roadmap and implementation status
 **Inputs**: LEGACY_FEATURE_INVENTORY.md, ROADMAP.md, CLAUDE.md
-**Last Updated**: 2026-03-06
+**Last Updated**: 2026-03-07
 
 ---
 
@@ -28,15 +28,15 @@
 | User Registration | Phase 8 | Done | Must-have | - |
 | Login (Session) | N/A | Missing (JWT only) | Must-have | - |
 | Login (Token/JWT) | Phase 0 | Done | Must-have | - |
-| Two-Factor Auth (TOTP) | Backlog | Missing | Should-have | TotpService, TwoFactorChallengeManager |
-| WebAuthn/Biometric | Not on roadmap | Missing | Should-have | WebAuthnChallengeStore |
-| Password Reset | Phase 8 | Partial (no email) | Must-have | - |
+| Two-Factor Auth (TOTP) | Phase 20 | Done (5 endpoints, AES-256-GCM) | Should-have | TotpService, TotpController |
+| WebAuthn/Biometric | Phase 20 | Done (FIDO2, 7 endpoints) | Should-have | WebAuthnChallengeStore |
+| Password Reset | Phase 8, 18 | Done (token + Gmail email) | Must-have | - |
 | Email Verification | Not on roadmap | Missing | Should-have | EmailVerificationController |
 | Social OAuth Login | Not on roadmap | Missing | Nice-to-have | SocialAuthService |
 | Token Revocation | Phase 8 | Done | Should-have | TokenService |
 | Session Heartbeat | N/A | Missing (JWT only) | Should-have | - |
 
-**V1 has 5 auth services. V2 has inline auth in AuthController.**
+**V1 has 5 auth services. V2 has AuthController + PasskeyService + GmailEmailService + RegistrationOrchestrator (4 services).**
 
 ---
 
@@ -597,44 +597,48 @@
 
 ## Summary Statistics
 
+**Updated 2026-03-07:** Phases 16-37 were scaffolded on 2026-03-06. All feature domains now have code (controllers, services, entities). Status: needs EF migration, integration testing, production hardening.
+
 | Category | Count |
 |----------|-------|
 | Total Legacy Features | ~250 |
-| Done in ASP.NET | 62 |
-| Partial in ASP.NET | 4 |
-| Missing from ASP.NET | ~184 |
-| On Roadmap (Backlog) | ~45 |
-| Not on Roadmap | ~139 |
+| Done (tested) in ASP.NET | 65 |
+| Scaffolded (code exists, needs testing) | ~120 |
+| Missing from ASP.NET | ~65 |
+| V2 API Endpoints | 339 |
+| V2 Controllers | 42 |
+| V2 Services | 40 |
+| V2 Entities | 91 |
 
-### V1 Services by Module (Not Yet in V2)
+### V1 Services by Module (V2 Comparison)
 
-| Module | V1 Service Count | V2 Service Count |
-|--------|-----------------|-----------------|
-| Matching/Algorithms | 19 | 0 |
-| Groups | 21 | 0 |
-| Gamification | 20 | 1 |
-| Federation | 18 | 0 |
-| Volunteering | 11 | 0 |
-| Wallet | 10 | 0 |
-| Listings | 10 | 0 |
-| Notifications | 9 | 0 |
-| Search | 7 | 0 |
-| Enterprise/GDPR | 7 | 0 |
-| Feed | 6 | 0 |
-| User Management | 6 | 0 |
-| Goals | 5 | 0 |
-| Tenant Management | 5 | 0 |
-| Messaging | 5 | 0 |
-| Auth | 5 | 0 |
-| Moderation | 4 | 0 |
-| Events | 4 | 0 |
-| Ideation/Campaigns | 4 | 0 |
-| Help | 3 | 0 |
-| Reviews/Trust | 3 | 0 |
-| Polls | 3 | 0 |
-| CRM/Analytics | 10 | 0 |
-| Jobs | 2 | 0 |
-| **Total** | **206** | **9** |
+| Module | V1 Service Count | V2 Service Count | V2 Status |
+|--------|-----------------|-----------------|-----------|
+| Matching/Algorithms | 19 | 1 | Scaffolded (MatchingService) |
+| Groups | 21 | 1 | Scaffolded (GroupFeatureService) |
+| Gamification | 20 | 3 | Scaffolded (GamificationService + ChallengeService + DailyRewardService) |
+| Federation | 18 | 1 | Scaffolded (FederationService) |
+| Volunteering | 11 | 1 | Scaffolded (VolunteerService) |
+| Wallet | 10 | 1 | Scaffolded (WalletFeatureService) |
+| Listings | 10 | 1 | Scaffolded (ListingFeatureService) |
+| Notifications | 9 | 1 | Scaffolded (PushNotificationService) |
+| Search | 7 | 1 | Scaffolded (SkillService) |
+| Enterprise/GDPR | 7 | 2 | Scaffolded (GdprService + CookieConsentService) |
+| Feed | 6 | 1 | Scaffolded (FeedRankingService) |
+| User Management | 6 | 0 | Partial (admin endpoints exist) |
+| Tenant Management | 5 | 1 | Scaffolded (SystemAdminService) |
+| Messaging | 5 | 1 | Done (RealTimeMessagingService) |
+| Auth | 5 | 4 | Done (Auth + Passkey + Gmail + Registration) |
+| Moderation | 4 | 1 | Scaffolded (ContentReportService) |
+| Events | 4 | 0 | Done (EventsController) |
+| CRM/Analytics | 10 | 2 | Scaffolded (AdminCrmService + AdminAnalyticsService) |
+| Newsletter | 4 | 1 | Scaffolded (NewsletterService) |
+| Translation | 0 | 1 | Scaffolded (TranslationService) |
+| Location | 0 | 1 | Scaffolded (LocationService) |
+| Staffing | 1 | 1 | Scaffolded (PredictiveStaffingService) |
+| Exchange | 3 | 1 | Scaffolded (ExchangeService) |
+| Reviews/Trust | 3 | 0 | Done (ReviewsController) |
+| **Total** | **206** | **40** | **19% coverage** |
 
 ---
 
@@ -645,8 +649,8 @@
 | # | Feature | Domain | On Roadmap? | V1 Services |
 |---|---------|--------|-------------|-------------|
 | 1 | Exchange Workflow | Exchanges | No | 3 services |
-| 2 | Password Reset Email | Auth | Yes (DEFERRED) | - |
-| 3 | Admin Dashboard (full) | Admin | Partial | 72 controllers |
+| ~~2~~ | ~~Password Reset Email~~ | ~~Auth~~ | ~~DONE~~ | ~~GmailEmailService built~~ |
+| 2 | Admin Dashboard (full) | Admin | Partial | 72 controllers |
 | 4 | Tenant Management | Super Admin | Yes (Backlog) | 5 services |
 | 5 | GDPR Compliance | Enterprise | Yes (Backlog) | 7 services |
 | 6 | Federation System | Federation | Yes (Backlog) | 18 services |
@@ -659,8 +663,8 @@
 
 | # | Feature | Domain | On Roadmap? | V1 Services |
 |---|---------|--------|-------------|-------------|
-| 11 | Two-Factor Auth (TOTP) | Auth | Yes (Backlog) | 3 services |
-| 12 | WebAuthn/Biometric | Auth | No | 1 service |
+| ~~11~~ | ~~Two-Factor Auth (TOTP)~~ | ~~Auth~~ | ~~DONE~~ | ~~TotpService (5 endpoints)~~ |
+| ~~12~~ | ~~WebAuthn/Biometric~~ | ~~Auth~~ | ~~DONE~~ | ~~PasskeyService (7 endpoints)~~ |
 | 13 | Avatar/Image Upload | Profiles | Yes (Backlog) | UploadService |
 | 14 | Web Push Notifications | Notifications | Yes (Backlog) | 2 services |
 | 15 | Volunteering Module | Volunteering | Yes (Backlog) | 11 services |
@@ -691,7 +695,7 @@ Based on gap analysis, recommended next phases:
 | 16 | Exchange Workflow | Create, track, rate exchanges | Core timebanking feature | 3 |
 | 17 | File Uploads | Avatar, listing/group/event images | Blocks UX polish | 1 |
 | 18 | GDPR & Compliance | Data export, deletion, consent, legal docs | Legal requirement | 7 |
-| 19 | Two-Factor Auth | TOTP, backup codes, WebAuthn | Security feature | 4 |
+| ~~19~~ | ~~Two-Factor Auth~~ | ~~TOTP + WebAuthn~~ | ~~DONE~~ | ~~2 (TotpService, PasskeyService)~~ |
 | 20 | Push Notifications | Web push (VAPID), FCM | Engagement feature | 4 |
 | 21 | Volunteering | Opportunities, hours, shifts, certificates | Domain feature | 11 |
 | 22 | Admin Expansion | CRM, newsletter, matching admin, cron jobs | Operational necessity | 10+ |

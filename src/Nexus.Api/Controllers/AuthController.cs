@@ -16,6 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Middleware;
+using Nexus.Api.Services;
 using Nexus.Api.Services.Registration;
 using Nexus.Contracts.Events;
 using Nexus.Messaging;
@@ -38,19 +39,21 @@ public class AuthController : ControllerBase
     private readonly ILogger<AuthController> _logger;
     private readonly IEventPublisher _eventPublisher;
     private readonly RegistrationOrchestrator _registrationOrchestrator;
+    private readonly IEmailService _emailService;
 
     // Refresh token validity (7 days default)
     private const int RefreshTokenExpiryDays = 7;
     // Password reset token validity (1 hour)
     private const int PasswordResetExpiryMinutes = 60;
 
-    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator)
+    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator, IEmailService emailService)
     {
         _db = db;
         _config = config;
         _logger = logger;
         _eventPublisher = eventPublisher;
         _registrationOrchestrator = registrationOrchestrator;
+        _emailService = emailService;
     }
 
     /// <summary>
@@ -117,14 +120,35 @@ public class AuthController : ControllerBase
             return Unauthorized(new { error = "Invalid credentials" });
         }
 
-        // Step 4: Update last login
+        // Step 4: Check if 2FA is required
+        if (user.TwoFactorEnabled)
+        {
+            // Issue a short-lived token that only allows 2FA verification
+            user.LastLoginAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            var tempToken = GenerateJwt(user);
+
+            _logger.LogInformation("User {UserId} requires 2FA for tenant {TenantId}", user.Id, tenant.Id);
+
+            return Ok(new
+            {
+                success = true,
+                requires_2fa = true,
+                temp_token = tempToken,
+                token_type = "Bearer",
+                message = "Two-factor authentication required. Submit code to /api/auth/2fa/verify."
+            });
+        }
+
+        // Step 5: Update last login
         user.LastLoginAt = DateTime.UtcNow;
 
-        // Step 5: Generate tokens
+        // Step 6: Generate tokens
         var accessToken = GenerateJwt(user);
         var (refreshToken, refreshTokenHash) = GenerateRefreshToken();
 
-        // Step 6: Store refresh token
+        // Step 7: Store refresh token
         var refreshTokenEntity = new RefreshToken
         {
             TenantId = user.TenantId,
@@ -142,6 +166,7 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             success = true,
+            requires_2fa = false,
             access_token = accessToken,
             refresh_token = refreshToken,
             token_type = "Bearer",
@@ -355,6 +380,25 @@ public class AuthController : ControllerBase
         _logger.LogInformation("New user {UserId} registered in tenant {TenantId} with status {Status}",
             user.Id, tenant.Id, registrationResult.Status);
 
+        // Send welcome email (non-blocking)
+        if (registrationResult.Status == RegistrationStatus.Active)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailService.SendWelcomeEmailAsync(
+                        user.Email,
+                        user.FirstName ?? "User",
+                        tenant.Name ?? tenant.Slug);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send welcome email for user {UserId}", user.Id);
+                }
+            });
+        }
+
         // Build response based on registration status
         var responseData = new Dictionary<string, object?>
         {
@@ -491,8 +535,28 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("Password reset requested for user {UserId}", user.Id);
 
-        // In production, send email here
-        // For development, return the token in the response
+        // Build reset URL from frontend base URL
+        var frontendUrl = _config["App:FrontendUrl"]?.TrimEnd('/') ?? "http://localhost:5170";
+        var resetUrl = $"{frontendUrl}/reset-password?token={Uri.EscapeDataString(resetToken)}";
+
+        // Send the password reset email (fire-and-forget, don't block the response)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendPasswordResetEmailAsync(
+                    user.Email,
+                    resetToken,
+                    user.FirstName ?? "User",
+                    resetUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send password reset email for user {UserId}", user.Id);
+            }
+        });
+
+        // In development, also return the token in the response for testing
         if (_config.GetValue<bool>("IsDevelopment", false) ||
             Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
         {

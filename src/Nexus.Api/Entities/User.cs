@@ -31,6 +31,11 @@ public class User : ITenantEntity
     /// </summary>
     public RegistrationStatus RegistrationStatus { get; set; } = RegistrationStatus.Active;
 
+    // TOTP 2FA
+    public bool TwoFactorEnabled { get; set; }
+    public string? TotpSecretEncrypted { get; set; }
+    public DateTime? TwoFactorEnabledAt { get; set; }
+
     // Suspension tracking (for admin)
     public DateTime? SuspendedAt { get; set; }
     public string? SuspensionReason { get; set; }

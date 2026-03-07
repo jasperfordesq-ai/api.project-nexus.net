@@ -30,21 +30,23 @@ RUN dotnet build -c Release -o /app/build
 RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 
 # -----------------------------------------------------------------------------
-# Stage 2: Runtime
+# Stage 2: Runtime (uses SDK for dev — EF migrations need dotnet tool)
 # -----------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0.11-bookworm-slim AS runtime
+FROM mcr.microsoft.com/dotnet/sdk:8.0.404-bookworm-slim AS runtime
 WORKDIR /app
 
-# Install curl for health checks and create non-root user
+# Install curl for health checks, EF tools, and create non-root user
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
+    && dotnet tool install dotnet-ef --version 8.0.11 --tool-path /usr/local/bin \
     && adduser --disabled-password --gecos "" --uid 1000 appuser
 
-# Copy published output
+# Copy published output and source for EF migrations
 COPY --from=build /app/publish .
+COPY --from=build /src /src
 
 # Change ownership and switch to non-root user
-RUN chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app /src
 USER appuser
 
 # Expose port 8080 (container internal port)

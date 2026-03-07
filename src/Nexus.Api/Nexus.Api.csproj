@@ -53,6 +53,9 @@
 
     <!-- WebAuthn/Passkeys (FIDO2) -->
     <PackageReference Include="Fido2.AspNet" Version="4.0.0" />
+
+    <!-- TOTP 2FA -->
+    <PackageReference Include="Otp.NET" Version="1.4.0" />
   </ItemGroup>
 
   <ItemGroup>

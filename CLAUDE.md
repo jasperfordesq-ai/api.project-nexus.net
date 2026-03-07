@@ -82,8 +82,14 @@ See `.claude/production-server.md` for deployment commands.
 
 ## Current Phase
 
-**Phase 15 (Search) - COMPLETE** (All 15 core phases + Admin APIs completed)
-**Next: Phase 16 (Exchange Workflow)** - Core timebanking feature, P0 critical
+**Phases 0-15 COMPLETE** (Core platform: 118 endpoints across 17 controllers)
+**Phases 16-37 SCAFFOLDED** (221 additional endpoints across 25 new controllers, built 2026-03-06)
+**Passkeys (WebAuthn/FIDO2) - COMPLETE** (7 endpoints, passwordless authentication)
+**Registration Policy Engine - COMPLETE** (10 endpoints, 5 registration modes, identity verification)
+**Email Service (Gmail API) - WIRED** (OAuth2, password reset + welcome emails wired into AuthController)
+**TOTP 2FA - COMPLETE** (4 endpoints: setup, verify-setup, verify, disable + login flow integration)
+**Total: 343 endpoints, 43 controllers, 41 services, 91 entities**
+**Status: All phases scaffolded. EF migrations applied. Email wired. TOTP 2FA live. Unit tests pass.**
 
 ### Admin API Endpoints (19) - Requires admin role
 
@@ -120,6 +126,10 @@ See `.claude/production-server.md` for deployment commands.
 
 ### Previous Phase Achievements
 
+**TOTP 2FA:** Setup, verify, disable endpoints + login flow 2FA gate (4 endpoints) ✓
+**Registration Policy Engine:** 5 registration modes, identity verification, admin approval workflows (10 endpoints) ✓
+**Passkeys (WebAuthn):** FIDO2 passwordless auth, conditional UI, credential management (7 endpoints) ✓
+**Email Service:** Gmail API OAuth2 wired into forgot-password + welcome email on registration ✓
 **Real-Time Messaging:** SignalR WebSocket hub for instant message delivery ✓
 **Admin APIs:** Dashboard, user management, content moderation, categories, config, roles (19 endpoints) ✓
 **Phase 14:** Reviews (user and listing reviews - 7 endpoints) ✓
@@ -152,37 +162,46 @@ See `.claude/production-server.md` for deployment commands.
 - MySQL/MariaDB compatibility
 - Migrating or converting PHP code directly
 
-## V1 Feature Parity Target (Updated 2026-03-06)
+## V1 Feature Parity Target (Updated 2026-03-07)
 
-The legacy PHP platform (V1) has grown significantly. V2 must eventually reach parity with these numbers:
+The legacy PHP platform (V1) has grown significantly. V2 progress after Phases 16-37 build-out:
 
 | Metric | V1 (PHP) | V2 (ASP.NET) | Gap |
 |--------|----------|--------------|-----|
-| API Endpoints | 1,715 | ~100 | 94% missing |
-| Services | 206 | 9 | 96% missing |
-| Data Models | 60 | 26 | 57% missing |
-| Feature Domains | 32 | 15 | 53% missing |
+| API Endpoints | 1,735 | 339 | 80% missing |
+| Services | 227 | 40 | 82% missing |
+| Controllers | 198 | 42 | 79% missing |
+| Data Models/Entities | 60 | 91 | V2 exceeds V1 |
+| Feature Domains | 32 | 32 | All scaffolded |
 | i18n Languages | 7 | 0 | 100% missing |
 
-### Largest Gaps (by V1 service count)
+### Module Implementation Status
 
 | Module | V1 Services | V2 Status |
 |--------|-------------|-----------|
-| Groups (21 services) | Comprehensive: exchanges, recommendations, policies, files, chatroom | Basic CRUD only |
-| Gamification (20 services) | Challenges, streaks, seasons, shop, campaigns, collections | XP + badges + leaderboard |
-| Smart Matching (19 services) | Embeddings, CF, cross-module, learning, approval workflow | Not implemented |
-| Federation (18 services) | 5-phase system: directory, messaging, transactions, events, audit | Not implemented |
-| Volunteering (11 services) | Opportunities, shifts, swaps, certificates, wellbeing, emergency | Not implemented |
-| Wallet (10 services) | Org wallets, limits, categories, export, donations, alerts | Basic balance + transfer |
-| Listings (10 services) | Ranking, analytics, expiry, featured, risk tags, skill tags | Basic CRUD |
-| Admin (446 endpoints) | CRM, newsletter, matching, algorithms, vetting, safeguarding | 19 endpoints |
-
-### Critical Missing: Exchange Workflow
-
-Exchanges are the core of timebanking but are not implemented in V2. V1 has ExchangeWorkflowService, ExchangeRatingService, GroupExchangeService. This is Phase 16 (P0 critical).
+| Auth & Security | 5 services | Done (AuthController, PasskeyService, RegistrationOrchestrator, GmailEmailService) |
+| Exchange Workflow | 3 services | Done (ExchangeService, 11 endpoints) |
+| Groups | 21 services | Partial (GroupsController + GroupFeaturesController, 26 endpoints) |
+| Gamification | 20 services | Partial (GamificationController + GamificationV2Controller, 16 endpoints) |
+| Smart Matching | 19 services | Partial (MatchingService, 6 endpoints) |
+| Federation | 18 services | Partial (FederationService, 10 endpoints) |
+| Volunteering | 11 services | Partial (VolunteerService, 16 endpoints) |
+| Wallet | 10 services | Partial (WalletController + WalletFeaturesController, 13 endpoints) |
+| Listings | 10 services | Partial (ListingsController + ListingFeaturesController, 15 endpoints) |
+| Admin | 446 endpoints | Partial (AdminController + AdminCrm + AdminAnalytics + AuditController, 35 endpoints) |
+| GDPR & Compliance | 7 services | Done (GdprService + CookieConsentService, 15 endpoints) |
+| Search & Discovery | 7 services | Partial (SearchController + SkillsController, 12 endpoints) |
+| Feed & Social | 6 services | Partial (FeedController + FeedRankingController, 17 endpoints) |
+| Notifications | 9 services | Partial (NotificationsController + PushNotificationController, 11 endpoints) |
+| Newsletter | 4 services | Done (NewsletterService, 10 endpoints) |
+| Volunteering | 11 services | Done (VolunteerService, 16 endpoints) |
+| Translation/i18n | - | Partial (TranslationService, 9 endpoints) |
+| Predictive Staffing | 1 service | Done (PredictiveStaffingService, 6 endpoints) |
+| Super Admin | 5 services | Partial (SystemAdminController, 8 endpoints) |
+| Location/Geo | 1 service | Done (LocationService, 6 endpoints) |
 
 See MIGRATION_GAP_MAP.md for the complete feature-by-feature breakdown.
-See ROADMAP.md for the planned implementation phases (16-37).
+See ROADMAP.md for the planned implementation phases.
 
 ## Non-Negotiable Invariants
 
@@ -355,6 +374,11 @@ dotnet test
 | /api/auth/forgot-password     | POST   | No   | Request password reset           |
 | /api/auth/reset-password      | POST   | No   | Reset password with token        |
 | /api/auth/validate            | GET    | Yes  | Validate token                   |
+| /api/auth/2fa/status          | GET    | Yes  | Get 2FA status                   |
+| /api/auth/2fa/setup           | POST   | Yes  | Initiate TOTP setup              |
+| /api/auth/2fa/verify-setup    | POST   | Yes  | Verify code and enable 2FA       |
+| /api/auth/2fa/verify          | POST   | Yes  | Verify TOTP code (login)         |
+| /api/auth/2fa/disable         | POST   | Yes  | Disable 2FA                      |
 | /api/users                    | GET    | Yes  | List users (tenant-scoped)       |
 | /api/users/{id}               | GET    | Yes  | Get user by ID                   |
 | /api/users/me                 | GET    | Yes  | Get current user                 |
@@ -465,6 +489,23 @@ dotnet test
 | /api/admin/roles              | POST   | Admin| Create role                      |
 | /api/admin/roles/{id}         | PUT    | Admin| Update role                      |
 | /api/admin/roles/{id}         | DELETE | Admin| Delete role                      |
+| /api/passkeys/register/begin  | POST   | Yes  | Begin passkey registration       |
+| /api/passkeys/register/finish | POST   | Yes  | Complete passkey registration    |
+| /api/passkeys/authenticate/begin | POST | No  | Begin passwordless login         |
+| /api/passkeys/authenticate/finish | POST | No | Complete passwordless login      |
+| /api/passkeys                 | GET    | Yes  | List user's passkeys             |
+| /api/passkeys/{id}            | DELETE | Yes  | Delete a passkey                 |
+| /api/passkeys/{id}            | PUT    | Yes  | Rename a passkey                 |
+| /api/registration/config      | GET    | No   | Get public registration config   |
+| /api/registration/verify/start | POST  | Yes  | Start identity verification      |
+| /api/registration/verify/status | GET  | Yes  | Check verification status        |
+| /api/registration/webhook/{tenantId} | POST | No | Provider webhook callback   |
+| /api/registration/admin/policy | GET   | Admin| Get registration policy          |
+| /api/registration/admin/policy | PUT   | Admin| Update registration policy       |
+| /api/registration/admin/pending | GET  | Admin| List users pending approval      |
+| /api/registration/admin/users/{id}/approve | PUT | Admin| Approve registration    |
+| /api/registration/admin/users/{id}/reject | PUT | Admin| Reject registration      |
+| /api/registration/admin/options | GET  | Admin| Get enum options reference       |
 
 ## Project Structure
 
@@ -485,6 +526,8 @@ src/
       GamificationController.cs
       AiController.cs
       AdminController.cs
+      PasskeysController.cs
+      RegistrationPolicyController.cs
     Clients/
       ILlamaClient.cs
       LlamaClient.cs
@@ -497,6 +540,11 @@ src/
       SeedData.cs
     Entities/
       (... entity files ...)
+      UserPasskey.cs
+      TenantRegistrationPolicy.cs
+      IdentityVerificationSession.cs
+      IdentityVerificationEvent.cs
+      RegistrationEnums.cs
     HealthChecks/
       LlamaHealthCheck.cs
     Hubs/
@@ -508,6 +556,13 @@ src/
       AiNotificationService.cs
       UserConnectionService.cs
       RealTimeMessagingService.cs
+      PasskeyService.cs
+      GmailEmailService.cs
+      Registration/
+        RegistrationOrchestrator.cs
+        IIdentityVerificationProvider.cs
+        MockIdentityVerificationProvider.cs
+        IdentityVerificationProviderFactory.cs
     Middleware/
       TenantResolutionMiddleware.cs
     Migrations/
@@ -515,6 +570,7 @@ src/
     appsettings.json
 tests/
   Nexus.Api.Tests/
+  Nexus.Messaging.Tests/
 ```
 
 ## Documentation

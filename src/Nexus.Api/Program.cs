@@ -231,6 +231,7 @@ builder.Services.AddFido2(options =>
         ?? new HashSet<string> { "http://localhost:5080" };
 });
 builder.Services.AddScoped<PasskeyService>();
+builder.Services.AddScoped<TotpService>();
 
 // Registration Policy Engine
 builder.Services.AddSingleton<IIdentityVerificationProvider, MockIdentityVerificationProvider>();

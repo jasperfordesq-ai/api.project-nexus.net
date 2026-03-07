@@ -126,8 +126,13 @@ public class MockIdentityVerificationProvider : IIdentityVerificationProvider
 
     private record MockConfig
     {
+        [System.Text.Json.Serialization.JsonPropertyName("auto_approve")]
         public bool AutoApprove { get; init; } = true;
+
+        [System.Text.Json.Serialization.JsonPropertyName("simulate_failure")]
         public bool SimulateFailure { get; init; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhook_secret")]
         public string? WebhookSecret { get; init; }
     }
 }
