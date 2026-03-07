@@ -16,7 +16,7 @@ This roadmap outlines the incremental migration from the legacy PHP application 
 
 ## Migration Priority
 
-Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
+Based on MIGRATION_GAP_MAP.md analysis of ~250 legacy features (updated 2026-03-06):
 
 ### Must-Have Parity (Blocks Production)
 
@@ -27,12 +27,13 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | Listings CRUD | ✅ Done | Phase 1, 3 |
 | Wallet/Transactions | ✅ Done | Phase 4, 5 |
 | Messaging | ✅ Done | Phase 6, 7 |
-| Admin Dashboard | ❌ Missing | Backlog |
-| User Management (Admin) | ❌ Missing | Backlog |
-| Tenant Management | ❌ Missing | Backlog |
-| GDPR Compliance | ❌ Missing | Backlog |
-| Volunteer Hour Logging | ❌ Missing | Backlog |
-| Federated Transactions | ❌ Missing | Backlog |
+| Exchange Workflow | ❌ Missing | Phase 16 (CRITICAL) |
+| Admin Dashboard | ⚠️ Partial (19 endpoints) | Phase 26 |
+| User Management (Admin) | ⚠️ Partial | Phase 26 |
+| Tenant Management | ❌ Missing | Phase 25 |
+| GDPR Compliance | ❌ Missing | Phase 19 |
+| Volunteer Hour Logging | ❌ Missing | Phase 24 |
+| Federated Transactions | ❌ Missing | Phase 27 |
 
 ### Should-Have Parity (Launch Blockers)
 
@@ -53,12 +54,18 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| AI Features | ❌ Missing | Not planned |
-| Polls & Surveys | ❌ Missing | Not planned |
-| Goals & Self-Improvement | ❌ Missing | Not planned |
-| Advanced Gamification | ❌ Missing | Challenges, shop, seasons |
+| AI Features | ✅ Done (LLaMA) | Different provider (V1: OpenAI, V2: Ollama) |
+| Polls & Surveys | ❌ Missing | Phase 32 |
+| Goals & Self-Improvement | ❌ Missing | Phase 31 |
+| Advanced Gamification | ❌ Missing | Phase 34 |
+| Newsletter System | ❌ Missing | Phase 36 |
+| CRM | ❌ Missing | Phase 26 |
+| Smart Matching | ❌ Missing | Phase 29 |
+| Jobs Module | ❌ Missing | Phase 30 |
+| Blog/CMS | ❌ Missing | Phase 33 |
+| Organizations | ❌ Missing | Phase 35 |
 
-**Summary:** 58 features done, 4 partial, 78 missing. See MIGRATION_GAP_MAP.md for full breakdown.
+**Summary:** 62 features done, 4 partial, ~184 missing. See MIGRATION_GAP_MAP.md for full breakdown (updated 2026-03-06).
 
 ---
 
@@ -85,7 +92,7 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 
 ---
 
-## Phase 3: Listings WRITE (Next)
+## Phase 3: Listings WRITE (COMPLETE)
 
 **Objective:** Complete CRUD for listings - the core marketplace feature.
 
@@ -599,11 +606,45 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 
 ---
 
+## V1 Feature Parity Summary (Updated 2026-03-06)
+
+The legacy PHP platform (V1) has grown significantly since this roadmap was created. Current V1 scale:
+
+| Metric | V1 (PHP) | V2 (ASP.NET) | Gap |
+|--------|----------|--------------|-----|
+| API Endpoints | 1,715 | ~100 | 94% missing |
+| PHP/C# Services | 206 | 9 | 96% missing |
+| Data Models | 60 | 26 | 57% missing |
+| React Pages | 163 | 0 | 100% missing |
+| Admin Modules | 226 | 0 | 100% missing |
+| Feature Domains | 32 | 15 | 53% missing |
+| i18n Languages | 7 | 0 | 100% missing |
+
+See MIGRATION_GAP_MAP.md for the full feature-by-feature breakdown.
+
+---
+
 ## Future Phases (Backlog)
 
-### File/Image Uploads (P2)
+### Phase 16: Exchange Workflow (P0 - CRITICAL)
 
-**Objective:** Avatar and content image uploads.
+**Objective:** Exchanges are the core of timebanking. V1 has 3 services (ExchangeWorkflowService, ExchangeRatingService, GroupExchangeService).
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| POST | /api/exchanges | Create exchange from listing |
+| GET | /api/exchanges | List my exchanges |
+| GET | /api/exchanges/{id} | Get exchange details |
+| PUT | /api/exchanges/{id}/accept | Accept exchange |
+| PUT | /api/exchanges/{id}/complete | Mark exchange complete |
+| PUT | /api/exchanges/{id}/cancel | Cancel exchange |
+| POST | /api/exchanges/{id}/rate | Rate exchange |
+| POST | /api/group-exchanges | Create group exchange |
+| GET | /api/group-exchanges | List group exchanges |
+
+### Phase 17: File/Image Uploads (P1)
+
+**Objective:** Avatar and content image uploads. V1 uses UploadService with WebP conversion.
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
@@ -613,18 +654,37 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | POST | /api/groups/{id}/image | Upload group image |
 | POST | /api/events/{id}/image | Upload event image |
 
-### User Preferences (P2)
+### Phase 18: Email Integration (P1 - DEFERRED)
 
-**Objective:** Store user notification and layout preferences.
+**Objective:** Email delivery for transactional emails. V1 uses Gmail API + SendGrid.
+
+- IEmailService abstraction
+- SendGrid or SMTP provider implementation
+- Password reset emails (currently creates token but no email sent)
+- Welcome emails on registration
+- Email verification on registration
+- Optional: Email notifications for messages, connections, etc.
+
+**Status:** Blocked on provider selection. Token generation works; email delivery does not.
+
+### Phase 19: GDPR & Compliance (P1)
+
+**Objective:** Data export, account deletion, consent tracking. V1 has 7 services (GdprService, AuditLogService, CookieConsentService, CookieInventoryService, LegalDocumentService, PerformanceMonitorService, SentryService).
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
-| GET | /api/users/me/preferences | Get user preferences |
-| PUT | /api/users/me/preferences | Update user preferences |
+| GET | /api/users/me/data-export | Export user data (GDPR) |
+| DELETE | /api/users/me | Delete account (GDPR) |
+| POST | /api/consent | Record consent |
+| GET | /api/consent/status | Check consent status |
+| GET | /api/legal/documents | Get legal documents (ToS, Privacy) |
+| POST | /api/legal/documents/{id}/accept | Accept legal document |
+| GET | /api/cookies | Cookie inventory |
+| POST | /api/cookies/consent | Update cookie consent |
 
-### Two-Factor Authentication (P2)
+### Phase 20: Two-Factor Authentication (P1)
 
-**Objective:** TOTP-based 2FA for account security.
+**Objective:** TOTP-based 2FA + WebAuthn for account security. V1 has TotpService, TwoFactorChallengeManager, WebAuthnChallengeStore.
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
@@ -633,21 +693,36 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | POST | /api/auth/totp/verify | Verify TOTP during login |
 | DELETE | /api/auth/totp | Disable TOTP |
 | GET | /api/auth/totp/backup-codes | Get backup codes |
+| POST | /api/auth/webauthn/register/options | WebAuthn registration options |
+| POST | /api/auth/webauthn/register | Register WebAuthn credential |
+| POST | /api/auth/webauthn/authenticate/options | WebAuthn auth options |
+| POST | /api/auth/webauthn/authenticate | Authenticate with WebAuthn |
 
-### Push Notifications (P2)
+### Phase 21: Push Notifications (P2)
 
-**Objective:** Web push (VAPID) and mobile push (FCM).
+**Objective:** Web push (VAPID) and mobile push (FCM). V1 has FCMPushService, WebPushService, PusherService, RealtimeService.
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
 | POST | /api/push/subscribe | Subscribe to web push |
 | DELETE | /api/push/subscribe | Unsubscribe from web push |
 | POST | /api/push/register-device | Register mobile device (FCM) |
-| DELETE | /api/push/register-device | Unregister mobile device |
+| DELETE | /api/push/register-device | Unregister device |
 
-### Reporting & Moderation (P2)
+Note: V2's SignalR could replace Pusher for real-time notifications.
 
-**Objective:** Content flagging and moderation queue.
+### Phase 22: User Preferences (P2)
+
+**Objective:** Store user notification and layout preferences.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/users/me/preferences | Get user preferences |
+| PUT | /api/users/me/preferences | Update user preferences |
+
+### Phase 23: Reporting & Moderation (P2)
+
+**Objective:** Content flagging and moderation queue. V1 has ContentModerationService, AbuseDetectionService, SafeguardingService, VettingService.
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
@@ -655,10 +730,13 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | GET | /api/reports/my | My submitted reports |
 | GET | /api/admin/reports | Moderation queue (admin only) |
 | PUT | /api/admin/reports/{id}/resolve | Resolve report (admin only) |
+| GET | /api/admin/vetting | Vetting records |
+| POST | /api/admin/vetting/{userId} | Create vetting record |
+| GET | /api/admin/safeguarding | Safeguarding dashboard |
 
-### Volunteering (P2)
+### Phase 24: Volunteering (P2)
 
-**Objective:** Volunteer opportunities, applications, hours tracking.
+**Objective:** Volunteer opportunities, applications, hours tracking. V1 has 11 services.
 
 **Opportunities:**
 
@@ -694,74 +772,18 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | ------ | -------- | ----------- |
 | GET | /api/volunteering/opportunities/{id}/shifts | List shifts |
 | POST | /api/volunteering/shifts/{id}/signup | Sign up for shift |
+| POST | /api/volunteering/shifts/{id}/swap | Request shift swap |
 
-### GDPR & Compliance (P1)
-
-**Objective:** Data export, account deletion, consent tracking.
-
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| GET | /api/users/me/data-export | Export user data (GDPR) |
-| DELETE | /api/users/me | Delete account (GDPR) |
-| POST | /api/consent | Record consent |
-| GET | /api/legal/documents | Get legal documents (ToS, Privacy) |
-
-### Admin APIs (P3)
-
-**Objective:** Tenant administration.
-
-**Dashboard:**
+**Certificates:**
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
-| GET | /api/admin/dashboard | Key metrics |
+| GET | /api/volunteering/certificates | My certificates |
+| POST | /api/volunteering/certificates/generate | Generate certificate |
 
-**User Management:**
+### Phase 25: Super Admin (P2)
 
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| GET | /api/admin/users | List users |
-| GET | /api/admin/users/{id} | User details |
-| PUT | /api/admin/users/{id} | Update user |
-| PUT | /api/admin/users/{id}/suspend | Suspend user |
-| PUT | /api/admin/users/{id}/activate | Activate user |
-
-**Content Moderation:**
-
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| GET | /api/admin/listings/pending | Pending listings |
-| PUT | /api/admin/listings/{id}/approve | Approve listing |
-| PUT | /api/admin/listings/{id}/reject | Reject listing |
-
-**Categories:**
-
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| GET | /api/admin/categories | List categories |
-| POST | /api/admin/categories | Create category |
-| PUT | /api/admin/categories/{id} | Update category |
-| DELETE | /api/admin/categories/{id} | Delete category |
-
-**Tenant Config:**
-
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| GET | /api/admin/config | Get tenant config |
-| PUT | /api/admin/config | Update tenant config |
-
-**Roles & Permissions:**
-
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| GET | /api/admin/roles | List roles |
-| POST | /api/admin/roles | Create role |
-| PUT | /api/admin/roles/{id} | Update role |
-| DELETE | /api/admin/roles/{id} | Delete role |
-
-### Super Admin (P2)
-
-**Objective:** Platform-level administration (multi-tenant).
+**Objective:** Platform-level administration (multi-tenant). V1 has 5 tenant management services.
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
@@ -770,13 +792,70 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | POST | /api/super-admin/tenants | Create tenant |
 | PUT | /api/super-admin/tenants/{id} | Update tenant |
 | POST | /api/super-admin/tenants/{id}/suspend | Suspend tenant |
+| GET | /api/super-admin/tenants/{id}/hierarchy | Tenant hierarchy |
 | GET | /api/super-admin/users | Cross-tenant user list |
 | PUT | /api/super-admin/users/{id}/role | Assign global role |
 | POST | /api/super-admin/emergency-lockdown | Emergency lockdown |
+| GET | /api/super-admin/audit-log | Platform audit log |
+| PUT | /api/super-admin/tenants/{id}/features | Manage tenant features |
 
-### Federation (P3)
+### Phase 26: Admin Expansion (P2)
 
-**Objective:** Cross-tenant operations for federated timebanks.
+**Objective:** Expand admin panel toward V1 parity. V1 has 446 admin API endpoints across 35 admin API controllers.
+
+**CRM:**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/admin/crm/dashboard | CRM dashboard metrics |
+| GET | /api/admin/crm/notes/{userId} | Member notes |
+| POST | /api/admin/crm/notes/{userId} | Create member note |
+| GET | /api/admin/crm/tasks | Coordinator tasks |
+| POST | /api/admin/crm/tasks | Create task |
+| PUT | /api/admin/crm/tasks/{id} | Update task |
+
+**Newsletter:**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/admin/newsletters | List newsletters |
+| POST | /api/admin/newsletters | Create newsletter |
+| PUT | /api/admin/newsletters/{id} | Update newsletter |
+| POST | /api/admin/newsletters/{id}/send | Send newsletter |
+| GET | /api/admin/newsletters/{id}/analytics | Newsletter analytics |
+| GET | /api/admin/newsletters/bounces | Bounce management |
+| GET | /api/admin/newsletters/segments | List segments |
+| POST | /api/admin/newsletters/segments | Create segment |
+
+**System:**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/admin/cron-jobs | List cron jobs |
+| POST | /api/admin/cron-jobs/{id}/run | Run cron job |
+| GET | /api/admin/activity-log | Activity/audit log |
+| GET | /api/admin/email-settings | Email config |
+| PUT | /api/admin/email-settings | Update email config |
+| GET | /api/admin/cache | Cache stats |
+| DELETE | /api/admin/cache | Clear cache |
+
+**Content:**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/admin/blog | List blog posts |
+| POST | /api/admin/blog | Create blog post |
+| PUT | /api/admin/blog/{id} | Update blog post |
+| DELETE | /api/admin/blog/{id} | Delete blog post |
+| GET | /api/admin/pages | List pages |
+| POST | /api/admin/pages | Create page |
+| PUT | /api/admin/pages/{id} | Update page |
+| GET | /api/admin/menus | List menus |
+| PUT | /api/admin/menus | Update menus |
+
+### Phase 27: Federation (P3)
+
+**Objective:** Cross-tenant operations for federated timebanks. V1 has 18 services with 5-phase rollout.
 
 **Setup:**
 
@@ -787,6 +866,9 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | DELETE | /api/federation/partners/{id} | Remove partner |
 | GET | /api/federation/settings | Get federation settings |
 | PUT | /api/federation/settings | Update settings |
+| GET | /api/federation/api-keys | List API keys |
+| POST | /api/federation/api-keys | Create API key |
+| DELETE | /api/federation/api-keys/{id} | Revoke API key |
 
 **Cross-Tenant Operations:**
 
@@ -796,6 +878,7 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | GET | /api/federation/members | Search federated members |
 | POST | /api/federation/transactions | Create federated transaction |
 | GET | /api/federation/events | List federated events |
+| POST | /api/federation/messages | Send federated message |
 
 **Admin:**
 
@@ -803,25 +886,148 @@ Based on MIGRATION_GAP_MAP.md analysis of ~140 legacy features:
 | ------ | -------- | ----------- |
 | GET | /api/federation/dashboard | Federation stats |
 | GET | /api/federation/directory | Participating timebanks |
+| GET | /api/federation/audit-log | Federation audit trail |
+| GET | /api/federation/analytics | Federation analytics |
+| POST | /api/federation/export | Export data for partner |
+| POST | /api/federation/import | Import data from partner |
 
-### Email Integration (DEFERRED)
+### Phase 28: Ranking Algorithms (P3)
 
-**Objective:** Email delivery for transactional emails.
+**Objective:** Port V1's ranking algorithms. V1 has EdgeRank (feed), MatchRank (listings), CommunityRank (members).
 
-- IEmailService abstraction
-- SendGrid or SMTP provider implementation
-- Password reset emails (currently creates token but no email sent)
-- Welcome emails on registration
-- Email verification on registration
-- Optional: Email notifications for messages, connections, etc.
+- FeedRankingService: Time decay, affinity weights, type weights, cold-start boost, engagement cap
+- ListingRankingService: Bayesian average, Wilson quality score, CF +15%, mutual reciprocity
+- MemberRankingService: Wilson Score 95% CI, CF +15%, time-decay on reviews
+- CollaborativeFilteringService: Item-based CF, KNN cache in Redis
 
-**Status:** Blocked on provider selection. Token generation works; email delivery does not.
+### Phase 29: Smart Matching (P3)
+
+**Objective:** Port V1's matching engine. V1 has 19 matching/algorithm services.
+
+- SmartMatchingEngine: Embedding boost +10%, KNN boost +12%
+- CrossModuleMatchingService: Match across listings, jobs, volunteering, groups
+- MatchLearningService: Learn from user interactions (completed=5.0, contacted=3.0, saved=2.0, viewed=0.5, dismissed=-1.0)
+- EmbeddingService: OpenAI text-embedding-3-small for semantic similarity
+- MatchApprovalWorkflowService: Manual approval for sensitive matches
+- GroupRecommendationEngine: CF + temporal trend + tenant-scoped suggestions
+
+### Phase 30: Jobs Module (P3)
+
+**Objective:** Job vacancies and applications. V1 has JobVacancyService, PredictiveStaffingService.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/jobs | List job vacancies |
+| GET | /api/jobs/{id} | Job vacancy details |
+| POST | /api/jobs | Create job vacancy |
+| PUT | /api/jobs/{id} | Update job vacancy |
+| DELETE | /api/jobs/{id} | Delete job vacancy |
+| POST | /api/jobs/{id}/apply | Apply to job |
+| GET | /api/jobs/alerts | Job alert subscriptions |
+| POST | /api/jobs/alerts | Subscribe to job alerts |
+
+### Phase 31: Goals Module (P3)
+
+**Objective:** Personal and community goals. V1 has 5 services (GoalService, GoalCheckinService, GoalProgressService, GoalReminderService, GoalTemplateService).
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/goals | List goals |
+| GET | /api/goals/{id} | Goal details |
+| POST | /api/goals | Create goal |
+| PUT | /api/goals/{id} | Update goal |
+| DELETE | /api/goals/{id} | Delete goal |
+| POST | /api/goals/{id}/checkin | Log check-in |
+| GET | /api/goals/templates | Goal templates |
+| GET | /api/goals/discover | Discover popular goals |
+
+### Phase 32: Polls & Ideation (P3)
+
+**Objective:** Community polls, idea challenges, campaigns. V1 has 7 services.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/polls | List polls |
+| GET | /api/polls/{id} | Poll details |
+| POST | /api/polls | Create poll |
+| POST | /api/polls/{id}/vote | Cast vote |
+| GET | /api/ideation/challenges | List idea challenges |
+| POST | /api/ideation/challenges | Create challenge |
+| POST | /api/ideation/challenges/{id}/ideas | Submit idea |
+| GET | /api/campaigns | List campaigns |
+| POST | /api/campaigns | Create campaign |
+
+### Phase 33: Blog & CMS (P3)
+
+**Objective:** Public-facing blog posts, pages, resources. V1 has page builder V2 with drag-and-drop.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/blog | List blog posts |
+| GET | /api/blog/{slug} | Get blog post |
+| GET | /api/pages/{slug} | Get page |
+| GET | /api/resources | List resources |
+| GET | /api/resources/{id} | Resource details |
+| GET | /api/help | Help articles |
+| GET | /api/help/{id} | Help article details |
+| GET | /api/kb | Knowledge base articles |
+| GET | /api/kb/{slug} | Knowledge base article |
+
+### Phase 34: Advanced Gamification (P3)
+
+**Objective:** Challenges, streaks, seasons, shop. V1 has 20 gamification services.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/challenges | List active challenges |
+| GET | /api/challenges/{id} | Challenge details |
+| POST | /api/challenges/{id}/join | Join challenge |
+| GET | /api/gamification/streak | Current streak |
+| POST | /api/gamification/daily-reward | Claim daily reward |
+| GET | /api/gamification/shop | XP shop items |
+| POST | /api/gamification/shop/{id}/buy | Purchase shop item |
+| GET | /api/gamification/collections | Badge collections |
+| GET | /api/gamification/seasons | Leaderboard seasons |
+| GET | /api/gamification/nexus-score | Nexus Score |
+
+### Phase 35: Organizations (P3)
+
+**Objective:** Organizational accounts with wallets. V1 has OrgWalletService, OrgNotificationService.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| POST | /api/organisations | Register organisation |
+| GET | /api/organisations | List organisations |
+| GET | /api/organisations/{id} | Organisation details |
+| GET | /api/organisations/{id}/wallet | Org wallet balance |
+| POST | /api/organisations/{id}/wallet/transfer | Org wallet transfer |
+| GET | /api/organisations/{id}/members | Org members |
+
+### Phase 36: Newsletter System (P3)
+
+**Objective:** Full newsletter system with templates, segments, deliverability. V1 has 4+ newsletter services.
+
+- Newsletter CRUD with template builder
+- Subscriber management and segments
+- Send optimization (AI-powered send time)
+- Deliverability tracking and bounce management
+- Analytics (opens, clicks, unsubscribes)
+
+### Phase 37: Meilisearch Integration (P3)
+
+**Objective:** Replace ILIKE queries with proper full-text search. V1 uses Meilisearch with typo tolerance and 14 synonym groups.
+
+- Meilisearch Docker container
+- Index sync for listings, users, groups, events
+- Typo tolerance and fuzzy matching
+- Synonym dictionary
+- Personalized search results
 
 ---
 
 ## Entity Migration Order
 
-Based on ENTITY_MAPPING.md dependencies:
+Based on entity dependency analysis:
 
 | Order | Entity | Depends On | Phase |
 | ----- | ------ | ---------- | ----- |
@@ -929,3 +1135,4 @@ Based on ENTITY_MAPPING.md dependencies:
 | 2026-02-02 | 14 | Reviews (user and listing reviews with ratings) |
 | 2026-02-02 | 15 | Search (unified search, suggestions, member directory) |
 | 2026-02-02 | - | Backlog expanded per MIGRATION_GAP_MAP.md |
+| 2026-03-06 | - | Major backlog update: V1 audit reveals 250+ features, 206 services, 1,715 endpoints. Backlog expanded to Phases 16-37 with V1 service counts per module. Exchange Workflow added as Phase 16 (P0 critical). |

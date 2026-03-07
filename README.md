@@ -10,10 +10,15 @@ This software was created by **Jasper Ford**.
 
 ### Founders
 
-The originating time bank initiative was co-founded by:
+The originating time bank initiative [hOUR Timebank CLG](https://hour-timebank.ie) was co-founded by:
 
 - **Jasper Ford**
 - **Mary Casey**
+
+### Contributors
+
+- **Steven J. Kelly** — Community insight, product thinking
+- **Sarah Bird** — CEO, Timebanking UK
 
 ### Research Foundation
 

@@ -1,8 +1,8 @@
 # Migration Gap Map
 
 **Purpose**: Cross-reference legacy features against roadmap and implementation status
-**Inputs**: LEGACY_FEATURE_INVENTORY.md, ROADMAP.md
-**Last Updated**: 2026-02-02
+**Inputs**: LEGACY_FEATURE_INVENTORY.md, ROADMAP.md, CLAUDE.md
+**Last Updated**: 2026-03-06
 
 ---
 
@@ -23,399 +23,575 @@
 
 ## 1. Accounts & Authentication
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| User Registration | Phase 8 | Done | Must-have |
-| Login (Session) | N/A | Missing (JWT only) | Must-have |
-| Login (Token/JWT) | Phase 0 | Done | Must-have |
-| Two-Factor Auth (TOTP) | Backlog (Two-Factor Auth) | Missing | Should-have |
-| WebAuthn/Biometric | Not on roadmap | Missing | Should-have |
-| Password Reset | Phase 8 | Partial (no email) | Must-have |
-| Email Verification | Not on roadmap | Missing | Should-have |
-| Social OAuth Login | Not on roadmap | Missing | Nice-to-have |
-| Token Revocation | Phase 8 | Done | Should-have |
-| Session Heartbeat | N/A | Missing (JWT only) | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| User Registration | Phase 8 | Done | Must-have | - |
+| Login (Session) | N/A | Missing (JWT only) | Must-have | - |
+| Login (Token/JWT) | Phase 0 | Done | Must-have | - |
+| Two-Factor Auth (TOTP) | Backlog | Missing | Should-have | TotpService, TwoFactorChallengeManager |
+| WebAuthn/Biometric | Not on roadmap | Missing | Should-have | WebAuthnChallengeStore |
+| Password Reset | Phase 8 | Partial (no email) | Must-have | - |
+| Email Verification | Not on roadmap | Missing | Should-have | EmailVerificationController |
+| Social OAuth Login | Not on roadmap | Missing | Nice-to-have | SocialAuthService |
+| Token Revocation | Phase 8 | Done | Should-have | TokenService |
+| Session Heartbeat | N/A | Missing (JWT only) | Should-have | - |
+
+**V1 has 5 auth services. V2 has inline auth in AuthController.**
 
 ---
 
 ## 2. User Profiles & Settings
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| View Profile | Phase 0-2 | Done | Must-have |
-| Edit Profile | Phase 2 | Done | Must-have |
-| Avatar Upload | Backlog (File Uploads) | Missing | Should-have |
-| User Preferences | Backlog (User Preferences) | Missing | Should-have |
-| Password Change | Phase 8 | Done | Must-have |
-| Account Deletion | Backlog (GDPR) | Missing | Should-have |
-| User Status (suspend) | Backlog (Admin) | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| View Profile | Phase 0-2 | Done | Must-have | UserService |
+| Edit Profile | Phase 2 | Done | Must-have | UserService |
+| Avatar Upload | Backlog (File Uploads) | Missing | Should-have | UploadService |
+| User Preferences | Backlog | Missing | Should-have | - |
+| Password Change | Phase 8 | Done | Must-have | - |
+| Account Deletion | Backlog (GDPR) | Missing | Should-have | GdprService |
+| User Status (suspend) | Admin APIs | Done | Should-have | - |
+| Sub-Accounts | Not on roadmap | Missing | Nice-to-have | SubAccountService |
+| Member Availability | Not on roadmap | Missing | Nice-to-have | MemberAvailabilityService |
+| Verification Badges | Not on roadmap | Missing | Should-have | MemberVerificationBadgeService |
+| User Insights | Not on roadmap | Missing | Nice-to-have | UserInsightsService |
+
+**V1 has 6 user services. V2 has 0 dedicated user services.**
 
 ---
 
 ## 3. Listings (Time Exchange)
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Create Listing | Phase 3 | Done | Must-have |
-| View Listings | Phase 1 | Done | Must-have |
-| View Listing Detail | Phase 1 | Done | Must-have |
-| Edit Listing | Phase 3 | Done | Should-have |
-| Delete Listing | Phase 3 | Done | Should-have |
-| Listing Images | Backlog (File Uploads) | Missing | Should-have |
-| Listing Categories | Phase 1 | Partial (no CRUD) | Should-have |
-| Listing Attributes | Not on roadmap | Missing | Nice-to-have |
-| Nearby Listings (geo) | Not on roadmap | Missing | Should-have |
-| Admin Moderation | Backlog (Admin) | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Create Listing | Phase 3 | Done | Must-have | ListingService |
+| View Listings | Phase 1 | Done | Must-have | ListingService |
+| View Listing Detail | Phase 1 | Done | Must-have | ListingService |
+| Edit Listing | Phase 3 | Done | Should-have | ListingService |
+| Delete Listing | Phase 3 | Done | Should-have | ListingService |
+| Listing Images | Backlog (File Uploads) | Missing | Should-have | UploadService |
+| Listing Categories | Phase 1 | Partial (no CRUD) | Should-have | - |
+| Listing Attributes | Not on roadmap | Missing | Nice-to-have | - |
+| Nearby Listings (geo) | Not on roadmap | Missing | Should-have | GeocodingService |
+| Admin Moderation | Admin APIs | Done | Should-have | ListingModerationService |
+| Listing Ranking | Not on roadmap | Missing | Should-have | ListingRankingService |
+| Listing Analytics | Not on roadmap | Missing | Nice-to-have | ListingAnalyticsService |
+| Listing Expiry | Not on roadmap | Missing | Should-have | ListingExpiryService, ListingExpiryReminderService |
+| Featured Listings | Not on roadmap | Missing | Nice-to-have | ListingFeaturedService |
+| Risk Tags | Not on roadmap | Missing | Should-have | ListingRiskTagService |
+| Skill Tags | Not on roadmap | Missing | Nice-to-have | ListingSkillTagService |
+| Saved Searches | Not on roadmap | Missing | Nice-to-have | SavedSearchService |
+
+**V1 has 10 listing services. V2 has basic CRUD only.**
 
 ---
 
 ## 4. Messaging & Communication
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Direct Messages | Phase 6-7 | Done | Must-have |
-| Typing Indicator | Not on roadmap | Missing | Nice-to-have |
-| Voice Messages | Not on roadmap | Missing | Should-have |
-| Message Archive | Not on roadmap | Missing | Nice-to-have |
-| Unread Count | Phase 6 | Done | Should-have |
-| Group Discussions | Phase 11 | Partial (no threads) | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Direct Messages | Phase 6-7 | Done | Must-have | MessageService |
+| Typing Indicator | Not on roadmap | Missing | Nice-to-have | - |
+| Voice Messages | Not on roadmap | Missing | Should-have | VoiceMessageController |
+| Message Archive | Not on roadmap | Missing | Nice-to-have | - |
+| Unread Count | Phase 6 | Done | Should-have | - |
+| Group Discussions | Phase 11 | Partial (no threads) | Should-have | GroupChatroomService |
+| Message Reactions | Not on roadmap | Missing | Nice-to-have | - |
+| Message Attachments | Not on roadmap | Missing | Should-have | - |
+| Broker Visibility | Not on roadmap | Missing | Should-have | BrokerMessageVisibilityService |
+| Contextual Messages | Not on roadmap | Missing | Nice-to-have | ContextualMessageService |
+| Federated Messages | Not on roadmap | Missing | Should-have | FederatedMessageService |
+
+**V1 has 5 messaging services. V2 has SignalR real-time (advantage) but missing advanced features.**
 
 ---
 
 ## 5. Wallet & Time Credits
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| View Balance | Phase 4 | Done | Must-have |
-| Transaction History | Phase 4 | Done | Must-have |
-| Transfer Credits | Phase 5 | Done | Must-have |
-| Transaction Details | Phase 4 | Done | Should-have |
-| Pending Count | Not on roadmap | Missing | Nice-to-have |
-| Org Wallet | Not on roadmap | Missing | Should-have |
-| User Search (autocomplete) | Not on roadmap | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| View Balance | Phase 4 | Done | Must-have | WalletService |
+| Transaction History | Phase 4 | Done | Must-have | WalletService |
+| Transfer Credits | Phase 5 | Done | Must-have | WalletService |
+| Transaction Details | Phase 4 | Done | Should-have | WalletService |
+| Pending Count | Not on roadmap | Missing | Nice-to-have | - |
+| Org Wallet | Not on roadmap | Missing | Should-have | OrgWalletService |
+| Transaction Limits | Not on roadmap | Missing | Should-have | TransactionLimitService |
+| Transaction Categories | Not on roadmap | Missing | Nice-to-have | TransactionCategoryService |
+| Transaction Export | Not on roadmap | Missing | Should-have | TransactionExportService |
+| Credit Donations | Not on roadmap | Missing | Nice-to-have | CreditDonationService |
+| Balance Alerts | Not on roadmap | Missing | Should-have | BalanceAlertService |
+| Starting Balance | Not on roadmap | Missing | Should-have | StartingBalanceService |
+| Pay Plans | Not on roadmap | Missing | Nice-to-have | PayPlanService |
+| Community Fund | Not on roadmap | Missing | Nice-to-have | CommunityFundService |
+
+**V1 has 10 wallet services. V2 has basic balance + transfer with optimistic concurrency (good).**
 
 ---
 
-## 6. Social Feed
+## 6. Exchange Workflow
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Create Post | Phase 12 | Done | Should-have |
-| Like/React | Phase 12 | Done | Should-have |
-| Comments | Phase 12 | Done | Should-have |
-| Feed Timeline | Phase 12 | Done | Should-have |
-| Delete Post/Comment | Phase 12 | Done | Should-have |
-| Edit Comment | Not on roadmap | Missing | Nice-to-have |
-| Mention Tagging | Not on roadmap | Missing | Nice-to-have |
-| Share Posts | Not on roadmap | Missing | Nice-to-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Create Exchange | Not on roadmap | Missing | Must-have | ExchangeWorkflowService |
+| Exchange Status | Not on roadmap | Missing | Must-have | ExchangeWorkflowService |
+| Exchange Rating | Not on roadmap | Missing | Should-have | ExchangeRatingService |
+| Group Exchanges | Not on roadmap | Missing | Should-have | GroupExchangeService |
+
+**V1 has 3 exchange services. V2 has none. This is a critical gap — exchanges are core to timebanking.**
 
 ---
 
-## 7. Groups & Communities
+## 7. Social Feed
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Create Group | Phase 11 | Done | Should-have |
-| View Groups | Phase 11 | Done | Should-have |
-| Group Details | Phase 11 | Done | Should-have |
-| Join Group | Phase 11 | Done | Should-have |
-| Leave Group | Phase 11 | Done | Should-have |
-| Manage Members | Phase 11 | Done | Should-have |
-| Pending Requests | Phase 11 | Missing | Should-have |
-| Group Image | Backlog (File Uploads) | Missing | Should-have |
-| Edit/Delete Group | Phase 11 | Done | Should-have |
-| Group Types | Not on roadmap | Missing | Nice-to-have |
-| Group Analytics | Not on roadmap | Missing | Nice-to-have |
-| Group Feedback | Not on roadmap | Missing | Nice-to-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Create Post | Phase 12 | Done | Should-have | FeedService |
+| Like/React | Phase 12 | Done | Should-have | - |
+| Comments | Phase 12 | Done | Should-have | CommentService |
+| Feed Timeline | Phase 12 | Done | Should-have | FeedService |
+| Delete Post/Comment | Phase 12 | Done | Should-have | - |
+| Edit Comment | Not on roadmap | Missing | Nice-to-have | - |
+| Mention Tagging | Not on roadmap | Missing | Nice-to-have | - |
+| Share Posts | Not on roadmap | Missing | Nice-to-have | PostSharingService |
+| Hashtags | Not on roadmap | Missing | Nice-to-have | HashtagService |
+| Feed Ranking (EdgeRank) | Not on roadmap | Missing | Should-have | FeedRankingService |
+| Feed Moderation | Not on roadmap | Missing | Should-have | - |
 
----
-
-## 8. Events & Calendar
-
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Create Event | Phase 11 | Done | Should-have |
-| View Events | Phase 11 | Done | Should-have |
-| Event Details | Phase 11 | Done | Should-have |
-| RSVP | Phase 11 | Done | Should-have |
-| Cancel RSVP | Phase 11 | Done | Should-have |
-| Attendees List | Phase 11 | Done | Should-have |
-| Edit Event | Phase 11 | Done | Should-have |
-| Delete Event | Phase 11 | Done | Should-have |
-| Event Image | Backlog (File Uploads) | Missing | Should-have |
-| Federated Events | Backlog (Federation) | Missing | Nice-to-have |
+**V1 has 6 feed services + EdgeRank algorithm. V2 has basic CRUD without ranking.**
 
 ---
 
-## 9. Volunteering Module
+## 8. Groups & Communities
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Create Opportunity | Backlog (Volunteering) | Missing | Should-have |
-| Browse Opportunities | Backlog (Volunteering) | Missing | Should-have |
-| Opportunity Details | Backlog (Volunteering) | Missing | Should-have |
-| Apply | Backlog (Volunteering) | Missing | Should-have |
-| Manage Applications | Backlog (Volunteering) | Missing | Should-have |
-| Shifts Management | Backlog (Volunteering) | Missing | Should-have |
-| Log Hours | Backlog (Volunteering) | Missing | Must-have |
-| Verify Hours | Backlog (Volunteering) | Missing | Should-have |
-| Hours Summary | Backlog (Volunteering) | Missing | Should-have |
-| Browse Organizations | Backlog (Volunteering) | Missing | Should-have |
-| Volunteer Reviews | Backlog (Volunteering) | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Create Group | Phase 11 | Done | Should-have | GroupService |
+| View Groups | Phase 11 | Done | Should-have | GroupService |
+| Group Details | Phase 11 | Done | Should-have | GroupService |
+| Join Group | Phase 11 | Done | Should-have | GroupService |
+| Leave Group | Phase 11 | Done | Should-have | GroupService |
+| Manage Members | Phase 11 | Done | Should-have | GroupService |
+| Pending Requests | Phase 11 | Missing | Should-have | GroupApprovalWorkflowService |
+| Group Image | Backlog (File Uploads) | Missing | Should-have | UploadService |
+| Edit/Delete Group | Phase 11 | Done | Should-have | GroupService |
+| Group Types | Not on roadmap | Missing | Nice-to-have | - |
+| Group Analytics | Not on roadmap | Missing | Nice-to-have | GroupReportingService |
+| Group Feedback | Not on roadmap | Missing | Nice-to-have | - |
+| Group Exchanges | Not on roadmap | Missing | Should-have | GroupExchangeService |
+| Group Discussions | Not on roadmap | Missing | Should-have | GroupChatroomService |
+| Group Files | Not on roadmap | Missing | Nice-to-have | GroupFileService |
+| Group Policies | Not on roadmap | Missing | Nice-to-have | GroupPolicyRepository |
+| Group Recommendations | Not on roadmap | Missing | Nice-to-have | GroupRecommendationEngine |
+| Group Ranking | Not on roadmap | Missing | Nice-to-have | SmartGroupRankingService |
+| Group Announcements | Not on roadmap | Missing | Should-have | GroupAnnouncementService |
+| Group Chatroom | Not on roadmap | Missing | Nice-to-have | GroupChatroomService |
+| Group Approval Workflow | Not on roadmap | Missing | Should-have | GroupApprovalWorkflowService |
 
----
-
-## 10. Reviews & Trust
-
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Create Review | Phase 14 | Done | Should-have |
-| Pending Reviews | Not on roadmap | Missing | Should-have |
-| User Reviews | Phase 14 | Done | Should-have |
-| Review Stats | Phase 14 | Done | Should-have |
-| Trust Score | Not on roadmap | Missing | Should-have |
-| Delete Review | Phase 14 | Done | Nice-to-have |
-
----
-
-## 11. Notifications
-
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| In-App Notifications | Phase 10 | Done | Must-have |
-| Badge Count | Phase 10 | Done | Should-have |
-| Mark as Read | Phase 10 | Done | Should-have |
-| Mark All Read | Phase 10 | Done | Should-have |
-| Delete Notification | Phase 10 | Done | Nice-to-have |
-| Clear All | Not on roadmap | Missing | Nice-to-have |
-| Web Push (PWA) | Backlog (Push Notifications) | Missing | Should-have |
-| Mobile Push (FCM) | Backlog (Push Notifications) | Missing | Should-have |
-| Notification Polling | Not on roadmap | Missing | Should-have |
+**V1 has 21 group services. V2 has basic CRUD + members only.**
 
 ---
 
-## 12. Connections & Friendships
+## 9. Events & Calendar
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Send Request | Phase 9 | Done | Should-have |
-| Accept Request | Phase 9 | Done | Should-have |
-| View Connections | Phase 9 | Done | Should-have |
-| Check Status | Not on roadmap | Missing | Nice-to-have |
-| Pending Counts | Phase 9 | Partial | Should-have |
-| Remove Connection | Phase 9 | Done | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Create Event | Phase 11 | Done | Should-have | EventService |
+| View Events | Phase 11 | Done | Should-have | EventService |
+| Event Details | Phase 11 | Done | Should-have | EventService |
+| RSVP | Phase 11 | Done | Should-have | - |
+| Cancel RSVP | Phase 11 | Done | Should-have | - |
+| Attendees List | Phase 11 | Done | Should-have | - |
+| Edit Event | Phase 11 | Done | Should-have | EventService |
+| Delete Event | Phase 11 | Done | Should-have | EventService |
+| Event Image | Backlog (File Uploads) | Missing | Should-have | UploadService |
+| Event Reminders | Not on roadmap | Missing | Should-have | EventReminderService |
+| Recurring Shifts | Not on roadmap | Missing | Nice-to-have | RecurringShiftService |
+| Federated Events | Backlog (Federation) | Missing | Nice-to-have | - |
 
----
-
-## 13. Polls & Surveys
-
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Create Poll | Not on roadmap | Missing | Nice-to-have |
-| View Polls | Not on roadmap | Missing | Nice-to-have |
-| Poll Details | Not on roadmap | Missing | Nice-to-have |
-| Vote | Not on roadmap | Missing | Nice-to-have |
-| Edit Poll | Not on roadmap | Missing | Nice-to-have |
-| Delete Poll | Not on roadmap | Missing | Nice-to-have |
+**V1 has 4 event services. V2 has basic CRUD + RSVPs.**
 
 ---
 
-## 14. Goals & Self-Improvement
+## 10. Volunteering Module
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Create Goal | Not on roadmap | Missing | Nice-to-have |
-| View Goals | Not on roadmap | Missing | Nice-to-have |
-| Goal Discovery | Not on roadmap | Missing | Nice-to-have |
-| Goal Details | Not on roadmap | Missing | Nice-to-have |
-| Update Progress | Not on roadmap | Missing | Nice-to-have |
-| Goal Buddy | Not on roadmap | Missing | Nice-to-have |
-| Edit/Delete Goal | Not on roadmap | Missing | Nice-to-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Create Opportunity | Backlog | Missing | Should-have | VolunteerService |
+| Browse Opportunities | Backlog | Missing | Should-have | VolunteerService |
+| Opportunity Details | Backlog | Missing | Should-have | VolunteerService |
+| Apply | Backlog | Missing | Should-have | VolunteerService |
+| Manage Applications | Backlog | Missing | Should-have | VolunteerService |
+| Shifts Management | Backlog | Missing | Should-have | VolunteerService |
+| Shift Swaps | Not on roadmap | Missing | Nice-to-have | ShiftSwapService |
+| Shift Waitlist | Not on roadmap | Missing | Nice-to-have | ShiftWaitlistService |
+| Log Hours | Backlog | Missing | Must-have | VolunteerService |
+| Verify Hours | Backlog | Missing | Should-have | VolunteerService |
+| Hours Summary | Backlog | Missing | Should-have | VolunteerService |
+| Browse Organizations | Backlog | Missing | Should-have | VolunteerService |
+| Volunteer Reviews | Backlog | Missing | Should-have | VolunteerService |
+| Volunteer Certificates | Not on roadmap | Missing | Nice-to-have | VolunteerCertificateService |
+| Volunteer Check-In | Not on roadmap | Missing | Nice-to-have | VolunteerCheckInService |
+| Volunteer Matching | Not on roadmap | Missing | Nice-to-have | VolunteerMatchingService |
+| Volunteer Wellbeing | Not on roadmap | Missing | Nice-to-have | VolunteerWellbeingService |
+| Emergency Alerts | Not on roadmap | Missing | Should-have | VolunteerEmergencyAlertService |
+| Predictive Staffing | Not on roadmap | Missing | Nice-to-have | PredictiveStaffingService |
+| Insurance Certificates | Not on roadmap | Missing | Should-have | InsuranceCertificateService |
 
----
-
-## 15. Gamification & Rewards
-
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| XP/Points System | Phase 13 | Done | Nice-to-have |
-| Badges | Phase 13 | Done | Nice-to-have |
-| Leaderboards | Phase 13 | Done | Nice-to-have |
-| Gamification Profile | Phase 13 | Done | Nice-to-have |
-| Challenges | Not on roadmap | Missing | Nice-to-have |
-| Collections | Not on roadmap | Missing | Nice-to-have |
-| Daily Reward | Not on roadmap | Missing | Nice-to-have |
-| Reward Shop | Not on roadmap | Missing | Nice-to-have |
-| Badge Showcase | Not on roadmap | Missing | Nice-to-have |
-| Seasonal Events | Not on roadmap | Missing | Nice-to-have |
+**V1 has 11 volunteering services. V2 has 0. Entire module missing.**
 
 ---
 
-## 16. Search & Discovery
+## 11. Jobs Module
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Unified Search | Phase 15 (Search) | Missing | Should-have |
-| Autocomplete | Phase 15 (Search) | Missing | Should-have |
-| Search Filters | Phase 15 (Search) | Missing | Should-have |
-| Member Directory | Phase 15 (Search) | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Job Vacancies | Not on roadmap | Missing | Should-have | JobVacancyService |
+| Job Alerts | Not on roadmap | Missing | Nice-to-have | - |
+| Job Applications | Not on roadmap | Missing | Should-have | - |
+| Predictive Staffing | Not on roadmap | Missing | Nice-to-have | PredictiveStaffingService |
 
----
-
-## 17. Admin Panel
-
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Dashboard | Backlog (Admin) | Missing | Must-have |
-| User Management | Backlog (Admin) | Missing | Must-have |
-| Listing Moderation | Backlog (Admin) | Missing | Should-have |
-| Content Moderation | Backlog (Reporting & Moderation) | Missing | Should-have |
-| Category Management | Backlog (Admin) | Missing | Should-have |
-| Blog/CMS | Not on roadmap | Missing | Nice-to-have |
-| Page Builder | Not on roadmap | Missing | Nice-to-have |
-| Menu Management | Not on roadmap | Missing | Should-have |
-| Tenant Config | Backlog (Admin) | Missing | Must-have |
-| Roles & Permissions | Backlog (Admin) | Missing | Should-have |
-| Newsletter Management | Not on roadmap | Missing | Should-have |
-| Newsletter Templates | Not on roadmap | Missing | Nice-to-have |
-| Newsletter Analytics | Not on roadmap | Missing | Should-have |
-| SEO Management | Not on roadmap | Missing | Should-have |
-| Gamification Admin | Not on roadmap | Missing | Nice-to-have |
-| Cron Jobs | Not on roadmap | Missing | Should-have |
-| Activity Logging | Not on roadmap | Missing | Should-have |
+**V1 has 2 job services. V2 has 0. Entire module missing.**
 
 ---
 
-## 18. Federation & Multi-Tenant
+## 12. Reviews & Trust
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Federation Setup | Backlog (Federation) | Missing | Should-have |
-| Federated Search | Backlog (Federation) | Missing | Should-have |
-| Federated Members | Backlog (Federation) | Missing | Nice-to-have |
-| Federated Messaging | Backlog (Federation) | Missing | Should-have |
-| Federated Transactions | Backlog (Federation) | Missing | Must-have |
-| Federated Events | Backlog (Federation) | Missing | Should-have |
-| Federation Dashboard | Backlog (Federation) | Missing | Should-have |
-| Federation API Keys | Not on roadmap | Missing | Should-have |
-| Federation Directory | Backlog (Federation) | Missing | Should-have |
-| Federation Analytics | Not on roadmap | Missing | Nice-to-have |
-| Federation Import/Export | Not on roadmap | Missing | Should-have |
-| Federation Settings | Backlog (Federation) | Missing | Should-have |
-| External Partners | Not on roadmap | Missing | Nice-to-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Create Review | Phase 14 | Done | Should-have | ReviewService |
+| Pending Reviews | Not on roadmap | Missing | Should-have | - |
+| User Reviews | Phase 14 | Done | Should-have | ReviewService |
+| Review Stats | Phase 14 | Done | Should-have | - |
+| Trust Score (time-decay) | Not on roadmap | Missing | Should-have | MemberRankingService |
+| Delete Review | Phase 14 | Done | Nice-to-have | - |
+| Exchange Rating | Not on roadmap | Missing | Should-have | ExchangeRatingService |
+| Endorsements | Not on roadmap | Missing | Nice-to-have | EndorsementService |
+
+**V1 has 3 review/trust services. V2 has basic CRUD reviews.**
 
 ---
 
-## 19. Super Admin (Platform-Level)
+## 13. Notifications
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Super Dashboard | Backlog (Super Admin) | Missing | Must-have |
-| Tenant Management | Backlog (Super Admin) | Missing | Must-have |
-| Tenant Hierarchy | Not on roadmap | Missing | Should-have |
-| Bulk Operations | Not on roadmap | Missing | Should-have |
-| Cross-Tenant Users | Backlog (Super Admin) | Missing | Must-have |
-| Global Roles | Backlog (Super Admin) | Missing | Must-have |
-| Federation Control | Not on roadmap | Missing | Should-have |
-| Emergency Lockdown | Backlog (Super Admin) | Missing | Must-have |
-| Whitelist Management | Not on roadmap | Missing | Should-have |
-| Audit Logging | Not on roadmap | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| In-App Notifications | Phase 10 | Done | Must-have | NotificationService |
+| Badge Count | Phase 10 | Done | Should-have | - |
+| Mark as Read | Phase 10 | Done | Should-have | - |
+| Mark All Read | Phase 10 | Done | Should-have | - |
+| Delete Notification | Phase 10 | Done | Nice-to-have | - |
+| Clear All | Not on roadmap | Missing | Nice-to-have | - |
+| Web Push (PWA) | Backlog | Missing | Should-have | WebPushService |
+| Mobile Push (FCM) | Backlog | Missing | Should-have | FCMPushService |
+| Notification Polling | Not on roadmap | Missing | Should-have | - |
+| Real-time (Pusher) | Not on roadmap | Missing | Should-have | PusherService, RealtimeService |
+| Social Notifications | Not on roadmap | Missing | Should-have | SocialNotificationService |
+| Org Notifications | Not on roadmap | Missing | Nice-to-have | OrgNotificationService |
+| Progress Notifications | Not on roadmap | Missing | Nice-to-have | ProgressNotificationService |
 
----
-
-## 20. Enterprise & Governance
-
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Enterprise Dashboard | Not on roadmap | Missing | Should-have |
-| Enterprise Config | Not on roadmap | Missing | Should-have |
-| GDPR Compliance | Backlog (GDPR) | Missing | Must-have |
-| GDPR Audit Trail | Not on roadmap | Missing | Should-have |
-| GDPR Breach Reporting | Not on roadmap | Missing | Should-have |
-| Consent Management | Backlog (GDPR) | Missing | Should-have |
-| Cookie Consent | Not on roadmap | Missing | Should-have |
-| Legal Documents | Backlog (GDPR) | Missing | Should-have |
-| Monitoring | Not on roadmap | Missing | Should-have |
-| Secrets Management | Not on roadmap | Missing | Should-have |
+**V1 has 9 notification services. V2 has basic in-app only. V2 has SignalR which could replace Pusher.**
 
 ---
 
-## 21. AI Features
+## 14. Connections & Friendships
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| AI Chat | Not on roadmap | Missing | Nice-to-have |
-| AI Streaming | Not on roadmap | Missing | Nice-to-have |
-| Conversation History | Not on roadmap | Missing | Nice-to-have |
-| AI Listing Generation | Not on roadmap | Missing | Nice-to-have |
-| AI Event Generation | Not on roadmap | Missing | Nice-to-have |
-| AI Message Generation | Not on roadmap | Missing | Nice-to-have |
-| AI Bio Generation | Not on roadmap | Missing | Nice-to-have |
-| AI Newsletter Generation | Not on roadmap | Missing | Nice-to-have |
-| AI Blog Generation | Not on roadmap | Missing | Nice-to-have |
-| AI Page Generation | Not on roadmap | Missing | Nice-to-have |
-| AI Provider Management | Not on roadmap | Missing | Should-have |
-| AI Usage Limits | Not on roadmap | Missing | Should-have |
-| AI Settings | Not on roadmap | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Send Request | Phase 9 | Done | Should-have | ConnectionService |
+| Accept Request | Phase 9 | Done | Should-have | - |
+| View Connections | Phase 9 | Done | Should-have | - |
+| Check Status | Not on roadmap | Missing | Nice-to-have | - |
+| Pending Counts | Phase 9 | Partial | Should-have | - |
+| Remove Connection | Phase 9 | Done | Should-have | - |
+| Endorsements | Not on roadmap | Missing | Nice-to-have | EndorsementService |
+
+**V1 has 2 services. V2 covers basic functionality.**
 
 ---
 
-## 22. Help & Documentation
+## 15. Polls & Surveys
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Help Articles | Not on roadmap | Missing | Should-have |
-| Onboarding Wizard | Not on roadmap | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Create Poll | Not on roadmap | Missing | Nice-to-have | PollService |
+| View Polls | Not on roadmap | Missing | Nice-to-have | PollService |
+| Poll Details | Not on roadmap | Missing | Nice-to-have | PollService |
+| Vote | Not on roadmap | Missing | Nice-to-have | PollService |
+| Edit Poll | Not on roadmap | Missing | Nice-to-have | PollService |
+| Delete Poll | Not on roadmap | Missing | Nice-to-have | PollService |
+| Poll Export | Not on roadmap | Missing | Nice-to-have | PollExportService |
+| Poll Ranking | Not on roadmap | Missing | Nice-to-have | PollRankingService |
 
----
-
-## 23. Reporting & Moderation
-
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Report Content | Backlog (Reporting & Moderation) | Missing | Should-have |
-| Moderation Queue | Backlog (Reporting & Moderation) | Missing | Should-have |
-| Error Tracking | Not on roadmap | Missing | Should-have |
+**V1 has 3 poll services. V2 has 0.**
 
 ---
 
-## 24. Mobile & PWA
+## 16. Goals & Self-Improvement
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Web Push | Not on roadmap | Missing | Should-have |
-| Mobile Push | Not on roadmap | Missing | Should-have |
-| Share Target | Not on roadmap | Missing | Nice-to-have |
-| App Version Check | Not on roadmap | Missing | Should-have |
-| Mobile Logging | Not on roadmap | Missing | Should-have |
-| Real-time (Pusher) | Not on roadmap | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Create Goal | Not on roadmap | Missing | Nice-to-have | GoalService |
+| View Goals | Not on roadmap | Missing | Nice-to-have | GoalService |
+| Goal Discovery | Not on roadmap | Missing | Nice-to-have | GoalService |
+| Goal Details | Not on roadmap | Missing | Nice-to-have | GoalService |
+| Update Progress | Not on roadmap | Missing | Nice-to-have | GoalProgressService |
+| Goal Buddy | Not on roadmap | Missing | Nice-to-have | GoalService |
+| Edit/Delete Goal | Not on roadmap | Missing | Nice-to-have | GoalService |
+| Goal Check-ins | Not on roadmap | Missing | Nice-to-have | GoalCheckinService |
+| Goal Templates | Not on roadmap | Missing | Nice-to-have | GoalTemplateService |
+| Goal Reminders | Not on roadmap | Missing | Nice-to-have | GoalReminderService |
 
----
-
-## 25. Integrations
-
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| API Documentation | Not on roadmap | Missing | Should-have |
-| File Upload API | Not on roadmap | Missing | Should-have |
-| Federation API | Backlog (Federation) | Missing | Should-have |
+**V1 has 5 goal services. V2 has 0.**
 
 ---
 
-## 26. Advanced Features
+## 17. Gamification & Rewards
 
-| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority |
-|----------------|---------------|----------------|----------|
-| Smart Matching | Not on roadmap | Missing | Nice-to-have |
-| Matching Diagnostics | Not on roadmap | Missing | Nice-to-have |
-| Resource Management | Not on roadmap | Missing | Nice-to-have |
-| Deliverables | Not on roadmap | Missing | Nice-to-have |
-| Nexus Score | Not on roadmap | Missing | Nice-to-have |
-| User Insights | Not on roadmap | Missing | Nice-to-have |
-| Governance | Not on roadmap | Missing | Nice-to-have |
-| Contact Form | Not on roadmap | Missing | Should-have |
-| Sitemap | Not on roadmap | Missing | Should-have |
-| Robots.txt | Not on roadmap | Missing | Should-have |
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| XP/Points System | Phase 13 | Done | Nice-to-have | GamificationService |
+| Badges | Phase 13 | Done | Nice-to-have | GamificationService |
+| Leaderboards | Phase 13 | Done | Nice-to-have | LeaderboardService |
+| Gamification Profile | Phase 13 | Done | Nice-to-have | GamificationService |
+| Challenges | Not on roadmap | Missing | Nice-to-have | ChallengeService |
+| Challenge Templates | Not on roadmap | Missing | Nice-to-have | ChallengeTemplateService |
+| Collections | Not on roadmap | Missing | Nice-to-have | BadgeCollectionService |
+| Daily Reward | Not on roadmap | Missing | Nice-to-have | DailyRewardService |
+| Reward Shop | Not on roadmap | Missing | Nice-to-have | XPShopService |
+| Badge Showcase | Not on roadmap | Missing | Nice-to-have | - |
+| Seasonal Events | Not on roadmap | Missing | Nice-to-have | LeaderboardSeasonService |
+| Streaks | Not on roadmap | Missing | Nice-to-have | StreakService |
+| Achievement Campaigns | Not on roadmap | Missing | Nice-to-have | AchievementCampaignService |
+| Achievement Unlockables | Not on roadmap | Missing | Nice-to-have | AchievementUnlockablesService |
+| Achievement Analytics | Not on roadmap | Missing | Nice-to-have | AchievementAnalyticsService |
+| Nexus Score | Not on roadmap | Missing | Nice-to-have | NexusScoreService |
+| Social Gamification | Not on roadmap | Missing | Nice-to-have | SocialGamificationService |
+
+**V1 has 20 gamification services. V2 has basic XP + badges + leaderboard (1 service).**
+
+---
+
+## 18. Search & Discovery
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Unified Search | Phase 15 | Done (ILIKE) | Should-have | SearchService |
+| Autocomplete | Phase 15 | Done | Should-have | - |
+| Search Filters | Phase 15 | Done | Should-have | - |
+| Member Directory | Phase 15 | Done | Should-have | - |
+| Personalized Search | Not on roadmap | Missing | Nice-to-have | PersonalizedSearchService |
+| Saved Searches | Not on roadmap | Missing | Nice-to-have | SavedSearchService |
+| Search Analytics | Not on roadmap | Missing | Nice-to-have | SearchLogService |
+| Typo Tolerance | Not on roadmap | Missing | Should-have | SearchService (Meilisearch) |
+| Synonyms | Not on roadmap | Missing | Should-have | SearchService |
+| Skill Browsing | Not on roadmap | Missing | Nice-to-have | SkillTaxonomyService |
+
+**V1 has 7 search services + Meilisearch. V2 has ILIKE-based search (basic).**
+
+---
+
+## 19. Smart Matching & Algorithms
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Smart Matching Engine | Not on roadmap | Missing | Nice-to-have | SmartMatchingEngine |
+| Cross-Module Matching | Not on roadmap | Missing | Nice-to-have | CrossModuleMatchingService |
+| Match Learning | Not on roadmap | Missing | Nice-to-have | MatchLearningService |
+| Match Approval Workflow | Not on roadmap | Missing | Nice-to-have | MatchApprovalWorkflowService |
+| Match Notifications | Not on roadmap | Missing | Nice-to-have | MatchNotificationService |
+| Match Debug Panel | Not on roadmap | Missing | Nice-to-have | SmartMatchingAnalyticsService |
+| Matching Analytics | Not on roadmap | Missing | Nice-to-have | SmartMatchingAnalyticsService |
+| Collaborative Filtering | Not on roadmap | Missing | Nice-to-have | CollaborativeFilteringService |
+| Embeddings (OpenAI) | Not on roadmap | Missing | Nice-to-have | EmbeddingService |
+| Feed Ranking (EdgeRank) | Not on roadmap | Missing | Should-have | FeedRankingService |
+| Listing Ranking (MatchRank) | Not on roadmap | Missing | Should-have | ListingRankingService |
+| Member Ranking (CommunityRank) | Not on roadmap | Missing | Should-have | MemberRankingService |
+| Group Recommendations | Not on roadmap | Missing | Nice-to-have | GroupRecommendationEngine |
+| Smart Segments | Not on roadmap | Missing | Nice-to-have | SmartSegmentSuggestionService |
+
+**V1 has 19 matching/algorithm services. V2 has 0. Entire subsystem missing.**
+
+---
+
+## 20. Admin Panel
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Scale |
+|----------------|---------------|----------------|----------|----------|
+| Dashboard | Admin APIs | Done | Must-have | 1 endpoint |
+| User Management | Admin APIs | Done | Must-have | 6 endpoints |
+| Listing Moderation | Admin APIs | Done | Should-have | 3 endpoints |
+| Category Management | Admin APIs | Done | Should-have | 4 endpoints |
+| Tenant Config | Admin APIs | Done | Must-have | 2 endpoints |
+| Roles & Permissions | Admin APIs | Done | Should-have | 4 endpoints |
+| Content Moderation | Not on roadmap | Missing | Should-have | V1: 446 admin endpoints |
+| Blog/CMS | Not on roadmap | Missing | Nice-to-have | V1: full blog system |
+| Page Builder | Not on roadmap | Missing | Nice-to-have | V1: drag-and-drop V2 |
+| Menu Management | Not on roadmap | Missing | Should-have | V1: menu builder |
+| Newsletter Management | Not on roadmap | Missing | Should-have | V1: full newsletter system |
+| Newsletter Templates | Not on roadmap | Missing | Nice-to-have | V1: template builder |
+| Newsletter Analytics | Not on roadmap | Missing | Should-have | V1: deliverability tracking |
+| Newsletter Segments | Not on roadmap | Missing | Should-have | V1: segment builder |
+| SEO Management | Not on roadmap | Missing | Should-have | V1: meta + redirects + 404s |
+| Gamification Admin | Not on roadmap | Missing | Nice-to-have | V1: custom badges, settings |
+| Cron Jobs | Not on roadmap | Missing | Should-have | V1: cron management UI |
+| Activity Logging | Not on roadmap | Missing | Should-have | V1: audit logs |
+| CRM Dashboard | Not on roadmap | Missing | Should-have | V1: notes, tasks, tags |
+| Matching Admin | Not on roadmap | Missing | Nice-to-have | V1: config + monitoring |
+| Algorithm Settings | Not on roadmap | Missing | Nice-to-have | V1: weight sliders |
+| Email Settings | Not on roadmap | Missing | Should-have | V1: SMTP/SendGrid/Gmail config |
+| Deliverability Dashboard | Not on roadmap | Missing | Should-have | V1: bounce tracking |
+| Impact Reports | Not on roadmap | Missing | Nice-to-have | V1: community impact reports |
+| Vetting Records | Not on roadmap | Missing | Should-have | V1: background check tracking |
+| Safeguarding Dashboard | Not on roadmap | Missing | Should-have | V1: safeguarding monitoring |
+
+**V1 has 446 admin API endpoints + 37 legacy admin controllers + 226 React admin modules. V2 has 19 admin endpoints. This is the largest gap.**
+
+---
+
+## 21. Federation & Multi-Tenant
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Federation Setup | Backlog | Missing | Should-have | FederationPartnershipService |
+| Federated Search | Backlog | Missing | Should-have | FederationSearchService |
+| Federated Members | Backlog | Missing | Nice-to-have | FederationUserService |
+| Federated Messaging | Backlog | Missing | Should-have | FederatedMessageService |
+| Federated Transactions | Backlog | Missing | Must-have | FederatedTransactionService |
+| Federated Events | Backlog | Missing | Should-have | - |
+| Federation Dashboard | Backlog | Missing | Should-have | FederationActivityService |
+| Federation API Keys | Not on roadmap | Missing | Should-have | FederationExternalApiClient |
+| Federation Directory | Backlog | Missing | Should-have | FederationDirectoryService |
+| Federation Analytics | Not on roadmap | Missing | Nice-to-have | FederationAuditService |
+| Federation Import/Export | Not on roadmap | Missing | Should-have | FederationExternalPartnerService |
+| Federation Settings | Backlog | Missing | Should-have | FederationFeatureService |
+| External Partners | Not on roadmap | Missing | Nice-to-have | FederationExternalPartnerService |
+| Federation Audit | Not on roadmap | Missing | Should-have | FederationAuditService |
+| Federation Email | Not on roadmap | Missing | Should-have | FederationEmailService |
+| Federation Neighborhoods | Not on roadmap | Missing | Nice-to-have | FederationNeighborhoodService |
+| Federation Real-time Queue | Not on roadmap | Missing | Should-have | FederationRealtimeService |
+| Federation JWT | Not on roadmap | Missing | Must-have | FederationJwtService |
+| Federation Gateway | Not on roadmap | Missing | Should-have | FederationGateway |
+| 3-Layer Feature Gating | Not on roadmap | Missing | Must-have | FederationFeatureService |
+
+**V1 has 18 federation services with 5-phase rollout complete. V2 has 0. Entire subsystem missing.**
+
+---
+
+## 22. Super Admin (Platform-Level)
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Super Dashboard | Backlog | Missing | Must-have | - |
+| Tenant Management | Backlog | Missing | Must-have | TenantHierarchyService |
+| Tenant Hierarchy | Not on roadmap | Missing | Should-have | TenantHierarchyService |
+| Bulk Operations | Not on roadmap | Missing | Should-have | - |
+| Cross-Tenant Users | Backlog | Missing | Must-have | - |
+| Global Roles | Backlog | Missing | Must-have | - |
+| Federation Control | Not on roadmap | Missing | Should-have | FederationFeatureService |
+| Emergency Lockdown | Backlog | Missing | Must-have | - |
+| Whitelist Management | Not on roadmap | Missing | Should-have | - |
+| Audit Logging | Not on roadmap | Missing | Should-have | SuperAdminAuditService |
+| Tenant Features | Not on roadmap | Missing | Must-have | TenantFeatureConfig |
+
+**V1 has 5 tenant management services. V2 has 0.**
+
+---
+
+## 23. Enterprise & Governance
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Enterprise Dashboard | Not on roadmap | Missing | Should-have | - |
+| Enterprise Config | Not on roadmap | Missing | Should-have | - |
+| GDPR Compliance | Backlog | Missing | Must-have | GdprService |
+| GDPR Audit Trail | Not on roadmap | Missing | Should-have | AuditLogService |
+| GDPR Breach Reporting | Not on roadmap | Missing | Should-have | - |
+| Consent Management | Backlog | Missing | Should-have | CookieConsentService |
+| Cookie Consent | Not on roadmap | Missing | Should-have | CookieConsentService, CookieInventoryService |
+| Legal Documents | Backlog | Missing | Should-have | LegalDocumentService |
+| Legal Compliance Dashboard | Not on roadmap | Missing | Should-have | - |
+| Monitoring | Not on roadmap | Missing | Should-have | PerformanceMonitorService, SentryService |
+| Secrets Management | Not on roadmap | Missing | Should-have | - |
+
+**V1 has 7 enterprise/compliance services. V2 has 0.**
+
+---
+
+## 24. AI Features
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Provider |
+|----------------|---------------|----------------|----------|-------------|
+| AI Chat | Not on roadmap | Done (LLaMA) | Nice-to-have | OpenAI GPT |
+| AI Streaming | Not on roadmap | Missing | Nice-to-have | OpenAI |
+| Conversation History | Not on roadmap | Done | Nice-to-have | - |
+| AI Listing Generation | Not on roadmap | Done | Nice-to-have | OpenAI |
+| AI Event Generation | Not on roadmap | Missing | Nice-to-have | OpenAI |
+| AI Message Generation | Not on roadmap | Missing | Nice-to-have | OpenAI |
+| AI Bio Generation | Not on roadmap | Done | Nice-to-have | OpenAI |
+| AI Newsletter Generation | Not on roadmap | Missing | Nice-to-have | OpenAI |
+| AI Blog Generation | Not on roadmap | Missing | Nice-to-have | OpenAI |
+| AI Page Generation | Not on roadmap | Missing | Nice-to-have | OpenAI |
+| AI Provider Management | Not on roadmap | Missing | Should-have | - |
+| AI Usage Limits | Not on roadmap | Missing | Should-have | - |
+| AI Settings | Not on roadmap | Missing | Should-have | - |
+
+**V1 uses OpenAI (cloud). V2 uses Ollama/LLaMA (self-hosted, no API costs). Both have strengths. V2 has more AI endpoints (21 vs V1's ~10) but V1 has deeper integration (embeddings, content generation for all entity types).**
+
+---
+
+## 25. Help & Documentation
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Help Articles | Not on roadmap | Missing | Should-have | HelpService |
+| Knowledge Base | Not on roadmap | Missing | Should-have | KnowledgeBaseService |
+| Onboarding Wizard | Not on roadmap | Missing | Should-have | OnboardingService |
+
+**V1 has 3 help services. V2 has 0.**
+
+---
+
+## 26. Reporting & Moderation
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Services |
+|----------------|---------------|----------------|----------|-------------|
+| Report Content | Backlog | Missing | Should-have | - |
+| Moderation Queue | Backlog | Missing | Should-have | ContentModerationService |
+| Error Tracking | Not on roadmap | Missing | Should-have | - |
+| Content Moderation AI | Not on roadmap | Done (LLaMA) | Nice-to-have | ContentModerationService |
+| Abuse Detection | Not on roadmap | Missing | Should-have | AbuseDetectionService |
+
+**V1 has 4 moderation services. V2 has AI moderation (advantage) but no queue/workflow.**
+
+---
+
+## 27. Mobile & PWA
+
+| Legacy Feature | Roadmap Phase | ASP.NET Status | Priority | V1 Tech |
+|----------------|---------------|----------------|----------|---------|
+| Web Push | Not on roadmap | Missing | Should-have | VAPID |
+| Mobile Push | Not on roadmap | Missing | Should-have | FCM |
+| Share Target | Not on roadmap | Missing | Nice-to-have | Web Share API |
+| App Version Check | Not on roadmap | Missing | Should-have | React component |
+| Offline Indicator | Not on roadmap | Missing | Should-have | React component |
+| Mobile Logging | Not on roadmap | Missing | Should-have | - |
+| Real-time (Pusher) | Not on roadmap | Missing | Should-have | Pusher |
+| Capacitor App | Not on roadmap | Missing | Nice-to-have | Capacitor |
+
+**V1 has PWA + Capacitor + Pusher. V2 has none (SignalR could replace Pusher).**
+
+---
+
+## 28-32. Additional Modules (All Missing from V2)
+
+| Module | V1 Services | V2 Status |
+|--------|-------------|-----------|
+| Blog & CMS | 2 services + controllers | Missing |
+| Ideation & Campaigns | 4 services | Missing |
+| Organizations | OrgWalletService + OrgNotificationService | Missing |
+| Deliverables & Project Mgmt | TeamDocumentService, TeamTaskService | Missing |
+| Integrations (Gmail, SendGrid, Mailchimp, Meilisearch) | 5+ services | Missing |
 
 ---
 
@@ -423,269 +599,112 @@
 
 | Category | Count |
 |----------|-------|
-| Total Legacy Features | ~140 |
-| Done in ASP.NET | 58 |
+| Total Legacy Features | ~250 |
+| Done in ASP.NET | 62 |
 | Partial in ASP.NET | 4 |
-| Missing from ASP.NET | 78 |
-| On Roadmap (Phase 15 or Backlog) | 45 |
-| Not on Roadmap | 33 |
+| Missing from ASP.NET | ~184 |
+| On Roadmap (Backlog) | ~45 |
+| Not on Roadmap | ~139 |
+
+### V1 Services by Module (Not Yet in V2)
+
+| Module | V1 Service Count | V2 Service Count |
+|--------|-----------------|-----------------|
+| Matching/Algorithms | 19 | 0 |
+| Groups | 21 | 0 |
+| Gamification | 20 | 1 |
+| Federation | 18 | 0 |
+| Volunteering | 11 | 0 |
+| Wallet | 10 | 0 |
+| Listings | 10 | 0 |
+| Notifications | 9 | 0 |
+| Search | 7 | 0 |
+| Enterprise/GDPR | 7 | 0 |
+| Feed | 6 | 0 |
+| User Management | 6 | 0 |
+| Goals | 5 | 0 |
+| Tenant Management | 5 | 0 |
+| Messaging | 5 | 0 |
+| Auth | 5 | 0 |
+| Moderation | 4 | 0 |
+| Events | 4 | 0 |
+| Ideation/Campaigns | 4 | 0 |
+| Help | 3 | 0 |
+| Reviews/Trust | 3 | 0 |
+| Polls | 3 | 0 |
+| CRM/Analytics | 10 | 0 |
+| Jobs | 2 | 0 |
+| **Total** | **206** | **9** |
 
 ---
 
-## Top 20 Missing Features
+## Top 30 Missing Features (Prioritized)
 
-Prioritized by criticality (Must-have first, then Should-have).
+### Must-Have (Critical for Production)
 
-### Must-Have (Critical)
-
-| # | Feature | Domain | On Roadmap? |
-|---|---------|--------|-------------|
-| 1 | Password Reset Email | Auth | Yes (DEFERRED) |
-| 2 | Admin Dashboard | Admin | Yes (Backlog) |
-| 3 | User Management (Admin) | Admin | Yes (Backlog) |
-| 4 | Tenant Management | Admin | Yes (Backlog) |
-| 5 | Tenant Config | Admin | Yes (Backlog) |
-| 6 | GDPR Compliance | Enterprise | Yes (Backlog) |
-| 7 | Super Admin Dashboard | Super Admin | Yes (Backlog) |
-| 8 | Cross-Tenant User Mgmt | Super Admin | Yes (Backlog) |
-| 9 | Global Role Assignment | Super Admin | Yes (Backlog) |
-| 10 | Emergency Lockdown | Super Admin | Yes (Backlog) |
-| 11 | Log Volunteer Hours | Volunteering | Yes (Backlog) |
-| 12 | Federated Transactions | Federation | Yes (Backlog) |
+| # | Feature | Domain | On Roadmap? | V1 Services |
+|---|---------|--------|-------------|-------------|
+| 1 | Exchange Workflow | Exchanges | No | 3 services |
+| 2 | Password Reset Email | Auth | Yes (DEFERRED) | - |
+| 3 | Admin Dashboard (full) | Admin | Partial | 72 controllers |
+| 4 | Tenant Management | Super Admin | Yes (Backlog) | 5 services |
+| 5 | GDPR Compliance | Enterprise | Yes (Backlog) | 7 services |
+| 6 | Federation System | Federation | Yes (Backlog) | 18 services |
+| 7 | Federated Transactions | Federation | Yes (Backlog) | FederatedTransactionService |
+| 8 | Emergency Lockdown | Super Admin | Yes (Backlog) | - |
+| 9 | 3-Layer Feature Gating | Federation | No | FederationFeatureService |
+| 10 | Federation JWT | Federation | No | FederationJwtService |
 
 ### Should-Have (High Impact)
 
-| # | Feature | Domain | On Roadmap? |
-|---|---------|--------|-------------|
-| 13 | Two-Factor Auth (TOTP) | Auth | Yes (Backlog) |
-| 14 | Avatar Upload | Profiles | Yes (Backlog) |
-| 15 | Listing Images | Listings | Yes (Backlog) |
-| 16 | Web Push Notifications | Notifications | Yes (Backlog) |
-| 17 | Mobile Push (FCM) | Notifications | Yes (Backlog) |
-| 18 | Unified Search | Search | Yes (Phase 15) |
-| 19 | Account Deletion (GDPR) | Profiles | Yes (Backlog) |
-| 20 | User Preferences | Profiles | Yes (Backlog) |
+| # | Feature | Domain | On Roadmap? | V1 Services |
+|---|---------|--------|-------------|-------------|
+| 11 | Two-Factor Auth (TOTP) | Auth | Yes (Backlog) | 3 services |
+| 12 | WebAuthn/Biometric | Auth | No | 1 service |
+| 13 | Avatar/Image Upload | Profiles | Yes (Backlog) | UploadService |
+| 14 | Web Push Notifications | Notifications | Yes (Backlog) | 2 services |
+| 15 | Volunteering Module | Volunteering | Yes (Backlog) | 11 services |
+| 16 | Newsletter System | Admin | No | 4+ services |
+| 17 | CRM Dashboard | Admin | No | admin controller |
+| 18 | Smart Matching | Algorithms | No | 19 services |
+| 19 | Feed Ranking (EdgeRank) | Feed | No | FeedRankingService |
+| 20 | Listing Ranking (MatchRank) | Listings | No | ListingRankingService |
+| 21 | Email Verification | Auth | No | controller |
+| 22 | Vetting & Safeguarding | Admin | No | 2 services |
+| 23 | Legal Documents | Enterprise | Yes (Backlog) | LegalDocumentService |
+| 24 | Account Deletion (GDPR) | Profiles | Yes (Backlog) | GdprService |
+| 25 | User Preferences | Profiles | Yes (Backlog) | - |
+| 26 | Event Reminders | Events | No | EventReminderService |
+| 27 | Meilisearch Integration | Search | No | SearchService |
+| 28 | Jobs Module | Jobs | No | 2 services |
+| 29 | Blog/CMS | Content | No | controllers |
+| 30 | Organization Wallets | Wallet | No | OrgWalletService |
 
 ---
 
-## Roadmap Fixes Needed
-
-### 1. Add Missing Must-Have Features to Backlog
-
-Add these to the Future Phases (Backlog) section:
-
-```markdown
-### GDPR & Compliance (P1)
-
-- GET /api/users/me/data-export - Export user data (GDPR)
-- DELETE /api/users/me - Account deletion (GDPR)
-- POST /api/consent - Record consent
-- GET /api/legal/documents - Get legal documents
-
-### Super Admin (P2)
-
-- GET /api/super-admin/dashboard - Platform metrics
-- GET /api/super-admin/tenants - List tenants
-- POST /api/super-admin/tenants - Create tenant
-- PUT /api/super-admin/tenants/{id} - Update tenant
-- POST /api/super-admin/tenants/{id}/suspend - Suspend tenant
-- GET /api/super-admin/users - Cross-tenant user list
-- PUT /api/super-admin/users/{id}/role - Assign global role
-- POST /api/super-admin/emergency-lockdown - Emergency lockdown
-```
-
-### 2. Add Missing Should-Have Features to Backlog
-
-```markdown
-### Two-Factor Authentication (P2)
-
-- GET /api/auth/totp/setup - Get TOTP setup (QR code, secret)
-- POST /api/auth/totp/enable - Enable TOTP with verification
-- POST /api/auth/totp/verify - Verify TOTP during login
-- DELETE /api/auth/totp - Disable TOTP
-- GET /api/auth/totp/backup-codes - Get backup codes
-
-### File/Image Uploads (P2)
-
-- POST /api/upload - General file upload
-- POST /api/users/me/avatar - Avatar upload
-- POST /api/listings/{id}/images - Listing images
-- POST /api/groups/{id}/image - Group image
-- POST /api/events/{id}/image - Event image
-
-### Push Notifications (P2)
-
-- POST /api/push/subscribe - Subscribe to web push
-- DELETE /api/push/subscribe - Unsubscribe
-- POST /api/push/register-device - Register mobile device (FCM)
-- DELETE /api/push/register-device - Unregister device
-
-### User Preferences (P2)
-
-- GET /api/users/me/preferences - Get preferences
-- PUT /api/users/me/preferences - Update preferences
-
-### Real-Time (P3)
-
-- POST /api/pusher/auth - Pusher WebSocket authentication
-- GET /api/notifications/poll - Lightweight polling endpoint
-```
-
-### 3. Expand Existing Backlog Sections
-
-#### Search Section - Add Details
-
-```markdown
-### Search (P2)
-
-- GET /api/search?q=term&type=listings|users|groups|events
-- GET /api/search/suggestions?q=term - Autocomplete
-- GET /api/members?q=name - Member directory search
-```
-
-#### Admin Section - Add Details
-
-```markdown
-### Admin APIs (P3)
-
-**Dashboard:**
-- GET /api/admin/dashboard - Key metrics
-
-**User Management:**
-- GET /api/admin/users - List users
-- GET /api/admin/users/{id} - User details
-- PUT /api/admin/users/{id} - Update user
-- PUT /api/admin/users/{id}/suspend - Suspend user
-- PUT /api/admin/users/{id}/activate - Activate user
-
-**Content Moderation:**
-- GET /api/admin/listings/pending - Pending listings
-- PUT /api/admin/listings/{id}/approve - Approve listing
-- PUT /api/admin/listings/{id}/reject - Reject listing
-- GET /api/admin/reports - Content reports
-- PUT /api/admin/reports/{id}/resolve - Resolve report
-
-**Categories:**
-- GET /api/admin/categories - List categories
-- POST /api/admin/categories - Create category
-- PUT /api/admin/categories/{id} - Update category
-- DELETE /api/admin/categories/{id} - Delete category
-
-**Tenant Config:**
-- GET /api/admin/config - Get tenant config
-- PUT /api/admin/config - Update tenant config
-
-**Roles & Permissions:**
-- GET /api/admin/roles - List roles
-- POST /api/admin/roles - Create role
-- PUT /api/admin/roles/{id} - Update role
-- DELETE /api/admin/roles/{id} - Delete role
-```
-
-#### Federation Section - Add Details
-
-```markdown
-### Federation (P3)
-
-**Setup:**
-- GET /api/federation/partners - List federation partners
-- POST /api/federation/partners - Add partner
-- DELETE /api/federation/partners/{id} - Remove partner
-- GET /api/federation/settings - Get federation settings
-- PUT /api/federation/settings - Update settings
-
-**Cross-Tenant Operations:**
-- GET /api/federation/listings - Search federated listings
-- GET /api/federation/members - Search federated members
-- POST /api/federation/transactions - Create federated transaction
-- GET /api/federation/events - List federated events
-
-**Admin:**
-- GET /api/federation/dashboard - Federation stats
-- GET /api/federation/directory - Participating timebanks
-```
-
-### 4. Create New Backlog Sections
-
-#### Volunteering (Referenced but Sparse)
-
-```markdown
-### Volunteering (P2)
-
-**Opportunities:**
-- GET /api/volunteering/opportunities - List opportunities
-- GET /api/volunteering/opportunities/{id} - Details
-- POST /api/volunteering/opportunities - Create
-- PUT /api/volunteering/opportunities/{id} - Update
-- DELETE /api/volunteering/opportunities/{id} - Delete
-
-**Applications:**
-- POST /api/volunteering/opportunities/{id}/apply - Apply
-- GET /api/volunteering/applications - My applications
-- PUT /api/volunteering/applications/{id}/accept - Accept (org)
-- PUT /api/volunteering/applications/{id}/reject - Reject (org)
-
-**Hours:**
-- POST /api/volunteering/hours - Log hours
-- GET /api/volunteering/hours - My hours history
-- PUT /api/volunteering/hours/{id}/verify - Verify hours (org)
-- GET /api/volunteering/hours/summary - Hours summary
-
-**Shifts:**
-- GET /api/volunteering/opportunities/{id}/shifts - List shifts
-- POST /api/volunteering/shifts/{id}/signup - Sign up for shift
-```
-
-#### Reporting & Moderation
-
-```markdown
-### Reporting & Moderation (P2)
-
-- POST /api/reports - Report content (user, listing, post, comment)
-- GET /api/reports/my - My submitted reports
-- GET /api/admin/reports - Moderation queue (admin)
-- PUT /api/admin/reports/{id}/resolve - Resolve report (admin)
-```
-
-### 5. Update Email Integration
-
-Current text is vague. Make concrete:
-
-```markdown
-### Email Integration (P2 - DEFERRED)
-
-**Required for Production:**
-- IEmailService abstraction
-- SendGrid or SMTP provider implementation
-
-**Email Types:**
-- Password reset emails
-- Email verification on registration
-- Welcome emails
-- Connection request notifications (optional)
-- Message notifications (optional)
-- Event reminder notifications (optional)
-
-**Status:** Blocked on provider selection. Token generation works; email delivery does not.
-```
-
----
-
-## Implementation Priority Recommendation
+## Implementation Priority Recommendation (Updated)
 
 Based on gap analysis, recommended next phases:
 
-| Phase | Name | Focus Area | Why |
-|-------|------|------------|-----|
-| 15 | Search | Unified search, autocomplete | High-impact user feature |
-| 16 | File Uploads | Avatar, listing images, event images | Blocks UX polish |
-| 17 | Admin Core | Dashboard, user mgmt, tenant config | Operational necessity |
-| 18 | GDPR | Data export, account deletion, consent | Legal requirement |
-| 19 | Push Notifications | Web push, FCM | Engagement feature |
-| 20 | Two-Factor Auth | TOTP, backup codes | Security feature |
-| 21 | Volunteering | Opportunities, hours, shifts | Domain feature |
-| 22 | Super Admin | Platform-level controls | Multi-tenant ops |
-| 23 | Federation | Cross-tenant operations | Platform expansion |
+| Phase | Name | Focus Area | Why | V1 Services to Port |
+|-------|------|------------|-----|---------------------|
+| 16 | Exchange Workflow | Create, track, rate exchanges | Core timebanking feature | 3 |
+| 17 | File Uploads | Avatar, listing/group/event images | Blocks UX polish | 1 |
+| 18 | GDPR & Compliance | Data export, deletion, consent, legal docs | Legal requirement | 7 |
+| 19 | Two-Factor Auth | TOTP, backup codes, WebAuthn | Security feature | 4 |
+| 20 | Push Notifications | Web push (VAPID), FCM | Engagement feature | 4 |
+| 21 | Volunteering | Opportunities, hours, shifts, certificates | Domain feature | 11 |
+| 22 | Admin Expansion | CRM, newsletter, matching admin, cron jobs | Operational necessity | 10+ |
+| 23 | Super Admin | Tenant management, hierarchy, bulk ops | Multi-tenant ops | 5 |
+| 24 | Federation | Cross-tenant operations (5 phases) | Platform expansion | 18 |
+| 25 | Ranking Algorithms | EdgeRank, MatchRank, CommunityRank | Quality improvement | 5 |
+| 26 | Smart Matching | Embeddings, CF, cross-module | Discovery improvement | 19 |
+| 27 | Newsletter System | Templates, segments, deliverability | Communication | 4 |
+| 28 | Advanced Gamification | Challenges, streaks, seasons, shop | Engagement | 15 |
+| 29 | Jobs Module | Vacancies, applications, alerts | Domain feature | 2 |
+| 30 | Goals Module | Goals, check-ins, templates | Domain feature | 5 |
+| 31 | Polls & Ideation | Polls, idea challenges, campaigns | Community feature | 7 |
+| 32 | Blog & CMS | Posts, pages, page builder, resources | Content | 3 |
 
 ---
 

@@ -4,12 +4,16 @@ This software was created by Jasper Ford.
 
 Copyright © 2024–2026 Jasper Ford.
 
-Founders of the originating time bank initiative:
+Founders of the originating Irish timebank initiative hOUR Timebank CLG:
 - Jasper Ford
 - Mary Casey
 
 This software is informed by and builds upon a social impact study
 commissioned by the West Cork Development Partnership.
+
+Contributors:
+- Steven J. Kelly (community insight, product thinking)
+- Sarah Bird (CEO, Timebanking UK)
 
 Acknowledgements:
 - West Cork Development Partnership
@@ -26,9 +30,30 @@ the following attribution in a user-visible location:
 1. ABOUT PAGE (Required)
    The application's About page (or equivalent) MUST include:
 
-   "Powered by Project NEXUS
-    Created by Jasper Ford
-    Licensed under AGPL v3 - https://github.com/jasperfordesq-ai/api.project-nexus.net"
+   a) Header attribution:
+      "Powered by Project NEXUS
+       Created by Jasper Ford
+       Licensed under AGPL v3"
+      [Link to: https://github.com/jasperfordesq-ai/api.project-nexus.net]
+
+   b) FULL CONTRIBUTOR LIST (Required):
+      The About page MUST display ALL contributors listed in CONTRIBUTORS.md
+      (or contributors.json). This includes:
+      - Creator (Jasper Ford)
+      - Founders (Jasper Ford, Mary Casey)
+      - All Contributors (with their roles)
+      - Research Foundation acknowledgement
+      - All Acknowledgements
+
+      The contributor list must be rendered programmatically from the
+      canonical source file (contributors.json) to ensure consistency
+      and prevent accidental omissions.
+
+      Displaying only a subset of contributors, or linking to the file
+      instead of displaying the full list, is NOT compliant.
+
+   c) If the application has multiple About screens (tenant, public, admin),
+      ALL must include the full contributor list.
 
 2. FOOTER ATTRIBUTION (Required)
    The application's footer (visible on all pages) MUST include:
@@ -114,6 +139,29 @@ YOU ARE SOLELY RESPONSIBLE FOR:
 
 THE AUTHORS ACCEPT NO LIABILITY FOR ANY DAMAGES ARISING FROM YOUR USE,
 INCLUDING LOSS OF DATA, BUSINESS INTERRUPTION, OR REGULATORY PENALTIES.
+
+================================================================================
+RELATED PROJECTS
+================================================================================
+
+Project NEXUS is actively developed across two codebases:
+
+  V1 (original platform):
+    PHP 8.2+ / React 18 / MariaDB
+    https://github.com/jasperfordesq-ai/nexus-v1
+
+  V2 (this repository):
+    ASP.NET Core 8 / React 18 / PostgreSQL
+    https://github.com/jasperfordesq-ai/api.project-nexus.net
+
+V1 is the original platform — functional, in production, and the foundation
+of all Project NEXUS communities. V2 is a new backend being built alongside
+V1, progressively replacing the PHP API. Both share the same React frontend
+and design system.
+
+Note: This section is informational. The attribution requirements in
+Section 7(b) above apply to THIS repository only. References to V1 are
+provided for context and are not required for downstream compliance.
 
 ================================================================================
 

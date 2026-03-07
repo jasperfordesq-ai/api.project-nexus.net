@@ -82,7 +82,8 @@ See `.claude/production-server.md` for deployment commands.
 
 ## Current Phase
 
-**Admin APIs - COMPLETE** (All phases + Admin APIs completed ✓)
+**Phase 15 (Search) - COMPLETE** (All 15 core phases + Admin APIs completed)
+**Next: Phase 16 (Exchange Workflow)** - Core timebanking feature, P0 critical
 
 ### Admin API Endpoints (19) - Requires admin role
 
@@ -149,8 +150,39 @@ See `.claude/production-server.md` for deployment commands.
 
 - The legacy PHP application (read-only reference only)
 - MySQL/MariaDB compatibility
-- Migrating or converting PHP code
-- Any features beyond Phase 0 objectives
+- Migrating or converting PHP code directly
+
+## V1 Feature Parity Target (Updated 2026-03-06)
+
+The legacy PHP platform (V1) has grown significantly. V2 must eventually reach parity with these numbers:
+
+| Metric | V1 (PHP) | V2 (ASP.NET) | Gap |
+|--------|----------|--------------|-----|
+| API Endpoints | 1,715 | ~100 | 94% missing |
+| Services | 206 | 9 | 96% missing |
+| Data Models | 60 | 26 | 57% missing |
+| Feature Domains | 32 | 15 | 53% missing |
+| i18n Languages | 7 | 0 | 100% missing |
+
+### Largest Gaps (by V1 service count)
+
+| Module | V1 Services | V2 Status |
+|--------|-------------|-----------|
+| Groups (21 services) | Comprehensive: exchanges, recommendations, policies, files, chatroom | Basic CRUD only |
+| Gamification (20 services) | Challenges, streaks, seasons, shop, campaigns, collections | XP + badges + leaderboard |
+| Smart Matching (19 services) | Embeddings, CF, cross-module, learning, approval workflow | Not implemented |
+| Federation (18 services) | 5-phase system: directory, messaging, transactions, events, audit | Not implemented |
+| Volunteering (11 services) | Opportunities, shifts, swaps, certificates, wellbeing, emergency | Not implemented |
+| Wallet (10 services) | Org wallets, limits, categories, export, donations, alerts | Basic balance + transfer |
+| Listings (10 services) | Ranking, analytics, expiry, featured, risk tags, skill tags | Basic CRUD |
+| Admin (446 endpoints) | CRM, newsletter, matching, algorithms, vetting, safeguarding | 19 endpoints |
+
+### Critical Missing: Exchange Workflow
+
+Exchanges are the core of timebanking but are not implemented in V2. V1 has ExchangeWorkflowService, ExchangeRatingService, GroupExchangeService. This is Phase 16 (P0 critical).
+
+See MIGRATION_GAP_MAP.md for the complete feature-by-feature breakdown.
+See ROADMAP.md for the planned implementation phases (16-37).
 
 ## Non-Negotiable Invariants
 
@@ -487,27 +519,27 @@ tests/
 
 ## Documentation
 
+### Core References
 - [NOTES.md](./NOTES.md) - Decision log and phase checklists
-- [ROADMAP.md](./ROADMAP.md) - Migration roadmap with all planned phases
-- PHASE0_EXECUTION.md - Phase 0 test scripts
-- PHASE1_EXECUTION.md - Phase 1 test scripts
-- PHASE2_EXECUTION.md - Phase 2 test scripts
-- PHASE3_EXECUTION.md - Phase 3 test scripts
-- PHASE4_EXECUTION.md - Phase 4 test scripts
-- PHASE5_EXECUTION.md - Phase 5 test scripts
-- PHASE6_EXECUTION.md - Phase 6 test scripts
-- PHASE7_EXECUTION.md - Phase 7 test scripts
-- PHASE8_EXECUTION.md - Phase 8 test scripts
-- PHASE9_EXECUTION.md - Phase 9 test scripts
-- PHASE10_EXECUTION.md - Phase 10 test scripts
-- PHASE11_EXECUTION.md - Phase 11 test scripts
-- PHASE12_EXECUTION.md - Phase 12 test scripts
-- PHASE13_EXECUTION.md - Phase 13 test scripts
+- [ROADMAP.md](./ROADMAP.md) - Migration roadmap with all planned phases (16-37)
+- [MIGRATION_GAP_MAP.md](./MIGRATION_GAP_MAP.md) - V1 vs V2 feature comparison (~250 features mapped)
+- [LEGACY_FEATURE_INVENTORY.md](./LEGACY_FEATURE_INVENTORY.md) - Full V1 feature inventory (206 services, 1,715 endpoints)
+
+### Phase Execution Guides
+- PHASE0_EXECUTION.md through PHASE15_EXECUTION.md - Test scripts for each completed phase
+
+### Deployment & Operations
 - FRONTEND_INTEGRATION.md - Frontend integration guide (API reference, CORS, architecture)
 - PLESK_DEPLOYMENT.md - Plesk deployment guide (concepts, theory, troubleshooting)
 - PLESK_QUICKSTART.md - Step-by-step Plesk setup checklist
 - PLESK_EXECUTION.md - Verb-first execution guide for Plesk setup
 - DEPLOYMENT_CHECKLIST.md - Full deployment order checklist (fresh server to production)
-- AI_SERVICE_BOUNDARY.md - Security boundary for LLaMA AI service
-- RECOVERY_GUIDE.md - How to verify and recover when things break
 - MASTER_DEPLOYMENT_CHECKLIST.md - Single source of truth for deployment
+- RECOVERY_GUIDE.md - How to verify and recover when things break
+- DOCKER_CONTRACT.md - Docker Compose specification
+
+### AI & Security
+- AI_SERVICE_BOUNDARY.md - Security boundary for LLaMA AI service
+- AI_FEATURES_ROADMAP.md - AI feature roadmap
+- AI_FRONTEND_INTEGRATION.md - Frontend AI integration
+- AI_DEPLOYMENT_PLESK_UBUNTU.md - Ubuntu/Plesk AI deployment
