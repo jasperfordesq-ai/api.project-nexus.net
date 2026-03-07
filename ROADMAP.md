@@ -16,9 +16,9 @@ This roadmap outlines the incremental migration from the legacy PHP application 
 
 ## Migration Priority
 
-Based on MIGRATION_GAP_MAP.md analysis of ~250 legacy features (updated 2026-03-07):
+Based on MIGRATION_GAP_MAP.md analysis of ~300 legacy features (updated 2026-03-07, deep V1 source audit):
 
-**NOTE:** On 2026-03-06, Phases 16-37 were scaffolded in a single session (controllers, services, entities, DbSets). All 32 feature domains now have code. Status below reflects scaffolded = code exists but needs EF migration, integration testing, and production hardening.
+**NOTE:** Phases 16-37 were scaffolded on 2026-03-06 and integration-tested on 2026-03-07. All 32 feature domains now have code with 659/660 integration tests passing. **Migration Score: 620/1,000.**
 
 ### Must-Have Parity (Blocks Production)
 
@@ -29,13 +29,13 @@ Based on MIGRATION_GAP_MAP.md analysis of ~250 legacy features (updated 2026-03-
 | Listings CRUD | ✅ Done | Phase 1, 3 |
 | Wallet/Transactions | ✅ Done | Phase 4, 5 |
 | Messaging | ✅ Done | Phase 6, 7 |
-| Exchange Workflow | ✅ Scaffolded | Phase 16 (11 endpoints, ExchangeService) |
-| Admin Dashboard | ✅ Scaffolded | 35 endpoints (AdminController + CRM + Analytics + Audit) |
+| Exchange Workflow | ✅ Tested | Phase 16 (11 endpoints, ExchangeService) |
+| Admin Dashboard | ✅ Tested | 35 endpoints (AdminController + CRM + Analytics + Audit) |
 | User Management (Admin) | ✅ Done | AdminController |
-| Tenant Management | ✅ Scaffolded | SystemAdminController (8 endpoints) |
-| GDPR Compliance | ✅ Scaffolded | GdprController (9 endpoints) + CookieConsentController (6 endpoints) |
-| Volunteer Hour Logging | ✅ Scaffolded | VolunteeringController (16 endpoints) |
-| Federated Transactions | ✅ Scaffolded | FederationController (10 endpoints) |
+| Tenant Management | ✅ Tested | SystemAdminController (8 endpoints) |
+| GDPR Compliance | ✅ Tested | GdprController (9 endpoints) + CookieConsentController (6 endpoints) |
+| Volunteer Hour Logging | ✅ Tested | VolunteeringController (16 endpoints) |
+| Federated Transactions | ✅ Tested | FederationController (10 endpoints) |
 
 ### Should-Have Parity (Launch Blockers)
 
@@ -51,28 +51,47 @@ Based on MIGRATION_GAP_MAP.md analysis of ~250 legacy features (updated 2026-03-
 | Registration Policy Engine | ✅ Done | 10 endpoints, 5 modes, identity verification |
 | Email Service (Gmail API) | ✅ Done | OAuth2, password reset + welcome templates |
 | Two-Factor Auth (TOTP) | ✅ Done | 4 endpoints, AES-256-GCM encrypted secrets, login gate |
-| Avatar/Image Upload | ❌ Missing | File upload infrastructure not built |
-| Push Notifications | ✅ Scaffolded | PushNotificationController (5 endpoints) |
+| Avatar/Image Upload | ✅ Tested | FilesController (6 endpoints), FileUploadService |
+| Push Notifications | ✅ Tested | PushNotificationController (5 endpoints) |
 | Unified Search | ✅ Done | Phase 15 |
-| Smart Matching | ✅ Scaffolded | MatchingController (6 endpoints) |
-| Feed Ranking | ✅ Scaffolded | FeedRankingController (7 endpoints) |
-| Newsletter | ✅ Scaffolded | NewsletterController (10 endpoints) |
+| Smart Matching | ✅ Tested | MatchingController (6 endpoints) |
+| Feed Ranking | ✅ Tested | FeedRankingController (7 endpoints) |
+| Newsletter | ✅ Tested | NewsletterController (10 endpoints) |
+
+### Newly Identified (from deep V1 source audit 2026-03-07)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Federation External API | Not started | Phase 38 (P0 critical, 10 external + 11 user-facing + 14 super admin endpoints) |
+| Federation Gateway + 3-Layer Gating | Not started | Phase 38a (central auth point for all cross-tenant ops) |
+| Federation JWT + API Middleware | Not started | Phase 38b (cross-server token exchange, HMAC signing) |
+| Jobs Module | Not started | Phase 40 (25 endpoints, full job vacancies) |
+| Legal Document Acceptance | Not started | Phase 41 (6 endpoints, GDPR compliance) |
+| Knowledge Base | Not started | Phase 42 (8 endpoints) |
+| User Self-Service | Not started | Phase 43 (preferences, notifications, sessions) |
+| Member Availability | Not started | Phase 44 (8 endpoints, scheduling) |
+| Endorsements + Verification Badges | Not started | Phase 45 (7 endpoints) |
+| Polls Module | Not started | Phase 46 (10 endpoints, ranked voting) |
+| Goals Module | Not started | Phase 47 (22 endpoints) |
+| Ideation & Challenges | Not started | Phase 48 (22 endpoints) |
+| Threaded Comments V2 | Not started | Phase 49 (5 endpoints, reusable) |
+| Blog, Pages, Resources | Not started | Phase 50 (content management) |
 
 ### Nice-to-Have Parity (Post-Launch)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | AI Features | ✅ Done (LLaMA) | 22 endpoints |
-| Advanced Gamification | ✅ Scaffolded | GamificationV2Controller (10 endpoints) |
-| CRM | ✅ Scaffolded | AdminCrmController (6 endpoints) |
-| Content Reports | ✅ Scaffolded | ReportsController (10 endpoints) |
-| Skills System | ✅ Scaffolded | SkillsController (10 endpoints) |
-| Translation/i18n | ✅ Scaffolded | TranslationController (9 endpoints) |
-| Location/Geo | ✅ Scaffolded | LocationController (6 endpoints) |
-| Predictive Staffing | ✅ Scaffolded | StaffingController (6 endpoints) |
-| Listing Features | ✅ Scaffolded | ListingFeaturesController (10 endpoints) |
+| Advanced Gamification | ✅ Tested | GamificationV2Controller (10 endpoints) |
+| CRM | ✅ Tested | AdminCrmController (6 endpoints) |
+| Content Reports | ✅ Tested | ReportsController (10 endpoints) |
+| Skills System | ✅ Tested | SkillsController (10 endpoints) |
+| Translation/i18n | ✅ Tested | TranslationController (9 endpoints) |
+| Location/Geo | ✅ Tested | LocationController (6 endpoints) |
+| Predictive Staffing | ✅ Tested | StaffingController (6 endpoints) |
+| Listing Features | ✅ Tested | ListingFeaturesController (10 endpoints) |
 
-**Summary:** 339 endpoints across 42 controllers. Phases 0-15 fully tested. Phases 16-37 scaffolded (code exists, needs migration + testing).
+**Summary (verified 2026-03-07, deep V1 source audit + background agent sweep):** 356 endpoints across 44 controllers, 43 services, 91 entities. Phases 0-15 fully tested. Passkeys, TOTP, Registration Policy, Gmail Email, File Upload complete. Phases 16-37 scaffolded (code exists, needs integration testing). Deep V1 audit + background agent revealed ~75 additional features not previously tracked (jobs, goals, ideation, polls, knowledge base, resources, endorsements, legal documents, member availability, sub-accounts, threaded comments, enterprise GDPR, broker controls, vetting, org wallets, onboarding, etc.). V1 confirmed at 251 services, 199 controllers, 1,300+ endpoints. **Migration Score: 380/1,000** (down from 465 due to significantly expanded feature count).
 
 ---
 
@@ -99,6 +118,8 @@ Based on MIGRATION_GAP_MAP.md analysis of ~250 legacy features (updated 2026-03-
 | - | Passkeys (WebAuthn/FIDO2) | ✅ COMPLETE | 7 endpoints |
 | - | Registration Policy Engine | ✅ COMPLETE | 10 endpoints |
 | - | Email Service (Gmail API) | ✅ COMPLETE | Infrastructure |
+| - | TOTP Two-Factor Auth | ✅ COMPLETE | 8 endpoints |
+| - | File Upload Infrastructure | ✅ COMPLETE | 6 endpoints |
 | 16 | Exchange Workflow | ✅ SCAFFOLDED | 11 endpoints |
 | 17 | Wallet Features | ✅ SCAFFOLDED | 9 endpoints |
 | 18 | Skills & Cookie Consent | ✅ SCAFFOLDED | 16 endpoints |
@@ -116,6 +137,8 @@ Based on MIGRATION_GAP_MAP.md analysis of ~250 legacy features (updated 2026-03-
 | 30 | Gamification V2 | ✅ SCAFFOLDED | 10 endpoints |
 | 31 | Content Reports | ✅ SCAFFOLDED | 10 endpoints |
 | 32 | Newsletter | ✅ SCAFFOLDED | 10 endpoints |
+| 33 | Blog & CMS | NOT STARTED | See Phase 50 |
+| 34 | Advanced Gamification | NOT STARTED | See Phase 30 overlap |
 | 35 | Federation | ✅ SCAFFOLDED | 10 endpoints |
 | 36 | Predictive Staffing | ✅ SCAFFOLDED | 6 endpoints |
 | 37 | System Admin | ✅ SCAFFOLDED | 8 endpoints |
@@ -644,10 +667,10 @@ The legacy PHP platform (V1) has grown significantly since this roadmap was crea
 
 | Metric | V1 (PHP) | V2 (ASP.NET) | Gap |
 |--------|----------|--------------|-----|
-| API Endpoints | 1,735 | 339 | 80% missing |
-| PHP/C# Services | 227 | 40 | 82% missing |
-| Controllers | 198 | 42 | 79% missing |
-| Data Models | 60 | 91 | V2 exceeds V1 |
+| API Endpoints | ~1,300+ | 356 | 73% missing |
+| PHP/C# Services | 251 | 43 | 83% missing |
+| Controllers | 199 | 44 | 78% missing |
+| Data Models | 60+ | 91 | V2 exceeds V1 |
 | React Pages | 163 | 0 | 100% missing |
 | Admin Modules | 226 | 0 | 100% missing |
 | Feature Domains | 32 | 32 | All scaffolded |
@@ -1072,6 +1095,331 @@ Note: V2's SignalR could replace Pusher for real-time notifications.
 - Synonym dictionary
 - Personalized search results
 
+### Phase 38: Federation External API (P0 - CRITICAL)
+
+**Objective:** Implement the complete federation REST API for cross-server communication. This is the core protocol that allows V2 servers to communicate with V1 servers (and other V2 servers). Without this, V2 cannot participate in the federation network.
+
+**From V1 source audit:** V1 has 18 federation services, 10 external API endpoints, 7 admin controllers, 14 super admin endpoints, and 9 database tables.
+
+**Sub-phases:**
+
+**38a: Federation Gateway + Feature Gating**
+- FederationGateway: central authorization point for all cross-tenant operations
+- FederationFeatureService: 3-layer feature gating (System -> Tenant -> User)
+- Database tables: federation_system_control, federation_tenant_features, federation_tenant_whitelist
+- Emergency lockdown capability
+
+**38b: Federation JWT + API Middleware**
+- FederationJwtService: HS256 token generation/validation for partner platforms
+- FederationApiMiddleware: Multi-auth (API Key, HMAC-SHA256, JWT Bearer)
+- Rate limiting: hourly sliding window per API key
+- Database tables: federation_api_keys, federation_api_logs
+
+**38c: Federation External REST API (10 endpoints)**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/v1/federation | API info + endpoint directory |
+| GET | /api/v1/federation/timebanks | List partner timebanks |
+| GET | /api/v1/federation/members | Search federated members |
+| GET | /api/v1/federation/members/{id} | Get member profile |
+| GET | /api/v1/federation/listings | Search federated listings |
+| GET | /api/v1/federation/listings/{id} | Get listing details |
+| POST | /api/v1/federation/messages | Send federated message |
+| POST | /api/v1/federation/transactions | Initiate time credit transfer |
+| POST | /api/v1/federation/oauth/token | OAuth2 client_credentials exchange |
+| POST | /api/v1/federation/webhooks/test | Test webhook signature |
+
+**38d: Federation External API Client**
+- FederationExternalApiClient: HTTP client for calling partner V1/V2 servers
+- Auth methods: API Key Bearer, HMAC-SHA256 signing, OAuth2
+- Request/response logging to federation_external_partner_logs
+- Configurable base_url + api_path per partner
+
+**38e: Federation User-Facing API (11 endpoints)**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/v2/federation/status | Status for user's tenant |
+| POST | /api/v2/federation/opt-in | User opts into federation |
+| POST | /api/v2/federation/opt-out | User opts out |
+| GET/PUT | /api/v2/federation/settings | Privacy settings |
+| GET | /api/v2/federation/partners | List partner timebanks |
+| GET | /api/v2/federation/activity | Recent activity |
+| GET | /api/v2/federation/members | Search federated members |
+| GET | /api/v2/federation/listings | Search federated listings |
+| GET | /api/v2/federation/events | Search federated events |
+| POST | /api/v2/federation/messages | Send federated message |
+| GET | /api/v2/federation/directory | Directory listing |
+
+**38f: Super Admin Federation Controls (14 endpoints)**
+- System controls (enable/disable, whitelist mode, max federation level)
+- Emergency lockdown (trigger + lift)
+- Whitelist management (add/remove tenants)
+- Partnership management (view, suspend, terminate)
+- Audit log
+- Per-tenant feature management
+
+### Phase 39: Federation Supporting Services (P1)
+
+**Objective:** Implement the remaining federation services.
+
+| Service | Description |
+| ------- | ----------- |
+| FederationPartnershipService | Partnership CRUD, status management |
+| FederationSearchService | Cross-tenant search queries |
+| FederationUserService | User opt-in/out, privacy settings |
+| FederationAuditService | Comprehensive audit logging |
+| FederatedTransactionService | Cross-tenant credit transfers |
+| FederatedMessageService | Cross-tenant messaging |
+| FederatedGroupService | Cross-tenant group membership |
+| FederationActivityService | Activity feed for federation |
+| FederationCreditService | Credit conversion between tenants |
+| FederationDirectoryService | Public directory of tenants |
+| FederationEmailService | Email notifications for federation events |
+| FederationNeighborhoodService | Geo-based federation grouping |
+| FederationRealtimeService | Real-time federation event streaming |
+| FederationExternalPartnerService | External partner management |
+
+### Phase 40: Jobs Module (P2 - NEW)
+
+**Objective:** Full job vacancies module. V1 has 25 endpoints via JobVacanciesApiController.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/jobs | List jobs |
+| POST | /api/jobs | Create job |
+| GET | /api/jobs/{id} | Job detail |
+| PUT | /api/jobs/{id} | Update job |
+| DELETE | /api/jobs/{id} | Delete job |
+| POST | /api/jobs/{id}/apply | Apply for job |
+| GET | /api/jobs/my-applications | My applications |
+| GET | /api/jobs/saved | Saved jobs |
+| POST | /api/jobs/{id}/save | Save job |
+| DELETE | /api/jobs/{id}/save | Unsave job |
+| GET | /api/jobs/alerts | List alerts |
+| POST | /api/jobs/alerts | Create alert |
+| DELETE | /api/jobs/alerts/{id} | Delete alert |
+| GET | /api/jobs/{id}/match | Match percentage |
+| GET | /api/jobs/{id}/applications | Applications (owner) |
+| GET | /api/jobs/{id}/analytics | Job analytics |
+| POST | /api/jobs/{id}/renew | Renew job |
+
+### Phase 41: Legal Documents & Acceptance (P1 - NEW)
+
+**Objective:** Legal document management with version tracking and user acceptance. GDPR compliance requirement.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/legal/{type} | Get legal document |
+| GET | /api/legal/{type}/versions | Version history |
+| GET | /api/legal/version/{id} | Specific version |
+| GET | /api/legal/versions/compare | Compare versions |
+| GET | /api/legal/acceptance/status | User acceptance status |
+| POST | /api/legal/acceptance/accept-all | Accept all current |
+
+### Phase 42: Knowledge Base (P2 - NEW)
+
+**Objective:** Self-service knowledge base for user support. V1 has KnowledgeBaseApiController.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/kb | List articles |
+| GET | /api/kb/search | Search KB |
+| POST | /api/kb | Create article |
+| GET | /api/kb/{id} | Article detail |
+| GET | /api/kb/slug/{slug} | Article by slug |
+| PUT | /api/kb/{id} | Update article |
+| DELETE | /api/kb/{id} | Delete article |
+| POST | /api/kb/{id}/feedback | Article feedback |
+
+### Phase 43: User Self-Service Features (P2 - NEW)
+
+**Objective:** User preferences, availability, notifications, match preferences. V1 has extensive user self-service.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET/PUT | /api/users/me/preferences | User preferences |
+| PUT | /api/users/me/theme | Theme preference |
+| PUT | /api/users/me/language | Language preference |
+| GET/PUT | /api/users/me/notifications | Notification preferences |
+| GET/PUT | /api/users/me/consent | Consent management |
+| GET | /api/users/me/sessions | Active sessions |
+| GET/PUT | /api/users/me/match-preferences | Match preferences |
+| GET/POST | /api/users/me/insurance | Insurance certificates |
+
+### Phase 44: Member Availability (P2 - NEW)
+
+**Objective:** Scheduling and availability management. V1 has MemberAvailabilityApiController with 8 endpoints.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/users/me/availability | My availability |
+| PUT | /api/users/me/availability | Set bulk availability |
+| PUT | /api/users/me/availability/{day} | Set day availability |
+| POST | /api/users/me/availability/date | Add specific date |
+| DELETE | /api/users/me/availability/{id} | Delete slot |
+| GET | /api/users/{id}/availability | User availability |
+| GET | /api/members/availability/compatible | Find compatible times |
+| GET | /api/members/availability/available | Available members now |
+
+### Phase 45: Endorsements & Verification Badges (P3 - NEW)
+
+**Objective:** Peer endorsements and admin-granted verification badges.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| POST | /api/members/{id}/endorse | Endorse member |
+| DELETE | /api/members/{id}/endorse | Remove endorsement |
+| GET | /api/members/{id}/endorsements | Get endorsements |
+| GET | /api/members/top-endorsed | Top endorsed members |
+| GET | /api/users/{id}/verification-badges | Get badges |
+| POST | /api/admin/users/{id}/badges | Grant badge (admin) |
+| DELETE | /api/admin/users/{id}/badges/{type} | Revoke badge (admin) |
+
+### Phase 46: Polls Module (P3 - NEW)
+
+**Objective:** Full polls/surveys with ranked voting. V1 has PollsApiController with 10 endpoints.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/polls | List polls |
+| POST | /api/polls | Create poll |
+| GET | /api/polls/{id} | Poll detail |
+| PUT | /api/polls/{id} | Update poll |
+| DELETE | /api/polls/{id} | Delete poll |
+| POST | /api/polls/{id}/vote | Cast vote |
+| POST | /api/polls/{id}/rank | Ranked vote |
+| GET | /api/polls/{id}/ranked-results | Ranked results |
+| GET | /api/polls/{id}/export | Export results |
+| GET | /api/polls/categories | Poll categories |
+
+### Phase 47: Goals Module (P3 - NEW)
+
+**Objective:** Personal goals with templates, check-ins, buddy system. V1 has GoalsApiController with 22 endpoints.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/goals | List goals |
+| POST | /api/goals | Create goal |
+| GET | /api/goals/{id} | Goal detail |
+| PUT | /api/goals/{id} | Update goal |
+| DELETE | /api/goals/{id} | Delete goal |
+| POST | /api/goals/{id}/progress | Log progress |
+| POST | /api/goals/{id}/complete | Complete goal |
+| POST | /api/goals/{id}/buddy | Request buddy |
+| GET/POST | /api/goals/{id}/checkins | Check-ins |
+| GET | /api/goals/{id}/history | Progress history |
+| GET/PUT/DELETE | /api/goals/{id}/reminder | Reminders |
+| GET | /api/goals/discover | Discover goals |
+| GET | /api/goals/mentoring | Mentoring matches |
+| GET/POST | /api/goals/templates | Goal templates |
+| POST | /api/goals/from-template/{id} | Create from template |
+
+### Phase 48: Ideation & Challenges (P3 - NEW)
+
+**Objective:** Community ideation with challenges, idea submission, voting. V1 has IdeationChallengesApiController with 22 endpoints.
+
+- Challenge CRUD with status management
+- Idea submission with drafts
+- Community voting and ranking
+- Comments on ideas
+- Convert winning ideas to groups
+- Challenge duplication and favorites
+
+### Phase 49: Threaded Comments V2 (P2 - NEW)
+
+**Objective:** Standalone threaded comment system reusable across modules. V1 has CommentsV2ApiController.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/comments | List comments (polymorphic) |
+| POST | /api/comments | Create comment |
+| PUT | /api/comments/{id} | Edit comment |
+| DELETE | /api/comments/{id} | Delete comment |
+| POST | /api/comments/{id}/reactions | Add reaction |
+
+### Phase 50: Blog, Pages, Resources (P3 - NEW)
+
+**Objective:** Content management features. V1 has blog, pages, and resources APIs.
+
+- Blog public API (list, categories, detail by slug)
+- Public pages API (content pages by slug)
+- Resources library (browse, categories, tree, CRUD)
+- Help/FAQ API
+
+### Phase 51: Enterprise & Governance (P2 - NEW)
+
+**Objective:** Enterprise-grade compliance, broker controls, and vetting. V1 has AdminEnterpriseApiController (21+ endpoints), AdminBrokerApiController (13+ endpoints), AdminVettingApiController (15 endpoints).
+
+**Enterprise GDPR:**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/admin/enterprise/dashboard | Enterprise dashboard |
+| GET | /api/admin/enterprise/gdpr/audit | GDPR audit trail |
+| POST | /api/admin/enterprise/gdpr/breach | Report GDPR breach |
+| GET | /api/admin/enterprise/gdpr/requests | GDPR data requests |
+| GET | /api/admin/enterprise/gdpr/consent | Consent tracking |
+| GET | /api/admin/enterprise/monitoring | System monitoring |
+| GET/PUT | /api/admin/enterprise/secrets | Secrets management |
+| GET/PUT | /api/admin/enterprise/config | Enterprise config |
+
+**Broker Controls:**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/admin/broker/exchanges | Exchanges needing approval |
+| PUT | /api/admin/broker/exchanges/{id}/approve | Approve exchange |
+| PUT | /api/admin/broker/exchanges/{id}/reject | Reject exchange |
+| GET | /api/admin/broker/risk-tags | Risk-tagged exchanges |
+| GET | /api/admin/broker/messages | Messages for review |
+| GET | /api/admin/broker/users | Monitored users |
+| GET | /api/admin/broker/stats | Broker statistics |
+
+**Vetting/Insurance:**
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/admin/vetting | Vetting records |
+| POST | /api/admin/vetting/{userId} | Create vetting record |
+| PUT | /api/admin/vetting/{userId}/verify | Verify vetting |
+| GET | /api/admin/insurance | Insurance certificates |
+| POST | /api/admin/insurance/{userId} | Upload certificate |
+| PUT | /api/admin/insurance/{id}/verify | Verify certificate |
+
+### Phase 52: Organization Wallets (P2 - NEW)
+
+**Objective:** Organization-level wallet management. V1 has OrgWalletController with 15 endpoints.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| POST | /api/organisations | Register organisation |
+| GET | /api/organisations | List organisations |
+| GET | /api/organisations/{id} | Organisation details |
+| GET | /api/organisations/{id}/wallet | Org wallet balance |
+| POST | /api/organisations/{id}/wallet/transfer | Org wallet transfer |
+| GET | /api/organisations/{id}/wallet/transactions | Org transactions |
+| POST | /api/organisations/{id}/wallet/bulk-transfer | Bulk transfer |
+| GET | /api/organisations/{id}/wallet/export | Export transactions |
+| GET | /api/organisations/{id}/members | Org members |
+| POST | /api/organisations/{id}/members/{userId}/approve | Approve member |
+| DELETE | /api/organisations/{id}/members/{userId} | Remove member |
+
+### Phase 53: Onboarding, Contact & Mobile (P3 - NEW)
+
+**Objective:** Onboarding wizard, contact forms, and mobile app support.
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | /api/onboarding | Get onboarding status |
+| PUT | /api/onboarding/complete | Complete onboarding step |
+| POST | /api/contact | Submit contact form |
+| GET | /api/app/version | Check app version |
+| GET | /api/app/update | Check for updates |
+| POST | /api/app/log | Submit app error log |
+| GET | /api/menus | Get mobile menu config |
+
 ---
 
 ## Entity Migration Order
@@ -1184,4 +1532,5 @@ Based on entity dependency analysis:
 | 2026-02-02 | 14 | Reviews (user and listing reviews with ratings) |
 | 2026-02-02 | 15 | Search (unified search, suggestions, member directory) |
 | 2026-02-02 | - | Backlog expanded per MIGRATION_GAP_MAP.md |
-| 2026-03-06 | - | Major backlog update: V1 audit reveals 250+ features, 206 services, 1,715 endpoints. Backlog expanded to Phases 16-37 with V1 service counts per module. Exchange Workflow added as Phase 16 (P0 critical). |
+| 2026-03-06 | - | Major backlog update: V1 audit reveals 250+ features. Backlog expanded to Phases 16-37 with V1 service counts per module. Exchange Workflow added as Phase 16 (P0 critical). |
+| 2026-03-07 | - | Deep V1 source audit + background agent sweep: 251 services, 199 controllers, 1,300+ endpoints confirmed. Found ~75 additional features not previously tracked. Added Phases 38-53 (federation external API, jobs, legal docs, knowledge base, user self-service, availability, endorsements, polls, goals, ideation, comments V2, blog/pages/resources, enterprise/governance, org wallets, onboarding/mobile). Federation architecture fully documented from source (13 DB tables, 40+ endpoints, 18 services). Migration score revised to 380/1,000 (expanded denominator ~320 features). |

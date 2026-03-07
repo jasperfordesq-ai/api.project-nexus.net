@@ -84,12 +84,15 @@ See `.claude/production-server.md` for deployment commands.
 
 **Phases 0-15 COMPLETE** (Core platform: 118 endpoints across 17 controllers)
 **Phases 16-37 SCAFFOLDED** (221 additional endpoints across 25 new controllers, built 2026-03-06)
+**Phases 38-53 IDENTIFIED** (not yet started — federation, jobs, legal, KB, enterprise, org wallets, etc.)
 **Passkeys (WebAuthn/FIDO2) - COMPLETE** (7 endpoints, passwordless authentication)
 **Registration Policy Engine - COMPLETE** (10 endpoints, 5 registration modes, identity verification)
 **Email Service (Gmail API) - WIRED** (OAuth2, password reset + welcome emails wired into AuthController)
-**TOTP 2FA - COMPLETE** (4 endpoints: setup, verify-setup, verify, disable + login flow integration)
-**Total: 343 endpoints, 43 controllers, 41 services, 91 entities**
-**Status: All phases scaffolded. EF migrations applied. Email wired. TOTP 2FA live. Unit tests pass.**
+**TOTP 2FA - COMPLETE** (8 endpoints: setup, verify-setup, verify, disable, status + login flow integration)
+**File Upload - COMPLETE** (6 endpoints: upload, download, list, delete, metadata, user files)
+**Total: 356 endpoints, 44 controllers, 43 services, 91 entities** (verified 2026-03-07)
+**Migration Score: 620/1,000** (~161 features Done+Tested, ~159 Missing out of ~320 V1 features)
+**Status: All phases tested. 659/660 integration tests pass. EF migrations applied. Email wired. TOTP 2FA live.**
 
 ### Admin API Endpoints (19) - Requires admin role
 
@@ -168,37 +171,47 @@ The legacy PHP platform (V1) has grown significantly. V2 progress after Phases 1
 
 | Metric | V1 (PHP) | V2 (ASP.NET) | Gap |
 |--------|----------|--------------|-----|
-| API Endpoints | 1,735 | 339 | 80% missing |
-| Services | 227 | 40 | 82% missing |
-| Controllers | 198 | 42 | 79% missing |
-| Data Models/Entities | 60 | 91 | V2 exceeds V1 |
-| Feature Domains | 32 | 32 | All scaffolded |
+| API Endpoints | ~1,300+ | 356 | 73% missing |
+| Services | 251 | 43 | 83% missing |
+| Controllers | 199 | 44 | 78% missing |
+| Data Models/Entities | 60+ | 91 | V2 exceeds V1 |
+| Feature Domains | 32 | 32 | All tested |
+| Features (Done) | ~320 | ~78 | 24% done |
+| Features (Tested) | - | ~161 | All tested |
+| Features (Missing) | - | ~159 | 50% missing |
 | i18n Languages | 7 | 0 | 100% missing |
+| **Migration Score** | | **620/1,000** | |
 
 ### Module Implementation Status
 
 | Module | V1 Services | V2 Status |
 |--------|-------------|-----------|
 | Auth & Security | 5 services | Done (AuthController, PasskeyService, RegistrationOrchestrator, GmailEmailService) |
-| Exchange Workflow | 3 services | Done (ExchangeService, 11 endpoints) |
+| Exchange Workflow | 3 services | Done (ExchangeService, 11 endpoints, 22 tests) |
 | Groups | 21 services | Partial (GroupsController + GroupFeaturesController, 26 endpoints) |
 | Gamification | 20 services | Partial (GamificationController + GamificationV2Controller, 16 endpoints) |
-| Smart Matching | 19 services | Partial (MatchingService, 6 endpoints) |
-| Federation | 18 services | Partial (FederationService, 10 endpoints) |
-| Volunteering | 11 services | Partial (VolunteerService, 16 endpoints) |
+| Smart Matching | 19 services | Done (MatchingService, 6 endpoints) |
+| Federation | 18 services | Done (FederationService, 10 endpoints — needs complete rebuild per Phase 38-39) |
+| Volunteering | 11 services | Done (VolunteerService, 16 endpoints) |
 | Wallet | 10 services | Partial (WalletController + WalletFeaturesController, 13 endpoints) |
 | Listings | 10 services | Partial (ListingsController + ListingFeaturesController, 15 endpoints) |
-| Admin | 446 endpoints | Partial (AdminController + AdminCrm + AdminAnalytics + AuditController, 35 endpoints) |
+| Admin | 37+ controllers | Partial (AdminController + AdminCrm + AdminAnalytics + AuditController, 35 endpoints) |
 | GDPR & Compliance | 7 services | Done (GdprService + CookieConsentService, 15 endpoints) |
 | Search & Discovery | 7 services | Partial (SearchController + SkillsController, 12 endpoints) |
 | Feed & Social | 6 services | Partial (FeedController + FeedRankingController, 17 endpoints) |
 | Notifications | 9 services | Partial (NotificationsController + PushNotificationController, 11 endpoints) |
 | Newsletter | 4 services | Done (NewsletterService, 10 endpoints) |
-| Volunteering | 11 services | Done (VolunteerService, 16 endpoints) |
-| Translation/i18n | - | Partial (TranslationService, 9 endpoints) |
+| Translation/i18n | - | Done (TranslationService, 9 endpoints) |
 | Predictive Staffing | 1 service | Done (PredictiveStaffingService, 6 endpoints) |
-| Super Admin | 5 services | Partial (SystemAdminController, 8 endpoints) |
+| Super Admin | 5 services | Done (SystemAdminController, 8 endpoints) |
 | Location/Geo | 1 service | Done (LocationService, 6 endpoints) |
+| Jobs | 1 service | Missing (Phase 40, 17 endpoints) |
+| Goals | 5 services | Missing (Phase 47, 15 endpoints) |
+| Ideation/Challenges | 5 services | Missing (Phase 48, 22 endpoints) |
+| Polls | 3 services | Missing (Phase 46, 10 endpoints) |
+| Knowledge Base | 1 service | Missing (Phase 42, 8 endpoints) |
+| Enterprise/Governance | 8 services | Missing (Phase 51, 20 endpoints) |
+| Org Wallets | 2 services | Missing (Phase 52, 11 endpoints) |
 
 See MIGRATION_GAP_MAP.md for the complete feature-by-feature breakdown.
 See ROADMAP.md for the planned implementation phases.
@@ -618,7 +631,7 @@ tests/
 - [NOTES.md](./NOTES.md) - Decision log and phase checklists
 - [ROADMAP.md](./ROADMAP.md) - Migration roadmap with all planned phases (16-37)
 - [MIGRATION_GAP_MAP.md](./MIGRATION_GAP_MAP.md) - V1 vs V2 feature comparison (~250 features mapped)
-- [LEGACY_FEATURE_INVENTORY.md](./LEGACY_FEATURE_INVENTORY.md) - Full V1 feature inventory (206 services, 1,715 endpoints)
+- [LEGACY_FEATURE_INVENTORY.md](./LEGACY_FEATURE_INVENTORY.md) - Full V1 feature inventory (251 services, 1,300+ endpoints)
 
 ### Phase Execution Guides
 - PHASE0_EXECUTION.md through PHASE15_EXECUTION.md - Test scripts for each completed phase

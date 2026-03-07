@@ -131,7 +131,7 @@ public class NotificationsControllerTests : IntegrationTestBase
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         var notifications = content.GetProperty("data").EnumerateArray().ToList();
         notifications.Should().AllSatisfy(n =>
-            n.GetProperty("is_read").GetBoolean().Should().BeFalse());
+            n.GetProperty("isRead").GetBoolean().Should().BeFalse());
     }
 
     [Fact]
@@ -256,7 +256,7 @@ public class NotificationsControllerTests : IntegrationTestBase
         content.GetProperty("type").GetString().Should().Be("connection_request");
         content.GetProperty("title").GetString().Should().Be("New connection request");
         content.GetProperty("body").GetString().Should().Be("Admin User wants to connect");
-        content.GetProperty("is_read").GetBoolean().Should().BeFalse();
+        content.GetProperty("isRead").GetBoolean().Should().BeFalse();
     }
 
     [Fact]
@@ -315,8 +315,8 @@ public class NotificationsControllerTests : IntegrationTestBase
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         content.GetProperty("success").GetBoolean().Should().BeTrue();
-        content.GetProperty("notification").GetProperty("is_read").GetBoolean().Should().BeTrue();
-        content.GetProperty("notification").GetProperty("read_at").GetString().Should().NotBeNullOrEmpty();
+        content.GetProperty("notification").GetProperty("isRead").GetBoolean().Should().BeTrue();
+        content.GetProperty("notification").GetProperty("readAt").GetString().Should().NotBeNullOrEmpty();
     }
 
     [Fact]
