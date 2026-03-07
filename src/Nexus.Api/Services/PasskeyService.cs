@@ -258,13 +258,13 @@ public class PasskeyService
     /// <summary>
     /// Delete a passkey (user must own it).
     /// </summary>
-    public async Task<bool> DeletePasskeyAsync(int passkeyId, int userId, int tenantId)
+    public async Task<(bool Success, string? Error)> DeletePasskeyAsync(int passkeyId, int userId, int tenantId)
     {
         var passkey = await _db.UserPasskeys
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(p => p.Id == passkeyId && p.UserId == userId && p.TenantId == tenantId);
 
-        if (passkey == null) return false;
+        if (passkey == null) return (false, "Passkey not found");
 
         // Guard: don't allow deleting the last passkey if user has no password
         var user = await _db.Users
@@ -288,23 +288,23 @@ public class PasskeyService
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Passkey {PasskeyId} deleted for user {UserId}", passkeyId, userId);
-        return true;
+        return (true, null);
     }
 
     /// <summary>
     /// Rename a passkey.
     /// </summary>
-    public async Task<bool> RenamePasskeyAsync(int passkeyId, int userId, int tenantId, string displayName)
+    public async Task<(bool Success, string? Error)> RenamePasskeyAsync(int passkeyId, int userId, int tenantId, string displayName)
     {
         var passkey = await _db.UserPasskeys
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(p => p.Id == passkeyId && p.UserId == userId && p.TenantId == tenantId);
 
-        if (passkey == null) return false;
+        if (passkey == null) return (false, "Passkey not found");
 
         passkey.DisplayName = displayName;
         await _db.SaveChangesAsync();
-        return true;
+        return (true, null);
     }
 
     /// <summary>

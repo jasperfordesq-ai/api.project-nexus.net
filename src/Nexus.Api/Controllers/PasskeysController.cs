@@ -315,8 +315,8 @@ public class PasskeysController : ControllerBase
 
         try
         {
-            var deleted = await _passkeyService.DeletePasskeyAsync(id, userId, tenantId);
-            if (!deleted) return NotFound(new { error = "Passkey not found" });
+            var (deleted, deleteError) = await _passkeyService.DeletePasskeyAsync(id, userId, tenantId);
+            if (!deleted) return NotFound(new { error = deleteError ?? "Passkey not found" });
 
             return Ok(new { success = true, message = "Passkey deleted" });
         }
@@ -345,8 +345,8 @@ public class PasskeysController : ControllerBase
             return BadRequest(new { error = "display_name is required" });
         }
 
-        var renamed = await _passkeyService.RenamePasskeyAsync(id, userId, tenantId, request.DisplayName.Trim());
-        if (!renamed) return NotFound(new { error = "Passkey not found" });
+        var (renamed, renameError) = await _passkeyService.RenamePasskeyAsync(id, userId, tenantId, request.DisplayName.Trim());
+        if (!renamed) return NotFound(new { error = renameError ?? "Passkey not found" });
 
         return Ok(new { success = true });
     }

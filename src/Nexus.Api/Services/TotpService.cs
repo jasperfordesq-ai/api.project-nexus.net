@@ -144,10 +144,10 @@ public class TotpService
         user.TotpSecretEncrypted = null;
         user.TwoFactorEnabledAt = null;
 
-        // Remove backup codes
+        // Remove backup codes (include tenant check to prevent cross-tenant deletion)
         var backupCodes = await _db.TotpBackupCodes
             .IgnoreQueryFilters()
-            .Where(c => c.UserId == userId)
+            .Where(c => c.UserId == userId && c.TenantId == user.TenantId)
             .ToListAsync();
         _db.TotpBackupCodes.RemoveRange(backupCodes);
 
