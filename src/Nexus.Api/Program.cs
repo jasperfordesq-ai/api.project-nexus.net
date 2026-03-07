@@ -206,6 +206,9 @@ builder.Services.AddScoped<NewsletterService>();
 // Phase 32: Cookie Consent
 builder.Services.AddScoped<CookieConsentService>();
 
+// Legal Documents
+builder.Services.AddScoped<LegalDocumentService>();
+
 // Phase 33: Push Notifications
 builder.Services.AddScoped<PushNotificationService>();
 
@@ -225,6 +228,12 @@ builder.Services.AddScoped<PredictiveStaffingService>();
 // Phase 37: System Admin
 builder.Services.AddScoped<SystemAdminService>();
 
+// Emergency Lockdown
+builder.Services.AddScoped<LockdownService>();
+
+// Jobs Module
+builder.Services.AddScoped<JobService>();
+
 // WebAuthn/Passkeys (FIDO2)
 builder.Services.AddFido2(options =>
 {
@@ -238,6 +247,8 @@ builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<TotpService>();
 builder.Services.AddScoped<FileUploadService>();
+builder.Services.AddScoped<KnowledgeBaseService>();
+builder.Services.AddScoped<UserPreferencesService>();
 
 // Registration Policy Engine
 builder.Services.AddSingleton<IIdentityVerificationProvider, MockIdentityVerificationProvider>();
@@ -547,6 +558,10 @@ app.UseAuthentication();
 
 // Authorization - enforces [Authorize] attributes
 app.UseAuthorization();
+
+// Emergency Lockdown check - blocks non-admin, non-health requests when lockdown is active
+// MUST be after Authentication/Authorization so admin role can be checked
+app.UseMiddleware<LockdownCheckMiddleware>();
 
 // Federation API middleware - authenticates external federation API calls
 // Uses API Key or Federation JWT, separate from standard auth

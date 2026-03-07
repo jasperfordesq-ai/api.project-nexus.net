@@ -169,6 +169,21 @@ public class NexusDbContext : DbContext
     // File Uploads
     public DbSet<FileUpload> FileUploads => Set<FileUpload>();
 
+    // User Preferences
+    public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
+
+    // Jobs Module
+    public DbSet<JobVacancy> JobVacancies => Set<JobVacancy>();
+    public DbSet<JobApplication> JobApplications => Set<JobApplication>();
+    public DbSet<SavedJob> SavedJobs => Set<SavedJob>();
+
+    // Knowledge Base
+    public DbSet<KnowledgeArticle> KnowledgeArticles => Set<KnowledgeArticle>();
+
+    // Legal Documents
+    public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
+    public DbSet<LegalDocumentAcceptance> LegalDocumentAcceptances => Set<LegalDocumentAcceptance>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -827,6 +842,14 @@ public class NexusDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Self-referential relationship for threaded comments
+            entity.HasOne(e => e.ParentComment)
+                .WithMany(e => e.Replies)
+                .HasForeignKey(e => e.ParentCommentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.ParentCommentId);
 
             // CRITICAL: Global query filter for tenant isolation
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
@@ -2257,6 +2280,83 @@ public class NexusDbContext : DbContext
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
 
+        // Knowledge Base
+        modelBuilder.Entity<KnowledgeArticle>(entity =>
+        {
+            entity.ToTable("knowledge_articles");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Slug).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Content).HasColumnType("text").IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.Tags).HasMaxLength(500);
+
+            // Unique slug per tenant
+            entity.HasIndex(e => new { e.TenantId, e.Slug }).IsUnique();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.IsPublished);
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.CreatedBy)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // CRITICAL: Global query filter for tenant isolation
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // Legal Documents
+        modelBuilder.Entity<LegalDocument>(entity =>
+        {
+            entity.ToTable("legal_documents");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Slug).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Content).HasColumnType("text").IsRequired();
+            entity.Property(e => e.Version).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Slug, e.Version }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<LegalDocumentAcceptance>(entity =>
+        {
+            entity.ToTable("legal_document_acceptances");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.LegalDocumentId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.LegalDocument).WithMany().HasForeignKey(e => e.LegalDocumentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // User Preferences
+        modelBuilder.Entity<UserPreference>(entity =>
+        {
+            entity.ToTable("user_preferences");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Theme).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Language).HasMaxLength(10).IsRequired();
+            entity.Property(e => e.Timezone).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.EmailDigestFrequency).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.ProfileVisibility).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
         // Configure Listing -> Category relationship
         modelBuilder.Entity<Listing>(entity =>
         {
@@ -2269,6 +2369,64 @@ public class NexusDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.ReviewedByUserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Jobs Module
+        modelBuilder.Entity<JobVacancy>(entity =>
+        {
+            entity.ToTable("job_vacancies");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasColumnType("text");
+            entity.Property(e => e.Category).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.JobType).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Location).HasMaxLength(255);
+            entity.Property(e => e.TimeCreditsPerHour).HasPrecision(10, 2);
+            entity.Property(e => e.RequiredSkills).HasMaxLength(1000);
+            entity.Property(e => e.ContactEmail).HasMaxLength(255);
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+
+            entity.HasIndex(e => new { e.TenantId, e.Status });
+            entity.HasIndex(e => new { e.TenantId, e.Category });
+            entity.HasIndex(e => new { e.TenantId, e.PostedByUserId });
+
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.PostedBy).WithMany().HasForeignKey(e => e.PostedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<JobApplication>(entity =>
+        {
+            entity.ToTable("job_applications");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CoverLetter).HasColumnType("text");
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.ReviewNotes).HasColumnType("text");
+
+            entity.HasIndex(e => new { e.TenantId, e.JobId, e.ApplicantUserId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.ApplicantUserId });
+
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Job).WithMany(j => j.Applications).HasForeignKey(e => e.JobId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Applicant).WithMany().HasForeignKey(e => e.ApplicantUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReviewedBy).WithMany().HasForeignKey(e => e.ReviewedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<SavedJob>(entity =>
+        {
+            entity.ToTable("saved_jobs");
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.JobId }).IsUnique();
+
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Job).WithMany(j => j.SavedJobs).HasForeignKey(e => e.JobId).OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
     }
 

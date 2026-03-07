@@ -422,11 +422,12 @@ public class FeedController : ControllerBase
         if (limit < 1) limit = 1;
         if (limit > 100) limit = 100;
 
-        var total = await _db.PostComments.CountAsync(c => c.PostId == id);
+        var total = await _db.PostComments.CountAsync(c => c.PostId == id && c.ParentCommentId == null);
         var totalPages = (int)Math.Ceiling(total / (double)limit);
 
+        // Only return top-level comments (no parent); replies are fetched separately
         var comments = await _db.PostComments
-            .Where(c => c.PostId == id)
+            .Where(c => c.PostId == id && c.ParentCommentId == null)
             .OrderBy(c => c.CreatedAt)
             .Skip((page - 1) * limit)
             .Take(limit)
@@ -436,7 +437,8 @@ public class FeedController : ControllerBase
                 c.Content,
                 c.CreatedAt,
                 c.UpdatedAt,
-                user = new { c.User!.Id, c.User.FirstName, c.User.LastName }
+                user = new { c.User!.Id, c.User.FirstName, c.User.LastName },
+                reply_count = c.Replies.Count
             })
             .ToListAsync();
 
@@ -478,11 +480,21 @@ public class FeedController : ControllerBase
             return BadRequest(new { error = "Comment cannot exceed 2000 characters" });
         }
 
+        // Validate parent comment if replying
+        if (request.ParentCommentId.HasValue)
+        {
+            var parentExists = await _db.PostComments
+                .AnyAsync(c => c.Id == request.ParentCommentId.Value && c.PostId == id);
+            if (!parentExists)
+                return BadRequest(new { error = "Parent comment not found on this post" });
+        }
+
         var comment = new PostComment
         {
             PostId = id,
             UserId = userId.Value,
-            Content = request.Content.Trim()
+            Content = request.Content.Trim(),
+            ParentCommentId = request.ParentCommentId
         };
 
         _db.PostComments.Add(comment);
@@ -515,7 +527,95 @@ public class FeedController : ControllerBase
                 comment.Id,
                 comment.Content,
                 comment.CreatedAt,
+                parent_comment_id = comment.ParentCommentId,
                 user = new { user.Id, user.FirstName, user.LastName }
+            }
+        });
+    }
+
+    /// <summary>
+    /// GET /api/feed/{id}/comments/{commentId}/replies - List replies to a comment.
+    /// </summary>
+    [HttpGet("{id}/comments/{commentId}/replies")]
+    public async Task<IActionResult> GetReplies(int id, int commentId, [FromQuery] int page = 1, [FromQuery] int limit = 50)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var commentExists = await _db.PostComments.AnyAsync(c => c.Id == commentId && c.PostId == id);
+        if (!commentExists)
+            return NotFound(new { error = "Comment not found" });
+
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 1;
+        if (limit > 100) limit = 100;
+
+        var total = await _db.PostComments.CountAsync(c => c.ParentCommentId == commentId);
+        var totalPages = (int)Math.Ceiling(total / (double)limit);
+
+        var replies = await _db.PostComments
+            .Where(c => c.ParentCommentId == commentId)
+            .OrderBy(c => c.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(c => new
+            {
+                c.Id,
+                c.Content,
+                c.CreatedAt,
+                c.UpdatedAt,
+                parent_comment_id = c.ParentCommentId,
+                user = new { c.User!.Id, c.User.FirstName, c.User.LastName },
+                reply_count = c.Replies.Count
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = replies,
+            pagination = new { page, limit, total, pages = totalPages }
+        });
+    }
+
+    /// <summary>
+    /// PUT /api/feed/{id}/comments/{commentId} - Edit a comment (owner only).
+    /// </summary>
+    [HttpPut("{id}/comments/{commentId}")]
+    public async Task<IActionResult> UpdateComment(int id, int commentId, [FromBody] AddCommentRequest request)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var comment = await _db.PostComments
+            .FirstOrDefaultAsync(c => c.Id == commentId && c.PostId == id);
+
+        if (comment == null)
+            return NotFound(new { error = "Comment not found" });
+
+        if (comment.UserId != userId)
+            return StatusCode(403, new { error = "Only the comment author can edit this comment" });
+
+        if (string.IsNullOrWhiteSpace(request.Content))
+            return BadRequest(new { error = "Comment content is required" });
+
+        if (request.Content.Length > 2000)
+            return BadRequest(new { error = "Comment cannot exceed 2000 characters" });
+
+        comment.Content = request.Content.Trim();
+        comment.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = "Comment updated",
+            comment = new
+            {
+                comment.Id,
+                comment.Content,
+                comment.CreatedAt,
+                comment.UpdatedAt,
+                parent_comment_id = comment.ParentCommentId
             }
         });
     }
@@ -596,4 +696,7 @@ public class AddCommentRequest
 {
     [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
+
+    [JsonPropertyName("parent_comment_id")]
+    public int? ParentCommentId { get; set; }
 }

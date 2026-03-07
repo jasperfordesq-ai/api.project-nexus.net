@@ -24,15 +24,18 @@ namespace Nexus.Api.Controllers;
 public class SystemAdminController : ControllerBase
 {
     private readonly SystemAdminService _systemAdmin;
+    private readonly LockdownService _lockdownService;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<SystemAdminController> _logger;
 
     public SystemAdminController(
         SystemAdminService systemAdmin,
+        LockdownService lockdownService,
         TenantContext tenantContext,
         ILogger<SystemAdminController> logger)
     {
         _systemAdmin = systemAdmin;
+        _lockdownService = lockdownService;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -222,6 +225,65 @@ public class SystemAdminController : ControllerBase
 
     #endregion
 
+    #region Emergency Lockdown
+
+    /// <summary>
+    /// POST /api/admin/system/lockdown - Activate emergency lockdown.
+    /// Deactivates all tenants and blocks non-admin requests platform-wide.
+    /// </summary>
+    [HttpPost("lockdown")]
+    public async Task<IActionResult> ActivateLockdown([FromBody] ActivateLockdownRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            return BadRequest(new { error = "reason is required" });
+
+        var adminId = GetCurrentUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var status = await _lockdownService.ActivateLockdownAsync(adminId.Value, request.Reason);
+
+        _logger.LogCritical("Emergency lockdown activated by admin {AdminId}: {Reason}", adminId.Value, request.Reason);
+
+        return Ok(MapLockdownResponse(status));
+    }
+
+    /// <summary>
+    /// DELETE /api/admin/system/lockdown - Deactivate emergency lockdown.
+    /// Restores tenants to their pre-lockdown states.
+    /// </summary>
+    [HttpDelete("lockdown")]
+    public async Task<IActionResult> DeactivateLockdown()
+    {
+        var adminId = GetCurrentUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var status = await _lockdownService.DeactivateLockdownAsync(adminId.Value);
+
+        _logger.LogCritical("Emergency lockdown deactivated by admin {AdminId}", adminId.Value);
+
+        return Ok(MapLockdownResponse(status));
+    }
+
+    /// <summary>
+    /// GET /api/admin/system/lockdown - Get current lockdown status.
+    /// </summary>
+    [HttpGet("lockdown")]
+    public async Task<IActionResult> GetLockdownStatus()
+    {
+        var status = await _lockdownService.GetLockdownStatusAsync();
+        return Ok(MapLockdownResponse(status));
+    }
+
+    private static LockdownResponse MapLockdownResponse(LockdownStatus status) => new()
+    {
+        IsActive = status.IsActive,
+        Reason = status.Reason,
+        ActivatedAt = status.ActivatedAt,
+        ActivatedBy = status.ActivatedBy
+    };
+
+    #endregion
+
     #region Helpers
 
     private static AnnouncementResponse MapAnnouncementResponse(PlatformAnnouncement a) => new()
@@ -379,6 +441,27 @@ public class SystemAdminController : ControllerBase
 
         [JsonPropertyName("updated_at")]
         public DateTime? UpdatedAt { get; set; }
+    }
+
+    public class ActivateLockdownRequest
+    {
+        [JsonPropertyName("reason")]
+        public string Reason { get; set; } = string.Empty;
+    }
+
+    public class LockdownResponse
+    {
+        [JsonPropertyName("is_active")]
+        public bool IsActive { get; set; }
+
+        [JsonPropertyName("reason")]
+        public string? Reason { get; set; }
+
+        [JsonPropertyName("activated_at")]
+        public DateTime? ActivatedAt { get; set; }
+
+        [JsonPropertyName("activated_by")]
+        public int? ActivatedBy { get; set; }
     }
 
     public class HealthResponse

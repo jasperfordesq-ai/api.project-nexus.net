@@ -165,7 +165,10 @@ public static class TestDataSeeder
                 tbl TEXT;
                 tables TEXT[] := ARRAY[
                     'federation_api_logs','federation_api_keys',
-                    'federation_user_settings','federation_feature_toggles'
+                    'federation_user_settings','federation_feature_toggles',
+                    'legal_document_acceptances','legal_documents',
+                    'knowledge_articles','user_preferences',
+                    'saved_jobs','job_applications','job_vacancies'
                 ];
             BEGIN
                 FOREACH tbl IN ARRAY tables LOOP

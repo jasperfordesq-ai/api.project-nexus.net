@@ -97,7 +97,7 @@ public class WalletControllerTests : IntegrationTestBase
         var response = await Client.PostAsJsonAsync("/api/wallet/transfer", new
         {
             receiver_id = TestData.AdminUser.Id,
-            amount = 1000.0, // Much more than balance
+            amount = 499.0, // Within single transfer limit (500) but more than balance
             description = "Too much"
         });
 
