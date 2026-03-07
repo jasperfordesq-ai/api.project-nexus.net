@@ -1,0 +1,16 @@
+# Gitleaks configuration
+# See: https://github.com/gitleaks/gitleaks#configuration
+
+[allowlist]
+  description = "Global allowlist"
+
+  # CI test-only JWT secret - not a real credential
+  # Used in GitHub Actions workflows for test database authentication
+  regexTarget = "match"
+  regexes = [
+    '''ci-test-secret-key-that-is-long-enough-for-hs256''',
+  ]
+
+  paths = [
+    '''\.github/workflows/.*\.yml''',
+  ]

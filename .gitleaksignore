@@ -1,0 +1,3 @@
+# False positives: CI test-only JWT secret (not a real credential)
+# This is a dummy key used exclusively in GitHub Actions test runners
+b5d3d3a57b5925090e2f51202c08244ad1ccb3db:.github/workflows/release.yml:generic-api-key:53
