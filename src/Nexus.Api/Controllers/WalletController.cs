@@ -239,15 +239,47 @@ public class WalletController : ControllerBase
             return BadRequest(new { error = "Tenant context not resolved" });
         }
 
-        // Validate amount
-        if (request.Amount <= 0)
+        // V1-aligned validation: minimum 0.01, maximum 500 per transaction (configurable)
+        if (request.Amount < 0.01m)
         {
-            return BadRequest(new { error = "Amount must be greater than zero" });
+            return BadRequest(new { error = "Minimum transfer amount is 0.01 credits" });
         }
 
-        if (request.Amount > 99999.99m)
+        if (request.Amount > 500m)
         {
-            return BadRequest(new { error = "Amount exceeds maximum transfer limit" });
+            return BadRequest(new { error = "Maximum single transfer is 500 credits" });
+        }
+
+        // V1 hierarchical limits: daily/weekly/monthly per user
+        var now = DateTime.UtcNow;
+        var dailySent = await _db.Transactions
+            .Where(t => t.SenderId == senderId.Value && t.Status == TransactionStatus.Completed
+                && t.CreatedAt >= now.Date)
+            .SumAsync(t => t.Amount);
+
+        if (dailySent + request.Amount > 1000m)
+        {
+            return BadRequest(new { error = "Daily transfer limit of 1,000 credits exceeded", daily_sent = dailySent });
+        }
+
+        var weeklySent = await _db.Transactions
+            .Where(t => t.SenderId == senderId.Value && t.Status == TransactionStatus.Completed
+                && t.CreatedAt >= now.AddDays(-7))
+            .SumAsync(t => t.Amount);
+
+        if (weeklySent + request.Amount > 3000m)
+        {
+            return BadRequest(new { error = "Weekly transfer limit of 3,000 credits exceeded", weekly_sent = weeklySent });
+        }
+
+        var monthlySent = await _db.Transactions
+            .Where(t => t.SenderId == senderId.Value && t.Status == TransactionStatus.Completed
+                && t.CreatedAt >= now.AddDays(-30))
+            .SumAsync(t => t.Amount);
+
+        if (monthlySent + request.Amount > 10000m)
+        {
+            return BadRequest(new { error = "Monthly transfer limit of 10,000 credits exceeded", monthly_sent = monthlySent });
         }
 
         // Validate sender != receiver
@@ -314,8 +346,8 @@ public class WalletController : ControllerBase
             // Award XP and check badges for both sender and receiver (outside transaction - non-critical)
             try
             {
-                await _gamification.AwardXpAsync(senderId.Value, XpLog.Amounts.TransactionCompleted, XpLog.Sources.TransactionCompleted, transaction.Id, "Completed a transaction");
-                await _gamification.AwardXpAsync(request.ReceiverId, XpLog.Amounts.TransactionCompleted, XpLog.Sources.TransactionCompleted, transaction.Id, "Completed a transaction");
+                await _gamification.AwardXpAsync(senderId.Value, XpLog.Amounts.ExchangeCompleted, XpLog.Sources.TransactionCompleted, transaction.Id, "Completed a transaction");
+                await _gamification.AwardXpAsync(request.ReceiverId, XpLog.Amounts.ExchangeCompleted, XpLog.Sources.TransactionCompleted, transaction.Id, "Completed a transaction");
                 await _gamification.CheckAndAwardBadgesAsync(senderId.Value, "transaction_completed");
                 await _gamification.CheckAndAwardBadgesAsync(request.ReceiverId, "transaction_completed");
             }

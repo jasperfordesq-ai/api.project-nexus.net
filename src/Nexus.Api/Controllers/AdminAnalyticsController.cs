@@ -100,4 +100,53 @@ public class AdminAnalyticsController : ControllerBase
         var health = await _analyticsService.GetExchangeHealthAsync();
         return Ok(health);
     }
+
+    /// <summary>
+    /// Get Social Return on Investment (SROI) report.
+    /// Quantifies the economic and social value of time exchanged.
+    /// </summary>
+    /// <param name="hourValue">Value of one hour in currency (default: 15.00)</param>
+    /// <param name="socialMultiplier">Social impact multiplier (default: 2.5)</param>
+    [HttpGet("sroi")]
+    public async Task<IActionResult> GetSroi(
+        [FromQuery] decimal hourValue = 15.0m,
+        [FromQuery] decimal socialMultiplier = 2.5m)
+    {
+        hourValue = Math.Clamp(hourValue, 1.0m, 1000.0m);
+        socialMultiplier = Math.Clamp(socialMultiplier, 1.0m, 10.0m);
+
+        var sroi = await _analyticsService.CalculateSroiAsync(hourValue, socialMultiplier);
+        return Ok(sroi);
+    }
+
+    /// <summary>
+    /// Get inactive members for re-engagement campaigns.
+    /// </summary>
+    /// <param name="days">Days of inactivity threshold (default: 90)</param>
+    /// <param name="page">Page number</param>
+    /// <param name="limit">Results per page</param>
+    [HttpGet("inactive-members")]
+    public async Task<IActionResult> GetInactiveMembers(
+        [FromQuery] int days = 90,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20)
+    {
+        days = Math.Clamp(days, 7, 365);
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var result = await _analyticsService.GetInactiveMembersAsync(days, page, limit);
+        return Ok(new
+        {
+            data = result.Members,
+            pagination = new
+            {
+                page,
+                limit,
+                total = result.TotalInactive,
+                pages = (int)Math.Ceiling((double)result.TotalInactive / limit)
+            },
+            inactive_days_threshold = result.InactiveDaysThreshold
+        });
+    }
 }

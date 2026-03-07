@@ -347,4 +347,240 @@ public class FederationControllerTests : IntegrationTestBase
     }
 
     #endregion
+
+    #region Admin API Key Tests
+
+    [Fact]
+    public async Task ListApiKeys_AsAdmin_ReturnsOk()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/admin/federation/api-keys");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.TryGetProperty("data", out var data).Should().BeTrue();
+        data.ValueKind.Should().Be(JsonValueKind.Array);
+    }
+
+    [Fact]
+    public async Task CreateApiKey_AsAdmin_ReturnsCreated()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/admin/federation/api-keys", new
+        {
+            name = "Test API Key",
+            scopes = "listings,exchanges",
+            rate_limit_per_minute = 100
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.TryGetProperty("key", out var key).Should().BeTrue();
+        key.GetString().Should().StartWith("nxfed_");
+        content.GetProperty("name").GetString().Should().Be("Test API Key");
+        content.TryGetProperty("warning", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RevokeApiKey_NonExistent_ReturnsBadRequest()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.DeleteAsync("/api/admin/federation/api-keys/99999");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ApiKey_CreateAndRevoke_Lifecycle()
+    {
+        await AuthenticateAsAdminAsync();
+
+        // Create
+        var createResponse = await Client.PostAsJsonAsync("/api/admin/federation/api-keys", new
+        {
+            name = "Lifecycle Key",
+            scopes = "listings"
+        });
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createContent = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var keyId = createContent.GetProperty("id").GetInt32();
+
+        // Revoke
+        var revokeResponse = await Client.DeleteAsync($"/api/admin/federation/api-keys/{keyId}");
+        revokeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Verify in list
+        var listResponse = await Client.GetAsync("/api/admin/federation/api-keys");
+        var listContent = await listResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var keys = listContent.GetProperty("data");
+        // The revoked key should still appear but inactive
+        var revoked = keys.EnumerateArray().FirstOrDefault(k => k.GetProperty("id").GetInt32() == keyId);
+        revoked.GetProperty("is_active").GetBoolean().Should().BeFalse();
+    }
+
+    #endregion
+
+    #region Admin Feature Toggle Tests
+
+    [Fact]
+    public async Task ListFeatureToggles_AsAdmin_ReturnsOk()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/admin/federation/features");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.TryGetProperty("data", out _).Should().BeTrue();
+        content.TryGetProperty("system", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetFeatureToggle_AsAdmin_ReturnsOk()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PutAsJsonAsync("/api/admin/federation/features", new
+        {
+            feature = "federation.enabled",
+            is_enabled = true
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("feature").GetString().Should().Be("federation.enabled");
+        content.GetProperty("is_enabled").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FeatureToggles_AsMember_ReturnsForbidden()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync("/api/admin/federation/features");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    #endregion
+
+    #region User Federation Settings Tests
+
+    [Fact]
+    public async Task GetFederationSettings_AsMember_ReturnsOk()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync("/api/federation/settings");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.TryGetProperty("federation_opt_in", out _).Should().BeTrue();
+        content.TryGetProperty("profile_visible", out _).Should().BeTrue();
+        content.TryGetProperty("listings_visible", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateFederationSettings_AsMember_ReturnsOk()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.PutAsJsonAsync("/api/federation/settings", new
+        {
+            federation_opt_in = true,
+            profile_visible = true,
+            listings_visible = true
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("federation_opt_in").GetBoolean().Should().BeTrue();
+        content.GetProperty("profile_visible").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FederationSettings_Unauthenticated_Returns401()
+    {
+        ClearAuthToken();
+
+        var response = await Client.GetAsync("/api/federation/settings");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    #endregion
+
+    #region External API Tests
+
+    [Fact]
+    public async Task ExternalApiInfo_NoAuth_ReturnsOk()
+    {
+        ClearAuthToken();
+
+        var response = await Client.GetAsync("/api/v1/federation");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("name").GetString().Should().Contain("Federation");
+        content.GetProperty("version").GetString().Should().Be("1.0");
+        content.TryGetProperty("endpoints", out var endpoints).Should().BeTrue();
+        endpoints.GetArrayLength().Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task ExternalApiListings_NoAuth_Returns401()
+    {
+        ClearAuthToken();
+
+        var response = await Client.GetAsync("/api/v1/federation/listings");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ExternalApiToken_NoAuth_Returns401()
+    {
+        ClearAuthToken();
+
+        var response = await Client.PostAsJsonAsync("/api/v1/federation/token", new
+        {
+            target_tenant_id = 1,
+            scopes = new[] { "listings" }
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ExternalApiMembers_NoAuth_Returns401()
+    {
+        ClearAuthToken();
+
+        var response = await Client.GetAsync("/api/v1/federation/members");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ExternalApiExchanges_NoAuth_Returns401()
+    {
+        ClearAuthToken();
+
+        var response = await Client.GetAsync("/api/v1/federation/exchanges/1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ExternalApiWebhook_NoAuth_Returns401()
+    {
+        ClearAuthToken();
+
+        var response = await Client.PostAsync("/api/v1/federation/webhooks/test", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    #endregion
 }

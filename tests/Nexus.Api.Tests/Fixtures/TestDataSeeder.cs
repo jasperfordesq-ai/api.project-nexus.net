@@ -157,8 +157,24 @@ public static class TestDataSeeder
     private static async Task ClearDataAsync(NexusDbContext db)
     {
         // Use raw SQL to truncate all tables and reset sequences in the correct order
-        // This is faster and avoids FK constraint issues
+        // This is faster and avoids FK constraint issues.
+        // Uses DO block to skip tables that may not exist yet (e.g. pending migrations).
         await db.Database.ExecuteSqlRawAsync(@"
+            DO $$
+            DECLARE
+                tbl TEXT;
+                tables TEXT[] := ARRAY[
+                    'federation_api_logs','federation_api_keys',
+                    'federation_user_settings','federation_feature_toggles'
+                ];
+            BEGIN
+                FOREACH tbl IN ARRAY tables LOOP
+                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = tbl) THEN
+                        EXECUTE 'TRUNCATE TABLE ' || tbl || ' CASCADE';
+                    END IF;
+                END LOOP;
+            END $$;
+
             TRUNCATE TABLE
                 -- Phase 16-37 tables (scaffolded)
                 file_uploads,

@@ -347,12 +347,16 @@ public class GamificationServiceTests : IDisposable
         );
         await _db.SaveChangesAsync();
 
-        // Act
+        // Award first listing badge (first call)
         await _service.CheckAndAwardBadgesAsync(user.Id, "listing_created");
 
-        // Assert - badge should NOT be awarded because listingCount != 1
+        // Act - call again (second listing created)
+        await _service.CheckAndAwardBadgesAsync(user.Id, "listing_created");
+
+        // Assert - badge should be awarded exactly once (no duplicate),
+        // because having 2 listings means first_listing threshold (>=1) is met
         var userBadgeCount = await _db.UserBadges.CountAsync(ub => ub.UserId == user.Id);
-        userBadgeCount.Should().Be(0);
+        userBadgeCount.Should().Be(1, "first_listing badge should be awarded once, never duplicated");
     }
 
     #endregion

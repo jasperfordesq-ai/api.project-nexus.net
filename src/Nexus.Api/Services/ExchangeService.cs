@@ -87,6 +87,13 @@ public class ExchangeService
             receiverId = listing.UserId;
         }
 
+        // V1 rule: hours must be between 0.25 and 24
+        var hours = agreedHours ?? listing.EstimatedHours ?? 1.0m;
+        if (hours < 0.25m)
+            return (null, "Minimum exchange duration is 0.25 hours (15 minutes)");
+        if (hours > 24.0m)
+            return (null, "Maximum exchange duration is 24 hours");
+
         var exchange = new Exchange
         {
             ListingId = listingId,
@@ -94,7 +101,7 @@ public class ExchangeService
             ListingOwnerId = listing.UserId,
             ProviderId = providerId,
             ReceiverId = receiverId,
-            AgreedHours = agreedHours ?? listing.EstimatedHours ?? 1.0m,
+            AgreedHours = hours,
             RequestMessage = message?.Trim(),
             ScheduledAt = scheduledAt,
             GroupId = groupId,
@@ -272,11 +279,22 @@ public class ExchangeService
                 "Exchange {ExchangeId} completed: {Hours}h transferred from user {ReceiverId} to user {ProviderId}",
                 exchangeId, hours, exchange.ReceiverId, exchange.ProviderId);
 
-            // Award XP (non-critical)
+            // Award XP using V1 values (non-critical)
             try
             {
-                await _gamification.AwardXpAsync(exchange.ProviderId.Value, 30, "exchange_completed", exchange.Id, "Completed an exchange as provider");
-                await _gamification.AwardXpAsync(exchange.ReceiverId.Value, 20, "exchange_completed", exchange.Id, "Completed an exchange as receiver");
+                await _gamification.AwardXpAsync(exchange.ProviderId.Value,
+                    XpLog.Amounts.ExchangeCompleted, XpLog.Sources.ExchangeCompleted,
+                    exchange.Id, "Completed an exchange as provider");
+                await _gamification.AwardXpAsync(exchange.ReceiverId.Value,
+                    XpLog.Amounts.ExchangeCompleted, XpLog.Sources.ExchangeCompleted,
+                    exchange.Id, "Completed an exchange as receiver");
+                // Credit-based XP: provider earned credits, receiver spent credits
+                await _gamification.AwardXpAsync(exchange.ProviderId.Value,
+                    (int)(hours * XpLog.Amounts.CreditsReceivedPerCredit), XpLog.Sources.CreditsReceived,
+                    exchange.Id, $"Received {hours} credits");
+                await _gamification.AwardXpAsync(exchange.ReceiverId.Value,
+                    (int)(hours * XpLog.Amounts.CreditsSentPerCredit), XpLog.Sources.CreditsSent,
+                    exchange.Id, $"Sent {hours} credits");
                 await _gamification.CheckAndAwardBadgesAsync(exchange.ProviderId.Value, "exchange_completed");
                 await _gamification.CheckAndAwardBadgesAsync(exchange.ReceiverId.Value, "exchange_completed");
             }
@@ -399,10 +417,13 @@ public class ExchangeService
         _db.ExchangeRatings.Add(exchangeRating);
         await _db.SaveChangesAsync();
 
-        // Award XP for rating (non-critical)
+        // Award XP and check badges (non-critical)
         try
         {
-            await _gamification.AwardXpAsync(raterId, 5, "exchange_rated", exchangeId, "Rated an exchange");
+            await _gamification.AwardXpAsync(raterId, XpLog.Amounts.ReviewLeft, XpLog.Sources.ReviewLeft, exchangeId, "Rated an exchange");
+            await _gamification.CheckAndAwardBadgesAsync(raterId, "review_left");
+            if (rating == 5)
+                await _gamification.CheckAndAwardBadgesAsync(ratedUserId.Value, "five_star_received");
         }
         catch (Exception ex)
         {

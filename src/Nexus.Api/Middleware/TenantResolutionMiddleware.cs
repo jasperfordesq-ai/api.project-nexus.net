@@ -46,7 +46,8 @@ public class TenantResolutionMiddleware
         "/api/auth/forgot-password",           // Forgot password determines tenant from request body
         "/api/auth/reset-password",            // Reset password determines tenant from token lookup
         "/api/passkeys/authenticate/begin",    // Passkey auth determines tenant from request body
-        "/api/passkeys/authenticate/finish"    // Passkey auth determines tenant from session
+        "/api/passkeys/authenticate/finish",   // Passkey auth determines tenant from session
+        "/api/v1/federation"                   // Federation external API uses its own auth
     };
 
     public TenantResolutionMiddleware(

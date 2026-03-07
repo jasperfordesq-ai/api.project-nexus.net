@@ -214,6 +214,10 @@ builder.Services.AddScoped<TranslationService>();
 
 // Phase 35: Federation
 builder.Services.AddScoped<FederationService>();
+builder.Services.AddSingleton<FederationJwtService>();
+builder.Services.AddScoped<FederationGatewayService>();
+builder.Services.AddScoped<FederationApiKeyService>();
+builder.Services.AddHttpClient<FederationExternalApiClient>();
 
 // Phase 36: Predictive Staffing
 builder.Services.AddScoped<PredictiveStaffingService>();
@@ -543,6 +547,10 @@ app.UseAuthentication();
 
 // Authorization - enforces [Authorize] attributes
 app.UseAuthorization();
+
+// Federation API middleware - authenticates external federation API calls
+// Uses API Key or Federation JWT, separate from standard auth
+app.UseMiddleware<FederationApiMiddleware>();
 
 // Tenant resolution - MUST come after UseAuthentication()
 // Reads tenant_id from JWT claims and sets TenantContext

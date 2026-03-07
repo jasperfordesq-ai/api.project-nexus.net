@@ -57,20 +57,86 @@ public class Badge : ITenantEntity
     public ICollection<UserBadge> UserBadges { get; set; } = new List<UserBadge>();
 
     /// <summary>
-    /// Predefined badge slugs.
+    /// Predefined badge slugs matching V1's badge categories.
     /// </summary>
     public static class Slugs
     {
+        // First-time badges
         public const string FirstListing = "first_listing";
         public const string FirstConnection = "first_connection";
         public const string FirstTransaction = "first_transaction";
         public const string FirstPost = "first_post";
         public const string FirstEvent = "first_event";
-        public const string HelpfulNeighbor = "helpful_neighbor";     // 10 transactions
-        public const string CommunityBuilder = "community_builder";   // Created a group
-        public const string EventOrganizer = "event_organizer";       // Created 5 events
-        public const string PopularPost = "popular_post";             // Post with 10+ likes
-        public const string FirstReview = "first_review";               // First review left
-        public const string Veteran = "veteran";                       // Account 1 year old
+        public const string FirstReview = "first_review";
+        public const string FirstMessage = "first_message";
+
+        // Listing milestones
+        public const string Offer5 = "offer_5";
+        public const string Offer10 = "offer_10";
+        public const string Offer25 = "offer_25";
+        public const string Request5 = "request_5";
+        public const string Request10 = "request_10";
+
+        // Timebanking (credit-based)
+        public const string Earn10 = "earn_10";
+        public const string Earn50 = "earn_50";
+        public const string Earn100 = "earn_100";
+        public const string Earn250 = "earn_250";
+        public const string Spend10 = "spend_10";
+        public const string Spend50 = "spend_50";
+        public const string Transaction10 = "transaction_10";
+        public const string Transaction50 = "transaction_50";
+        public const string Diversity3 = "diversity_3";       // Helped 3 unique people
+        public const string Diversity10 = "diversity_10";
+        public const string Diversity25 = "diversity_25";
+
+        // Social
+        public const string Connect10 = "connect_10";
+        public const string Connect25 = "connect_25";
+        public const string Connect50 = "connect_50";
+        public const string Msg50 = "msg_50";
+        public const string Msg200 = "msg_200";
+        public const string Review10 = "review_10";
+        public const string Review25 = "review_25";
+        public const string FiveStar1 = "5star_1";            // Received first 5-star review
+        public const string FiveStar10 = "5star_10";
+        public const string FiveStar25 = "5star_25";
+
+        // Events
+        public const string EventAttend1 = "event_attend_1";
+        public const string EventAttend10 = "event_attend_10";
+        public const string EventAttend25 = "event_attend_25";
+        public const string EventHost1 = "event_host_1";
+        public const string EventHost5 = "event_host_5";
+
+        // Groups
+        public const string GroupJoin1 = "group_join_1";
+        public const string GroupJoin5 = "group_join_5";
+        public const string GroupCreate1 = "group_create_1";
+
+        // Content
+        public const string Posts25 = "posts_25";
+        public const string Posts100 = "posts_100";
+        public const string Likes50 = "likes_50";             // Received 50 likes total
+        public const string Likes200 = "likes_200";
+
+        // Loyalty/Special
+        public const string Member30d = "member_30d";
+        public const string Member180d = "member_180d";
+        public const string Member365d = "member_365d";
+        public const string Streak7d = "streak_7d";
+        public const string Streak30d = "streak_30d";
+        public const string Streak100d = "streak_100d";
+        public const string Level5 = "level_5";
+        public const string Level10 = "level_10";
+        public const string EarlyAdopter = "early_adopter";
+        public const string Verified = "verified";
+
+        // Legacy aliases
+        public const string HelpfulNeighbor = "helpful_neighbor";
+        public const string CommunityBuilder = "community_builder";
+        public const string EventOrganizer = "event_organizer";
+        public const string PopularPost = "popular_post";
+        public const string Veteran = "veteran";
     }
 }

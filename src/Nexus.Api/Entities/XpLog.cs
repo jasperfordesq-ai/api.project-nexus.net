@@ -50,27 +50,48 @@ public class XpLog : ITenantEntity
         public const string ListingCreated = "listing_created";
         public const string ConnectionMade = "connection_made";
         public const string TransactionCompleted = "transaction_completed";
+        public const string ExchangeCompleted = "exchange_completed";
         public const string PostCreated = "post_created";
         public const string EventCreated = "event_created";
         public const string EventAttended = "event_attended";
         public const string GroupCreated = "group_created";
+        public const string GroupJoined = "group_joined";
         public const string CommentAdded = "comment_added";
         public const string ReviewLeft = "review_left";
+        public const string MessageSent = "message_sent";
+        public const string DailyLogin = "daily_login";
+        public const string ProfileCompleted = "profile_completed";
+        public const string VolunteerHour = "volunteer_hour";
+        public const string PollVoted = "poll_voted";
+        public const string GoalCompleted = "goal_completed";
+        public const string CreditsSent = "credits_sent";
+        public const string CreditsReceived = "credits_received";
     }
 
     /// <summary>
-    /// Default XP amounts for various actions.
+    /// V1-aligned XP amounts for various actions.
     /// </summary>
     public static class Amounts
     {
-        public const int ListingCreated = 10;
-        public const int ConnectionMade = 5;
+        public const int CreditsSentPerCredit = 10;
+        public const int CreditsReceivedPerCredit = 5;
+        public const int VolunteerHour = 20;
         public const int TransactionCompleted = 20;
+        public const int ExchangeCompleted = 25;
+        public const int ListingCreated = 15;
+        public const int ReviewLeft = 10;
+        public const int EventAttended = 15;
+        public const int EventCreated = 30;
+        public const int GroupJoined = 10;
+        public const int GroupCreated = 50;
         public const int PostCreated = 5;
-        public const int EventCreated = 15;
-        public const int EventAttended = 10;
-        public const int GroupCreated = 20;
+        public const int DailyLogin = 5;
+        public const int ProfileCompleted = 50;
+        public const int BadgeEarned = 25;
+        public const int PollVoted = 2;
+        public const int MessageSent = 2;
+        public const int ConnectionMade = 10;
+        public const int GoalCompleted = 10;
         public const int CommentAdded = 2;
-        public const int ReviewLeft = 5;
     }
 }

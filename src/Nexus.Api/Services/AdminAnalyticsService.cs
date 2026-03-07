@@ -358,6 +358,103 @@ public class AdminAnalyticsService
         };
     }
 
+    /// <summary>
+    /// Calculate Social Return on Investment (SROI) for the tenant.
+    /// V1 feature: quantifies the economic value of time exchanged.
+    /// </summary>
+    public async Task<SroiReportDto> CalculateSroiAsync(decimal hourValueInCurrency = 15.0m, decimal socialMultiplier = 2.5m)
+    {
+        var now = DateTime.UtcNow;
+
+        var completedExchanges = await _db.Exchanges
+            .AsNoTracking()
+            .Where(e => e.Status == ExchangeStatus.Completed && e.ActualHours != null)
+            .Select(e => new { e.ActualHours, e.CompletedAt, e.CreatedAt })
+            .ToListAsync();
+
+        var totalHours = completedExchanges.Sum(e => e.ActualHours!.Value);
+        var directEconomicValue = totalHours * hourValueInCurrency;
+        var socialValue = directEconomicValue * socialMultiplier;
+
+        // Monthly breakdown for the last 12 months
+        var monthlyBreakdown = completedExchanges
+            .Where(e => e.CompletedAt != null && e.CompletedAt >= now.AddMonths(-12))
+            .GroupBy(e => new { e.CompletedAt!.Value.Year, e.CompletedAt!.Value.Month })
+            .Select(g => new SroiMonthlyDto
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                HoursExchanged = g.Sum(e => e.ActualHours!.Value),
+                EconomicValue = g.Sum(e => e.ActualHours!.Value) * hourValueInCurrency,
+                SocialValue = g.Sum(e => e.ActualHours!.Value) * hourValueInCurrency * socialMultiplier,
+                ExchangeCount = g.Count()
+            })
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+            .ToList();
+
+        // Unique participants
+        var uniqueParticipants = await _db.Exchanges
+            .AsNoTracking()
+            .Where(e => e.Status == ExchangeStatus.Completed)
+            .Select(e => e.InitiatorId)
+            .Union(_db.Exchanges.AsNoTracking()
+                .Where(e => e.Status == ExchangeStatus.Completed)
+                .Select(e => e.ListingOwnerId))
+            .Distinct()
+            .CountAsync();
+
+        return new SroiReportDto
+        {
+            TotalHoursExchanged = totalHours,
+            HourValueInCurrency = hourValueInCurrency,
+            SocialMultiplier = socialMultiplier,
+            DirectEconomicValue = directEconomicValue,
+            SocialValue = socialValue,
+            TotalCompletedExchanges = completedExchanges.Count,
+            UniqueParticipants = uniqueParticipants,
+            MonthlyBreakdown = monthlyBreakdown
+        };
+    }
+
+    /// <summary>
+    /// Get inactive members who haven't logged in within the specified days.
+    /// V1 feature: helps admins re-engage dormant members.
+    /// </summary>
+    public async Task<InactiveMembersDto> GetInactiveMembersAsync(int inactiveDays = 90, int page = 1, int limit = 20)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-inactiveDays);
+
+        var query = _db.Users
+            .AsNoTracking()
+            .Where(u => u.IsActive && (u.LastLoginAt == null || u.LastLoginAt < cutoff));
+
+        var total = await query.CountAsync();
+        var members = await query
+            .OrderBy(u => u.LastLoginAt ?? u.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(u => new InactiveMemberDto
+            {
+                UserId = u.Id,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                Email = u.Email,
+                LastLoginAt = u.LastLoginAt,
+                CreatedAt = u.CreatedAt,
+                DaysInactive = u.LastLoginAt != null
+                    ? (int)(DateTime.UtcNow - u.LastLoginAt.Value).TotalDays
+                    : (int)(DateTime.UtcNow - u.CreatedAt).TotalDays
+            })
+            .ToListAsync();
+
+        return new InactiveMembersDto
+        {
+            InactiveDaysThreshold = inactiveDays,
+            TotalInactive = total,
+            Members = members
+        };
+    }
+
     #region Private helpers
 
     private async Task<List<TopUserDto>> GetTopUsersByExchangesAsync(int limit)
@@ -711,6 +808,90 @@ public class ExchangeHealthDto
 
     [JsonPropertyName("average_days_to_complete")]
     public double AverageDaysToComplete { get; set; }
+}
+
+public class SroiReportDto
+{
+    [JsonPropertyName("total_hours_exchanged")]
+    public decimal TotalHoursExchanged { get; set; }
+
+    [JsonPropertyName("hour_value_in_currency")]
+    public decimal HourValueInCurrency { get; set; }
+
+    [JsonPropertyName("social_multiplier")]
+    public decimal SocialMultiplier { get; set; }
+
+    [JsonPropertyName("direct_economic_value")]
+    public decimal DirectEconomicValue { get; set; }
+
+    [JsonPropertyName("social_value")]
+    public decimal SocialValue { get; set; }
+
+    [JsonPropertyName("total_completed_exchanges")]
+    public int TotalCompletedExchanges { get; set; }
+
+    [JsonPropertyName("unique_participants")]
+    public int UniqueParticipants { get; set; }
+
+    [JsonPropertyName("monthly_breakdown")]
+    public List<SroiMonthlyDto> MonthlyBreakdown { get; set; } = new();
+}
+
+public class SroiMonthlyDto
+{
+    [JsonPropertyName("year")]
+    public int Year { get; set; }
+
+    [JsonPropertyName("month")]
+    public int Month { get; set; }
+
+    [JsonPropertyName("hours_exchanged")]
+    public decimal HoursExchanged { get; set; }
+
+    [JsonPropertyName("economic_value")]
+    public decimal EconomicValue { get; set; }
+
+    [JsonPropertyName("social_value")]
+    public decimal SocialValue { get; set; }
+
+    [JsonPropertyName("exchange_count")]
+    public int ExchangeCount { get; set; }
+}
+
+public class InactiveMembersDto
+{
+    [JsonPropertyName("inactive_days_threshold")]
+    public int InactiveDaysThreshold { get; set; }
+
+    [JsonPropertyName("total_inactive")]
+    public int TotalInactive { get; set; }
+
+    [JsonPropertyName("members")]
+    public List<InactiveMemberDto> Members { get; set; } = new();
+}
+
+public class InactiveMemberDto
+{
+    [JsonPropertyName("user_id")]
+    public int UserId { get; set; }
+
+    [JsonPropertyName("first_name")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [JsonPropertyName("last_name")]
+    public string LastName { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("last_login_at")]
+    public DateTime? LastLoginAt { get; set; }
+
+    [JsonPropertyName("created_at")]
+    public DateTime CreatedAt { get; set; }
+
+    [JsonPropertyName("days_inactive")]
+    public int DaysInactive { get; set; }
 }
 
 #endregion

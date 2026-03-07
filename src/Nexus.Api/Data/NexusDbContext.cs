@@ -141,6 +141,10 @@ public class NexusDbContext : DbContext
     public DbSet<FederatedListing> FederatedListings => Set<FederatedListing>();
     public DbSet<FederatedExchange> FederatedExchanges => Set<FederatedExchange>();
     public DbSet<FederationAuditLog> FederationAuditLogs => Set<FederationAuditLog>();
+    public DbSet<FederationApiKey> FederationApiKeys => Set<FederationApiKey>();
+    public DbSet<FederationFeatureToggle> FederationFeatureToggles => Set<FederationFeatureToggle>();
+    public DbSet<FederationUserSetting> FederationUserSettings => Set<FederationUserSetting>();
+    public DbSet<FederationApiLog> FederationApiLogs => Set<FederationApiLog>();
 
     // Phase 36: Predictive Staffing
     public DbSet<StaffingPrediction> StaffingPredictions => Set<StaffingPrediction>();
@@ -2064,6 +2068,55 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.CreatedAt);
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederationApiKey>(entity =>
+        {
+            entity.ToTable("federation_api_keys");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.KeyHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.KeyPrefix).HasMaxLength(8).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Scopes).HasMaxLength(500);
+            entity.HasIndex(e => e.KeyHash).IsUnique();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederationFeatureToggle>(entity =>
+        {
+            entity.ToTable("federation_feature_toggles");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Feature).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Configuration).HasColumnType("text");
+            entity.HasIndex(e => new { e.TenantId, e.Feature }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederationUserSetting>(entity =>
+        {
+            entity.ToTable("federation_user_settings");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.BlockedPartnerTenants).HasMaxLength(500);
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederationApiLog>(entity =>
+        {
+            entity.ToTable("federation_api_logs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.HttpMethod).HasMaxLength(10).IsRequired();
+            entity.Property(e => e.Path).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.IpAddress).HasMaxLength(45);
+            entity.Property(e => e.Direction).HasMaxLength(10);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.TenantId);
+            // No tenant query filter - FederationApiLog is not tenant-scoped (TenantId is nullable)
         });
 
         // =================================================================

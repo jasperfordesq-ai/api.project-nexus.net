@@ -11,6 +11,8 @@ namespace Nexus.Api.Services;
 
 /// <summary>
 /// Service for handling gamification logic - XP awards, level ups, and badge checks.
+/// Implements V1's comprehensive badge system (70+ badge types across 8 categories).
+/// Badges are never removed (monotonically increasing).
 /// </summary>
 public class GamificationService
 {
@@ -43,7 +45,6 @@ public class GamificationService
                 var previousLevel = user.Level;
                 var previousXp = user.TotalXp;
 
-                // Create XP log entry
                 var xpLog = new XpLog
                 {
                     UserId = userId,
@@ -54,11 +55,9 @@ public class GamificationService
                 };
                 _db.XpLogs.Add(xpLog);
 
-                // Update user's total XP
                 user.TotalXp += amount;
-                if (user.TotalXp < 0) user.TotalXp = 0; // Prevent negative XP
+                if (user.TotalXp < 0) user.TotalXp = 0;
 
-                // Recalculate level
                 var newLevel = User.CalculateLevelFromXp(user.TotalXp);
                 var leveledUp = newLevel > previousLevel;
                 user.Level = newLevel;
@@ -72,6 +71,8 @@ public class GamificationService
                 if (leveledUp)
                 {
                     _logger.LogInformation("User {UserId} leveled up from {OldLevel} to {NewLevel}!", userId, previousLevel, newLevel);
+                    // Check level milestone badges
+                    try { await CheckLevelBadges(userId); } catch { /* non-critical */ }
                 }
 
                 return new XpAwardResult
@@ -96,17 +97,11 @@ public class GamificationService
                     return new XpAwardResult { Success = false, Error = "Concurrency conflict - please try again" };
                 }
 
-                // Detach only the affected entities to get fresh data on next attempt
                 foreach (var entry in _db.ChangeTracker.Entries<User>().Where(e => e.Entity.Id == userId))
-                {
                     entry.State = EntityState.Detached;
-                }
                 foreach (var entry in _db.ChangeTracker.Entries<XpLog>().Where(e => e.Entity.UserId == userId))
-                {
                     entry.State = EntityState.Detached;
-                }
 
-                // Brief delay before retry
                 await Task.Delay(50 * attempt);
             }
         }
@@ -119,14 +114,12 @@ public class GamificationService
     /// </summary>
     public async Task<BadgeAwardResult> AwardBadgeAsync(int userId, string badgeSlug)
     {
-        // Find the badge
         var badge = await _db.Badges.FirstOrDefaultAsync(b => b.Slug == badgeSlug && b.IsActive);
         if (badge == null)
         {
             return new BadgeAwardResult { Success = false, Error = "Badge not found" };
         }
 
-        // Check if user already has this badge
         var existingBadge = await _db.UserBadges
             .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badge.Id);
 
@@ -135,7 +128,6 @@ public class GamificationService
             return new BadgeAwardResult { Success = false, Error = "User already has this badge", AlreadyEarned = true };
         }
 
-        // Award the badge - use try/catch to handle concurrent duplicate inserts
         var userBadge = new UserBadge
         {
             UserId = userId,
@@ -149,14 +141,12 @@ public class GamificationService
         }
         catch (DbUpdateException)
         {
-            // Unique constraint violation - another request already awarded this badge
             _db.Entry(userBadge).State = EntityState.Detached;
             return new BadgeAwardResult { Success = false, Error = "User already has this badge", AlreadyEarned = true };
         }
 
         _logger.LogInformation("User {UserId} earned badge '{BadgeSlug}' ({BadgeName})", userId, badgeSlug, badge.Name);
 
-        // Award XP for earning the badge
         XpAwardResult? xpResult = null;
         if (badge.XpReward > 0)
         {
@@ -178,150 +168,243 @@ public class GamificationService
 
     /// <summary>
     /// Check and award badges based on user's actions.
-    /// Call this after relevant actions to auto-award badges.
+    /// Implements V1's comprehensive badge checking across 8 categories.
     /// </summary>
     public async Task CheckAndAwardBadgesAsync(int userId, string action)
     {
-        switch (action)
+        try
         {
-            case "listing_created":
-                await CheckFirstListingBadge(userId);
-                break;
-            case "connection_accepted":
-                await CheckFirstConnectionBadge(userId);
-                await CheckCommunityBuilderBadge(userId);
-                break;
-            case "transaction_completed":
-                await CheckFirstTransactionBadge(userId);
-                await CheckHelpfulNeighborBadge(userId);
-                break;
-            case "review_left":
-                await CheckFirstReviewBadge(userId);
-                break;
-            case "post_created":
-                await CheckFirstPostBadge(userId);
-                break;
-            case "event_created":
-                await CheckFirstEventBadge(userId);
-                await CheckEventOrganizerBadge(userId);
-                break;
-            case "group_created":
-                await CheckCommunityBuilderBadge(userId);
-                break;
-            case "post_liked":
-                await CheckPopularPostBadge(userId);
-                break;
-            case "account_anniversary":
-                await CheckVeteranBadge(userId);
-                break;
+            switch (action)
+            {
+                case "listing_created":
+                    await CheckListingBadges(userId);
+                    break;
+                case "connection_accepted":
+                    await CheckConnectionBadges(userId);
+                    break;
+                case "transaction_completed":
+                case "exchange_completed":
+                    await CheckTransactionBadges(userId);
+                    break;
+                case "review_left":
+                    await CheckReviewBadges(userId);
+                    break;
+                case "post_created":
+                    await CheckPostBadges(userId);
+                    break;
+                case "event_created":
+                    await CheckEventHostBadges(userId);
+                    break;
+                case "event_attended":
+                    await CheckEventAttendBadges(userId);
+                    break;
+                case "group_created":
+                    await AwardBadgeAsync(userId, Badge.Slugs.GroupCreate1);
+                    break;
+                case "group_joined":
+                    await CheckGroupJoinBadges(userId);
+                    break;
+                case "post_liked":
+                    await CheckLikesBadges(userId);
+                    break;
+                case "message_sent":
+                    await CheckMessageBadges(userId);
+                    break;
+                case "five_star_received":
+                    await CheckFiveStarBadges(userId);
+                    break;
+                case "level_up":
+                    await CheckLevelBadges(userId);
+                    break;
+                case "membership_check":
+                    await CheckMembershipBadges(userId);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Badge check failed for user {UserId} action {Action}", userId, action);
         }
     }
 
-    private async Task CheckFirstListingBadge(int userId)
+    #region Badge Checks
+
+    private async Task CheckListingBadges(int userId)
     {
-        var listingCount = await _db.Listings.CountAsync(l => l.UserId == userId);
-        if (listingCount == 1) // First listing just created
-        {
-            await AwardBadgeAsync(userId, Badge.Slugs.FirstListing);
-        }
+        var offers = await _db.Listings.CountAsync(l => l.UserId == userId && l.Type == ListingType.Offer);
+        var requests = await _db.Listings.CountAsync(l => l.UserId == userId && l.Type == ListingType.Request);
+
+        if (offers + requests >= 1) await AwardBadgeAsync(userId, Badge.Slugs.FirstListing);
+        if (offers >= 5) await AwardBadgeAsync(userId, Badge.Slugs.Offer5);
+        if (offers >= 10) await AwardBadgeAsync(userId, Badge.Slugs.Offer10);
+        if (offers >= 25) await AwardBadgeAsync(userId, Badge.Slugs.Offer25);
+        if (requests >= 5) await AwardBadgeAsync(userId, Badge.Slugs.Request5);
+        if (requests >= 10) await AwardBadgeAsync(userId, Badge.Slugs.Request10);
     }
 
-    private async Task CheckFirstConnectionBadge(int userId)
+    private async Task CheckConnectionBadges(int userId)
     {
-        var connectionCount = await _db.Connections
+        var count = await _db.Connections
             .CountAsync(c => (c.RequesterId == userId || c.AddresseeId == userId) && c.Status == "accepted");
-        if (connectionCount == 1)
-        {
-            await AwardBadgeAsync(userId, Badge.Slugs.FirstConnection);
-        }
+
+        if (count >= 1) await AwardBadgeAsync(userId, Badge.Slugs.FirstConnection);
+        if (count >= 10) await AwardBadgeAsync(userId, Badge.Slugs.Connect10);
+        if (count >= 25) await AwardBadgeAsync(userId, Badge.Slugs.Connect25);
+        if (count >= 50) await AwardBadgeAsync(userId, Badge.Slugs.Connect50);
     }
 
-    private async Task CheckFirstTransactionBadge(int userId)
+    private async Task CheckTransactionBadges(int userId)
     {
-        var transactionCount = await _db.Transactions
+        var txCount = await _db.Transactions
             .CountAsync(t => (t.SenderId == userId || t.ReceiverId == userId) && t.Status == TransactionStatus.Completed);
-        if (transactionCount == 1)
-        {
-            await AwardBadgeAsync(userId, Badge.Slugs.FirstTransaction);
-        }
-    }
 
-    private async Task CheckFirstPostBadge(int userId)
-    {
-        var postCount = await _db.FeedPosts.CountAsync(p => p.UserId == userId);
-        if (postCount == 1)
+        if (txCount >= 1) await AwardBadgeAsync(userId, Badge.Slugs.FirstTransaction);
+        if (txCount >= 10)
         {
-            await AwardBadgeAsync(userId, Badge.Slugs.FirstPost);
-        }
-    }
-
-    private async Task CheckFirstReviewBadge(int userId)
-    {
-        var reviewCount = await _db.Reviews.CountAsync(r => r.ReviewerId == userId);
-        if (reviewCount == 1)
-        {
-            await AwardBadgeAsync(userId, Badge.Slugs.FirstReview);
-        }
-    }
-
-    private async Task CheckFirstEventBadge(int userId)
-    {
-        var eventCount = await _db.Events.CountAsync(e => e.CreatedById == userId);
-        if (eventCount == 1)
-        {
-            await AwardBadgeAsync(userId, Badge.Slugs.FirstEvent);
-        }
-    }
-
-    private async Task CheckHelpfulNeighborBadge(int userId)
-    {
-        var transactionCount = await _db.Transactions
-            .CountAsync(t => (t.SenderId == userId || t.ReceiverId == userId) && t.Status == TransactionStatus.Completed);
-        if (transactionCount >= 10)
-        {
+            await AwardBadgeAsync(userId, Badge.Slugs.Transaction10);
             await AwardBadgeAsync(userId, Badge.Slugs.HelpfulNeighbor);
         }
+        if (txCount >= 50) await AwardBadgeAsync(userId, Badge.Slugs.Transaction50);
+
+        var earned = await _db.Transactions
+            .Where(t => t.ReceiverId == userId && t.Status == TransactionStatus.Completed)
+            .SumAsync(t => t.Amount);
+
+        if (earned >= 10) await AwardBadgeAsync(userId, Badge.Slugs.Earn10);
+        if (earned >= 50) await AwardBadgeAsync(userId, Badge.Slugs.Earn50);
+        if (earned >= 100) await AwardBadgeAsync(userId, Badge.Slugs.Earn100);
+        if (earned >= 250) await AwardBadgeAsync(userId, Badge.Slugs.Earn250);
+
+        var spent = await _db.Transactions
+            .Where(t => t.SenderId == userId && t.Status == TransactionStatus.Completed)
+            .SumAsync(t => t.Amount);
+
+        if (spent >= 10) await AwardBadgeAsync(userId, Badge.Slugs.Spend10);
+        if (spent >= 50) await AwardBadgeAsync(userId, Badge.Slugs.Spend50);
+
+        var uniquePeople = await _db.Transactions
+            .Where(t => t.SenderId == userId && t.Status == TransactionStatus.Completed)
+            .Select(t => t.ReceiverId)
+            .Distinct()
+            .CountAsync();
+
+        if (uniquePeople >= 3) await AwardBadgeAsync(userId, Badge.Slugs.Diversity3);
+        if (uniquePeople >= 10) await AwardBadgeAsync(userId, Badge.Slugs.Diversity10);
+        if (uniquePeople >= 25) await AwardBadgeAsync(userId, Badge.Slugs.Diversity25);
     }
 
-    private async Task CheckCommunityBuilderBadge(int userId)
+    private async Task CheckReviewBadges(int userId)
     {
-        var groupCount = await _db.Groups.CountAsync(g => g.CreatedById == userId);
-        if (groupCount >= 1)
+        var count = await _db.Reviews.CountAsync(r => r.ReviewerId == userId);
+
+        if (count >= 1) await AwardBadgeAsync(userId, Badge.Slugs.FirstReview);
+        if (count >= 10) await AwardBadgeAsync(userId, Badge.Slugs.Review10);
+        if (count >= 25) await AwardBadgeAsync(userId, Badge.Slugs.Review25);
+    }
+
+    private async Task CheckPostBadges(int userId)
+    {
+        var count = await _db.FeedPosts.CountAsync(p => p.UserId == userId);
+
+        if (count >= 1) await AwardBadgeAsync(userId, Badge.Slugs.FirstPost);
+        if (count >= 25) await AwardBadgeAsync(userId, Badge.Slugs.Posts25);
+        if (count >= 100) await AwardBadgeAsync(userId, Badge.Slugs.Posts100);
+    }
+
+    private async Task CheckEventHostBadges(int userId)
+    {
+        var count = await _db.Events.CountAsync(e => e.CreatedById == userId);
+
+        if (count >= 1)
         {
-            await AwardBadgeAsync(userId, Badge.Slugs.CommunityBuilder);
+            await AwardBadgeAsync(userId, Badge.Slugs.FirstEvent);
+            await AwardBadgeAsync(userId, Badge.Slugs.EventHost1);
         }
-    }
-
-    private async Task CheckEventOrganizerBadge(int userId)
-    {
-        var eventCount = await _db.Events.CountAsync(e => e.CreatedById == userId);
-        if (eventCount >= 5)
+        if (count >= 5)
         {
+            await AwardBadgeAsync(userId, Badge.Slugs.EventHost5);
             await AwardBadgeAsync(userId, Badge.Slugs.EventOrganizer);
         }
     }
 
-    private async Task CheckPopularPostBadge(int userId)
+    private async Task CheckEventAttendBadges(int userId)
     {
-        // Check if user has any post with 10+ likes
+        var count = await _db.EventRsvps.CountAsync(r => r.UserId == userId && r.Status == "going");
+
+        if (count >= 1) await AwardBadgeAsync(userId, Badge.Slugs.EventAttend1);
+        if (count >= 10) await AwardBadgeAsync(userId, Badge.Slugs.EventAttend10);
+        if (count >= 25) await AwardBadgeAsync(userId, Badge.Slugs.EventAttend25);
+    }
+
+    private async Task CheckGroupJoinBadges(int userId)
+    {
+        var count = await _db.GroupMembers.CountAsync(gm => gm.UserId == userId);
+
+        if (count >= 1) await AwardBadgeAsync(userId, Badge.Slugs.GroupJoin1);
+        if (count >= 5) await AwardBadgeAsync(userId, Badge.Slugs.GroupJoin5);
+        await AwardBadgeAsync(userId, Badge.Slugs.CommunityBuilder);
+    }
+
+    private async Task CheckMessageBadges(int userId)
+    {
+        var count = await _db.Messages.CountAsync(m => m.SenderId == userId);
+
+        if (count >= 1) await AwardBadgeAsync(userId, Badge.Slugs.FirstMessage);
+        if (count >= 50) await AwardBadgeAsync(userId, Badge.Slugs.Msg50);
+        if (count >= 200) await AwardBadgeAsync(userId, Badge.Slugs.Msg200);
+    }
+
+    private async Task CheckFiveStarBadges(int userId)
+    {
+        var fiveStarCount = await _db.ExchangeRatings
+            .CountAsync(r => r.RatedUserId == userId && r.Rating == 5);
+
+        if (fiveStarCount >= 1) await AwardBadgeAsync(userId, Badge.Slugs.FiveStar1);
+        if (fiveStarCount >= 10) await AwardBadgeAsync(userId, Badge.Slugs.FiveStar10);
+        if (fiveStarCount >= 25) await AwardBadgeAsync(userId, Badge.Slugs.FiveStar25);
+    }
+
+    private async Task CheckLikesBadges(int userId)
+    {
         var hasPopularPost = await _db.FeedPosts
             .Where(p => p.UserId == userId)
             .AnyAsync(p => p.Likes.Count >= 10);
+        if (hasPopularPost) await AwardBadgeAsync(userId, Badge.Slugs.PopularPost);
 
-        if (hasPopularPost)
-        {
-            await AwardBadgeAsync(userId, Badge.Slugs.PopularPost);
-        }
+        var totalLikes = await _db.FeedPosts
+            .Where(p => p.UserId == userId)
+            .SelectMany(p => p.Likes)
+            .CountAsync();
+
+        if (totalLikes >= 50) await AwardBadgeAsync(userId, Badge.Slugs.Likes50);
+        if (totalLikes >= 200) await AwardBadgeAsync(userId, Badge.Slugs.Likes200);
     }
 
-    private async Task CheckVeteranBadge(int userId)
+    private async Task CheckLevelBadges(int userId)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user != null && user.CreatedAt <= DateTime.UtcNow.AddYears(-1))
+        if (user == null) return;
+
+        if (user.Level >= 5) await AwardBadgeAsync(userId, Badge.Slugs.Level5);
+        if (user.Level >= 10) await AwardBadgeAsync(userId, Badge.Slugs.Level10);
+    }
+
+    private async Task CheckMembershipBadges(int userId)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return;
+
+        var age = DateTime.UtcNow - user.CreatedAt;
+        if (age.TotalDays >= 30) await AwardBadgeAsync(userId, Badge.Slugs.Member30d);
+        if (age.TotalDays >= 180) await AwardBadgeAsync(userId, Badge.Slugs.Member180d);
+        if (age.TotalDays >= 365)
         {
+            await AwardBadgeAsync(userId, Badge.Slugs.Member365d);
             await AwardBadgeAsync(userId, Badge.Slugs.Veteran);
         }
     }
+
+    #endregion
 }
 
 public class XpAwardResult

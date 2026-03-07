@@ -14,22 +14,29 @@ namespace Nexus.Api.Controllers;
 
 /// <summary>
 /// Federation controller - manages cross-tenant partnerships, listing sharing, and exchanges.
-/// Admin endpoints for partnership management, user endpoints for browsing and exchanges.
+/// Admin endpoints for partnership management, API keys, feature toggles.
+/// User endpoints for browsing, exchanges, and federation settings.
 /// </summary>
 [ApiController]
 [Authorize]
 public class FederationController : ControllerBase
 {
     private readonly FederationService _federationService;
+    private readonly FederationGatewayService _gatewayService;
+    private readonly FederationApiKeyService _apiKeyService;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<FederationController> _logger;
 
     public FederationController(
         FederationService federationService,
+        FederationGatewayService gatewayService,
+        FederationApiKeyService apiKeyService,
         TenantContext tenantContext,
         ILogger<FederationController> logger)
     {
         _federationService = federationService;
+        _gatewayService = gatewayService;
+        _apiKeyService = apiKeyService;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -224,6 +231,138 @@ public class FederationController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// GET /api/admin/federation/api-keys - List API keys for the current tenant.
+    /// </summary>
+    [HttpGet("api/admin/federation/api-keys")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> ListApiKeys()
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
+        var keys = await _apiKeyService.ListApiKeysAsync(tenantId.Value);
+
+        var data = keys.Select(k => new
+        {
+            id = k.Id,
+            name = k.Name,
+            key_prefix = k.KeyPrefix,
+            scopes = k.Scopes,
+            is_active = k.IsActive,
+            rate_limit_per_minute = k.RateLimitPerMinute,
+            expires_at = k.ExpiresAt,
+            last_used_at = k.LastUsedAt,
+            created_at = k.CreatedAt
+        });
+
+        return Ok(new { data });
+    }
+
+    /// <summary>
+    /// POST /api/admin/federation/api-keys - Create a new federation API key.
+    /// </summary>
+    [HttpPost("api/admin/federation/api-keys")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> CreateApiKey([FromBody] CreateApiKeyRequest request)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
+        var (key, rawKey, error) = await _apiKeyService.CreateApiKeyAsync(
+            tenantId.Value, request.Name, request.Scopes,
+            request.RateLimitPerMinute, request.ExpiresAt);
+
+        if (error != null)
+            return BadRequest(new { error });
+
+        return CreatedAtAction(nameof(ListApiKeys), null, new
+        {
+            id = key.Id,
+            name = key.Name,
+            key = rawKey, // Only shown once!
+            key_prefix = key.KeyPrefix,
+            scopes = key.Scopes,
+            rate_limit_per_minute = key.RateLimitPerMinute,
+            expires_at = key.ExpiresAt,
+            created_at = key.CreatedAt,
+            warning = "Store this key securely. It will not be shown again."
+        });
+    }
+
+    /// <summary>
+    /// DELETE /api/admin/federation/api-keys/{id} - Revoke an API key.
+    /// </summary>
+    [HttpDelete("api/admin/federation/api-keys/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> RevokeApiKey(int id)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
+        var (success, error) = await _apiKeyService.RevokeApiKeyAsync(tenantId.Value, id);
+
+        if (!success)
+            return BadRequest(new { error });
+
+        return Ok(new { message = "API key revoked successfully" });
+    }
+
+    /// <summary>
+    /// GET /api/admin/federation/features - List feature toggles for the current tenant.
+    /// </summary>
+    [HttpGet("api/admin/federation/features")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> ListFeatureToggles()
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
+        var toggles = await _gatewayService.GetTenantTogglesAsync(tenantId.Value);
+
+        var data = toggles.Select(t => new
+        {
+            id = t.Id,
+            feature = t.Feature,
+            is_enabled = t.IsEnabled,
+            configuration = t.Configuration,
+            created_at = t.CreatedAt,
+            updated_at = t.UpdatedAt
+        });
+
+        var systemStatus = _gatewayService.GetSystemStatus();
+
+        return Ok(new { data, system = systemStatus });
+    }
+
+    /// <summary>
+    /// PUT /api/admin/federation/features - Set a feature toggle.
+    /// </summary>
+    [HttpPut("api/admin/federation/features")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> SetFeatureToggle([FromBody] SetFeatureToggleRequest request)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
+        var toggle = await _gatewayService.SetFeatureToggleAsync(
+            tenantId.Value, request.Feature, request.IsEnabled, request.Configuration);
+
+        return Ok(new
+        {
+            id = toggle.Id,
+            feature = toggle.Feature,
+            is_enabled = toggle.IsEnabled,
+            configuration = toggle.Configuration,
+            message = $"Feature '{request.Feature}' set to {(request.IsEnabled ? "enabled" : "disabled")}"
+        });
+    }
+
     #endregion
 
     #region User Endpoints
@@ -387,6 +526,67 @@ public class FederationController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// GET /api/federation/settings - Get current user's federation settings.
+    /// </summary>
+    [HttpGet("api/federation/settings")]
+    public async Task<IActionResult> GetMyFederationSettings()
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
+        var settings = await _gatewayService.GetUserSettingsAsync(tenantId.Value, userId.Value);
+
+        if (settings == null)
+            return Ok(new
+            {
+                federation_opt_in = false,
+                profile_visible = false,
+                listings_visible = true,
+                blocked_partner_tenants = (string?)null
+            });
+
+        return Ok(new
+        {
+            federation_opt_in = settings.FederationOptIn,
+            profile_visible = settings.ProfileVisible,
+            listings_visible = settings.ListingsVisible,
+            blocked_partner_tenants = settings.BlockedPartnerTenants
+        });
+    }
+
+    /// <summary>
+    /// PUT /api/federation/settings - Update current user's federation settings.
+    /// </summary>
+    [HttpPut("api/federation/settings")]
+    public async Task<IActionResult> UpdateMyFederationSettings([FromBody] UpdateFederationSettingsRequest request)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
+        var settings = await _gatewayService.UpdateUserSettingsAsync(
+            tenantId.Value, userId.Value,
+            request.FederationOptIn, request.ProfileVisible,
+            request.ListingsVisible, request.BlockedPartnerTenants);
+
+        return Ok(new
+        {
+            federation_opt_in = settings.FederationOptIn,
+            profile_visible = settings.ProfileVisible,
+            listings_visible = settings.ListingsVisible,
+            blocked_partner_tenants = settings.BlockedPartnerTenants,
+            message = "Federation settings updated"
+        });
+    }
+
     #endregion
 }
 
@@ -438,6 +638,57 @@ public class CompleteFederatedExchangeRequest
 {
     [JsonPropertyName("actual_hours")]
     public decimal? ActualHours { get; set; }
+}
+
+/// <summary>
+/// Request to create a federation API key.
+/// </summary>
+public class CreateApiKeyRequest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("scopes")]
+    public string Scopes { get; set; } = "listings";
+
+    [JsonPropertyName("rate_limit_per_minute")]
+    public int? RateLimitPerMinute { get; set; } = 60;
+
+    [JsonPropertyName("expires_at")]
+    public DateTime? ExpiresAt { get; set; }
+}
+
+/// <summary>
+/// Request to set a feature toggle.
+/// </summary>
+public class SetFeatureToggleRequest
+{
+    [JsonPropertyName("feature")]
+    public string Feature { get; set; } = string.Empty;
+
+    [JsonPropertyName("is_enabled")]
+    public bool IsEnabled { get; set; }
+
+    [JsonPropertyName("configuration")]
+    public string? Configuration { get; set; }
+}
+
+/// <summary>
+/// Request to update user federation settings.
+/// </summary>
+public class UpdateFederationSettingsRequest
+{
+    [JsonPropertyName("federation_opt_in")]
+    public bool FederationOptIn { get; set; }
+
+    [JsonPropertyName("profile_visible")]
+    public bool ProfileVisible { get; set; }
+
+    [JsonPropertyName("listings_visible")]
+    public bool ListingsVisible { get; set; } = true;
+
+    [JsonPropertyName("blocked_partner_tenants")]
+    public string? BlockedPartnerTenants { get; set; }
 }
 
 #endregion

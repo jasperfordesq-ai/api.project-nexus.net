@@ -70,28 +70,26 @@ public class User : ITenantEntity
     public ICollection<XpLog> XpLogs { get; set; } = new List<XpLog>();
 
     /// <summary>
-    /// Calculate level from XP. Each level requires progressively more XP.
-    /// Level 1: 0 XP, Level 2: 100 XP, Level 3: 250 XP, etc.
-    /// Formula: XP needed for level N = 50 * N * (N - 1)
+    /// V1-aligned level thresholds. Higher levels are intentionally steeper.
+    /// Index = level number: L1=0, L2=100, L3=300, ... L10=5500 (cap).
     /// </summary>
+    private static readonly int[] LevelThresholds = { 0, 0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500 };
+
+    public static int MaxLevel => LevelThresholds.Length - 1;
+
     public static int CalculateLevelFromXp(int xp)
     {
         if (xp < 0) return 1;
-
         int level = 1;
-        while (GetXpRequiredForLevel(level + 1) <= xp)
-        {
+        while (level < MaxLevel && GetXpRequiredForLevel(level + 1) <= xp)
             level++;
-        }
         return level;
     }
 
-    /// <summary>
-    /// Get the XP required to reach a specific level.
-    /// </summary>
     public static int GetXpRequiredForLevel(int level)
     {
         if (level <= 1) return 0;
-        return 50 * level * (level - 1);
+        if (level >= LevelThresholds.Length) return LevelThresholds[^1];
+        return LevelThresholds[level];
     }
 }
