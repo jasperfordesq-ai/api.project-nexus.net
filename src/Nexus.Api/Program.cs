@@ -249,6 +249,8 @@ builder.Services.AddScoped<TotpService>();
 builder.Services.AddScoped<FileUploadService>();
 builder.Services.AddScoped<KnowledgeBaseService>();
 builder.Services.AddScoped<UserPreferencesService>();
+builder.Services.AddScoped<PollService>();
+builder.Services.AddScoped<GoalService>();
 
 // Registration Policy Engine
 builder.Services.AddSingleton<IIdentityVerificationProvider, MockIdentityVerificationProvider>();

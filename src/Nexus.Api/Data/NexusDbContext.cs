@@ -184,6 +184,15 @@ public class NexusDbContext : DbContext
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
     public DbSet<LegalDocumentAcceptance> LegalDocumentAcceptances => Set<LegalDocumentAcceptance>();
 
+    // Polls Module
+    public DbSet<Poll> Polls => Set<Poll>();
+    public DbSet<PollOption> PollOptions => Set<PollOption>();
+    public DbSet<PollVote> PollVotes => Set<PollVote>();
+
+    // Goals Module
+    public DbSet<Goal> Goals => Set<Goal>();
+    public DbSet<GoalMilestone> GoalMilestones => Set<GoalMilestone>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -2426,6 +2435,68 @@ public class NexusDbContext : DbContext
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.Job).WithMany(j => j.SavedJobs).HasForeignKey(e => e.JobId).OnDelete(DeleteBehavior.Cascade);
 
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // Polls Module
+        modelBuilder.Entity<Poll>(entity =>
+        {
+            entity.ToTable("polls");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.PollType).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<PollOption>(entity =>
+        {
+            entity.ToTable("poll_options");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Text).HasMaxLength(255).IsRequired();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Poll).WithMany(p => p.Options).HasForeignKey(e => e.PollId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<PollVote>(entity =>
+        {
+            entity.ToTable("poll_votes");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.TenantId, e.PollId, e.UserId, e.OptionId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Poll).WithMany(p => p.Votes).HasForeignKey(e => e.PollId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Option).WithMany(o => o.Votes).HasForeignKey(e => e.OptionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // Goals Module
+        modelBuilder.Entity<Goal>(entity =>
+        {
+            entity.ToTable("goals");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.GoalType).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.UserId });
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<GoalMilestone>(entity =>
+        {
+            entity.ToTable("goal_milestones");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Goal).WithMany(g => g.Milestones).HasForeignKey(e => e.GoalId).OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
     }
