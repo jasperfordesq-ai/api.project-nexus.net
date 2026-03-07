@@ -18,7 +18,7 @@ This roadmap outlines the incremental migration from the legacy PHP application 
 
 Based on MIGRATION_GAP_MAP.md analysis of ~300 legacy features (updated 2026-03-07, deep V1 source audit):
 
-**NOTE:** Phases 0-15 fully tested. Phases 16-37 integration-tested. Phases 38-48 built (Federation, Jobs, KB, Legal, Preferences, Lockdown, Polls, Goals, Availability, Ideation). Business logic hardened with V1 rules (gamification, exchange, wallet, analytics). **434 endpoints, 53 controllers, 57 services, 108 entities. Migration Score: ~710/1,000.**
+**NOTE:** Phases 0-15 fully tested. Phases 16-37 integration-tested. Phases 38-48 built (Federation, Jobs, KB, Legal, Preferences, Lockdown, Polls, Goals, Availability, Ideation). Business logic hardened with V1 rules (gamification, exchange, wallet, analytics). **444 endpoints, 58 controllers, 54 services, 108 entities. Migration Score: ~710/1,000.**
 
 ### Must-Have Parity (Blocks Production)
 

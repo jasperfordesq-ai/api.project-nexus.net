@@ -197,6 +197,11 @@ public class NexusDbContext : DbContext
     public DbSet<MemberAvailability> MemberAvailabilities => Set<MemberAvailability>();
     public DbSet<AvailabilityException> AvailabilityExceptions => Set<AvailabilityException>();
 
+    // Ideation
+    public DbSet<Idea> Ideas => Set<Idea>();
+    public DbSet<IdeaVote> IdeaVotes => Set<IdeaVote>();
+    public DbSet<IdeaComment> IdeaComments => Set<IdeaComment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -2501,6 +2506,41 @@ public class NexusDbContext : DbContext
             entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Goal).WithMany(g => g.Milestones).HasForeignKey(e => e.GoalId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // Ideation
+        modelBuilder.Entity<Idea>(entity =>
+        {
+            entity.ToTable("ideas");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Author).WithMany().HasForeignKey(e => e.AuthorId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<IdeaVote>(entity =>
+        {
+            entity.ToTable("idea_votes");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.TenantId, e.IdeaId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Idea).WithMany(i => i.Votes).HasForeignKey(e => e.IdeaId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<IdeaComment>(entity =>
+        {
+            entity.ToTable("idea_comments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Content).HasMaxLength(2000).IsRequired();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Idea).WithMany(i => i.Comments).HasForeignKey(e => e.IdeaId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
 

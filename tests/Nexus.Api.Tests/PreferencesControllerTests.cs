@@ -45,8 +45,9 @@ public class PreferencesControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("theme").GetString().Should().Be("dark");
-        content.GetProperty("language").GetString().Should().Be("fr");
+        var prefs = content.GetProperty("preferences");
+        prefs.GetProperty("theme").GetString().Should().Be("dark");
+        prefs.GetProperty("language").GetString().Should().Be("fr");
     }
 
     [Fact]

@@ -238,7 +238,7 @@ public class AdminLegalDocumentsController : ControllerBase
             tenantId, request.Title, request.Slug, request.Content,
             request.Version, request.RequiresAcceptance);
 
-        return Ok(new
+        return Created($"/api/legal/documents/{document.Slug}", new
         {
             document.Id,
             document.Title,
