@@ -151,6 +151,14 @@ public class NexusDbContext : DbContext
     public DbSet<ScheduledTask> ScheduledTasks => Set<ScheduledTask>();
     public DbSet<PlatformAnnouncement> PlatformAnnouncements => Set<PlatformAnnouncement>();
 
+    // WebAuthn/Passkeys
+    public DbSet<UserPasskey> UserPasskeys => Set<UserPasskey>();
+
+    // Registration Policy Engine
+    public DbSet<TenantRegistrationPolicy> TenantRegistrationPolicies => Set<TenantRegistrationPolicy>();
+    public DbSet<IdentityVerificationSession> IdentityVerificationSessions => Set<IdentityVerificationSession>();
+    public DbSet<IdentityVerificationEvent> IdentityVerificationEvents => Set<IdentityVerificationEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -187,11 +195,110 @@ public class NexusDbContext : DbContext
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Registration status stored as string for readability
+            entity.Property(e => e.RegistrationStatus)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .HasDefaultValue(RegistrationStatus.Active);
+
             // Optimistic concurrency control
             entity.Property(e => e.RowVersion)
                 .IsRowVersion();
 
             // CRITICAL: Global query filter for tenant isolation
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // TenantRegistrationPolicy configuration
+        modelBuilder.Entity<TenantRegistrationPolicy>(entity =>
+        {
+            entity.ToTable("tenant_registration_policies");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Mode)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            entity.Property(e => e.Provider)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            entity.Property(e => e.VerificationLevel)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            entity.Property(e => e.PostVerificationAction)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            // One active policy per tenant
+            entity.HasIndex(e => new { e.TenantId, e.IsActive })
+                .HasFilter("\"IsActive\" = true")
+                .IsUnique();
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // IdentityVerificationSession configuration
+        modelBuilder.Entity<IdentityVerificationSession>(entity =>
+        {
+            entity.ToTable("identity_verification_sessions");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Provider)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            entity.Property(e => e.Level)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            entity.HasIndex(e => new { e.TenantId, e.UserId });
+            entity.HasIndex(e => e.ExternalSessionId);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // IdentityVerificationEvent configuration
+        modelBuilder.Entity<IdentityVerificationEvent>(entity =>
+        {
+            entity.ToTable("identity_verification_events");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.PreviousStatus)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            entity.Property(e => e.NewStatus)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            entity.HasIndex(e => e.SessionId);
+
+            entity.HasOne(e => e.Session)
+                .WithMany(s => s.Events)
+                .HasForeignKey(e => e.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
 
@@ -2020,6 +2127,25 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => e.IsActive);
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // WebAuthn/Passkeys
+        modelBuilder.Entity<UserPasskey>(entity =>
+        {
+            entity.ToTable("user_passkeys");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CredentialId).IsRequired();
+            entity.Property(e => e.PublicKey).IsRequired();
+            entity.Property(e => e.UserHandle).IsRequired();
+            entity.Property(e => e.CredType).HasMaxLength(32);
+            entity.Property(e => e.DisplayName).HasMaxLength(255);
+            entity.Property(e => e.Transports).HasMaxLength(255);
+            entity.HasIndex(e => e.CredentialId).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.UserId });
+            entity.HasIndex(e => e.UserHandle);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
 

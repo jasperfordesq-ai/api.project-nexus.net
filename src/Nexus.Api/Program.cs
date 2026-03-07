@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Fido2NetLib;
 using Nexus.Api.Clients;
 using Nexus.Api.Configuration;
 using Nexus.Api.Data;
@@ -18,6 +19,7 @@ using Nexus.Api.HealthChecks;
 using Nexus.Api.Hubs;
 using Nexus.Api.Middleware;
 using Nexus.Api.Services;
+using Nexus.Api.Services.Registration;
 using Nexus.Messaging;
 using Nexus.Api.Extensions;
 using Polly;
@@ -218,6 +220,22 @@ builder.Services.AddScoped<PredictiveStaffingService>();
 
 // Phase 37: System Admin
 builder.Services.AddScoped<SystemAdminService>();
+
+// WebAuthn/Passkeys (FIDO2)
+builder.Services.AddFido2(options =>
+{
+    var fido2Config = builder.Configuration.GetSection("Fido2");
+    options.ServerDomain = fido2Config["ServerDomain"] ?? "localhost";
+    options.ServerName = fido2Config["ServerName"] ?? "Project NEXUS";
+    options.Origins = fido2Config.GetSection("Origins").Get<HashSet<string>>()
+        ?? new HashSet<string> { "http://localhost:5080" };
+});
+builder.Services.AddScoped<PasskeyService>();
+
+// Registration Policy Engine
+builder.Services.AddSingleton<IIdentityVerificationProvider, MockIdentityVerificationProvider>();
+builder.Services.AddSingleton<IdentityVerificationProviderFactory>();
+builder.Services.AddScoped<RegistrationOrchestrator>();
 
 // AI service (requires ILlamaClient, NexusDbContext)
 builder.Services.AddScoped<AiService>();

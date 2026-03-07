@@ -1,0 +1,465 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
+using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
+using Nexus.Contracts.Events;
+using Nexus.Messaging;
+
+namespace Nexus.Api.Services.Registration;
+
+/// <summary>
+/// Orchestrates the registration flow based on tenant policy.
+/// Drives the user through the correct state machine path depending on
+/// the tenant's RegistrationMode, VerificationProvider, and PostVerificationAction.
+/// </summary>
+public class RegistrationOrchestrator
+{
+    private readonly NexusDbContext _db;
+    private readonly IdentityVerificationProviderFactory _providerFactory;
+    private readonly IEventPublisher _eventPublisher;
+    private readonly IConfiguration _config;
+    private readonly ILogger<RegistrationOrchestrator> _logger;
+
+    public RegistrationOrchestrator(
+        NexusDbContext db,
+        IdentityVerificationProviderFactory providerFactory,
+        IEventPublisher eventPublisher,
+        IConfiguration config,
+        ILogger<RegistrationOrchestrator> logger)
+    {
+        _db = db;
+        _providerFactory = providerFactory;
+        _eventPublisher = eventPublisher;
+        _config = config;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Gets the active registration policy for a tenant.
+    /// Returns the default (Standard) policy if none is configured.
+    /// </summary>
+    public async Task<TenantRegistrationPolicy> GetPolicyAsync(int tenantId)
+    {
+        var policy = await _db.TenantRegistrationPolicies
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.IsActive);
+
+        return policy ?? new TenantRegistrationPolicy
+        {
+            TenantId = tenantId,
+            Mode = RegistrationMode.Standard,
+            Provider = VerificationProvider.None,
+            VerificationLevel = VerificationLevel.None,
+            PostVerificationAction = PostVerificationAction.ActivateAutomatically
+        };
+    }
+
+    /// <summary>
+    /// Registers a user according to the tenant's policy.
+    /// Returns the created user and their initial registration status.
+    /// </summary>
+    public async Task<RegistrationResult> RegisterAsync(
+        int tenantId,
+        string email,
+        string passwordHash,
+        string firstName,
+        string lastName,
+        string? inviteCode,
+        string? clientIp)
+    {
+        var policy = await GetPolicyAsync(tenantId);
+
+        // Validate invite code for InviteOnly mode
+        if (policy.Mode == RegistrationMode.InviteOnly)
+        {
+            if (string.IsNullOrEmpty(inviteCode) || inviteCode != policy.InviteCode)
+            {
+                return RegistrationResult.Fail("Invalid or missing invite code.");
+            }
+
+            if (policy.MaxInviteUses.HasValue && policy.InviteUsesCount >= policy.MaxInviteUses.Value)
+            {
+                return RegistrationResult.Fail("Invite code has reached its maximum usage limit.");
+            }
+        }
+
+        // Determine initial status based on policy
+        var (initialStatus, isActive) = policy.Mode switch
+        {
+            RegistrationMode.Standard => (RegistrationStatus.Active, true),
+            RegistrationMode.StandardWithApproval => (RegistrationStatus.PendingAdminReview, false),
+            RegistrationMode.VerifiedIdentity => (RegistrationStatus.PendingVerification, false),
+            RegistrationMode.GovernmentId => (RegistrationStatus.PendingVerification, false),
+            RegistrationMode.InviteOnly => (RegistrationStatus.Active, true),
+            _ => (RegistrationStatus.Active, true)
+        };
+
+        var user = new User
+        {
+            TenantId = tenantId,
+            Email = email,
+            PasswordHash = passwordHash,
+            FirstName = firstName,
+            LastName = lastName,
+            Role = "member",
+            IsActive = isActive,
+            RegistrationStatus = initialStatus,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Users.Add(user);
+
+        // Increment invite counter
+        if (policy.Mode == RegistrationMode.InviteOnly && policy.Id > 0)
+        {
+            policy.InviteUsesCount++;
+        }
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "User {UserId} registered in tenant {TenantId} with status {Status} (mode={Mode})",
+            user.Id, tenantId, initialStatus, policy.Mode);
+
+        // Publish event
+        await _eventPublisher.PublishAsync(new UserCreatedEvent
+        {
+            TenantId = user.TenantId,
+            UserId = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = user.Role,
+            IsActive = user.IsActive
+        });
+
+        return RegistrationResult.Success(user, initialStatus, policy.RegistrationMessage);
+    }
+
+    /// <summary>
+    /// Starts an identity verification session for a user.
+    /// Only valid when user is in PendingVerification status.
+    /// </summary>
+    public async Task<VerificationStartResult> StartVerificationAsync(int userId, int tenantId)
+    {
+        var user = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId);
+
+        if (user == null)
+            return VerificationStartResult.Fail("User not found.");
+
+        if (user.RegistrationStatus != RegistrationStatus.PendingVerification)
+            return VerificationStartResult.Fail($"User is not in PendingVerification status (current: {user.RegistrationStatus}).");
+
+        var policy = await GetPolicyAsync(tenantId);
+
+        if (policy.Provider == VerificationProvider.None)
+            return VerificationStartResult.Fail("No verification provider configured for this tenant.");
+
+        if (!_providerFactory.IsProviderRegistered(policy.Provider))
+            return VerificationStartResult.Fail($"Provider '{policy.Provider}' is not available.");
+
+        var provider = _providerFactory.GetProvider(policy.Provider);
+        var callbackUrl = BuildWebhookCallbackUrl(tenantId);
+
+        var sessionResult = await provider.CreateSessionAsync(
+            userId, tenantId, policy.VerificationLevel, callbackUrl, policy.ProviderConfigEncrypted);
+
+        var session = new IdentityVerificationSession
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            Provider = policy.Provider,
+            Level = policy.VerificationLevel,
+            Status = VerificationSessionStatus.Created,
+            ExternalSessionId = sessionResult.ExternalSessionId,
+            RedirectUrl = sessionResult.RedirectUrl,
+            ExpiresAt = sessionResult.ExpiresAt,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.IdentityVerificationSessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        // Log event
+        await LogVerificationEventAsync(session, "session.created", null, VerificationSessionStatus.Created);
+
+        _logger.LogInformation(
+            "Verification session {SessionId} created for user {UserId} with provider {Provider}",
+            session.Id, userId, policy.Provider);
+
+        return VerificationStartResult.Success(session, sessionResult);
+    }
+
+    /// <summary>
+    /// Gets the current verification session status for a user.
+    /// </summary>
+    public async Task<IdentityVerificationSession?> GetVerificationSessionAsync(int userId, int tenantId)
+    {
+        return await _db.IdentityVerificationSessions
+            .IgnoreQueryFilters()
+            .Where(s => s.UserId == userId && s.TenantId == tenantId)
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Processes a webhook callback from a verification provider.
+    /// </summary>
+    public async Task<bool> ProcessWebhookAsync(
+        int tenantId,
+        VerificationProvider providerType,
+        WebhookPayload payload)
+    {
+        var policy = await GetPolicyAsync(tenantId);
+
+        if (!_providerFactory.IsProviderRegistered(providerType))
+        {
+            _logger.LogWarning("Webhook received for unregistered provider {Provider}", providerType);
+            return false;
+        }
+
+        var provider = _providerFactory.GetProvider(providerType);
+
+        // Verify signature
+        if (!provider.VerifyWebhookSignature(payload, policy.ProviderConfigEncrypted))
+        {
+            _logger.LogWarning("Webhook signature verification failed for provider {Provider} in tenant {TenantId}",
+                providerType, tenantId);
+            return false;
+        }
+
+        var result = await provider.ProcessWebhookAsync(payload, policy.ProviderConfigEncrypted);
+        if (result == null)
+        {
+            _logger.LogWarning("Provider {Provider} could not process webhook payload", providerType);
+            return false;
+        }
+
+        // Find the active session for this tenant+provider
+        // In production, you'd match by ExternalSessionId from the webhook body
+        var session = await _db.IdentityVerificationSessions
+            .IgnoreQueryFilters()
+            .Include(s => s.User)
+            .Where(s => s.TenantId == tenantId
+                     && s.Provider == providerType
+                     && s.Status == VerificationSessionStatus.Created
+                        || s.Status == VerificationSessionStatus.InProgress)
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (session == null)
+        {
+            _logger.LogWarning("No active verification session found for webhook in tenant {TenantId}", tenantId);
+            return false;
+        }
+
+        return await ApplyVerificationResultAsync(session, result, policy);
+    }
+
+    /// <summary>
+    /// Admin approves a user registration (for StandardWithApproval or PostVerification approval).
+    /// </summary>
+    public async Task<bool> AdminApproveAsync(int userId, int tenantId, int adminUserId)
+    {
+        var user = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId);
+
+        if (user == null) return false;
+
+        if (user.RegistrationStatus != RegistrationStatus.PendingAdminReview)
+        {
+            _logger.LogWarning("Cannot approve user {UserId}: status is {Status}", userId, user.RegistrationStatus);
+            return false;
+        }
+
+        user.RegistrationStatus = RegistrationStatus.Active;
+        user.IsActive = true;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} approved registration for user {UserId}", adminUserId, userId);
+
+        await _eventPublisher.PublishAsync(new UserActivatedEvent
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            ActivatedByUserId = adminUserId
+        });
+
+        return true;
+    }
+
+    /// <summary>
+    /// Admin rejects a user registration.
+    /// </summary>
+    public async Task<bool> AdminRejectAsync(int userId, int tenantId, int adminUserId, string? reason)
+    {
+        var user = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId);
+
+        if (user == null) return false;
+
+        if (user.RegistrationStatus != RegistrationStatus.PendingAdminReview
+            && user.RegistrationStatus != RegistrationStatus.PendingVerification)
+        {
+            _logger.LogWarning("Cannot reject user {UserId}: status is {Status}", userId, user.RegistrationStatus);
+            return false;
+        }
+
+        user.RegistrationStatus = RegistrationStatus.Rejected;
+        user.IsActive = false;
+        user.SuspensionReason = reason;
+        user.SuspendedByUserId = adminUserId;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} rejected registration for user {UserId}. Reason: {Reason}",
+            adminUserId, userId, reason);
+
+        return true;
+    }
+
+    #region Private Helpers
+
+    private async Task<bool> ApplyVerificationResultAsync(
+        IdentityVerificationSession session,
+        VerificationStatusResult result,
+        TenantRegistrationPolicy policy)
+    {
+        var previousStatus = session.Status;
+        session.Status = result.Status;
+        session.ProviderDecision = result.Decision;
+        session.DecisionReason = result.DecisionReason;
+        session.ConfidenceScore = result.ConfidenceScore;
+
+        if (result.Status is VerificationSessionStatus.Completed or VerificationSessionStatus.Failed)
+        {
+            session.CompletedAt = DateTime.UtcNow;
+        }
+
+        await LogVerificationEventAsync(session, "webhook.processed", previousStatus, result.Status);
+
+        // Update user status based on verification outcome
+        if (session.User != null)
+        {
+            if (result.Status == VerificationSessionStatus.Completed && result.Decision == "approved")
+            {
+                switch (policy.PostVerificationAction)
+                {
+                    case PostVerificationAction.ActivateAutomatically:
+                        session.User.RegistrationStatus = RegistrationStatus.Active;
+                        session.User.IsActive = true;
+                        break;
+                    case PostVerificationAction.SendToAdminForApproval:
+                        session.User.RegistrationStatus = RegistrationStatus.PendingAdminReview;
+                        break;
+                    case PostVerificationAction.GrantLimitedAccess:
+                        session.User.RegistrationStatus = RegistrationStatus.LimitedAccess;
+                        session.User.IsActive = true;
+                        break;
+                    case PostVerificationAction.RejectOnFailure:
+                        session.User.RegistrationStatus = RegistrationStatus.Active;
+                        session.User.IsActive = true;
+                        break;
+                }
+            }
+            else if (result.Status == VerificationSessionStatus.Failed)
+            {
+                if (policy.PostVerificationAction == PostVerificationAction.RejectOnFailure)
+                {
+                    session.User.RegistrationStatus = RegistrationStatus.Rejected;
+                    session.User.IsActive = false;
+                }
+                else
+                {
+                    session.User.RegistrationStatus = RegistrationStatus.VerificationFailed;
+                }
+            }
+
+            session.User.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Verification session {SessionId} updated: {PreviousStatus} -> {NewStatus}, decision={Decision}",
+            session.Id, previousStatus, result.Status, result.Decision);
+
+        return true;
+    }
+
+    private async Task LogVerificationEventAsync(
+        IdentityVerificationSession session,
+        string eventType,
+        VerificationSessionStatus? previousStatus,
+        VerificationSessionStatus? newStatus,
+        string? metadata = null,
+        int? actorUserId = null)
+    {
+        var evt = new IdentityVerificationEvent
+        {
+            TenantId = session.TenantId,
+            SessionId = session.Id,
+            EventType = eventType,
+            PreviousStatus = previousStatus,
+            NewStatus = newStatus,
+            Metadata = metadata,
+            ActorUserId = actorUserId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.IdentityVerificationEvents.Add(evt);
+        await _db.SaveChangesAsync();
+    }
+
+    private string BuildWebhookCallbackUrl(int tenantId)
+    {
+        var baseUrl = _config["App:BaseUrl"] ?? "http://localhost:5080";
+        return $"{baseUrl}/api/registration/webhook/{tenantId}";
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Result of a registration attempt.
+/// </summary>
+public record RegistrationResult
+{
+    public bool IsSuccess { get; init; }
+    public User? User { get; init; }
+    public RegistrationStatus Status { get; init; }
+    public string? Message { get; init; }
+    public string? Error { get; init; }
+
+    public static RegistrationResult Success(User user, RegistrationStatus status, string? message = null)
+        => new() { IsSuccess = true, User = user, Status = status, Message = message };
+
+    public static RegistrationResult Fail(string error)
+        => new() { IsSuccess = false, Error = error };
+}
+
+/// <summary>
+/// Result of starting a verification session.
+/// </summary>
+public record VerificationStartResult
+{
+    public bool IsSuccess { get; init; }
+    public IdentityVerificationSession? Session { get; init; }
+    public VerificationSessionResult? ProviderResult { get; init; }
+    public string? Error { get; init; }
+
+    public static VerificationStartResult Success(IdentityVerificationSession session, VerificationSessionResult providerResult)
+        => new() { IsSuccess = true, Session = session, ProviderResult = providerResult };
+
+    public static VerificationStartResult Fail(string error)
+        => new() { IsSuccess = false, Error = error };
+}

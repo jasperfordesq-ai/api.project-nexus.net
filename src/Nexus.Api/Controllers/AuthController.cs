@@ -16,6 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Middleware;
+using Nexus.Api.Services.Registration;
 using Nexus.Contracts.Events;
 using Nexus.Messaging;
 
@@ -36,18 +37,20 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _config;
     private readonly ILogger<AuthController> _logger;
     private readonly IEventPublisher _eventPublisher;
+    private readonly RegistrationOrchestrator _registrationOrchestrator;
 
     // Refresh token validity (7 days default)
     private const int RefreshTokenExpiryDays = 7;
     // Password reset token validity (1 hour)
     private const int PasswordResetExpiryMinutes = 60;
 
-    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher)
+    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator)
     {
         _db = db;
         _config = config;
         _logger = logger;
         _eventPublisher = eventPublisher;
+        _registrationOrchestrator = registrationOrchestrator;
     }
 
     /// <summary>
@@ -332,60 +335,33 @@ public class AuthController : ControllerBase
             return Conflict(new { error = "Email already registered" });
         }
 
-        // Create user
-        var user = new User
+        // Use registration orchestrator (respects tenant policy)
+        var registrationResult = await _registrationOrchestrator.RegisterAsync(
+            tenant.Id,
+            request.Email.Trim().ToLowerInvariant(),
+            BCrypt.Net.BCrypt.HashPassword(request.Password),
+            request.FirstName.Trim(),
+            request.LastName.Trim(),
+            request.InviteCode,
+            GetClientIp());
+
+        if (!registrationResult.IsSuccess)
         {
-            TenantId = tenant.Id,
-            Email = request.Email.Trim().ToLowerInvariant(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(),
-            Role = "member",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
+            return BadRequest(new { error = registrationResult.Error });
+        }
 
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        var user = registrationResult.User!;
 
-        _logger.LogInformation("New user {UserId} registered in tenant {TenantId}", user.Id, tenant.Id);
+        _logger.LogInformation("New user {UserId} registered in tenant {TenantId} with status {Status}",
+            user.Id, tenant.Id, registrationResult.Status);
 
-        // Publish user created event
-        await _eventPublisher.PublishAsync(new UserCreatedEvent
+        // Build response based on registration status
+        var responseData = new Dictionary<string, object?>
         {
-            TenantId = user.TenantId,
-            UserId = user.Id,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Role = user.Role,
-            IsActive = user.IsActive
-        });
-
-        // Auto-login: generate tokens
-        var accessToken = GenerateJwt(user);
-        var (refreshToken, refreshTokenHash) = GenerateRefreshToken();
-
-        var refreshTokenEntity = new RefreshToken
-        {
-            TenantId = user.TenantId,
-            UserId = user.Id,
-            TokenHash = refreshTokenHash,
-            ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenExpiryDays),
-            ClientType = request.ClientType,
-            CreatedByIp = GetClientIp()
-        };
-        _db.RefreshTokens.Add(refreshTokenEntity);
-        await _db.SaveChangesAsync();
-
-        return StatusCode(201, new
-        {
-            success = true,
-            access_token = accessToken,
-            refresh_token = refreshToken,
-            token_type = "Bearer",
-            expires_in = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120) * 60,
-            user = new
+            ["success"] = true,
+            ["registration_status"] = registrationResult.Status.ToString(),
+            ["registration_message"] = registrationResult.Message,
+            ["user"] = new
             {
                 id = user.Id,
                 email = user.Email,
@@ -395,7 +371,57 @@ public class AuthController : ControllerBase
                 tenant_id = user.TenantId,
                 tenant_slug = tenant.Slug
             }
-        });
+        };
+
+        // Only issue tokens if the user is immediately active
+        if (registrationResult.Status == RegistrationStatus.Active)
+        {
+            var accessToken = GenerateJwt(user);
+            var (refreshToken, refreshTokenHash) = GenerateRefreshToken();
+
+            var refreshTokenEntity = new RefreshToken
+            {
+                TenantId = user.TenantId,
+                UserId = user.Id,
+                TokenHash = refreshTokenHash,
+                ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenExpiryDays),
+                ClientType = request.ClientType,
+                CreatedByIp = GetClientIp()
+            };
+            _db.RefreshTokens.Add(refreshTokenEntity);
+            await _db.SaveChangesAsync();
+
+            responseData["access_token"] = accessToken;
+            responseData["refresh_token"] = refreshToken;
+            responseData["token_type"] = "Bearer";
+            responseData["expires_in"] = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120) * 60;
+        }
+        else if (registrationResult.Status == RegistrationStatus.PendingVerification)
+        {
+            // Issue a limited token so the user can call the verification endpoints
+            var accessToken = GenerateJwt(user);
+            var (refreshToken, refreshTokenHash) = GenerateRefreshToken();
+
+            var refreshTokenEntity = new RefreshToken
+            {
+                TenantId = user.TenantId,
+                UserId = user.Id,
+                TokenHash = refreshTokenHash,
+                ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenExpiryDays),
+                ClientType = request.ClientType,
+                CreatedByIp = GetClientIp()
+            };
+            _db.RefreshTokens.Add(refreshTokenEntity);
+            await _db.SaveChangesAsync();
+
+            responseData["access_token"] = accessToken;
+            responseData["refresh_token"] = refreshToken;
+            responseData["token_type"] = "Bearer";
+            responseData["expires_in"] = _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120) * 60;
+            responseData["requires_verification"] = true;
+        }
+
+        return StatusCode(201, responseData);
     }
 
     /// <summary>
@@ -742,6 +768,9 @@ public record RegisterRequest
 
     [System.Text.Json.Serialization.JsonPropertyName("client_type")]
     public string? ClientType { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("invite_code")]
+    public string? InviteCode { get; init; }
 }
 
 public record ForgotPasswordRequest
