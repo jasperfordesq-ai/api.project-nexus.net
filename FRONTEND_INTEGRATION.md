@@ -6,39 +6,56 @@ This guide explains how to connect a frontend application to the Project NEXUS A
 
 ## Frontend Can Build Safely Now
 
-These features are **fully implemented** in the ASP.NET backend (Phases 0-15). Frontend teams can build UI for:
+These features are **fully implemented** in the ASP.NET backend. Frontend teams can build UI for:
 
+**Core Platform (Phases 0-15, fully tested):**
 - **Authentication** - Login, logout, register, password reset, token refresh
-- **User Profiles** - View profile, edit own profile (name only)
-- **Listings** - Full CRUD (create, read, update, delete) with categories
-- **Wallet** - View balance, transaction history, transfer credits
-- **Messaging** - Conversations, send messages, mark as read
+- **Two-Factor Authentication (TOTP)** - Setup, verify, disable, backup codes
+- **Passkeys (WebAuthn/FIDO2)** - Passwordless login, credential management
+- **User Profiles** - View profile, edit own profile
+- **Listings** - Full CRUD with categories, type filtering
+- **Wallet** - Balance, transactions, transfers (with daily/weekly/monthly limits)
+- **Exchanges** - Full lifecycle: request, accept, start, complete, rate, dispute
+- **Messaging** - Conversations, send messages, mark as read, real-time via SignalR
 - **Connections** - Friend requests, accept/decline, remove
 - **Notifications** - List, unread count, mark read
-- **Groups** - Full CRUD, join/leave, member management
+- **Groups** - Full CRUD, join/leave, member management, roles
 - **Events** - Full CRUD, RSVP, attendees list
-- **Social Feed** - Posts, likes, comments
-- **Gamification** - XP, levels, badges, leaderboards
-- **Reviews** - User reviews, listing reviews, ratings
-- **Search** - Unified search, autocomplete suggestions, member directory
+- **Social Feed** - Posts, likes, threaded comments with replies
+- **Gamification** - XP (18 actions), levels (1-10), 55+ badges, leaderboards
+- **Reviews** - User reviews, listing reviews, exchange ratings
+- **Search** - Unified search, autocomplete, member directory
 - **AI Features** - Chat, listing suggestions, matching, moderation, translations
-- **Admin Dashboard** - User management, content moderation, categories, roles
-- **Registration Policy Engine** - Tenant-configurable registration modes, identity verification, admin approval queue
+- **Admin Dashboard** - User management, content moderation, categories, roles, analytics
+- **Registration Policy Engine** - 5 registration modes, identity verification, admin approval
+- **File Upload** - Upload, download, list, delete, metadata
+- **Content Reporting** - Report content, admin review queue, user warnings
+
+**New Modules (Phases 38-48, recently built):**
+- **Federation** - Cross-tenant partnerships, shared listings/members, API keys, feature gating
+- **Jobs** - Job vacancies, applications, saved jobs, admin management (14 endpoints)
+- **Knowledge Base** - Help articles with markdown, categories, search (6 endpoints)
+- **Legal Documents** - Versioned ToS/Privacy Policy, acceptance tracking (6 endpoints)
+- **User Preferences** - Theme, language, timezone, privacy settings (5 endpoints)
+- **Emergency Lockdown** - Admin kill switch for emergencies
+- **Polls** - Single/multiple/ranked voting, auto-close, results (5 endpoints)
+- **Goals** - Personal goals with milestones, progress tracking (7 endpoints)
+- **Member Availability** - Weekly schedule, exceptions, bulk set (8 endpoints)
+- **Ideation** - Community ideas, voting, comments, challenges (9 endpoints)
+- **Smart Matching** - 6-factor scoring algorithm with preferences
+- **Admin Analytics** - SROI reporting, growth metrics, retention, inactive member detection
 
 ---
 
 ## Do Not Build UI For This Yet
 
-These features are **NOT implemented**. Do not build frontend UI for:
+These features are **not yet fully production-hardened**. Hold off on building frontend UI for:
 
-- **Avatar Upload** - Backlog
-- **File/Image Uploads** - Backlog
-- **Two-Factor Authentication (TOTP)** - Backlog
-- **Push Notifications** - Backlog (Web Push, FCM)
-- **User Preferences** - Backlog
-- **Volunteering** - Backlog
-- **Federation** - Backlog
-- **Polls & Surveys** - Not planned
+- **Push Notifications** - Scaffolded (Web Push + FCM endpoints exist but not integration-tested)
+- **Avatar/Image Upload** - File upload infrastructure exists but no avatar-specific endpoint yet
+- **i18n/Translation** - Endpoints exist but no language packs loaded
+- **Volunteering** - Scaffolded (16 endpoints exist but need integration testing)
+- **Newsletter** - Scaffolded (10 endpoints exist but need Mailchimp integration)
 
 ---
 
@@ -479,64 +496,162 @@ Returns user info if token is valid, 401 if invalid/expired.
 
 ---
 
-### File Uploads - 📋 BACKLOG
+### File Uploads - IMPLEMENTED
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | /api/upload | Yes | General file upload |
-| POST | /api/users/me/avatar | Yes | Upload user avatar |
-| POST | /api/listings/{id}/images | Yes | Upload listing images |
-| POST | /api/groups/{id}/image | Yes | Upload group image |
-| POST | /api/events/{id}/image | Yes | Upload event image |
+| POST | /api/files/upload | Yes | Upload a file |
+| GET | /api/files | Yes | List user's files |
+| GET | /api/files/{id} | Yes | Get file metadata |
+| GET | /api/files/{id}/download | Yes | Download file |
+| DELETE | /api/files/{id} | Yes | Delete file |
 
-### User Preferences - 📋 BACKLOG
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /api/users/me/preferences | Yes | Get user preferences |
-| PUT | /api/users/me/preferences | Yes | Update user preferences |
-
-### Two-Factor Auth - 📋 BACKLOG
+### User Preferences - IMPLEMENTED
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | /api/auth/totp/setup | Yes | Get TOTP setup (QR code, secret) |
-| POST | /api/auth/totp/enable | Yes | Enable TOTP |
-| POST | /api/auth/totp/verify | Yes | Verify TOTP during login |
-| DELETE | /api/auth/totp | Yes | Disable TOTP |
+| GET | /api/preferences | Yes | Get preferences (theme, language, timezone, privacy) |
+| PUT | /api/preferences | Yes | Update preferences |
 
-### Push Notifications - 📋 BACKLOG
+### Two-Factor Auth (TOTP) - IMPLEMENTED
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | /api/push/subscribe | Yes | Subscribe to web push |
-| DELETE | /api/push/subscribe | Yes | Unsubscribe from web push |
-| POST | /api/push/register-device | Yes | Register mobile device (FCM) |
+| GET | /api/auth/2fa/status | Yes | Get 2FA status |
+| POST | /api/auth/2fa/setup | Yes | Initiate TOTP setup (returns QR) |
+| POST | /api/auth/2fa/verify-setup | Yes | Verify code and enable 2FA |
+| POST | /api/auth/2fa/verify | Yes | Verify TOTP during login |
+| POST | /api/auth/2fa/disable | Yes | Disable 2FA |
 
-### GDPR & Compliance - 📋 BACKLOG
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /api/users/me/data-export | Yes | Export user data (GDPR) |
-| DELETE | /api/users/me | Yes | Delete account (GDPR) |
-| POST | /api/consent | Yes | Record consent |
-
-### Reporting & Moderation - 📋 BACKLOG
+### Passkeys (WebAuthn/FIDO2) - IMPLEMENTED
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | /api/reports | Yes | Report content |
-| GET | /api/admin/reports | Yes | Moderation queue (admin) |
+| POST | /api/passkeys/register/begin | Yes | Begin passkey registration |
+| POST | /api/passkeys/register/finish | Yes | Complete registration |
+| POST | /api/passkeys/authenticate/begin | No | Begin passwordless login |
+| POST | /api/passkeys/authenticate/finish | No | Complete passwordless login |
+| GET | /api/passkeys | Yes | List passkeys |
+| PUT | /api/passkeys/{id} | Yes | Rename passkey |
+| DELETE | /api/passkeys/{id} | Yes | Delete passkey |
 
-### Volunteering - 📋 BACKLOG
+### GDPR & Compliance - IMPLEMENTED
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | /api/volunteering/opportunities | Yes | List opportunities |
-| POST | /api/volunteering/opportunities/{id}/apply | Yes | Apply to opportunity |
-| POST | /api/volunteering/hours | Yes | Log volunteer hours |
+| GET | /api/gdpr/my-data | Yes | Export user data |
+| DELETE | /api/gdpr/my-data | Yes | Request data deletion |
+| GET | /api/gdpr/consent | Yes | Get consent status |
+| POST | /api/gdpr/consent | Yes | Record consent |
+| GET | /api/cookie-consent/config | No | Cookie consent config |
+| POST | /api/cookie-consent | Yes | Save cookie preferences |
 
-### Admin APIs - ✅ IMPLEMENTED (Admin role required)
+### Content Reporting - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /api/reports | Yes | File a content report |
+| GET | /api/reports/my | Yes | My filed reports |
+| GET | /api/reports/warnings | Yes | My warnings |
+| PUT | /api/reports/warnings/{id}/acknowledge | Yes | Acknowledge warning |
+| GET | /api/admin/reports | Admin | Pending reports queue |
+| PUT | /api/admin/reports/{id}/review | Admin | Review report |
+| POST | /api/admin/reports/warn/{userId} | Admin | Issue warning |
+
+### Exchanges - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/exchanges | Yes | List my exchanges |
+| POST | /api/exchanges | Yes | Request exchange |
+| PUT | /api/exchanges/{id}/accept | Yes | Accept |
+| PUT | /api/exchanges/{id}/decline | Yes | Decline |
+| PUT | /api/exchanges/{id}/start | Yes | Start |
+| PUT | /api/exchanges/{id}/complete | Yes | Complete (transfers credits) |
+| PUT | /api/exchanges/{id}/cancel | Yes | Cancel |
+| PUT | /api/exchanges/{id}/dispute | Yes | Dispute |
+| POST | /api/exchanges/{id}/rate | Yes | Rate participant |
+
+### Jobs - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/jobs | Yes | List vacancies |
+| POST | /api/jobs | Yes | Create vacancy |
+| GET | /api/jobs/{id} | Yes | Get details |
+| POST | /api/jobs/{id}/apply | Yes | Apply |
+| POST | /api/jobs/{id}/save | Yes | Save/bookmark |
+| GET | /api/jobs/saved | Yes | Saved jobs |
+| GET | /api/jobs/my | Yes | My posted jobs |
+
+### Polls - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/polls | Yes | List polls |
+| POST | /api/polls | Yes | Create poll |
+| GET | /api/polls/{id} | Yes | Get poll with options |
+| POST | /api/polls/{id}/vote | Yes | Cast vote |
+| GET | /api/polls/{id}/results | Yes | Get results |
+
+### Goals - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/goals | Yes | List my goals |
+| POST | /api/goals | Yes | Create goal |
+| PUT | /api/goals/{id}/progress | Yes | Update progress |
+| PUT | /api/goals/{id}/milestones/{mid}/complete | Yes | Complete milestone |
+
+### Ideas & Challenges - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/ideas | Yes | List ideas |
+| POST | /api/ideas | Yes | Submit idea |
+| POST | /api/ideas/{id}/vote | Yes | Upvote |
+| POST | /api/ideas/{id}/comments | Yes | Comment |
+| GET | /api/challenges | Yes | List challenges |
+| POST | /api/challenges/{id}/join | Yes | Join |
+
+### Member Availability - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/availability | Yes | My schedule |
+| POST | /api/availability | Yes | Add slot |
+| PUT | /api/availability/bulk | Yes | Replace schedule |
+| GET | /api/availability/exceptions | Yes | My exceptions |
+| POST | /api/availability/exceptions | Yes | Add exception |
+
+### Knowledge Base - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/kb/articles | Yes | List articles |
+| GET | /api/kb/articles/by-slug/{slug} | Yes | Get by slug |
+| POST | /api/admin/kb/articles | Admin | Create article |
+
+### Legal Documents - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/legal/documents | Yes | List documents |
+| POST | /api/legal/documents/{id}/accept | Yes | Accept document |
+| POST | /api/admin/legal/documents | Admin | Create document |
+
+### Admin Analytics - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/admin/analytics/overview | Admin | Platform metrics |
+| GET | /api/admin/analytics/growth | Admin | Growth trends |
+| GET | /api/admin/analytics/retention | Admin | Retention cohorts |
+| GET | /api/admin/analytics/top-users | Admin | Top users |
+| GET | /api/admin/analytics/sroi | Admin | Social ROI report |
+| GET | /api/admin/analytics/inactive-members | Admin | Inactive detection |
+
+### Admin APIs - IMPLEMENTED (Admin role required)
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
@@ -560,12 +675,38 @@ Returns user info if token is valid, 401 if invalid/expired.
 | PUT | /api/admin/roles/{id} | Admin | Update role |
 | DELETE | /api/admin/roles/{id} | Admin | Delete role |
 
-### Federation - 📋 BACKLOG
+### Federation - IMPLEMENTED
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | /api/federation/partners | Yes | List federation partners |
-| GET | /api/federation/listings | Yes | Search federated listings |
+| GET | /api/federation/listings | Yes | Browse federated listings |
+| POST | /api/federation/exchanges | Yes | Initiate cross-tenant exchange |
+| PUT | /api/federation/exchanges/{id}/complete | Yes | Complete federated exchange |
+| GET | /api/federation/exchanges | Yes | List federated exchanges |
+| GET | /api/federation/settings | Yes | Get federation settings |
+| PUT | /api/federation/settings | Yes | Update federation settings (opt-in, visibility) |
+| GET | /api/admin/federation/partners | Admin | List partners |
+| POST | /api/admin/federation/partners | Admin | Request partnership |
+| PUT | /api/admin/federation/partners/{id}/approve | Admin | Approve partnership |
+| PUT | /api/admin/federation/partners/{id}/suspend | Admin | Suspend partnership |
+| GET | /api/admin/federation/api-keys | Admin | List API keys |
+| POST | /api/admin/federation/api-keys | Admin | Create API key |
+| DELETE | /api/admin/federation/api-keys/{id} | Admin | Revoke API key |
+| GET | /api/admin/federation/features | Admin | Feature toggles |
+| PUT | /api/admin/federation/features | Admin | Set feature toggle |
+| GET | /api/admin/federation/stats | Admin | Federation statistics |
+
+**External API** (for partner servers, authenticated via X-Federation-Key or Federation JWT):
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/v1/federation | None | API info + endpoint directory |
+| POST | /api/v1/federation/token | Key | Request federation JWT |
+| GET | /api/v1/federation/timebanks | Key/JWT | List partner timebanks |
+| GET | /api/v1/federation/listings | Key/JWT | Search shared listings |
+| GET | /api/v1/federation/members | Key/JWT | Search shared members |
+| POST | /api/v1/federation/exchanges | Key/JWT | Initiate exchange |
+| POST | /api/v1/federation/webhooks/test | Key | Test webhook connectivity |
 
 ---
 
@@ -646,17 +787,19 @@ export async function transferCredits(receiverId, amount, description) {
 
 ## JSON Property Naming Convention
 
-The API uses **snake_case** for JSON properties:
+The API uses **camelCase** for JSON properties (ASP.NET Core default):
 
 ```json
 {
   "id": 1,
-  "first_name": "Alice",
-  "last_name": "Admin",
-  "created_at": "2026-02-02T10:00:00Z",
-  "tenant_id": 1
+  "firstName": "Alice",
+  "lastName": "Admin",
+  "createdAt": "2026-02-02T10:00:00Z",
+  "tenantId": 1
 }
 ```
+
+**Note:** Some endpoints use explicit `[JsonPropertyName]` annotations with snake_case for backward compatibility (e.g. `access_token`, `tenant_slug` in auth responses). The default serialization is camelCase.
 
 ---
 
@@ -740,18 +883,16 @@ GET /api/wallet/transactions?type=sent
 
 ## Starting the Backend
 
-```powershell
-# 1. Start PostgreSQL (Docker)
-cd c:\xampp\htdocs\asp.net-backend
-docker-compose up -d
+Docker is required for local development. Do NOT use `dotnet run` directly.
 
-# 2. Start the API
-cd src\Nexus.Api
-$env:ASPNETCORE_ENVIRONMENT="Development"
-dotnet run
+```powershell
+# Start the full stack (API + PostgreSQL + RabbitMQ + Ollama)
+cd c:\platforms\htdocs\asp.net-backend
+docker compose up -d
 
 # API will be available at http://localhost:5080
 # Health check: http://localhost:5080/health
+# Swagger: http://localhost:5080/swagger
 ```
 
 ---
@@ -767,24 +908,35 @@ This provides interactive API documentation where you can test endpoints directl
 
 ## Gamification System (Phase 13) - ✅ IMPLEMENTED
 
-### XP Awards (Automatic)
+### XP Awards (Automatic, V1-aligned values)
 
 XP is automatically awarded when users perform these actions:
 
-| Action               | XP  | Possible Badge                                                   |
-|----------------------|-----|------------------------------------------------------------------|
-| Create listing       | 10  | First Listing (+25 XP)                                           |
-| Accept connection    | 5   | First Connection (+25 XP)                                        |
-| Complete transaction | 20  | First Transaction (+30 XP), Helpful Neighbor (+100 XP at 10 tx)  |
-| Create post          | 5   | First Post (+15 XP)                                              |
-| Create event         | 15  | Event Host (+30 XP), Event Organizer (+75 XP at 5 events)        |
-| Create group         | 20  | Community Builder (+50 XP)                                       |
-| Add comment          | 2   | -                                                                |
-| Leave review         | 5   | -                                                                |
+| Action | XP | Badge triggers |
+|--------|-----|----------------|
+| Create listing | 15 | First Listing, Offer 5/10/25, Request 5/10 |
+| Complete exchange | 25 | First Transaction, Transaction 10/50, Helpful Neighbor |
+| Send credits | 10/credit | Spend 10/50, Diversity 3/10/25 |
+| Receive credits | 5/credit | Earn 10/50/100/250 |
+| Leave review | 10 | First Review, Review 10/25 |
+| Attend event | 15 | Event Attend 1/10/25 |
+| Create event | 30 | Event Host 1/5 |
+| Join group | 10 | Group Join 1/5 |
+| Create group | 50 | Group Create |
+| Make connection | 10 | Connect 10/25/50 |
+| Create post | 5 | Posts 25/100 |
+| Daily login | 5 | Streak 7d/30d/100d |
+| Complete profile | 50 | (one-time) |
+| Earn badge | 25 | Level 5/10 |
+| Vote in poll | 2 | - |
+| Send message | 2 | Msg 50/200 |
+| Complete goal | 10 | - |
+| Add comment | 2 | - |
+| Volunteer hour | 20/hour | - |
 
-### Level System
+### Level System (V1-aligned thresholds)
 
-Formula: `XP needed for level N = 50 * N * (N - 1)`
+Higher levels are intentionally steeper to reward long-term engagement. Cap at level 10.
 
 | Level | XP Required |
 |-------|-------------|
@@ -792,8 +944,12 @@ Formula: `XP needed for level N = 50 * N * (N - 1)`
 | 2     | 100         |
 | 3     | 300         |
 | 4     | 600         |
-| 5     | 1000        |
-| 10    | 4500        |
+| 5     | 1,000       |
+| 6     | 1,500       |
+| 7     | 2,200       |
+| 8     | 3,000       |
+| 9     | 4,000       |
+| 10    | 5,500 (cap) |
 
 ### Response Examples
 
