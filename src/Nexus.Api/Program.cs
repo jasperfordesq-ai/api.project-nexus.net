@@ -24,9 +24,19 @@ using Nexus.Messaging;
 using Nexus.Api.Extensions;
 using Polly;
 using Polly.Extensions.Http;
+using Sentry.AspNetCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Sentry error tracking (configure via Sentry:Dsn env var or appsettings)
+builder.WebHost.UseSentry(o =>
+{
+    o.Dsn = builder.Configuration["Sentry:Dsn"] ?? "";
+    o.Environment = builder.Configuration["Sentry:Environment"] ?? builder.Environment.EnvironmentName;
+    o.TracesSampleRate = builder.Configuration.GetValue("Sentry:TracesSampleRate", 0.1);
+    o.SendDefaultPii = builder.Configuration.GetValue("Sentry:SendDefaultPii", false);
+});
 
 // =============================================================================
 // DOCKER-ONLY DEVELOPMENT CHECK
@@ -181,7 +191,11 @@ builder.Services.AddScoped<SkillService>();
 builder.Services.AddScoped<AuditLogService>();
 
 // Phase 25: Email Notifications
-builder.Services.AddScoped<IEmailService, GmailEmailService>();
+// Multi-email driver: SendGrid preferred when configured, Gmail fallback
+if (builder.Configuration.GetValue("SendGrid:Enabled", false))
+    builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+else
+    builder.Services.AddScoped<IEmailService, GmailEmailService>();
 builder.Services.AddScoped<EmailNotificationService>();
 
 // Phase 26: Content Reporting
@@ -525,6 +539,9 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
+
+// Sentry performance tracing
+app.UseSentryTracing();
 
 // Global exception handling - MUST be early in pipeline
 // In Development: returns full exception details
