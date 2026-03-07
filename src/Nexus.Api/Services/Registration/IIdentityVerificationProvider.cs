@@ -34,6 +34,9 @@ public record VerificationStatusResult
     public string? Decision { get; init; }
     public string? DecisionReason { get; init; }
     public double? ConfidenceScore { get; init; }
+
+    /// <summary>External session ID from the provider webhook, used to match against stored sessions.</summary>
+    public string? ExternalSessionId { get; init; }
 }
 
 /// <summary>
