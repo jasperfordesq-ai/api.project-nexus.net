@@ -405,7 +405,6 @@ public class GamificationService
     }
 
     #endregion
-}
 
     /// <summary>
     /// Re-check all XP-threshold badges for a user and award any newly qualifying ones.
@@ -593,6 +592,8 @@ public class GamificationService
         _logger.LogInformation("Admin {AdminId} revoked badge {BadgeId} from user {UserId}", adminId, badgeId, userId);
         return (true, null);
     }
+
+}
 
 public class XpAwardResult
 {
