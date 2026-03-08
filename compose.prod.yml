@@ -1,5 +1,5 @@
 # Production overrides - deploy as compose.override.yml on production server
-# This file configures production-specific settings (CORS, rate limits)
+# This file configures production-specific settings (CORS, rate limits, build targets)
 #
 # Usage on production:
 #   cp compose.prod.yml compose.override.yml
@@ -9,12 +9,71 @@ services:
   api:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      # CORS - production domains
+      # CORS - all production domains
       - Cors__AllowedOrigins__0=https://app.project-nexus.net
       - Cors__AllowedOrigins__1=https://uk.project-nexus.net
       - Cors__AllowedOrigins__2=https://api.project-nexus.net
+      - Cors__AllowedOrigins__3=https://admin.project-nexus.net
+      - Cors__AllowedOrigins__4=https://ie.project-nexus.net
       # Rate limiting - production values
       - RateLimiting__Auth__PermitLimit=10
       - RateLimiting__Auth__WindowSeconds=60
       - RateLimiting__General__PermitLimit=500
       - RateLimiting__General__WindowSeconds=60
+
+  # Admin Panel - production build (nginx, no hot-reload, no volume mounts)
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_URL: https://api.project-nexus.net
+    ports:
+      - "127.0.0.1:5191:80"
+    volumes: []
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Modern Frontend - production build (Next.js standalone, no volume mounts)
+  web-modern:
+    build:
+      context: ./apps/web-modern
+      dockerfile: Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: https://api.project-nexus.net
+    ports:
+      - "127.0.0.1:5170:3002"
+    volumes: []
+    environment:
+      - NODE_ENV=production
+
+  # UK Frontend - production build (no volume mounts)
+  web-uk:
+    build:
+      context: ./apps/web-uk
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "127.0.0.1:5180:3001"
+    volumes: []
+    environment:
+      - NODE_ENV=production
+
+  # GOV.IE Frontend - production build (nginx, no volume mounts)
+  web-govie:
+    build:
+      context: ./apps/web-govie
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: https://api.project-nexus.net
+        VITE_APP_NAME: Nexus Community
+        VITE_APP_VERSION: "0.1.0"
+        VITE_TENANT_SLUG: acme
+    ports:
+      - "127.0.0.1:5200:80"
+    volumes: []

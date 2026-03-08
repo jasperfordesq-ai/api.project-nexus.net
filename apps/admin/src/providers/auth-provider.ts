@@ -55,7 +55,8 @@ export const authProvider: AuthProvider = {
       setStoredUser(user);
 
       // Reject non-admin users
-      if (user.role !== "admin") {
+      const adminRoles = ["admin", "super_admin"];
+      if (!adminRoles.includes(user.role)) {
         clearAuth();
         return {
           success: false,
