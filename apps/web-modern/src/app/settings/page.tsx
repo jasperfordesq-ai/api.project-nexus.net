@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
+  Divider,
   Input,
   Switch,
 } from "@heroui/react";
