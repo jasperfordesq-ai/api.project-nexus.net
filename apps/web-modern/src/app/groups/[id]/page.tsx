@@ -439,7 +439,7 @@ function GroupDetailContent() {
             </div>
 
             {/* Tab Content */}
-            {activeTab === "posts" && (
+            {(activeTab as string) === "posts" && (
               <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -565,7 +565,7 @@ function GroupDetailContent() {
               </motion.div>
             )}
 
-            {activeTab === "members" && (
+            {(activeTab as string) === "members" && (
               <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -630,7 +630,7 @@ function GroupDetailContent() {
               </motion.div>
             )}
 
-            {activeTab === "events" && (
+            {(activeTab as string) === "events" && (
               <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -694,7 +694,7 @@ function GroupDetailContent() {
                       </Link>
                     )}
              
-            {activeTab === "announcements" && (
+            {(activeTab as string) === "announcements" && (
               <div className="space-y-4">
                 {announcements.length > 0 ? (
                   announcements.map((ann: any) => (
@@ -720,7 +720,7 @@ function GroupDetailContent() {
               </div>
             )}
 
-            {activeTab === "discussions" && (
+            {(activeTab as string) === "discussions" && (
               <div className="space-y-4">
                 {isMember && (
                   <GlassCard padding="md">
