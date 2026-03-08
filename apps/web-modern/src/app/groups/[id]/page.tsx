@@ -79,7 +79,7 @@ function GroupDetailContent() {
   const [newDiscussionContent, setNewDiscussionContent] = useState("");
   const [isCreatingDiscussion, setIsCreatingDiscussion] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [activeTab, setActiveTab] = useState("posts");
+  const [activeTab, setActiveTab] = useState<string>("posts");
 
   // Post form state
   const [newPostContent, setNewPostContent] = useState("");
