@@ -509,6 +509,138 @@ public class JobService
         return (job, null);
     }
 
+
+    // ---- NEW SERVICE METHODS (Task 1 additions) ----
+
+    public async Task<(JobVacancy? Job, string? Error)> RenewJobAsync(int tenantId, int userId, int jobId, int daysToExtend)
+    {
+        var job = await _db.JobVacancies.Include(j => j.PostedBy).FirstOrDefaultAsync(j => j.Id == jobId);
+        if (job == null) return (null, "Job not found");
+        if (daysToExtend < 1 || daysToExtend > 365) return (null, "Days to extend must be between 1 and 365");
+        if (job.PostedByUserId != userId) return (null, "You can only renew your own job postings");
+        var baseDate = job.ExpiresAt ?? DateTime.UtcNow;
+        if (baseDate < DateTime.UtcNow) baseDate = DateTime.UtcNow;
+        job.ExpiresAt = baseDate.AddDays(daysToExtend);
+        job.Status = "active";
+        job.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Renewed job {JobId} by user {UserId} by {Days} days", jobId, userId, daysToExtend);
+        return (job, null);
+    }
+
+    public async Task<(JobVacancy? Job, string? Error)> AdminRenewJobAsync(int tenantId, int jobId, int daysToExtend)
+    {
+        var job = await _db.JobVacancies.Include(j => j.PostedBy).FirstOrDefaultAsync(j => j.Id == jobId);
+        if (job == null) return (null, "Job not found");
+        if (daysToExtend < 1 || daysToExtend > 365) return (null, "Days to extend must be between 1 and 365");
+        var baseDate = job.ExpiresAt ?? DateTime.UtcNow;
+        if (baseDate < DateTime.UtcNow) baseDate = DateTime.UtcNow;
+        job.ExpiresAt = baseDate.AddDays(daysToExtend);
+        job.Status = "active";
+        job.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Admin renewed job {JobId} by {Days} days", jobId, daysToExtend);
+        return (job, null);
+    }
+
+    public async Task<(JobVacancy? Job, DateTime FeaturedUntil, string? Error)> FeatureJobForDaysAsync(int tenantId, int jobId, int daysToFeature)
+    {
+        if (daysToFeature < 1 || daysToFeature > 365) return (null, default, "Days to feature must be between 1 and 365");
+        var job = await _db.JobVacancies.Include(j => j.PostedBy).FirstOrDefaultAsync(j => j.Id == jobId);
+        if (job == null) return (null, default, "Job not found");
+        job.IsFeatured = true;
+        job.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        var featuredUntil = DateTime.UtcNow.AddDays(daysToFeature);
+        _logger.LogInformation("Featured job {JobId} for {Days} days", jobId, daysToFeature);
+        return (job, featuredUntil, null);
+    }
+
+    public async Task<(bool Success, string? Error)> UnfeatureJobAsync(int tenantId, int jobId)
+    {
+        var job = await _db.JobVacancies.FirstOrDefaultAsync(j => j.Id == jobId);
+        if (job == null) return (false, "Job not found");
+        job.IsFeatured = false;
+        job.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    public async Task<(decimal Score, List<string> SkillsMatched, List<string> SkillsMissing)> GetJobMatchScoreAsync(int tenantId, int userId, int jobId)
+    {
+        var job = await _db.JobVacancies.AsNoTracking().FirstOrDefaultAsync(j => j.Id == jobId);
+        if (job == null) return (0m, new List<string>(), new List<string>());
+
+        var requiredSkills = (job.RequiredSkills ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => s.ToLowerInvariant()).ToList();
+
+        if (requiredSkills.Count == 0) return (85m, new List<string>(), new List<string>());
+
+        var userSkillNames = await _db.UserSkills.AsNoTracking()
+            .Where(us => us.UserId == userId)
+            .Include(us => us.Skill)
+            .Select(us => us.Skill != null ? us.Skill.Name.ToLower() : string.Empty)
+            .Where(name => name != string.Empty)
+            .ToListAsync();
+
+        var matched = requiredSkills.Where(r => userSkillNames.Any(u => u.Contains(r) || r.Contains(u))).ToList();
+        var missing = requiredSkills.Except(matched).ToList();
+        var score = Math.Round((decimal)matched.Count / requiredSkills.Count * 100m, 1);
+        return (Math.Max(0m, Math.Min(100m, score)), matched, missing);
+    }
+
+    public async Task<(bool Qualified, decimal Score, string Reason, List<string> SkillsMatched, List<string> SkillsMissing)> IsUserQualifiedAsync(int tenantId, int userId, int jobId)
+    {
+        var (score, matched, missing) = await GetJobMatchScoreAsync(tenantId, userId, jobId);
+        var qualified = score >= 70m;
+        var reason = qualified
+            ? string.Format("You match {0}% of required skills.", score)
+            : string.Format("You match {0}% of required skills. A minimum of 70% is required.", score);
+        return (qualified, score, reason, matched, missing);
+    }
+
+    public async Task<(SavedSearch? Alert, string? Error)> CreateJobAlertAsync(int tenantId, int userId, string keywords, string? category, string? jobType)
+    {
+        if (string.IsNullOrWhiteSpace(keywords)) return (null, "Keywords are required");
+        var queryJson = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            keywords = keywords.Trim(),
+            category = category != null ? category.Trim() : (string?)null,
+            job_type = jobType != null ? jobType.Trim() : (string?)null
+        });
+        var alert = new SavedSearch
+        {
+            TenantId = tenantId, UserId = userId,
+            Name = string.Concat("Job alert: ", keywords.Trim()),
+            SearchType = "job_alert",
+            QueryJson = queryJson,
+            NotifyOnNewResults = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.SavedSearches.Add(alert);
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Created job alert {AlertId} for user {UserId}", alert.Id, userId);
+        return (alert, null);
+    }
+
+    public async Task<(bool Success, string? Error)> DeleteJobAlertAsync(int tenantId, int userId, int alertId)
+    {
+        var alert = await _db.SavedSearches.FirstOrDefaultAsync(s => s.Id == alertId && s.UserId == userId && s.SearchType == "job_alert");
+        if (alert == null) return (false, "Job alert not found");
+        _db.SavedSearches.Remove(alert);
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    public async Task<List<SavedSearch>> ListJobAlertsAsync(int tenantId, int userId)
+    {
+        return await _db.SavedSearches.AsNoTracking()
+            .Where(s => s.UserId == userId && s.SearchType == "job_alert")
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync();
+    }
+
     /// <summary>
     /// Get distinct job categories with counts of active jobs.
     /// </summary>

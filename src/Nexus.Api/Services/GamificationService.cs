@@ -407,6 +407,193 @@ public class GamificationService
     #endregion
 }
 
+    /// <summary>
+    /// Re-check all XP-threshold badges for a user and award any newly qualifying ones.
+    /// Returns list of newly earned UserBadge records.
+    /// </summary>
+    public async Task<(List<UserBadge> NewlyEarned, string? Error)> RecheckAllBadgesAsync(int tenantId, int userId)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return (new List<UserBadge>(), "User not found");
+
+        var earnedBadgeIds = await _db.UserBadges
+            .Where(ub => ub.UserId == userId)
+            .Select(ub => ub.BadgeId)
+            .ToListAsync();
+
+        var allBadges = await _db.Badges
+            .Where(b => b.IsActive && !earnedBadgeIds.Contains(b.Id))
+            .ToListAsync();
+
+        // Count completed exchanges for this user
+        var exchangeCount = await _db.Exchanges
+            .CountAsync(e => e.Status == ExchangeStatus.Completed &&
+                             (e.InitiatorId == userId || e.ListingOwnerId == userId));
+
+        var newlyEarned = new List<UserBadge>();
+
+        foreach (var badge in allBadges)
+        {
+            bool qualifies = badge.Name switch
+            {
+                "Bronze" => user.TotalXp >= 100,
+                "Silver" => user.TotalXp >= 500,
+                "Gold" => user.TotalXp >= 1000,
+                "Platinum" => user.TotalXp >= 5000,
+                _ => exchangeCount >= 1
+            };
+
+            if (qualifies)
+            {
+                var userBadge = new UserBadge
+                {
+                    TenantId = tenantId,
+                    UserId = userId,
+                    BadgeId = badge.Id
+                };
+                _db.UserBadges.Add(userBadge);
+
+                try
+                {
+                    await _db.SaveChangesAsync();
+                    newlyEarned.Add(userBadge);
+
+                    if (badge.XpReward > 0)
+                    {
+                        await AwardXpAsync(userId, badge.XpReward, XpLog.Sources.BadgeEarned, badge.Id, $"Earned badge: {badge.Name}");
+                    }
+
+                    _logger.LogInformation("Recheck: user {UserId} earned badge '{BadgeName}'", userId, badge.Name);
+                }
+                catch (DbUpdateException)
+                {
+                    _db.Entry(userBadge).State = EntityState.Detached;
+                    // Already earned (race) — skip
+                }
+            }
+        }
+
+        return (newlyEarned, null);
+    }
+
+    /// <summary>
+    /// Get all achievements (badges) with earned status and estimated progress for a user.
+    /// </summary>
+    public async Task<List<object>> GetAchievementsAsync(int tenantId, int userId)
+    {
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return new List<object>();
+
+        var earnedMap = await _db.UserBadges
+            .Where(ub => ub.UserId == userId)
+            .Select(ub => new { ub.BadgeId, ub.EarnedAt })
+            .ToDictionaryAsync(x => x.BadgeId, x => x.EarnedAt);
+
+        var badges = await _db.Badges
+            .Where(b => b.IsActive)
+            .OrderBy(b => b.SortOrder).ThenBy(b => b.Name)
+            .ToListAsync();
+
+        var exchangeCount = await _db.Exchanges
+            .CountAsync(e => e.Status == ExchangeStatus.Completed &&
+                             (e.InitiatorId == userId || e.ListingOwnerId == userId));
+
+        var result = new List<object>();
+
+        foreach (var badge in badges)
+        {
+            var isEarned = earnedMap.ContainsKey(badge.Id);
+            DateTime? earnedAt = isEarned ? earnedMap[badge.Id] : null;
+
+            // Estimate progress percent based on badge name
+            double progressPercent = badge.Name switch
+            {
+                "Bronze" => isEarned ? 100 : Math.Min(100, user.TotalXp / 100.0 * 100),
+                "Silver" => isEarned ? 100 : Math.Min(100, user.TotalXp / 500.0 * 100),
+                "Gold" => isEarned ? 100 : Math.Min(100, user.TotalXp / 1000.0 * 100),
+                "Platinum" => isEarned ? 100 : Math.Min(100, user.TotalXp / 5000.0 * 100),
+                _ => isEarned ? 100 : (exchangeCount >= 1 ? 100 : 0)
+            };
+
+            result.Add(new
+            {
+                badge = new
+                {
+                    badge.Id,
+                    badge.Slug,
+                    badge.Name,
+                    badge.Description,
+                    badge.Icon,
+                    badge.XpReward
+                },
+                earned = isEarned,
+                earned_at = earnedAt,
+                progress_percent = Math.Round(progressPercent, 1)
+            });
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Admin: manually award a badge to a user.
+    /// </summary>
+    public async Task<(UserBadge?, string? Error)> AwardBadgeManuallyAsync(int tenantId, int userId, int badgeId, int adminId)
+    {
+        var badge = await _db.Badges.FirstOrDefaultAsync(b => b.Id == badgeId && b.IsActive);
+        if (badge == null) return (null, "Badge not found");
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return (null, "User not found");
+
+        var existing = await _db.UserBadges
+            .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
+        if (existing != null) return (null, "User already has this badge");
+
+        var userBadge = new UserBadge
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            BadgeId = badgeId
+        };
+        _db.UserBadges.Add(userBadge);
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            _db.Entry(userBadge).State = EntityState.Detached;
+            return (null, "User already has this badge");
+        }
+
+        if (badge.XpReward > 0)
+        {
+            await AwardXpAsync(userId, badge.XpReward, XpLog.Sources.BadgeEarned, badge.Id, $"Badge manually awarded: {badge.Name}");
+        }
+
+        _logger.LogInformation("Admin {AdminId} manually awarded badge '{BadgeSlug}' to user {UserId}", adminId, badge.Slug, userId);
+        return (userBadge, null);
+    }
+
+    /// <summary>
+    /// Admin: revoke a badge from a user.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> RevokeBadgeAsync(int tenantId, int userId, int badgeId, int adminId)
+    {
+        var userBadge = await _db.UserBadges
+            .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
+
+        if (userBadge == null) return (false, "User does not have this badge");
+
+        _db.UserBadges.Remove(userBadge);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} revoked badge {BadgeId} from user {UserId}", adminId, badgeId, userId);
+        return (true, null);
+    }
+
 public class XpAwardResult
 {
     public bool Success { get; set; }

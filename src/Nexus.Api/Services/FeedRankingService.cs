@@ -420,6 +420,102 @@ public class FeedRankingService
     }
 }
 
+    // ---- NEW METHODS (Task 3 additions) ----
+
+    public async Task<(bool Success, string? Error)> AddReactionAsync(int tenantId, int postId, int userId, string reactionType)
+    {
+        if (!PostReaction.Types.All.Contains(reactionType))
+            return (false, string.Concat("Invalid reaction type. Must be one of: ", string.Join(", ", PostReaction.Types.All)));
+
+        var postExists = await _db.FeedPosts.AnyAsync(p => p.Id == postId);
+        if (!postExists) return (false, "Post not found");
+
+        var existing = await _db.Set<PostReaction>().FirstOrDefaultAsync(r => r.PostId == postId && r.UserId == userId);
+        if (existing != null)
+        {
+            existing.ReactionType = reactionType;
+            await _db.SaveChangesAsync();
+            return (true, null);
+        }
+
+        _db.Set<PostReaction>().Add(new PostReaction
+        {
+            TenantId = tenantId,
+            PostId = postId,
+            UserId = userId,
+            ReactionType = reactionType
+        });
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    public async Task<(bool Success, string? Error)> RemoveReactionAsync(int tenantId, int postId, int userId)
+    {
+        var reaction = await _db.Set<PostReaction>().FirstOrDefaultAsync(r => r.PostId == postId && r.UserId == userId);
+        if (reaction == null) return (false, "No reaction found");
+        _db.Set<PostReaction>().Remove(reaction);
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    public async Task<Dictionary<string, int>> GetReactionsAsync(int tenantId, int postId)
+    {
+        var counts = new Dictionary<string, int>();
+        foreach (var type in PostReaction.Types.All)
+            counts[type] = 0;
+
+        var reactions = await _db.Set<PostReaction>()
+            .AsNoTracking()
+            .Where(r => r.PostId == postId)
+            .GroupBy(r => r.ReactionType)
+            .Select(g => new { Type = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        foreach (var r in reactions)
+            counts[r.Type] = r.Count;
+
+        return counts;
+    }
+
+    public async Task<List<object>> SearchMentionsAsync(int tenantId, string query)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+            return new List<object>();
+
+        var term = query.Trim().ToLower();
+        var users = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.FirstName.ToLower().Contains(term) ||
+                        u.LastName.ToLower().Contains(term) ||
+                        (u.Email != null && u.Email.ToLower().Contains(term)))
+            .Take(10)
+            .Select(u => (object)new { id = u.Id, name = string.Concat(u.FirstName, " ", u.LastName), username = u.Email })
+            .ToListAsync();
+
+        return users;
+    }
+
+    public async Task<(PostShare? Share, string? Error)> SharePostWithCommentAsync(int tenantId, int postId, int userId, string? comment)
+    {
+        var postExists = await _db.FeedPosts.AnyAsync(p => p.Id == postId);
+        if (!postExists) return (null, "Post not found");
+
+        var share = new PostShare
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            PostId = postId,
+            SharedTo = "internal"
+        };
+
+        _db.Set<PostShare>().Add(share);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("User {UserId} shared post {PostId}", userId, postId);
+        return (share, null);
+    }
+
+
 // --- Result DTOs ---
 
 public class ScoredPost

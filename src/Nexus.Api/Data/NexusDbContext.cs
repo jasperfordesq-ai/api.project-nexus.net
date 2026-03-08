@@ -117,6 +117,8 @@ public class NexusDbContext : DbContext
 
     // Phase 30: Admin CRM
     public DbSet<AdminNote> AdminNotes => Set<AdminNote>();
+    public DbSet<CrmTask> CrmTasks => Set<CrmTask>();
+    public DbSet<UserTag> UserTags => Set<UserTag>();
 
     // Phase 31: Newsletter
     public DbSet<Newsletter> Newsletters => Set<Newsletter>();

@@ -114,4 +114,85 @@ public class IdeationService
         await _db.SaveChangesAsync();
         return (true, null);
     }
+
+    // ---- NEW METHODS (Task 2 additions) ----
+
+    public async Task<(bool IsFavorited, string? Error)> ToggleFavoriteIdeaAsync(int ideaId, int userId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var idea = await _db.Set<Idea>().FirstOrDefaultAsync(i => i.Id == ideaId);
+        if (idea == null) return (false, "Idea not found");
+
+        var existing = await _db.Set<IdeaFavorite>().FirstOrDefaultAsync(f => f.IdeaId == ideaId && f.UserId == userId);
+        if (existing != null)
+        {
+            _db.Set<IdeaFavorite>().Remove(existing);
+            await _db.SaveChangesAsync();
+            return (false, null);
+        }
+
+        _db.Set<IdeaFavorite>().Add(new IdeaFavorite { TenantId = tenantId, IdeaId = ideaId, UserId = userId });
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    public async Task<(Idea? Copy, string? Error)> DuplicateIdeaAsync(int ideaId, int userId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var original = await _db.Set<Idea>().FirstOrDefaultAsync(i => i.Id == ideaId);
+        if (original == null) return (null, "Idea not found");
+
+        var copy = new Idea
+        {
+            TenantId = tenantId,
+            AuthorId = userId,
+            Title = string.Concat("Copy of ", original.Title),
+            Content = original.Content,
+            Category = original.Category,
+            Status = "submitted"
+        };
+
+        _db.Set<Idea>().Add(copy);
+        await _db.SaveChangesAsync();
+        return (copy, null);
+    }
+
+    public async Task<(Group? NewGroup, string? Error)> ConvertToGroupAsync(int ideaId, int userId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var idea = await _db.Set<Idea>().FirstOrDefaultAsync(i => i.Id == ideaId);
+        if (idea == null) return (null, "Idea not found");
+        if (idea.Status == "converted") return (null, "Idea has already been converted to a group");
+
+        var group = new Group
+        {
+            TenantId = tenantId,
+            CreatedById = userId,
+            Name = idea.Title,
+            Description = idea.Content,
+            IsPrivate = false
+        };
+
+        _db.Groups.Add(group);
+
+        idea.Status = "converted";
+        idea.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        // Add creator as owner member
+        _db.Set<GroupMember>().Add(new GroupMember
+        {
+            TenantId = tenantId,
+            GroupId = group.Id,
+            UserId = userId,
+            Role = Group.Roles.Owner
+        });
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Converted idea {IdeaId} to group {GroupId} by user {UserId}", ideaId, group.Id, userId);
+        return (group, null);
+    }
+
+
 }

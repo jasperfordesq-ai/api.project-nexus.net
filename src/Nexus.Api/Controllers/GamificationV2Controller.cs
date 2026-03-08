@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Data;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -26,6 +27,8 @@ public class GamificationV2Controller : ControllerBase
     private readonly StreakService _streakService;
     private readonly LeaderboardSeasonService _seasonService;
     private readonly DailyRewardService _dailyRewardService;
+    private readonly GamificationService _gamificationService;
+    private readonly TenantContext _tenantContext;
     private readonly ILogger<GamificationV2Controller> _logger;
 
     public GamificationV2Controller(
@@ -33,12 +36,16 @@ public class GamificationV2Controller : ControllerBase
         StreakService streakService,
         LeaderboardSeasonService seasonService,
         DailyRewardService dailyRewardService,
+        GamificationService gamificationService,
+        TenantContext tenantContext,
         ILogger<GamificationV2Controller> logger)
     {
         _challengeService = challengeService;
         _streakService = streakService;
         _seasonService = seasonService;
         _dailyRewardService = dailyRewardService;
+        _gamificationService = gamificationService;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
