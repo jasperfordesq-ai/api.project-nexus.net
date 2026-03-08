@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nexus.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Nexus.Api.Migrations
 {
     [DbContext(typeof(NexusDbContext))]
-    partial class NexusDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260308120957_Phase61_ContactEmergencyMessageAttach")]
+    partial class Phase61_ContactEmergencyMessageAttach
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -8067,49 +8070,6 @@ namespace Nexus.Api.Migrations
                     b.ToTable("xp_logs", (string)null);
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.XpShopRedemption", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("ItemId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ItemName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("RedeemedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("XpSpent")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("XpShopRedemptions");
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.AdminNote", b =>
                 {
                     b.HasOne("Nexus.Api.Entities.User", "Admin")
@@ -11525,25 +11485,6 @@ namespace Nexus.Api.Migrations
 
                     b.HasOne("Nexus.Api.Entities.User", "User")
                         .WithMany("XpLogs")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.XpShopRedemption", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Nexus.Api.Entities.User", "User")
-                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

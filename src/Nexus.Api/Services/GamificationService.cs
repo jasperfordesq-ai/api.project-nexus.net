@@ -419,6 +419,7 @@ public class XpAwardResult
     public bool LeveledUp { get; set; }
 }
 
+
 public class BadgeAwardResult
 {
     public bool Success { get; set; }

@@ -295,6 +295,16 @@ public class NexusDbContext : DbContext
 
     // Sub-Accounts / Family Profiles
     public DbSet<SubAccount> SubAccounts => Set<SubAccount>();
+    public DbSet<XpShopRedemption> XpShopRedemptions => Set<XpShopRedemption>();
+
+    // Contact Forms
+    public DbSet<ContactSubmission> ContactSubmissions => Set<ContactSubmission>();
+
+    // Emergency Alerts
+    public DbSet<EmergencyAlert> EmergencyAlerts => Set<EmergencyAlert>();
+
+    // Message Attachments
+    public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -3192,9 +3202,51 @@ public class NexusDbContext : DbContext
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
         });
+
+        // --- Contact Forms ---
+
+        modelBuilder.Entity<ContactSubmission>(entity =>
+        {
+            entity.ToTable("contact_submissions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Subject).HasMaxLength(500).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // --- Emergency Alerts ---
+
+        modelBuilder.Entity<EmergencyAlert>(entity =>
+        {
+            entity.ToTable("emergency_alerts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Urgency).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => new { e.TenantId, e.IsActive });
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !_tenantContext.IsResolved || e.TenantId == _tenantContext.TenantId);
+        });
+
+        // --- Message Attachments ---
+
+        modelBuilder.Entity<MessageAttachment>(entity =>
+        {
+            entity.ToTable("message_attachments");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.MessageId);
+            entity.HasOne(e => e.Message).WithMany().HasForeignKey(e => e.MessageId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.FileUpload).WithMany().HasForeignKey(e => e.FileUploadId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.UploadedBy).WithMany().HasForeignKey(e => e.UploadedById).OnDelete(DeleteBehavior.Restrict);
+        });
     }
 
-    public override int SaveChanges()
+        public override int SaveChanges()
     {
         SetTenantIdOnInsert();
         return base.SaveChanges();
