@@ -422,7 +422,7 @@ function GroupDetailContent() {
             {/* Tabs */}
             <div className="flex justify-center">
               <Tabs
-                selectedKey={activeTab}
+                selectedKey={activeTab as any}
                 onSelectionChange={(key) => setActiveTab(key as string)}
                 classNames={{
                   tabList: "bg-white/5 border border-white/10",
