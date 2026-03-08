@@ -772,5 +772,7 @@ public class SharePostRequest
 {
     [JsonPropertyName("comment")]
     public string? Comment { get; set; }
+    [JsonPropertyName("shared_to")]
+    public string? SharedTo { get; set; }
 }
 
