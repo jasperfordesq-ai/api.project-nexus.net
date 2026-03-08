@@ -418,7 +418,6 @@ public class FeedRankingService
             TotalEngagement = post.Likes.Count + post.Comments.Count + shareCount + bookmarkCount
         };
     }
-}
 
     // ---- NEW METHODS (Task 3 additions) ----
 
@@ -517,6 +516,8 @@ public class FeedRankingService
 
 
 // --- Result DTOs ---
+
+}
 
 public class ScoredPost
 {
