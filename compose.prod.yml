@@ -8,6 +8,7 @@
 services:
   api:
     environment:
+      - ASPNETCORE_ENVIRONMENT=Production
       # CORS - production domains
       - Cors__AllowedOrigins__0=https://app.project-nexus.net
       - Cors__AllowedOrigins__1=https://uk.project-nexus.net
