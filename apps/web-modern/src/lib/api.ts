@@ -1887,7 +1887,7 @@ class ApiClient {
     return this.request("/api/push/settings");
   }
 
-  async updatePushSettings(data: Record<string, unknown>): Promise<void> {
+  async updatePushSettings(data: unknown): Promise<void> {
     return this.request<void>("/api/push/settings", {
       method: "PUT",
       body: JSON.stringify(data),
@@ -2621,7 +2621,7 @@ class ApiClient {
     return this.request("/api/matching/preferences");
   }
 
-  async updateMatchPreferences(prefs: Record<string, unknown>): Promise<void> {
+  async updateMatchPreferences(prefs: unknown): Promise<void> {
     return this.request<void>("/api/matching/preferences", {
       method: "PUT",
       body: JSON.stringify(prefs),
