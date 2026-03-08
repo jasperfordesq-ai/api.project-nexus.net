@@ -268,9 +268,3 @@ public class FeedRankingController : ControllerBase
         });
     }
 }
-
-public class SharePostRequest
-{
-    [JsonPropertyName("shared_to")]
-    public string? SharedTo { get; set; }
-}
