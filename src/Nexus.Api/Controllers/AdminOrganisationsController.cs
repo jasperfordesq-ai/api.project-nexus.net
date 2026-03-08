@@ -14,7 +14,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/organisations")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminOrganisationsController : ControllerBase
 {
     private readonly OrganisationService _orgs;

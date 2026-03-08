@@ -18,7 +18,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/broker")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminBrokerController : ControllerBase
 {
     private readonly BrokerService _broker;

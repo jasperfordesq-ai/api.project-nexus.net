@@ -17,7 +17,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/translations")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminTranslationsController : ControllerBase
 {
     private readonly NexusDbContext _db;

@@ -27,12 +27,16 @@ public class FeedController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly ILogger<FeedController> _logger;
     private readonly GamificationService _gamification;
+    private readonly FeedRankingService _feedRanking;
+    private readonly TenantContext _tenantContext;
 
-    public FeedController(NexusDbContext db, ILogger<FeedController> logger, GamificationService gamification)
+    public FeedController(NexusDbContext db, ILogger<FeedController> logger, GamificationService gamification, FeedRankingService feedRanking, TenantContext tenantContext)
     {
         _db = db;
         _logger = logger;
         _gamification = gamification;
+        _feedRanking = feedRanking;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>
@@ -666,6 +670,63 @@ public class FeedController : ControllerBase
         });
     }
 
+
+    [HttpPost("{id}/react")]
+    public async Task<IActionResult> AddReaction(int id, [FromBody] AddReactionRequest request)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.TenantId ?? 0;
+        var (success, error) = await _feedRanking.AddReactionAsync(tenantId, id, userId.Value, request.ReactionType ?? "like");
+        if (error == "Post not found") return NotFound(new { error });
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { message = "Reaction added", reaction_type = request.ReactionType, post_id = id });
+    }
+
+    [HttpDelete("{id}/react")]
+    public async Task<IActionResult> RemoveReaction(int id)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.TenantId ?? 0;
+        var (success, error) = await _feedRanking.RemoveReactionAsync(tenantId, id, userId.Value);
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { message = "Reaction removed" });
+    }
+
+    [HttpGet("{id}/reactions")]
+    public async Task<IActionResult> GetReactions(int id)
+    {
+        var tenantId = _tenantContext.TenantId ?? 0;
+        var counts = await _feedRanking.GetReactionsAsync(tenantId, id);
+        var total = counts.Values.Sum();
+        return Ok(new { like = counts["like"], love = counts["love"], laugh = counts["laugh"], sad = counts["sad"], angry = counts["angry"], wow = counts["wow"], total });
+    }
+
+    [HttpGet("mentions/search")]
+    public async Task<IActionResult> SearchMentions([FromQuery] string? q)
+    {
+        var tenantId = _tenantContext.TenantId ?? 0;
+        if (string.IsNullOrWhiteSpace(q)) return Ok(new { data = Array.Empty<object>() });
+        var users = await _feedRanking.SearchMentionsAsync(tenantId, q);
+        return Ok(new { data = users });
+    }
+
+    [HttpPost("{id}/share")]
+    public async Task<IActionResult> SharePost(int id, [FromBody] SharePostRequest request)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.TenantId ?? 0;
+        var (share, error) = await _feedRanking.SharePostWithCommentAsync(tenantId, id, userId.Value, request.Comment);
+        if (error == "Post not found") return NotFound(new { error });
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { message = "Post shared", share_id = share!.Id, post_id = id });
+    }
+
     private int? GetCurrentUserId() => User.GetUserId();
 }
 
@@ -700,3 +761,16 @@ public class AddCommentRequest
     [JsonPropertyName("parent_comment_id")]
     public int? ParentCommentId { get; set; }
 }
+
+public class AddReactionRequest
+{
+    [JsonPropertyName("reaction_type")]
+    public string? ReactionType { get; set; }
+}
+
+public class SharePostRequest
+{
+    [JsonPropertyName("comment")]
+    public string? Comment { get; set; }
+}
+

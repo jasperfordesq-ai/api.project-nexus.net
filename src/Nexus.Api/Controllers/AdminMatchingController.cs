@@ -16,7 +16,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/matching")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminMatchingController : ControllerBase
 {
     private readonly NexusDbContext _db;

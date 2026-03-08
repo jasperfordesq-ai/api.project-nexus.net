@@ -16,7 +16,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/groups")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminGroupsController : ControllerBase
 {
     private readonly NexusDbContext _db;

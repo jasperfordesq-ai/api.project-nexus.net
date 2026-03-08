@@ -255,7 +255,7 @@ public class RegistrationPolicyController : ControllerBase
     /// Get the full registration policy for the current tenant (admin only).
     /// </summary>
     [HttpGet("admin/policy")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -296,7 +296,7 @@ public class RegistrationPolicyController : ControllerBase
     /// Update the registration policy for the current tenant (admin only).
     /// </summary>
     [HttpPut("admin/policy")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -357,7 +357,7 @@ public class RegistrationPolicyController : ControllerBase
     /// Get users pending admin approval.
     /// </summary>
     [HttpGet("admin/pending")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -398,7 +398,7 @@ public class RegistrationPolicyController : ControllerBase
     /// Approve a pending user registration (admin only).
     /// </summary>
     [HttpPut("admin/users/{userId:int}/approve")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -420,7 +420,7 @@ public class RegistrationPolicyController : ControllerBase
     /// Reject a pending user registration (admin only).
     /// </summary>
     [HttpPut("admin/users/{userId:int}/reject")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -442,7 +442,7 @@ public class RegistrationPolicyController : ControllerBase
     /// Get available registration modes and providers (admin reference).
     /// </summary>
     [HttpGet("admin/options")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

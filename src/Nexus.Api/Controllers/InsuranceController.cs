@@ -106,7 +106,7 @@ public class InsuranceController : ControllerBase
     /// GET /api/insurance/admin/pending - Pending certificates.
     /// </summary>
     [HttpGet("admin/pending")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminPending()
     {
         var certs = await _insurance.AdminListPendingAsync();
@@ -117,7 +117,7 @@ public class InsuranceController : ControllerBase
     /// GET /api/insurance/admin/expiring - Expiring soon.
     /// </summary>
     [HttpGet("admin/expiring")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminExpiring([FromQuery] int days = 30)
     {
         var certs = await _insurance.AdminListExpiringAsync(days);
@@ -128,7 +128,7 @@ public class InsuranceController : ControllerBase
     /// PUT /api/insurance/admin/{id}/verify - Verify a certificate.
     /// </summary>
     [HttpPut("admin/{id}/verify")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminVerify(int id)
     {
         var userId = User.GetUserId();
@@ -143,7 +143,7 @@ public class InsuranceController : ControllerBase
     /// PUT /api/insurance/admin/{id}/reject - Reject a certificate.
     /// </summary>
     [HttpPut("admin/{id}/reject")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminReject(int id)
     {
         var userId = User.GetUserId();

@@ -16,7 +16,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/blog")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminBlogController : ControllerBase
 {
     private readonly BlogService _blog;

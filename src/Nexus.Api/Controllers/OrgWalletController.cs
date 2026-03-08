@@ -110,7 +110,7 @@ public class OrgWalletController : ControllerBase
     /// POST /api/organisations/{orgId}/wallet/grant - Admin grant credits (admin only).
     /// </summary>
     [HttpPost("grant")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminGrant(int orgId, [FromBody] OrgWalletGrantRequest request)
     {
         var (tx, error) = await _walletService.AdminGrantAsync(orgId, request.Amount, request.Description);

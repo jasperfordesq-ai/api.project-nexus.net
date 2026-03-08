@@ -461,7 +461,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
-        policy.RequireClaim("role", "admin"));
+        policy.RequireClaim("role", "admin", "super_admin"));
 });
 
 // Health checks

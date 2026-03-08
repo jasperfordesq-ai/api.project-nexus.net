@@ -17,7 +17,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/emails")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminEmailController : ControllerBase
 {
     private readonly NexusDbContext _db;

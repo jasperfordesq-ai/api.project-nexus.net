@@ -15,7 +15,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/search")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminSearchController : ControllerBase
 {
     private readonly MeilisearchService _meilisearch;

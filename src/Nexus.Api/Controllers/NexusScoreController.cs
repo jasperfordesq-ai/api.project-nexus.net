@@ -116,7 +116,7 @@ public class NexusScoreController : ControllerBase
     /// GET /api/nexus-score/distribution - Tier distribution (admin).
     /// </summary>
     [HttpGet("distribution")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> GetDistribution()
     {
         var distribution = await _nexusScore.GetTierDistributionAsync();
@@ -127,7 +127,7 @@ public class NexusScoreController : ControllerBase
     /// POST /api/nexus-score/admin/recalculate/{userId} - Admin recalculate user's score.
     /// </summary>
     [HttpPost("admin/recalculate/{userId}")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminRecalculate(int userId)
     {
         var score = await _nexusScore.RecalculateAsync(userId, "admin_recalculation");

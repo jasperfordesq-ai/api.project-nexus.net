@@ -88,7 +88,7 @@ public class OnboardingController : ControllerBase
     /// POST /api/onboarding/admin/steps - Create onboarding step.
     /// </summary>
     [HttpPost("admin/steps")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> CreateStep([FromBody] CreateOnboardingStepRequest request)
     {
         var (step, error) = await _onboarding.CreateStepAsync(
@@ -102,7 +102,7 @@ public class OnboardingController : ControllerBase
     /// PUT /api/onboarding/admin/steps/{id} - Update step.
     /// </summary>
     [HttpPut("admin/steps/{id}")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> UpdateStep(int id, [FromBody] UpdateOnboardingStepRequest request)
     {
         var (step, error) = await _onboarding.UpdateStepAsync(
@@ -115,7 +115,7 @@ public class OnboardingController : ControllerBase
     /// DELETE /api/onboarding/admin/steps/{id} - Delete step.
     /// </summary>
     [HttpDelete("admin/steps/{id}")]
-    [Authorize(Roles = "admin")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> DeleteStep(int id)
     {
         var error = await _onboarding.DeleteStepAsync(id);

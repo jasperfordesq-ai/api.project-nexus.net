@@ -17,7 +17,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/secrets")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class SecretsController : ControllerBase
 {
     private readonly SecretsVaultService _secrets;

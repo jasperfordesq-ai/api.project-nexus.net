@@ -17,7 +17,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/gamification")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminGamificationController : ControllerBase
 {
     private readonly NexusDbContext _db;

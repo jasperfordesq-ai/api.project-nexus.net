@@ -17,7 +17,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/notifications")]
-[Authorize(Roles = "admin")]
+[Authorize(Policy = "AdminOnly")]
 public class AdminNotificationsController : ControllerBase
 {
     private readonly NexusDbContext _db;

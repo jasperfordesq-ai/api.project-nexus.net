@@ -77,7 +77,51 @@ public class IdeationController : ControllerBase
 
     [HttpPut("api/challenges/{id:int}/progress")]
     public async Task<IActionResult> UpdateChallengeProgress(int id, [FromBody] UpdateChallengeProgressRequest request) { var userId = User.GetUserId(); if (userId == null) return Unauthorized(new { error = "Invalid token" }); var (s, e) = await _ideationService.UpdateChallengeProgressAsync(id, userId.Value, request.Value); return s ? Ok(new { message = "Updated" }) : BadRequest(new { error = e }); }
+    [HttpPost("api/ideas/{id:int}/favorite")]
+    public async Task<IActionResult> FavoriteIdea(int id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (favorited, error) = await _ideationService.ToggleFavoriteIdeaAsync(id, userId.Value);
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { favorited, idea_id = id });
+    }
+
+    [HttpDelete("api/ideas/{id:int}/favorite")]
+    public async Task<IActionResult> UnfavoriteIdea(int id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (favorited, error) = await _ideationService.ToggleFavoriteIdeaAsync(id, userId.Value);
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { favorited, idea_id = id });
+    }
+
+    [HttpPost("api/ideas/{id:int}/duplicate")]
+    public async Task<IActionResult> DuplicateIdea(int id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (idea, error) = await _ideationService.DuplicateIdeaAsync(id, userId.Value);
+        if (error != null) return BadRequest(new { error });
+        return CreatedAtAction(nameof(GetIdea), new { id = idea!.Id },
+            new { id = idea.Id, title = idea.Title, status = idea.Status, created_at = idea.CreatedAt });
+    }
+
+    [HttpPost("api/ideas/{id:int}/convert-to-group")]
+    public async Task<IActionResult> ConvertToGroup(int id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (group, error) = await _ideationService.ConvertToGroupAsync(id, userId.Value);
+        if (error == "Idea not found") return NotFound(new { error });
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { group_id = group!.Id, group_name = group.Name, idea_id = id });
+    }
+
+
 }
+
 
 public class CreateIdeaRequest { [JsonPropertyName("title")] public string Title { get; set; } = string.Empty; [JsonPropertyName("content")] public string Content { get; set; } = string.Empty; [JsonPropertyName("category")] public string? Category { get; set; } }
 public class IdeaCommentRequest { [JsonPropertyName("content")] public string Content { get; set; } = string.Empty; }

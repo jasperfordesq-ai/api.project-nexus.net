@@ -375,10 +375,11 @@ public class JobsController : ControllerBase
     }
 
     /// <summary>
-    /// Renew a job posting (extend expiry by 30 days).
+    /// Renew a job posting. Admin can renew any job; owners renew their own.
+    /// Optional body: { days: int } (default 30, max 365).
     /// </summary>
     [HttpPost("{id:int}/renew")]
-    public async Task<IActionResult> RenewJob(int id)
+    public async Task<IActionResult> RenewJob(int id, [FromBody] RenewJobRequest? request)
     {
         var userId = User.GetUserId();
         if (userId == null)
@@ -387,8 +388,17 @@ public class JobsController : ControllerBase
         if (!_tenantContext.TenantId.HasValue)
             return BadRequest(new { error = "Tenant context not resolved" });
 
-        var (job, error) = await _jobService.RenewJobAsync(
-            _tenantContext.TenantId.Value, userId.Value, id);
+        var days = request?.Days is > 0 ? request.Days : 30;
+        var role = User.GetRole();
+        var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+
+        Entities.JobVacancy? job;
+        string? error;
+
+        if (isAdmin)
+            (job, error) = await _jobService.AdminRenewJobAsync(_tenantContext.TenantId.Value, id, days);
+        else
+            (job, error) = await _jobService.RenewJobAsync(_tenantContext.TenantId.Value, userId.Value, id, days);
 
         if (error == "Job not found")
             return NotFound(new { error });
@@ -396,7 +406,97 @@ public class JobsController : ControllerBase
         if (error != null)
             return StatusCode(403, new { error });
 
-        return Ok(MapJobResponse(job!));
+        return Ok(new { message = "Job renewed", new_expiry = job!.ExpiresAt });
+    }
+
+
+    // ---- NEW ENDPOINTS (Task 1 additions) ----
+
+    [HttpGet("{id:int}/match")]
+    public async Task<IActionResult> GetJobMatchScore(int id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
+
+        var (score, matched, missing) = await _jobService.GetJobMatchScoreAsync(_tenantContext.TenantId.Value, userId.Value, id);
+        return Ok(new { job_id = id, score, qualified = score >= 70m, skills_matched = matched, skills_missing = missing });
+    }
+
+    [HttpGet("{id:int}/qualified")]
+    public async Task<IActionResult> GetQualification(int id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
+
+        var (qualified, score, reason, matched, missing) = await _jobService.IsUserQualifiedAsync(_tenantContext.TenantId.Value, userId.Value, id);
+        return Ok(new { qualified, score, reason, skills_matched = matched, skills_missing = missing });
+    }
+
+    [HttpPost("{id:int}/feature")]
+    public async Task<IActionResult> FeatureJob(int id, [FromBody] FeatureJobRequest request)
+    {
+        var role = User.GetRole();
+        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+            return StatusCode(403, new { error = "Admin only" });
+        if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
+
+        var days = request.Days > 0 ? request.Days : 30;
+        var (job, featuredUntil, error) = await _jobService.FeatureJobForDaysAsync(_tenantContext.TenantId.Value, id, days);
+        if (error == "Job not found") return NotFound(new { error });
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { message = "Job featured", featured_until = featuredUntil });
+    }
+
+    [HttpDelete("{id:int}/feature")]
+    public async Task<IActionResult> UnfeatureJob(int id)
+    {
+        var role = User.GetRole();
+        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+            return StatusCode(403, new { error = "Admin only" });
+        if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
+
+        var (success, error) = await _jobService.UnfeatureJobAsync(_tenantContext.TenantId.Value, id);
+        if (error == "Job not found") return NotFound(new { error });
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { message = "Job unfeatured" });
+    }
+
+    [HttpGet("alerts")]
+    public async Task<IActionResult> GetAlerts()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
+
+        var alerts = await _jobService.ListJobAlertsAsync(_tenantContext.TenantId.Value, userId.Value);
+        return Ok(new { data = alerts.Select(a => new { id = a.Id, name = a.Name, query = a.QueryJson, notify = a.NotifyOnNewResults, created_at = a.CreatedAt }) });
+    }
+
+    [HttpPost("alerts")]
+    public async Task<IActionResult> CreateAlert([FromBody] CreateJobAlertRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
+
+        var (alert, error) = await _jobService.CreateJobAlertAsync(_tenantContext.TenantId.Value, userId.Value, request.Keywords, request.Category, request.JobType);
+        if (error != null) return BadRequest(new { error });
+        return CreatedAtAction(nameof(GetAlerts), null, new { id = alert!.Id, name = alert.Name, created_at = alert.CreatedAt });
+    }
+
+    [HttpDelete("alerts/{alertId:int}")]
+    public async Task<IActionResult> DeleteAlert(int alertId)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
+
+        var (success, error) = await _jobService.DeleteJobAlertAsync(_tenantContext.TenantId.Value, userId.Value, alertId);
+        if (error == "Job alert not found") return NotFound(new { error });
+        if (error != null) return BadRequest(new { error });
+        return NoContent();
     }
 
     private static object MapJobResponse(Entities.JobVacancy job)
@@ -551,4 +651,28 @@ public class ReviewJobApplicationRequest
 
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
+}
+
+public class FeatureJobRequest
+{
+    [JsonPropertyName("days")]
+    public int Days { get; set; } = 30;
+}
+
+public class CreateJobAlertRequest
+{
+    [JsonPropertyName("keywords")]
+    public string Keywords { get; set; } = string.Empty;
+
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
+
+    [JsonPropertyName("job_type")]
+    public string? JobType { get; set; }
+}
+
+public class RenewJobRequest
+{
+    [JsonPropertyName("days")]
+    public int Days { get; set; } = 30;
 }
