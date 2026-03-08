@@ -1,0 +1,69 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Nexus.Api.Services;
+
+namespace Nexus.Api.Controllers;
+
+/// <summary>
+/// Admin organisation management - list, verify, suspend.
+/// </summary>
+[ApiController]
+[Route("api/admin/organisations")]
+[Authorize(Roles = "admin")]
+public class AdminOrganisationsController : ControllerBase
+{
+    private readonly OrganisationService _orgs;
+
+    public AdminOrganisationsController(OrganisationService orgs)
+    {
+        _orgs = orgs;
+    }
+
+    /// <summary>
+    /// GET /api/admin/organisations - List all organisations (any status).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ListOrganisations(
+        [FromQuery] string? status = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20)
+    {
+        var orgs = await _orgs.AdminListAsync(status, page, limit);
+        return Ok(new
+        {
+            data = orgs.Select(o => new
+            {
+                o.Id, o.Name, o.Slug, o.Type, o.Industry, o.Status,
+                is_public = o.IsPublic, created_at = o.CreatedAt, verified_at = o.VerifiedAt,
+                owner = o.Owner != null ? new { o.Owner.Id, o.Owner.FirstName, o.Owner.LastName } : null
+            })
+        });
+    }
+
+    /// <summary>
+    /// PUT /api/admin/organisations/{id}/verify - Verify an organisation.
+    /// </summary>
+    [HttpPut("{id}/verify")]
+    public async Task<IActionResult> Verify(int id)
+    {
+        var (org, error) = await _orgs.AdminVerifyAsync(id);
+        if (error != null) return NotFound(new { error });
+        return Ok(new { data = new { org!.Id, org.Name, org.Status, verified_at = org.VerifiedAt } });
+    }
+
+    /// <summary>
+    /// PUT /api/admin/organisations/{id}/suspend - Suspend an organisation.
+    /// </summary>
+    [HttpPut("{id}/suspend")]
+    public async Task<IActionResult> Suspend(int id)
+    {
+        var (org, error) = await _orgs.AdminSuspendAsync(id);
+        if (error != null) return NotFound(new { error });
+        return Ok(new { data = new { org!.Id, org.Name, org.Status } });
+    }
+}

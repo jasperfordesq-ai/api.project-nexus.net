@@ -1,5 +1,7 @@
 # Frontend Integration Guide
 
+> **Note:** Admin panel endpoints are documented separately in the Admin Panel microservice project. This guide covers member-facing frontend integration only.
+
 This guide explains how to connect a frontend application to the Project NEXUS ASP.NET Core API.
 
 ---
@@ -26,36 +28,56 @@ These features are **fully implemented** in the ASP.NET backend. Frontend teams 
 - **Reviews** - User reviews, listing reviews, exchange ratings
 - **Search** - Unified search, autocomplete, member directory
 - **AI Features** - Chat, listing suggestions, matching, moderation, translations
-- **Admin Dashboard** - User management, content moderation, categories, roles, analytics
 - **Registration Policy Engine** - 5 registration modes, identity verification, admin approval
 - **File Upload** - Upload, download, list, delete, metadata
-- **Content Reporting** - Report content, admin review queue, user warnings
+- **Content Reporting** - Report content
 
-**New Modules (Phases 38-48, recently built):**
-- **Federation** - Cross-tenant partnerships, shared listings/members, API keys, feature gating
-- **Jobs** - Job vacancies, applications, saved jobs, admin management (14 endpoints)
+**New Modules (Phases 16-48, built and tested):**
+- **Federation** - Cross-tenant partnerships, shared listings/members, API keys, feature gating (27 endpoints)
+- **Volunteering** - Opportunities, applications, shifts, check-in/out, stats (16 endpoints)
+- **Jobs** - Job vacancies, applications, saved jobs (14 endpoints)
+- **Smart Matching** - 6-factor scoring algorithm with preferences (6 endpoints)
+- **Skills & Endorsements** - Skill catalog, proficiency levels, peer endorsements (10 endpoints)
+- **Location/Geo** - User location, nearby users/listings, distance calculation (6 endpoints)
+- **Newsletter** - Subscribe/unsubscribe (10 endpoints)
+- **Translation/i18n** - Locale management, translation keys, bulk import (9 endpoints)
 - **Knowledge Base** - Help articles with markdown, categories, search (6 endpoints)
 - **Legal Documents** - Versioned ToS/Privacy Policy, acceptance tracking (6 endpoints)
 - **User Preferences** - Theme, language, timezone, privacy settings (5 endpoints)
-- **Emergency Lockdown** - Admin kill switch for emergencies
+- **Emergency Lockdown** - Emergency lockdown status (3 endpoints + middleware)
 - **Polls** - Single/multiple/ranked voting, auto-close, results (5 endpoints)
 - **Goals** - Personal goals with milestones, progress tracking (7 endpoints)
 - **Member Availability** - Weekly schedule, exceptions, bulk set (8 endpoints)
 - **Ideation** - Community ideas, voting, comments, challenges (9 endpoints)
-- **Smart Matching** - 6-factor scoring algorithm with preferences
-- **Admin Analytics** - SROI reporting, growth metrics, retention, inactive member detection
+- **Push Notifications** - Device registration, preferences (5 endpoints)
 
----
+**Extended Feature Controllers (enhance core modules):**
+- **Gamification V2** - Challenges, streaks, seasons, daily rewards (10 endpoints)
+- **Listing Features** - Views, analytics, favorites, tags, featured, expiring, renew (10 endpoints)
+- **Wallet Features** - Categories, limits, donations, balance alerts, export (9 endpoints)
+- **Group Features** - Announcements, policies, discussions, files (13 endpoints)
+- **Feed Ranking** - Ranked feed, trending, bookmarks, shares, engagement (7 endpoints)
 
-## Do Not Build UI For This Yet
+**New Modules (Phases 49-56, built):**
+- **Blog & CMS** - Posts, categories, pages, versioning, menu management (22 endpoints)
+- **Organisations** - Profiles, members, roles (13 endpoints)
+- **Organisation Wallets** - Org credit pools, donate, transfer (5 endpoints)
+- **NexusScore** - Composite reputation 0-1000, 5 dimensions, tiers, leaderboard (7 endpoints)
+- **Onboarding Wizard** - Steps, progress, completion tracking, XP rewards (7 endpoints)
+- **Tenant Hierarchy** - Parent-child tenants, inheritance modes (6 endpoints)
+- **Insurance Certificates** - Tracking, verification workflow (9 endpoints)
+- **Voice Messages** - Audio in conversations, transcription support (5 endpoints)
+- **Semantic Search (Meilisearch)** - Full-text search (5 endpoints)
+- **Event Reminders** - Per-event reminders, user reminder list (4 endpoints)
+- **Member Activity** - Activity feed, dashboard stats (5 endpoints)
+- **Review Trust** - Time-decay weighted trust scores, pending reviews (3 endpoints)
+- **Verification Badges** - Badge types, user badges (4 endpoints)
+- **Feed Moderation** - Report posts (2 endpoints)
+- **Notification Polling** - Long-poll fallback, realtime config (2 endpoints)
+- **FAQ** - Public FAQ with categories (7 endpoints)
+- **Session Management** - List active sessions, terminate one or all others (3 endpoints)
+- **GDPR Breach Management** - Breach reporting, tracking, authority notification, consent types (8 endpoints)
 
-These features are **not yet fully production-hardened**. Hold off on building frontend UI for:
-
-- **Push Notifications** - Scaffolded (Web Push + FCM endpoints exist but not integration-tested)
-- **Avatar/Image Upload** - File upload infrastructure exists but no avatar-specific endpoint yet
-- **i18n/Translation** - Endpoints exist but no language packs loaded
-- **Volunteering** - Scaffolded (16 endpoints exist but need integration testing)
-- **Newsletter** - Scaffolded (10 endpoints exist but need Mailchimp integration)
 
 ---
 
@@ -95,11 +117,11 @@ These features are **not yet fully production-hardened**. Hold off on building f
                     ┌─────────────────┼─────────────────┐
                     │                 │                 │
                     ▼                 ▼                 ▼
-            ┌───────────┐     ┌───────────┐     ┌───────────┐
-            │  Browser  │     │  Mobile   │     │  Admin    │
-            │  Requests │     │    App    │     │ Dashboard │
-            │ (CORS OK) │     │ (No CORS) │     │ (CORS OK) │
-            └───────────┘     └───────────┘     └───────────┘
+            ┌───────────┐                       ┌───────────┐
+            │  Browser  │                       │  Mobile   │
+            │  Requests │                       │    App    │
+            │ (CORS OK) │                       │ (No CORS) │
+            └───────────┘                       └───────────┘
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -131,10 +153,8 @@ These features are **not yet fully production-hardened**. Hold off on building f
 
 | App             | Dev URL                 | Production URL                     | CORS Required | Notes                         |
 |-----------------|-------------------------|------------------------------------|---------------|-------------------------------|
-| GOV.UK Frontend | `http://localhost:3000` | `https://uk.project-nexus.net`     | Yes           | UK government-style portal    |
-| GOV.IE Frontend | `http://localhost:3001` | `https://ie.project-nexus.net`     | Yes           | Irish government-style portal |
-| Modern Frontend | `http://localhost:3002` | `https://app.project-nexus.net`    | Yes           | Modern SPA interface          |
-| Admin Dashboard | N/A                     | `https://admin.project-nexus.net`  | Yes           | Platform administration       |
+| UK Frontend     | `http://localhost:5180` | `https://uk.project-nexus.net`     | Yes           | GOV.UK design system portal   |
+| Modern Frontend | `http://localhost:5170` | `https://app.project-nexus.net`    | Yes           | Next.js (HeroUI) SPA         |
 | Mobile App      | N/A                     | `https://api.project-nexus.net`    | **No**        | Native HTTP client            |
 | LLaMA Service   | `http://localhost:8000` | Internal only                      | **No**        | Server-to-server only         |
 
@@ -201,18 +221,13 @@ CORS is configured per environment. Only **browser origins** are listed (not int
 {
   "Cors": {
     "AllowedOrigins": [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://localhost:3002",
-      "https://localhost:3000",
-      "https://localhost:3001",
-      "https://localhost:3002"
+      "http://localhost:5080",
+      "http://localhost:5170",
+      "http://localhost:5180"
     ]
   }
 }
 ```
-
-Both HTTP and HTTPS are included for local HTTPS dev servers (e.g., Vite with `--https`).
 
 **Production** (`appsettings.Production.json`):
 
@@ -223,7 +238,6 @@ Both HTTP and HTTPS are included for local HTTPS dev servers (e.g., Vite with `-
       "https://uk.project-nexus.net",
       "https://ie.project-nexus.net",
       "https://app.project-nexus.net",
-      "https://admin.project-nexus.net"
     ]
   }
 }
@@ -344,12 +358,6 @@ Returns user info if token is valid, 401 if invalid/expired.
 | POST | /api/registration/verify/start | Yes | Start identity verification session |
 | GET | /api/registration/verify/status | Yes | Get current verification session status |
 | POST | /api/registration/webhook/{tenantId}?provider=X | No | Provider webhook callback |
-| GET | /api/registration/admin/policy | Admin | Get full registration policy |
-| PUT | /api/registration/admin/policy | Admin | Update registration policy |
-| GET | /api/registration/admin/pending | Admin | List users pending approval |
-| PUT | /api/registration/admin/users/{id}/approve | Admin | Approve user registration |
-| PUT | /api/registration/admin/users/{id}/reject | Admin | Reject user registration |
-| GET | /api/registration/admin/options | Admin | List available modes, providers, levels |
 
 ### Users - ✅ IMPLEMENTED
 
@@ -554,15 +562,13 @@ Returns user info if token is valid, 401 if invalid/expired.
 | GET | /api/reports/my | Yes | My filed reports |
 | GET | /api/reports/warnings | Yes | My warnings |
 | PUT | /api/reports/warnings/{id}/acknowledge | Yes | Acknowledge warning |
-| GET | /api/admin/reports | Admin | Pending reports queue |
-| PUT | /api/admin/reports/{id}/review | Admin | Review report |
-| POST | /api/admin/reports/warn/{userId} | Admin | Issue warning |
 
 ### Exchanges - IMPLEMENTED
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | /api/exchanges | Yes | List my exchanges |
+| GET | /api/exchanges/{id} | Yes | Get exchange detail |
 | POST | /api/exchanges | Yes | Request exchange |
 | PUT | /api/exchanges/{id}/accept | Yes | Accept |
 | PUT | /api/exchanges/{id}/decline | Yes | Decline |
@@ -571,6 +577,7 @@ Returns user info if token is valid, 401 if invalid/expired.
 | PUT | /api/exchanges/{id}/cancel | Yes | Cancel |
 | PUT | /api/exchanges/{id}/dispute | Yes | Dispute |
 | POST | /api/exchanges/{id}/rate | Yes | Rate participant |
+| GET | /api/exchanges/by-listing/{listingId} | Yes | Get exchanges by listing |
 
 ### Jobs - IMPLEMENTED
 
@@ -630,7 +637,6 @@ Returns user info if token is valid, 401 if invalid/expired.
 |--------|----------|------|-------------|
 | GET | /api/kb/articles | Yes | List articles |
 | GET | /api/kb/articles/by-slug/{slug} | Yes | Get by slug |
-| POST | /api/admin/kb/articles | Admin | Create article |
 
 ### Legal Documents - IMPLEMENTED
 
@@ -638,42 +644,7 @@ Returns user info if token is valid, 401 if invalid/expired.
 |--------|----------|------|-------------|
 | GET | /api/legal/documents | Yes | List documents |
 | POST | /api/legal/documents/{id}/accept | Yes | Accept document |
-| POST | /api/admin/legal/documents | Admin | Create document |
 
-### Admin Analytics - IMPLEMENTED
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /api/admin/analytics/overview | Admin | Platform metrics |
-| GET | /api/admin/analytics/growth | Admin | Growth trends |
-| GET | /api/admin/analytics/retention | Admin | Retention cohorts |
-| GET | /api/admin/analytics/top-users | Admin | Top users |
-| GET | /api/admin/analytics/sroi | Admin | Social ROI report |
-| GET | /api/admin/analytics/inactive-members | Admin | Inactive detection |
-
-### Admin APIs - IMPLEMENTED (Admin role required)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /api/admin/dashboard | Admin | Dashboard metrics |
-| GET | /api/admin/users | Admin | List users with filters |
-| GET | /api/admin/users/{id} | Admin | User details with stats |
-| PUT | /api/admin/users/{id} | Admin | Update user |
-| PUT | /api/admin/users/{id}/suspend | Admin | Suspend user |
-| PUT | /api/admin/users/{id}/activate | Admin | Activate user |
-| GET | /api/admin/listings/pending | Admin | Pending listings queue |
-| PUT | /api/admin/listings/{id}/approve | Admin | Approve listing |
-| PUT | /api/admin/listings/{id}/reject | Admin | Reject listing |
-| GET | /api/admin/categories | Admin | List categories |
-| POST | /api/admin/categories | Admin | Create category |
-| PUT | /api/admin/categories/{id} | Admin | Update category |
-| DELETE | /api/admin/categories/{id} | Admin | Delete category |
-| GET | /api/admin/config | Admin | Get tenant config |
-| PUT | /api/admin/config | Admin | Update tenant config |
-| GET | /api/admin/roles | Admin | List roles |
-| POST | /api/admin/roles | Admin | Create role |
-| PUT | /api/admin/roles/{id} | Admin | Update role |
-| DELETE | /api/admin/roles/{id} | Admin | Delete role |
 
 ### Federation - IMPLEMENTED
 
@@ -685,16 +656,6 @@ Returns user info if token is valid, 401 if invalid/expired.
 | GET | /api/federation/exchanges | Yes | List federated exchanges |
 | GET | /api/federation/settings | Yes | Get federation settings |
 | PUT | /api/federation/settings | Yes | Update federation settings (opt-in, visibility) |
-| GET | /api/admin/federation/partners | Admin | List partners |
-| POST | /api/admin/federation/partners | Admin | Request partnership |
-| PUT | /api/admin/federation/partners/{id}/approve | Admin | Approve partnership |
-| PUT | /api/admin/federation/partners/{id}/suspend | Admin | Suspend partnership |
-| GET | /api/admin/federation/api-keys | Admin | List API keys |
-| POST | /api/admin/federation/api-keys | Admin | Create API key |
-| DELETE | /api/admin/federation/api-keys/{id} | Admin | Revoke API key |
-| GET | /api/admin/federation/features | Admin | Feature toggles |
-| PUT | /api/admin/federation/features | Admin | Set feature toggle |
-| GET | /api/admin/federation/stats | Admin | Federation statistics |
 
 **External API** (for partner servers, authenticated via X-Federation-Key or Federation JWT):
 
@@ -707,6 +668,332 @@ Returns user info if token is valid, 401 if invalid/expired.
 | GET | /api/v1/federation/members | Key/JWT | Search shared members |
 | POST | /api/v1/federation/exchanges | Key/JWT | Initiate exchange |
 | POST | /api/v1/federation/webhooks/test | Key | Test webhook connectivity |
+
+### Volunteering - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/volunteering/opportunities | Yes | List opportunities |
+| GET | /api/volunteering/opportunities/{id} | Yes | Get opportunity |
+| POST | /api/volunteering/opportunities | Yes | Create opportunity |
+| PUT | /api/volunteering/opportunities/{id} | Yes | Update opportunity |
+| PUT | /api/volunteering/opportunities/{id}/publish | Yes | Publish opportunity |
+| PUT | /api/volunteering/opportunities/{id}/close | Yes | Close opportunity |
+| POST | /api/volunteering/opportunities/{id}/apply | Yes | Apply to opportunity |
+| GET | /api/volunteering/opportunities/{id}/applications | Yes | List applications (organizer) |
+| PUT | /api/volunteering/applications/{id}/review | Yes | Review application |
+| DELETE | /api/volunteering/applications/{id} | Yes | Withdraw application |
+| GET | /api/volunteering/opportunities/{id}/shifts | Yes | List shifts |
+| POST | /api/volunteering/opportunities/{id}/shifts | Yes | Create shift |
+| POST | /api/volunteering/shifts/{id}/check-in | Yes | Check in to shift |
+| PUT | /api/volunteering/shifts/{id}/check-out | Yes | Check out of shift |
+| GET | /api/volunteering/my | Yes | My volunteering history |
+| GET | /api/volunteering/stats | Yes | Volunteer statistics |
+
+### Smart Matching - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/matching | Yes | Get my matches |
+| POST | /api/matching/compute | Yes | Compute matches |
+| GET | /api/matching/{id} | Yes | Get match detail |
+| PUT | /api/matching/{id}/respond | Yes | Respond to match |
+| GET | /api/matching/preferences | Yes | Get match preferences |
+| PUT | /api/matching/preferences | Yes | Update match preferences |
+
+### Skills & Endorsements - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/skills | Yes | Get skill catalog |
+| GET | /api/skills/users/{userId} | Yes | Get user's skills |
+| POST | /api/skills/my | Yes | Add skill to my profile |
+| DELETE | /api/skills/my/{skillId} | Yes | Remove skill |
+| PUT | /api/skills/my/{skillId} | Yes | Update proficiency level |
+| POST | /api/skills/users/{userId}/{skillId}/endorse | Yes | Endorse a skill |
+| DELETE | /api/skills/users/{userId}/{skillId}/endorse | Yes | Remove endorsement |
+| GET | /api/skills/users/{userId}/{skillId}/endorsements | Yes | List endorsements |
+| GET | /api/skills/top-endorsed | Yes | Top endorsed users |
+| GET | /api/skills/suggestions | Yes | Skill suggestions |
+
+### Location/Geo - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| PUT | /api/location/me | Yes | Update my location |
+| GET | /api/location/me | Yes | Get my location |
+| GET | /api/location/users/{userId} | Yes | Get user location (respects privacy) |
+| GET | /api/location/nearby/users | Yes | Find nearby users |
+| GET | /api/location/nearby/listings | Yes | Find nearby listings |
+| GET | /api/location/distance/{userId} | Yes | Calculate distance to user |
+
+### Newsletter - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /api/newsletter/subscribe | No | Subscribe to newsletter |
+| POST | /api/newsletter/unsubscribe | No | Unsubscribe |
+
+### Translation/i18n - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/i18n/translations/{locale} | No | Get translations for locale |
+| GET | /api/i18n/locales | No | Get supported locales |
+| GET | /api/i18n/my-locale | Yes | Get my locale preference |
+| PUT | /api/i18n/my-locale | Yes | Set my locale preference |
+
+### Push Notifications - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /api/notifications/push/register | Yes | Register device |
+| DELETE | /api/notifications/push/register | Yes | Unregister device |
+| GET | /api/notifications/push/devices | Yes | Get my devices |
+| GET | /api/notifications/preferences | Yes | Get notification preferences |
+| PUT | /api/notifications/preferences | Yes | Update notification preferences |
+
+### Gamification V2 (Extended) - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/gamification/v2/challenges | Yes | List active challenges |
+| GET | /api/gamification/v2/challenges/{id} | Yes | Get challenge |
+| POST | /api/gamification/v2/challenges/{id}/join | Yes | Join challenge |
+| GET | /api/gamification/v2/challenges/my | Yes | My challenges |
+| GET | /api/gamification/v2/streaks | Yes | My streaks |
+| GET | /api/gamification/v2/streaks/leaderboard | Yes | Streak leaderboard |
+| GET | /api/gamification/v2/seasons/current | Yes | Current season |
+| GET | /api/gamification/v2/seasons/{id}/leaderboard | Yes | Season leaderboard |
+| POST | /api/gamification/v2/daily-reward | Yes | Claim daily reward |
+| GET | /api/gamification/v2/daily-reward/status | Yes | Daily reward status |
+
+### Listing Features (Extended) - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /api/listings/{id}/view | Yes | Track listing view |
+| GET | /api/listings/{id}/analytics | Yes | Get listing analytics (owner only) |
+| POST | /api/listings/{id}/favorite | Yes | Favorite listing |
+| DELETE | /api/listings/{id}/favorite | Yes | Unfavorite listing |
+| GET | /api/listings/favorites | Yes | Get my favorites |
+| POST | /api/listings/{id}/tags | Yes | Add tag |
+| DELETE | /api/listings/{id}/tags/{tag} | Yes | Remove tag |
+| GET | /api/listings/featured | Yes | Get featured listings |
+| GET | /api/listings/expiring | Yes | Get expiring listings |
+| PUT | /api/listings/{id}/renew | Yes | Renew listing |
+
+### Wallet Features (Extended) - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/wallet/features/categories | Yes | List transaction categories |
+| GET | /api/wallet/features/limits | Yes | Get my spending limits |
+| GET | /api/wallet/features/summary | Yes | Get balance summary |
+| POST | /api/wallet/features/donate | Yes | Donate credits |
+| GET | /api/wallet/features/donations | Yes | Donation history |
+| POST | /api/wallet/features/alerts | Yes | Create balance alert |
+| GET | /api/wallet/features/alerts | Yes | Get my alerts |
+| DELETE | /api/wallet/features/alerts/{id} | Yes | Delete alert |
+| GET | /api/wallet/features/export | Yes | Export transactions |
+
+### Group Features (Extended) - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/groups/{groupId}/announcements | Yes | Get announcements |
+| POST | /api/groups/{groupId}/announcements | Yes | Create announcement |
+| DELETE | /api/groups/{groupId}/announcements/{id} | Yes | Delete announcement |
+| GET | /api/groups/{groupId}/policies | Yes | Get policies |
+| PUT | /api/groups/{groupId}/policies | Yes | Set policy |
+| DELETE | /api/groups/{groupId}/policies/{key} | Yes | Delete policy |
+| GET | /api/groups/{groupId}/discussions | Yes | Get discussions |
+| GET | /api/groups/{groupId}/discussions/{id} | Yes | Get discussion |
+| POST | /api/groups/{groupId}/discussions | Yes | Create discussion |
+| POST | /api/groups/{groupId}/discussions/{id}/replies | Yes | Reply to discussion |
+| GET | /api/groups/{groupId}/files | Yes | Get files |
+| POST | /api/groups/{groupId}/files | Yes | Add file |
+| DELETE | /api/groups/{groupId}/files/{id} | Yes | Delete file |
+
+### Feed Ranking (Extended) - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/feed/ranked | Yes | Get ranked feed |
+| GET | /api/feed/trending | Yes | Get trending posts |
+| POST | /api/feed/{id}/bookmark | Yes | Bookmark post |
+| DELETE | /api/feed/{id}/bookmark | Yes | Remove bookmark |
+| GET | /api/feed/bookmarks | Yes | Get bookmarks |
+| POST | /api/feed/{id}/share | Yes | Share post |
+| GET | /api/feed/{id}/engagement | Yes | Get engagement stats |
+
+### Volunteer Availability - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/volunteering/availability/my | Yes | Get my availability |
+| PUT | /api/volunteering/availability | Yes | Set availability |
+
+
+### System Announcements - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/announcements | No | Get active announcements |
+
+### Blog & CMS - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/blog | Yes | List published blog posts (paginated) |
+| GET | /api/blog/categories | Yes | List blog categories |
+| GET | /api/blog/{slug} | Yes | Get published post by slug |
+
+### CMS Pages - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/pages | Yes | List published pages |
+| GET | /api/pages/menu | No | Get menu pages by location |
+| GET | /api/pages/{slug} | No | Get published page by slug |
+
+### Organisations - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/organisations | Yes | List verified public organisations |
+| GET | /api/organisations/my | Yes | List my organisations |
+| GET | /api/organisations/{id} | Yes | Get organisation details |
+| GET | /api/organisations/slug/{slug} | Yes | Get organisation by slug |
+| POST | /api/organisations | Yes | Create organisation |
+| PUT | /api/organisations/{id} | Yes | Update organisation |
+| DELETE | /api/organisations/{id} | Yes | Delete organisation (owner only) |
+| GET | /api/organisations/{id}/members | Yes | List organisation members |
+| POST | /api/organisations/{id}/members | Yes | Add member |
+| DELETE | /api/organisations/{id}/members/{memberId} | Yes | Remove member |
+| PUT | /api/organisations/{id}/members/{memberId}/role | Yes | Update member role |
+
+### Organisation Wallets - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/organisations/{orgId}/wallet | Yes | Get org wallet balance |
+| GET | /api/organisations/{orgId}/wallet/transactions | Yes | List wallet transactions |
+| POST | /api/organisations/{orgId}/wallet/donate | Yes | Donate from personal wallet to org |
+| POST | /api/organisations/{orgId}/wallet/transfer | Yes | Transfer from org wallet to user (admin/owner) |
+
+### NexusScore - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/nexus-score/me | Yes | Get my NexusScore |
+| GET | /api/nexus-score/{userId} | Yes | Get another user's NexusScore |
+| POST | /api/nexus-score/recalculate | Yes | Recalculate my score |
+| GET | /api/nexus-score/leaderboard | Yes | NexusScore leaderboard (paginated) |
+| GET | /api/nexus-score/history | Yes | Score history |
+
+### Onboarding Wizard - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/onboarding/steps | Yes | Get all onboarding steps |
+| GET | /api/onboarding/progress | Yes | Get current user's progress |
+| POST | /api/onboarding/complete | Yes | Mark step as complete |
+| POST | /api/onboarding/reset | Yes | Reset onboarding progress |
+
+
+### Insurance Certificates - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/insurance | Yes | Get my insurance certificates |
+| GET | /api/insurance/{id} | Yes | Get certificate details |
+| POST | /api/insurance | Yes | Upload/create certificate |
+| PUT | /api/insurance/{id} | Yes | Update certificate |
+| DELETE | /api/insurance/{id} | Yes | Delete certificate |
+
+### Voice Messages - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/voice-messages/conversation/{conversationId} | Yes | List voice messages in conversation |
+| GET | /api/voice-messages/{id} | Yes | Get voice message details |
+| POST | /api/voice-messages | Yes | Send voice message |
+| PUT | /api/voice-messages/{id}/read | Yes | Mark as read |
+| DELETE | /api/voice-messages/{id} | Yes | Delete voice message |
+
+### Semantic Search (Meilisearch) - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/search/semantic | Yes | Full-text search (?q=term&type=all&limit=20) |
+| GET | /api/search/semantic/status | Yes | Meilisearch health and stats |
+
+### Event Reminders - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/events/{eventId}/reminders | Yes | Get reminders for event |
+| POST | /api/events/{eventId}/reminders | Yes | Set reminder for event |
+| DELETE | /api/events/{eventId}/reminders/{id} | Yes | Remove reminder |
+| GET | /api/users/me/reminders | Yes | Get all my upcoming reminders |
+
+### Member Activity - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/users/me/activity | Yes | My recent activity (paginated) |
+| GET | /api/users/me/activity/dashboard | Yes | My dashboard stats |
+| GET | /api/users/{userId}/activity | Yes | Another user's activity |
+| GET | /api/users/{userId}/activity/dashboard | Yes | Another user's dashboard stats |
+
+### Review Trust - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/reviews/pending | Yes | Pending reviews for completed exchanges |
+| GET | /api/reviews/user/{userId}/trust | Yes | Time-decay weighted trust score |
+| GET | /api/reviews/exchange/{exchangeId}/rating | Yes | Ratings for specific exchange |
+
+### Verification Badges - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/verification-badges/types | Yes | List all badge types |
+| GET | /api/verification-badges/me | Yes | My verification badges |
+| GET | /api/verification-badges/users/{userId} | Yes | User's verification badges |
+
+### Feed Moderation - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /api/feed/{id}/report | Yes | Report a post |
+
+### Notification Polling - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/notifications/poll | Yes | Poll for new notifications (?since=timestamp) |
+| GET | /api/realtime/config | No | Get realtime config (hub URL, transports) |
+
+
+### FAQ - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/faqs | No | List FAQs (?category=X&publishedOnly=true) |
+| GET | /api/faqs/{id} | No | Get FAQ by ID |
+| GET | /api/faqs/categories | No | List FAQ categories |
+
+
+### Session Management - IMPLEMENTED
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /api/sessions | Yes | List my active sessions |
+| DELETE | /api/sessions/{id} | Yes | Terminate a session |
+| DELETE | /api/sessions | Yes | Terminate all other sessions |
+
 
 ---
 
@@ -903,6 +1190,583 @@ In Development mode, Swagger UI is available at:
 - `http://localhost:5080/swagger`
 
 This provides interactive API documentation where you can test endpoints directly.
+
+---
+
+
+## New Module Response Examples & UI Suggestions
+
+### Blog & CMS
+
+#### GET /api/blog?page=1&limit=10
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "title": "Community Garden Project Update",
+      "slug": "community-garden-project-update",
+      "content": "<p>Our community garden is thriving...</p>",
+      "excerpt": "Our community garden is thriving this season",
+      "featured_image_url": "/files/garden-hero.jpg",
+      "status": "published",
+      "tags": "garden,community,update",
+      "is_featured": true,
+      "view_count": 42,
+      "published_at": "2026-03-01T10:00:00Z",
+      "created_at": "2026-02-28T14:00:00Z",
+      "updated_at": "2026-03-01T10:00:00Z",
+      "category": {
+        "id": 1,
+        "name": "Community News",
+        "slug": "community-news",
+        "color": "#4CAF50"
+      },
+      "author": {
+        "id": 1,
+        "firstName": "Alice",
+        "lastName": "Admin"
+      },
+      "meta_title": null,
+      "meta_description": null
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 1
+  }
+}
+```
+
+
+#### UI Suggestions - Blog
+
+1. **Blog Index Page**: Card grid with featured image, title, excerpt, category badge, author avatar, date
+2. **Blog Detail Page**: Hero image, rendered HTML content, author card, related posts
+3. **Category Filter**: Sidebar or top-bar filter by category with colored badges
+
+### CMS Pages
+
+#### GET /api/pages/{slug}
+
+```json
+{
+  "data": {
+    "id": 1,
+    "title": "About Us",
+    "slug": "about-us",
+    "content": "<h2>Our Mission</h2><p>Project NEXUS...</p>",
+    "is_published": true,
+    "show_in_menu": true,
+    "menu_location": "header",
+    "sort_order": 1,
+    "parent_id": null,
+    "current_version": 3,
+    "meta_title": "About Us - Project NEXUS",
+    "meta_description": "Learn about our timebanking community",
+    "created_at": "2026-01-15T10:00:00Z",
+    "updated_at": "2026-03-05T09:00:00Z",
+    "created_by": {
+      "id": 1,
+      "firstName": "Alice",
+      "lastName": "Admin"
+    }
+  }
+}
+```
+
+#### GET /api/pages/menu?location=header
+
+```json
+{
+  "data": [
+    { "id": 1, "title": "About Us", "slug": "about-us", "menu_location": "header", "sort_order": 1, "parent_id": null },
+    { "id": 2, "title": "How It Works", "slug": "how-it-works", "menu_location": "header", "sort_order": 2, "parent_id": null },
+    { "id": 3, "title": "FAQ", "slug": "faq", "menu_location": "header", "sort_order": 3, "parent_id": null }
+  ]
+}
+```
+
+#### UI Suggestions - Pages
+
+1. **Dynamic Navigation**: Fetch `/api/pages/menu?location=header` on app load, render as nav links
+2. **Footer Links**: Fetch `/api/pages/menu?location=footer` for footer navigation
+3. **Page Renderer**: Render `content` as sanitized HTML (use DOMPurify)
+
+### Organisations
+
+#### GET /api/organisations?page=1&limit=20
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Community Garden Co-op",
+      "slug": "community-garden-coop",
+      "description": "A cooperative managing community gardens across the region",
+      "logo_url": "/files/coop-logo.png",
+      "website_url": "https://garden-coop.example.com",
+      "email": "info@garden-coop.example.com",
+      "phone": "+353 21 123 4567",
+      "address": "Main Street, Bantry, Co. Cork",
+      "latitude": 51.6806,
+      "longitude": -9.4536,
+      "type": "charity",
+      "industry": "Community Development",
+      "status": "verified",
+      "is_public": true,
+      "created_at": "2026-01-20T10:00:00Z",
+      "verified_at": "2026-01-25T14:00:00Z",
+      "owner": {
+        "id": 1,
+        "firstName": "Alice",
+        "lastName": "Admin"
+      }
+    }
+  ],
+  "meta": { "page": 1, "limit": 20, "total": 1 }
+}
+```
+
+#### POST /api/organisations (Create)
+
+**Request:**
+```json
+{
+  "name": "West Cork Tech Hub",
+  "description": "Co-working and tech community space",
+  "type": "business",
+  "industry": "Technology",
+  "email": "hello@wcth.example.com",
+  "is_public": true
+}
+```
+
+#### UI Suggestions - Organisations
+
+1. **Organisation Directory**: Card grid with logo, name, type badge, verified tick, member count
+2. **Organisation Profile**: Full detail page with map (if lat/lng), member list, wallet balance
+3. **Create Organisation Form**: Multi-step form: basics, contact info, location (optional map picker)
+4. **Member Management**: Table of members with role dropdown (owner/admin/member/volunteer), add/remove
+
+### Organisation Wallets
+
+#### GET /api/organisations/{orgId}/wallet
+
+```json
+{
+  "data": {
+    "id": 1,
+    "organisation_id": 1,
+    "balance": 150.5,
+    "total_received": 200.0,
+    "total_spent": 49.5,
+    "created_at": "2026-01-20T10:00:00Z"
+  }
+}
+```
+
+#### POST /api/organisations/{orgId}/wallet/donate
+
+**Request:**
+```json
+{
+  "amount": 5.0,
+  "description": "Monthly donation"
+}
+```
+
+#### UI Suggestions - Org Wallets
+
+1. **Wallet Dashboard**: Balance card with total received/spent, recent transactions list
+2. **Donate Button**: Modal with amount input, description, confirmation
+3. **Transfer (Admin/Owner)**: Select user from org members, enter amount
+4. **Transaction History**: Filterable table with type icons (credit=green, debit=red)
+
+### NexusScore
+
+#### GET /api/nexus-score/me
+
+```json
+{
+  "data": {
+    "userId": 1,
+    "score": 720,
+    "tier": "trusted",
+    "exchange_score": 180,
+    "review_score": 150,
+    "engagement_score": 140,
+    "reliability_score": 130,
+    "tenure_score": 120,
+    "last_calculated_at": "2026-03-08T00:00:00Z"
+  }
+}
+```
+
+#### GET /api/nexus-score/leaderboard?page=1&limit=10
+
+```json
+{
+  "data": [
+    {
+      "userId": 1,
+      "score": 720,
+      "tier": "trusted",
+      "last_calculated_at": "2026-03-08T00:00:00Z",
+      "user": { "id": 1, "firstName": "Alice", "lastName": "Admin" }
+    },
+    {
+      "userId": 2,
+      "score": 540,
+      "tier": "established",
+      "last_calculated_at": "2026-03-08T00:00:00Z",
+      "user": { "id": 2, "firstName": "Bob", "lastName": "Member" }
+    }
+  ]
+}
+```
+
+**NexusScore tiers:**
+
+| Tier | Score Range | Description |
+|------|------------|-------------|
+| Newcomer | 0-199 | Just getting started |
+| Emerging | 200-399 | Building reputation |
+| Established | 400-599 | Active community member |
+| Trusted | 600-799 | Highly reliable |
+| Exemplary | 800-1000 | Community leader |
+
+#### UI Suggestions - NexusScore
+
+1. **Score Card**: Circular gauge (0-1000) with tier badge and color coding
+2. **Dimension Breakdown**: Radar/spider chart showing 5 dimensions (exchange, review, engagement, reliability, tenure)
+3. **Score History**: Line chart showing score changes over time
+4. **Leaderboard**: Ranked list with tier badges, current user highlighted
+6. **Recalculate Button**: "Refresh my score" with loading state
+
+### Onboarding Wizard
+
+#### GET /api/onboarding/progress
+
+```json
+{
+  "data": {
+    "completed_steps": [
+      { "step_id": 1, "key": "profile_complete", "completed_at": "2026-03-01T10:00:00Z" },
+      { "step_id": 2, "key": "skills_added", "completed_at": "2026-03-02T14:00:00Z" }
+    ],
+    "total_steps": 5,
+    "completed_count": 2,
+    "completion_percentage": 40.0
+  }
+}
+```
+
+#### POST /api/onboarding/complete
+
+**Request:**
+```json
+{
+  "step_key": "first_listing"
+}
+```
+
+#### UI Suggestions - Onboarding
+
+1. **Progress Bar**: Horizontal stepper or progress bar showing completion percentage
+2. **Step Cards**: Checklist with completed (green tick) and pending (grey circle) steps
+3. **Guided Flow**: Full-screen wizard that walks new users through each step
+4. **Dashboard Widget**: Compact progress indicator on the main dashboard for new users
+5. **XP Reward Toast**: Show XP earned when completing each step
+
+### Voice Messages
+
+#### GET /api/voice-messages/conversation/{conversationId}
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "sender_id": 2,
+      "conversation_id": 1,
+      "audio_url": "/files/voice/msg-123.webm",
+      "duration_seconds": 15,
+      "file_size_bytes": 24000,
+      "format": "webm",
+      "transcription": "Hey, just wanted to check if you are free on Saturday...",
+      "is_read": false,
+      "created_at": "2026-03-08T10:30:00Z",
+      "sender": { "id": 2, "firstName": "Bob", "lastName": "Member" }
+    }
+  ]
+}
+```
+
+#### POST /api/voice-messages
+
+**Request:**
+```json
+{
+  "conversation_id": 1,
+  "audio_url": "/files/voice/msg-456.webm",
+  "duration_seconds": 8,
+  "file_size_bytes": 12800,
+  "format": "webm"
+}
+```
+
+#### UI Suggestions - Voice Messages
+
+1. **Audio Player**: Inline waveform player with play/pause, duration, sender name
+2. **Record Button**: Hold-to-record button in conversation view (use MediaRecorder API)
+3. **Transcription Toggle**: Show/hide text transcription below the audio player
+4. **Unread Indicator**: Blue dot on unread voice messages
+5. **Format Support**: Record in WebM (Chrome/Firefox) or MP3 fallback
+
+### Insurance Certificates
+
+#### GET /api/insurance
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "type": "public_liability",
+      "provider": "Allianz",
+      "policy_number": "PL-2026-12345",
+      "cover_amount": 5000000.00,
+      "start_date": "2026-01-01T00:00:00Z",
+      "expiry_date": "2027-01-01T00:00:00Z",
+      "document_url": "/files/insurance/cert-123.pdf",
+      "status": "verified",
+      "verified_at": "2026-01-15T10:00:00Z",
+      "created_at": "2026-01-10T09:00:00Z",
+      "updated_at": null,
+      "user": { "id": 1, "firstName": "Alice", "lastName": "Admin" },
+      "verified_by": { "id": 5, "firstName": "Eve", "lastName": "Verifier" }
+    }
+  ]
+}
+```
+
+#### UI Suggestions - Insurance
+
+1. **Certificate List**: Cards showing type, provider, status badge, expiry date with days-remaining
+2. **Upload Form**: File upload with type dropdown, policy number, dates, cover amount
+3. **Status Badges**: Pending (yellow), Verified (green), Expired (red), Rejected (grey)
+4. **Expiry Warnings**: Amber banner for certificates expiring within 30 days
+
+
+### FAQ
+
+#### GET /api/faqs?category=getting-started
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "question": "How do I earn time credits?",
+      "answer": "You earn time credits by offering services to other members...",
+      "category": "getting-started",
+      "sort_order": 0,
+      "is_published": true,
+      "created_at": "2026-01-15T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "question": "What can I spend credits on?",
+      "answer": "You can spend credits on any service offered by other members...",
+      "category": "getting-started",
+      "sort_order": 1,
+      "is_published": true,
+      "created_at": "2026-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+#### UI Suggestions - FAQ
+
+1. **Accordion Layout**: Collapsible question/answer pairs grouped by category
+2. **Category Tabs**: Horizontal tabs for each FAQ category
+3. **Search Bar**: Client-side filter across questions and answers
+5. **Help Widget**: Floating help button that opens FAQ search in a modal
+
+### Session Management
+
+#### GET /api/sessions
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "ip_address": "192.168.1.100",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0",
+      "device_info": "Windows 10 - Chrome",
+      "is_current": true,
+      "created_at": "2026-03-08T09:00:00Z",
+      "last_activity_at": "2026-03-08T14:30:00Z",
+      "expires_at": "2026-03-09T09:00:00Z"
+    },
+    {
+      "id": 2,
+      "ip_address": "10.0.0.50",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1",
+      "device_info": "iOS 17 - Safari",
+      "is_current": false,
+      "created_at": "2026-03-07T15:00:00Z",
+      "last_activity_at": "2026-03-07T18:00:00Z",
+      "expires_at": "2026-03-08T15:00:00Z"
+    }
+  ],
+  "total": 2
+}
+```
+
+#### UI Suggestions - Sessions
+
+1. **Session List**: Cards showing device icon, IP, browser, last active time
+2. **Current Session Badge**: Green "This device" label on the current session
+3. **Terminate Button**: Red "Sign out" button per session (disabled on current)
+4. **Terminate All**: "Sign out all other devices" button with confirmation dialog
+5. **Security Page**: Combine session list with 2FA status and passkeys list
+
+
+### Voice Messages - WebSocket Integration
+
+Voice messages integrate with the existing SignalR messaging hub. When a voice message is sent, the recipient receives a real-time notification through the same `ReceiveMessage` event.
+
+#### Recording and Sending
+
+```typescript
+// hooks/useVoiceRecorder.ts
+export function useVoiceRecorder() {
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/ogg;codecs=opus'
+    });
+
+    chunksRef.current = [];
+    mediaRecorder.ondataavailable = (e) => chunksRef.current.push(e.data);
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType });
+      setAudioBlob(blob);
+      stream.getTracks().forEach(t => t.stop());
+    };
+
+    mediaRecorder.start();
+    mediaRecorderRef.current = mediaRecorder;
+    setIsRecording(true);
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+  };
+
+  const sendVoiceMessage = async (conversationId: number) => {
+    if (!audioBlob) return;
+
+    // 1. Upload audio file
+    const formData = new FormData();
+    formData.append('file', audioBlob, `voice-${Date.now()}.webm`);
+    const uploadRes = await fetch('/api/files/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const { id: fileId, url } = await uploadRes.json();
+
+    // 2. Create voice message record
+    const duration = await getAudioDuration(audioBlob);
+    await fetchWithAuth('/api/voice-messages', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        audio_url: url,
+        duration_seconds: Math.round(duration),
+        file_size_bytes: audioBlob.size,
+        format: audioBlob.type.includes('webm') ? 'webm' : 'ogg',
+      }),
+    });
+
+    setAudioBlob(null);
+  };
+
+  return { isRecording, audioBlob, startRecording, stopRecording, sendVoiceMessage };
+}
+```
+
+#### Playback Component
+
+```tsx
+// components/VoiceMessagePlayer.tsx
+function VoiceMessagePlayer({ message }: { message: VoiceMessage }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+      // Mark as read on first play
+      if (!message.is_read) {
+        fetchWithAuth(`/api/voice-messages/${message.id}/read`, { method: 'PUT' });
+      }
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  return (
+    <div className="voice-message">
+      <audio
+        ref={audioRef}
+        src={message.audio_url}
+        onTimeUpdate={() => setProgress(
+          (audioRef.current!.currentTime / audioRef.current!.duration) * 100
+        )}
+        onEnded={() => setIsPlaying(false)}
+      />
+      <button onClick={togglePlay}>
+        {isPlaying ? '⏸' : '▶'}
+      </button>
+      <div className="progress-bar">
+        <div className="progress" style={{ width: `${progress}%` }} />
+      </div>
+      <span className="duration">{formatDuration(message.duration_seconds)}</span>
+      {message.transcription && (
+        <details>
+          <summary>Transcript</summary>
+          <p>{message.transcription}</p>
+        </details>
+      )}
+    </div>
+  );
+}
+```
+
+#### Real-Time Notification
+
+Voice messages trigger the same SignalR `ReceiveMessage` event. The frontend can detect a voice message by checking for the `audio_url` field in the message payload and render the voice player instead of a text bubble.
+
 
 ---
 
@@ -2266,222 +3130,6 @@ async function pollVerificationStatus() {
 }
 ```
 
-### Admin Settings UI
-
-#### Fetch Available Options
-
-```
-GET /api/registration/admin/options
-Authorization: Bearer <admin-token>
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "modes": [
-      { "value": 0, "name": "Standard" },
-      { "value": 1, "name": "StandardWithApproval" },
-      { "value": 2, "name": "VerifiedIdentity" },
-      { "value": 3, "name": "GovernmentId" },
-      { "value": 4, "name": "InviteOnly" }
-    ],
-    "providers": [
-      { "value": 0, "name": "None" },
-      { "value": 1, "name": "Mock" },
-      { "value": 10, "name": "Veriff" },
-      { "value": 11, "name": "Jumio" },
-      { "value": 12, "name": "Persona" },
-      { "value": 13, "name": "Entrust" },
-      { "value": 14, "name": "Trulioo" },
-      { "value": 15, "name": "Yoti" },
-      { "value": 16, "name": "StripeIdentity" },
-      { "value": 17, "name": "UkCertified" },
-      { "value": 18, "name": "EudiWallet" },
-      { "value": 99, "name": "Custom" }
-    ],
-    "verification_levels": [
-      { "value": 0, "name": "None" },
-      { "value": 1, "name": "DocumentOnly" },
-      { "value": 2, "name": "DocumentAndSelfie" },
-      { "value": 3, "name": "AuthoritativeDataMatch" },
-      { "value": 4, "name": "ReusableDigitalId" },
-      { "value": 5, "name": "ManualReviewFallback" }
-    ],
-    "post_verification_actions": [
-      { "value": 0, "name": "ActivateAutomatically" },
-      { "value": 1, "name": "SendToAdminForApproval" },
-      { "value": 2, "name": "GrantLimitedAccess" },
-      { "value": 3, "name": "RejectOnFailure" }
-    ]
-  }
-}
-```
-
-#### Fetch Current Policy
-
-```
-GET /api/registration/admin/policy
-Authorization: Bearer <admin-token>
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "mode": "StandardWithApproval",
-    "mode_value": 1,
-    "provider": "None",
-    "provider_value": 0,
-    "verification_level": "None",
-    "verification_level_value": 0,
-    "post_verification_action": "ActivateAutomatically",
-    "post_verification_action_value": 0,
-    "has_provider_config": false,
-    "custom_webhook_url": null,
-    "custom_provider_name": null,
-    "registration_message": "Your account will be reviewed by an administrator.",
-    "invite_code": null,
-    "max_invite_uses": null,
-    "invite_uses_count": 0,
-    "is_active": true,
-    "updated_at": "2026-03-07T10:00:00Z",
-    "updated_by_user_id": 1
-  }
-}
-```
-
-#### Update Policy
-
-```
-PUT /api/registration/admin/policy
-Authorization: Bearer <admin-token>
-Content-Type: application/json
-
-{
-  "mode": 2,
-  "provider": 1,
-  "verification_level": 1,
-  "post_verification_action": 0,
-  "registration_message": "Please verify your identity to join our community."
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Registration policy updated"
-}
-```
-
-#### Admin Settings Form Layout
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  Registration Settings                                   │
-│                                                          │
-│  Registration Method:                                    │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │ Standard Registration + Admin Approval          ▼   ││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  ─── Shown when "Verified Identity" selected ───         │
-│                                                          │
-│  Identity Provider:                                      │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │ Mock Provider (Development)                     ▼   ││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  Verification Level:                                     │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │ Document Only                                   ▼   ││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  After Verification:                                     │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │ Activate Automatically                          ▼   ││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  ─── Shown when "Invite Only" selected ───               │
-│                                                          │
-│  Invite Code:                                            │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │ SECRET123                                           ││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  Max Uses (blank = unlimited):                           │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │ 100                                                 ││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  ─── Always shown ───                                    │
-│                                                          │
-│  Registration Message (shown to users):                  │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │ Welcome! Your account will be reviewed before       ││
-│  │ activation.                                         ││
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  [ Save Settings ]                                       │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Conditional field visibility:**
-```typescript
-const showProviderFields = mode === 'VerifiedIdentity' || mode === 'GovernmentId';
-const showInviteFields = mode === 'InviteOnly';
-```
-
-### Admin Approval Queue
-
-```
-GET /api/registration/admin/pending?page=1&limit=20
-Authorization: Bearer <admin-token>
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 43,
-      "email": "pending@example.com",
-      "first_name": "Jane",
-      "last_name": "Doe",
-      "registration_status": "PendingAdminReview",
-      "created_at": "2026-03-07T09:30:00Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 1,
-    "pages": 1
-  }
-}
-```
-
-**Approve:**
-```
-PUT /api/registration/admin/users/43/approve
-Authorization: Bearer <admin-token>
-```
-
-**Reject:**
-```
-PUT /api/registration/admin/users/43/reject
-Authorization: Bearer <admin-token>
-Content-Type: application/json
-
-{
-  "reason": "Unable to verify identity through alternative means."
-}
-```
 
 ### GOV.UK Frontend Notes
 
@@ -2505,9 +3153,7 @@ The GOV.UK frontend should follow GDS (Government Digital Service) patterns:
 | 400 | "User is not in PendingVerification status" | Verification start on wrong state |
 | 400 | "No verification provider configured for this tenant." | Provider not set |
 | 400 | "Invalid provider" | Bad webhook provider param |
-| 400 | "Cannot approve user. Check registration status." | Approve on non-pending user |
 | 401 | Unauthorized | Missing/invalid token |
-| 403 | Forbidden | Non-admin calling admin endpoint |
 | 404 | "Tenant not found" | Invalid tenant_slug |
 | 404 | "No verification session found" | Status check before session created |
 

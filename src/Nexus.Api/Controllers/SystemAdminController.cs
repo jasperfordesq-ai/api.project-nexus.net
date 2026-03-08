@@ -6,6 +6,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -25,17 +26,20 @@ public class SystemAdminController : ControllerBase
 {
     private readonly SystemAdminService _systemAdmin;
     private readonly LockdownService _lockdownService;
+    private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<SystemAdminController> _logger;
 
     public SystemAdminController(
         SystemAdminService systemAdmin,
         LockdownService lockdownService,
+        NexusDbContext db,
         TenantContext tenantContext,
         ILogger<SystemAdminController> logger)
     {
         _systemAdmin = systemAdmin;
         _lockdownService = lockdownService;
+        _db = db;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -284,6 +288,215 @@ public class SystemAdminController : ControllerBase
 
     #endregion
 
+    #region Super Admin User Management
+
+    /// <summary>
+    /// POST /api/admin/system/users/{userId}/grant-admin - Grant admin role to a user.
+    /// Cross-tenant operation using IgnoreQueryFilters.
+    /// </summary>
+    [HttpPost("users/{userId}/grant-admin")]
+    public async Task<IActionResult> GrantAdmin(int userId)
+    {
+        var adminId = GetCurrentUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var user = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null)
+            return NotFound(new { error = "User not found" });
+
+        if (user.Role == "admin")
+            return BadRequest(new { error = "User is already an admin" });
+
+        user.Role = "admin";
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} granted admin role to user {UserId} (tenant {TenantId})",
+            adminId.Value, userId, user.TenantId);
+
+        return Ok(new AdminUserResponse
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = user.Role,
+            TenantId = user.TenantId,
+            IsActive = user.IsActive
+        });
+    }
+
+    /// <summary>
+    /// POST /api/admin/system/users/{userId}/revoke-admin - Revoke admin role from a user.
+    /// Cross-tenant operation using IgnoreQueryFilters.
+    /// </summary>
+    [HttpPost("users/{userId}/revoke-admin")]
+    public async Task<IActionResult> RevokeAdmin(int userId)
+    {
+        var adminId = GetCurrentUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        if (adminId.Value == userId)
+            return BadRequest(new { error = "Cannot revoke your own admin role" });
+
+        var user = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null)
+            return NotFound(new { error = "User not found" });
+
+        if (user.Role != "admin")
+            return BadRequest(new { error = "User is not an admin" });
+
+        user.Role = "member";
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} revoked admin role from user {UserId} (tenant {TenantId})",
+            adminId.Value, userId, user.TenantId);
+
+        return Ok(new AdminUserResponse
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = user.Role,
+            TenantId = user.TenantId,
+            IsActive = user.IsActive
+        });
+    }
+
+    /// <summary>
+    /// POST /api/admin/system/users/{userId}/move-tenant - Move user to a different tenant.
+    /// Cross-tenant operation using IgnoreQueryFilters.
+    /// </summary>
+    [HttpPost("users/{userId}/move-tenant")]
+    public async Task<IActionResult> MoveTenant(int userId, [FromBody] MoveTenantRequest request)
+    {
+        var adminId = GetCurrentUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var user = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null)
+            return NotFound(new { error = "User not found" });
+
+        var targetTenant = await _db.Tenants
+            .FirstOrDefaultAsync(t => t.Id == request.TargetTenantId);
+
+        if (targetTenant == null)
+            return BadRequest(new { error = "Target tenant not found" });
+
+        if (user.TenantId == request.TargetTenantId)
+            return BadRequest(new { error = "User is already in the target tenant" });
+
+        var oldTenantId = user.TenantId;
+        user.TenantId = request.TargetTenantId;
+
+        if (request.PromoteToAdmin)
+            user.Role = "admin";
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} moved user {UserId} from tenant {OldTenantId} to tenant {NewTenantId} (promote={Promote})",
+            adminId.Value, userId, oldTenantId, request.TargetTenantId, request.PromoteToAdmin);
+
+        return Ok(new AdminUserResponse
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = user.Role,
+            TenantId = user.TenantId,
+            IsActive = user.IsActive
+        });
+    }
+
+    /// <summary>
+    /// GET /api/admin/system/users/admins - List all admin users across all tenants.
+    /// Cross-tenant operation using IgnoreQueryFilters.
+    /// </summary>
+    [HttpGet("users/admins")]
+    public async Task<IActionResult> ListAdmins()
+    {
+        var admins = await _db.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.Role == "admin")
+            .OrderBy(u => u.TenantId)
+            .ThenBy(u => u.LastName)
+            .Select(u => new AdminUserResponse
+            {
+                Id = u.Id,
+                Email = u.Email,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                Role = u.Role,
+                TenantId = u.TenantId,
+                IsActive = u.IsActive
+            })
+            .ToListAsync();
+
+        return Ok(admins);
+    }
+
+    /// <summary>
+    /// POST /api/admin/system/bulk/deactivate-users - Bulk deactivate users across tenants.
+    /// Cross-tenant operation using IgnoreQueryFilters.
+    /// </summary>
+    [HttpPost("bulk/deactivate-users")]
+    public async Task<IActionResult> BulkDeactivateUsers([FromBody] BulkDeactivateRequest request)
+    {
+        var adminId = GetCurrentUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        if (request.UserIds == null || request.UserIds.Length == 0)
+            return BadRequest(new { error = "user_ids is required and must not be empty" });
+
+        // Prevent self-deactivation
+        if (request.UserIds.Contains(adminId.Value))
+            return BadRequest(new { error = "Cannot deactivate yourself" });
+
+        var users = await _db.Users
+            .IgnoreQueryFilters()
+            .Where(u => request.UserIds.Contains(u.Id))
+            .ToListAsync();
+
+        var deactivatedCount = 0;
+        foreach (var user in users)
+        {
+            if (user.IsActive)
+            {
+                user.IsActive = false;
+                user.UpdatedAt = DateTime.UtcNow;
+                deactivatedCount++;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogWarning("Admin {AdminId} bulk deactivated {Count} users (requested {Requested})",
+            adminId.Value, deactivatedCount, request.UserIds.Length);
+
+        return Ok(new
+        {
+            message = $"Deactivated {deactivatedCount} users",
+            deactivated_count = deactivatedCount,
+            requested_count = request.UserIds.Length,
+            not_found_count = request.UserIds.Length - users.Count
+        });
+    }
+
+    #endregion
+
     #region Helpers
 
     private static AnnouncementResponse MapAnnouncementResponse(PlatformAnnouncement a) => new()
@@ -492,6 +705,45 @@ public class SystemAdminController : ControllerBase
 
         [JsonPropertyName("server_time")]
         public DateTime ServerTime { get; set; }
+    }
+
+    public class AdminUserResponse
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("email")]
+        public string Email { get; set; } = string.Empty;
+
+        [JsonPropertyName("first_name")]
+        public string FirstName { get; set; } = string.Empty;
+
+        [JsonPropertyName("last_name")]
+        public string LastName { get; set; } = string.Empty;
+
+        [JsonPropertyName("role")]
+        public string Role { get; set; } = string.Empty;
+
+        [JsonPropertyName("tenant_id")]
+        public int TenantId { get; set; }
+
+        [JsonPropertyName("is_active")]
+        public bool IsActive { get; set; }
+    }
+
+    public class MoveTenantRequest
+    {
+        [JsonPropertyName("target_tenant_id")]
+        public int TargetTenantId { get; set; }
+
+        [JsonPropertyName("promote_to_admin")]
+        public bool PromoteToAdmin { get; set; }
+    }
+
+    public class BulkDeactivateRequest
+    {
+        [JsonPropertyName("user_ids")]
+        public int[] UserIds { get; set; } = Array.Empty<int>();
     }
 
     #endregion

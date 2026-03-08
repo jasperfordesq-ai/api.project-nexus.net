@@ -266,6 +266,50 @@ builder.Services.AddScoped<UserPreferencesService>();
 builder.Services.AddScoped<PollService>();
 builder.Services.AddScoped<GoalService>();
 builder.Services.AddScoped<AvailabilityService>();
+builder.Services.AddScoped<BlogService>();
+builder.Services.AddScoped<PageService>();
+builder.Services.AddScoped<OrganisationService>();
+builder.Services.AddScoped<OrgWalletService>();
+builder.Services.AddScoped<NexusScoreService>();
+builder.Services.AddScoped<OnboardingService>();
+builder.Services.AddScoped<TenantHierarchyService>();
+builder.Services.AddScoped<InsuranceService>();
+builder.Services.AddScoped<VoiceMessageService>();
+builder.Services.AddScoped<MemberActivityService>();
+builder.Services.AddScoped<VerificationBadgeService>();
+builder.Services.AddScoped<ResourceService>();
+builder.Services.AddScoped<ThreadedCommentService>();
+builder.Services.AddScoped<VettingService>();
+builder.Services.AddScoped<BrokerService>();
+builder.Services.AddScoped<EnterpriseService>();
+builder.Services.AddScoped<EventReminderService>();
+builder.Services.AddScoped<EmailVerificationService>();
+builder.Services.AddScoped<FaqService>();
+builder.Services.AddScoped<GroupExchangeService>();
+builder.Services.AddScoped<CollaborativeFilterService>();
+builder.Services.AddScoped<HashtagService>();
+builder.Services.AddScoped<PersonalInsightsService>();
+builder.Services.AddScoped<SavedSearchService>();
+builder.Services.AddScoped<SubAccountService>();
+builder.Services.AddScoped<FederationAdminService>();
+
+// Saved Search Alert background service
+builder.Services.AddHostedService<SavedSearchAlertService>();
+
+// Meilisearch (semantic search - optional, falls back to ILIKE)
+builder.Services.Configure<MeilisearchOptions>(
+    builder.Configuration.GetSection(MeilisearchOptions.SectionName));
+var meilisearchOptions = builder.Configuration
+    .GetSection(MeilisearchOptions.SectionName)
+    .Get<MeilisearchOptions>() ?? new MeilisearchOptions();
+builder.Services.AddHttpClient<MeilisearchService>(client =>
+{
+    client.BaseAddress = new Uri(meilisearchOptions.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(meilisearchOptions.TimeoutSeconds);
+    if (!string.IsNullOrEmpty(meilisearchOptions.ApiKey))
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", meilisearchOptions.ApiKey);
+});
 
 // Registration Policy Engine
 builder.Services.AddSingleton<IIdentityVerificationProvider, MockIdentityVerificationProvider>();

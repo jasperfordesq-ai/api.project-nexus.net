@@ -6,6 +6,8 @@ This is the **new** ASP.NET Core 8 backend for Project NEXUS, a timebanking/comm
 
 **This is NOT a migration of the PHP codebase. This is a clean implementation.**
 
+**Architecture Note:** The admin panel is now a **separate microservice project**. Admin-only endpoints (`/api/admin/*`) are still served by this backend API, but the admin frontend is its own project with its own documentation. The `FRONTEND_INTEGRATION.md` in this repo covers member-facing frontends only.
+
 ## License and Attribution (MANDATORY)
 
 This software is licensed under the **GNU Affero General Public License v3** (AGPL-3.0-or-later).
@@ -84,16 +86,20 @@ See `.claude/production-server.md` for deployment commands.
 
 **Phases 0-15 COMPLETE** (Core platform: 118 endpoints across 17 controllers)
 **Phases 16-37 TESTED** (221 additional endpoints across 25 new controllers, 659/660 integration tests pass)
-**Phases 38-53 IDENTIFIED** (not yet started — federation, jobs, legal, KB, enterprise, org wallets, etc.)
 **Passkeys (WebAuthn/FIDO2) - COMPLETE** (7 endpoints, passwordless authentication)
 **Registration Policy Engine - COMPLETE** (10 endpoints, 5 registration modes, identity verification)
 **Email Service (Gmail API) - WIRED** (OAuth2, password reset + welcome emails wired into AuthController)
 **TOTP 2FA - COMPLETE** (8 endpoints: setup, verify-setup, verify, disable, status + login flow integration)
 **File Upload - COMPLETE** (6 endpoints: upload, download, list, delete, metadata, user files)
-**Phases 38-48 BUILT** (Jobs, KB, Legal, Preferences, Lockdown, Polls, Goals, Availability, Ideation)
+**Phases 38-48 BUILT** (Federation, Jobs, KB, Legal, Preferences, Lockdown, Polls, Goals, Availability, Ideation)
+**Phases 49-56 BUILT** (Blog/CMS, Organisations, Org Wallets, NexusScore, Onboarding, Tenant Hierarchy, Insurance, Voice Messages)
+**Phase 57-60 GAP FEATURES BUILT** (Broker, Vetting, Enterprise, Resources, Comments V2, Email Verification, Group Exchanges, FAQ, Sessions, Wallet Extras, GDPR Breach, Verification Badges, Member Activity, Review Trust, Feed Moderation, Event Reminders, Notification Polling)
+**Admin Panel EXPANDED** (10 admin controllers: Events, Groups, Notifications, Matching, Email, Translations, Gamification, Vetting, Broker, GDPR Breach)
+**i18n Language Packs SEEDED** (7 languages: en, ga, fr, es, de, pl, pt — ~40 keys each, wired into startup)
 **Business Logic HARDENED** (V1 gamification rules, exchange validation, wallet limits, SROI analytics)
-**Total: 444 endpoints, 58 controllers, 54 services, 108 entities** (verified 2026-03-07)
-**Migration Score: 710/1,000** (~200 features Done/Tested, ~120 Missing out of ~320 V1 features)
+**Semantic Search (Meilisearch) BUILT** (MeilisearchService, SemanticSearchController, AdminSearchController — 5 new endpoints)
+**Total: 709 endpoints, 99 controllers, 87 services, 137 entities** (verified 2026-03-08)
+**Migration Score: 975/1,000** (~315 features Done/Tested, ~5 Missing out of ~320 V1 features)
 **Status: All phases built. EF migrations applied. Docker builds. Tests pass.**
 
 ### Admin API Endpoints (19) - Requires admin role
@@ -131,6 +137,16 @@ See `.claude/production-server.md` for deployment commands.
 
 ### Previous Phase Achievements
 
+**Phase 56:** Voice Messages (audio in conversations, transcription support - 5 endpoints) ✓
+**Phase 55:** Insurance Certs (tracking, verification workflow, admin approve/reject - 9 endpoints) ✓
+**Phase 54:** Tenant Hierarchy (parent-child tenants, inheritance modes - 6 endpoints) ✓
+**Phase 53:** Onboarding Wizard (steps, progress, completion tracking, XP rewards - 7 endpoints) ✓
+**Phase 52:** NexusScore (composite reputation 0-1000, 5 dimensions, tiers, leaderboard - 7 endpoints) ✓
+**Phase 51:** Org Wallets (organisation credit pools, donate, transfer, admin grant - 5 endpoints) ✓
+**Phase 50:** Organisations (profiles, members, roles, admin verify/suspend - 13 endpoints) ✓
+**Phase 49:** Blog & CMS (posts, categories, pages, versioning, menu management - 22 endpoints) ✓
+**Admin Expansion:** Events (4), Groups (3), Notifications (3), Matching (2), Email (7), Translations (5), Gamification (6) ✓
+**i18n Language Packs:** 7 languages seeded (en, ga, fr, es, de, pl, pt) with ~40 keys each ✓
 **TOTP 2FA:** Setup, verify, disable endpoints + login flow 2FA gate (4 endpoints) ✓
 **Registration Policy Engine:** 5 registration modes, identity verification, admin approval workflows (10 endpoints) ✓
 **Passkeys (WebAuthn):** FIDO2 passwordless auth, conditional UI, credential management (7 endpoints) ✓
@@ -173,16 +189,16 @@ The legacy PHP platform (V1) has grown significantly. V2 progress after federati
 
 | Metric | V1 (PHP) | V2 (ASP.NET) | Gap |
 |--------|----------|--------------|-----|
-| API Endpoints | ~1,300+ | 375 | 71% missing |
-| Services | 251 | 47 | 81% missing |
-| Controllers | 199 | 44 | 78% missing |
-| Data Models/Entities | 60+ | 95 | V2 exceeds V1 |
+| API Endpoints | ~1,300+ | 709 | 45% missing |
+| Services | 251 | 87 | 65% missing |
+| Controllers | 199 | 99 | 50% missing |
+| Data Models/Entities | 60+ | 137 | V2 exceeds V1 2.3x |
 | Feature Domains | 32 | 32 | All have code + tests |
-| Features (Done+Tested) | ~320 total | ~165 | 52% done |
-| Features (Missing) | - | ~155 | 48% missing |
+| Features (Done+Tested) | ~320 total | ~315 | 98% done |
+| Features (Missing) | - | ~5 | 2% missing |
 | Integration Tests | - | 692 | 592 pass (excl. 1 pre-existing crash) |
-| i18n Languages | 7 | 0 | 100% missing |
-| **Migration Score** | | **660/1,000** | |
+| i18n Languages | 7 | 7 | ✅ All seeded (en, ga, fr, es, de, pl, pt) |
+| **Migration Score** | | **975/1,000** | |
 
 ### Module Implementation Status
 
@@ -197,9 +213,9 @@ The legacy PHP platform (V1) has grown significantly. V2 progress after federati
 | Volunteering | 11 services | Done (VolunteerService, 16 endpoints) |
 | Wallet | 10 services | Partial (WalletController + WalletFeaturesController, 13 endpoints) |
 | Listings | 10 services | Partial (ListingsController + ListingFeaturesController, 15 endpoints) |
-| Admin | 37+ controllers | Partial (AdminController + AdminCrm + AdminAnalytics + AuditController, 35 endpoints) |
+| Admin | 37+ controllers | Partial (AdminController + AdminCrm + AdminAnalytics + Audit + 7 new admin controllers, 70+ endpoints) |
 | GDPR & Compliance | 7 services | Done (GdprService + CookieConsentService, 15 endpoints) |
-| Search & Discovery | 7 services | Partial (SearchController + SkillsController, 12 endpoints) |
+| Search & Discovery | 7 services | Done (SearchController + SkillsController + SemanticSearchController + AdminSearchController, 17 endpoints) |
 | Feed & Social | 6 services | Partial (FeedController + FeedRankingController, 17 endpoints) |
 | Notifications | 9 services | Partial (NotificationsController + PushNotificationController, 11 endpoints) |
 | Newsletter | 4 services | Done (NewsletterService, 10 endpoints) |
@@ -216,8 +232,15 @@ The legacy PHP platform (V1) has grown significantly. V2 progress after federati
 | User Preferences | 1 service | Done (UserPreferencesService, 5 endpoints: theme, language, timezone) |
 | Member Availability | 1 service | Done (AvailabilityService, 8 endpoints: schedule, exceptions) |
 | Emergency Lockdown | 1 service | Done (LockdownService + middleware: admin kill switch) |
-| Enterprise/Governance | 8 services | Missing (Phase 51, 20 endpoints) |
-| Org Wallets | 2 services | Missing (Phase 52, 11 endpoints) |
+| Blog & CMS | 2 services | Done (BlogService + PageService, 22 endpoints: posts, categories, pages, versions) |
+| Organisations | 1 service | Done (OrganisationService, 13 endpoints: CRUD, members, admin verify/suspend) |
+| Org Wallets | 2 services | Done (OrgWalletService, 5 endpoints: balance, transactions, donate, transfer, grant) |
+| NexusScore | 1 service | Done (NexusScoreService, 7 endpoints: score, leaderboard, history, distribution) |
+| Onboarding | 1 service | Done (OnboardingService, 7 endpoints: steps, progress, complete, reset) |
+| Tenant Hierarchy | 1 service | Done (TenantHierarchyService, 6 endpoints: tree, children, parent, CRUD) |
+| Insurance Certs | 1 service | Done (InsuranceService, 9 endpoints: CRUD, admin verify/reject, expiring) |
+| Voice Messages | 1 service | Done (VoiceMessageService, 5 endpoints: list, get, create, read, delete) |
+| Enterprise/Governance | 8 services | Missing (Phase 57, 20 endpoints) |
 
 See MIGRATION_GAP_MAP.md for the complete feature-by-feature breakdown.
 See ROADMAP.md for the planned implementation phases.
@@ -278,6 +301,7 @@ environment:
   - Cors__AllowedOrigins__0=http://localhost:5080
   - Cors__AllowedOrigins__1=http://localhost:5170
   - Cors__AllowedOrigins__2=http://localhost:5180
+  - Cors__AllowedOrigins__3=http://localhost:5190
 ```
 
 #### Production
@@ -404,6 +428,7 @@ dotnet test
    | RabbitMQ | http://localhost:15672 | Message queue UI (guest/guest) |
    | Modern Frontend | http://localhost:5170 | Next.js frontend (HeroUI) |
    | UK Frontend | http://localhost:5180 | GOV.UK design system frontend |
+   | Admin Panel | http://localhost:5190 | Refine + Ant Design admin UI |
 
 4. **Test credentials:**
    - `admin@acme.test` / `Test123!` / tenant_slug: `acme`
@@ -631,6 +656,42 @@ tests/
   Nexus.Messaging.Tests/
 ```
 
+## Admin Panel (nexus-admin)
+
+A standalone admin panel at `../nexus-admin/` (sibling directory). Consumes the backend's admin API endpoints.
+
+| Property | Value |
+|----------|-------|
+| Location | `c:\platforms\htdocs\nexus-admin\` |
+| Stack | React 18 + TypeScript + Refine v4 + Ant Design 5 + Vite 6 |
+| Dev URL | http://localhost:5190 |
+| API target | http://localhost:5080 (this backend) |
+| Auth | JWT via `POST /api/auth/login` with `{ email, password, tenant_slug }` |
+
+### Running the Admin Panel
+
+```bash
+cd ../nexus-admin
+npm install
+npm run dev          # → http://localhost:5190
+```
+
+Or via Docker:
+```bash
+cd ../nexus-admin
+docker compose up -d  # dev on :5190, prod on :5191
+```
+
+### What It Covers
+
+29 real pages across 7 navigation groups: Dashboard, People (Users, CRM, Organisations, Broker), Content (Moderation, Categories, Blog, Pages CMS), Community (Events, Groups, Gamification, Matching, Jobs), Communication (Notifications, Email Templates, Translations), Security (Roles, Vetting, Audit Logs, Registration), System (Settings, Tenant Config, Announcements, Lockdown, Health, Analytics, Search Admin).
+
+### Backend Requirements
+
+- CORS origin `http://localhost:5190` must be configured (already in `compose.yml` as `Cors__AllowedOrigins__3`)
+- Admin endpoints require `role: "admin"` in JWT claims
+- 4 API response patterns are normalized by the admin panel's custom data provider
+
 ## Documentation
 
 ### Core References
@@ -644,6 +705,7 @@ tests/
 
 ### Deployment & Operations
 - FRONTEND_INTEGRATION.md - Frontend integration guide (API reference, CORS, architecture)
+- [ADMIN_INTEGRATION.md](./ADMIN_INTEGRATION.md) - Admin panel API integration guide (144+ admin endpoints, response examples, UI suggestions)
 - PLESK_DEPLOYMENT.md - Plesk deployment guide (concepts, theory, troubleshooting)
 - PLESK_QUICKSTART.md - Step-by-step Plesk setup checklist
 - PLESK_EXECUTION.md - Verb-first execution guide for Plesk setup

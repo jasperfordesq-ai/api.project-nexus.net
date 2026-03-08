@@ -38,6 +38,7 @@ services:
       - Cors__AllowedOrigins__0=http://localhost:5080
       - Cors__AllowedOrigins__1=http://localhost:5170
       - Cors__AllowedOrigins__2=http://localhost:5180
+      - Cors__AllowedOrigins__3=http://localhost:5190
       # Rate limiting (relaxed for development)
       - RateLimiting__Auth__PermitLimit=10
       - RateLimiting__Auth__WindowSeconds=60

@@ -46,8 +46,8 @@ public static class SeedData
 
         db.Tenants.AddRange(tenant1, tenant2);
 
-        // Create users (password: "Test123!")
-        // BCrypt hash for "Test123!" - pre-computed for deterministic seeding
+        // Create test users — password is the standard dev seed value
+        // BCrypt hash computed at runtime for deterministic seeding
         var passwordHash = BCrypt.Net.BCrypt.HashPassword("Test123!");
 
         var user1 = new User
@@ -827,6 +827,54 @@ public static class SeedData
 
         db.TenantConfigs.AddRange(tenantConfigs);
 
+        // Seed i18n supported locales and translations for both tenants
+        var locales = new List<SupportedLocale>();
+        var localeId = 1;
+        foreach (var tenantId in new[] { 1, 2 })
+        {
+            foreach (var (locale, name, nativeName, isDefault) in I18nSeedData.SupportedLocales)
+            {
+                locales.Add(new SupportedLocale
+                {
+                    Id = localeId++,
+                    TenantId = tenantId,
+                    Locale = locale,
+                    Name = name,
+                    NativeName = nativeName,
+                    IsDefault = isDefault,
+                    IsActive = true,
+                    CompletionPercent = locale == "en" ? 100 : 60,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+        }
+        db.SupportedLocales.AddRange(locales);
+
+        var translations = new List<Translation>();
+        var translationId = 1;
+        foreach (var tenantId in new[] { 1, 2 })
+        {
+            foreach (var (locale, keys) in I18nSeedData.Translations)
+            {
+                foreach (var (key, value) in keys)
+                {
+                    var ns = key.Contains('.') ? key[..key.IndexOf('.')] : "common";
+                    translations.Add(new Translation
+                    {
+                        Id = translationId++,
+                        TenantId = tenantId,
+                        Locale = locale,
+                        Key = key,
+                        Value = value,
+                        Namespace = ns,
+                        IsApproved = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+        }
+        db.Translations.AddRange(translations);
+
         await db.SaveChangesAsync();
 
         // Reset sequences after seeding with explicit IDs
@@ -849,8 +897,10 @@ public static class SeedData
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('categories', 'Id'), (SELECT MAX(\"Id\") FROM categories))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('roles', 'Id'), (SELECT MAX(\"Id\") FROM roles))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('tenant_configs', 'Id'), (SELECT MAX(\"Id\") FROM tenant_configs))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('supported_locales', 'Id'), (SELECT MAX(\"Id\") FROM supported_locales))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('translations', 'Id'), (SELECT MAX(\"Id\") FROM translations))");
 
-        logger.LogInformation("Seeded {TenantCount} tenants, {UserCount} users, {ListingCount} listings, {TransactionCount} transactions, {ConversationCount} conversations, {MessageCount} messages, {ConnectionCount} connections, {GroupCount} groups, {EventCount} events, {RsvpCount} RSVPs, {PostCount} posts, {BadgeCount} badges, {ReviewCount} reviews, {CategoryCount} categories, {RoleCount} roles, {ConfigCount} configs",
-            2, 3, listings.Count, transactions.Count, conversations.Count, messages.Count, connections.Count, groups.Count, events.Count, eventRsvps.Count, feedPosts.Count, badges.Count, reviews.Count, categories.Count, roles.Count, tenantConfigs.Count);
+        logger.LogInformation("Seeded {TenantCount} tenants, {UserCount} users, {ListingCount} listings, {TransactionCount} transactions, {ConversationCount} conversations, {MessageCount} messages, {ConnectionCount} connections, {GroupCount} groups, {EventCount} events, {RsvpCount} RSVPs, {PostCount} posts, {BadgeCount} badges, {ReviewCount} reviews, {CategoryCount} categories, {RoleCount} roles, {ConfigCount} configs, {LocaleCount} locales, {TranslationCount} translations",
+            2, 3, listings.Count, transactions.Count, conversations.Count, messages.Count, connections.Count, groups.Count, events.Count, eventRsvps.Count, feedPosts.Count, badges.Count, reviews.Count, categories.Count, roles.Count, tenantConfigs.Count, locales.Count, translations.Count);
     }
 }
