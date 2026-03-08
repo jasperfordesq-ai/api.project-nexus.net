@@ -308,6 +308,20 @@ public class NexusDbContext : DbContext
     // Message Attachments
     public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
 
+    // Subscriptions & Plans
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
+
+    // Deliverables
+    public DbSet<Deliverable> Deliverables => Set<Deliverable>();
+    public DbSet<DeliverableComment> DeliverableComments => Set<DeliverableComment>();
+
+    // Idea Favorites
+    public DbSet<IdeaFavorite> IdeaFavorites => Set<IdeaFavorite>();
+
+    // Post Reactions
+    public DbSet<PostReaction> PostReactions => Set<PostReaction>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

@@ -57,6 +57,35 @@ public class UserPreference : ITenantEntity
     /// </summary>
     public bool ShowLastSeen { get; set; } = true;
 
+
+    /// <summary>Whether to show email address on profile.</summary>
+    public bool ShowEmail { get; set; } = false;
+
+    /// <summary>Whether to show phone number on profile.</summary>
+    public bool ShowPhone { get; set; } = false;
+
+    /// <summary>Whether to show location on profile.</summary>
+    public bool ShowLocation { get; set; } = true;
+
+    /// <summary>Whether profile appears in search results.</summary>
+    public bool Searchable { get; set; } = true;
+
+    /// <summary>Whether email notifications are enabled.</summary>
+    public bool EmailNotifications { get; set; } = true;
+
+    /// <summary>Whether push notifications are enabled.</summary>
+    public bool PushNotifications { get; set; } = true;
+
+    /// <summary>Whether SMS notifications are enabled.</summary>
+    public bool SmsNotifications { get; set; } = false;
+
+    /// <summary>Preferred date format (e.g. "DD/MM/YYYY").</summary>
+    [MaxLength(20)]
+    public string DateFormat { get; set; } = "DD/MM/YYYY";
+
+    /// <summary>Number of items per page in lists.</summary>
+    public int ItemsPerPage { get; set; } = 20;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

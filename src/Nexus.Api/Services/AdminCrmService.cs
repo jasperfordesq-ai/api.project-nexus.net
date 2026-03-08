@@ -307,6 +307,141 @@ public class AdminCrmService
         };
     }
 
+    /// <summary>Create a CRM task for a user.</summary>
+    public async Task<(CrmTask?, string? Error)> CreateCrmTaskAsync(
+        int tenantId, int targetUserId, int adminId, string title,
+        string? description, string? priority, DateTime? dueDate)
+    {
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetUserId);
+        if (user == null) return (null, "User not found");
+
+        var task = new CrmTask
+        {
+            TenantId = tenantId,
+            TargetUserId = targetUserId,
+            AssignedToAdminId = adminId,
+            Title = title,
+            Description = description,
+            Priority = priority ?? "medium",
+            Status = "pending",
+            DueDate = dueDate
+        };
+
+        _db.Set<CrmTask>().Add(task);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} created CRM task {TaskId} for user {UserId}", adminId, task.Id, targetUserId);
+        return (task, null);
+    }
+
+    /// <summary>List CRM tasks with optional filters.</summary>
+    public async Task<(List<CrmTask> Tasks, int Total)> ListCrmTasksAsync(int tenantId, int? targetUserId, string? status)
+    {
+        var query = _db.Set<CrmTask>().Where(t => t.TenantId == tenantId);
+
+        if (targetUserId.HasValue)
+            query = query.Where(t => t.TargetUserId == targetUserId.Value);
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(t => t.Status == status);
+
+        var total = await query.CountAsync();
+        var tasks = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
+        return (tasks, total);
+    }
+
+    /// <summary>Mark a CRM task as done.</summary>
+    public async Task<(bool Success, string? Error)> CompleteCrmTaskAsync(int tenantId, int taskId)
+    {
+        var task = await _db.Set<CrmTask>().FirstOrDefaultAsync(t => t.TenantId == tenantId && t.Id == taskId);
+        if (task == null) return (false, "Task not found");
+        task.Status = "done";
+        task.CompletedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    /// <summary>Delete a CRM task.</summary>
+    public async Task<(bool Success, string? Error)> DeleteCrmTaskAsync(int tenantId, int taskId)
+    {
+        var task = await _db.Set<CrmTask>().FirstOrDefaultAsync(t => t.TenantId == tenantId && t.Id == taskId);
+        if (task == null) return (false, "Task not found");
+        _db.Set<CrmTask>().Remove(task);
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    /// <summary>Add a tag to a user.</summary>
+    public async Task<(bool Success, string? Error)> AddTagToUserAsync(int tenantId, int userId, int adminId, string tag)
+    {
+        tag = tag.Trim().ToLower();
+        if (string.IsNullOrWhiteSpace(tag)) return (false, "Tag cannot be empty");
+
+        var existing = await _db.Set<UserTag>()
+            .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.UserId == userId && t.Tag == tag);
+        if (existing != null) return (false, "Tag already applied");
+
+        var userTag = new UserTag
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            Tag = tag,
+            AppliedByAdminId = adminId
+        };
+        _db.Set<UserTag>().Add(userTag);
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    /// <summary>Remove a tag from a user.</summary>
+    public async Task<(bool Success, string? Error)> RemoveTagFromUserAsync(int tenantId, int userId, string tag)
+    {
+        tag = tag.Trim().ToLower();
+        var existing = await _db.Set<UserTag>()
+            .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.UserId == userId && t.Tag == tag);
+        if (existing == null) return (false, "Tag not found");
+        _db.Set<UserTag>().Remove(existing);
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    /// <summary>Get all tags for a user.</summary>
+    public async Task<List<string>> GetUserTagsAsync(int tenantId, int userId)
+    {
+        return await _db.Set<UserTag>()
+            .Where(t => t.TenantId == tenantId && t.UserId == userId)
+            .OrderBy(t => t.Tag)
+            .Select(t => t.Tag)
+            .ToListAsync();
+    }
+
+    /// <summary>Export filtered users as CSV string.</summary>
+    public async Task<string> ExportUsersAsCsvAsync(int tenantId, AdvancedUserSearchFilters filters)
+    {
+        filters.Limit = 5000; // cap for export
+        var result = await SearchUsersAdvancedAsync(filters);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("id,email,first_name,last_name,role,is_active,created_at,last_login_at,total_xp,level,exchange_count");
+
+        foreach (var u in result.Users)
+        {
+            sb.AppendLine(
+                $"{u.Id},{EscapeCsv(u.Email)},{EscapeCsv(u.FirstName)},{EscapeCsv(u.LastName)}," +
+                $"{u.Role},{u.IsActive},{u.CreatedAt:O},{u.LastLoginAt?.ToString("O") ?? string.Empty}," +
+                $"{u.TotalXp},{u.Level},{u.ExchangeCount}");
+        }
+
+        return sb.ToString();
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        return value;
+    }
+
     #region Private helpers
 
     private async Task<Dictionary<int, int>> GetExchangeCountsForUsersAsync(List<int> userIds)

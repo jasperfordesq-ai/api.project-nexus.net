@@ -196,6 +196,98 @@ public class PreferencesController : ControllerBase
             }
         });
     }
+
+
+    /// <summary>GET /api/preferences/privacy - Get privacy settings.</summary>
+    [HttpGet("privacy")]
+    public async Task<IActionResult> GetPrivacySettings()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var settings = await _preferencesService.GetPrivacySettingsAsync(tenantId, userId.Value);
+        return Ok(settings);
+    }
+
+    /// <summary>PUT /api/preferences/privacy - Update privacy settings.</summary>
+    [HttpPut("privacy")]
+    public async Task<IActionResult> UpdatePrivacySettings([FromBody] UpdatePrivacySettingsDto dto)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var (success, error) = await _preferencesService.UpdatePrivacySettingsAsync(
+            tenantId, userId.Value,
+            dto.ShowEmail, dto.ShowPhone, dto.ShowLocation,
+            dto.Visibility, dto.Searchable);
+
+        if (!success) return BadRequest(new { error });
+
+        var settings = await _preferencesService.GetPrivacySettingsAsync(tenantId, userId.Value);
+        return Ok(new { success = true, message = "Privacy settings updated", privacy = settings });
+    }
+
+    /// <summary>GET /api/preferences/display - Get display preferences.</summary>
+    [HttpGet("display")]
+    public async Task<IActionResult> GetDisplayPreferences()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var settings = await _preferencesService.GetDisplayPreferencesAsync(tenantId, userId.Value);
+        return Ok(settings);
+    }
+
+    /// <summary>PUT /api/preferences/display - Update display preferences.</summary>
+    [HttpPut("display")]
+    public async Task<IActionResult> UpdateDisplayPreferences([FromBody] UpdateDisplayPreferencesDto dto)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var (success, error) = await _preferencesService.UpdateDisplayPreferencesAsync(
+            tenantId, userId.Value,
+            dto.Theme, dto.Language, dto.Timezone, dto.DateFormat, dto.ItemsPerPage);
+
+        if (!success) return BadRequest(new { error });
+
+        var settings = await _preferencesService.GetDisplayPreferencesAsync(tenantId, userId.Value);
+        return Ok(new { success = true, message = "Display preferences updated", display = settings });
+    }
+
+    /// <summary>GET /api/preferences/notifications-global - Get global notification channel toggles.</summary>
+    [HttpGet("notifications-global")]
+    public async Task<IActionResult> GetNotificationGlobal()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var settings = await _preferencesService.GetNotificationPreferencesGlobalAsync(tenantId, userId.Value);
+        return Ok(settings);
+    }
+
+    /// <summary>PUT /api/preferences/notifications-global - Update global notification toggles.</summary>
+    [HttpPut("notifications-global")]
+    public async Task<IActionResult> UpdateNotificationGlobal([FromBody] UpdateNotificationGlobalDto dto)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var (success, error) = await _preferencesService.UpdateNotificationPreferencesGlobalAsync(
+            tenantId, userId.Value,
+            dto.EmailNotifications, dto.PushNotifications, dto.SmsNotifications, dto.DigestFrequency);
+
+        if (!success) return BadRequest(new { error });
+
+        var settings = await _preferencesService.GetNotificationPreferencesGlobalAsync(tenantId, userId.Value);
+        return Ok(new { success = true, message = "Notification preferences updated", notifications = settings });
+    }
 }
 
 // DTOs
@@ -213,4 +305,55 @@ public class SetNotificationPreferenceRequest
 
     [JsonPropertyName("enable_email")]
     public bool? EnableEmail { get; set; }
+}
+
+public class UpdatePrivacySettingsDto
+{
+    [System.Text.Json.Serialization.JsonPropertyName("show_email")]
+    public bool? ShowEmail { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("show_phone")]
+    public bool? ShowPhone { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("show_location")]
+    public bool? ShowLocation { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("visibility")]
+    public string? Visibility { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("searchable")]
+    public bool? Searchable { get; set; }
+}
+
+public class UpdateDisplayPreferencesDto
+{
+    [System.Text.Json.Serialization.JsonPropertyName("theme")]
+    public string? Theme { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("language")]
+    public string? Language { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("timezone")]
+    public string? Timezone { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("date_format")]
+    public string? DateFormat { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("items_per_page")]
+    public int? ItemsPerPage { get; set; }
+}
+
+public class UpdateNotificationGlobalDto
+{
+    [System.Text.Json.Serialization.JsonPropertyName("email_notifications")]
+    public bool? EmailNotifications { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("push_notifications")]
+    public bool? PushNotifications { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("sms_notifications")]
+    public bool? SmsNotifications { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("digest_frequency")]
+    public string? DigestFrequency { get; set; }
 }

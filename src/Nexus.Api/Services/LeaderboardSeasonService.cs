@@ -171,4 +171,108 @@ public class LeaderboardSeasonService
 
         return season;
     }
+    /// <summary>
+    /// Get all seasons for a tenant ordered by start date descending.
+    /// </summary>
+    public async Task<List<object>> GetAllSeasonsAsync(int tenantId)
+    {
+        var seasons = await _db.Set<LeaderboardSeason>()
+            .Where(s => s.TenantId == tenantId)
+            .OrderByDescending(s => s.StartsAt)
+            .Select(s => new
+            {
+                s.Id,
+                s.Name,
+                starts_at = s.StartsAt,
+                ends_at = s.EndsAt,
+                status = s.Status.ToString().ToLower(),
+                s.PrizeDescription,
+                participant_count = s.Entries.Count,
+                s.CreatedAt
+            })
+            .ToListAsync();
+
+        return seasons.Cast<object>().ToList();
+    }
+
+    /// <summary>
+    /// Get a season by ID (tenant-scoped).
+    /// </summary>
+    public async Task<object?> GetSeasonByIdAsync(int tenantId, int seasonId)
+    {
+        var now = DateTime.UtcNow;
+        return await _db.Set<LeaderboardSeason>()
+            .Where(s => s.TenantId == tenantId && s.Id == seasonId)
+            .Select(s => new
+            {
+                s.Id,
+                s.Name,
+                starts_at = s.StartsAt,
+                ends_at = s.EndsAt,
+                status = s.Status.ToString().ToLower(),
+                s.PrizeDescription,
+                participant_count = s.Entries.Count,
+                days_remaining = s.Status == SeasonStatus.Active ? (int)(s.EndsAt - now).TotalDays : 0,
+                s.CreatedAt
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Get top users by XP earned for a specific XpLog source category.
+    /// </summary>
+    public async Task<List<object>> GetCategoryLeaderboardAsync(int tenantId, string category, int limit)
+    {
+        var leaderboard = await _db.XpLogs
+            .Where(x => x.Source == category)
+            .GroupBy(x => x.UserId)
+            .Select(g => new
+            {
+                UserId = g.Key,
+                CategoryXp = g.Sum(x => x.Amount)
+            })
+            .OrderByDescending(x => x.CategoryXp)
+            .Take(limit)
+            .ToListAsync();
+
+        var userIds = leaderboard.Select(x => x.UserId).ToList();
+        var users = await _db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+
+        var ranked = leaderboard.Select((entry, index) => (object)new
+        {
+            rank = index + 1,
+            user = new
+            {
+                id = entry.UserId,
+                first_name = users.TryGetValue(entry.UserId, out var u) ? u.FirstName : string.Empty,
+                last_name = users.TryGetValue(entry.UserId, out var u2) ? u2.LastName : string.Empty
+            },
+            category_xp = entry.CategoryXp
+        }).ToList();
+
+        return ranked;
+    }
+
+    /// <summary>
+    /// Admin: end (close) a season, setting status to Completed.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> EndSeasonAsync(int tenantId, int seasonId)
+    {
+        var season = await _db.Set<LeaderboardSeason>()
+            .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Id == seasonId);
+
+        if (season == null) return (false, "Season not found");
+        if (season.Status == SeasonStatus.Completed) return (false, "Season already ended");
+
+        season.Status = SeasonStatus.Completed;
+        season.EndsAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Season {SeasonId} ended by admin", seasonId);
+        return (true, null);
+    }
+
 }

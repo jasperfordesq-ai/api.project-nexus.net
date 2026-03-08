@@ -212,6 +212,119 @@ public class UserPreferencesService
 
         return prefs;
     }
+
+
+    /// <summary>Get privacy settings for a user.</summary>
+    public async Task<object> GetPrivacySettingsAsync(int tenantId, int userId)
+    {
+        var prefs = await GetPreferencesAsync(tenantId, userId);
+        return new
+        {
+            show_email = prefs.ShowEmail,
+            show_phone = prefs.ShowPhone,
+            show_location = prefs.ShowLocation,
+            profile_visibility = prefs.ProfileVisibility,
+            searchable = prefs.Searchable
+        };
+    }
+
+    /// <summary>Update privacy settings for a user.</summary>
+    public async Task<(bool Success, string? Error)> UpdatePrivacySettingsAsync(
+        int tenantId, int userId,
+        bool? showEmail, bool? showPhone, bool? showLocation,
+        string? visibility, bool? searchable)
+    {
+        var prefs = await GetPreferencesAsync(tenantId, userId);
+
+        if (showEmail.HasValue) prefs.ShowEmail = showEmail.Value;
+        if (showPhone.HasValue) prefs.ShowPhone = showPhone.Value;
+        if (showLocation.HasValue) prefs.ShowLocation = showLocation.Value;
+        if (searchable.HasValue) prefs.Searchable = searchable.Value;
+
+        if (visibility != null)
+        {
+            if (!ValidProfileVisibilities.Contains(visibility))
+                return (false, $"Invalid visibility. Must be one of: {string.Join(", ", ValidProfileVisibilities)}");
+            prefs.ProfileVisibility = visibility;
+        }
+
+        prefs.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    /// <summary>Get notification channel preferences (global toggles).</summary>
+    public async Task<object> GetNotificationPreferencesGlobalAsync(int tenantId, int userId)
+    {
+        var prefs = await GetPreferencesAsync(tenantId, userId);
+        return new
+        {
+            email_notifications = prefs.EmailNotifications,
+            push_notifications = prefs.PushNotifications,
+            sms_notifications = prefs.SmsNotifications,
+            digest_frequency = prefs.EmailDigestFrequency
+        };
+    }
+
+    /// <summary>Update global notification channel toggles.</summary>
+    public async Task<(bool Success, string? Error)> UpdateNotificationPreferencesGlobalAsync(
+        int tenantId, int userId,
+        bool? email, bool? push, bool? sms, string? digestFreq)
+    {
+        var prefs = await GetPreferencesAsync(tenantId, userId);
+
+        if (email.HasValue) prefs.EmailNotifications = email.Value;
+        if (push.HasValue) prefs.PushNotifications = push.Value;
+        if (sms.HasValue) prefs.SmsNotifications = sms.Value;
+
+        if (digestFreq != null)
+        {
+            if (!ValidDigestFrequencies.Contains(digestFreq))
+                return (false, $"Invalid digest frequency. Must be one of: {string.Join(", ", ValidDigestFrequencies)}");
+            prefs.EmailDigestFrequency = digestFreq;
+        }
+
+        prefs.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    /// <summary>Get display preferences (theme, language, timezone, date format, items per page).</summary>
+    public async Task<object> GetDisplayPreferencesAsync(int tenantId, int userId)
+    {
+        var prefs = await GetPreferencesAsync(tenantId, userId);
+        return new
+        {
+            theme = prefs.Theme,
+            language = prefs.Language,
+            timezone = prefs.Timezone,
+            date_format = prefs.DateFormat,
+            items_per_page = prefs.ItemsPerPage
+        };
+    }
+
+    /// <summary>Update display preferences.</summary>
+    public async Task<(bool Success, string? Error)> UpdateDisplayPreferencesAsync(
+        int tenantId, int userId,
+        string? theme, string? language, string? timezone, string? dateFormat, int? itemsPerPage)
+    {
+        var prefs = await GetPreferencesAsync(tenantId, userId);
+
+        if (theme != null)
+        {
+            if (!ValidThemes.Contains(theme))
+                return (false, $"Invalid theme. Must be one of: {string.Join(", ", ValidThemes)}");
+            prefs.Theme = theme;
+        }
+        if (language != null) prefs.Language = language;
+        if (timezone != null) prefs.Timezone = timezone;
+        if (dateFormat != null) prefs.DateFormat = dateFormat;
+        if (itemsPerPage.HasValue) prefs.ItemsPerPage = Math.Clamp(itemsPerPage.Value, 5, 100);
+
+        prefs.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
 }
 
 /// <summary>

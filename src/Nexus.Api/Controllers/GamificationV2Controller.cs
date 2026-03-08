@@ -285,4 +285,178 @@ public class GamificationV2Controller : ControllerBase
             day_rewards = status.DayRewards
         });
     }
+    // ==================== Achievements ====================
+
+    [HttpGet("/api/gamification/achievements")]
+    public async Task<IActionResult> GetAchievements()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var achievements = await _gamificationService.GetAchievementsAsync(tenantId, userId.Value);
+        return Ok(new { data = achievements, total = achievements.Count });
+    }
+
+    [HttpGet("/api/gamification/achievements/{userId}")]
+    public async Task<IActionResult> GetUserAchievements(int userId)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var achievements = await _gamificationService.GetAchievementsAsync(tenantId, userId);
+        return Ok(new { data = achievements, total = achievements.Count, user_id = userId });
+    }
+
+    [HttpPost("/api/gamification/badges/recheck")]
+    public async Task<IActionResult> RecheckBadges()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var (newlyEarned, error) = await _gamificationService.RecheckAllBadgesAsync(tenantId, userId.Value);
+        if (error != null) return BadRequest(new { error });
+        return Ok(new
+        {
+            newly_earned = newlyEarned.Select(ub => new { badge_id = ub.BadgeId, earned_at = ub.EarnedAt }),
+            total_badges = newlyEarned.Count
+        });
+    }
+
+    // ==================== Streak Detail + Milestones ====================
+
+    [HttpGet("streaks/detail")]
+    public async Task<IActionResult> GetStreakDetail()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var detail = await _streakService.GetStreakDetailsAsync(tenantId, userId.Value);
+        if (detail == null) return NotFound(new { error = "No streaks found" });
+        return Ok(detail);
+    }
+
+    [HttpGet("streaks/milestones")]
+    public async Task<IActionResult> GetStreakMilestones()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var milestones = await _streakService.GetStreakMilestonesAsync(userId.Value);
+        return Ok(new { data = milestones, total = milestones.Count });
+    }
+
+    // ==================== Seasons ====================
+
+    [HttpGet("seasons")]
+    public async Task<IActionResult> GetSeasons()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var seasons = await _seasonService.GetAllSeasonsAsync(_tenantContext.GetTenantIdOrThrow());
+        return Ok(new { data = seasons, total = seasons.Count });
+    }
+
+    [HttpGet("seasons/{id}")]
+    public async Task<IActionResult> GetSeason(int id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var season = await _seasonService.GetSeasonByIdAsync(_tenantContext.GetTenantIdOrThrow(), id);
+        if (season == null) return NotFound(new { error = "Season not found" });
+        return Ok(season);
+    }
+
+    [HttpGet("leaderboard/category")]
+    public async Task<IActionResult> GetCategoryLeaderboard(
+        [FromQuery] string category = "exchange",
+        [FromQuery] int limit = 20)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (limit < 1) limit = 1;
+        if (limit > 100) limit = 100;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var leaderboard = await _seasonService.GetCategoryLeaderboardAsync(tenantId, category, limit);
+        return Ok(new { data = leaderboard, category, total = leaderboard.Count });
+    }
+
+    // ==================== Admin: Award / Revoke Badge ====================
+
+    [HttpPost("/api/admin/gamification/users/{userId}/badges/{badgeId}/award")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminAwardBadge(int userId, int badgeId)
+    {
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var (userBadge, error) = await _gamificationService.AwardBadgeManuallyAsync(tenantId, userId, badgeId, adminId.Value);
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { message = "Badge awarded", badge_id = badgeId, user_id = userId, earned_at = userBadge!.EarnedAt });
+    }
+
+    [HttpDelete("/api/admin/gamification/users/{userId}/badges/{badgeId}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminRevokeBadge(int userId, int badgeId)
+    {
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var (success, error) = await _gamificationService.RevokeBadgeAsync(tenantId, userId, badgeId, adminId.Value);
+        if (!success) return NotFound(new { error = error ?? "Badge not found" });
+        return NoContent();
+    }
+
+    // ==================== Admin: Seasons ====================
+
+    [HttpPost("/api/admin/gamification/seasons")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminCreateSeason([FromBody] CreateSeasonRequest request)
+    {
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return BadRequest(new { error = "Name is required" });
+        if (request.StartsAt >= request.EndsAt)
+            return BadRequest(new { error = "starts_at must be before ends_at" });
+        var season = await _seasonService.CreateSeasonAsync(request.Name, request.StartsAt, request.EndsAt, request.PrizeDescription);
+        return Created($"api/gamification/v2/seasons/{season.Id}", new
+        {
+            season.Id,
+            season.Name,
+            starts_at = season.StartsAt,
+            ends_at = season.EndsAt,
+            status = season.Status.ToString().ToLower(),
+            season.PrizeDescription
+        });
+    }
+
+    [HttpPut("/api/admin/gamification/seasons/{id}/end")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminEndSeason(int id)
+    {
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var (success, error) = await _seasonService.EndSeasonAsync(tenantId, id);
+        if (!success) return NotFound(new { error = error ?? "Season not found" });
+        return Ok(new { message = "Season ended", season_id = id });
+    }
 }
+
+#region Request DTOs
+
+public class CreateSeasonRequest
+{
+    [System.Text.Json.Serialization.JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("starts_at")]
+    public DateTime StartsAt { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("ends_at")]
+    public DateTime EndsAt { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("prize_description")]
+    public string? PrizeDescription { get; set; }
+}
+
+#endregion
