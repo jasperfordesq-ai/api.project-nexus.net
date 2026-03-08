@@ -2011,7 +2011,7 @@ class ApiClient {
     return this.request("/api/preferences");
   }
 
-  async updateUserPreferences(data: Record<string, unknown>): Promise<void> {
+  async updateUserPreferences(data: unknown): Promise<void> {
     return this.request<void>("/api/preferences", {
       method: "PUT",
       body: JSON.stringify(data),
