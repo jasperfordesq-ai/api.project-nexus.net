@@ -293,6 +293,8 @@ builder.Services.AddScoped<SavedSearchService>();
 builder.Services.AddScoped<SubAccountService>();
 builder.Services.AddScoped<FederationAdminService>();
 builder.Services.AddScoped<SecretsVaultService>();
+builder.Services.AddScoped<DeliverableService>();
+builder.Services.AddScoped<SubscriptionService>();
 
 // Saved Search Alert background service
 builder.Services.AddHostedService<SavedSearchAlertService>();
