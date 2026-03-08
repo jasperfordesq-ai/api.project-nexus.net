@@ -12,6 +12,7 @@ export default defineConfig({
   server: {
     port: 5190,
     host: true,
+    allowedHosts: ["admin.project-nexus.net", "localhost"],
   },
   build: {
     chunkSizeWarningLimit: 1600,
