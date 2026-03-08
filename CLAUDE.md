@@ -702,6 +702,7 @@ cd apps/admin && docker compose up -d  # dev on :5190, prod on :5191
 ## Documentation
 
 ### Core References
+- [MONOREPO_MAP.md](./MONOREPO_MAP.md) - **All apps, ports, Docker service names, deployment commands** (monorepo map)
 - [NOTES.md](./NOTES.md) - Decision log and phase checklists
 - [ROADMAP.md](./ROADMAP.md) - Migration roadmap with all planned phases (16-37)
 - [MIGRATION_GAP_MAP.md](./MIGRATION_GAP_MAP.md) - V1 vs V2 feature comparison (~250 features mapped)

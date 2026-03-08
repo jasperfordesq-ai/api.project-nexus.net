@@ -56,6 +56,12 @@ Internet → Plesk nginx (SSL termination) → Custom nginx configs → Docker c
 
 ## Deployment Locations
 
+> **MONOREPO (2026-03-08):** All frontends now inside backend repo. Stale paths:
+> - /opt/nexus-uk-frontend/ -> now /opt/nexus-backend/apps/web-uk/
+> - /opt/nexus-modern-frontend/ -> now /opt/nexus-backend/apps/web-modern/
+> Update nginx proxy configs on next deploy. See MONOREPO_MAP.md.
+
+
 | Component | Path |
 |-----------|------|
 | Backend (API, DB, RabbitMQ, Ollama) | `/opt/nexus-backend/` |

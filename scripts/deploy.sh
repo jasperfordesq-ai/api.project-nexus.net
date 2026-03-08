@@ -19,7 +19,7 @@ set -e
 
 MODE="${1:-deploy}"
 SERVER="${NEXUS_DEPLOY_HOST:?ERROR: Set NEXUS_DEPLOY_HOST (e.g. export NEXUS_DEPLOY_HOST=azureuser@your-server-ip)}"
-REMOTE_DIR="/opt/nexus-api"
+REMOTE_DIR="/opt/nexus-backend"
 LOCK_FILE="$REMOTE_DIR/.deploy.lock"
 LAST_DEPLOY_FILE="$REMOTE_DIR/.last-successful-deploy"
 MIN_DISK_MB=1024
