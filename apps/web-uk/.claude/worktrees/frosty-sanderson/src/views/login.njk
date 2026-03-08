@@ -1,0 +1,103 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [
+            {
+              text: error,
+              href: "#email"
+            }
+          ]
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Sign in</h1>
+
+      <form method="post" action="/login" novalidate data-validate-form data-loading="Signing in...">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        {{ govukInput({
+          label: {
+            text: "Email address",
+            classes: "govuk-label--m"
+          },
+          id: "email",
+          name: "email",
+          type: "email",
+          autocomplete: "email",
+          spellcheck: false,
+          value: values.email if values else "",
+          attributes: {
+            "data-validate": "required email",
+            "data-label": "Email address"
+          }
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Password",
+            classes: "govuk-label--m"
+          },
+          id: "password",
+          name: "password",
+          type: "password",
+          autocomplete: "current-password",
+          attributes: {
+            "data-validate": "required",
+            "data-label": "Password"
+          }
+        }) }}
+
+        <p class="govuk-body govuk-!-margin-bottom-6">
+          <a href="/forgot-password" class="govuk-link">Forgot your password?</a>
+        </p>
+
+        {{ govukInput({
+          label: {
+            text: "Community code",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Your community identifier (e.g. 'acme')"
+          },
+          id: "tenant_slug",
+          name: "tenant_slug",
+          value: values.tenant_slug if values else "",
+          attributes: {
+            "data-validate": "required",
+            "data-label": "Community code"
+          }
+        }) }}
+
+        {{ govukButton({
+          text: "Sign in"
+        }) }}
+      </form>
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        Don't have an account? <a href="/register" class="govuk-link">Create one</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

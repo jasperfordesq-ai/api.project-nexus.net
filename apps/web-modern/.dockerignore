@@ -1,0 +1,42 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Next.js build output
+.next
+out
+
+# Docker files (no need to copy into container)
+Dockerfile*
+compose.yml
+compose.yaml
+docker-compose*.yml
+docker-compose*.yaml
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (handled separately)
+.env*.local
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+coverage
+.nyc_output
+
+# Misc
+.snapshots

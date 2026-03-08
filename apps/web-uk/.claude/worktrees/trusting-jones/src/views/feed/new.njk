@@ -1,0 +1,101 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/character-count/macro.njk" import govukCharacterCount %}
+
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Feed", href: "/feed" },
+    { text: "Create a post" }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length > 0 %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Create a post</h1>
+
+      <form action="/feed/new" method="post" novalidate data-validate-form data-loading="Posting...">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {% set contentError = errors | selectattr("href", "equalto", "#content") | first if errors else null %}
+        {{ govukCharacterCount({
+          id: "content",
+          name: "content",
+          value: values.content if values else "",
+          maxlength: 5000,
+          label: {
+            text: "What's on your mind?",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Share an update, question, or thought with the community"
+          },
+          rows: 6,
+          errorMessage: { text: contentError.text } if contentError else undefined
+        }) }}
+
+        {{ govukInput({
+          id: "image_url",
+          name: "image_url",
+          value: values.image_url if values else "",
+          label: {
+            text: "Image URL",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Optional - add a link to an image"
+          },
+          type: "url",
+          attributes: {
+            placeholder: "https://example.com/image.jpg"
+          }
+        }) }}
+
+        {% if myGroups and myGroups.length > 0 %}
+          {% set groupItems = [{value: "", text: "Public feed (no group)", selected: not selectedGroupId}] %}
+          {% for group in myGroups %}
+            {% set groupItems = (groupItems.push({
+              value: group.id | string,
+              text: group.name,
+              selected: selectedGroupId and (group.id | string) == (selectedGroupId | string)
+            }), groupItems) %}
+          {% endfor %}
+          {{ govukSelect({
+            id: "group_id",
+            name: "group_id",
+            label: {
+              text: "Post to a group",
+              classes: "govuk-label--m"
+            },
+            hint: {
+              text: "Optional - share this post with a specific group"
+            },
+            items: groupItems
+          }) }}
+        {% endif %}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Post"
+          }) }}
+          <a href="/feed" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

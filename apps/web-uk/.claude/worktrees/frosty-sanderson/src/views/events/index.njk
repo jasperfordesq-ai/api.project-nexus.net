@@ -1,0 +1,192 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <div class="app-page-header">
+        <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Events</h1>
+        <div class="app-page-header__actions">
+          {{ govukButton({
+            text: "Create an event",
+            href: "/events/new",
+            classes: "govuk-!-margin-bottom-0"
+          }) }}
+        </div>
+      </div>
+
+      <p class="govuk-body-l">Discover and join community events.</p>
+
+      {# Search and filter form #}
+      <form action="/events" method="get" class="govuk-!-margin-bottom-6">
+        <div class="app-search-bar">
+          {{ govukInput({
+            id: "search",
+            name: "search",
+            value: searchQuery,
+            label: {
+              text: "Search events",
+              classes: "govuk-visually-hidden"
+            },
+            classes: "app-search-bar__input",
+            attributes: {
+              placeholder: "Search by event name or location..."
+            }
+          }) }}
+          {{ govukButton({
+            text: "Search",
+            classes: "app-search-bar__button govuk-!-margin-bottom-0"
+          }) }}
+        </div>
+        <div class="govuk-!-margin-top-3">
+          {{ govukCheckboxes({
+            name: "upcoming_only",
+            classes: "govuk-checkboxes--small",
+            items: [
+              {
+                value: "true",
+                text: "Show upcoming events only",
+                checked: upcomingOnly
+              }
+            ]
+          }) }}
+        </div>
+      </form>
+
+      {# Quick links #}
+      <nav class="app-sub-nav govuk-!-margin-bottom-6">
+        <a href="/events/my" class="govuk-link">My events</a>
+      </nav>
+
+      {# Events list #}
+      {% if events.length > 0 %}
+        <div class="app-card-grid">
+          {% for event in events %}
+            <div class="app-card app-card--event">
+              <div class="app-card__header">
+                <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
+                  <a href="/events/{{ event.id }}" class="govuk-link govuk-link--no-visited-state">
+                    {{ event.title }}
+                  </a>
+                </h2>
+                {% if event.status == 'cancelled' %}
+                  {{ govukTag({ text: "Cancelled", classes: "govuk-tag--red" }) }}
+                {% elif event.is_past %}
+                  {{ govukTag({ text: "Past", classes: "govuk-tag--grey" }) }}
+                {% else %}
+                  {{ govukTag({ text: "Upcoming", classes: "govuk-tag--green" }) }}
+                {% endif %}
+              </div>
+
+              <div class="app-card__body">
+                {% if event.starts_at %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-1">
+                    <strong>When:</strong> {{ event.starts_at | formatEventDate }}
+                  </p>
+                {% endif %}
+
+                {% if event.location %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-1">
+                    <strong>Where:</strong> {{ event.location }}
+                  </p>
+                {% endif %}
+
+                {% if event.group %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-1">
+                    <strong>Group:</strong>
+                    <a href="/groups/{{ event.group.id }}" class="govuk-link">{{ event.group.name }}</a>
+                  </p>
+                {% endif %}
+
+                {% if event.description %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-0 app-card__description">
+                    {{ event.description | truncate(120) }}
+                  </p>
+                {% endif %}
+              </div>
+
+              <div class="app-card__footer">
+                <span class="govuk-body-s">
+                  {{ event.attendee_count or 0 }} attending
+                  {% if event.max_attendees %}
+                    / {{ event.max_attendees }} max
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        {# Pagination #}
+        {% if pagination.total_pages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, pagination.total_pages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/events?page=" + i + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else ""),
+              current: i == pagination.page
+            }), paginationItems) %}
+          {% endfor %}
+
+          {{ govukPagination({
+            previous: {
+              href: "/events?page=" + (pagination.page - 1) + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else "")
+            } if pagination.page > 1 else undefined,
+            next: {
+              href: "/events?page=" + (pagination.page + 1) + ("&search=" + searchQuery if searchQuery else "") + ("&upcoming_only=" + upcomingOnly if upcomingOnly else "")
+            } if pagination.page < pagination.total_pages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+      {% else %}
+        {% if searchQuery %}
+          {% set emptyState = {
+            icon: "🔍",
+            heading: "No results found",
+            message: "No events match \"" + searchQuery + "\". Try a different search term.",
+            action: {
+              text: "Clear search",
+              href: "/events"
+            }
+          } %}
+        {% else %}
+          {% set emptyState = {
+            icon: "📅",
+            heading: "No events yet",
+            message: "Be the first to organise an event for the community.",
+            action: {
+              text: "Create an event",
+              href: "/events/new",
+              isButton: true
+            }
+          } %}
+        {% endif %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

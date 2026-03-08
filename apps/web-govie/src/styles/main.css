@@ -1,0 +1,763 @@
+/*
+ * Nexus Community — Main Stylesheet
+ *
+ * IMPORTANT: This application uses the GOV.IE Design System open-source
+ * packages (@govie-ds/react, @govie-ds/theme-govie) purely as a UI
+ * foundation. It is NOT affiliated with the Government of Ireland.
+ *
+ * The theme colours below override the default GOV.IE palette to give
+ * Nexus Community its own distinct identity. No government gold (#FFDD00)
+ * or other official government palette is used.
+ */
+
+/* ─── Nexus Community colour overrides ─────────────────────────────────── */
+:root {
+  /* Primary brand — deep teal */
+  --nexus-color-primary: #006B6B;
+  --nexus-color-primary-hover: #005252;
+  --nexus-color-primary-light: #E0F4F4;
+
+  /* Accent — warm amber (distinct from any government gold) */
+  --nexus-color-accent: #C8640C;
+  --nexus-color-accent-hover: #A0500A;
+
+  /* Neutrals */
+  --nexus-color-text: #1A1A1A;
+  --nexus-color-text-secondary: #505A5F;
+  --nexus-color-border: #B1B4B6;
+  --nexus-color-surface: #F8F8F8;
+  --nexus-color-white: #FFFFFF;
+
+  /* Status */
+  --nexus-color-success: #00703C;
+  --nexus-color-warning: #D4351C;
+  --nexus-color-info: #1D70B8;
+
+  /* Spacing scale (8px base) */
+  --nexus-space-1: 4px;
+  --nexus-space-2: 8px;
+  --nexus-space-3: 12px;
+  --nexus-space-4: 16px;
+  --nexus-space-5: 24px;
+  --nexus-space-6: 32px;
+  --nexus-space-7: 48px;
+  --nexus-space-8: 64px;
+
+  /* Layout */
+  --nexus-max-width: 1200px;
+  --nexus-content-width: 760px;
+}
+
+/* ─── Base reset / global styles ────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  color: var(--nexus-color-text);
+  background-color: var(--nexus-color-white);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Layout helpers ────────────────────────────────────────────────────── */
+.nexus-container {
+  max-width: var(--nexus-max-width);
+  margin: 0 auto;
+  padding: 0 var(--nexus-space-5);
+}
+
+.nexus-content-width {
+  max-width: var(--nexus-content-width);
+}
+
+/* ─── Skip link (accessibility) ─────────────────────────────────────────── */
+.nexus-skip-link {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  padding: var(--nexus-space-2) var(--nexus-space-4);
+  background: var(--nexus-color-primary);
+  color: var(--nexus-color-white);
+  text-decoration: none;
+  font-weight: 700;
+  z-index: 9999;
+  transition: top 0.1s;
+}
+
+.nexus-skip-link:focus {
+  top: 0;
+}
+
+/* ─── Site header ────────────────────────────────────────────────────────── */
+.nexus-header {
+  background-color: var(--nexus-color-primary);
+  border-bottom: 4px solid var(--nexus-color-accent);
+}
+
+.nexus-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: var(--nexus-space-3) var(--nexus-space-5);
+  max-width: var(--nexus-max-width);
+  margin: 0 auto;
+}
+
+.nexus-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--nexus-space-2);
+  text-decoration: none;
+  color: var(--nexus-color-white);
+}
+
+.nexus-header__brand-mark {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: var(--nexus-color-white);
+  line-height: 1;
+}
+
+.nexus-header__brand-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--nexus-color-white);
+  line-height: 1.2;
+}
+
+.nexus-header__brand-tagline {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.75);
+  display: block;
+}
+
+.nexus-header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--nexus-space-5);
+}
+
+.nexus-header__nav-link {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  padding: var(--nexus-space-1) 0;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.nexus-header__nav-link:hover,
+.nexus-header__nav-link:focus {
+  color: var(--nexus-color-white);
+  border-bottom-color: var(--nexus-color-accent);
+  outline: none;
+}
+
+.nexus-header__nav-link--active {
+  color: var(--nexus-color-white);
+  border-bottom-color: var(--nexus-color-white);
+}
+
+.nexus-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--nexus-space-3);
+}
+
+/* ─── Mobile nav toggle ─────────────────────────────────────────────────── */
+.nexus-nav-toggle {
+  display: none;
+  background: none;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  color: var(--nexus-color-white);
+  cursor: pointer;
+  padding: var(--nexus-space-2) var(--nexus-space-3);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .nexus-nav-toggle {
+    display: block;
+  }
+
+  .nexus-header__nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--nexus-color-primary);
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--nexus-space-4) var(--nexus-space-5);
+    gap: var(--nexus-space-3);
+    border-bottom: 4px solid var(--nexus-color-accent);
+    z-index: 100;
+  }
+
+  .nexus-header__nav--open {
+    display: flex;
+  }
+
+  .nexus-header__inner {
+    position: relative;
+    flex-wrap: wrap;
+  }
+}
+
+/* ─── Site footer ────────────────────────────────────────────────────────── */
+.nexus-footer {
+  background-color: var(--nexus-color-text);
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: auto;
+}
+
+.nexus-footer__inner {
+  max-width: var(--nexus-max-width);
+  margin: 0 auto;
+  padding: var(--nexus-space-7) var(--nexus-space-5) var(--nexus-space-5);
+}
+
+.nexus-footer__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--nexus-space-6);
+  margin-bottom: var(--nexus-space-6);
+}
+
+.nexus-footer__heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--nexus-color-white);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 var(--nexus-space-3);
+}
+
+.nexus-footer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nexus-space-2);
+}
+
+.nexus-footer__link {
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  font-size: 15px;
+  transition: color 0.15s;
+}
+
+.nexus-footer__link:hover {
+  color: var(--nexus-color-white);
+}
+
+.nexus-footer__bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: var(--nexus-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nexus-space-2);
+}
+
+.nexus-footer__disclaimer {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+  max-width: 800px;
+}
+
+.nexus-footer__meta {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ─── Page layout ────────────────────────────────────────────────────────── */
+.nexus-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.nexus-main {
+  flex: 1;
+  padding: var(--nexus-space-7) 0;
+}
+
+.nexus-main--narrow {
+  max-width: var(--nexus-content-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ─── Hero section ───────────────────────────────────────────────────────── */
+.nexus-hero {
+  background-color: var(--nexus-color-primary-light);
+  border-bottom: 4px solid var(--nexus-color-primary);
+  padding: var(--nexus-space-8) 0;
+}
+
+.nexus-hero__inner {
+  max-width: var(--nexus-max-width);
+  margin: 0 auto;
+  padding: 0 var(--nexus-space-5);
+}
+
+.nexus-hero__tag {
+  display: inline-block;
+  background: var(--nexus-color-primary);
+  color: var(--nexus-color-white);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 3px;
+  margin-bottom: var(--nexus-space-4);
+}
+
+.nexus-hero__title {
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 900;
+  line-height: 1.1;
+  margin: 0 0 var(--nexus-space-5);
+  color: var(--nexus-color-text);
+}
+
+.nexus-hero__lead {
+  font-size: 20px;
+  line-height: 1.6;
+  color: var(--nexus-color-text-secondary);
+  max-width: 600px;
+  margin: 0 0 var(--nexus-space-6);
+}
+
+.nexus-hero__actions {
+  display: flex;
+  gap: var(--nexus-space-3);
+  flex-wrap: wrap;
+}
+
+/* ─── Cards ──────────────────────────────────────────────────────────────── */
+.nexus-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--nexus-space-5);
+  margin-top: var(--nexus-space-5);
+}
+
+.nexus-card {
+  background: var(--nexus-color-white);
+  border: 1px solid var(--nexus-color-border);
+  border-radius: 6px;
+  padding: var(--nexus-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nexus-space-3);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.nexus-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--nexus-color-primary);
+}
+
+.nexus-card__type {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--nexus-color-primary);
+}
+
+.nexus-card__title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--nexus-color-text);
+}
+
+.nexus-card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.nexus-card__title a:hover {
+  text-decoration: underline;
+}
+
+.nexus-card__body {
+  font-size: 15px;
+  color: var(--nexus-color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+  flex: 1;
+}
+
+.nexus-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--nexus-space-3);
+  font-size: 13px;
+  color: var(--nexus-color-text-secondary);
+  flex-wrap: wrap;
+}
+
+.nexus-card__meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nexus-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nexus-badge--offer {
+  background: #E6F4EA;
+  color: #1E6B3B;
+}
+
+.nexus-badge--request {
+  background: #E8F0FE;
+  color: #1849B4;
+}
+
+.nexus-badge--credits {
+  background: #FFF3E0;
+  color: #C8640C;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────────────── */
+.nexus-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nexus-space-2);
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.nexus-btn:focus-visible {
+  outline: 3px solid var(--nexus-color-accent);
+  outline-offset: 2px;
+}
+
+.nexus-btn--primary {
+  background-color: var(--nexus-color-primary);
+  color: var(--nexus-color-white);
+  border-color: var(--nexus-color-primary);
+  box-shadow: 0 2px 0 var(--nexus-color-primary-hover);
+}
+
+.nexus-btn--primary:hover {
+  background-color: var(--nexus-color-primary-hover);
+  border-color: var(--nexus-color-primary-hover);
+}
+
+.nexus-btn--secondary {
+  background-color: transparent;
+  color: var(--nexus-color-primary);
+  border-color: var(--nexus-color-primary);
+}
+
+.nexus-btn--secondary:hover {
+  background-color: var(--nexus-color-primary-light);
+}
+
+.nexus-btn--sm {
+  padding: 8px 16px;
+  font-size: 16px;
+}
+
+/* ─── Forms ──────────────────────────────────────────────────────────────── */
+.nexus-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nexus-space-5);
+}
+
+.nexus-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nexus-space-2);
+}
+
+.nexus-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--nexus-color-text);
+}
+
+.nexus-label__hint {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--nexus-color-text-secondary);
+  display: block;
+  margin-top: 2px;
+}
+
+.nexus-input,
+.nexus-select,
+.nexus-textarea {
+  padding: 10px 12px;
+  border: 2px solid var(--nexus-color-border);
+  border-radius: 4px;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--nexus-color-text);
+  background: var(--nexus-color-white);
+  width: 100%;
+  max-width: 500px;
+  transition: border-color 0.15s;
+}
+
+.nexus-input:focus,
+.nexus-select:focus,
+.nexus-textarea:focus {
+  outline: 3px solid var(--nexus-color-accent);
+  outline-offset: 1px;
+  border-color: var(--nexus-color-primary);
+}
+
+.nexus-textarea {
+  min-height: 150px;
+  resize: vertical;
+  max-width: 100%;
+}
+
+.nexus-input--error,
+.nexus-select--error {
+  border-color: var(--nexus-color-warning);
+}
+
+.nexus-error-message {
+  font-size: 14px;
+  color: var(--nexus-color-warning);
+  font-weight: 600;
+}
+
+/* ─── Section headings ───────────────────────────────────────────────────── */
+.nexus-section {
+  padding: var(--nexus-space-7) 0;
+}
+
+.nexus-section-header {
+  max-width: var(--nexus-max-width);
+  margin: 0 auto var(--nexus-space-5);
+  padding: 0 var(--nexus-space-5);
+}
+
+.nexus-section-title {
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 800;
+  margin: 0 0 var(--nexus-space-2);
+}
+
+.nexus-section-lead {
+  font-size: 17px;
+  color: var(--nexus-color-text-secondary);
+  margin: 0;
+}
+
+/* ─── Phase banner (non-government disclaimer) ───────────────────────────── */
+.nexus-phase-banner {
+  background-color: #1C3A3A;
+  color: rgba(255, 255, 255, 0.85);
+  padding: var(--nexus-space-2) var(--nexus-space-5);
+  font-size: 14px;
+}
+
+.nexus-phase-banner__inner {
+  max-width: var(--nexus-max-width);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--nexus-space-3);
+}
+
+.nexus-phase-badge {
+  background: var(--nexus-color-accent);
+  color: var(--nexus-color-white);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ─── Error / Not Found pages ────────────────────────────────────────────── */
+.nexus-error-page {
+  text-align: center;
+  padding: var(--nexus-space-8) var(--nexus-space-5);
+}
+
+.nexus-error-page__code {
+  font-size: 120px;
+  font-weight: 900;
+  color: var(--nexus-color-primary);
+  line-height: 1;
+  margin: 0;
+  opacity: 0.15;
+}
+
+.nexus-error-page__title {
+  font-size: 32px;
+  font-weight: 800;
+  margin: var(--nexus-space-4) 0 var(--nexus-space-3);
+}
+
+.nexus-error-page__body {
+  font-size: 18px;
+  color: var(--nexus-color-text-secondary);
+  margin: 0 0 var(--nexus-space-6);
+}
+
+/* ─── Loading spinner ────────────────────────────────────────────────────── */
+.nexus-spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--nexus-color-border);
+  border-top-color: var(--nexus-color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.nexus-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--nexus-space-8);
+}
+
+/* ─── Notification banner ────────────────────────────────────────────────── */
+.nexus-notification {
+  padding: var(--nexus-space-4) var(--nexus-space-5);
+  border-left: 4px solid;
+  margin-bottom: var(--nexus-space-5);
+  border-radius: 0 4px 4px 0;
+}
+
+.nexus-notification--success {
+  background: #E6F4EA;
+  border-color: var(--nexus-color-success);
+  color: var(--nexus-color-success);
+}
+
+.nexus-notification--error {
+  background: #FDECEA;
+  border-color: var(--nexus-color-warning);
+  color: var(--nexus-color-warning);
+}
+
+.nexus-notification--info {
+  background: #E8F0FE;
+  border-color: var(--nexus-color-info);
+  color: var(--nexus-color-info);
+}
+
+/* ─── Stats row ──────────────────────────────────────────────────────────── */
+.nexus-stats {
+  display: flex;
+  gap: var(--nexus-space-6);
+  flex-wrap: wrap;
+}
+
+.nexus-stat {
+  flex: 1;
+  min-width: 140px;
+  text-align: center;
+  padding: var(--nexus-space-4);
+  background: var(--nexus-color-white);
+  border: 1px solid var(--nexus-color-border);
+  border-radius: 6px;
+}
+
+.nexus-stat__value {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--nexus-color-primary);
+  margin: 0;
+  line-height: 1;
+}
+
+.nexus-stat__label {
+  font-size: 14px;
+  color: var(--nexus-color-text-secondary);
+  margin: var(--nexus-space-1) 0 0;
+}
+
+/* ─── Breadcrumbs ────────────────────────────────────────────────────────── */
+.nexus-breadcrumbs {
+  list-style: none;
+  margin: 0 0 var(--nexus-space-5);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nexus-space-2);
+  font-size: 14px;
+  color: var(--nexus-color-text-secondary);
+}
+
+.nexus-breadcrumbs li + li::before {
+  content: '›';
+  margin-right: var(--nexus-space-2);
+}
+
+.nexus-breadcrumbs a {
+  color: var(--nexus-color-primary);
+  text-decoration: underline;
+}
+
+/* ─── Responsive utilities ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .nexus-main {
+    padding: var(--nexus-space-5) 0;
+  }
+
+  .nexus-hero {
+    padding: var(--nexus-space-6) 0;
+  }
+
+  .nexus-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .nexus-stats {
+    flex-direction: column;
+  }
+}

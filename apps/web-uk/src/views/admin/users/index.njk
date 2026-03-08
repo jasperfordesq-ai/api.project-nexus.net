@@ -1,0 +1,140 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% block beforeContent %}
+  {{ super() }}
+  <nav class="govuk-breadcrumbs" aria-label="Breadcrumb">
+    <ol class="govuk-breadcrumbs__list">
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/dashboard">Dashboard</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin">Admin</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item" aria-current="page">Users</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        <span class="govuk-caption-xl">Administration</span>
+        Manage users
+      </h1>
+
+      <!-- Filters -->
+      <div class="govuk-!-margin-bottom-6">
+        <form method="get" action="/admin/users">
+          <div class="govuk-grid-row">
+            <div class="govuk-grid-column-one-third">
+              {{ govukInput({
+                label: { text: "Search" },
+                id: "search",
+                name: "search",
+                value: filters.search,
+                hint: { text: "Name or email" }
+              }) }}
+            </div>
+            <div class="govuk-grid-column-one-quarter">
+              {{ govukSelect({
+                label: { text: "Role" },
+                id: "role",
+                name: "role",
+                items: [
+                  { value: "", text: "All roles", selected: not filters.role },
+                  { value: "admin", text: "Admin", selected: filters.role == "admin" },
+                  { value: "member", text: "Member", selected: filters.role == "member" }
+                ]
+              }) }}
+            </div>
+            <div class="govuk-grid-column-one-quarter">
+              {{ govukSelect({
+                label: { text: "Status" },
+                id: "status",
+                name: "status",
+                items: [
+                  { value: "", text: "All statuses", selected: not filters.status },
+                  { value: "active", text: "Active", selected: filters.status == "active" },
+                  { value: "suspended", text: "Suspended", selected: filters.status == "suspended" }
+                ]
+              }) }}
+            </div>
+            <div class="govuk-grid-column-one-sixth" style="padding-top: 30px;">
+              {{ govukButton({
+                text: "Filter",
+                classes: "govuk-!-margin-bottom-0"
+              }) }}
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Users table -->
+      {% if users and users.length > 0 %}
+        <table class="govuk-table">
+          <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Users list</caption>
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Name</th>
+              <th scope="col" class="govuk-table__header">Email</th>
+              <th scope="col" class="govuk-table__header">Role</th>
+              <th scope="col" class="govuk-table__header">Status</th>
+              <th scope="col" class="govuk-table__header">Joined</th>
+              <th scope="col" class="govuk-table__header">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for u in users %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <a href="/admin/users/{{ u.id }}" class="govuk-link">{{ u.first_name }} {{ u.last_name }}</a>
+                </td>
+                <td class="govuk-table__cell">{{ u.email }}</td>
+                <td class="govuk-table__cell">
+                  {% if u.role == "admin" %}
+                    {{ govukTag({ text: "Admin", classes: "govuk-tag--purple" }) }}
+                  {% else %}
+                    {{ govukTag({ text: "Member", classes: "govuk-tag--grey" }) }}
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  {% if u.suspended_at %}
+                    {{ govukTag({ text: "Suspended", classes: "govuk-tag--red" }) }}
+                  {% elif u.is_active %}
+                    {{ govukTag({ text: "Active", classes: "govuk-tag--green" }) }}
+                  {% else %}
+                    {{ govukTag({ text: "Inactive", classes: "govuk-tag--yellow" }) }}
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">{{ u.created_at | date }}</td>
+                <td class="govuk-table__cell">
+                  <a href="/admin/users/{{ u.id }}" class="govuk-link">View</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        {% if pagination and pagination.total_pages > 1 %}
+          {% include "partials/pagination.njk" %}
+        {% endif %}
+      {% else %}
+        <p class="govuk-body">No users found.</p>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

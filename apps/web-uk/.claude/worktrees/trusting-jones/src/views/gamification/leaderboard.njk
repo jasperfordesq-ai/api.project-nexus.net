@@ -1,0 +1,158 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Dashboard", href: "/dashboard" },
+    { text: "My Progress", href: "/progress" },
+    { text: "Leaderboard" }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h1 class="govuk-heading-xl">Leaderboard</h1>
+
+      {# Period filter tabs #}
+      <nav class="app-sub-nav govuk-!-margin-bottom-6" aria-label="Filter leaderboard by time period">
+        <a href="/progress/leaderboard?period=all" class="govuk-link {% if period == 'all' %}app-link--active{% endif %}" {% if period == 'all' %}aria-current="page"{% endif %}>All time</a>
+        <a href="/progress/leaderboard?period=month" class="govuk-link {% if period == 'month' %}app-link--active{% endif %}" {% if period == 'month' %}aria-current="page"{% endif %}>This month</a>
+        <a href="/progress/leaderboard?period=week" class="govuk-link {% if period == 'week' %}app-link--active{% endif %}" {% if period == 'week' %}aria-current="page"{% endif %}>This week</a>
+      </nav>
+
+      {# Current user position highlight #}
+      {% if currentUserRank %}
+        <div class="app-leaderboard-position govuk-!-margin-bottom-6">
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            Your position: <strong>#{{ currentUserRank }}</strong>
+            {% if period == 'week' %}
+              this week
+            {% elif period == 'month' %}
+              this month
+            {% else %}
+              all time
+            {% endif %}
+          </p>
+        </div>
+      {% endif %}
+
+      {# Leaderboard table #}
+      {% if leaderboard.length > 0 %}
+        <table class="govuk-table app-leaderboard-table">
+          <caption class="govuk-visually-hidden">
+            Leaderboard rankings for {% if period == 'week' %}this week{% elif period == 'month' %}this month{% else %}all time{% endif %}
+          </caption>
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header app-leaderboard-table__rank">Rank</th>
+              <th scope="col" class="govuk-table__header">Member</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">Level</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">XP</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for entry in leaderboard %}
+              <tr class="govuk-table__row {% if entry.rank == currentUserRank %}app-leaderboard-table__row--current{% endif %}">
+                <td class="govuk-table__cell app-leaderboard-table__rank">
+                  {% if entry.rank == 1 %}
+                    <span class="app-leaderboard-medal app-leaderboard-medal--gold" aria-hidden="true">🥇</span>
+                    <span class="govuk-visually-hidden">1st place</span>
+                  {% elif entry.rank == 2 %}
+                    <span class="app-leaderboard-medal app-leaderboard-medal--silver" aria-hidden="true">🥈</span>
+                    <span class="govuk-visually-hidden">2nd place</span>
+                  {% elif entry.rank == 3 %}
+                    <span class="app-leaderboard-medal app-leaderboard-medal--bronze" aria-hidden="true">🥉</span>
+                    <span class="govuk-visually-hidden">3rd place</span>
+                  {% else %}
+                    <span class="app-leaderboard-rank">{{ entry.rank }}</span>
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  <div class="app-member-cell">
+                    {% set user = entry.user %}
+                    {% include "partials/avatar.njk" %}
+                    <a href="/members/{{ entry.user.id }}" class="govuk-link govuk-link--no-visited-state">
+                      {{ entry.user.first_name or entry.user.firstName }} {{ entry.user.last_name or entry.user.lastName }}
+                    </a>
+                    {% if entry.rank == currentUserRank %}<span class="govuk-visually-hidden"> (You)</span>{% endif %}
+                  </div>
+                </td>
+                <td class="govuk-table__cell govuk-table__cell--numeric">
+                  <span class="app-level-badge app-level-badge--small" role="img" aria-label="Level {{ entry.level or 1 }}">
+                    <span aria-hidden="true">{{ entry.level or 1 }}</span>
+                  </span>
+                </td>
+                <td class="govuk-table__cell govuk-table__cell--numeric">
+                  {% if period == 'all' %}
+                    {{ entry.total_xp or 0 }}
+                  {% else %}
+                    {{ entry.period_xp or 0 }}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {# Pagination #}
+        {% if pagination.total_pages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, pagination.total_pages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/progress/leaderboard?period=" + period + "&page=" + i,
+              current: i == pagination.page
+            }), paginationItems) %}
+          {% endfor %}
+
+          {{ govukPagination({
+            previous: {
+              href: "/progress/leaderboard?period=" + period + "&page=" + (pagination.page - 1)
+            } if pagination.page > 1 else undefined,
+            next: {
+              href: "/progress/leaderboard?period=" + period + "&page=" + (pagination.page + 1)
+            } if pagination.page < pagination.total_pages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+      {% else %}
+        {% set emptyState = {
+          icon: "🏆",
+          heading: "No rankings yet",
+          message: "Be the first to earn XP and claim the top spot!"
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+
+    <div class="govuk-grid-column-one-third">
+      {# Period explanation #}
+      <div class="app-sidebar-card">
+        <h2 class="govuk-heading-m">About the leaderboard</h2>
+        <p class="govuk-body-s">
+          The leaderboard ranks members by XP earned. Use the filters to see rankings for different time periods.
+        </p>
+        <ul class="govuk-list govuk-list--bullet govuk-body-s">
+          <li><strong>All time</strong> - Total XP ever earned</li>
+          <li><strong>This month</strong> - XP earned this calendar month</li>
+          <li><strong>This week</strong> - XP earned this calendar week</li>
+        </ul>
+      </div>
+
+      {# Quick link to progress #}
+      <div class="app-sidebar-card govuk-!-margin-top-4">
+        <h2 class="govuk-heading-m">Improve your rank</h2>
+        <p class="govuk-body-s">
+          Earn XP by participating in the community - create listings, join groups, attend events, and more.
+        </p>
+        <a href="/progress" class="govuk-link">View your progress</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

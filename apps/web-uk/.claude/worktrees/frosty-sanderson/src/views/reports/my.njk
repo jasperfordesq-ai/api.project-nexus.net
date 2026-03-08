@@ -1,0 +1,127 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Back to settings",
+    href: "/settings"
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">My reports</h1>
+      <p class="govuk-body-l">View the status of reports you've submitted.</p>
+
+      {# Filter by status #}
+      <nav class="app-sub-nav govuk-!-margin-bottom-6">
+        <a href="/reports/my" class="govuk-link {% if not status %}app-link--active{% endif %}">All</a>
+        <a href="/reports/my?status=pending" class="govuk-link {% if status == 'pending' %}app-link--active{% endif %}">Pending</a>
+        <a href="/reports/my?status=reviewed" class="govuk-link {% if status == 'reviewed' %}app-link--active{% endif %}">Reviewed</a>
+        <a href="/reports/my?status=resolved" class="govuk-link {% if status == 'resolved' %}app-link--active{% endif %}">Resolved</a>
+      </nav>
+
+      {% if reports.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Content</th>
+              <th scope="col" class="govuk-table__header">Reason</th>
+              <th scope="col" class="govuk-table__header">Status</th>
+              <th scope="col" class="govuk-table__header">Submitted</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for report in reports %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  {{ report.content_type | capitalize }}
+                  {% if report.content_preview %}
+                    <br><span class="govuk-body-s">{{ report.content_preview | truncate(50) }}</span>
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  {{ report.reason | replace("_", " ") | capitalize }}
+                </td>
+                <td class="govuk-table__cell">
+                  {% if report.status == 'pending' %}
+                    {{ govukTag({ text: "Pending", classes: "govuk-tag--yellow" }) }}
+                  {% elif report.status == 'reviewed' %}
+                    {{ govukTag({ text: "Reviewed", classes: "govuk-tag--blue" }) }}
+                  {% elif report.status == 'resolved' %}
+                    {{ govukTag({ text: "Resolved", classes: "govuk-tag--green" }) }}
+                  {% elif report.status == 'dismissed' %}
+                    {{ govukTag({ text: "Dismissed", classes: "govuk-tag--grey" }) }}
+                  {% else %}
+                    {{ govukTag({ text: report.status or "Unknown" }) }}
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  {{ report.created_at | formatDate }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {# Pagination #}
+        {% if pagination.total_pages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, pagination.total_pages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/reports/my?page=" + i + ("&status=" + status if status else ""),
+              current: i == pagination.page
+            }), paginationItems) %}
+          {% endfor %}
+
+          {{ govukPagination({
+            previous: {
+              href: "/reports/my?page=" + (pagination.page - 1) + ("&status=" + status if status else "")
+            } if pagination.page > 1 else undefined,
+            next: {
+              href: "/reports/my?page=" + (pagination.page + 1) + ("&status=" + status if status else "")
+            } if pagination.page < pagination.total_pages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+      {% else %}
+        {% if status %}
+          {% set emptyState = {
+            icon: "📋",
+            heading: "No " + status + " reports",
+            message: "You don't have any reports with this status.",
+            action: {
+              text: "View all reports",
+              href: "/reports/my"
+            }
+          } %}
+        {% else %}
+          {% set emptyState = {
+            icon: "📋",
+            heading: "No reports submitted",
+            message: "You haven't reported any content yet. If you see something that violates community guidelines, you can report it."
+          } %}
+        {% endif %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

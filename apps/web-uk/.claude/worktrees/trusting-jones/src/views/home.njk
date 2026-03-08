@@ -1,0 +1,66 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">Welcome to Project NEXUS Community</h1>
+
+      <p class="govuk-body-l">
+        A community platform for sharing skills, services, and time with your neighbours.
+      </p>
+
+      <p class="govuk-body">
+        Connect with local community members, offer your skills, request help, and build meaningful connections.
+      </p>
+
+      {% if isAuthenticated %}
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Go to Dashboard",
+            href: "/dashboard"
+          }) }}
+          {{ govukButton({
+            text: "Browse Listings",
+            href: "/listings",
+            classes: "govuk-button--secondary"
+          }) }}
+        </div>
+      {% else %}
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Sign in",
+            href: "/login"
+          }) }}
+          {{ govukButton({
+            text: "Create an account",
+            href: "/register",
+            classes: "govuk-button--secondary"
+          }) }}
+        </div>
+      {% endif %}
+
+      <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible">
+
+      <h2 class="govuk-heading-m">What you can do</h2>
+
+      <ul class="govuk-list govuk-list--bullet">
+        <li>Offer your skills and services to the community</li>
+        <li>Request help from other members</li>
+        <li>Exchange time credits for services</li>
+        <li>Join groups and attend events</li>
+        <li>Connect with like-minded neighbours</li>
+      </ul>
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/components" class="govuk-link">View components demo</a>
+      </p>
+
+      <div class="govuk-inset-text">
+        This is a community service. We are not affiliated with, endorsed by, or connected to GOV.UK or the UK Government.
+        We use the GOV.UK Design System for accessibility and usability patterns only.
+      </div>
+    </div>
+  </div>
+{% endblock %}

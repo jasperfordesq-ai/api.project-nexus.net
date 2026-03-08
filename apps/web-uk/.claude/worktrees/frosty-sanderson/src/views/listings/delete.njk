@@ -1,0 +1,49 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Listings", href: "/listings" },
+      { text: listing.title or listing.name or "Listing", href: "/listings/" + listing.id },
+      { text: "Delete" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h1 class="govuk-heading-xl">Delete listing</h1>
+
+      {{ govukWarningText({
+        text: "You are about to delete \"" + (listing.title or listing.name or "this listing") + "\". This action cannot be undone.",
+        iconFallbackText: "Warning"
+      }) }}
+
+      <form method="post" action="/listings/{{ listing.id }}/delete">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Delete listing",
+            classes: "govuk-button--warning"
+          }) }}
+          <a href="/listings/{{ listing.id }}" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

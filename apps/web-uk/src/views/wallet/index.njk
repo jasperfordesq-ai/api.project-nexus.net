@@ -1,0 +1,93 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "govuk/components/table/macro.njk" import govukTable %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Wallet" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Wallet</h1>
+
+      <div class="govuk-!-margin-bottom-8">
+        <p class="govuk-body-l">Your balance</p>
+        <p class="govuk-heading-xl govuk-!-margin-bottom-2">
+          <span class="govuk-!-font-size-80">{{ balance }}</span>
+          <span class="govuk-body-l">credits</span>
+        </p>
+      </div>
+
+      <div class="govuk-button-group">
+        {{ govukButton({
+          text: "Transfer credits",
+          href: "/wallet/transfer"
+        }) }}
+        {{ govukButton({
+          text: "View all transactions",
+          href: "/wallet/transactions",
+          classes: "govuk-button--secondary"
+        }) }}
+      </div>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <h2 class="govuk-heading-m">Recent transactions</h2>
+
+      {% if transactions and transactions.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Date</th>
+              <th scope="col" class="govuk-table__header">Description</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">Amount</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for tx in transactions %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">{{ tx.created_at or tx.createdAt or "N/A" }}</td>
+                <td class="govuk-table__cell">
+                  <a href="/wallet/transactions/{{ tx.id }}" class="govuk-link">
+                    {{ tx.description or "Transaction" }}
+                  </a>
+                </td>
+                <td class="govuk-table__cell govuk-table__cell--numeric">
+                  {% if tx.type == "received" or tx.amount > 0 %}
+                    <span class="app-text--positive">+{{ tx.amount }}</span>
+                  {% else %}
+                    <span class="app-text--negative">{{ tx.amount }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <p class="govuk-body">
+          <a href="/wallet/transactions" class="govuk-link">View all transactions</a>
+        </p>
+      {% else %}
+        <p class="govuk-body">No transactions yet.</p>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/tabs/macro.njk" import govukTabs %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Back to all events",
+    href: "/events"
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">My events</h1>
+      <p class="govuk-body-l">Events you've RSVP'd to.</p>
+
+      {% set goingEvents = events | selectattr("my_rsvp.status", "equalto", "going") | list %}
+      {% set maybeEvents = events | selectattr("my_rsvp.status", "equalto", "maybe") | list %}
+      {% set pastEvents = events | selectattr("is_past", "equalto", true) | list %}
+      {% set upcomingEvents = events | rejectattr("is_past", "equalto", true) | list %}
+
+      {% if events.length > 0 %}
+        {# Going events #}
+        {% if goingEvents.length > 0 %}
+          <h2 class="govuk-heading-l">Going</h2>
+          <div class="app-card-grid govuk-!-margin-bottom-8">
+            {% for event in goingEvents %}
+              {% if not event.is_past %}
+                <div class="app-card app-card--event">
+                  <div class="app-card__header">
+                    <h3 class="govuk-heading-m govuk-!-margin-bottom-1">
+                      <a href="/events/{{ event.id }}" class="govuk-link govuk-link--no-visited-state">
+                        {{ event.title }}
+                      </a>
+                    </h3>
+                    {{ govukTag({ text: "Going", classes: "govuk-tag--green" }) }}
+                  </div>
+
+                  <div class="app-card__body">
+                    {% if event.starts_at %}
+                      <p class="govuk-body-s govuk-!-margin-bottom-1">
+                        <strong>When:</strong> {{ event.starts_at | formatEventDate }}
+                      </p>
+                    {% endif %}
+
+                    {% if event.location %}
+                      <p class="govuk-body-s govuk-!-margin-bottom-0">
+                        <strong>Where:</strong> {{ event.location }}
+                      </p>
+                    {% endif %}
+                  </div>
+
+                  <div class="app-card__footer">
+                    <span class="govuk-body-s">{{ event.attendee_count or 0 }} attending</span>
+                  </div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {# Maybe events #}
+        {% if maybeEvents.length > 0 %}
+          <h2 class="govuk-heading-l">Maybe</h2>
+          <div class="app-card-grid govuk-!-margin-bottom-8">
+            {% for event in maybeEvents %}
+              {% if not event.is_past %}
+                <div class="app-card app-card--event">
+                  <div class="app-card__header">
+                    <h3 class="govuk-heading-m govuk-!-margin-bottom-1">
+                      <a href="/events/{{ event.id }}" class="govuk-link govuk-link--no-visited-state">
+                        {{ event.title }}
+                      </a>
+                    </h3>
+                    {{ govukTag({ text: "Maybe", classes: "govuk-tag--yellow" }) }}
+                  </div>
+
+                  <div class="app-card__body">
+                    {% if event.starts_at %}
+                      <p class="govuk-body-s govuk-!-margin-bottom-1">
+                        <strong>When:</strong> {{ event.starts_at | formatEventDate }}
+                      </p>
+                    {% endif %}
+
+                    {% if event.location %}
+                      <p class="govuk-body-s govuk-!-margin-bottom-0">
+                        <strong>Where:</strong> {{ event.location }}
+                      </p>
+                    {% endif %}
+                  </div>
+
+                  <div class="app-card__footer">
+                    <span class="govuk-body-s">{{ event.attendee_count or 0 }} attending</span>
+                  </div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {# Past events #}
+        {% set pastGoingEvents = goingEvents | selectattr("is_past", "equalto", true) | list %}
+        {% if pastGoingEvents.length > 0 %}
+          <details class="govuk-details">
+            <summary class="govuk-details__summary">
+              <span class="govuk-details__summary-text">
+                Past events ({{ pastGoingEvents.length }})
+              </span>
+            </summary>
+            <div class="govuk-details__text">
+              <div class="app-card-grid">
+                {% for event in pastGoingEvents %}
+                  <div class="app-card app-card--event app-card--muted">
+                    <div class="app-card__header">
+                      <h3 class="govuk-heading-m govuk-!-margin-bottom-1">
+                        <a href="/events/{{ event.id }}" class="govuk-link govuk-link--no-visited-state">
+                          {{ event.title }}
+                        </a>
+                      </h3>
+                      {{ govukTag({ text: "Past", classes: "govuk-tag--grey" }) }}
+                    </div>
+
+                    <div class="app-card__body">
+                      {% if event.starts_at %}
+                        <p class="govuk-body-s govuk-!-margin-bottom-0">
+                          {{ event.starts_at | formatEventDate }}
+                        </p>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          </details>
+        {% endif %}
+
+      {% else %}
+        <p class="govuk-body">You haven't RSVP'd to any events yet.</p>
+        <p class="govuk-body">
+          <a href="/events" class="govuk-link">Browse events</a> to find something interesting.
+        </p>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

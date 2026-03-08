@@ -1,0 +1,44 @@
+{#
+  Empty state partial for when there's no data to display
+
+  Usage:
+  {% set emptyState = {
+    icon: "📭",
+    heading: "No messages yet",
+    message: "Start a conversation with one of your connections.",
+    action: {
+      text: "Start a conversation",
+      href: "/messages/new"
+    }
+  } %}
+  {% include "partials/empty-state.njk" %}
+#}
+<div class="app-empty-state">
+  {% if emptyState.icon %}
+    <div class="app-empty-state__icon" aria-hidden="true">{{ emptyState.icon }}</div>
+  {% endif %}
+
+  <h2 class="govuk-heading-m app-empty-state__heading">{{ emptyState.heading }}</h2>
+
+  {% if emptyState.message %}
+    <p class="govuk-body app-empty-state__message">{{ emptyState.message }}</p>
+  {% endif %}
+
+  {% if emptyState.action %}
+    {% if emptyState.action.isButton %}
+      <a href="{{ emptyState.action.href }}" class="govuk-button govuk-!-margin-top-3">
+        {{ emptyState.action.text }}
+      </a>
+    {% else %}
+      <p class="govuk-body govuk-!-margin-top-3">
+        <a href="{{ emptyState.action.href }}" class="govuk-link">{{ emptyState.action.text }}</a>
+      </p>
+    {% endif %}
+  {% endif %}
+
+  {% if emptyState.secondaryAction %}
+    <p class="govuk-body">
+      <a href="{{ emptyState.secondaryAction.href }}" class="govuk-link">{{ emptyState.secondaryAction.text }}</a>
+    </p>
+  {% endif %}
+</div>

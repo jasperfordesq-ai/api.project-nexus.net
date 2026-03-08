@@ -1,0 +1,174 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/table/macro.njk" import govukTable %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Connections</h1>
+
+      <nav class="govuk-tabs" data-module="govuk-tabs">
+        <ul class="govuk-tabs__list">
+          <li class="govuk-tabs__list-item {% if currentStatus == 'all' %}govuk-tabs__list-item--selected{% endif %}">
+            <a class="govuk-tabs__tab" href="/connections">
+              All
+            </a>
+          </li>
+          <li class="govuk-tabs__list-item {% if currentStatus == 'accepted' %}govuk-tabs__list-item--selected{% endif %}">
+            <a class="govuk-tabs__tab" href="/connections?status=accepted">
+              Connected
+            </a>
+          </li>
+          <li class="govuk-tabs__list-item {% if currentStatus == 'pending' %}govuk-tabs__list-item--selected{% endif %}">
+            <a class="govuk-tabs__tab" href="/connections?status=pending">
+              Pending
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <p class="govuk-body govuk-!-margin-bottom-6">
+        <a href="/connections/pending" class="govuk-link">View pending requests</a>
+      </p>
+
+      {% if connections.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Name</th>
+              <th scope="col" class="govuk-table__header">Email</th>
+              <th scope="col" class="govuk-table__header">Status</th>
+              <th scope="col" class="govuk-table__header">Connected since</th>
+              <th scope="col" class="govuk-table__header">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for connection in connections %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <div class="app-member-cell">
+                    {% set user = connection.other_user %}
+                    {% include "partials/avatar.njk" %}
+                    <a href="/members/{{ connection.other_user.id }}" class="govuk-link">
+                      {{ connection.other_user.first_name or connection.other_user.firstName }} {{ connection.other_user.last_name or connection.other_user.lastName }}
+                    </a>
+                  </div>
+                </td>
+                <td class="govuk-table__cell">
+                  {{ connection.other_user.email }}
+                </td>
+                <td class="govuk-table__cell">
+                  {% if connection.status == 'accepted' %}
+                    {{ govukTag({ text: "Connected", classes: "govuk-tag--green" }) }}
+                  {% elif connection.status == 'pending' %}
+                    {{ govukTag({ text: "Pending", classes: "govuk-tag--yellow" }) }}
+                  {% elif connection.status == 'declined' %}
+                    {{ govukTag({ text: "Declined", classes: "govuk-tag--red" }) }}
+                  {% else %}
+                    {{ govukTag({ text: connection.status }) }}
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  {% if connection.status == 'accepted' %}
+                    {{ connection.updated_at | date }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  {% if connection.status == 'accepted' %}
+                    <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      {{ govukButton({
+                        text: "Remove",
+                        classes: "govuk-button--warning govuk-!-margin-bottom-0",
+                        attributes: {
+                          onclick: "return confirm('Are you sure you want to remove this connection?')"
+                        }
+                      }) }}
+                    </form>
+                  {% elif connection.status == 'pending' %}
+                    {% if connection.is_requester %}
+                      <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        {{ govukButton({
+                          text: "Cancel",
+                          classes: "govuk-button--secondary govuk-!-margin-bottom-0"
+                        }) }}
+                      </form>
+                    {% else %}
+                      <form action="/connections/{{ connection.id }}/accept" method="post" style="display: inline;">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        {{ govukButton({
+                          text: "Accept",
+                          classes: "govuk-!-margin-bottom-0 govuk-!-margin-right-2"
+                        }) }}
+                      </form>
+                      <form action="/connections/{{ connection.id }}/decline" method="post" style="display: inline;">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        {{ govukButton({
+                          text: "Decline",
+                          classes: "govuk-button--secondary govuk-!-margin-bottom-0"
+                        }) }}
+                      </form>
+                    {% endif %}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        {% if currentStatus == 'accepted' %}
+          {% set emptyState = {
+            icon: "🤝",
+            heading: "No connections yet",
+            message: "Connect with other community members to start collaborating.",
+            action: {
+              text: "Browse community members",
+              href: "/members"
+            }
+          } %}
+        {% elif currentStatus == 'pending' %}
+          {% set emptyState = {
+            icon: "⏳",
+            heading: "No pending requests",
+            message: "You don't have any pending connection requests at the moment."
+          } %}
+        {% else %}
+          {% set emptyState = {
+            icon: "🤝",
+            heading: "No connections yet",
+            message: "Connect with other community members to start collaborating.",
+            action: {
+              text: "Browse community members",
+              href: "/members"
+            }
+          } %}
+        {% endif %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+      {# Pagination #}
+      {% if pagination and pagination.total_pages > 1 %}
+        {% set paginationConfig = {
+          baseUrl: "/connections",
+          page: pagination.page,
+          totalPages: pagination.total_pages,
+          queryParams: { status: currentStatus if currentStatus != 'all' else '' }
+        } %}
+        {% include "partials/pagination.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

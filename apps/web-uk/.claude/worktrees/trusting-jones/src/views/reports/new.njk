@@ -1,0 +1,96 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Cancel",
+    href: returnTo
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length > 0 %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Report content</h1>
+
+      <p class="govuk-body-l">
+        Help us keep the community safe by reporting content that violates our guidelines.
+      </p>
+
+      {{ govukWarningText({
+        text: "False reports may result in action being taken against your account.",
+        iconFallbackText: "Warning"
+      }) }}
+
+      <form action="/reports/new" method="post" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <input type="hidden" name="content_type" value="{{ contentType }}">
+        <input type="hidden" name="content_id" value="{{ contentId }}">
+        <input type="hidden" name="return_to" value="{{ returnTo }}">
+
+        {% set reasonItems = [] %}
+        {% for r in reasons %}
+          {% set reasonItems = (reasonItems.push({
+            value: r.value,
+            text: r.text,
+            checked: values.reason == r.value if values else false
+          }), reasonItems) %}
+        {% endfor %}
+
+        {{ govukRadios({
+          name: "reason",
+          fieldset: {
+            legend: {
+              text: "Why are you reporting this?",
+              classes: "govuk-fieldset__legend--m"
+            }
+          },
+          hint: {
+            text: "Select the option that best describes the issue"
+          },
+          items: reasonItems,
+          errorMessage: { text: errors | selectattr("href", "equalto", "#reason") | first | attr("text") } if errors | selectattr("href", "equalto", "#reason") | first else undefined
+        }) }}
+
+        {{ govukTextarea({
+          id: "details",
+          name: "details",
+          value: values.details if values else "",
+          label: {
+            text: "Additional details",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Optional - provide any additional context that might help us review this report"
+          },
+          rows: 4,
+          attributes: {
+            maxlength: "1000"
+          }
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Submit report"
+          }) }}
+          <a href="{{ returnTo }}" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

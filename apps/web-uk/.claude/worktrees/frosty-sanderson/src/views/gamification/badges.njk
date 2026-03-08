@@ -1,0 +1,106 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Dashboard", href: "/dashboard" },
+    { text: "My Progress", href: "/progress" },
+    { text: "Badges" }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Badges</h1>
+
+      {# Progress summary #}
+      <div class="app-badge-summary govuk-!-margin-bottom-6" role="region" aria-label="Badge collection progress">
+        <div class="app-badge-summary__progress">
+          <div class="app-badge-summary__bar" role="progressbar" aria-valuenow="{{ summary.progress_percent or 0 }}" aria-valuemin="0" aria-valuemax="100" aria-label="Badge collection: {{ summary.progress_percent | round }}% complete">
+            <div class="app-badge-summary__fill" style="width: {{ summary.progress_percent or 0 }}%"></div>
+          </div>
+        </div>
+        <p class="govuk-body govuk-!-margin-bottom-0">
+          <strong>{{ summary.earned or 0 }}</strong> of <strong>{{ summary.total or 0 }}</strong> badges earned
+          ({{ summary.progress_percent | round }}%)
+        </p>
+      </div>
+
+      {# All badges grid #}
+      {% if badges.length > 0 %}
+        <ul class="app-badge-grid" role="list" aria-label="All badges">
+          {% for badge in badges %}
+            <li class="app-badge {% if badge.is_earned %}app-badge--earned{% else %}app-badge--locked{% endif %}" role="listitem">
+              <span class="app-badge__icon" aria-hidden="true">{{ badge.icon }}</span>
+              <div class="app-badge__content">
+                <span class="app-badge__name">{{ badge.name }}</span>
+                <span class="app-badge__description">{{ badge.description }}</span>
+                {% if badge.is_earned %}
+                  <span class="app-badge__earned-date">
+                    Earned {{ badge.earned_at | formatDate }}
+                  </span>
+                {% else %}
+                  <span class="app-badge__reward">Reward: {{ badge.xpReward }} XP</span>
+                {% endif %}
+              </div>
+              {% if badge.is_earned %}
+                <span class="app-badge__check" aria-hidden="true">✓</span>
+                <span class="govuk-visually-hidden">Badge earned</span>
+              {% else %}
+                <span class="govuk-visually-hidden">Badge not yet earned</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% set emptyState = {
+          icon: "🏅",
+          heading: "No badges available",
+          message: "Badges will appear here as they become available."
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+
+    <div class="govuk-grid-column-one-third">
+      {# Level card #}
+      <div class="app-sidebar-card">
+        <h2 class="govuk-heading-m">Your level</h2>
+        <div class="app-level-badge app-level-badge--large app-level-badge--centered" role="img" aria-label="Level {{ profile.level or 1 }}">
+          <span class="app-level-badge__number" aria-hidden="true">{{ profile.level or 1 }}</span>
+          <span class="app-level-badge__label" aria-hidden="true">Level</span>
+        </div>
+        <p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-0 govuk-!-text-align-centre">
+          <strong>{{ profile.totalXp or 0 }} XP</strong> total
+        </p>
+      </div>
+
+      {# Badge categories info #}
+      <div class="app-sidebar-card govuk-!-margin-top-4">
+        <h2 class="govuk-heading-m">Badge types</h2>
+        <ul class="govuk-list govuk-list--spaced">
+          <li><strong>First steps</strong> - Initial achievements</li>
+          <li><strong>Community</strong> - Social activity</li>
+          <li><strong>Trading</strong> - Marketplace activity</li>
+          <li><strong>Events</strong> - Event participation</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+{% endblock %}

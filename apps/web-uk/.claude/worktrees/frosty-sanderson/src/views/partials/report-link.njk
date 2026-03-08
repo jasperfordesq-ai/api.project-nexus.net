@@ -1,0 +1,17 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{#
+  Report link partial
+  Usage: {% include "partials/report-link.njk" %}
+
+  Required variables:
+  - reportType: 'post', 'comment', 'listing', 'user', 'group', 'event'
+  - reportId: ID of the content to report
+  - returnTo: URL to return to after reporting (optional, defaults to current page)
+#}
+<a href="/reports/new?type={{ reportType }}&id={{ reportId }}&return_to={{ returnTo | urlencode if returnTo else '' }}" class="govuk-link govuk-body-s app-report-link">
+  Report
+</a>

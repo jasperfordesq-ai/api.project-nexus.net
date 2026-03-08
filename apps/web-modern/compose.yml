@@ -1,0 +1,52 @@
+# Docker Compose - Source of Truth for Nexus Modern Frontend
+# Run: docker compose up (dev mode by default)
+# Production: docker compose --profile production up
+
+services:
+  # ===========================================================================
+  # Development service (default - no profile = always runs)
+  # ===========================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: nexus-frontend-dev
+    ports:
+      - "5170:3002"  # Frontend port (add to backend CORS)
+    volumes:
+      # Mount source for hot reload
+      - .:/app
+      # Preserve node_modules from container
+      - /app/node_modules
+      - /app/.next
+    env_file:
+      - .env.docker
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true  # Enable polling for Windows/Docker file watching
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ===========================================================================
+  # Production service (use: docker compose --profile production up)
+  # ===========================================================================
+  frontend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: http://host.docker.internal:5080
+    container_name: nexus-frontend-prod
+    ports:
+      - "5171:3002"  # Different port to avoid conflict with dev
+    env_file:
+      - .env.docker
+    environment:
+      - NODE_ENV=production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - production
+    restart: unless-stopped

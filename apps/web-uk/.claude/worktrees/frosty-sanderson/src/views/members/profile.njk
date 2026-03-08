@@ -1,0 +1,242 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Back to members",
+    href: "/members"
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <div class="govuk-!-margin-bottom-6" style="display: flex; align-items: center; gap: 20px;">
+        {% set size = 'large' %}
+        {% include "partials/avatar.njk" %}
+        <div>
+          <h1 class="govuk-heading-xl govuk-!-margin-bottom-1">
+            {{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}
+          </h1>
+          {% if gamification %}
+            <div class="app-member-level">
+              <span class="app-level-badge app-level-badge--small" role="img" aria-label="Level {{ gamification.level or 1 }}">
+                <span class="app-level-badge__number" aria-hidden="true">{{ gamification.level or 1 }}</span>
+              </span>
+              <span class="govuk-body-s govuk-!-margin-left-2">Level {{ gamification.level or 1 }} - {{ gamification.totalXp or 0 }} XP</span>
+            </div>
+          {% endif %}
+          {# Rating summary if available #}
+          {% if reviewSummary and reviewSummary.average_rating %}
+            <div class="govuk-!-margin-top-2">
+              <span class="app-star-display" aria-label="{{ reviewSummary.average_rating }} out of 5 stars">
+                {% for i in [1, 2, 3, 4, 5] %}
+                  <svg class="app-star-display__star {% if i <= reviewSummary.average_rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                {% endfor %}
+              </span>
+              <span class="govuk-body-s govuk-!-margin-left-1">
+                {{ reviewSummary.average_rating | round(1) }} ({{ reviewSummary.total_reviews }} review{% if reviewSummary.total_reviews != 1 %}s{% endif %})
+              </span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if connection %}
+        <p class="govuk-body govuk-!-margin-bottom-6">
+          {% if connection.status == 'accepted' %}
+            {{ govukTag({ text: "Connected", classes: "govuk-tag--green" }) }}
+          {% elif connection.status == 'pending' %}
+            {% if connection.is_requester %}
+              {{ govukTag({ text: "Request sent", classes: "govuk-tag--yellow" }) }}
+            {% else %}
+              {{ govukTag({ text: "Wants to connect with you", classes: "govuk-tag--blue" }) }}
+            {% endif %}
+          {% endif %}
+        </p>
+      {% endif %}
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Email" },
+            value: { text: user.email }
+          },
+          {
+            key: { text: "Member since" },
+            value: { text: (user.created_at or user.createdAt) | date if (user.created_at or user.createdAt) else "Unknown" }
+          }
+        ]
+      }) }}
+
+      <h2 class="govuk-heading-m govuk-!-margin-top-6">Actions</h2>
+
+      <p class="govuk-body govuk-!-margin-bottom-4">
+        {% set reportType = "user" %}
+        {% set reportId = user.id %}
+        {% set returnTo = "/members/" + (user.id | string) %}
+        {% include "partials/report-link.njk" %}
+      </p>
+
+      <div class="govuk-button-group">
+        {% if not connection %}
+          <form action="/members/{{ user.id }}/connect" method="post" style="display: inline;">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            {{ govukButton({
+              text: "Send connection request"
+            }) }}
+          </form>
+        {% elif connection.status == 'accepted' %}
+          <a href="/messages/new?user_id={{ user.id }}" class="govuk-button">
+            Send message
+          </a>
+          <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <input type="hidden" name="return_url" value="/members/{{ user.id }}">
+            {{ govukButton({
+              text: "Remove connection",
+              classes: "govuk-button--warning"
+            }) }}
+          </form>
+        {% elif connection.status == 'pending' %}
+          {% if connection.is_requester %}
+            <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <input type="hidden" name="return_url" value="/members/{{ user.id }}">
+              {{ govukButton({
+                text: "Cancel request",
+                classes: "govuk-button--secondary"
+              }) }}
+            </form>
+          {% else %}
+            <form action="/connections/{{ connection.id }}/accept" method="post" style="display: inline;">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              {{ govukButton({
+                text: "Accept request"
+              }) }}
+            </form>
+            <form action="/connections/{{ connection.id }}/decline" method="post" style="display: inline;">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              {{ govukButton({
+                text: "Decline request",
+                classes: "govuk-button--secondary"
+              }) }}
+            </form>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      {# Reviews Section #}
+      <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible">
+
+      <h2 class="govuk-heading-l">Reviews</h2>
+
+      {% if reviews and reviews.length > 0 %}
+        <ul class="govuk-list app-reviews-list">
+          {% for review in reviews %}
+            <li class="app-review govuk-!-margin-bottom-6">
+              <div class="app-review__header">
+                <span class="app-star-display" aria-label="{{ review.rating }} out of 5 stars">
+                  {% for i in [1, 2, 3, 4, 5] %}
+                    <svg class="app-star-display__star {% if i <= review.rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  {% endfor %}
+                </span>
+                <strong class="govuk-!-margin-left-2">
+                  {% if review.reviewer %}
+                    {{ review.reviewer.first_name or review.reviewer.firstName }} {{ review.reviewer.last_name or review.reviewer.lastName }}
+                  {% else %}
+                    Anonymous
+                  {% endif %}
+                </strong>
+                <span class="govuk-body-s govuk-!-margin-left-2" style="color: #505a5f;">
+                  {{ review.created_at | formatDate }}
+                </span>
+              </div>
+              {% if review.comment %}
+                <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
+                  {{ review.comment }}
+                </p>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="govuk-body">No reviews yet.</p>
+      {% endif %}
+
+      {# Leave a Review Form #}
+      <h3 class="govuk-heading-m govuk-!-margin-top-6">Leave a review</h3>
+      <form method="post" action="/reviews/user/{{ user.id }}" class="govuk-!-margin-bottom-6">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <input type="hidden" name="return_url" value="/members/{{ user.id }}">
+
+        <div class="govuk-form-group">
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
+              Your rating
+            </legend>
+            <div class="app-star-rating" id="rating">
+              {% for i in [1, 2, 3, 4, 5] %}
+                <input type="radio" name="rating" id="user-rating-{{ i }}" value="{{ i }}"
+                       class="app-star-rating__input" required>
+                <label for="user-rating-{{ i }}" class="app-star-rating__label">
+                  <span class="govuk-visually-hidden">{{ i }} star{% if i != 1 %}s{% endif %}</span>
+                  <svg class="app-star-rating__star" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </label>
+              {% endfor %}
+            </div>
+          </fieldset>
+        </div>
+
+        {{ govukTextarea({
+          name: "comment",
+          id: "comment",
+          label: {
+            text: "Your review (optional)"
+          },
+          hint: {
+            text: "Share details about your experience working with this member"
+          },
+          attributes: {
+            maxlength: "2000"
+          },
+          rows: 3
+        }) }}
+
+        {{ govukButton({
+          text: "Submit review"
+        }) }}
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

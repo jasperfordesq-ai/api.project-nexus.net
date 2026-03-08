@@ -1,0 +1,128 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Wallet", href: "/wallet" },
+      { text: "Transactions" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      <h1 class="govuk-heading-xl">Transaction history</h1>
+
+      <form method="get" action="/wallet/transactions" class="govuk-!-margin-bottom-6">
+        <div class="govuk-grid-row">
+          <div class="govuk-grid-column-one-third">
+            {{ govukSelect({
+              id: "type",
+              name: "type",
+              label: { text: "Filter by type" },
+              items: [
+                { value: "", text: "All transactions", selected: not filters.type },
+                { value: "sent", text: "Sent", selected: filters.type == "sent" },
+                { value: "received", text: "Received", selected: filters.type == "received" }
+              ]
+            }) }}
+          </div>
+          <div class="govuk-grid-column-one-third">
+            {{ govukButton({
+              text: "Filter",
+              classes: "govuk-button--secondary"
+            }) }}
+            {% if filters.type %}
+              <a href="/wallet/transactions" class="govuk-link govuk-!-margin-left-2">Clear</a>
+            {% endif %}
+          </div>
+        </div>
+      </form>
+
+      {% if transactions and transactions.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Date</th>
+              <th scope="col" class="govuk-table__header">Type</th>
+              <th scope="col" class="govuk-table__header">Description</th>
+              <th scope="col" class="govuk-table__header">With</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">Amount</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for tx in transactions %}
+              {% if tx.type == "sent" %}
+                {% set typeColour = "red" %}
+              {% elif tx.type == "received" %}
+                {% set typeColour = "green" %}
+              {% else %}
+                {% set typeColour = "grey" %}
+              {% endif %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">{{ tx.created_at or tx.createdAt or "N/A" }}</td>
+                <td class="govuk-table__cell">
+                  <strong class="govuk-tag govuk-tag--{{ typeColour }}">
+                    {{ tx.type or "transfer" }}
+                  </strong>
+                </td>
+                <td class="govuk-table__cell">
+                  <a href="/wallet/transactions/{{ tx.id }}" class="govuk-link">
+                    {{ tx.description or "Transaction" }}
+                  </a>
+                </td>
+                <td class="govuk-table__cell">{{ tx.other_user_name or tx.otherUserName or "N/A" }}</td>
+                <td class="govuk-table__cell govuk-table__cell--numeric">
+                  {% if tx.type == "received" %}
+                    <span class="app-text--positive">+{{ tx.amount }}</span>
+                  {% else %}
+                    <span class="app-text--negative">-{{ tx.amount }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {% if pagination and pagination.totalPages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, pagination.totalPages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/wallet/transactions?page=" + i + ("&type=" + filters.type if filters.type else ""),
+              current: i == pagination.currentPage
+            }), paginationItems) %}
+          {% endfor %}
+
+          {{ govukPagination({
+            previous: { href: "/wallet/transactions?page=" + (pagination.currentPage - 1) + ("&type=" + filters.type if filters.type else "") } if pagination.currentPage > 1 else undefined,
+            next: { href: "/wallet/transactions?page=" + (pagination.currentPage + 1) + ("&type=" + filters.type if filters.type else "") } if pagination.currentPage < pagination.totalPages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+
+      {% else %}
+        <p class="govuk-body">No transactions found.</p>
+      {% endif %}
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/wallet" class="govuk-link">Back to wallet</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Groups", href: "/groups" },
+    { text: group.name }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        {{ group.name }}
+        {% if group.is_private %}
+          {{ govukTag({ text: "Private", classes: "govuk-tag--grey govuk-!-margin-left-2" }) }}
+        {% endif %}
+      </h1>
+
+      {% if group.description %}
+        <p class="govuk-body-l">{{ group.description }}</p>
+      {% endif %}
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Created by" },
+            value: { text: (group.created_by.first_name + " " + group.created_by.last_name) if group.created_by else "Unknown" }
+          },
+          {
+            key: { text: "Members" },
+            value: { text: group.member_count | string }
+          },
+          {
+            key: { text: "Created" },
+            value: { text: group.created_at | formatDate if group.created_at else "Unknown" }
+          }
+        ]
+      }) }}
+
+      <p class="govuk-body">
+        {% set reportType = "group" %}
+        {% set reportId = group.id %}
+        {% set returnTo = "/groups/" + (group.id | string) %}
+        {% include "partials/report-link.njk" %}
+      </p>
+
+      <div class="govuk-button-group govuk-!-margin-top-6">
+        {% if myMembership %}
+          {# User is a member #}
+          {% if myMembership.role == 'owner' or myMembership.role == 'admin' %}
+            <a href="/groups/{{ group.id }}/edit" class="govuk-button govuk-button--secondary">
+              Edit group
+            </a>
+            <a href="/groups/{{ group.id }}/members" class="govuk-button govuk-button--secondary">
+              Manage members
+            </a>
+          {% endif %}
+
+          {% if myMembership.role != 'owner' %}
+            <form action="/groups/{{ group.id }}/leave" method="post" style="display: inline;">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              {{ govukButton({
+                text: "Leave group",
+                classes: "govuk-button--warning"
+              }) }}
+            </form>
+          {% endif %}
+
+          {% if myMembership.role == 'owner' %}
+            <form action="/groups/{{ group.id }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this group? This action cannot be undone.');">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              {{ govukButton({
+                text: "Delete group",
+                classes: "govuk-button--warning"
+              }) }}
+            </form>
+          {% endif %}
+        {% else %}
+          {# User is not a member #}
+          {% if not group.is_private %}
+            <form action="/groups/{{ group.id }}/join" method="post" style="display: inline;">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              {{ govukButton({
+                text: "Join this group"
+              }) }}
+            </form>
+          {% else %}
+            <p class="govuk-body">This is a private group. Contact an admin to join.</p>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      {# Members section #}
+      <h2 class="govuk-heading-l govuk-!-margin-top-8">Members</h2>
+
+      {% if members.length > 0 %}
+        <ul class="govuk-list">
+          {% for member in members | slice(0, 10) %}
+            <li class="govuk-!-margin-bottom-2">
+              <div class="app-member-cell">
+                {% set user = member %}
+                {% include "partials/avatar.njk" %}
+                <span>
+                  {{ member.first_name or member.firstName }} {{ member.last_name or member.lastName }}
+                  {% if member.role == 'owner' %}
+                    {{ govukTag({ text: "Owner", classes: "govuk-tag--purple govuk-!-margin-left-1" }) }}
+                  {% elif member.role == 'admin' %}
+                    {{ govukTag({ text: "Admin", classes: "govuk-tag--blue govuk-!-margin-left-1" }) }}
+                  {% endif %}
+                </span>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+        {% if members.length > 10 %}
+          <p class="govuk-body">
+            <a href="/groups/{{ group.id }}/members" class="govuk-link">View all {{ members.length }} members</a>
+          </p>
+        {% endif %}
+      {% else %}
+        <p class="govuk-body">No members yet.</p>
+      {% endif %}
+
+      {# Upcoming Events section #}
+      <h2 class="govuk-heading-l govuk-!-margin-top-8">Upcoming events</h2>
+
+      {% if events.length > 0 %}
+        <ul class="govuk-list">
+          {% for event in events %}
+            <li class="govuk-!-margin-bottom-4">
+              <a href="/events/{{ event.id }}" class="govuk-link govuk-!-font-weight-bold">
+                {{ event.title }}
+              </a>
+              <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">
+                {{ event.starts_at | formatDate }}
+                {% if event.location %}
+                   - {{ event.location }}
+                {% endif %}
+              </p>
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="govuk-body">
+          <a href="/events?group_id={{ group.id }}" class="govuk-link">View all events for this group</a>
+        </p>
+      {% else %}
+        <p class="govuk-body">No upcoming events.</p>
+      {% endif %}
+
+      {% if myMembership %}
+        <p class="govuk-body govuk-!-margin-top-4">
+          <a href="/events/new?group_id={{ group.id }}" class="govuk-link">Create an event for this group</a>
+        </p>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

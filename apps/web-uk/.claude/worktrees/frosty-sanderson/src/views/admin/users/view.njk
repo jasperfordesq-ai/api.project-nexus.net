@@ -1,0 +1,161 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <nav class="govuk-breadcrumbs" aria-label="Breadcrumb">
+    <ol class="govuk-breadcrumbs__list">
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/dashboard">Dashboard</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin">Admin</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin/users">Users</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item" aria-current="page">{{ userData.first_name }} {{ userData.last_name }}</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        <span class="govuk-caption-xl">User details</span>
+        {{ userData.first_name }} {{ userData.last_name }}
+      </h1>
+
+      <!-- Status banner -->
+      {% if userData.suspended_at %}
+        {{ govukWarningText({
+          text: "This user is suspended" ~ (": " + userData.suspension_reason if userData.suspension_reason else ""),
+          iconFallbackText: "Warning"
+        }) }}
+      {% endif %}
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Email" },
+            value: { text: userData.email }
+          },
+          {
+            key: { text: "Role" },
+            value: { html: '<strong class="govuk-tag govuk-tag--' + ('purple' if userData.role == 'admin' else 'grey') + '">' + userData.role + '</strong>' }
+          },
+          {
+            key: { text: "Status" },
+            value: { html: '<strong class="govuk-tag govuk-tag--' + ('red' if userData.suspended_at else ('green' if userData.is_active else 'yellow')) + '">' + ('Suspended' if userData.suspended_at else ('Active' if userData.is_active else 'Inactive')) + '</strong>' }
+          },
+          {
+            key: { text: "Member since" },
+            value: { text: userData.created_at | date }
+          },
+          {
+            key: { text: "Last login" },
+            value: { text: (userData.last_login_at | date) if userData.last_login_at else "Never" }
+          },
+          {
+            key: { text: "Level" },
+            value: { text: "Level " + (userData.level or 1) + " (" + (userData.total_xp or 0) + " XP)" }
+          }
+        ]
+      }) }}
+
+      <hr class="govuk-section-break govuk-section-break--m govuk-section-break--visible">
+
+      <!-- Stats -->
+      <h2 class="govuk-heading-m">Activity</h2>
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Listings" },
+            value: { text: stats.listings or 0 }
+          },
+          {
+            key: { text: "Transactions" },
+            value: { text: stats.transactions or 0 }
+          },
+          {
+            key: { text: "Connections" },
+            value: { text: stats.connections or 0 }
+          }
+        ]
+      }) }}
+
+      <hr class="govuk-section-break govuk-section-break--m govuk-section-break--visible">
+
+      <!-- Actions -->
+      <h2 class="govuk-heading-m">Actions</h2>
+
+      <div class="govuk-button-group">
+        {{ govukButton({
+          text: "Edit user",
+          href: "/admin/users/" + userData.id + "/edit"
+        }) }}
+
+        {% if userData.suspended_at %}
+          <form method="post" action="/admin/users/{{ userData.id }}/activate" style="display: inline;">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            {{ govukButton({
+              text: "Activate user",
+              classes: "govuk-button--secondary"
+            }) }}
+          </form>
+        {% else %}
+          <details class="govuk-details" data-module="govuk-details">
+            <summary class="govuk-details__summary">
+              <span class="govuk-details__summary-text">Suspend user</span>
+            </summary>
+            <div class="govuk-details__text">
+              <form method="post" action="/admin/users/{{ userData.id }}/suspend">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                {{ govukTextarea({
+                  name: "reason",
+                  id: "reason",
+                  label: { text: "Reason for suspension" },
+                  hint: { text: "Optional - explain why this user is being suspended" }
+                }) }}
+                {{ govukButton({
+                  text: "Suspend user",
+                  classes: "govuk-button--warning"
+                }) }}
+              </form>
+            </div>
+          </details>
+        {% endif %}
+      </div>
+
+      <p class="govuk-body">
+        <a href="/admin/users" class="govuk-link">Back to users list</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

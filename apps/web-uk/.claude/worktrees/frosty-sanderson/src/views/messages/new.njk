@@ -1,0 +1,88 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Back to messages",
+    href: "/messages"
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">New message</h1>
+
+      {% if connections.length == 0 %}
+        <p class="govuk-body">
+          You need to be connected with someone before you can message them.
+          <a href="/members" class="govuk-link">Browse community members</a> to send connection requests.
+        </p>
+      {% else %}
+        <form method="post" action="/messages/new">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+          {% set recipientOptions = [{ value: "", text: "Select a recipient" }] %}
+          {% for conn in connections %}
+            {% set userName = (conn.other_user.firstName or conn.other_user.first_name) + " " + (conn.other_user.lastName or conn.other_user.last_name) %}
+            {% set isSelected = selectedUserId and (conn.other_user.id | string) == (selectedUserId | string) %}
+            {% set recipientOptions = (recipientOptions.push({
+              value: conn.other_user.id,
+              text: userName,
+              selected: isSelected
+            }), recipientOptions) %}
+          {% endfor %}
+
+          {{ govukSelect({
+            id: "recipient_id",
+            name: "recipient_id",
+            label: {
+              text: "To",
+              classes: "govuk-label--m"
+            },
+            items: recipientOptions,
+            errorMessage: { text: "Select a recipient" } if errors and errors | selectattr("href", "equalto", "#recipient_id") | list | length
+          }) }}
+
+          {{ govukTextarea({
+            name: "content",
+            id: "content",
+            label: {
+              text: "Message",
+              classes: "govuk-label--m"
+            },
+            value: values.content if values else "",
+            rows: 5,
+            errorMessage: { text: "Enter a message" } if errors and errors | selectattr("href", "equalto", "#content") | list | length
+          }) }}
+
+          <div class="govuk-button-group">
+            {{ govukButton({
+              text: "Send message"
+            }) }}
+            <a href="/messages" class="govuk-link">Cancel</a>
+          </div>
+        </form>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{#
+  User avatar partial - displays initials in a circular badge
+
+  Parameters:
+    - user: User object with first_name/firstName and last_name/lastName
+    - size: Optional size variant ('small', 'large', or omit for default)
+#}
+{% set firstName = (user.first_name or user.firstName or '') | string %}
+{% set lastName = (user.last_name or user.lastName or '') | string %}
+{% set firstInitial = firstName[0] if firstName.length > 0 else '' %}
+{% set lastInitial = lastName[0] if lastName.length > 0 else '' %}
+{% set initials = firstInitial + lastInitial %}
+{% set fullName = firstName + ' ' + lastName %}
+
+<span class="app-avatar{% if size %} app-avatar--{{ size }}{% endif %}" aria-hidden="true" title="{{ fullName | trim }}">
+  {{ initials | upper if initials else '?' }}
+</span>

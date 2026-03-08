@@ -1,0 +1,208 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Listings", href: "/listings" },
+      { text: listing.title or listing.name or "Listing details" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  {% if listing.status == "active" %}
+    {% set tagColour = "green" %}
+  {% elif listing.status == "draft" %}
+    {% set tagColour = "grey" %}
+  {% else %}
+    {% set tagColour = "red" %}
+  {% endif %}
+  {% set statusHtml %}<strong class="govuk-tag govuk-tag--{{ tagColour }}">{{ listing.status or "N/A" }}</strong>{% endset %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = "" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">{{ listing.title or listing.name or "Listing details" }}</h1>
+
+      {# Rating summary if available #}
+      {% if reviewSummary and reviewSummary.average_rating %}
+        <p class="govuk-body-l govuk-!-margin-bottom-6">
+          <span class="app-star-display" aria-label="{{ reviewSummary.average_rating }} out of 5 stars">
+            {% for i in [1, 2, 3, 4, 5] %}
+              <svg class="app-star-display__star {% if i <= reviewSummary.average_rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            {% endfor %}
+          </span>
+          <span class="govuk-!-margin-left-2">
+            {{ reviewSummary.average_rating | round(1) }} ({{ reviewSummary.total_reviews }} review{% if reviewSummary.total_reviews != 1 %}s{% endif %})
+          </span>
+        </p>
+      {% endif %}
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "ID" },
+            value: { text: listing.id }
+          },
+          {
+            key: { text: "Title" },
+            value: { text: listing.title or listing.name or "N/A" }
+          },
+          {
+            key: { text: "Description" },
+            value: { text: listing.description or "N/A" }
+          },
+          {
+            key: { text: "Status" },
+            value: { html: statusHtml }
+          },
+          {
+            key: { text: "Created" },
+            value: { text: listing.createdAt or listing.created_at or "N/A" }
+          },
+          {
+            key: { text: "Updated" },
+            value: { text: listing.updatedAt or listing.updated_at or "N/A" }
+          }
+        ]
+      }) }}
+
+      {% if listing.can_edit %}
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Edit",
+            href: "/listings/" + listing.id + "/edit",
+            classes: "govuk-button--secondary"
+          }) }}
+          {{ govukButton({
+            text: "Delete",
+            href: "/listings/" + listing.id + "/delete",
+            classes: "govuk-button--warning"
+          }) }}
+        </div>
+      {% else %}
+        <p class="govuk-body">
+          {% set reportType = "listing" %}
+          {% set reportId = listing.id %}
+          {% set returnTo = "/listings/" + (listing.id | string) %}
+          {% include "partials/report-link.njk" %}
+        </p>
+      {% endif %}
+
+      {# Reviews Section #}
+      <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible">
+
+      <h2 class="govuk-heading-l">Reviews</h2>
+
+      {% if reviews and reviews.length > 0 %}
+        <ul class="govuk-list app-reviews-list">
+          {% for review in reviews %}
+            <li class="app-review govuk-!-margin-bottom-6">
+              <div class="app-review__header">
+                <span class="app-star-display" aria-label="{{ review.rating }} out of 5 stars">
+                  {% for i in [1, 2, 3, 4, 5] %}
+                    <svg class="app-star-display__star {% if i <= review.rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  {% endfor %}
+                </span>
+                <strong class="govuk-!-margin-left-2">
+                  {% if review.reviewer %}
+                    {{ review.reviewer.first_name or review.reviewer.firstName }} {{ review.reviewer.last_name or review.reviewer.lastName }}
+                  {% else %}
+                    Anonymous
+                  {% endif %}
+                </strong>
+                <span class="govuk-body-s govuk-!-margin-left-2" style="color: #505a5f;">
+                  {{ review.created_at | formatDate }}
+                </span>
+              </div>
+              {% if review.comment %}
+                <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
+                  {{ review.comment }}
+                </p>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="govuk-body">No reviews yet. Be the first to leave a review!</p>
+      {% endif %}
+
+      {# Leave a Review Form (only if not own listing) #}
+      {% if not listing.can_edit %}
+        <h3 class="govuk-heading-m govuk-!-margin-top-6">Leave a review</h3>
+        <form method="post" action="/reviews/listing/{{ listing.id }}" class="govuk-!-margin-bottom-6">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="return_url" value="/listings/{{ listing.id }}">
+
+          <div class="govuk-form-group">
+            <fieldset class="govuk-fieldset">
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
+                Your rating
+              </legend>
+              <div class="app-star-rating" id="rating">
+                {% for i in [1, 2, 3, 4, 5] %}
+                  <input type="radio" name="rating" id="listing-rating-{{ i }}" value="{{ i }}"
+                         class="app-star-rating__input" required>
+                  <label for="listing-rating-{{ i }}" class="app-star-rating__label">
+                    <span class="govuk-visually-hidden">{{ i }} star{% if i != 1 %}s{% endif %}</span>
+                    <svg class="app-star-rating__star" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </label>
+                {% endfor %}
+              </div>
+            </fieldset>
+          </div>
+
+          {{ govukTextarea({
+            name: "comment",
+            id: "comment",
+            label: {
+              text: "Your review (optional)"
+            },
+            hint: {
+              text: "Share details about your experience"
+            },
+            attributes: {
+              maxlength: "2000"
+            },
+            rows: 3
+          }) }}
+
+          {{ govukButton({
+            text: "Submit review"
+          }) }}
+        </form>
+      {% endif %}
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/listings" class="govuk-link">Back to listings</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

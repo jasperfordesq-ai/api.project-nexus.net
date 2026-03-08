@@ -1,0 +1,171 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <nav class="govuk-breadcrumbs" aria-label="Breadcrumb">
+    <ol class="govuk-breadcrumbs__list">
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/dashboard">Dashboard</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item" aria-current="page">Admin</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      <h1 class="govuk-heading-xl">
+        <span class="govuk-caption-xl">Administration</span>
+        Admin Dashboard
+      </h1>
+
+      <!-- Quick stats -->
+      <div class="govuk-grid-row govuk-!-margin-bottom-6">
+        <div class="govuk-grid-column-one-quarter">
+          <div class="app-card">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Total users</h2>
+            <p class="govuk-heading-xl govuk-!-margin-bottom-0">{{ dashboard.users.total }}</p>
+            <p class="govuk-body-s govuk-!-margin-top-2">
+              {{ dashboard.users.active }} active, {{ dashboard.users.suspended }} suspended
+            </p>
+          </div>
+        </div>
+
+        <div class="govuk-grid-column-one-quarter">
+          <div class="app-card">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Total listings</h2>
+            <p class="govuk-heading-xl govuk-!-margin-bottom-0">{{ dashboard.listings.total }}</p>
+            <p class="govuk-body-s govuk-!-margin-top-2">
+              {{ dashboard.listings.active }} active
+            </p>
+          </div>
+        </div>
+
+        <div class="govuk-grid-column-one-quarter">
+          <div class="app-card {% if dashboard.listings.pending_review > 0 %}app-card--warning{% endif %}">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Pending review</h2>
+            <p class="govuk-heading-xl govuk-!-margin-bottom-0">{{ dashboard.listings.pending_review }}</p>
+            <p class="govuk-body-s govuk-!-margin-top-2">
+              {% if dashboard.listings.pending_review > 0 %}
+                <a href="/admin/moderation" class="govuk-link">Review now</a>
+              {% else %}
+                All caught up
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="govuk-grid-column-one-quarter">
+          <div class="app-card">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Transactions</h2>
+            <p class="govuk-heading-xl govuk-!-margin-bottom-0">{{ dashboard.transactions.last_30_days }}</p>
+            <p class="govuk-body-s govuk-!-margin-top-2">
+              Last 30 days
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <!-- Admin navigation -->
+      <h2 class="govuk-heading-m">Administration</h2>
+
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-one-third">
+          <div class="app-card app-card--clickable">
+            <h3 class="govuk-heading-s">
+              <a href="/admin/users" class="govuk-link govuk-link--no-visited-state">Manage users</a>
+            </h3>
+            <p class="govuk-body-s">View, edit, suspend, or activate user accounts.</p>
+          </div>
+        </div>
+
+        <div class="govuk-grid-column-one-third">
+          <div class="app-card app-card--clickable">
+            <h3 class="govuk-heading-s">
+              <a href="/admin/moderation" class="govuk-link govuk-link--no-visited-state">Content moderation</a>
+            </h3>
+            <p class="govuk-body-s">Review and approve pending listings.
+              {% if dashboard.listings.pending_review > 0 %}
+                {{ govukTag({ text: dashboard.listings.pending_review ~ " pending", classes: "govuk-tag--yellow" }) }}
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="govuk-grid-column-one-third">
+          <div class="app-card app-card--clickable">
+            <h3 class="govuk-heading-s">
+              <a href="/admin/categories" class="govuk-link govuk-link--no-visited-state">Categories</a>
+            </h3>
+            <p class="govuk-body-s">Manage listing categories.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="govuk-grid-row govuk-!-margin-top-4">
+        <div class="govuk-grid-column-one-third">
+          <div class="app-card app-card--clickable">
+            <h3 class="govuk-heading-s">
+              <a href="/admin/config" class="govuk-link govuk-link--no-visited-state">Configuration</a>
+            </h3>
+            <p class="govuk-body-s">Tenant settings and configuration.</p>
+          </div>
+        </div>
+
+        <div class="govuk-grid-column-one-third">
+          <div class="app-card app-card--clickable">
+            <h3 class="govuk-heading-s">
+              <a href="/admin/roles" class="govuk-link govuk-link--no-visited-state">Roles</a>
+            </h3>
+            <p class="govuk-body-s">Manage user roles and permissions.</p>
+          </div>
+        </div>
+      </div>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <!-- Community stats -->
+      <h2 class="govuk-heading-m">Community</h2>
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Categories" },
+            value: { text: dashboard.community.categories }
+          },
+          {
+            key: { text: "Groups" },
+            value: { text: dashboard.community.groups }
+          },
+          {
+            key: { text: "Upcoming events" },
+            value: { text: dashboard.community.upcoming_events }
+          },
+          {
+            key: { text: "New users (30 days)" },
+            value: { text: dashboard.users.new_last_30_days }
+          },
+          {
+            key: { text: "Total credits transferred" },
+            value: { text: dashboard.transactions.total_credits_transferred }
+          }
+        ]
+      }) }}
+
+    </div>
+  </div>
+{% endblock %}

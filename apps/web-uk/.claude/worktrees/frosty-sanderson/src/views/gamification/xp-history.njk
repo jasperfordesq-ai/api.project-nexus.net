@@ -1,0 +1,132 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Dashboard", href: "/dashboard" },
+    { text: "My Progress", href: "/progress" },
+    { text: "XP History" }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h1 class="govuk-heading-xl">XP History</h1>
+
+      {# Current level summary #}
+      <div class="app-xp-summary govuk-!-margin-bottom-6" role="region" aria-label="Current level and XP summary">
+        <div class="app-level-badge app-level-badge--medium" role="img" aria-label="Level {{ profile.level or 1 }}">
+          <span class="app-level-badge__number" aria-hidden="true">{{ profile.level or 1 }}</span>
+          <span class="app-level-badge__label" aria-hidden="true">Level</span>
+        </div>
+        <div class="app-xp-summary__stats">
+          <p class="govuk-heading-m govuk-!-margin-bottom-1">{{ profile.totalXp or 0 }} XP</p>
+          <p class="govuk-body-s govuk-!-margin-bottom-0">
+            {{ profile.xp_to_next_level or 100 }} XP until level {{ (profile.level or 1) + 1 }}
+          </p>
+        </div>
+      </div>
+
+      {# XP transaction history #}
+      {% if xpHistory.length > 0 %}
+        <table class="govuk-table">
+          <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">XP transactions</caption>
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Activity</th>
+              <th scope="col" class="govuk-table__header">Date</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">XP</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for entry in xpHistory %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <span class="govuk-!-font-weight-bold">{{ entry.description }}</span>
+                  <br>
+                  <span class="govuk-body-s app-text--secondary">{{ entry.source | replace("_", " ") | capitalize }}</span>
+                </td>
+                <td class="govuk-table__cell">
+                  {{ entry.createdAt | formatDate }}
+                </td>
+                <td class="govuk-table__cell govuk-table__cell--numeric">
+                  <span class="app-xp-amount {% if entry.amount > 0 %}app-xp-amount--positive{% else %}app-xp-amount--negative{% endif %}">
+                    {{ "+" if entry.amount > 0 else "" }}{{ entry.amount }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {# Pagination #}
+        {% if pagination.total_pages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, pagination.total_pages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/progress/xp-history?page=" + i,
+              current: i == pagination.page
+            }), paginationItems) %}
+          {% endfor %}
+
+          {{ govukPagination({
+            previous: {
+              href: "/progress/xp-history?page=" + (pagination.page - 1)
+            } if pagination.page > 1 else undefined,
+            next: {
+              href: "/progress/xp-history?page=" + (pagination.page + 1)
+            } if pagination.page < pagination.total_pages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+      {% else %}
+        {% set emptyState = {
+          icon: "📊",
+          heading: "No XP activity yet",
+          message: "Your XP transactions will appear here as you participate in the community.",
+          action: {
+            text: "View how to earn XP",
+            href: "/progress"
+          }
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+
+    <div class="govuk-grid-column-one-third">
+      {# XP earning guide #}
+      <div class="app-sidebar-card">
+        <h2 class="govuk-heading-m">XP rewards</h2>
+        <ul class="govuk-list govuk-list--spaced govuk-body-s">
+          <li><span class="app-xp-amount app-xp-amount--positive">+20</span> Complete transaction</li>
+          <li><span class="app-xp-amount app-xp-amount--positive">+20</span> Create a group</li>
+          <li><span class="app-xp-amount app-xp-amount--positive">+15</span> Create an event</li>
+          <li><span class="app-xp-amount app-xp-amount--positive">+10</span> Create a listing</li>
+          <li><span class="app-xp-amount app-xp-amount--positive">+5</span> Create a post</li>
+          <li><span class="app-xp-amount app-xp-amount--positive">+5</span> Accept connection</li>
+          <li><span class="app-xp-amount app-xp-amount--positive">+2</span> Add a comment</li>
+        </ul>
+      </div>
+
+      {# Link to badges #}
+      <div class="app-sidebar-card govuk-!-margin-top-4">
+        <h2 class="govuk-heading-m">Earn bonus XP</h2>
+        <p class="govuk-body-s">
+          Unlock badges to earn bonus XP rewards. Some badges are worth up to 100 XP!
+        </p>
+        <a href="/progress/badges" class="govuk-link">View all badges</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

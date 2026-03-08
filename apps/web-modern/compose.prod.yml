@@ -1,0 +1,14 @@
+# Production overrides - deploy as compose.override.yml on production server
+# This file configures production-specific settings (ports, API URL)
+#
+# Usage on production:
+#   cp compose.prod.yml compose.override.yml
+#   docker compose --profile production up -d frontend-prod
+
+services:
+  frontend-prod:
+    ports:
+      - "127.0.0.1:3002:3002"
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: https://api.project-nexus.net

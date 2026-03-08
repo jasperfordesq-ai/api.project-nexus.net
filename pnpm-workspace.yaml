@@ -1,0 +1,19 @@
+# pnpm workspace — Nexus monorepo
+#
+# All frontend apps live under apps/. Backend is .NET and not part of this workspace.
+#
+# Usage:
+#   pnpm install                          # install all pnpm-managed apps
+#   pnpm --filter @nexus/web-govie dev    # run one app
+#   pnpm -r build                         # build all pnpm apps
+#
+# Note: apps/admin and apps/web-modern and apps/web-uk currently use npm
+# (package-lock.json present). Add them below after converting to pnpm,
+# or run `npm install` inside each individually.
+
+packages:
+  - "apps/web-govie"
+  # Convert these to pnpm (remove package-lock.json, run pnpm import) then uncomment:
+  # - "apps/admin"
+  # - "apps/web-modern"
+  # - "apps/web-uk"

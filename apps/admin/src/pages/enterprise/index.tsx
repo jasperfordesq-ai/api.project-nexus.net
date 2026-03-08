@@ -1,0 +1,90 @@
+import { useCustom } from "@refinedev/core";
+import { Card, Table, Typography, Row, Col, Statistic, Spin, Tabs, Descriptions } from "antd";
+
+const { Title } = Typography;
+
+export const EnterprisePage = () => {
+  const { data: configData, isLoading: configLoading } = useCustom({
+    url: "/api/admin/enterprise/config",
+    method: "get",
+  });
+
+  const { data: dashboardData, isLoading: dashboardLoading } = useCustom({
+    url: "/api/admin/enterprise/dashboard",
+    method: "get",
+  });
+
+  const { data: complianceData, isLoading: complianceLoading } = useCustom({
+    url: "/api/admin/enterprise/compliance",
+    method: "get",
+  });
+
+  const configItems = Array.isArray((configData?.data as any)) ? (configData?.data as any) : [];
+  const dashboard = (dashboardData?.data as any) || {};
+  const compliance = (complianceData?.data as any) || {};
+
+  const dashboardTab = (
+    <>
+      {dashboardLoading ? (
+        <Spin />
+      ) : (
+        <Row gutter={[16, 16]}>
+          {Object.entries(dashboard).map(([key, value]) => (
+            <Col span={6} key={key}>
+              <Card>
+                <Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} />
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      )}
+    </>
+  );
+
+  const complianceTab = (
+    <>
+      {complianceLoading ? (
+        <Spin />
+      ) : (
+        <Card>
+          <Descriptions bordered column={1}>
+            {Object.entries(compliance).map(([key, value]) => (
+              <Descriptions.Item key={key} label={key.replace(/_/g, " ")}>
+                {String(value ?? "--")}
+              </Descriptions.Item>
+            ))}
+          </Descriptions>
+        </Card>
+      )}
+    </>
+  );
+
+  const configTab = (
+    <>
+      {configLoading ? (
+        <Spin />
+      ) : (
+        <Card>
+          <Table dataSource={configItems.map((item: any, i: number) => ({ ...item, _key: item.key || i }))} rowKey="_key" size="small">
+            <Table.Column dataIndex="key" title="Key" />
+            <Table.Column dataIndex="value" title="Value" />
+            <Table.Column dataIndex="description" title="Description" />
+          </Table>
+        </Card>
+      )}
+    </>
+  );
+
+  return (
+    <div>
+      <Title level={4}>Enterprise</Title>
+      <Tabs
+        items={[
+          { key: "dashboard", label: "Dashboard", children: dashboardTab },
+          { key: "compliance", label: "Compliance", children: complianceTab },
+          { key: "config", label: "Config", children: configTab },
+        ]}
+      />
+    </div>
+  );
+};

@@ -1,0 +1,89 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Settings", href: "/settings" },
+      { text: "Notifications" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Notification settings</h1>
+
+      <form method="post" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukCheckboxes({
+          name: "notifications",
+          fieldset: {
+            legend: {
+              text: "Email notifications",
+              classes: "govuk-fieldset__legend--m"
+            }
+          },
+          hint: {
+            text: "Select which email notifications you'd like to receive"
+          },
+          items: [
+            {
+              value: "messages",
+              text: "New messages",
+              hint: {
+                text: "Get notified when someone sends you a message"
+              },
+              checked: true
+            },
+            {
+              value: "listings",
+              text: "Listing activity",
+              hint: {
+                text: "Get notified about activity on your listings"
+              },
+              checked: true
+            },
+            {
+              value: "transactions",
+              text: "Transactions",
+              hint: {
+                text: "Get notified when you receive credits"
+              },
+              checked: true
+            },
+            {
+              value: "marketing",
+              text: "News and updates",
+              hint: {
+                text: "Receive updates about new features and community news"
+              },
+              checked: false
+            }
+          ]
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save changes"
+          }) }}
+          <a href="/settings" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

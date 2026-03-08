@@ -1,0 +1,184 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <nav class="govuk-breadcrumbs" aria-label="Breadcrumb">
+    <ol class="govuk-breadcrumbs__list">
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/dashboard">Dashboard</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin">Admin</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item" aria-current="page">Configuration</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        <span class="govuk-caption-xl">Administration</span>
+        Configuration
+      </h1>
+
+      <p class="govuk-body-l">Manage tenant-specific settings and configuration.</p>
+
+      <form method="post" action="/admin/config">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        <!-- Branding -->
+        <h2 class="govuk-heading-m">Branding</h2>
+
+        {{ govukInput({
+          label: { text: "Site name", classes: "govuk-label--s" },
+          id: "site_name",
+          name: "site_name",
+          value: config.site_name or "",
+          hint: { text: "The name displayed in the header" }
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Primary colour", classes: "govuk-label--s" },
+          id: "primary_color",
+          name: "primary_color",
+          value: config.primary_color or "#1d70b8",
+          hint: { text: "Hex colour code (e.g., #1d70b8)" },
+          classes: "govuk-input--width-10"
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Logo URL", classes: "govuk-label--s" },
+          id: "logo_url",
+          name: "logo_url",
+          value: config.logo_url or "",
+          hint: { text: "URL to your logo image (optional)" }
+        }) }}
+
+        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+        <!-- Features -->
+        <h2 class="govuk-heading-m">Features</h2>
+
+        {{ govukRadios({
+          name: "enable_messaging",
+          fieldset: { legend: { text: "Messaging", classes: "govuk-fieldset__legend--s" } },
+          items: [
+            { value: "true", text: "Enabled", checked: config.enable_messaging != "false" },
+            { value: "false", text: "Disabled", checked: config.enable_messaging == "false" }
+          ],
+          classes: "govuk-radios--inline govuk-radios--small"
+        }) }}
+
+        {{ govukRadios({
+          name: "enable_groups",
+          fieldset: { legend: { text: "Groups", classes: "govuk-fieldset__legend--s" } },
+          items: [
+            { value: "true", text: "Enabled", checked: config.enable_groups != "false" },
+            { value: "false", text: "Disabled", checked: config.enable_groups == "false" }
+          ],
+          classes: "govuk-radios--inline govuk-radios--small"
+        }) }}
+
+        {{ govukRadios({
+          name: "enable_events",
+          fieldset: { legend: { text: "Events", classes: "govuk-fieldset__legend--s" } },
+          items: [
+            { value: "true", text: "Enabled", checked: config.enable_events != "false" },
+            { value: "false", text: "Disabled", checked: config.enable_events == "false" }
+          ],
+          classes: "govuk-radios--inline govuk-radios--small"
+        }) }}
+
+        {{ govukRadios({
+          name: "enable_gamification",
+          fieldset: { legend: { text: "Gamification (XP and badges)", classes: "govuk-fieldset__legend--s" } },
+          items: [
+            { value: "true", text: "Enabled", checked: config.enable_gamification != "false" },
+            { value: "false", text: "Disabled", checked: config.enable_gamification == "false" }
+          ],
+          classes: "govuk-radios--inline govuk-radios--small"
+        }) }}
+
+        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+        <!-- Moderation -->
+        <h2 class="govuk-heading-m">Moderation</h2>
+
+        {{ govukRadios({
+          name: "require_listing_approval",
+          fieldset: { legend: { text: "Require listing approval", classes: "govuk-fieldset__legend--s" } },
+          hint: { text: "New listings must be approved by an admin before they become visible" },
+          items: [
+            { value: "true", text: "Yes", checked: config.require_listing_approval == "true" },
+            { value: "false", text: "No", checked: config.require_listing_approval != "true" }
+          ],
+          classes: "govuk-radios--inline govuk-radios--small"
+        }) }}
+
+        {{ govukRadios({
+          name: "auto_approve_trusted",
+          fieldset: { legend: { text: "Auto-approve trusted users", classes: "govuk-fieldset__legend--s" } },
+          hint: { text: "Skip approval for established users with good standing" },
+          items: [
+            { value: "true", text: "Yes", checked: config.auto_approve_trusted == "true" },
+            { value: "false", text: "No", checked: config.auto_approve_trusted != "true" }
+          ],
+          classes: "govuk-radios--inline govuk-radios--small"
+        }) }}
+
+        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+        <!-- Notifications -->
+        <h2 class="govuk-heading-m">Notifications</h2>
+
+        {{ govukRadios({
+          name: "email_notifications",
+          fieldset: { legend: { text: "Email notifications", classes: "govuk-fieldset__legend--s" } },
+          items: [
+            { value: "true", text: "Enabled", checked: config.email_notifications != "false" },
+            { value: "false", text: "Disabled", checked: config.email_notifications == "false" }
+          ],
+          classes: "govuk-radios--inline govuk-radios--small"
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Digest frequency", classes: "govuk-label--s" },
+          id: "digest_frequency",
+          name: "digest_frequency",
+          value: config.digest_frequency or "weekly",
+          hint: { text: "daily, weekly, or never" },
+          classes: "govuk-input--width-10"
+        }) }}
+
+        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save configuration"
+          }) }}
+          <a href="/admin" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

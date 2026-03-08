@@ -1,0 +1,159 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Listings" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Listings</h1>
+
+      <div class="govuk-grid-row govuk-!-margin-bottom-6">
+        <div class="govuk-grid-column-full">
+          <form method="get" action="/listings" class="app-filter-form">
+            <div class="govuk-grid-row">
+              <div class="govuk-grid-column-one-third">
+                {{ govukInput({
+                  label: { text: "Search" },
+                  id: "search",
+                  name: "search",
+                  value: filters.search or ""
+                }) }}
+              </div>
+              <div class="govuk-grid-column-one-third">
+                {{ govukSelect({
+                  id: "status",
+                  name: "status",
+                  label: { text: "Status" },
+                  items: [
+                    { value: "", text: "All statuses", selected: not filters.status },
+                    { value: "draft", text: "Draft", selected: filters.status == "draft" },
+                    { value: "active", text: "Active", selected: filters.status == "active" },
+                    { value: "inactive", text: "Inactive", selected: filters.status == "inactive" }
+                  ]
+                }) }}
+              </div>
+              <div class="govuk-grid-column-one-third app-filter-buttons">
+                {{ govukButton({
+                  text: "Filter",
+                  classes: "govuk-button--secondary"
+                }) }}
+                {% if filters.search or filters.status %}
+                  <a href="/listings" class="govuk-link govuk-!-margin-left-2">Clear</a>
+                {% endif %}
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <p class="govuk-body">
+        <a href="/listings/new" class="govuk-button">Create listing</a>
+      </p>
+
+      {% if listings and listings.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Title</th>
+              <th scope="col" class="govuk-table__header">Status</th>
+              <th scope="col" class="govuk-table__header">Created</th>
+              <th scope="col" class="govuk-table__header">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for listing in listings %}
+              {% if listing.status == "active" %}
+                {% set tagColour = "green" %}
+              {% elif listing.status == "draft" %}
+                {% set tagColour = "grey" %}
+              {% else %}
+                {% set tagColour = "red" %}
+              {% endif %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <a href="/listings/{{ listing.id }}" class="govuk-link">
+                    {{ listing.title or listing.name or "Untitled" }}
+                  </a>
+                </td>
+                <td class="govuk-table__cell">
+                  <strong class="govuk-tag govuk-tag--{{ tagColour }}">
+                    {{ listing.status or "N/A" }}
+                  </strong>
+                </td>
+                <td class="govuk-table__cell">{{ listing.createdAt or listing.created_at or "N/A" }}</td>
+                <td class="govuk-table__cell">
+                  <a href="/listings/{{ listing.id }}/edit" class="govuk-link govuk-!-margin-right-2">Edit</a>
+                  <a href="/listings/{{ listing.id }}/delete" class="govuk-link app-link--destructive">Delete</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {% if pagination and pagination.totalPages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, pagination.totalPages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/listings?page=" + i + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else ""),
+              current: i == pagination.currentPage
+            }), paginationItems) %}
+          {% endfor %}
+
+          {{ govukPagination({
+            previous: { href: "/listings?page=" + (pagination.currentPage - 1) } if pagination.currentPage > 1 else undefined,
+            next: { href: "/listings?page=" + (pagination.currentPage + 1) } if pagination.currentPage < pagination.totalPages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+
+      {% else %}
+        {% if filters.search or filters.status %}
+          {% set emptyState = {
+            icon: "🔍",
+            heading: "No results found",
+            message: "No listings match your search criteria.",
+            action: {
+              text: "Clear filters",
+              href: "/listings"
+            }
+          } %}
+        {% else %}
+          {% set emptyState = {
+            icon: "📦",
+            heading: "No listings yet",
+            message: "Create your first listing to share with the community.",
+            action: {
+              text: "Create listing",
+              href: "/listings/new",
+              isButton: true
+            }
+          } %}
+        {% endif %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

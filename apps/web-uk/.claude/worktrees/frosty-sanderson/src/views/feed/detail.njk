@@ -1,0 +1,207 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Feed", href: "/feed" },
+    { text: "Post" }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {# Main post #}
+      <article class="app-post app-post--detail {% if post.is_pinned %}app-post--pinned{% endif %}">
+        {% if post.is_pinned %}
+          <div class="app-post__pinned-badge">
+            {{ govukTag({ text: "Pinned", classes: "govuk-tag--yellow" }) }}
+          </div>
+        {% endif %}
+
+        <header class="app-post__header">
+          <div class="app-post__author">
+            {% set user = post.user %}
+            {% set avatarSize = "large" %}
+            {% include "partials/avatar.njk" %}
+            <div class="app-post__author-info">
+              <a href="/members/{{ post.user.id }}" class="govuk-link govuk-link--no-visited-state govuk-!-font-weight-bold">
+                {{ post.user.first_name or post.user.firstName }} {{ post.user.last_name or post.user.lastName }}
+              </a>
+              <span class="govuk-body-s govuk-!-margin-bottom-0 app-post__meta">
+                {{ post.created_at | formatDate }}
+                {% if post.group %}
+                  in <a href="/groups/{{ post.group.id }}" class="govuk-link">{{ post.group.name }}</a>
+                {% endif %}
+                {% if post.updated_at %}
+                  <span class="govuk-!-margin-left-2">(edited)</span>
+                {% endif %}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <div class="app-post__content app-post__content--full">
+          <div class="govuk-body app-formatted-text">{{ post.content | nl2br }}</div>
+          {% if post.image_url %}
+            <img src="{{ post.image_url }}" alt="Image attached to post by {{ post.user.first_name or post.user.firstName }}" class="app-post__image app-post__image--large">
+          {% endif %}
+        </div>
+
+        <footer class="app-post__footer">
+          <div class="app-post__actions">
+            {# Like button #}
+            {% if post.is_liked %}
+              <form action="/feed/{{ post.id }}/unlike" method="post" class="app-post__action-form">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <button type="submit" class="app-link-button app-post__action-button app-post__action-button--active">
+                  <span aria-hidden="true">&#9829;</span> {{ post.like_count }} Like{{ 's' if post.like_count != 1 else '' }}
+                </button>
+              </form>
+            {% else %}
+              <form action="/feed/{{ post.id }}/like" method="post" class="app-post__action-form">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <button type="submit" class="app-link-button app-post__action-button">
+                  <span aria-hidden="true">&#9825;</span> {{ post.like_count }} Like{{ 's' if post.like_count != 1 else '' }}
+                </button>
+              </form>
+            {% endif %}
+
+            <span class="app-post__action-button">
+              <span aria-hidden="true">&#128172;</span> {{ post.comment_count }} Comment{{ 's' if post.comment_count != 1 else '' }}
+            </span>
+          </div>
+
+          {# Post author actions #}
+          <div class="app-post__owner-actions">
+            {% if post.can_edit %}
+              <a href="/feed/{{ post.id }}/edit" class="govuk-link">Edit</a>
+              <form action="/feed/{{ post.id }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this post?');">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <input type="hidden" name="return_to" value="/feed">
+                <button type="submit" class="app-link-button app-link-button--warning">Delete</button>
+              </form>
+            {% endif %}
+            {% if not post.can_edit %}
+              {% set reportType = "post" %}
+              {% set reportId = post.id %}
+              {% set returnTo = "/feed/" + (post.id | string) %}
+              {% include "partials/report-link.njk" %}
+            {% endif %}
+          </div>
+        </footer>
+      </article>
+
+      {# Comments section #}
+      <section class="app-comments" aria-labelledby="comments-heading">
+        <h2 id="comments-heading" class="govuk-heading-m">
+          Comments ({{ post.comment_count }})
+        </h2>
+
+        {# Add comment form #}
+        <form action="/feed/{{ post.id }}/comments" method="post" class="app-comment-form govuk-!-margin-bottom-6">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+          {{ govukTextarea({
+            id: "content",
+            name: "content",
+            label: {
+              text: "Add a comment",
+              classes: "govuk-visually-hidden"
+            },
+            rows: 3,
+            attributes: {
+              placeholder: "Write a comment...",
+              maxlength: "2000"
+            }
+          }) }}
+
+          {{ govukButton({
+            text: "Post comment",
+            classes: "govuk-!-margin-bottom-0"
+          }) }}
+        </form>
+
+        {# Comments list #}
+        {% if comments.length > 0 %}
+          <ul class="app-comment-list">
+            {% for comment in comments %}
+              <li class="app-comment">
+                <header class="app-comment__header">
+                  <div class="app-comment__author">
+                    {% set user = comment.user %}
+                    {% set avatarSize = "small" %}
+                    {% include "partials/avatar.njk" %}
+                    <div class="app-comment__author-info">
+                      <a href="/members/{{ comment.user.id }}" class="govuk-link govuk-link--no-visited-state govuk-!-font-weight-bold govuk-body-s">
+                        {{ comment.user.first_name or comment.user.firstName }} {{ comment.user.last_name or comment.user.lastName }}
+                      </a>
+                      <span class="govuk-body-s govuk-!-margin-bottom-0 app-comment__meta">
+                        {{ comment.created_at | formatDate }}
+                        {% if comment.updated_at %}
+                          <span>(edited)</span>
+                        {% endif %}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="app-comment__actions">
+                    {% if comment.can_delete %}
+                      <form action="/feed/{{ post.id }}/comments/{{ comment.id }}/delete" method="post" onsubmit="return confirm('Delete this comment?');">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        <button type="submit" class="app-link-button app-link-button--warning govuk-body-s">Delete</button>
+                      </form>
+                    {% else %}
+                      {% set reportType = "comment" %}
+                      {% set reportId = comment.id %}
+                      {% set returnTo = "/feed/" + (post.id | string) %}
+                      {% include "partials/report-link.njk" %}
+                    {% endif %}
+                  </div>
+                </header>
+
+                <div class="app-comment__content">
+                  <p class="govuk-body-s govuk-!-margin-bottom-0">{{ comment.content }}</p>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+
+          {# Load more comments #}
+          {% if commentsPagination.total_pages > 1 and commentsPagination.page < commentsPagination.total_pages %}
+            <p class="govuk-body-s">
+              <a href="/feed/{{ post.id }}?comments_page={{ commentsPagination.page + 1 }}" class="govuk-link">
+                Load more comments
+              </a>
+            </p>
+          {% endif %}
+        {% else %}
+          <p class="govuk-body">No comments yet. Be the first to comment!</p>
+        {% endif %}
+      </section>
+
+    </div>
+  </div>
+{% endblock %}

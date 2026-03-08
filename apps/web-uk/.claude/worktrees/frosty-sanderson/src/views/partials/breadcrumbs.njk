@@ -1,0 +1,23 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{#
+  Breadcrumb navigation partial
+  Usage: {% include "partials/breadcrumbs.njk" %}
+
+  Pass breadcrumbs as an array of objects with text and href:
+  {% set breadcrumbs = [
+    { text: "Groups", href: "/groups" },
+    { text: "My Group", href: "/groups/123" },
+    { text: "Members" }
+  ] %}
+#}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+
+{% if breadcrumbs and breadcrumbs.length > 0 %}
+  {{ govukBreadcrumbs({
+    items: breadcrumbs
+  }) }}
+{% endif %}

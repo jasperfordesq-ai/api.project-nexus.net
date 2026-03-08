@@ -1,0 +1,174 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Groups", href: "/groups" },
+    { text: group.name, href: "/groups/" + group.id },
+    { text: "Members" }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">{{ group.name }} - Members</h1>
+
+      {# Add member form (admin/owner only) #}
+      {% if myMembership and (myMembership.role == 'owner' or myMembership.role == 'admin') %}
+        {% set userItems = [{value: "", text: "Choose a user", disabled: true, selected: true}] %}
+        {% for user in nonMembers %}
+          {% set userItems = (userItems.push({
+            value: user.id | string,
+            text: user.first_name + " " + user.last_name + " (" + user.email + ")"
+          }), userItems) %}
+        {% endfor %}
+        <div class="app-card govuk-!-margin-bottom-6">
+          <h2 class="govuk-heading-m">Add a member</h2>
+          <form action="/groups/{{ group.id }}/members/add" method="post">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <div style="display: flex; align-items: flex-end; gap: 15px; flex-wrap: wrap;">
+              {{ govukSelect({
+                id: "user_id",
+                name: "user_id",
+                label: {
+                  text: "Select a user"
+                },
+                items: userItems
+              }) }}
+              {{ govukButton({
+                text: "Add member",
+                classes: "govuk-!-margin-bottom-0"
+              }) }}
+            </div>
+          </form>
+        </div>
+      {% endif %}
+
+      {# Members table #}
+      {% if members.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Member</th>
+              <th scope="col" class="govuk-table__header">Role</th>
+              <th scope="col" class="govuk-table__header">Joined</th>
+              {% if myMembership and (myMembership.role == 'owner' or myMembership.role == 'admin') %}
+                <th scope="col" class="govuk-table__header">Actions</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for member in members %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <div class="app-member-cell">
+                    {% set user = member %}
+                    {% include "partials/avatar.njk" %}
+                    <a href="/members/{{ member.id }}" class="govuk-link">
+                      {{ member.first_name or member.firstName }} {{ member.last_name or member.lastName }}
+                    </a>
+                  </div>
+                </td>
+                <td class="govuk-table__cell">
+                  {% if member.role == 'owner' %}
+                    {{ govukTag({ text: "Owner", classes: "govuk-tag--purple" }) }}
+                  {% elif member.role == 'admin' %}
+                    {{ govukTag({ text: "Admin", classes: "govuk-tag--blue" }) }}
+                  {% else %}
+                    {{ govukTag({ text: "Member", classes: "govuk-tag--grey" }) }}
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  {{ member.joined_at | formatDate if member.joined_at else '-' }}
+                </td>
+                {% if myMembership and (myMembership.role == 'owner' or myMembership.role == 'admin') %}
+                  <td class="govuk-table__cell">
+                    {% if member.role != 'owner' %}
+                      {# Role change (owner only) #}
+                      {% if myMembership.role == 'owner' %}
+                        <form action="/groups/{{ group.id }}/members/{{ member.id }}/role" method="post" style="display: inline;">
+                          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                          {% if member.role == 'member' %}
+                            <input type="hidden" name="role" value="admin">
+                            <button type="submit" class="app-link-button">Make admin</button>
+                          {% else %}
+                            <input type="hidden" name="role" value="member">
+                            <button type="submit" class="app-link-button">Remove admin</button>
+                          {% endif %}
+                        </form>
+                        <span class="govuk-!-margin-left-2 govuk-!-margin-right-2">|</span>
+                      {% endif %}
+
+                      {# Remove member #}
+                      <form action="/groups/{{ group.id }}/members/{{ member.id }}/remove" method="post" style="display: inline;" onsubmit="return confirm('Remove this member from the group?');">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        <button type="submit" class="app-link-button app-link-button--warning">Remove</button>
+                      </form>
+                    {% else %}
+                      <span class="govuk-body-s govuk-!-color-secondary">-</span>
+                    {% endif %}
+                  </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="govuk-body">No members in this group.</p>
+      {% endif %}
+
+      {# Transfer ownership (owner only) #}
+      {% if myMembership and myMembership.role == 'owner' and members.length > 1 %}
+        {% set ownerItems = [{value: "", text: "Choose a member", disabled: true, selected: true}] %}
+        {% for member in members %}
+          {% if member.role != 'owner' %}
+            {% set ownerItems = (ownerItems.push({
+              value: member.id | string,
+              text: member.first_name + " " + member.last_name
+            }), ownerItems) %}
+          {% endif %}
+        {% endfor %}
+        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+        <h2 class="govuk-heading-m">Transfer ownership</h2>
+        <p class="govuk-body">Transfer ownership of this group to another member. You will become an admin.</p>
+
+        <form action="/groups/{{ group.id }}/transfer-ownership" method="post" onsubmit="return confirm('Are you sure you want to transfer ownership? This action cannot be undone.');">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div style="display: flex; align-items: flex-end; gap: 15px; flex-wrap: wrap;">
+            {{ govukSelect({
+              id: "new_owner_id",
+              name: "new_owner_id",
+              label: {
+                text: "New owner"
+              },
+              items: ownerItems
+            }) }}
+            {{ govukButton({
+              text: "Transfer ownership",
+              classes: "govuk-button--warning govuk-!-margin-bottom-0"
+            }) }}
+          </div>
+        </form>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

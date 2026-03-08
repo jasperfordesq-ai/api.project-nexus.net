@@ -426,9 +426,10 @@ dotnet test
    | Swagger | http://localhost:5080/swagger | API documentation |
    | Health | http://localhost:5080/health | Health check |
    | RabbitMQ | http://localhost:15672 | Message queue UI (guest/guest) |
-   | Modern Frontend | http://localhost:5170 | Next.js frontend (HeroUI) |
-   | UK Frontend | http://localhost:5180 | GOV.UK design system frontend |
-   | Admin Panel | http://localhost:5190 | Refine + Ant Design admin UI |
+   | Modern Frontend | http://localhost:5170 | Next.js + HeroUI (apps/web-modern/) |
+   | UK Frontend | http://localhost:5180 | GOV.UK Design System (apps/web-uk/) |
+   | Admin Panel | http://localhost:5190 | Refine + Ant Design (apps/admin/) |
+   | GOV.IE Frontend | http://localhost:5200 | Nexus Community (GOV.IE DS) |
 
 4. **Test credentials:**
    - `admin@acme.test` / `Test123!` / tenant_slug: `acme`
@@ -656,13 +657,15 @@ tests/
   Nexus.Messaging.Tests/
 ```
 
-## Admin Panel (nexus-admin)
+## Admin Panel (apps/admin)
 
-A standalone admin panel at `../nexus-admin/` (sibling directory). Consumes the backend's admin API endpoints.
+The admin panel lives inside this repo at `apps/admin/`. Consumes the backend's admin API endpoints.
+
+> Previously at `../nexus-admin/` — migrated into the monorepo 2026-03-08.
 
 | Property | Value |
 |----------|-------|
-| Location | `c:\platforms\htdocs\nexus-admin\` |
+| Location | `apps/admin/` (inside this repo) |
 | Stack | React 18 + TypeScript + Refine v4 + Ant Design 5 + Vite 6 |
 | Dev URL | http://localhost:5190 |
 | API target | http://localhost:5080 (this backend) |
@@ -671,15 +674,18 @@ A standalone admin panel at `../nexus-admin/` (sibling directory). Consumes the 
 ### Running the Admin Panel
 
 ```bash
-cd ../nexus-admin
+cd apps/admin
 npm install
 npm run dev          # → http://localhost:5190
 ```
 
 Or via Docker:
 ```bash
-cd ../nexus-admin
-docker compose up -d  # dev on :5190, prod on :5191
+# Via main compose (recommended):
+docker compose up -d admin
+
+# Or standalone:
+cd apps/admin && docker compose up -d  # dev on :5190, prod on :5191
 ```
 
 ### What It Covers

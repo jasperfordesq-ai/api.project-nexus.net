@@ -1,0 +1,225 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Welcome back, {{ profile.first_name or profile.firstName or "User" }}</h1>
+
+      <div class="govuk-grid-row">
+        <!-- Balance card -->
+        <div class="govuk-grid-column-one-third">
+          <div class="app-card">
+            <h2 class="govuk-heading-m">Wallet balance</h2>
+            <p class="govuk-heading-xl govuk-!-margin-bottom-2">{{ balance }}</p>
+            <p class="govuk-body-s">credits</p>
+            <p class="govuk-body govuk-!-margin-top-4">
+              <a href="/wallet" class="govuk-link">Manage wallet</a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Messages card -->
+        <div class="govuk-grid-column-one-third">
+          <div class="app-card">
+            <h2 class="govuk-heading-m">Messages</h2>
+            {% if unreadCount > 0 %}
+              <p class="govuk-heading-xl govuk-!-margin-bottom-2">{{ unreadCount }}</p>
+              <p class="govuk-body-s">unread messages</p>
+            {% else %}
+              <p class="govuk-body">No unread messages</p>
+            {% endif %}
+            <p class="govuk-body govuk-!-margin-top-4">
+              <a href="/messages" class="govuk-link">View messages</a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Level/XP card -->
+        <div class="govuk-grid-column-one-third">
+          <a href="/progress" class="app-card app-card--clickable" aria-label="View your progress - Level {{ gamification.level or 1 }}, {{ gamification.totalXp or 0 }} XP">
+            <h2 class="govuk-heading-m">Your level</h2>
+            <div class="app-dashboard-level">
+              <span class="app-level-badge app-level-badge--medium" role="img" aria-label="Level {{ gamification.level or 1 }}">
+                <span class="app-level-badge__number" aria-hidden="true">{{ gamification.level or 1 }}</span>
+              </span>
+              <div class="app-dashboard-level__stats">
+                <p class="govuk-heading-m govuk-!-margin-bottom-1">{{ gamification.totalXp or 0 }} XP</p>
+                <p class="govuk-body-s govuk-!-margin-bottom-0">{{ gamification.xp_to_next_level or 100 }} to next level</p>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <div class="govuk-grid-row">
+        <!-- Activity feed -->
+        <div class="govuk-grid-column-two-thirds">
+          <h2 class="govuk-heading-m" id="recent-activity-heading">Recent activity</h2>
+
+          {% if activityItems and activityItems.length > 0 %}
+            <ul class="app-activity-feed" aria-labelledby="recent-activity-heading">
+              {% for item in activityItems %}
+                <li class="app-activity-item {% if not item.read %}app-activity-item--unread{% endif %}">
+                  <span class="app-activity-icon" aria-hidden="true">{{ item.icon }}</span>
+                  <div class="app-activity-content">
+                    <a href="{{ item.link }}" class="govuk-link">{{ item.content }}</a>
+                    <span class="govuk-body-s app-activity-time"><span class="govuk-visually-hidden">Posted </span>{{ item.time | formatDate }}</span>
+                    {% if not item.read %}<span class="govuk-visually-hidden">(Unread)</span>{% endif %}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+            <p class="govuk-body govuk-!-margin-top-4">
+              <a href="/feed" class="govuk-link">View full feed</a> |
+              <a href="/notifications" class="govuk-link">View all notifications</a>
+            </p>
+          {% else %}
+            <p class="govuk-body">No recent activity.</p>
+            <p class="govuk-body">
+              <a href="/feed" class="govuk-link">Check out the community feed</a>
+            </p>
+          {% endif %}
+
+          <hr class="govuk-section-break govuk-section-break--m govuk-section-break--visible">
+
+          <!-- Recent listings -->
+          <h2 class="govuk-heading-m">Your recent listings</h2>
+
+          {% if listings and listings.length > 0 %}
+            <table class="govuk-table">
+              <thead class="govuk-table__head">
+                <tr class="govuk-table__row">
+                  <th scope="col" class="govuk-table__header">Title</th>
+                  <th scope="col" class="govuk-table__header">Status</th>
+                </tr>
+              </thead>
+              <tbody class="govuk-table__body">
+                {% for listing in listings %}
+                  {% if listing.status == "active" %}
+                    {% set tagColour = "green" %}
+                  {% elif listing.status == "draft" %}
+                    {% set tagColour = "grey" %}
+                  {% else %}
+                    {% set tagColour = "red" %}
+                  {% endif %}
+                  <tr class="govuk-table__row">
+                    <td class="govuk-table__cell">
+                      <a href="/listings/{{ listing.id }}" class="govuk-link">
+                        {{ listing.title or listing.name or "Untitled" }}
+                      </a>
+                    </td>
+                    <td class="govuk-table__cell">
+                      {{ govukTag({ text: listing.status or "N/A", classes: "govuk-tag--" + tagColour }) }}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            <p class="govuk-body">
+              <a href="/listings" class="govuk-link">View all listings</a>
+            </p>
+          {% else %}
+            <p class="govuk-body">You haven't created any listings yet.</p>
+            <p class="govuk-body">
+              <a href="/listings/new" class="govuk-link">Create your first listing</a>
+            </p>
+          {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="govuk-grid-column-one-third">
+          <!-- Upcoming events -->
+          <div class="app-sidebar-card govuk-!-margin-bottom-4">
+            <h2 class="govuk-heading-s">Upcoming events</h2>
+            {% if upcomingEvents and upcomingEvents.length > 0 %}
+              <ul class="govuk-list">
+                {% for event in upcomingEvents %}
+                  <li class="govuk-!-margin-bottom-2">
+                    <a href="/events/{{ event.id }}" class="govuk-link govuk-!-font-weight-bold">{{ event.title }}</a>
+                    <br>
+                    <span class="govuk-body-s">{{ event.starts_at | formatDate }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+              <p class="govuk-body-s govuk-!-margin-top-3">
+                <a href="/events/my" class="govuk-link">View all my events</a>
+              </p>
+            {% else %}
+              <p class="govuk-body-s">No upcoming events.</p>
+              <p class="govuk-body-s">
+                <a href="/events" class="govuk-link">Browse events</a>
+              </p>
+            {% endif %}
+          </div>
+
+          <!-- My groups -->
+          <div class="app-sidebar-card govuk-!-margin-bottom-4">
+            <h2 class="govuk-heading-s">My groups</h2>
+            {% if myGroups and myGroups.length > 0 %}
+              <ul class="govuk-list">
+                {% for group in myGroups %}
+                  <li>
+                    <a href="/groups/{{ group.id }}" class="govuk-link">{{ group.name }}</a>
+                  </li>
+                {% endfor %}
+              </ul>
+              <p class="govuk-body-s govuk-!-margin-top-3">
+                <a href="/groups/my" class="govuk-link">View all my groups</a>
+              </p>
+            {% else %}
+              <p class="govuk-body-s">You haven't joined any groups yet.</p>
+              <p class="govuk-body-s">
+                <a href="/groups" class="govuk-link">Browse groups</a>
+              </p>
+            {% endif %}
+          </div>
+
+          <!-- Recent transactions -->
+          <div class="app-sidebar-card">
+            <h2 class="govuk-heading-s">Recent transactions</h2>
+            {% if recentTransactions and recentTransactions.length > 0 %}
+              <ul class="govuk-list">
+                {% for tx in recentTransactions | slice(0, 3) %}
+                  <li class="govuk-!-margin-bottom-2">
+                    <span class="govuk-body-s">{{ tx.description or "Transaction" }}</span>
+                    <br>
+                    {% if tx.type == "received" %}
+                      <span class="app-text--positive govuk-!-font-weight-bold">+{{ tx.amount }}</span>
+                    {% else %}
+                      <span class="app-text--negative govuk-!-font-weight-bold">-{{ tx.amount }}</span>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+              <p class="govuk-body-s govuk-!-margin-top-3">
+                <a href="/wallet/transactions" class="govuk-link">View all transactions</a>
+              </p>
+            {% else %}
+              <p class="govuk-body-s">No recent transactions.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+{% endblock %}

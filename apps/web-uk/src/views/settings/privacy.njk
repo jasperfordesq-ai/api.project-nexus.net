@@ -1,0 +1,103 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Settings", href: "/settings" },
+      { text: "Privacy" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Privacy settings</h1>
+
+      <form method="post" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukRadios({
+          name: "profile_visibility",
+          fieldset: {
+            legend: {
+              text: "Profile visibility",
+              classes: "govuk-fieldset__legend--m"
+            }
+          },
+          hint: {
+            text: "Choose who can see your profile information"
+          },
+          items: [
+            {
+              value: "public",
+              text: "All members",
+              hint: {
+                text: "Your profile will be visible to all community members"
+              },
+              checked: true
+            },
+            {
+              value: "contacts",
+              text: "Contacts only",
+              hint: {
+                text: "Only people you've exchanged messages with can see your profile"
+              }
+            },
+            {
+              value: "private",
+              text: "Private",
+              hint: {
+                text: "Your profile will be hidden from other members"
+              }
+            }
+          ]
+        }) }}
+
+        {{ govukRadios({
+          name: "show_balance",
+          fieldset: {
+            legend: {
+              text: "Balance visibility",
+              classes: "govuk-fieldset__legend--m"
+            }
+          },
+          hint: {
+            text: "Choose whether to show your credit balance on your profile"
+          },
+          items: [
+            {
+              value: "yes",
+              text: "Show balance",
+              checked: true
+            },
+            {
+              value: "no",
+              text: "Hide balance"
+            }
+          ]
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save changes"
+          }) }}
+          <a href="/settings" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

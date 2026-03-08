@@ -1,0 +1,100 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Back to groups",
+    href: "/groups"
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Create a group</h1>
+
+      <form method="post" action="/groups/new" novalidate data-validate-form>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukInput({
+          label: {
+            text: "Group name",
+            classes: "govuk-label--m"
+          },
+          id: "name",
+          name: "name",
+          value: values.name if values else "",
+          attributes: {
+            "data-validate": "required maxLength:255",
+            "data-label": "Group name"
+          }
+        }) }}
+
+        {{ govukTextarea({
+          label: {
+            text: "Description",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Describe what the group is about (optional)"
+          },
+          id: "description",
+          name: "description",
+          rows: 4,
+          value: values.description if values else ""
+        }) }}
+
+        {{ govukRadios({
+          name: "is_private",
+          fieldset: {
+            legend: {
+              text: "Group visibility",
+              classes: "govuk-fieldset__legend--m"
+            }
+          },
+          items: [
+            {
+              value: "false",
+              text: "Public",
+              hint: { text: "Anyone can find and join this group" },
+              checked: not values or values.is_private != 'true'
+            },
+            {
+              value: "true",
+              text: "Private",
+              hint: { text: "Only admins can add members" },
+              checked: values.is_private == 'true' if values else false
+            }
+          ]
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Create group"
+          }) }}
+          <a href="/groups" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Messages" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        Messages
+        {% if unreadCount > 0 %}
+          <span class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">{{ unreadCount }} unread</span>
+        {% endif %}
+      </h1>
+
+      <p class="govuk-body govuk-!-margin-bottom-6">
+        <a href="/messages/new" class="govuk-button">Start new conversation</a>
+      </p>
+
+      {% if conversations and conversations.length > 0 %}
+        <ul class="govuk-list app-conversation-list">
+          {% for conversation in conversations %}
+            <li class="app-conversation-item{% if conversation.unread_count > 0 %} app-conversation-item--unread{% endif %}">
+              <a href="/messages/{{ conversation.id }}" class="govuk-link app-conversation-link">
+                <div class="app-conversation-header">
+                  <div class="app-member-cell">
+                    {% set otherUserName = conversation.other_user_name or conversation.otherUserName or "Unknown user" %}
+                    {% set nameParts = otherUserName.split(' ') %}
+                    {% set user = { firstName: nameParts[0] or '', lastName: nameParts[1] or '' } %}
+                    {% include "partials/avatar.njk" %}
+                    <strong class="govuk-!-font-weight-bold">
+                      {{ otherUserName }}
+                    </strong>
+                  </div>
+                  <span class="govuk-body-s govuk-!-margin-bottom-0">
+                    {{ conversation.last_message_at or conversation.lastMessageAt or "" }}
+                  </span>
+                </div>
+                <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">
+                  {{ conversation.last_message or conversation.lastMessage or "No messages yet" }}
+                </p>
+                {% if conversation.unread_count > 0 %}
+                  <span class="govuk-tag govuk-tag--blue app-conversation-badge">
+                    {{ conversation.unread_count }} new
+                  </span>
+                {% endif %}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% set emptyState = {
+          icon: "💬",
+          heading: "No conversations yet",
+          message: "Start a conversation with one of your connections to begin messaging.",
+          action: {
+            text: "Start a new conversation",
+            href: "/messages/new"
+          },
+          secondaryAction: {
+            text: "Browse community members",
+            href: "/members"
+          }
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

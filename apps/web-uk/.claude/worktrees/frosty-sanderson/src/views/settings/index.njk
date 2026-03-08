@@ -1,0 +1,120 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Settings" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Settings</h1>
+
+      <h2 class="govuk-heading-m">Account</h2>
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Email" },
+            value: { text: profile.email },
+            actions: {
+              items: [
+                {
+                  href: "/profile/edit",
+                  text: "Change",
+                  visuallyHiddenText: "email"
+                }
+              ]
+            }
+          },
+          {
+            key: { text: "Name" },
+            value: { text: (profile.first_name or profile.firstName or "") + " " + (profile.last_name or profile.lastName or "") },
+            actions: {
+              items: [
+                {
+                  href: "/profile/edit",
+                  text: "Change",
+                  visuallyHiddenText: "name"
+                }
+              ]
+            }
+          }
+        ]
+      }) }}
+
+      <h2 class="govuk-heading-m govuk-!-margin-top-8">Preferences</h2>
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Notifications" },
+            value: { text: "Email notifications enabled" },
+            actions: {
+              items: [
+                {
+                  href: "/settings/notifications",
+                  text: "Manage",
+                  visuallyHiddenText: "notifications"
+                }
+              ]
+            }
+          },
+          {
+            key: { text: "Privacy" },
+            value: { text: "Profile visible to members" },
+            actions: {
+              items: [
+                {
+                  href: "/settings/privacy",
+                  text: "Manage",
+                  visuallyHiddenText: "privacy settings"
+                }
+              ]
+            }
+          }
+        ]
+      }) }}
+
+      <h2 class="govuk-heading-m govuk-!-margin-top-8">Security</h2>
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Password" },
+            value: { text: "Last changed: Unknown" },
+            actions: {
+              items: [
+                {
+                  href: "#",
+                  text: "Change",
+                  visuallyHiddenText: "password"
+                }
+              ]
+            }
+          }
+        ]
+      }) }}
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Listings", href: "/listings" },
+      { text: "Edit listing" if listing else "New listing" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  {% if values %}
+    {% set currentStatus = values.status %}
+    {% set currentTitle = values.title %}
+    {% set currentDescription = values.description %}
+  {% elif listing %}
+    {% set currentStatus = listing.status %}
+    {% set currentTitle = listing.title %}
+    {% set currentDescription = listing.description %}
+  {% else %}
+    {% set currentStatus = "" %}
+    {% set currentTitle = "" %}
+    {% set currentDescription = "" %}
+  {% endif %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">{% if listing %}Edit listing{% else %}Create listing{% endif %}</h1>
+
+      <form method="post" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukInput({
+          label: {
+            text: "Title",
+            classes: "govuk-label--m"
+          },
+          id: "title",
+          name: "title",
+          value: currentTitle,
+          errorMessage: { text: fieldErrors.title } if fieldErrors.title else undefined
+        }) }}
+
+        {{ govukTextarea({
+          label: {
+            text: "Description",
+            classes: "govuk-label--m"
+          },
+          id: "description",
+          name: "description",
+          rows: 5,
+          value: currentDescription,
+          errorMessage: { text: fieldErrors.description } if fieldErrors.description else undefined
+        }) }}
+
+        {{ govukSelect({
+          id: "status",
+          name: "status",
+          label: {
+            text: "Status",
+            classes: "govuk-label--m"
+          },
+          items: [
+            { value: "", text: "Select status", selected: not currentStatus },
+            { value: "draft", text: "Draft", selected: currentStatus == "draft" },
+            { value: "active", text: "Active", selected: currentStatus == "active" },
+            { value: "inactive", text: "Inactive", selected: currentStatus == "inactive" }
+          ],
+          errorMessage: { text: fieldErrors.status } if fieldErrors.status else undefined
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save listing"
+          }) }}
+          <a href="/listings" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

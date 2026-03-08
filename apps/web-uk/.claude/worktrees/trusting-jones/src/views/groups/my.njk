@@ -1,0 +1,80 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Back to all groups",
+    href: "/groups"
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">My groups</h1>
+
+      {% if groups.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Group</th>
+              <th scope="col" class="govuk-table__header">Members</th>
+              <th scope="col" class="govuk-table__header">Your role</th>
+              <th scope="col" class="govuk-table__header">Joined</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for group in groups %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <a href="/groups/{{ group.id }}" class="govuk-link govuk-!-font-weight-bold">
+                    {{ group.name }}
+                  </a>
+                  {% if group.is_private %}
+                    {{ govukTag({ text: "Private", classes: "govuk-tag--grey govuk-!-margin-left-2" }) }}
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  {{ group.member_count }}
+                </td>
+                <td class="govuk-table__cell">
+                  {% if group.my_role == 'owner' %}
+                    {{ govukTag({ text: "Owner", classes: "govuk-tag--purple" }) }}
+                  {% elif group.my_role == 'admin' %}
+                    {{ govukTag({ text: "Admin", classes: "govuk-tag--blue" }) }}
+                  {% else %}
+                    {{ govukTag({ text: "Member", classes: "govuk-tag--grey" }) }}
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  {{ group.joined_at | formatDate if group.joined_at else '-' }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        {% set emptyState = {
+          icon: "👥",
+          heading: "You haven't joined any groups yet",
+          message: "Browse groups to find communities that interest you.",
+          action: {
+            text: "Browse groups",
+            href: "/groups"
+          }
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

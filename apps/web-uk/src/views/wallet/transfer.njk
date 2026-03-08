@@ -1,0 +1,117 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Wallet", href: "/wallet" },
+      { text: "Transfer credits" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  {% if values %}
+    {% set currentReceiver = values.receiver_id %}
+    {% set currentAmount = values.amount %}
+    {% set currentDescription = values.description %}
+  {% else %}
+    {% set currentReceiver = "" %}
+    {% set currentAmount = "" %}
+    {% set currentDescription = "" %}
+  {% endif %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Transfer credits</h1>
+
+      {{ govukInsetText({
+        text: "Your current balance: " + balance + " credits"
+      }) }}
+
+      <form method="post" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {% set userItems = [{ value: "", text: "Select a recipient" }] %}
+        {% for user in users %}
+          {% set userItems = (userItems.push({
+            value: user.id,
+            text: (user.first_name or "") + " " + (user.last_name or "") + " (" + user.email + ")",
+            selected: currentReceiver == user.id | string
+          }), userItems) %}
+        {% endfor %}
+
+        {{ govukSelect({
+          id: "receiver_id",
+          name: "receiver_id",
+          label: {
+            text: "Recipient",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Select the person you want to send credits to"
+          },
+          items: userItems,
+          errorMessage: { text: fieldErrors.receiver_id } if fieldErrors.receiver_id else undefined
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Amount",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Enter the number of credits to transfer"
+          },
+          id: "amount",
+          name: "amount",
+          inputmode: "decimal",
+          spellcheck: false,
+          classes: "govuk-input--width-5",
+          value: currentAmount,
+          suffix: { text: "credits" },
+          errorMessage: { text: fieldErrors.amount } if fieldErrors.amount else undefined
+        }) }}
+
+        {{ govukTextarea({
+          label: {
+            text: "Description (optional)",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Add a note about this transfer"
+          },
+          id: "description",
+          name: "description",
+          rows: 3,
+          value: currentDescription
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Transfer credits"
+          }) }}
+          <a href="/wallet" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

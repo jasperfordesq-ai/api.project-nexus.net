@@ -1,0 +1,129 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Back to connections",
+    href: "/connections"
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Pending requests</h1>
+
+      <h2 class="govuk-heading-l">Requests received</h2>
+
+      {% if incoming.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">From</th>
+              <th scope="col" class="govuk-table__header">Email</th>
+              <th scope="col" class="govuk-table__header">Requested</th>
+              <th scope="col" class="govuk-table__header">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for request in incoming %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <div class="app-member-cell">
+                    {% set user = request.from_user %}
+                    {% include "partials/avatar.njk" %}
+                    <a href="/members/{{ request.from_user.id }}" class="govuk-link">
+                      {{ request.from_user.first_name or request.from_user.firstName }} {{ request.from_user.last_name or request.from_user.lastName }}
+                    </a>
+                  </div>
+                </td>
+                <td class="govuk-table__cell">
+                  {{ request.from_user.email }}
+                </td>
+                <td class="govuk-table__cell">
+                  {{ request.created_at | date }}
+                </td>
+                <td class="govuk-table__cell">
+                  <form action="/connections/{{ request.id }}/accept" method="post" style="display: inline;">
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    {{ govukButton({
+                      text: "Accept",
+                      classes: "govuk-!-margin-bottom-0 govuk-!-margin-right-2"
+                    }) }}
+                  </form>
+                  <form action="/connections/{{ request.id }}/decline" method="post" style="display: inline;">
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    {{ govukButton({
+                      text: "Decline",
+                      classes: "govuk-button--secondary govuk-!-margin-bottom-0"
+                    }) }}
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="govuk-body">You don't have any pending requests to review.</p>
+      {% endif %}
+
+      <h2 class="govuk-heading-l govuk-!-margin-top-8">Requests sent</h2>
+
+      {% if outgoing.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">To</th>
+              <th scope="col" class="govuk-table__header">Email</th>
+              <th scope="col" class="govuk-table__header">Sent</th>
+              <th scope="col" class="govuk-table__header">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for request in outgoing %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <div class="app-member-cell">
+                    {% set user = request.to_user %}
+                    {% include "partials/avatar.njk" %}
+                    <a href="/members/{{ request.to_user.id }}" class="govuk-link">
+                      {{ request.to_user.first_name or request.to_user.firstName }} {{ request.to_user.last_name or request.to_user.lastName }}
+                    </a>
+                  </div>
+                </td>
+                <td class="govuk-table__cell">
+                  {{ request.to_user.email }}
+                </td>
+                <td class="govuk-table__cell">
+                  {{ request.created_at | date }}
+                </td>
+                <td class="govuk-table__cell">
+                  <form action="/connections/{{ request.id }}/remove" method="post" style="display: inline;">
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    <input type="hidden" name="return_url" value="/connections/pending">
+                    {{ govukButton({
+                      text: "Cancel request",
+                      classes: "govuk-button--secondary govuk-!-margin-bottom-0"
+                    }) }}
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="govuk-body">You haven't sent any connection requests that are still pending.</p>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

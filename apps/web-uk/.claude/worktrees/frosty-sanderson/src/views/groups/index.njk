@@ -1,0 +1,123 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <div class="govuk-!-margin-bottom-6" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <h1 class="govuk-heading-xl govuk-!-margin-bottom-0">Groups</h1>
+        <div>
+          <a href="/groups/my" class="govuk-link govuk-!-margin-right-4">My groups</a>
+          <a href="/groups/new" class="govuk-button">Create a group</a>
+        </div>
+      </div>
+
+      <p class="govuk-body">Browse and join groups to connect with community members who share your interests.</p>
+
+      <form action="/groups" method="get" class="govuk-!-margin-bottom-6">
+        <div class="app-search-form">
+          {{ govukInput({
+            id: "search",
+            name: "search",
+            value: searchQuery,
+            label: {
+              text: "Search groups",
+              classes: "govuk-visually-hidden"
+            },
+            classes: "app-search-form__input",
+            attributes: {
+              placeholder: "Search by group name..."
+            }
+          }) }}
+          <button type="submit" class="govuk-button app-search-form__button govuk-!-margin-bottom-0">
+            Search
+          </button>
+          {% if searchQuery %}
+            <a href="/groups" class="govuk-link govuk-!-margin-left-3">Clear</a>
+          {% endif %}
+        </div>
+      </form>
+
+      {% if searchQuery and groups.length == 0 %}
+        {% set emptyState = {
+          icon: "🔍",
+          heading: "No results found",
+          message: "No groups match \"" + searchQuery + "\". Try a different search term.",
+          action: {
+            text: "Clear search",
+            href: "/groups"
+          }
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% elif groups.length > 0 %}
+        <div class="app-card-grid">
+          {% for group in groups %}
+            <div class="app-card app-card--clickable">
+              <a href="/groups/{{ group.id }}" class="app-card__link">
+                <div class="app-card__header">
+                  <h2 class="govuk-heading-m govuk-!-margin-bottom-1">{{ group.name }}</h2>
+                  {% if group.is_private %}
+                    {{ govukTag({ text: "Private", classes: "govuk-tag--grey" }) }}
+                  {% endif %}
+                  {% if myGroupIds.has(group.id) %}
+                    {{ govukTag({ text: "Joined", classes: "govuk-tag--green" }) }}
+                  {% endif %}
+                </div>
+                {% if group.description %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-2">{{ group.description | truncate(100) }}</p>
+                {% endif %}
+                <p class="govuk-body-s app-card__meta">
+                  {{ group.member_count }} member{{ 's' if group.member_count != 1 else '' }}
+                </p>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% set emptyState = {
+          icon: "👥",
+          heading: "No groups yet",
+          message: "Be the first to create a group for your community.",
+          action: {
+            text: "Create a group",
+            href: "/groups/new"
+          }
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+      {# Pagination #}
+      {% if pagination and pagination.total_pages > 1 %}
+        {% set paginationConfig = {
+          baseUrl: "/groups",
+          page: pagination.page,
+          totalPages: pagination.total_pages,
+          queryParams: { search: searchQuery }
+        } %}
+        {% include "partials/pagination.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

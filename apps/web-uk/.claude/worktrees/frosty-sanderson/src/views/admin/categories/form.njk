@@ -1,0 +1,108 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <nav class="govuk-breadcrumbs" aria-label="Breadcrumb">
+    <ol class="govuk-breadcrumbs__list">
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/dashboard">Dashboard</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin">Admin</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin/categories">Categories</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item" aria-current="page">{{ "Edit" if category else "Add" }} category</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        <span class="govuk-caption-xl">Categories</span>
+        {{ "Edit category" if category else "Add category" }}
+      </h1>
+
+      <form method="post" action="/admin/categories/{% if category %}{{ category.id }}/edit{% else %}new{% endif %}">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukInput({
+          label: { text: "Name", classes: "govuk-label--s" },
+          id: "name",
+          name: "name",
+          value: category.name if category else "",
+          hint: { text: "The display name for this category" }
+        }) }}
+
+        {{ govukTextarea({
+          label: { text: "Description", classes: "govuk-label--s" },
+          id: "description",
+          name: "description",
+          value: category.description if category else "",
+          hint: { text: "Optional description for this category" },
+          rows: 3
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Slug", classes: "govuk-label--s" },
+          id: "slug",
+          name: "slug",
+          value: category.slug if category else "",
+          hint: { text: "URL-friendly identifier. Leave blank to auto-generate from name." }
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Sort order", classes: "govuk-label--s" },
+          id: "sort_order",
+          name: "sort_order",
+          value: category.sort_order if category else "0",
+          type: "number",
+          hint: { text: "Lower numbers appear first" },
+          classes: "govuk-input--width-4"
+        }) }}
+
+        {{ govukCheckboxes({
+          name: "is_active",
+          items: [
+            {
+              value: "on",
+              text: "Active",
+              hint: { text: "Only active categories are shown to users" },
+              checked: category.is_active if category else true
+            }
+          ]
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save category" if category else "Create category"
+          }) }}
+          <a href="/admin/categories" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <nav class="govuk-breadcrumbs" aria-label="Breadcrumb">
+    <ol class="govuk-breadcrumbs__list">
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/dashboard">Dashboard</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin">Admin</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item" aria-current="page">Content moderation</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        <span class="govuk-caption-xl">Administration</span>
+        Content moderation
+      </h1>
+
+      {% if listings and listings.length > 0 %}
+        <p class="govuk-body-l">{{ listings.length }} listing{{ 's' if listings.length != 1 else '' }} pending review</p>
+
+        {% for listing in listings %}
+          <div class="app-card govuk-!-margin-bottom-4">
+            <div class="govuk-grid-row">
+              <div class="govuk-grid-column-two-thirds">
+                <h2 class="govuk-heading-m govuk-!-margin-bottom-2">{{ listing.title }}</h2>
+                <p class="govuk-body-s govuk-!-margin-bottom-2">
+                  {{ govukTag({ text: listing.type, classes: "govuk-tag--" + ('green' if listing.type == 'offer' else 'blue') }) }}
+                  {% if listing.category %}
+                    {{ govukTag({ text: listing.category, classes: "govuk-tag--grey" }) }}
+                  {% endif %}
+                </p>
+                <p class="govuk-body">{{ listing.description | truncate(200) }}</p>
+                <p class="govuk-body-s">
+                  Submitted by <strong>{{ listing.user.first_name }} {{ listing.user.last_name }}</strong>
+                  ({{ listing.user.email }}) on {{ listing.created_at | date }}
+                </p>
+              </div>
+              <div class="govuk-grid-column-one-third">
+                <div class="govuk-button-group" style="flex-direction: column; align-items: flex-start;">
+                  <form method="post" action="/admin/moderation/{{ listing.id }}/approve" style="margin-bottom: 10px;">
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    {{ govukButton({
+                      text: "Approve",
+                      classes: "govuk-button--secondary govuk-!-margin-bottom-0"
+                    }) }}
+                  </form>
+
+                  <details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">
+                    <summary class="govuk-details__summary">
+                      <span class="govuk-details__summary-text">Reject</span>
+                    </summary>
+                    <div class="govuk-details__text">
+                      <form method="post" action="/admin/moderation/{{ listing.id }}/reject">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        {{ govukTextarea({
+                          name: "reason",
+                          id: "reason-" + listing.id,
+                          label: { text: "Rejection reason" },
+                          hint: { text: "Explain why this listing is being rejected" },
+                          classes: "govuk-!-margin-bottom-2"
+                        }) }}
+                        {{ govukButton({
+                          text: "Reject listing",
+                          classes: "govuk-button--warning govuk-!-margin-bottom-0"
+                        }) }}
+                      </form>
+                    </div>
+                  </details>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+
+        <!-- Pagination -->
+        {% if pagination and pagination.total_pages > 1 %}
+          {% include "partials/pagination.njk" %}
+        {% endif %}
+
+      {% else %}
+        <div class="app-card">
+          <h2 class="govuk-heading-m">All caught up!</h2>
+          <p class="govuk-body">There are no listings pending review.</p>
+          <p class="govuk-body">
+            <a href="/admin" class="govuk-link">Back to admin dashboard</a>
+          </p>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Wallet", href: "/wallet" },
+      { text: "Transactions", href: "/wallet/transactions" },
+      { text: "Transaction details" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  {% if transaction.type == "sent" %}
+    {% set typeColour = "red" %}
+  {% elif transaction.type == "received" %}
+    {% set typeColour = "green" %}
+  {% else %}
+    {% set typeColour = "grey" %}
+  {% endif %}
+  {% set typeHtml %}<strong class="govuk-tag govuk-tag--{{ typeColour }}">{{ transaction.type or "transfer" }}</strong>{% endset %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h1 class="govuk-heading-xl">Transaction details</h1>
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "ID" },
+            value: { text: transaction.id }
+          },
+          {
+            key: { text: "Type" },
+            value: { html: typeHtml }
+          },
+          {
+            key: { text: "Amount" },
+            value: { text: transaction.amount + " credits" }
+          },
+          {
+            key: { text: "Description" },
+            value: { text: transaction.description or "N/A" }
+          },
+          {
+            key: { text: "From" },
+            value: { text: transaction.sender_name or transaction.senderName or "N/A" }
+          },
+          {
+            key: { text: "To" },
+            value: { text: transaction.receiver_name or transaction.receiverName or "N/A" }
+          },
+          {
+            key: { text: "Date" },
+            value: { text: transaction.created_at or transaction.createdAt or "N/A" }
+          }
+        ]
+      }) }}
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/wallet/transactions" class="govuk-link">Back to transactions</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

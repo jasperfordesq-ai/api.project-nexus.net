@@ -1,0 +1,153 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">Components Sanity Check</h1>
+
+      <p class="govuk-body-l">
+        This page proves govuk-frontend is installed correctly. All 5 components below should render with proper styling and JavaScript enhancement.
+      </p>
+
+      {# Component 1: Notification Banner #}
+      <h2 class="govuk-heading-l">1. Notification Banner</h2>
+
+      {{ govukNotificationBanner({
+        text: "This is a notification banner. If you can see this styled correctly, the component is working."
+      }) }}
+
+      {{ govukNotificationBanner({
+        type: "success",
+        html: "<p class=\"govuk-notification-banner__heading\">Training completed</p><p class=\"govuk-body\">You have successfully completed the training module.</p>"
+      }) }}
+
+      {# Component 2: Error Summary #}
+      <h2 class="govuk-heading-l">2. Error Summary</h2>
+
+      {{ govukErrorSummary({
+        titleText: "There is a problem",
+        errorList: [
+          {
+            text: "Enter your full name",
+            href: "#full-name"
+          },
+          {
+            text: "Enter a valid email address",
+            href: "#email"
+          }
+        ]
+      }) }}
+
+      {# Component 3: Text Input #}
+      <h2 class="govuk-heading-l">3. Text Input</h2>
+
+      {{ govukInput({
+        label: {
+          text: "Full name",
+          classes: "govuk-label--m"
+        },
+        hint: {
+          text: "Enter your first and last name"
+        },
+        id: "full-name",
+        name: "fullName"
+      }) }}
+
+      {{ govukInput({
+        label: {
+          text: "Email address",
+          classes: "govuk-label--m"
+        },
+        hint: {
+          text: "We will use this to contact you"
+        },
+        id: "email",
+        name: "email",
+        type: "email",
+        autocomplete: "email",
+        spellcheck: false
+      }) }}
+
+      {# Component 4: Button #}
+      <h2 class="govuk-heading-l">4. Button</h2>
+
+      <p class="govuk-body">Primary button:</p>
+      {{ govukButton({
+        text: "Submit"
+      }) }}
+
+      <p class="govuk-body">Secondary button:</p>
+      {{ govukButton({
+        text: "Cancel",
+        classes: "govuk-button--secondary"
+      }) }}
+
+      <p class="govuk-body">Warning button:</p>
+      {{ govukButton({
+        text: "Delete account",
+        classes: "govuk-button--warning"
+      }) }}
+
+      {# Component 5: Pagination #}
+      <h2 class="govuk-heading-l">5. Pagination</h2>
+
+      {{ govukPagination({
+        previous: {
+          href: "#previous",
+          text: "Previous page"
+        },
+        next: {
+          href: "#next",
+          text: "Next page"
+        },
+        items: [
+          {
+            number: 1,
+            href: "#1"
+          },
+          {
+            number: 2,
+            href: "#2",
+            current: true
+          },
+          {
+            number: 3,
+            href: "#3"
+          }
+        ]
+      }) }}
+
+      <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible">
+
+      <h2 class="govuk-heading-l">Sanity Check Results</h2>
+
+      <p class="govuk-body">If you can see this page correctly, confirm:</p>
+
+      <ul class="govuk-list govuk-list--bullet">
+        <li>Typography uses GDS Transport font (check Network tab for fonts loading)</li>
+        <li>Buttons have correct green/grey/red colours</li>
+        <li>Error summary has red left border</li>
+        <li>Notification banners are styled (blue default, green success)</li>
+        <li>Pagination shows numbered links with current page highlighted</li>
+        <li>No government branding appears in header or footer</li>
+        <li>Header shows "Project NEXUS Community" with disclaimer</li>
+        <li>Footer shows plain links with disclaimer (no crown crest)</li>
+      </ul>
+
+      <p class="govuk-body">
+        <a href="/" class="govuk-link">Back to home</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}

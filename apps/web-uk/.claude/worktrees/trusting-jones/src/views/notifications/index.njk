@@ -1,0 +1,161 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Notifications" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        Notifications
+        {% if unreadCount > 0 %}
+          <span class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">{{ unreadCount }} unread</span>
+        {% endif %}
+      </h1>
+
+      <div class="govuk-!-margin-bottom-6">
+        <div class="app-notification-filters">
+          <a href="/notifications" class="govuk-link{% if not showUnreadOnly %} govuk-link--no-visited-state app-link--active{% endif %}">All</a>
+          <span class="govuk-!-margin-left-2 govuk-!-margin-right-2">|</span>
+          <a href="/notifications?unread_only=true" class="govuk-link{% if showUnreadOnly %} govuk-link--no-visited-state app-link--active{% endif %}">Unread only</a>
+        </div>
+
+        {% if unreadCount > 0 %}
+          <form method="post" action="/notifications/read-all" class="govuk-!-margin-top-3" style="display: inline">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">
+              Mark all as read
+            </button>
+          </form>
+        {% endif %}
+      </div>
+
+      {% if notifications and notifications.length > 0 %}
+        <ul class="govuk-list app-notification-list">
+          {% for notification in notifications %}
+            {% set notificationData = notification.data | parseJson if notification.data else {} %}
+            {% set notificationLink = null %}
+
+            {# Determine link based on notification type #}
+            {% if notification.type == 'connection_request' %}
+              {% set notificationLink = '/connections/pending' %}
+            {% elif notification.type == 'connection_accepted' %}
+              {% set notificationLink = '/members/' + (notificationData.user_id or '') if notificationData.user_id else '/connections' %}
+            {% elif notification.type == 'connection_declined' %}
+              {% set notificationLink = '/connections' %}
+            {% elif notification.type == 'message_received' %}
+              {% set notificationLink = '/messages/' + (notificationData.conversation_id or '') if notificationData.conversation_id else '/messages' %}
+            {% elif notification.type == 'transfer_received' %}
+              {% set notificationLink = '/wallet' %}
+            {% endif %}
+
+            <li class="app-notification-item{% if not notification.isRead %} app-notification-item--unread{% endif %}">
+              <div class="app-notification-content">
+                <div class="app-notification-icon app-notification-icon--{{ notification.type }}">
+                  {% if notification.type == 'connection_request' %}
+                    <span aria-hidden="true">👤</span>
+                  {% elif notification.type == 'connection_accepted' %}
+                    <span aria-hidden="true">✓</span>
+                  {% elif notification.type == 'connection_declined' %}
+                    <span aria-hidden="true">✕</span>
+                  {% elif notification.type == 'message_received' %}
+                    <span aria-hidden="true">💬</span>
+                  {% elif notification.type == 'transfer_received' %}
+                    <span aria-hidden="true">💰</span>
+                  {% else %}
+                    <span aria-hidden="true">🔔</span>
+                  {% endif %}
+                </div>
+
+                <div class="app-notification-body">
+                  <p class="govuk-body govuk-!-margin-bottom-1">
+                    <strong class="govuk-!-font-weight-bold">{{ notification.title }}</strong>
+                    {% if not notification.isRead %}
+                      <span class="govuk-tag govuk-tag--blue app-notification-badge">New</span>
+                    {% endif %}
+                  </p>
+                  <p class="govuk-body-s govuk-!-margin-bottom-1">{{ notification.body }}</p>
+                  <p class="govuk-body-s govuk-!-margin-bottom-0 app-notification-time">
+                    {{ notification.createdAt | formatDate if notification.createdAt else '' }}
+                  </p>
+                </div>
+
+                <div class="app-notification-actions">
+                  {% if notificationLink %}
+                    <form method="post" action="/notifications/{{ notification.id }}/read" style="display: inline">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <input type="hidden" name="redirect" value="{{ notificationLink }}">
+                      <button type="submit" class="govuk-link app-link-button">
+                        {% if not notification.isRead %}View{% else %}Go to{% endif %}
+                      </button>
+                    </form>
+                  {% elif not notification.isRead %}
+                    <form method="post" action="/notifications/{{ notification.id }}/read" style="display: inline">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <button type="submit" class="govuk-link app-link-button">Mark read</button>
+                    </form>
+                  {% endif %}
+
+                  <form method="post" action="/notifications/{{ notification.id }}/delete" style="display: inline" class="govuk-!-margin-left-2">
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    <button type="submit" class="govuk-link app-link-button app-link-button--warning">Delete</button>
+                  </form>
+                </div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+
+        {# Pagination #}
+        {% if pagination and pagination.total_pages > 1 %}
+          {% set paginationConfig = {
+            baseUrl: "/notifications",
+            page: pagination.page,
+            totalPages: pagination.total_pages,
+            queryParams: { unread_only: 'true' if showUnreadOnly else '' }
+          } %}
+          {% include "partials/pagination.njk" %}
+        {% endif %}
+
+      {% else %}
+        {% if showUnreadOnly %}
+          {% set emptyState = {
+            icon: "✓",
+            heading: "All caught up!",
+            message: "You have no unread notifications.",
+            action: {
+              text: "View all notifications",
+              href: "/notifications"
+            }
+          } %}
+        {% else %}
+          {% set emptyState = {
+            icon: "🔔",
+            heading: "No notifications",
+            message: "You'll see notifications here when something happens."
+          } %}
+        {% endif %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,184 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/fieldset/macro.njk" import govukFieldset %}
+{% from "govuk/components/hint/macro.njk" import govukHint %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Back",
+    href: "/events"
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length > 0 %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Create an event</h1>
+
+      <form action="/events/new" method="post" novalidate data-validate-form>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {% set titleError = errors | selectattr("href", "equalto", "#title") | first if errors else undefined %}
+        {{ govukInput({
+          id: "title",
+          name: "title",
+          value: values.title if values else "",
+          label: {
+            text: "Event title",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Give your event a clear, descriptive title"
+          },
+          errorMessage: { text: titleError.text } if titleError else undefined,
+          attributes: {
+            "data-validate": "required,maxLength:255",
+            "data-label": "event title"
+          }
+        }) }}
+
+        {{ govukTextarea({
+          id: "description",
+          name: "description",
+          value: values.description if values else "",
+          label: {
+            text: "Description",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Tell people what the event is about, what to expect, and any important details"
+          },
+          rows: 6
+        }) }}
+
+        {{ govukInput({
+          id: "location",
+          name: "location",
+          value: values.location if values else "",
+          label: {
+            text: "Location",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Where will the event take place? Include address or online meeting details"
+          }
+        }) }}
+
+        {# Start date/time #}
+        {% set startDateError = errors | selectattr('href', 'equalto', '#starts_at_date') | first if errors else undefined %}
+        <div class="govuk-form-group {% if startDateError %}govuk-form-group--error{% endif %}">
+          <fieldset class="govuk-fieldset" role="group">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+              Start date and time
+            </legend>
+            <div id="starts-at-hint" class="govuk-hint">
+              When does the event start?
+            </div>
+            {% if startDateError %}
+              <p class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span>
+                {{ startDateError.text }}
+              </p>
+            {% endif %}
+            <div class="app-date-time-input">
+              <div class="app-date-time-input__date">
+                <label class="govuk-label" for="starts_at_date">Date</label>
+                <input class="govuk-input govuk-input--width-10" id="starts_at_date" name="starts_at_date" type="date" value="{{ values.starts_at_date if values else '' }}" data-validate="required" data-label="start date">
+              </div>
+              <div class="app-date-time-input__time">
+                <label class="govuk-label" for="starts_at_time">Time</label>
+                <input class="govuk-input govuk-input--width-5" id="starts_at_time" name="starts_at_time" type="time" value="{{ values.starts_at_time if values else '' }}" data-validate="required" data-label="start time">
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        {# End date/time #}
+        <div class="govuk-form-group">
+          <fieldset class="govuk-fieldset" role="group">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+              End date and time
+            </legend>
+            <div id="ends-at-hint" class="govuk-hint">
+              Optional - when does the event end?
+            </div>
+            <div class="app-date-time-input">
+              <div class="app-date-time-input__date">
+                <label class="govuk-label" for="ends_at_date">Date</label>
+                <input class="govuk-input govuk-input--width-10" id="ends_at_date" name="ends_at_date" type="date" value="{{ values.ends_at_date if values else '' }}">
+              </div>
+              <div class="app-date-time-input__time">
+                <label class="govuk-label" for="ends_at_time">Time</label>
+                <input class="govuk-input govuk-input--width-5" id="ends_at_time" name="ends_at_time" type="time" value="{{ values.ends_at_time if values else '' }}">
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        {{ govukInput({
+          id: "max_attendees",
+          name: "max_attendees",
+          value: values.max_attendees if values else "",
+          label: {
+            text: "Maximum attendees",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Optional - leave blank for unlimited capacity"
+          },
+          classes: "govuk-input--width-4",
+          inputmode: "numeric",
+          attributes: {
+            "data-validate": "number,min:1",
+            "data-label": "maximum attendees"
+          }
+        }) }}
+
+        {% if myGroups and myGroups.length > 0 %}
+          {% set groupItems = [{value: "", text: "No group (public event)", selected: not selectedGroupId}] %}
+          {% for group in myGroups %}
+            {% set groupItems = (groupItems.push({
+              value: group.id | string,
+              text: group.name,
+              selected: selectedGroupId and (group.id | string) == (selectedGroupId | string)
+            }), groupItems) %}
+          {% endfor %}
+          {{ govukSelect({
+            id: "group_id",
+            name: "group_id",
+            label: {
+              text: "Associate with a group",
+              classes: "govuk-label--m"
+            },
+            hint: {
+              text: "Optional - link this event to one of your groups"
+            },
+            items: groupItems
+          }) }}
+        {% endif %}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Create event"
+          }) }}
+          <a href="/events" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

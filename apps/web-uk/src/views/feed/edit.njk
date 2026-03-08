@@ -1,0 +1,74 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/character-count/macro.njk" import govukCharacterCount %}
+
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Feed", href: "/feed" },
+    { text: "Post", href: "/feed/" + post.id },
+    { text: "Edit" }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length > 0 %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Edit post</h1>
+
+      <form action="/feed/{{ post.id }}/edit" method="post" novalidate data-validate-form>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukCharacterCount({
+          id: "content",
+          name: "content",
+          value: post.content,
+          maxlength: 5000,
+          label: {
+            text: "Content",
+            classes: "govuk-label--m"
+          },
+          rows: 6,
+          errorMessage: { text: errors | selectattr("href", "equalto", "#content") | first | attr("text") } if errors | selectattr("href", "equalto", "#content") | first else undefined
+        }) }}
+
+        {{ govukInput({
+          id: "image_url",
+          name: "image_url",
+          value: post.image_url,
+          label: {
+            text: "Image URL",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Optional - add a link to an image"
+          },
+          type: "url",
+          attributes: {
+            placeholder: "https://example.com/image.jpg"
+          }
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save changes"
+          }) }}
+          <a href="/feed/{{ post.id }}" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

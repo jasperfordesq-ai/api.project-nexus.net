@@ -1,0 +1,151 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Dashboard", href: "/dashboard" },
+    { text: "My Progress" }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">My Progress</h1>
+
+      {# Level and XP Card #}
+      <div class="app-progress-card govuk-!-margin-bottom-6" role="region" aria-label="Your current level and XP">
+        <div class="app-progress-card__header">
+          <div class="app-level-badge app-level-badge--large" role="img" aria-label="Level {{ profile.level or 1 }}">
+            <span class="app-level-badge__number" aria-hidden="true">{{ profile.level or 1 }}</span>
+            <span class="app-level-badge__label" aria-hidden="true">Level</span>
+          </div>
+          <div class="app-progress-card__stats">
+            <p class="govuk-heading-l govuk-!-margin-bottom-1">{{ profile.totalXp or 0 }} XP</p>
+            <p class="govuk-body-s govuk-!-margin-bottom-0">Total experience earned</p>
+          </div>
+        </div>
+
+        <div class="app-progress-card__body">
+          <div class="app-xp-bar">
+            <div class="app-xp-bar__label" aria-hidden="true">
+              <span>Level {{ profile.level or 1 }}</span>
+              <span>Level {{ (profile.level or 1) + 1 }}</span>
+            </div>
+            {% set progressPercent = 0 %}
+            {% if profile.xp_required_for_next_level and profile.xp_required_for_current_level %}
+              {% set levelRange = profile.xp_required_for_next_level - profile.xp_required_for_current_level %}
+              {% set currentProgress = (profile.totalXp or 0) - profile.xp_required_for_current_level %}
+              {% set progressPercent = ((currentProgress / levelRange) * 100) | round %}
+            {% endif %}
+            <div class="app-xp-bar__track" role="progressbar" aria-valuenow="{{ progressPercent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Progress to level {{ (profile.level or 1) + 1 }}: {{ progressPercent }}%">
+              <div class="app-xp-bar__fill" style="width: {{ progressPercent }}%"></div>
+            </div>
+            <p class="govuk-body-s govuk-!-margin-top-1 govuk-!-margin-bottom-0">
+              {{ profile.xp_to_next_level or 100 }} XP to next level
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {# Quick Links #}
+      <nav class="govuk-grid-row govuk-!-margin-bottom-6" aria-label="Progress navigation">
+        <div class="govuk-grid-column-one-third">
+          <a href="/progress/badges" class="app-stat-card" aria-label="View badges - {{ profile.badges_earned or 0 }} earned">
+            <span class="app-stat-card__value" aria-hidden="true">{{ profile.badges_earned or 0 }}</span>
+            <span class="app-stat-card__label">Badges earned</span>
+          </a>
+        </div>
+        <div class="govuk-grid-column-one-third">
+          <a href="/progress/leaderboard" class="app-stat-card" aria-label="View leaderboard">
+            <span class="app-stat-card__icon" aria-hidden="true">🏆</span>
+            <span class="app-stat-card__label">Leaderboard</span>
+          </a>
+        </div>
+        <div class="govuk-grid-column-one-third">
+          <a href="/progress/xp-history" class="app-stat-card" aria-label="View XP history">
+            <span class="app-stat-card__icon" aria-hidden="true">📊</span>
+            <span class="app-stat-card__label">XP History</span>
+          </a>
+        </div>
+      </nav>
+
+      {# Recent XP #}
+      <h2 class="govuk-heading-m" id="recent-activity-heading">Recent activity</h2>
+      {% if recentXp.length > 0 %}
+        <ul class="app-xp-list" aria-labelledby="recent-activity-heading">
+          {% for xp in recentXp %}
+            <li class="app-xp-list__item">
+              <div class="app-xp-list__content">
+                <span class="app-xp-list__description">{{ xp.description }}</span>
+                <span class="govuk-body-s app-xp-list__time"><span class="govuk-visually-hidden">Earned on </span>{{ xp.createdAt | formatDate }}</span>
+              </div>
+              <span class="app-xp-list__amount app-xp-list__amount--positive" aria-label="Earned {{ xp.amount }} XP">+{{ xp.amount }} XP</span>
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="govuk-body govuk-!-margin-top-3">
+          <a href="/progress/xp-history" class="govuk-link">View full history</a>
+        </p>
+      {% else %}
+        {% set emptyState = {
+          icon: "📊",
+          heading: "No XP earned yet",
+          message: "Start participating in the community to earn XP and level up!"
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+      {# Recent Badges #}
+      {% if badges.length > 0 %}
+        <h2 class="govuk-heading-m govuk-!-margin-top-6" id="my-badges-heading">My badges</h2>
+        <ul class="app-badge-grid app-badge-grid--compact" aria-labelledby="my-badges-heading" role="list">
+          {% for badge in badges | slice(0, 6) %}
+            <li class="app-badge app-badge--earned" role="listitem">
+              <span class="app-badge__icon" aria-hidden="true">{{ badge.icon }}</span>
+              <span class="app-badge__name">{{ badge.name }}</span>
+              <span class="govuk-visually-hidden">: {{ badge.description }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        {% if badges.length > 6 %}
+          <p class="govuk-body govuk-!-margin-top-3">
+            <a href="/progress/badges" class="govuk-link">View all {{ badges.length }} badges</a>
+          </p>
+        {% endif %}
+      {% endif %}
+
+    </div>
+
+    <div class="govuk-grid-column-one-third">
+      {# How to earn XP sidebar #}
+      <div class="app-sidebar-card">
+        <h2 class="govuk-heading-m">How to earn XP</h2>
+        <ul class="govuk-list govuk-list--spaced">
+          <li><strong>+20</strong> Complete a transaction</li>
+          <li><strong>+20</strong> Create a group</li>
+          <li><strong>+15</strong> Create an event</li>
+          <li><strong>+10</strong> Create a listing</li>
+          <li><strong>+5</strong> Create a post</li>
+          <li><strong>+5</strong> Connect with someone</li>
+          <li><strong>+2</strong> Add a comment</li>
+        </ul>
+        <p class="govuk-body-s">Plus bonus XP for earning badges!</p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

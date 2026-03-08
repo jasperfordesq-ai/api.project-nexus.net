@@ -39,6 +39,7 @@ services:
       - Cors__AllowedOrigins__1=http://localhost:5170
       - Cors__AllowedOrigins__2=http://localhost:5180
       - Cors__AllowedOrigins__3=http://localhost:5190
+      - Cors__AllowedOrigins__4=http://localhost:5200
       # Rate limiting (relaxed for development)
       - RateLimiting__Auth__PermitLimit=10
       - RateLimiting__Auth__WindowSeconds=60
@@ -157,6 +158,106 @@ services:
           memory: 12G
         reservations:
           memory: 8G
+
+
+  # ---------------------------------------------------------------------------
+  # GOV.IE Design System Frontend (Nexus Community - web-govie)
+  # NOTE: Not an official government service. Uses @govie-ds/* open-source
+  # packages as a UI foundation only. See apps/web-govie/BRANDING.md.
+  # ---------------------------------------------------------------------------
+  web-govie:
+    build:
+      context: ./apps/web-govie
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:5080
+        VITE_APP_NAME: Nexus Community
+        VITE_APP_VERSION: 0.1.0
+        VITE_TENANT_SLUG: acme
+    container_name: nexus-web-govie
+    ports:
+      - "5200:80"
+    networks:
+      - nexus-backend-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+
+  # ---------------------------------------------------------------------------
+  # Admin Panel (Nexus Admin - apps/admin)
+  # Refine v4 + Ant Design + Vite - migrated from htdocs/nexus-admin
+  # ---------------------------------------------------------------------------
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+      target: dev
+    container_name: nexus-admin-dev
+    ports:
+      - "5190:5173"
+    volumes:
+      - ./apps/admin:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://api:8080
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - nexus-backend-net
+    restart: unless-stopped
+
+
+  # ---------------------------------------------------------------------------
+  # Modern Frontend (apps/web-modern) - Next.js + HeroUI
+  # Previously at htdocs/nexus-modern-frontend/
+  # ---------------------------------------------------------------------------
+  web-modern:
+    build:
+      context: ./apps/web-modern
+      dockerfile: Dockerfile
+      target: dev
+    container_name: nexus-frontend-dev
+    ports:
+      - "5170:3002"
+    volumes:
+      - ./apps/web-modern:/app
+      - /app/node_modules
+      - /app/.next
+    env_file:
+      - ./apps/web-modern/.env.docker
+    environment:
+      - NODE_ENV=development
+    networks:
+      - nexus-backend-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # UK Frontend (apps/web-uk) - GOV.UK Design System (Express/Node)
+  # Previously at htdocs/nexus-uk-frontend/
+  # ---------------------------------------------------------------------------
+  web-uk:
+    build:
+      context: ./apps/web-uk
+      dockerfile: Dockerfile
+      target: development
+    container_name: nexus-uk-frontend-dev
+    ports:
+      - "5180:3001"
+    volumes:
+      - ./apps/web-uk:/app
+      - /app/node_modules
+    env_file:
+      - ./apps/web-uk/.env.docker
+    networks:
+      - nexus-backend-net
+    restart: unless-stopped
 
 # -----------------------------------------------------------------------------
 # Networks (isolated from other Docker projects)

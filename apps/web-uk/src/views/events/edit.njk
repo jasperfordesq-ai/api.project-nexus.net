@@ -1,0 +1,157 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% block beforeContent %}
+  {% set breadcrumbs = [
+    { text: "Events", href: "/events" },
+    { text: event.title, href: "/events/" + event.id },
+    { text: "Edit" }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length > 0 %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Edit event</h1>
+
+      <form action="/events/{{ event.id }}/edit" method="post" novalidate data-validate-form>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukInput({
+          id: "title",
+          name: "title",
+          value: event.title,
+          label: {
+            text: "Event title",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Give your event a clear, descriptive title"
+          },
+          errorMessage: { text: errors | selectattr("href", "equalto", "#title") | first | attr("text") } if errors | selectattr("href", "equalto", "#title") | first else undefined,
+          attributes: {
+            "data-validate": "required,maxLength:255",
+            "data-label": "event title"
+          }
+        }) }}
+
+        {{ govukTextarea({
+          id: "description",
+          name: "description",
+          value: event.description,
+          label: {
+            text: "Description",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Tell people what the event is about, what to expect, and any important details"
+          },
+          rows: 6
+        }) }}
+
+        {{ govukInput({
+          id: "location",
+          name: "location",
+          value: event.location,
+          label: {
+            text: "Location",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Where will the event take place? Include address or online meeting details"
+          }
+        }) }}
+
+        {# Start date/time #}
+        <div class="govuk-form-group {% if errors | selectattr('href', 'equalto', '#starts_at_date') | first %}govuk-form-group--error{% endif %}">
+          <fieldset class="govuk-fieldset" role="group">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+              Start date and time
+            </legend>
+            <div id="starts-at-hint" class="govuk-hint">
+              When does the event start?
+            </div>
+            {% if errors | selectattr("href", "equalto", "#starts_at_date") | first %}
+              <p class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span>
+                {{ errors | selectattr("href", "equalto", "#starts_at_date") | first | attr("text") }}
+              </p>
+            {% endif %}
+            <div class="app-date-time-input">
+              <div class="app-date-time-input__date">
+                <label class="govuk-label" for="starts_at_date">Date</label>
+                <input class="govuk-input govuk-input--width-10" id="starts_at_date" name="starts_at_date" type="date" value="{{ startsAtDate }}" data-validate="required" data-label="start date">
+              </div>
+              <div class="app-date-time-input__time">
+                <label class="govuk-label" for="starts_at_time">Time</label>
+                <input class="govuk-input govuk-input--width-5" id="starts_at_time" name="starts_at_time" type="time" value="{{ startsAtTime }}" data-validate="required" data-label="start time">
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        {# End date/time #}
+        <div class="govuk-form-group">
+          <fieldset class="govuk-fieldset" role="group">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+              End date and time
+            </legend>
+            <div id="ends-at-hint" class="govuk-hint">
+              Optional - when does the event end?
+            </div>
+            <div class="app-date-time-input">
+              <div class="app-date-time-input__date">
+                <label class="govuk-label" for="ends_at_date">Date</label>
+                <input class="govuk-input govuk-input--width-10" id="ends_at_date" name="ends_at_date" type="date" value="{{ endsAtDate }}">
+              </div>
+              <div class="app-date-time-input__time">
+                <label class="govuk-label" for="ends_at_time">Time</label>
+                <input class="govuk-input govuk-input--width-5" id="ends_at_time" name="ends_at_time" type="time" value="{{ endsAtTime }}">
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        {{ govukInput({
+          id: "max_attendees",
+          name: "max_attendees",
+          value: event.max_attendees,
+          label: {
+            text: "Maximum attendees",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Optional - leave blank for unlimited capacity"
+          },
+          classes: "govuk-input--width-4",
+          inputmode: "numeric",
+          attributes: {
+            "data-validate": "number,min:1",
+            "data-label": "maximum attendees"
+          }
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save changes"
+          }) }}
+          <a href="/events/{{ event.id }}" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,46 @@
+# Docker Compose - NEXUS Admin Panel
+# Dev: docker compose up
+# Prod: docker compose --profile production up
+
+services:
+  # ===========================================================================
+  # Development (default)
+  # ===========================================================================
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: nexus-admin-dev
+    ports:
+      - "5190:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env.docker
+    environment:
+      - NODE_ENV=development
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ===========================================================================
+  # Production (use: docker compose --profile production up)
+  # ===========================================================================
+  admin-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_URL: http://host.docker.internal:5080
+    container_name: nexus-admin-prod
+    ports:
+      - "5191:80"
+    environment:
+      - NODE_ENV=production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - production
+    restart: unless-stopped

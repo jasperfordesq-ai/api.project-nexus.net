@@ -1,0 +1,81 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Your profile" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Your profile</h1>
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Name" },
+            value: { text: profile.name or "Not set" },
+            actions: {
+              items: [
+                { href: "/profile/edit", text: "Change", visuallyHiddenText: "name" }
+              ]
+            }
+          },
+          {
+            key: { text: "Email address" },
+            value: { text: profile.email or "Not set" },
+            actions: {
+              items: [
+                { href: "/profile/edit", text: "Change", visuallyHiddenText: "email address" }
+              ]
+            }
+          },
+          {
+            key: { text: "Phone number" },
+            value: { text: profile.phone or "Not set" },
+            actions: {
+              items: [
+                { href: "/profile/edit", text: "Change", visuallyHiddenText: "phone number" }
+              ]
+            }
+          }
+        ]
+      }) }}
+
+      <h2 class="govuk-heading-m govuk-!-margin-top-8">Account</h2>
+      <ul class="govuk-list">
+        <li>
+          <a href="/progress" class="govuk-link">My progress (XP and badges)</a>
+        </li>
+        <li>
+          <a href="/progress/leaderboard" class="govuk-link">Leaderboard</a>
+        </li>
+        <li>
+          <a href="/reports/my" class="govuk-link">My reports</a>
+        </li>
+      </ul>
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/dashboard" class="govuk-link">Back to dashboard</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

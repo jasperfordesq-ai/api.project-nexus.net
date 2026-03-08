@@ -1,0 +1,9 @@
+{#
+  Loading spinner partial
+  Usage: {% include "partials/loading.njk" %}
+  Or with custom text: {% set loadingText = "Loading listings..." %}{% include "partials/loading.njk" %}
+#}
+<div class="app-loading" aria-live="polite" aria-busy="true">
+  <div class="app-loading__spinner" aria-hidden="true"></div>
+  <p class="govuk-body app-loading__text">{{ loadingText or "Loading..." }}</p>
+</div>

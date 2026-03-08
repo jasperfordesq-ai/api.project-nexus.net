@@ -1,0 +1,127 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block pageTitle %}About - Project NEXUS{% endblock %}
+
+{% block content %}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    <h1 class="govuk-heading-xl">About Project NEXUS</h1>
+    <p class="govuk-body-l">A timebanking platform for community exchange.</p>
+
+    <h2 class="govuk-heading-l">Created By</h2>
+    {% if groups.creator %}
+    <p class="govuk-body">
+      This software was created by <strong>{{ groups.creator.name }}</strong>.
+    </p>
+    {% else %}
+    <p class="govuk-body">Creator information unavailable.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-l">Originating Time Bank Founders</h2>
+    <p class="govuk-body">
+      The originating Irish timebank initiative hOUR Timebank CLC was co-founded by:
+    </p>
+    {% if groups.creator or groups.founders.length > 0 %}
+    <ul class="govuk-list govuk-list--bullet">
+      {# Include creator as founder #}
+      {% if groups.creator %}
+      <li><strong>{{ groups.creator.name }}</strong></li>
+      {% endif %}
+      {% for founder in groups.founders %}
+      <li>
+        <strong>{{ founder.name }}</strong>
+        {% if founder.note %}
+        <span class="govuk-body-s govuk-!-margin-left-1">({{ founder.note }})</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="govuk-body">Founder information unavailable.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-l">Contributors</h2>
+    {% if groups.contributors.length > 0 %}
+    <ul class="govuk-list govuk-list--bullet">
+      {% for contributor in groups.contributors %}
+      <li>
+        <strong>{{ contributor.name }}</strong> - {{ contributor.role }}
+        {% if contributor.note %}
+        <br><span class="govuk-body-s govuk-!-margin-left-4">{{ contributor.note }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="govuk-body">Contributors list unavailable.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-l">Research Foundation</h2>
+    {% if researchFoundation %}
+    <p class="govuk-body">
+      {% if researchFoundation.note %}
+      {{ researchFoundation.note }}
+      {% else %}
+      This software is informed by and builds upon work by the <strong>{{ researchFoundation.name }}</strong>.
+      {% endif %}
+    </p>
+    {% else %}
+    <p class="govuk-body">
+      This software is informed by and builds upon a social impact study
+      commissioned by the <strong>West Cork Development Partnership</strong>.
+    </p>
+    {% endif %}
+
+    <h2 class="govuk-heading-l">Acknowledgements</h2>
+    {% if otherAcknowledgements.length > 0 %}
+    <ul class="govuk-list govuk-list--bullet">
+      {% for ack in otherAcknowledgements %}
+      <li>
+        <strong>{{ ack.name }}</strong>{% if ack.role and ack.role != 'Acknowledgement' %}, {{ ack.role }}{% endif %}
+        {% if ack.note %}
+        <br><span class="govuk-body-s govuk-!-margin-left-4">{{ ack.note }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="govuk-body">Acknowledgements list unavailable.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-l">License</h2>
+    <p class="govuk-body">
+      This software is licensed under the
+      <strong>GNU Affero General Public License version 3</strong>
+      or (at your option) any later version.
+    </p>
+    <p class="govuk-body govuk-body-s">
+      The AGPL is a copyleft license that requires anyone who distributes
+      or runs this software over a network to make the source code
+      available to users.
+    </p>
+
+    <h2 class="govuk-heading-l">Source Code</h2>
+    <p class="govuk-body">
+      In compliance with the AGPL license, the complete source code for
+      this software is available at:
+    </p>
+    <p class="govuk-body">
+      <a href="https://github.com/jasperfordesq-ai/api.project-nexus.net" class="govuk-link" target="_blank" rel="noopener noreferrer">
+        github.com/jasperfordesq-ai/api.project-nexus.net
+      </a>
+    </p>
+
+    <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible">
+
+    <p class="govuk-body-s">
+      Copyright © 2024–2026 Jasper Ford<br>
+      See NOTICE file for full attribution and acknowledgements.
+    </p>
+  </div>
+</div>
+{% endblock %}

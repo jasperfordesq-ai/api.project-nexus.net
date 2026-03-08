@@ -1,0 +1,137 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Create an account</h1>
+
+      <form method="post" action="/register" novalidate data-validate-form data-loading="Creating account...">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukInput({
+          label: {
+            text: "First name",
+            classes: "govuk-label--m"
+          },
+          id: "first_name",
+          name: "first_name",
+          autocomplete: "given-name",
+          value: values.first_name if values else "",
+          errorMessage: { text: fieldErrors.first_name } if fieldErrors.first_name else undefined,
+          attributes: {
+            "data-validate": "required",
+            "data-label": "First name"
+          }
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Last name",
+            classes: "govuk-label--m"
+          },
+          id: "last_name",
+          name: "last_name",
+          autocomplete: "family-name",
+          value: values.last_name if values else "",
+          errorMessage: { text: fieldErrors.last_name } if fieldErrors.last_name else undefined,
+          attributes: {
+            "data-validate": "required",
+            "data-label": "Last name"
+          }
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Email address",
+            classes: "govuk-label--m"
+          },
+          id: "email",
+          name: "email",
+          type: "email",
+          autocomplete: "email",
+          spellcheck: false,
+          value: values.email if values else "",
+          errorMessage: { text: fieldErrors.email } if fieldErrors.email else undefined,
+          attributes: {
+            "data-validate": "required email",
+            "data-label": "Email address"
+          }
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Community code",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Enter the code for your community (e.g. 'acme')"
+          },
+          id: "tenant_slug",
+          name: "tenant_slug",
+          value: values.tenant_slug if values else "",
+          errorMessage: { text: fieldErrors.tenant_slug } if fieldErrors.tenant_slug else undefined,
+          attributes: {
+            "data-validate": "required",
+            "data-label": "Community code"
+          }
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Password",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Must be at least 8 characters"
+          },
+          id: "password",
+          name: "password",
+          type: "password",
+          autocomplete: "new-password",
+          errorMessage: { text: fieldErrors.password } if fieldErrors.password else undefined,
+          attributes: {
+            "data-validate": "required minLength:8",
+            "data-label": "Password"
+          }
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Confirm password",
+            classes: "govuk-label--m"
+          },
+          id: "confirm_password",
+          name: "confirm_password",
+          type: "password",
+          autocomplete: "new-password",
+          errorMessage: { text: fieldErrors.confirm_password } if fieldErrors.confirm_password else undefined,
+          attributes: {
+            "data-validate": "required matches:password",
+            "data-label": "Confirm password"
+          }
+        }) }}
+
+        {{ govukButton({
+          text: "Create account"
+        }) }}
+      </form>
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        Already have an account? <a href="/login" class="govuk-link">Sign in</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

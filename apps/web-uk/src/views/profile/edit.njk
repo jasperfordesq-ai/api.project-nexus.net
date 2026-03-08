@@ -1,0 +1,86 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Your profile", href: "/profile" },
+      { text: "Edit" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Edit your profile</h1>
+
+      <form method="post" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukInput({
+          label: {
+            text: "Full name",
+            classes: "govuk-label--m"
+          },
+          id: "name",
+          name: "name",
+          value: values.name if values else (profile.name if profile else ""),
+          autocomplete: "name",
+          errorMessage: { text: fieldErrors.name } if fieldErrors.name else undefined
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Email address",
+            classes: "govuk-label--m"
+          },
+          id: "email",
+          name: "email",
+          type: "email",
+          value: values.email if values else (profile.email if profile else ""),
+          autocomplete: "email",
+          errorMessage: { text: fieldErrors.email } if fieldErrors.email else undefined
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Phone number",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Optional"
+          },
+          id: "phone",
+          name: "phone",
+          type: "tel",
+          value: values.phone if values else (profile.phone if profile else ""),
+          autocomplete: "tel",
+          errorMessage: { text: fieldErrors.phone } if fieldErrors.phone else undefined
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save changes"
+          }) }}
+          <a href="/profile" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

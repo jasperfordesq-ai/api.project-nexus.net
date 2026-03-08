@@ -1,0 +1,123 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {{ govukBreadcrumbs({
+    items: [
+      { text: "Home", href: "/" },
+      { text: "Messages", href: "/messages" },
+      { text: conversation.other_user_name or conversation.otherUserName or "Conversation" }
+    ]
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error, href: "#content" }]
+        }) }}
+      {% endif %}
+
+      <div class="govuk-!-margin-bottom-6" style="display: flex; align-items: center; gap: 20px;">
+        {% set otherUserName = conversation.other_user_name or conversation.otherUserName or "Unknown" %}
+        {% set nameParts = otherUserName.split(' ') %}
+        {% set user = { firstName: nameParts[0] or '', lastName: nameParts[1] or '' } %}
+        {% set size = 'large' %}
+        {% include "partials/avatar.njk" %}
+        <h1 class="govuk-heading-xl govuk-!-margin-bottom-0">
+          {{ otherUserName }}
+        </h1>
+      </div>
+
+      {% if conversation.listing %}
+        <p class="govuk-body-s govuk-!-margin-bottom-6">
+          Regarding: <a href="/listings/{{ conversation.listing.id }}" class="govuk-link">{{ conversation.listing.title }}</a>
+        </p>
+      {% endif %}
+
+      <div class="app-messages-container" role="log" aria-live="polite" aria-label="Conversation messages">
+        {% if messages and messages.length > 0 %}
+          {% for message in messages %}
+            <div class="app-message{% if message.is_own %} app-message--own{% endif %}">
+              <div class="app-message-header">
+                <div class="app-member-cell">
+                  {% if message.is_own %}
+                    {% set user = currentUser %}
+                  {% else %}
+                    {% set senderName = message.sender_name or message.senderName or "User" %}
+                    {% set nameParts = senderName.split(' ') %}
+                    {% set user = { firstName: nameParts[0] or '', lastName: nameParts[1] or '' } %}
+                  {% endif %}
+                  {% set size = 'small' %}
+                  {% include "partials/avatar.njk" %}
+                  <strong class="govuk-!-font-weight-bold govuk-body-s">
+                    {% if message.is_own %}
+                      You
+                    {% else %}
+                      {{ message.sender_name or message.senderName or "User" }}
+                    {% endif %}
+                  </strong>
+                </div>
+                <span class="govuk-body-s">
+                  {{ message.created_at or message.createdAt or "" }}
+                </span>
+              </div>
+              <div class="app-message-body">
+                <p class="govuk-body">{{ message.content or message.body or "" }}</p>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="govuk-body">No messages in this conversation yet.</p>
+        {% endif %}
+      </div>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <h2 class="govuk-heading-m">Send a message</h2>
+
+      <form method="post" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        {{ govukTextarea({
+          label: {
+            text: "Your message",
+            classes: "govuk-visually-hidden"
+          },
+          id: "content",
+          name: "content",
+          rows: 4,
+          errorMessage: { text: error } if error else undefined
+        }) }}
+
+        {{ govukButton({
+          text: "Send message"
+        }) }}
+      </form>
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/messages" class="govuk-link">Back to messages</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,169 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% set availablePermissions = [
+  { value: "users.view", text: "View users", group: "Users" },
+  { value: "users.edit", text: "Edit users", group: "Users" },
+  { value: "users.suspend", text: "Suspend users", group: "Users" },
+  { value: "listings.view", text: "View listings", group: "Listings" },
+  { value: "listings.edit", text: "Edit listings", group: "Listings" },
+  { value: "listings.moderate", text: "Moderate listings", group: "Listings" },
+  { value: "listings.delete", text: "Delete listings", group: "Listings" },
+  { value: "categories.manage", text: "Manage categories", group: "Categories" },
+  { value: "config.view", text: "View configuration", group: "Configuration" },
+  { value: "config.edit", text: "Edit configuration", group: "Configuration" },
+  { value: "roles.manage", text: "Manage roles", group: "Roles" },
+  { value: "groups.moderate", text: "Moderate groups", group: "Groups" },
+  { value: "events.moderate", text: "Moderate events", group: "Events" }
+] %}
+
+{% set rolePerms = role.permissions if role.permissions is iterable and role.permissions is not string else (role.permissions | parseJson if role.permissions else []) %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <nav class="govuk-breadcrumbs" aria-label="Breadcrumb">
+    <ol class="govuk-breadcrumbs__list">
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/dashboard">Dashboard</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin">Admin</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin/roles">Roles</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item" aria-current="page">{{ "Edit" if role else "Add" }} role</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        <span class="govuk-caption-xl">Roles</span>
+        {{ "Edit role" if role else "Add role" }}
+      </h1>
+
+      <form method="post" action="/admin/roles/{% if role %}{{ role.id }}/edit{% else %}new{% endif %}">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukInput({
+          label: { text: "Name", classes: "govuk-label--s" },
+          id: "name",
+          name: "name",
+          value: role.name if role else "",
+          hint: { text: "e.g., Moderator, Editor, Reviewer" }
+        }) }}
+
+        {{ govukTextarea({
+          label: { text: "Description", classes: "govuk-label--s" },
+          id: "description",
+          name: "description",
+          value: role.description if role else "",
+          hint: { text: "Describe what this role is for" },
+          rows: 2
+        }) }}
+
+        <h2 class="govuk-heading-m">Permissions</h2>
+
+        <p class="govuk-body">Select the permissions for this role.</p>
+
+        <!-- Users permissions -->
+        <h3 class="govuk-heading-s">Users</h3>
+        {{ govukCheckboxes({
+          name: "permissions",
+          items: [
+            { value: "users.view", text: "View users", checked: "users.view" in rolePerms },
+            { value: "users.edit", text: "Edit users", checked: "users.edit" in rolePerms },
+            { value: "users.suspend", text: "Suspend users", checked: "users.suspend" in rolePerms }
+          ],
+          classes: "govuk-checkboxes--small"
+        }) }}
+
+        <!-- Listings permissions -->
+        <h3 class="govuk-heading-s">Listings</h3>
+        {{ govukCheckboxes({
+          name: "permissions",
+          items: [
+            { value: "listings.view", text: "View listings", checked: "listings.view" in rolePerms },
+            { value: "listings.edit", text: "Edit listings", checked: "listings.edit" in rolePerms },
+            { value: "listings.moderate", text: "Moderate listings", checked: "listings.moderate" in rolePerms },
+            { value: "listings.delete", text: "Delete listings", checked: "listings.delete" in rolePerms }
+          ],
+          classes: "govuk-checkboxes--small"
+        }) }}
+
+        <!-- Categories permissions -->
+        <h3 class="govuk-heading-s">Categories</h3>
+        {{ govukCheckboxes({
+          name: "permissions",
+          items: [
+            { value: "categories.manage", text: "Manage categories", checked: "categories.manage" in rolePerms }
+          ],
+          classes: "govuk-checkboxes--small"
+        }) }}
+
+        <!-- Configuration permissions -->
+        <h3 class="govuk-heading-s">Configuration</h3>
+        {{ govukCheckboxes({
+          name: "permissions",
+          items: [
+            { value: "config.view", text: "View configuration", checked: "config.view" in rolePerms },
+            { value: "config.edit", text: "Edit configuration", checked: "config.edit" in rolePerms }
+          ],
+          classes: "govuk-checkboxes--small"
+        }) }}
+
+        <!-- Roles permissions -->
+        <h3 class="govuk-heading-s">Roles</h3>
+        {{ govukCheckboxes({
+          name: "permissions",
+          items: [
+            { value: "roles.manage", text: "Manage roles", checked: "roles.manage" in rolePerms }
+          ],
+          classes: "govuk-checkboxes--small"
+        }) }}
+
+        <!-- Community permissions -->
+        <h3 class="govuk-heading-s">Community</h3>
+        {{ govukCheckboxes({
+          name: "permissions",
+          items: [
+            { value: "groups.moderate", text: "Moderate groups", checked: "groups.moderate" in rolePerms },
+            { value: "events.moderate", text: "Moderate events", checked: "events.moderate" in rolePerms }
+          ],
+          classes: "govuk-checkboxes--small"
+        }) }}
+
+        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save role" if role else "Create role"
+          }) }}
+          <a href="/admin/roles" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

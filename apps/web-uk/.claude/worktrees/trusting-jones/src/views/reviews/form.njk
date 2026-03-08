@@ -1,0 +1,101 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block beforeContent %}
+  {{ govukBackLink({
+    text: "Back",
+    href: returnUrl or "/dashboard"
+  }) }}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors and errors.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        {% if isEdit %}
+          Edit your review
+        {% else %}
+          Write a review
+        {% endif %}
+      </h1>
+
+      <form method="post" action="/reviews/{{ review.id }}/edit">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <input type="hidden" name="return_url" value="{{ returnUrl }}">
+
+        <div class="govuk-form-group {% if errors | selectattr('href', 'equalto', '#rating') | list | length %}govuk-form-group--error{% endif %}">
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+              <h2 class="govuk-fieldset__heading">
+                How would you rate your experience?
+              </h2>
+            </legend>
+
+            {% if errors | selectattr('href', 'equalto', '#rating') | list | length %}
+              <p class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span>
+                {{ (errors | selectattr('href', 'equalto', '#rating') | list)[0].text }}
+              </p>
+            {% endif %}
+
+            <div class="app-star-rating" id="rating">
+              {% for i in [1, 2, 3, 4, 5] %}
+                <input type="radio" name="rating" id="rating-{{ i }}" value="{{ i }}"
+                       class="app-star-rating__input"
+                       {% if review.rating == i %}checked{% endif %}>
+                <label for="rating-{{ i }}" class="app-star-rating__label">
+                  <span class="govuk-visually-hidden">{{ i }} star{% if i != 1 %}s{% endif %}</span>
+                  <svg class="app-star-rating__star" viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </label>
+              {% endfor %}
+            </div>
+
+            <p class="govuk-hint govuk-!-margin-top-2">
+              1 = Poor, 5 = Excellent
+            </p>
+          </fieldset>
+        </div>
+
+        {{ govukTextarea({
+          name: "comment",
+          id: "comment",
+          value: review.comment or "",
+          label: {
+            text: "Your review (optional)",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Share details about your experience. Maximum 2000 characters."
+          },
+          attributes: {
+            maxlength: "2000"
+          },
+          rows: 5
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save review" if isEdit else "Submit review"
+          }) }}
+          <a href="{{ returnUrl or '/dashboard' }}" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{
+  "name": "nexus-uk-frontend",
+  "version": "1.0.0",
+  "description": "UK frontend for Project NEXUS Community - NOT affiliated with GOV.UK",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "npm run brand:check && npm run build:css && concurrently \"npm run watch:css\" \"npm run watch:server\"",
+    "start": "npm run brand:check && npm run build:css && node src/server.js",
+    "build:css": "sass --quiet-deps --load-path=node_modules/govuk-frontend/dist src/assets/scss/main.scss:public/css/main.css",
+    "watch:css": "sass --quiet-deps --load-path=node_modules/govuk-frontend/dist --watch src/assets/scss/main.scss:public/css/main.css",
+    "watch:server": "nodemon src/server.js",
+    "brand:check": "node scripts/brand-check.js",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "csrf-csrf": "^3.0.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-flash": "^0.0.2",
+    "express-rate-limit": "^7.4.0",
+    "express-session": "^1.18.0",
+    "govuk-frontend": "^5.6.0",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "nunjucks": "^3.2.4"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.4",
+    "sass": "^1.77.0",
+    "supertest": "^7.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

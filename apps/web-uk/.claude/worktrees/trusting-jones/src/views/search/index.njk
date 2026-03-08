@@ -1,0 +1,291 @@
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/tabs/macro.njk" import govukTabs %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Search</h1>
+
+      <form action="/search" method="get" class="govuk-!-margin-bottom-6">
+        <div class="govuk-form-group">
+          <div class="app-search-box">
+            {{ govukInput({
+              id: "search-query",
+              name: "q",
+              value: query,
+              label: {
+                text: "Search the community",
+                classes: "govuk-label--m"
+              },
+              hint: {
+                text: "Search for listings, members, groups, or events"
+              },
+              classes: "govuk-!-width-two-thirds",
+              attributes: {
+                minlength: "2",
+                placeholder: "Enter search term..."
+              }
+            }) }}
+          </div>
+        </div>
+        <input type="hidden" name="type" value="{{ type }}">
+        {{ govukButton({
+          text: "Search",
+          classes: "govuk-!-margin-bottom-0"
+        }) }}
+      </form>
+
+      {% if results %}
+        {# Type filter tabs #}
+        <nav class="govuk-tabs govuk-!-margin-bottom-6" data-module="govuk-tabs">
+          <ul class="govuk-tabs__list">
+            <li class="govuk-tabs__list-item {% if type == 'all' %}govuk-tabs__list-item--selected{% endif %}">
+              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=all">
+                All
+              </a>
+            </li>
+            <li class="govuk-tabs__list-item {% if type == 'listings' %}govuk-tabs__list-item--selected{% endif %}">
+              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=listings">
+                Listings
+                {% if results.listings and results.listings.length > 0 %}
+                  <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.listings.length }}</span>
+                {% endif %}
+              </a>
+            </li>
+            <li class="govuk-tabs__list-item {% if type == 'users' %}govuk-tabs__list-item--selected{% endif %}">
+              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=users">
+                Members
+                {% if results.users and results.users.length > 0 %}
+                  <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.users.length }}</span>
+                {% endif %}
+              </a>
+            </li>
+            <li class="govuk-tabs__list-item {% if type == 'groups' %}govuk-tabs__list-item--selected{% endif %}">
+              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=groups">
+                Groups
+                {% if results.groups and results.groups.length > 0 %}
+                  <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.groups.length }}</span>
+                {% endif %}
+              </a>
+            </li>
+            <li class="govuk-tabs__list-item {% if type == 'events' %}govuk-tabs__list-item--selected{% endif %}">
+              <a class="govuk-tabs__tab" href="/search?q={{ query | urlencode }}&type=events">
+                Events
+                {% if results.events and results.events.length > 0 %}
+                  <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.events.length }}</span>
+                {% endif %}
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        {% set totalResults = (results.listings.length if results.listings else 0) + (results.users.length if results.users else 0) + (results.groups.length if results.groups else 0) + (results.events.length if results.events else 0) %}
+
+        <p class="govuk-body govuk-!-margin-bottom-4">
+          <strong>{{ totalResults }}</strong> result{% if totalResults != 1 %}s{% endif %} found for "<strong>{{ query }}</strong>"
+        </p>
+
+        {# Listings Results #}
+        {% if (type == 'all' or type == 'listings') and results.listings and results.listings.length > 0 %}
+          {% if type == 'all' %}
+            <h2 class="govuk-heading-m">Listings</h2>
+          {% endif %}
+          <ul class="govuk-list">
+            {% for listing in results.listings %}
+              <li class="app-search-result govuk-!-margin-bottom-4">
+                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
+                  <a href="/listings/{{ listing.id }}" class="govuk-link">{{ listing.title }}</a>
+                </h3>
+                <p class="govuk-body-s govuk-!-margin-bottom-1">
+                  {% if listing.type == 'offer' %}
+                    {{ govukTag({ text: "Offer", classes: "govuk-tag--green" }) }}
+                  {% else %}
+                    {{ govukTag({ text: "Request", classes: "govuk-tag--blue" }) }}
+                  {% endif %}
+                  {% if listing.status %}
+                    {{ govukTag({ text: listing.status | capitalize, classes: "govuk-tag--grey" }) }}
+                  {% endif %}
+                </p>
+                {% if listing.description %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-0 app-search-result__description">
+                    {{ listing.description | truncate(150) }}
+                  </p>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+          {% if type == 'all' and results.listings.length >= 5 %}
+            <p class="govuk-body">
+              <a href="/search?q={{ query | urlencode }}&type=listings" class="govuk-link">View all listing results</a>
+            </p>
+          {% endif %}
+        {% endif %}
+
+        {# Users Results #}
+        {% if (type == 'all' or type == 'users') and results.users and results.users.length > 0 %}
+          {% if type == 'all' %}
+            <h2 class="govuk-heading-m govuk-!-margin-top-6">Members</h2>
+          {% endif %}
+          <ul class="govuk-list">
+            {% for user in results.users %}
+              <li class="app-search-result govuk-!-margin-bottom-4">
+                <div class="app-member-cell">
+                  {% include "partials/avatar.njk" %}
+                  <div>
+                    <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
+                      <a href="/members/{{ user.id }}" class="govuk-link">
+                        {{ user.first_name or user.firstName }} {{ user.last_name or user.lastName }}
+                      </a>
+                    </h3>
+                    {% if user.bio %}
+                      <p class="govuk-body-s govuk-!-margin-bottom-0">{{ user.bio | truncate(100) }}</p>
+                    {% endif %}
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+          {% if type == 'all' and results.users.length >= 5 %}
+            <p class="govuk-body">
+              <a href="/search?q={{ query | urlencode }}&type=users" class="govuk-link">View all member results</a>
+            </p>
+          {% endif %}
+        {% endif %}
+
+        {# Groups Results #}
+        {% if (type == 'all' or type == 'groups') and results.groups and results.groups.length > 0 %}
+          {% if type == 'all' %}
+            <h2 class="govuk-heading-m govuk-!-margin-top-6">Groups</h2>
+          {% endif %}
+          <ul class="govuk-list">
+            {% for group in results.groups %}
+              <li class="app-search-result govuk-!-margin-bottom-4">
+                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
+                  <a href="/groups/{{ group.id }}" class="govuk-link">{{ group.name }}</a>
+                </h3>
+                <p class="govuk-body-s govuk-!-margin-bottom-1">
+                  {% if group.is_public %}
+                    {{ govukTag({ text: "Public", classes: "govuk-tag--green" }) }}
+                  {% else %}
+                    {{ govukTag({ text: "Private", classes: "govuk-tag--grey" }) }}
+                  {% endif %}
+                  <span class="govuk-!-margin-left-2">{{ group.member_count or 0 }} member{% if (group.member_count or 0) != 1 %}s{% endif %}</span>
+                </p>
+                {% if group.description %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-0 app-search-result__description">
+                    {{ group.description | truncate(150) }}
+                  </p>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+          {% if type == 'all' and results.groups.length >= 5 %}
+            <p class="govuk-body">
+              <a href="/search?q={{ query | urlencode }}&type=groups" class="govuk-link">View all group results</a>
+            </p>
+          {% endif %}
+        {% endif %}
+
+        {# Events Results #}
+        {% if (type == 'all' or type == 'events') and results.events and results.events.length > 0 %}
+          {% if type == 'all' %}
+            <h2 class="govuk-heading-m govuk-!-margin-top-6">Events</h2>
+          {% endif %}
+          <ul class="govuk-list">
+            {% for event in results.events %}
+              <li class="app-search-result govuk-!-margin-bottom-4">
+                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
+                  <a href="/events/{{ event.id }}" class="govuk-link">{{ event.title }}</a>
+                </h3>
+                <p class="govuk-body-s govuk-!-margin-bottom-1">
+                  {% if event.starts_at %}
+                    <time datetime="{{ event.starts_at }}">{{ event.starts_at | date }}</time>
+                  {% endif %}
+                  {% if event.location %}
+                    <span class="govuk-!-margin-left-2">{{ event.location }}</span>
+                  {% endif %}
+                </p>
+                {% if event.description %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-0 app-search-result__description">
+                    {{ event.description | truncate(150) }}
+                  </p>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+          {% if type == 'all' and results.events.length >= 5 %}
+            <p class="govuk-body">
+              <a href="/search?q={{ query | urlencode }}&type=events" class="govuk-link">View all event results</a>
+            </p>
+          {% endif %}
+        {% endif %}
+
+        {# No results for specific type #}
+        {% if type != 'all' %}
+          {% set typeResults = results[type] if results[type] else [] %}
+          {% if typeResults.length == 0 %}
+            {% set emptyState = {
+              icon: "🔍",
+              heading: "No " + type + " found",
+              message: "Try a different search term or browse all results.",
+              action: {
+                text: "View all results",
+                href: "/search?q=" + (query | urlencode) + "&type=all"
+              }
+            } %}
+            {% include "partials/empty-state.njk" %}
+          {% endif %}
+        {% endif %}
+
+        {# No results at all #}
+        {% if totalResults == 0 %}
+          {% set emptyState = {
+            icon: "🔍",
+            heading: "No results found",
+            message: "We couldn't find anything matching \"" + query + "\". Try a different search term.",
+            action: {
+              text: "Browse listings",
+              href: "/listings"
+            }
+          } %}
+          {% include "partials/empty-state.njk" %}
+        {% endif %}
+
+        {# Pagination #}
+        {% if pagination and pagination.total_pages > 1 %}
+          {% set paginationConfig = {
+            baseUrl: "/search",
+            page: pagination.page,
+            totalPages: pagination.total_pages,
+            queryParams: { q: query, type: type }
+          } %}
+          {% include "partials/pagination.njk" %}
+        {% endif %}
+
+      {% elif not query %}
+        {# Initial search page state #}
+        <div class="app-search-hints govuk-!-margin-top-6">
+          <h2 class="govuk-heading-m">Search tips</h2>
+          <ul class="govuk-list govuk-list--bullet">
+            <li>Search for listings by title or description</li>
+            <li>Find community members by name</li>
+            <li>Discover groups and events</li>
+            <li>Use at least 2 characters</li>
+          </ul>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

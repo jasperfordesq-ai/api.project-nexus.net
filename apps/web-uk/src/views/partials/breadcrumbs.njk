@@ -1,0 +1,18 @@
+{#
+  Breadcrumb navigation partial
+  Usage: {% include "partials/breadcrumbs.njk" %}
+
+  Pass breadcrumbs as an array of objects with text and href:
+  {% set breadcrumbs = [
+    { text: "Groups", href: "/groups" },
+    { text: "My Group", href: "/groups/123" },
+    { text: "Members" }
+  ] %}
+#}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+
+{% if breadcrumbs and breadcrumbs.length > 0 %}
+  {{ govukBreadcrumbs({
+    items: breadcrumbs
+  }) }}
+{% endif %}

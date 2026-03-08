@@ -1,0 +1,95 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <nav class="govuk-breadcrumbs" aria-label="Breadcrumb">
+    <ol class="govuk-breadcrumbs__list">
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/dashboard">Dashboard</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin">Admin</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin/users">Users</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item">
+        <a class="govuk-breadcrumbs__link" href="/admin/users/{{ userData.id }}">{{ userData.first_name }} {{ userData.last_name }}</a>
+      </li>
+      <li class="govuk-breadcrumbs__list-item" aria-current="page">Edit</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">
+        <span class="govuk-caption-xl">Edit user</span>
+        {{ userData.first_name }} {{ userData.last_name }}
+      </h1>
+
+      <form method="post" action="/admin/users/{{ userData.id }}/edit">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        {{ govukInput({
+          label: { text: "First name", classes: "govuk-label--s" },
+          id: "first_name",
+          name: "first_name",
+          value: userData.first_name
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Last name", classes: "govuk-label--s" },
+          id: "last_name",
+          name: "last_name",
+          value: userData.last_name
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Email", classes: "govuk-label--s" },
+          id: "email",
+          name: "email",
+          type: "email",
+          value: userData.email
+        }) }}
+
+        {{ govukSelect({
+          label: { text: "Role", classes: "govuk-label--s" },
+          id: "role",
+          name: "role",
+          items: [
+            { value: "member", text: "Member", selected: userData.role == "member" },
+            { value: "admin", text: "Admin", selected: userData.role == "admin" }
+          ]
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Save changes"
+          }) }}
+          <a href="/admin/users/{{ userData.id }}" class="govuk-link">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}
