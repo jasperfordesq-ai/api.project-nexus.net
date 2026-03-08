@@ -108,7 +108,7 @@ public class EnterpriseController : ControllerBase
         var tenantId = _tenantContext.GetTenantIdOrThrow();
         var dashboard = await _enterprise.GetDashboardAsync(tenantId);
 
-        return Ok(new DashboardResponse
+        return Ok(new EnterpriseDashboardResponse
         {
             TenantId = dashboard.TenantId,
             TotalUsers = dashboard.TotalUsers,
@@ -207,7 +207,7 @@ public class EnterpriseController : ControllerBase
         public DateTime UpdatedAt { get; set; }
     }
 
-    public class DashboardResponse
+    public class EnterpriseDashboardResponse
     {
         [JsonPropertyName("tenant_id")]
         public int TenantId { get; set; }

@@ -188,7 +188,7 @@ public class StaffingController : ControllerBase
     {
         var dashboard = await _staffing.GetStaffingDashboardAsync();
 
-        return Ok(new DashboardResponse
+        return Ok(new StaffingDashboardResponse
         {
             UpcomingShifts = dashboard.UpcomingShifts.Select(s => new ShiftResponse
             {
@@ -350,7 +350,7 @@ public class StaffingController : ControllerBase
         public bool IsRecurring { get; set; }
     }
 
-    public class DashboardResponse
+    public class StaffingDashboardResponse
     {
         [JsonPropertyName("upcoming_shifts")]
         public List<ShiftResponse> UpcomingShifts { get; set; } = new();

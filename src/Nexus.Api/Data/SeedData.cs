@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Entities;
 
@@ -14,8 +15,15 @@ namespace Nexus.Api.Data;
 /// </summary>
 public static class SeedData
 {
-    public static async Task SeedAsync(NexusDbContext db, ILogger logger)
+    public static async Task SeedAsync(NexusDbContext db, ILogger logger, IWebHostEnvironment? env = null)
     {
+        // Hard guard: refuse to seed in Production regardless of how this is called
+        if (env != null && env.IsProduction())
+        {
+            logger.LogWarning("SeedData.SeedAsync called in Production environment — aborted. This is test-only data.");
+            return;
+        }
+
         // Check if already seeded
         if (await db.Tenants.AnyAsync())
         {

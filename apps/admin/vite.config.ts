@@ -19,12 +19,13 @@ export default defineConfig({
       output: {
         manualChunks(id: string) {
           if (!id.includes("node_modules")) return undefined;
-          if (id.includes("@ant-design/charts")) return "vendor-charts";
+          if (id.includes("@ant-design/charts") || id.includes("@antv")) return "vendor-charts";
           if (id.includes("@refinedev")) return "vendor-refine";
-          if (id.includes("antd") || id.includes("@ant-design")) return "vendor-ui";
+          if (id.includes("/antd/") || id.includes("@ant-design/icons") || id.includes("rc-")) return "vendor-ui";
           if (id.includes("react-router")) return "vendor-router";
           if (id.includes("react-dom") || id.includes("/react/")) return "vendor-react";
-          return "vendor-misc";
+          // let everything else (dayjs, axios, lodash, etc.) be split naturally by Rollup
+          return undefined;
         },
       },
     },

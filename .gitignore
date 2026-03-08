@@ -75,3 +75,6 @@ apps/**/tsconfig.tsbuildinfo
 
 # pnpm workspace
 .pnpm-store/
+
+# E2E test credentials (copy from e2e/.env.example)
+e2e/.env

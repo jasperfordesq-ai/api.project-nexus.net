@@ -41,7 +41,7 @@ CMD ["npm", "run", "dev"]
 FROM base AS builder
 
 # Install all dependencies for building
-RUN npm ci
+RUN npm install
 
 # Copy source files
 COPY . .
@@ -64,7 +64,7 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built assets and source from builder
 COPY --from=builder /app/public ./public

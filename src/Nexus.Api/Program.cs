@@ -292,6 +292,7 @@ builder.Services.AddScoped<PersonalInsightsService>();
 builder.Services.AddScoped<SavedSearchService>();
 builder.Services.AddScoped<SubAccountService>();
 builder.Services.AddScoped<FederationAdminService>();
+builder.Services.AddScoped<SecretsVaultService>();
 
 // Saved Search Alert background service
 builder.Services.AddHostedService<SavedSearchAlertService>();
@@ -547,19 +548,22 @@ if (allowedOrigins.Length > 0 && !app.Environment.IsProduction())
 }
 
 // =============================================================================
-// DATABASE INITIALIZATION (Development only)
+// DATABASE INITIALIZATION
 // =============================================================================
-if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    // Apply migrations
+    // Apply EF migrations on every startup (all environments)
     await db.Database.MigrateAsync();
 
-    // Seed test data
-    await SeedData.SeedAsync(db, logger);
+    // WARNING: TEST DATA ONLY — never runs in Production.
+    // Seeds fictitious tenants/users/listings with well-known dev passwords.
+    if (app.Environment.IsDevelopment())
+    {
+        await SeedData.SeedAsync(db, logger, app.Environment);
+    }
 }
 
 // =============================================================================

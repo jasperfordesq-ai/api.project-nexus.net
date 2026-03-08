@@ -95,12 +95,10 @@ public class AdminController : ControllerBase
             })
             .FirstOrDefaultAsync() ?? new { Total = 0, Last30Days = 0, TotalCredits = 0m };
 
-        // Batch community stats - these are simpler, run in parallel
-        var categoryCountTask = _db.Categories.AsNoTracking().CountAsync();
-        var groupCountTask = _db.Groups.AsNoTracking().CountAsync();
-        var eventCountTask = _db.Events.AsNoTracking().CountAsync(e => !e.IsCancelled);
-
-        await Task.WhenAll(categoryCountTask, groupCountTask, eventCountTask);
+        // Community stats - sequential to avoid concurrent EF Core operations on same DbContext
+        var categoryCount = await _db.Categories.AsNoTracking().CountAsync();
+        var groupCount = await _db.Groups.AsNoTracking().CountAsync();
+        var eventCount = await _db.Events.AsNoTracking().CountAsync(e => !e.IsCancelled);
 
         return Ok(new
         {
@@ -125,9 +123,9 @@ public class AdminController : ControllerBase
             },
             community = new
             {
-                categories = await categoryCountTask,
-                groups = await groupCountTask,
-                upcoming_events = await eventCountTask
+                categories = categoryCount,
+                groups = groupCount,
+                upcoming_events = eventCount
             }
         });
     }
@@ -658,7 +656,7 @@ public class AdminController : ControllerBase
     /// Create a new category.
     /// </summary>
     [HttpPost("categories")]
-    public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequest request)
+    public async Task<IActionResult> CreateCategory([FromBody] AdminCreateCategoryRequest request)
     {
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
@@ -750,7 +748,7 @@ public class AdminController : ControllerBase
     /// Update a category.
     /// </summary>
     [HttpPut("categories/{id:int}")]
-    public async Task<IActionResult> UpdateCategory(int id, [FromBody] UpdateCategoryRequest request)
+    public async Task<IActionResult> UpdateCategory(int id, [FromBody] AdminUpdateCategoryRequest request)
     {
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
@@ -1265,7 +1263,7 @@ public class RejectListingRequest
     public string? Reason { get; set; }
 }
 
-public class CreateCategoryRequest
+public class AdminCreateCategoryRequest
 {
     [JsonPropertyName("name")]
     public string? Name { get; set; }
@@ -1286,7 +1284,7 @@ public class CreateCategoryRequest
     public bool? IsActive { get; set; }
 }
 
-public class UpdateCategoryRequest
+public class AdminUpdateCategoryRequest
 {
     [JsonPropertyName("name")]
     public string? Name { get; set; }
