@@ -199,7 +199,7 @@ services:
       target: dev
     container_name: nexus-admin-dev
     ports:
-      - "5190:5173"
+      - "5190:5190"
     volumes:
       - ./apps/admin:/app
       - /app/node_modules
