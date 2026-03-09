@@ -69,8 +69,8 @@ public class GmailEmailService : IEmailService
 
             using var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_options.SenderName, _options.SenderEmail));
-            message.To.Add(new MailboxAddress(null, to));
-            message.Subject = subject;
+            message.To.Add(new MailboxAddress(string.Empty, to));
+            message.Subject = subject!;
 
             var builder = new BodyBuilder();
             builder.HtmlBody = htmlBody;

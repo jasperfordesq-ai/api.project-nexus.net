@@ -99,7 +99,7 @@ See `.claude/production-server.md` for deployment commands.
 **i18n Language Packs SEEDED** (7 languages: en, ga, fr, es, de, pl, pt — ~40 keys each, wired into startup)
 **Business Logic HARDENED** (V1 gamification rules, exchange validation, wallet limits, SROI analytics)
 **Semantic Search (Meilisearch) BUILT** (MeilisearchService, SemanticSearchController, AdminSearchController — 5 new endpoints)
-**Total: 814 endpoints, 110 controllers, 84 services, 149 entities** (verified 2026-03-08, after parity build)
+**Total: 762 endpoints, 107 controllers, 88 services, 149 entities** (audit-verified 2026-03-08)
 **Migration Score: 1,000/1,000** (~320 features Done/Tested, ~0 Missing — All V1 features implemented)
 **Status: All phases built. EF migrations applied. Docker builds. Tests pass.**
 
@@ -190,10 +190,10 @@ The legacy PHP platform (V1) has grown significantly. V2 progress after federati
 
 | Metric | V1 (PHP) | V2 (ASP.NET) | Gap |
 |--------|----------|--------------|-----|
-| API Endpoints | ~1,688 | 814 | ~48% missing |
-| Services | 251 | 84 | 67% missing |
-| Controllers | 199 | 110 | V2 exceeds by raw count |
-| Data Models/Entities | 60+ | 137 | V2 exceeds V1 2.3x |
+| API Endpoints | ~1,688 | 762 | ~55% missing |
+| Services | 251 | 88 | 65% missing |
+| Controllers | 199 | 107 files (110 classes) | V2 exceeds by raw count |
+| Data Models/Entities | 60+ | 149 | V2 exceeds V1 2.5x |
 | Feature Domains | 32 | 32 | All have code + tests |
 | Features (Done+Tested) | ~320 total | ~315 | 98% done |
 | Features (Missing) | - | ~5 | 2% missing |

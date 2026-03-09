@@ -103,10 +103,10 @@ public class FeedRankingService
                 .GroupBy(s => s.PostId)
                 .ToDictionaryAsync(g => g.Key, g => g.Count());
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // PostShares table may not exist yet if migration hasn't run
-            _logger.LogDebug("PostShare table not available, share counts will be zero");
+            _logger.LogWarning(ex, "PostShare table not available, share counts will be zero");
         }
 
         // Load all posts with engagement data
@@ -219,9 +219,9 @@ public class FeedRankingService
                 .GroupBy(s => s.PostId)
                 .ToDictionaryAsync(g => g.Key, g => g.Count());
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _logger.LogDebug("PostShare table not available for trending calculation");
+            _logger.LogWarning(ex, "PostShare table not available for trending calculation");
         }
 
         var trending = recentPosts
@@ -394,18 +394,18 @@ public class FeedRankingService
         {
             shareCount = await _db.Set<PostShare>().CountAsync(s => s.PostId == postId);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _logger.LogDebug("PostShare table not available for engagement stats");
+            _logger.LogWarning(ex, "PostShare table not available for engagement stats");
         }
 
         try
         {
             bookmarkCount = await _db.Set<FeedBookmark>().CountAsync(b => b.PostId == postId);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _logger.LogDebug("FeedBookmark table not available for engagement stats");
+            _logger.LogWarning(ex, "FeedBookmark table not available for engagement stats");
         }
 
         return new PostEngagementResult

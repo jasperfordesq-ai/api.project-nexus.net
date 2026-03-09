@@ -6,6 +6,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
@@ -58,9 +59,14 @@ public class CookieConsentController : ControllerBase
 
             return Ok(MapConsent(consent));
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while recording cookie consent");
+            return StatusCode(500, new { error = "Failed to record consent" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error recording cookie consent");
+            _logger.LogError(ex, "Unexpected error in RecordConsent operation");
             return StatusCode(500, new { error = "Failed to record consent" });
         }
     }
@@ -85,9 +91,14 @@ public class CookieConsentController : ControllerBase
 
             return Ok(MapConsent(consent));
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while retrieving cookie consent");
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving cookie consent");
+            _logger.LogError(ex, "Unexpected error in GetConsent operation");
             return StatusCode(500, new { error = "Failed to retrieve consent" });
         }
     }
@@ -118,9 +129,14 @@ public class CookieConsentController : ControllerBase
 
             return Ok(MapConsent(consent));
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while updating cookie consent");
+            return StatusCode(500, new { error = "Failed to update consent" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating cookie consent");
+            _logger.LogError(ex, "Unexpected error in UpdateConsent operation");
             return StatusCode(500, new { error = "Failed to update consent" });
         }
     }
@@ -150,9 +166,14 @@ public class CookieConsentController : ControllerBase
                 created_at = policy.CreatedAt
             });
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while retrieving cookie policy");
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving cookie policy");
+            _logger.LogError(ex, "Unexpected error in GetActivePolicy operation");
             return StatusCode(500, new { error = "Failed to retrieve cookie policy" });
         }
     }
@@ -193,9 +214,19 @@ public class CookieConsentController : ControllerBase
                 created_at = policy.CreatedAt
             });
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while creating cookie policy version");
+            return StatusCode(500, new { error = "Failed to create cookie policy" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while creating cookie policy version");
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating cookie policy version");
+            _logger.LogError(ex, "Unexpected error in CreatePolicyVersion operation");
             return StatusCode(500, new { error = "Failed to create cookie policy" });
         }
     }
@@ -219,9 +250,14 @@ public class CookieConsentController : ControllerBase
                 preferences_percentage = stats.PreferencesPercentage
             });
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while retrieving consent statistics");
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving consent stats");
+            _logger.LogError(ex, "Unexpected error in GetConsentStats operation");
             return StatusCode(500, new { error = "Failed to retrieve consent stats" });
         }
     }

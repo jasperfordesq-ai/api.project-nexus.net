@@ -650,8 +650,9 @@ public class EventsController : ControllerBase
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "RSVP transaction failed for event {EventId}, rolling back", id);
             await transaction.RollbackAsync();
             throw;
         }

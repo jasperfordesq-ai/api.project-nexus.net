@@ -19,10 +19,12 @@ namespace Nexus.Api.Controllers;
 public class HealthController : ControllerBase
 {
     private readonly NexusDbContext _db;
+    private readonly ILogger<HealthController> _logger;
 
-    public HealthController(NexusDbContext db)
+    public HealthController(NexusDbContext db, ILogger<HealthController> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     /// <summary>
@@ -69,8 +71,9 @@ public class HealthController : ControllerBase
                 timestamp = DateTime.UtcNow
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Database health check failed");
             return StatusCode(503, new
             {
                 status = "unhealthy",

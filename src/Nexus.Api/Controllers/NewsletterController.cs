@@ -6,6 +6,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
@@ -59,9 +60,19 @@ public class NewsletterController : ControllerBase
                 subscribed_at = subscription.SubscribedAt
             });
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while subscribing email {Email}", request.Email);
+            return StatusCode(500, new { error = "Failed to subscribe" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while subscribing email {Email}", request.Email);
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error subscribing email {Email}", request.Email);
+            _logger.LogError(ex, "Unexpected error in Subscribe operation for email {Email}", request.Email);
             return StatusCode(500, new { error = "Failed to subscribe" });
         }
     }
@@ -90,9 +101,19 @@ public class NewsletterController : ControllerBase
 
             return Ok(new { message = "Successfully unsubscribed from newsletter" });
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while unsubscribing email {Email}", request.Email);
+            return StatusCode(500, new { error = "Failed to unsubscribe" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while unsubscribing email {Email}", request.Email);
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error unsubscribing email {Email}", request.Email);
+            _logger.LogError(ex, "Unexpected error in Unsubscribe operation for email {Email}", request.Email);
             return StatusCode(500, new { error = "Failed to unsubscribe" });
         }
     }
@@ -175,9 +196,19 @@ public class NewsletterController : ControllerBase
 
             return CreatedAtAction(nameof(GetNewsletter), new { id = newsletter.Id }, MapNewsletter(newsletter));
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while creating newsletter");
+            return StatusCode(500, new { error = "Failed to create newsletter" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while creating newsletter");
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating newsletter");
+            _logger.LogError(ex, "Unexpected error in CreateNewsletter operation");
             return StatusCode(500, new { error = "Failed to create newsletter" });
         }
     }
@@ -205,13 +236,18 @@ public class NewsletterController : ControllerBase
 
             return Ok(MapNewsletter(newsletter));
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while updating newsletter {Id}", id);
+            return StatusCode(500, new { error = "Failed to update newsletter" });
+        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating newsletter {Id}", id);
+            _logger.LogError(ex, "Unexpected error in UpdateNewsletter operation for newsletter {Id}", id);
             return StatusCode(500, new { error = "Failed to update newsletter" });
         }
     }
@@ -237,13 +273,18 @@ public class NewsletterController : ControllerBase
                 newsletter = MapNewsletter(newsletter)
             });
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while sending newsletter {Id}", id);
+            return StatusCode(500, new { error = "Failed to send newsletter" });
+        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error sending newsletter {Id}", id);
+            _logger.LogError(ex, "Unexpected error in SendNewsletter operation for newsletter {Id}", id);
             return StatusCode(500, new { error = "Failed to send newsletter" });
         }
     }
@@ -269,13 +310,18 @@ public class NewsletterController : ControllerBase
                 newsletter = MapNewsletter(newsletter)
             });
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while cancelling newsletter {Id}", id);
+            return StatusCode(500, new { error = "Failed to cancel newsletter" });
+        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error cancelling newsletter {Id}", id);
+            _logger.LogError(ex, "Unexpected error in CancelNewsletter operation for newsletter {Id}", id);
             return StatusCode(500, new { error = "Failed to cancel newsletter" });
         }
     }
