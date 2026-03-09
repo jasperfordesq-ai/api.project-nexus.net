@@ -1201,7 +1201,8 @@ class ApiClient {
   }
 
   async getPostComments(postId: number): Promise<Comment[]> {
-    return this.request<Comment[]>(`/api/feed/${postId}/comments`);
+    const res = await this.request<{ data: Comment[] }>(`/api/feed/${postId}/comments`);
+    return res?.data ?? [];
   }
 
   async addComment(postId: number, content: string): Promise<Comment> {
