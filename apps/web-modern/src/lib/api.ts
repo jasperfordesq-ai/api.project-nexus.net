@@ -1221,7 +1221,8 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
-    return normalizePost(raw);
+    // Backend returns { success, message, post: {...} }
+    return normalizePost(raw?.post ?? raw);
   }
 
   async updatePost(
