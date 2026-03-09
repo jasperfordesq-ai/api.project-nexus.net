@@ -1136,7 +1136,7 @@ class ApiClient {
     eventId: number
   ): Promise<PaginatedResponse<EventAttendee>> {
     return this.request<PaginatedResponse<EventAttendee>>(
-      `/api/events/${eventId}/attendees`
+      `/api/events/${eventId}/rsvps`
     );
   }
 
@@ -3073,7 +3073,7 @@ class ApiClient {
   }
 
   async getWalletAlerts(): Promise<any[]> {
-    return this.request<any[]>("/api/wallet/alerts");
+    return this.request<any[]>("/api/wallet/features/alerts");
   }
 
   async updateWalletAlert(alertId: number, data: any): Promise<void> {
@@ -3084,7 +3084,7 @@ class ApiClient {
     const token = getToken();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    const response = await fetch(`${this.baseUrl}/api/wallet/export?format=${format}`, { headers });
+    const response = await fetch(`${this.baseUrl}/api/wallet/features/export?format=${format}`, { headers });
     return response.blob();
   }
 

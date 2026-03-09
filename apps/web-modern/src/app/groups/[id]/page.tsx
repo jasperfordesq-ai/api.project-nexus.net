@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -72,7 +77,6 @@ function GroupDetailContent() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [discussions, setDiscussions] = useState<any[]>([]);
   const [newDiscussionTitle, setNewDiscussionTitle] = useState("");
@@ -182,11 +186,6 @@ function GroupDetailContent() {
       setIsCreatingDiscussion(false);
     }
   };
-
-    useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleJoin = async () => {
     setIsJoining(true);
     try {
@@ -296,7 +295,7 @@ function GroupDetailContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
@@ -693,7 +692,11 @@ function GroupDetailContent() {
                         </Button>
                       </Link>
                     )}
-             
+                  </div>
+                )}
+              </motion.div>
+            )}
+
             {(activeTab as string) === "announcements" && (
               <div className="space-y-4">
                 {announcements.length > 0 ? (
@@ -779,10 +782,6 @@ function GroupDetailContent() {
                   </div>
                 )}
               </div>
-            )}
-     </div>
-                )}
-              </motion.div>
             )}
           </motion.div>
         ) : (

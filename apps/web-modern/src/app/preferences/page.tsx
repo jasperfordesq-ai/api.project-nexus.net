@@ -43,7 +43,7 @@ function PreferencesContent() {
   const [prefs, setPrefs] = useState<Preferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
 
   const fetchPrefs = useCallback(async () => {
     setIsLoading(true);
@@ -58,17 +58,18 @@ function PreferencesContent() {
   }, []);
 
   useEffect(() => { fetchPrefs(); }, [fetchPrefs]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleSave = async () => {
     if (!prefs) return;
     setIsSaving(true);
+    setSaveStatus("idle");
     try {
       await api.updateUserPreferences(prefs);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
       logger.error("Failed to save preferences:", error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     } finally {
       setIsSaving(false);
     }
@@ -80,7 +81,7 @@ function PreferencesContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -90,14 +91,16 @@ function PreferencesContent() {
             </h1>
             <p className="text-white/50 mt-1">Customise your experience</p>
           </div>
-          <Button
-            className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
-            startContent={<Save className="w-4 h-4" />}
-            onPress={handleSave}
-            isLoading={isSaving}
-          >
-            Save
-          </Button>
+          {!isLoading && prefs && (
+            <Button
+              className={saveStatus === "saved" ? "bg-emerald-500/20 text-emerald-400" : saveStatus === "error" ? "bg-red-500/20 text-red-400" : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white"}
+              startContent={<Save className="w-4 h-4" />}
+              onPress={handleSave}
+              isLoading={isSaving}
+            >
+              {saveStatus === "saved" ? "Saved!" : saveStatus === "error" ? "Failed" : "Save"}
+            </Button>
+          )}
         </div>
 
         {isLoading || !prefs ? (

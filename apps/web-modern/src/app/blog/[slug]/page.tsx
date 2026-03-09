@@ -37,7 +37,6 @@ function BlogPostContent({ params }: { params: Promise<{ slug: string }> }) {
   const { user, logout } = useAuth();
   const [post, setPost] = useState<BlogPostDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchPost = useCallback(async () => {
     setIsLoading(true);
@@ -52,13 +51,9 @@ function BlogPostContent({ params }: { params: Promise<{ slug: string }> }) {
   }, [slug]);
 
   useEffect(() => { fetchPost(); }, [fetchPost]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link href="/blog" className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Blog

@@ -53,7 +53,6 @@ function InsuranceContent() {
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchCerts = () => {
@@ -65,10 +64,6 @@ function InsuranceContent() {
   };
 
   useEffect(() => { fetchCerts(); }, []);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -97,7 +92,7 @@ function InsuranceContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>

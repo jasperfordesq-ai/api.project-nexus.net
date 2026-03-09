@@ -64,7 +64,6 @@ function ReviewsContent() {
   } | null>(null);
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [activeTab, setActiveTab] = useState("received");
 
   const fetchData = useCallback(async () => {
@@ -97,14 +96,9 @@ function ReviewsContent() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

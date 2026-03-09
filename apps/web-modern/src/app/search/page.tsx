@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -65,16 +70,16 @@ function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
+  const initialType = (searchParams.get("type") as SearchType) || "all";
 
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
-  const [searchType, setSearchType] = useState<SearchType>("all");
+  const [searchType, setSearchType] = useState<SearchType>(initialType);
   const [results, setResults] = useState<SearchResults | null>(null);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
@@ -96,6 +101,17 @@ function SearchContent() {
     }
   }, [debouncedQuery, showSuggestions]);
 
+  // Sync query to URL for shareability
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedQuery.length >= 2) {
+      params.set("q", debouncedQuery);
+      if (searchType !== "all") params.set("type", searchType);
+    }
+    const newUrl = params.toString() ? `?${params.toString()}` : "/search";
+    router.replace(newUrl, { scroll: false });
+  }, [debouncedQuery, searchType, router]);
+
   // Fetch search results when query or type changes
   useEffect(() => {
     if (debouncedQuery.length >= 2) {
@@ -104,11 +120,6 @@ function SearchContent() {
       setResults(null);
     }
   }, [debouncedQuery, searchType, currentPage]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -180,7 +191,7 @@ function SearchContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useState } from "react";
@@ -70,7 +75,7 @@ function NewGroupContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={0} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

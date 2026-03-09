@@ -113,7 +113,6 @@ function ExchangeDetailContent() {
 
   const [exchange, setExchange] = useState<Exchange | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Rating state
@@ -148,11 +147,6 @@ function ExchangeDetailContent() {
   useEffect(() => {
     fetchExchange();
   }, [fetchExchange]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleAction = async (action: string) => {
     setActionLoading(action);
     try {
@@ -286,7 +280,7 @@ function ExchangeDetailContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}

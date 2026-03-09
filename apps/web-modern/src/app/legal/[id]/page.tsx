@@ -36,7 +36,6 @@ function LegalDocDetailContent({ params }: { params: Promise<{ id: string }> }) 
   const { user, logout } = useAuth();
   const [doc, setDoc] = useState<LegalDocDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     setIsLoading(true);
@@ -45,10 +44,6 @@ function LegalDocDetailContent({ params }: { params: Promise<{ id: string }> }) 
       .catch((error) => logger.error("Failed to fetch document:", error))
       .finally(() => setIsLoading(false));
   }, [id]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleAccept = async () => {
     try {
       await api.acceptLegalDocument(Number(id));
@@ -60,7 +55,7 @@ function LegalDocDetailContent({ params }: { params: Promise<{ id: string }> }) 
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link href="/legal" className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Legal Documents

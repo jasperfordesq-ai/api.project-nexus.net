@@ -41,7 +41,6 @@ function MatchingContent() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isComputing, setIsComputing] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -56,10 +55,6 @@ function MatchingContent() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleCompute = async () => {
     setIsComputing(true);
     try {
@@ -83,7 +78,7 @@ function MatchingContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>

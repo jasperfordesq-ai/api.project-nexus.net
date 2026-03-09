@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -106,9 +111,9 @@ function MemberDetailContent() {
   } | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [activeTab, setActiveTab] = useState("about");
   const [sendingRequest, setSendingRequest] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<"idle" | "sent" | "error">("idle");
 
   // Review form state
   const [newRating, setNewRating] = useState(5);
@@ -147,17 +152,16 @@ function MemberDetailContent() {
   useEffect(() => {
     fetchMember();
   }, [fetchMember]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleSendConnectionRequest = async () => {
+    if (connectionStatus === "sent") return;
     setSendingRequest(true);
     try {
       await api.sendConnectionRequest(memberId);
+      setConnectionStatus("sent");
     } catch (error) {
       logger.error("Failed to send connection request:", error);
+      setConnectionStatus("error");
+      setTimeout(() => setConnectionStatus("idle"), 3000);
     } finally {
       setSendingRequest(false);
     }
@@ -231,7 +235,7 @@ function MemberDetailContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
@@ -274,7 +278,9 @@ function MemberDetailContent() {
                   <h1 className="text-3xl font-bold text-white mb-1">
                     {member.first_name} {member.last_name}
                   </h1>
-                  <p className="text-white/50 mb-4">{member.email}</p>
+                  {isOwnProfile && (
+                    <p className="text-white/50 mb-4">{member.email}</p>
+                  )}
 
                   {/* Stats Row */}
                   <div className="flex flex-wrap gap-4 justify-center sm:justify-start mb-4">
@@ -307,12 +313,13 @@ function MemberDetailContent() {
                 {!isOwnProfile && (
                   <div className="flex gap-2">
                     <Button
-                      className="bg-white/10 text-white hover:bg-white/20"
+                      className={connectionStatus === "sent" ? "bg-emerald-500/20 text-emerald-400" : connectionStatus === "error" ? "bg-red-500/20 text-red-400" : "bg-white/10 text-white hover:bg-white/20"}
                       startContent={<UserPlus className="w-4 h-4" />}
                       onPress={handleSendConnectionRequest}
                       isLoading={sendingRequest}
+                      isDisabled={connectionStatus === "sent"}
                     >
-                      Connect
+                      {connectionStatus === "sent" ? "Request Sent" : connectionStatus === "error" ? "Failed - Retry" : "Connect"}
                     </Button>
                     <Link href={`/messages?user=${member.id}`}>
                       <Button
@@ -369,10 +376,12 @@ function MemberDetailContent() {
                         </div>
                         <Progress
                           value={
-                            ((gamification.total_xp - gamification.xp_required_for_current_level) /
-                              (gamification.xp_required_for_next_level -
-                                gamification.xp_required_for_current_level)) *
-                            100
+                            gamification.xp_required_for_next_level > gamification.xp_required_for_current_level
+                              ? ((gamification.total_xp - gamification.xp_required_for_current_level) /
+                                  (gamification.xp_required_for_next_level -
+                                    gamification.xp_required_for_current_level)) *
+                                100
+                              : 100
                           }
                           className="h-2"
                           classNames={{

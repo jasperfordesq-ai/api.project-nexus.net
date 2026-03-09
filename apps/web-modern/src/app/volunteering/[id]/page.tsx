@@ -72,7 +72,6 @@ function VolunteeringDetailContent({
   const [isLoading, setIsLoading] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [volunteerHours, setVolunteerHours] = useState<any>(null);
 
   const fetchOpp = useCallback(async () => {
@@ -117,7 +116,6 @@ function VolunteeringDetailContent({
   };
 
     useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
     fetchVolunteerHours();
   }, [fetchVolunteerHours]);
 
@@ -136,7 +134,7 @@ function VolunteeringDetailContent({
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link
           href="/volunteering"

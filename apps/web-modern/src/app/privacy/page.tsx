@@ -79,7 +79,6 @@ function PrivacyContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
-  const [unreadCount, setUnreadCount] = useState(0);
   const [breachNotifications, setBreachNotifications] = useState<BreachNotification[]>([]);
   const [cookiePrefs, setCookiePrefs] = useState<CookiePreferences | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -105,10 +104,6 @@ function PrivacyContent() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleExport = async () => {
     setIsExporting(true);
     try {
@@ -175,7 +170,7 @@ function PrivacyContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">

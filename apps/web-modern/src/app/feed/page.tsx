@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -44,7 +49,6 @@ function FeedContent() {
   const [isPosting, setIsPosting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [activeTab, setActiveTab] = useState<"feed" | "trending" | "bookmarks">("feed");
   const [trendingPosts, setTrendingPosts] = useState<Post[]>([]);
@@ -115,11 +119,6 @@ function FeedContent() {
   }, [fetchPosts]);
 
   useEffect(() => { fetchTrending(); fetchBookmarks(); }, [fetchTrending, fetchBookmarks]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPostContent.trim()) return;
@@ -221,7 +220,7 @@ function FeedContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Feed Tabs */}
@@ -336,7 +335,7 @@ function FeedContent() {
               </div>
             ))}
           </div>
-        ) : posts.length > 0 ? (
+        ) : (activeTab === "trending" ? trendingPosts : activeTab === "bookmarks" ? bookmarkedPosts : posts).length > 0 ? (
           <>
             <motion.div
               variants={containerVariants}
@@ -344,7 +343,7 @@ function FeedContent() {
               animate="visible"
               className="space-y-6"
             >
-              {posts.map((post) => (
+              {(activeTab === "trending" ? trendingPosts : activeTab === "bookmarks" ? bookmarkedPosts : posts).map((post) => (
                 <MotionGlassCard
                   key={post.id}
                   variants={itemVariants}
@@ -420,7 +419,13 @@ function FeedContent() {
                       <span className="text-sm">{post.comment_count}</span>
                     </button>
 
-                    <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/feed/${post.id}`);
+                      }}
+                      className="flex items-center gap-2 text-white/50 hover:text-white transition-colors"
+                      title="Copy link"
+                    >
                       <Share2 className="w-5 h-5" />
                     </button>
                   </div>

@@ -77,12 +77,16 @@ function SecurityContent() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [error, setError] = useState("");
 
-  const { isOpen: isSetupOpen, onOpen: onSetupOpen, onClose: onSetupClose } = useDisclosure();
-  const { isOpen: isDisableOpen, onOpen: onDisableOpen, onClose: onDisableClose } = useDisclosure();
+  const { isOpen: isSetupOpen, onOpen: onSetupOpenRaw, onClose: onSetupCloseRaw } = useDisclosure();
+  const { isOpen: isDisableOpen, onOpen: onDisableOpenRaw, onClose: onDisableCloseRaw } = useDisclosure();
   const { isOpen: isBackupOpen, onOpen: onBackupOpen, onClose: onBackupClose } = useDisclosure();
+
+  const onSetupOpen = () => { setError(""); setVerifyCode(""); onSetupOpenRaw(); };
+  const onSetupClose = () => { setVerifyCode(""); onSetupCloseRaw(); };
+  const onDisableOpen = () => { setError(""); setDisableCode(""); onDisableOpenRaw(); };
+  const onDisableClose = () => { setDisableCode(""); onDisableCloseRaw(); };
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -111,11 +115,6 @@ function SecurityContent() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleSetup2FA = async () => {
     setActionLoading("setup");
     setError("");
@@ -198,7 +197,7 @@ function SecurityContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
@@ -46,7 +51,6 @@ function WalletSendContent() {
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,11 +70,6 @@ function WalletSendContent() {
     };
     fetchBalance();
   }, []);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res.count));
-  }, []);
-
   // Fetch prefilled recipient
   useEffect(() => {
     if (prefilledUserId) {
@@ -166,7 +165,7 @@ function WalletSendContent() {
   if (success) {
     return (
       <div className="min-h-screen">
-        <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+        <Navbar user={user} onLogout={logout} />
         <div className="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -213,7 +212,7 @@ function WalletSendContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}

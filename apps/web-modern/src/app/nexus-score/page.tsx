@@ -57,7 +57,6 @@ function NexusScoreContent() {
   }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -81,10 +80,6 @@ function NexusScoreContent() {
   }, [currentPage]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleRecalculate = async () => {
     setIsRecalculating(true);
     try {
@@ -107,7 +102,7 @@ function NexusScoreContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>

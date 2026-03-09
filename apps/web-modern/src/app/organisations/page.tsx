@@ -50,7 +50,6 @@ function OrganisationsContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchOrgs = useCallback(async () => {
     setIsLoading(true);
@@ -74,13 +73,9 @@ function OrganisationsContent() {
   useEffect(() => {
     fetchOrgs();
   }, [fetchOrgs]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>

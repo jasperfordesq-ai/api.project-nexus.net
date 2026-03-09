@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -40,7 +45,6 @@ function MembersContent() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [sendingRequest, setSendingRequest] = useState<number | null>(null);
 
   // Debounce search query
@@ -73,11 +77,6 @@ function MembersContent() {
   useEffect(() => {
     fetchMembers();
   }, [fetchMembers]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleSendConnectionRequest = async (memberId: number) => {
     setSendingRequest(memberId);
     try {
@@ -92,7 +91,7 @@ function MembersContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

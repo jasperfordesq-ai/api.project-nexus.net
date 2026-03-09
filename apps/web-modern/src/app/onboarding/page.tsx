@@ -63,7 +63,6 @@ function OnboardingContent() {
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -88,16 +87,11 @@ function OnboardingContent() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const isComplete = completionPercentage >= 100;
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

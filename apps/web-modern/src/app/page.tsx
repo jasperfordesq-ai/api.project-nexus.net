@@ -1,35 +1,25 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
 import { HeroSection } from "@/components/hero-section";
 import { DashboardGrid } from "@/components/dashboard-grid";
 import { Button, Divider } from "@heroui/react";
-import { getStoredUser, type User } from "@/lib/api";
+import { useAuth } from "@/contexts/auth-context";
 import { ChevronDown } from "lucide-react";
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
-  const [showDashboard, setShowDashboard] = useState(false);
-
-  useEffect(() => {
-    // Check if user is logged in
-    const storedUser = getStoredUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-  }, []);
-
-  const handleLogout = () => {
-    setUser(null);
-    // Clear storage would be handled by api.logout()
-  };
+  const { user, logout } = useAuth();
 
   return (
     <div className="min-h-screen">
       {/* Navigation */}
-      <Navbar user={user} unreadCount={user ? 7 : 0} onLogout={handleLogout} />
+      <Navbar user={user} onLogout={logout} />
 
       {/* Hero Section */}
       <HeroSection />
@@ -45,7 +35,6 @@ export default function Home() {
           variant="light"
           className="text-white/50 hover:text-white animate-bounce"
           onPress={() => {
-            setShowDashboard(true);
             document.getElementById("dashboard-preview")?.scrollIntoView({
               behavior: "smooth",
             });
@@ -140,33 +129,6 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-white/10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-gradient">NEXUS</span>
-              <span className="text-white/30">|</span>
-              <span className="text-white/50 text-sm">Time Banking Platform</span>
-            </div>
-            <div className="flex gap-6">
-              <a href="#" className="text-white/50 hover:text-white transition-colors text-sm">
-                Privacy
-              </a>
-              <a href="#" className="text-white/50 hover:text-white transition-colors text-sm">
-                Terms
-              </a>
-              <a href="#" className="text-white/50 hover:text-white transition-colors text-sm">
-                Contact
-              </a>
-            </div>
-            <p className="text-white/30 text-sm">
-              © 2026 NEXUS. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

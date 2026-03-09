@@ -67,7 +67,6 @@ function FilesContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [unreadCount, setUnreadCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [uploadCategory, setUploadCategory] = useState("documents");
@@ -85,10 +84,6 @@ function FilesContent() {
   }, []);
 
   useEffect(() => { fetchFiles(); }, [fetchFiles]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -120,7 +115,7 @@ function FilesContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>

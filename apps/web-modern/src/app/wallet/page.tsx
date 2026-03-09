@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -57,7 +62,6 @@ function WalletContent() {
   const [txFilter, setTxFilter] = useState<TransactionFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [walletAlerts, setWalletAlerts] = useState<any[]>([]);
 
   const fetchWalletData = useCallback(async () => {
@@ -112,7 +116,6 @@ function WalletContent() {
   }, [fetchWalletData]);
 
   useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
     fetchAlerts();
   }, [fetchAlerts]);
 
@@ -131,7 +134,7 @@ function WalletContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -188,11 +191,49 @@ function WalletContent() {
                       Send Credits
                     </Button>
                   </Link>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        className="bg-white/10 text-white hover:bg-white/20"
+                        startContent={<Download className="w-4 h-4" />}
+                      >
+                        Export
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu
+                      aria-label="Export options"
+                      onAction={(key) => handleExport(key as string)}
+                      classNames={{ base: "bg-black/90 border border-white/10" }}
+                    >
+                      <DropdownItem key="csv" className="text-white">Export as CSV</DropdownItem>
+                      <DropdownItem key="pdf" className="text-white">Export as PDF</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
                 </div>
               </div>
             )}
           </GlassCard>
         </motion.div>
+
+        {/* Wallet Alerts */}
+        {walletAlerts.length > 0 && (
+          <div className="mb-6 space-y-3">
+            {walletAlerts.map((alert, i) => (
+              <div
+                key={i}
+                className={`p-4 rounded-xl border ${
+                  alert.severity === "warning"
+                    ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                    : alert.severity === "error"
+                    ? "bg-red-500/10 border-red-500/20 text-red-400"
+                    : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
+                }`}
+              >
+                <p className="text-sm font-medium">{alert.message}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Transactions */}
         <motion.div

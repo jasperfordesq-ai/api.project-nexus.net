@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -55,7 +60,6 @@ function EventDetailContent() {
   const [event, setEvent] = useState<Event | null>(null);
   const [attendees, setAttendees] = useState<EventAttendee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRsvpLoading, setIsRsvpLoading] = useState(false);
   const [userRsvp, setUserRsvp] = useState<EventAttendee | null>(null);
@@ -94,11 +98,6 @@ function EventDetailContent() {
   useEffect(() => {
     fetchEvent();
   }, [fetchEvent]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleSetReminder = async (minutes: number) => {
     try {
       await api.setEventReminder(eventId, { minutes_before: minutes });
@@ -206,7 +205,7 @@ function EventDetailContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}

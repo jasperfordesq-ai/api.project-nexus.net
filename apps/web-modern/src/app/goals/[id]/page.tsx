@@ -58,7 +58,6 @@ function GoalDetailContent({ params }: { params: Promise<{ id: string }> }) {
   const [isLoading, setIsLoading] = useState(true);
   const [amount, setAmount] = useState("");
   const [isContributing, setIsContributing] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchGoal = useCallback(async () => {
     setIsLoading(true);
@@ -73,10 +72,6 @@ function GoalDetailContent({ params }: { params: Promise<{ id: string }> }) {
   }, [id]);
 
   useEffect(() => { fetchGoal(); }, [fetchGoal]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleContribute = async () => {
     if (!amount || Number(amount) <= 0) return;
     setIsContributing(true);
@@ -93,7 +88,7 @@ function GoalDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link href="/goals" className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Goals

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -40,24 +45,26 @@ function MessagesContent() {
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedConvoIdRef = useRef<number | null>(null);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedConvoIdRef.current = selectedConversation?.id ?? null;
+  }, [selectedConversation?.id]);
 
   // Handle incoming real-time messages
   const handleNewMessage = useCallback(
     (message: MessageType, conversationId: number) => {
+      const activeConvoId = selectedConvoIdRef.current;
+
       // Update selected conversation if it's the active one
-      if (selectedConversation?.id === conversationId) {
-        setSelectedConversation((prev) =>
-          prev
-            ? {
-                ...prev,
-                messages: [...prev.messages, message],
-              }
-            : null
-        );
-      }
+      setSelectedConversation((prev) =>
+        prev && prev.id === conversationId
+          ? { ...prev, messages: [...prev.messages, message] }
+          : prev
+      );
 
       // Update conversation list
       setConversations((prev) =>
@@ -67,7 +74,7 @@ function MessagesContent() {
               ...convo,
               last_message: message,
               unread_count:
-                selectedConversation?.id === conversationId
+                activeConvoId === conversationId
                   ? 0
                   : convo.unread_count + 1,
             };
@@ -75,32 +82,25 @@ function MessagesContent() {
           return convo;
         })
       );
-
-      // Update unread count if not viewing this conversation
-      if (selectedConversation?.id !== conversationId) {
-        setUnreadCount((prev) => prev + 1);
-      }
     },
-    [selectedConversation?.id]
+    []
   );
 
   // Handle message read status updates
   const handleMessageRead = useCallback(
     (conversationId: number, messageIds: number[]) => {
-      if (selectedConversation?.id === conversationId) {
-        setSelectedConversation((prev) =>
-          prev
-            ? {
-                ...prev,
-                messages: prev.messages.map((msg) =>
-                  messageIds.includes(msg.id) ? { ...msg, read: true } : msg
-                ),
-              }
-            : null
-        );
-      }
+      setSelectedConversation((prev) =>
+        prev && prev.id === conversationId
+          ? {
+              ...prev,
+              messages: prev.messages.map((msg) =>
+                messageIds.includes(msg.id) ? { ...msg, read: true } : msg
+              ),
+            }
+          : prev
+      );
     },
-    [selectedConversation?.id]
+    []
   );
 
   // Real-time messaging hook
@@ -145,8 +145,6 @@ function MessagesContent() {
           convos = Array.isArray(response.data) ? response.data : [];
         }
         setConversations(convos);
-        const unread = await api.getUnreadMessageCount();
-        setUnreadCount(unread.count);
       } catch (error) {
         logger.error("Failed to fetch conversations:", error);
         setConversations([]);
@@ -170,7 +168,6 @@ function MessagesContent() {
         setConversations((prev) =>
           prev.map((c) => (c.id === convo.id ? { ...c, unread_count: 0 } : c))
         );
-        setUnreadCount((prev) => Math.max(0, prev - convo.unread_count));
       }
     } catch (error) {
       logger.error("Failed to fetch conversation:", error);
@@ -261,7 +258,7 @@ function MessagesContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div

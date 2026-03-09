@@ -73,7 +73,6 @@ function SkillsContent() {
   const [topEndorsed, setTopEndorsed] = useState<TopEndorsed[]>([]);
   const [selectedSkill, setSelectedSkill] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -95,10 +94,6 @@ function SkillsContent() {
   }, [user]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleAddSkill = async () => {
     if (!selectedSkill) return;
     try {
@@ -125,7 +120,7 @@ function SkillsContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">

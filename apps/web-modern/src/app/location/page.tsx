@@ -59,7 +59,6 @@ function LocationContent() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [radius, setRadius] = useState(25);
   const [hasLocation, setHasLocation] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchNearby = useCallback(async () => {
     setIsLoading(true);
@@ -87,11 +86,6 @@ function LocationContent() {
       })
       .catch(() => setIsLoading(false));
   }, [fetchNearby]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleUpdateLocation = async () => {
     if (!navigator.geolocation) return;
     setIsUpdating(true);
@@ -114,7 +108,7 @@ function LocationContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>

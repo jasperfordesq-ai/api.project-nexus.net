@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -62,7 +67,6 @@ function ProfileContent() {
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -74,17 +78,15 @@ function ProfileContent() {
     const fetchProfileData = async () => {
       setIsLoading(true);
       try {
-        const [gamRes, badgesRes, msgRes] = await Promise.all([
+        const [gamRes, badgesRes] = await Promise.all([
           api.getGamificationProfile(),
           api.getAllBadges(),
-          api.getUnreadMessageCount(),
         ]);
 
         setProfile(gamRes?.profile || null);
         setRecentXp(gamRes?.recent_xp || []);
         setBadges(badgesRes?.data || []);
-        setBadgeSummary(badgesRes?.summary || null);
-        setUnreadCount(msgRes?.count || 0);
+        setBadgeSummary(badgesRes?.summary || { total: 0, earned: 0, progress_percent: 0 });
       } catch (error) {
         logger.error("Failed to fetch profile data:", error);
         setRecentXp([]);
@@ -158,9 +160,11 @@ function ProfileContent() {
   };
 
   const xpProgress = profile
-    ? ((profile.total_xp - profile.xp_required_for_current_level) /
-        (profile.xp_required_for_next_level - profile.xp_required_for_current_level)) *
-      100
+    ? profile.xp_required_for_next_level > profile.xp_required_for_current_level
+      ? ((profile.total_xp - profile.xp_required_for_current_level) /
+          (profile.xp_required_for_next_level - profile.xp_required_for_current_level)) *
+        100
+      : 100
     : 0;
 
   const containerVariants = {
@@ -178,7 +182,7 @@ function ProfileContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Profile Header */}

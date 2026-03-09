@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -40,8 +45,7 @@ export default function SettingsPage() {
 }
 
 function SettingsContent() {
-  const { user, logout } = useAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { user, logout, refreshUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -54,11 +58,6 @@ function SettingsContent() {
   const [pushNotifications, setPushNotifications] = useState(true);
   const [messageNotifications, setMessageNotifications] = useState(true);
   const [connectionNotifications, setConnectionNotifications] = useState(true);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res.count));
-  }, []);
-
   useEffect(() => {
     if (user) {
       setFirstName(user.first_name);
@@ -74,6 +73,7 @@ function SettingsContent() {
         first_name: firstName,
         last_name: lastName,
       });
+      await refreshUser();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
@@ -98,7 +98,7 @@ function SettingsContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}

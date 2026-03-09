@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -53,7 +58,6 @@ function ListingsContent() {
   const [statusFilter, setStatusFilter] = useState<ListingStatus>("active");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
@@ -129,11 +133,6 @@ function ListingsContent() {
   }, [fetchListings]);
 
   useEffect(() => { fetchFavorites(); fetchFeatured(); }, [fetchFavorites, fetchFeatured]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   // Filter listings by search query (client-side)
   const baseListings = showFavorites
     ? (listings || []).filter((l) => favoriteIds.has(l.id))
@@ -146,7 +145,7 @@ function ListingsContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

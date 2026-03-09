@@ -71,7 +71,6 @@ function OrganisationDetailContent({
   const [org, setOrg] = useState<OrgDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [orgWallet, setOrgWallet] = useState<any>(null);
   const [orgTransactions, setOrgTransactions] = useState<any[]>([]);
 
@@ -105,11 +104,6 @@ function OrganisationDetailContent({
       logger.error("Failed to fetch org wallet:", error);
     }
   }, []);
-
-    useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleJoin = async () => {
     try {
       await api.joinOrganisation(Number(id));
@@ -132,7 +126,7 @@ function OrganisationDetailContent({
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link
           href="/organisations"

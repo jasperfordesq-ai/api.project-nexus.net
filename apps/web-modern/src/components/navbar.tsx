@@ -99,9 +99,37 @@ const createItems = [
   { label: "New Group", href: "/groups/new", icon: UsersRound },
 ];
 
-export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
+export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [internalUnreadCount, setInternalUnreadCount] = useState(0);
   const pathname = usePathname();
+
+  // Self-fetch unread count if not provided externally
+  useEffect(() => {
+    if (externalUnreadCount !== undefined) return;
+    if (!user) return;
+    let cancelled = false;
+    import("@/lib/api").then(({ api }) => {
+      api.getUnreadMessageCount()
+        .then((res) => { if (!cancelled) setInternalUnreadCount(res?.count || 0); })
+        .catch(() => {});
+    });
+    return () => { cancelled = true; };
+  }, [user, externalUnreadCount]);
+
+  const unreadCount = externalUnreadCount ?? internalUnreadCount;
+
+  // Check if a route is active
+  const isActive = useCallback(
+    (href: string) => pathname === href || pathname.startsWith(href + "/"),
+    [pathname]
+  );
+
+  // Check if any item in a dropdown is active
+  const isDropdownActive = useCallback(
+    (items: { href: string }[]) => items.some((item) => isActive(item.href)),
+    [isActive]
+  );
 
   // Close mobile menu when navigating
   const closeMenu = useCallback(() => {
@@ -145,10 +173,12 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
       {/* Desktop Navigation */}
       <NavbarContent className="hidden sm:flex gap-4" justify="center">
         {/* Dashboard - Direct Link */}
-        <NavbarItem>
+        <NavbarItem isActive={isActive("/dashboard")}>
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+            className={`flex items-center gap-2 transition-colors ${
+              isActive("/dashboard") ? "text-white font-medium" : "text-white/70 hover:text-white"
+            }`}
           >
             <LayoutDashboard className="w-4 h-4" />
             <span>Dashboard</span>
@@ -157,11 +187,13 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
 
         {/* Community Dropdown */}
         <Dropdown>
-          <NavbarItem>
+          <NavbarItem isActive={isDropdownActive(communityItems)}>
             <DropdownTrigger>
               <Button
                 variant="light"
-                className="text-white/70 hover:text-white transition-colors p-0 min-w-0 h-auto bg-transparent data-[hover=true]:bg-transparent"
+                className={`transition-colors p-0 min-w-0 h-auto bg-transparent data-[hover=true]:bg-transparent ${
+                  isDropdownActive(communityItems) ? "text-white font-medium" : "text-white/70 hover:text-white"
+                }`}
                 endContent={<ChevronDown className="w-3 h-3" />}
               >
                 <Users className="w-4 h-4 mr-2" />
@@ -193,11 +225,13 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
 
         {/* Explore Dropdown */}
         <Dropdown>
-          <NavbarItem>
+          <NavbarItem isActive={isDropdownActive(exploreItems)}>
             <DropdownTrigger>
               <Button
                 variant="light"
-                className="text-white/70 hover:text-white transition-colors p-0 min-w-0 h-auto bg-transparent data-[hover=true]:bg-transparent"
+                className={`transition-colors p-0 min-w-0 h-auto bg-transparent data-[hover=true]:bg-transparent ${
+                  isDropdownActive(exploreItems) ? "text-white font-medium" : "text-white/70 hover:text-white"
+                }`}
                 endContent={<ChevronDown className="w-3 h-3" />}
               >
                 <ListTodo className="w-4 h-4 mr-2" />
@@ -228,10 +262,12 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
         </Dropdown>
 
         {/* Messages - Direct Link with Badge */}
-        <NavbarItem>
+        <NavbarItem isActive={isActive("/messages")}>
           <Link
             href="/messages"
-            className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+            className={`flex items-center gap-2 transition-colors ${
+              isActive("/messages") ? "text-white font-medium" : "text-white/70 hover:text-white"
+            }`}
           >
             <MessageSquare className="w-4 h-4" />
             <span>Messages</span>
@@ -244,10 +280,12 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
         </NavbarItem>
 
         {/* Connections - Direct Link */}
-        <NavbarItem>
+        <NavbarItem isActive={isActive("/connections")}>
           <Link
             href="/connections"
-            className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+            className={`flex items-center gap-2 transition-colors ${
+              isActive("/connections") ? "text-white font-medium" : "text-white/70 hover:text-white"
+            }`}
           >
             <UserPlus className="w-4 h-4" />
             <span>Connections</span>
@@ -255,10 +293,12 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
         </NavbarItem>
 
         {/* Wallet - Direct Link */}
-        <NavbarItem>
+        <NavbarItem isActive={isActive("/wallet")}>
           <Link
             href="/wallet"
-            className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+            className={`flex items-center gap-2 transition-colors ${
+              isActive("/wallet") ? "text-white font-medium" : "text-white/70 hover:text-white"
+            }`}
           >
             <Wallet className="w-4 h-4" />
             <span>Wallet</span>
@@ -338,7 +378,7 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
             </NavbarItem>
 
             {/* Admin Link (only for admins) */}
-            {user.role === "Admin" && (
+            {(user.role === "admin" || user.role === "super_admin") && (
               <NavbarItem className="hidden sm:flex">
                 <Link href="/admin">
                   <Button
@@ -481,7 +521,9 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
           >
             <Link
               href="/dashboard"
-              className="flex items-center gap-3 w-full py-3 text-lg text-white/80 hover:text-white transition-colors"
+              className={`flex items-center gap-3 w-full py-3 text-lg transition-colors ${
+                isActive("/dashboard") ? "text-white font-medium" : "text-white/80 hover:text-white"
+              }`}
               onClick={closeMenu}
             >
               <LayoutDashboard className="w-5 h-5" />
@@ -521,10 +563,12 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
             >
               <Link
                 href={item.href}
-                className="flex items-center gap-3 w-full py-3 text-lg text-white/80 hover:text-white transition-colors"
+                className={`flex items-center gap-3 w-full py-3 text-lg transition-colors ${
+                  isActive(item.href) ? "text-white font-medium" : "text-white/80 hover:text-white"
+                }`}
                 onClick={closeMenu}
               >
-                <item.icon className="w-5 h-5 text-indigo-400" />
+                <item.icon className={`w-5 h-5 ${isActive(item.href) ? "text-indigo-300" : "text-indigo-400"}`} />
                 <span>{item.label}</span>
               </Link>
             </motion.div>
@@ -544,10 +588,12 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
             >
               <Link
                 href={item.href}
-                className="flex items-center gap-3 w-full py-3 text-lg text-white/80 hover:text-white transition-colors"
+                className={`flex items-center gap-3 w-full py-3 text-lg transition-colors ${
+                  isActive(item.href) ? "text-white font-medium" : "text-white/80 hover:text-white"
+                }`}
                 onClick={closeMenu}
               >
-                <item.icon className="w-5 h-5 text-purple-400" />
+                <item.icon className={`w-5 h-5 ${isActive(item.href) ? "text-purple-300" : "text-purple-400"}`} />
                 <span>{item.label}</span>
               </Link>
             </motion.div>
@@ -566,7 +612,9 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
           >
             <Link
               href="/messages"
-              className="flex items-center gap-3 w-full py-3 text-lg text-white/80 hover:text-white transition-colors"
+              className={`flex items-center gap-3 w-full py-3 text-lg transition-colors ${
+                isActive("/messages") ? "text-white font-medium" : "text-white/80 hover:text-white"
+              }`}
               onClick={closeMenu}
             >
               <MessageSquare className="w-5 h-5" />
@@ -587,7 +635,9 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
           >
             <Link
               href="/connections"
-              className="flex items-center gap-3 w-full py-3 text-lg text-white/80 hover:text-white transition-colors"
+              className={`flex items-center gap-3 w-full py-3 text-lg transition-colors ${
+                isActive("/connections") ? "text-white font-medium" : "text-white/80 hover:text-white"
+              }`}
               onClick={closeMenu}
             >
               <UserPlus className="w-5 h-5" />
@@ -603,7 +653,9 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
           >
             <Link
               href="/notifications"
-              className="flex items-center gap-3 w-full py-3 text-lg text-white/80 hover:text-white transition-colors"
+              className={`flex items-center gap-3 w-full py-3 text-lg transition-colors ${
+                isActive("/notifications") ? "text-white font-medium" : "text-white/80 hover:text-white"
+              }`}
               onClick={closeMenu}
             >
               <Bell className="w-5 h-5" />
@@ -629,7 +681,9 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
           >
             <Link
               href="/wallet"
-              className="flex items-center gap-3 w-full py-3 text-lg text-white/80 hover:text-white transition-colors"
+              className={`flex items-center gap-3 w-full py-3 text-lg transition-colors ${
+                isActive("/wallet") ? "text-white font-medium" : "text-white/80 hover:text-white"
+              }`}
               onClick={closeMenu}
             >
               <Wallet className="w-5 h-5" />
@@ -675,7 +729,7 @@ export function Navbar({ user, unreadCount = 0, onLogout }: NavbarProps) {
         )}
 
         {/* Admin Link (mobile) */}
-        {user?.role === "Admin" && (
+        {(user?.role === "admin" || user?.role === "super_admin") && (
           <NavbarMenuItem className="mt-4 border-t border-white/10 pt-4">
             <motion.div
               initial={{ opacity: 0, x: -20 }}

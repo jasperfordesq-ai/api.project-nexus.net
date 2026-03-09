@@ -52,7 +52,6 @@ function KBContent() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -79,13 +78,9 @@ function KBContent() {
   }, [currentPage, selectedCategory, searchQuery]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">

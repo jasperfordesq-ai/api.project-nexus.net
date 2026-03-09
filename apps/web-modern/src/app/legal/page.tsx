@@ -40,7 +40,6 @@ function LegalContent() {
   const { user, logout } = useAuth();
   const [docs, setDocs] = useState<LegalDoc[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchDocs = useCallback(async () => {
     setIsLoading(true);
@@ -55,10 +54,6 @@ function LegalContent() {
   }, []);
 
   useEffect(() => { fetchDocs(); }, [fetchDocs]);
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const handleAccept = async (id: number) => {
     try {
       await api.acceptLegalDocument(id);
@@ -70,7 +65,7 @@ function LegalContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">

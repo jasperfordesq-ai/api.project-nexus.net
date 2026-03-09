@@ -71,7 +71,6 @@ function ExchangesContent() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchExchanges = useCallback(async () => {
     setIsLoading(true);
@@ -97,11 +96,6 @@ function ExchangesContent() {
   useEffect(() => {
     fetchExchanges();
   }, [fetchExchanges]);
-
-  useEffect(() => {
-    api.getUnreadMessageCount().then((res) => setUnreadCount(res?.count || 0));
-  }, []);
-
   const getOtherUser = (exchange: Exchange) => {
     if (exchange.requester_id === user?.id) return exchange.provider;
     return exchange.requester;
@@ -113,7 +107,7 @@ function ExchangesContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

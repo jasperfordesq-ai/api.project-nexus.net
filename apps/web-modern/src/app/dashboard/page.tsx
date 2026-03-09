@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -55,8 +60,8 @@ function DashboardContent() {
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [gamification, setGamification] = useState<GamificationProfile | null>(null);
+  const [messageCount, setMessageCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -66,14 +71,14 @@ function DashboardContent() {
           api.getBalance(),
           api.getTransactions({ limit: 5 }),
           api.getListings({ status: "active", limit: 4 }),
-          api.getUnreadMessageCount(),
+          api.getUnreadMessageCount().catch(() => ({ count: 0 })),
           api.getGamificationProfile().catch(() => null),
         ]);
 
         setBalance(balanceRes);
         setTransactions(txRes?.data || []);
         setListings(listingsRes?.data || []);
-        setUnreadCount(msgRes?.count || 0);
+        setMessageCount(msgRes?.count || 0);
         if (gamRes?.profile) {
           setGamification(gamRes.profile);
         }
@@ -89,7 +94,7 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} unreadCount={unreadCount} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Header */}
@@ -225,7 +230,7 @@ function DashboardContent() {
               <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center mb-4">
                 <MessageSquare className="w-5 h-5 text-cyan-400" />
               </div>
-              <p className="text-2xl font-bold text-white">{unreadCount}</p>
+              <p className="text-2xl font-bold text-white">{messageCount}</p>
               <p className="text-sm text-white/50 mb-4">Unread Messages</p>
               <Link href="/messages" className="mt-auto">
                 <Button
