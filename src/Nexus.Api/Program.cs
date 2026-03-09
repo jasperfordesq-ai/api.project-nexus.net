@@ -557,8 +557,11 @@ if (allowedOrigins.Length > 0 && !app.Environment.IsProduction())
     var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    // Apply EF migrations on every startup (all environments)
-    await db.Database.MigrateAsync();
+    // Apply EF migrations on every startup (skip in Testing — tests use EnsureCreated)
+    if (!app.Environment.IsEnvironment("Testing"))
+    {
+        await db.Database.MigrateAsync();
+    }
 
     // WARNING: TEST DATA ONLY — never runs in Production.
     // Seeds fictitious tenants/users/listings with well-known dev passwords.
