@@ -8,6 +8,33 @@ import routerProvider, {
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { ConfigProvider, App as AntApp, theme } from "antd";
 import "@refinedev/antd/dist/reset.css";
+import { Component, type ReactNode, type ErrorInfo } from 'react';
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('App crash:', error, info); }
+  render() {
+    if (this.state.error) {
+      const err = this.state.error as Error;
+      return (
+        <div style={{ padding: 40, fontFamily: 'monospace', background: '#fff1f0', minHeight: '100vh' }}>
+          <h2 style={{ color: '#cf1322' }}>Admin panel failed to load</h2>
+          <p><strong>{err.name}:</strong> {err.message}</p>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, background: '#fff', padding: 16, border: '1px solid #ffa39e' }}>
+            {err.stack}
+          </pre>
+          <button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }}
+            style={{ marginTop: 16, padding: '8px 16px', cursor: 'pointer' }}>
+            Clear storage &amp; reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 
 import { authProvider } from "./providers/auth-provider";
 import { dataProvider } from "./providers/data-provider";
@@ -180,10 +207,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <ErrorBoundary><BrowserRouter>
       <ThemeProvider>
         <AppInner />
       </ThemeProvider>
-    </BrowserRouter>
+    </BrowserRouter></ErrorBoundary>
   );
 }
