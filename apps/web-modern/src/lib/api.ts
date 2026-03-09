@@ -970,7 +970,7 @@ class ApiClient {
   async sendConnectionRequest(recipientId: number): Promise<Connection> {
     return this.request<Connection>("/api/connections", {
       method: "POST",
-      body: JSON.stringify({ recipient_id: recipientId }),
+      body: JSON.stringify({ user_id: recipientId }),
     });
   }
 
