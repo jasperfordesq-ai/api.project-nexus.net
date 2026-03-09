@@ -49,7 +49,7 @@ function EditListingContent() {
     description: "",
     type: "offer" as "offer" | "request",
     time_credits: 1,
-    status: "active" as "active" | "draft",
+    status: "active" as string,
   });
 
   useEffect(() => {
