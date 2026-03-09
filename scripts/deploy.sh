@@ -273,7 +273,6 @@ if [ -n "$CF_TOKEN" ]; then
         "7ac1e69f5a1fdc7894236548adf7be1e"  # timebank.global
         "65eb5427905a35e7c6186977f8c5a370"  # nexuscivic.ie
         "ab50a7ee4c5f427b7bc436db26496c7d"  # project-nexus.net
-        "2a86de7c12258fb6343dc090b6581367"  # exchangemembers.com
         "e9009e5ca261271de5ea7de4aa3ede62"  # festivalflags.ie
     )
 
@@ -289,6 +288,10 @@ if [ -n "$CF_TOKEN" ]; then
 else
     echo "Cloudflare token not found, skipping cache purge"
 fi
+
+# --- Step 8: Docker image prune (prevents disk bloat over time) ---
+log "Step 8/8: Pruning dangling Docker images..."
+$SSH_CMD "sudo docker image prune -f 2>&1 | grep 'Total reclaimed' || echo 'Nothing to prune'"
 
 # Release deployment lock
 $SSH_CMD "rm -f $LOCK_FILE" 2>/dev/null || true
