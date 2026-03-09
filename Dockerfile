@@ -33,7 +33,7 @@ RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 # Stage 2: Runtime (lightweight ASP.NET runtime image)
 # EF migrations run via a separate SDK-based step when needed.
 # -----------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS runtime
 WORKDIR /app
 
 # Install curl for health checks and create non-root user
