@@ -49,7 +49,7 @@ function EditListingContent() {
     description: "",
     type: "offer" as "offer" | "request",
     time_credits: 1,
-    status: "active" as string,
+    status: "active" as "active" | "draft" | "completed" | "cancelled",
   });
 
   useEffect(() => {
@@ -61,7 +61,7 @@ function EditListingContent() {
           description: listing.description || "",
           type: listing.type || "offer",
           time_credits: listing.time_credits || 1,
-          status: listing.status || "active",
+          status: (listing.status as "active" | "draft" | "completed" | "cancelled") || "active",
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load listing");
