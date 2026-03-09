@@ -79,6 +79,12 @@ services:
       timeout: 10s
       start_period: 60s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
 
   # ---------------------------------------------------------------------------
   # Database (PostgreSQL 16)
@@ -137,8 +143,7 @@ services:
   llama-service:
     image: ollama/ollama:latest
     container_name: nexus-backend-llama
-    ports:
-      - "11434:11434"  # Ollama API port
+    # No port exposed — accessible only via Docker network (http://llama-service:11434)
     environment:
       - OLLAMA_HOST=0.0.0.0
     volumes:

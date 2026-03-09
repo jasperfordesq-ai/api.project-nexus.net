@@ -41,8 +41,8 @@ Credentials stored in local password manager. NOT in this file.
 | AI Service | https://ai.project-nexus.net | Live |
 | UK Frontend | https://uk.project-nexus.net | Live |
 | App Frontend | https://app.project-nexus.net | Live |
-| IE Frontend | https://ie.project-nexus.net | Not deployed |
-| Admin | https://admin.project-nexus.net | Not deployed |
+| IE Frontend | https://ie.project-nexus.net | Ready — deploy nginx-configs/ie.project-nexus.conf |
+| Admin | https://admin.project-nexus.net | Ready — deploy nginx-configs/admin.project-nexus.conf |
 
 ## Architecture
 
@@ -123,6 +123,8 @@ docker compose -f /opt/nexus-backend/compose.yml exec llama-service ollama pull 
 | ai.project-nexus.net | `/etc/nginx/conf.d/ai.project-nexus.conf` |
 | uk.project-nexus.net | `/etc/nginx/conf.d/uk.project-nexus.conf` |
 | app.project-nexus.net | `/etc/nginx/conf.d/app.project-nexus.conf` |
+| admin.project-nexus.net | `/etc/nginx/conf.d/admin.project-nexus.conf` (template: `nginx-configs/admin.project-nexus.conf`) |
+| ie.project-nexus.net | `/etc/nginx/conf.d/ie.project-nexus.conf` (template: `nginx-configs/ie.project-nexus.conf`) |
 
 ## Port Mappings
 
@@ -135,6 +137,8 @@ docker compose -f /opt/nexus-backend/compose.yml exec llama-service ollama pull 
 | Ollama | 11434 | 127.0.0.1:11434 |
 | UK Frontend | 3000 | 127.0.0.1:3001 |
 | Modern Frontend | 3000 | 127.0.0.1:3002 |
+| Admin Panel | 80 | 127.0.0.1:5191 |
+| GOV.IE Frontend | 80 | 127.0.0.1:5200 |
 
 ## Redeployment Commands
 
