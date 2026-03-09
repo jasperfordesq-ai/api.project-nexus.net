@@ -532,6 +532,56 @@ export interface ApiError {
   requested_amount?: number;
 }
 
+
+// ============================================================================
+// Response Normalization Helpers
+// The main-feed endpoint returns camelCase from C# entity properties;
+// trending/bookmarks use explicit snake_case. These helpers unify both.
+// ============================================================================
+
+function normalizeUser(raw: any): User | undefined {
+  if (!raw) return undefined;
+  return {
+    id: raw.id,
+    email: raw.email ?? '',
+    first_name: raw.firstName ?? raw.first_name ?? '',
+    last_name: raw.lastName ?? raw.last_name ?? '',
+    role: raw.role ?? 'member',
+    tenant_id: raw.tenantId ?? raw.tenant_id ?? 0,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    bio: raw.bio,
+    avatar_url: raw.avatarUrl ?? raw.avatar_url,
+  };
+}
+
+function normalizePost(raw: any): Post {
+  return {
+    id: raw.id,
+    author_id: raw.user?.id ?? raw.author?.id ?? raw.authorId ?? raw.author_id ?? 0,
+    content: raw.content ?? '',
+    image_url: raw.imageUrl ?? raw.image_url,
+    like_count: raw.likeCount ?? raw.like_count ?? 0,
+    comment_count: raw.commentCount ?? raw.comment_count ?? 0,
+    is_liked: raw.isLiked ?? raw.is_liked ?? false,
+    author: normalizeUser(raw.user ?? raw.author),
+    group_id: raw.groupId ?? raw.group_id ?? raw.group?.id,
+    group: raw.group,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  };
+}
+
+function normalizeComment(raw: any): Comment {
+  return {
+    id: raw.id,
+    post_id: raw.postId ?? raw.post_id ?? 0,
+    author_id: raw.user?.id ?? raw.author?.id ?? raw.authorId ?? raw.author_id ?? 0,
+    content: raw.content ?? '',
+    author: normalizeUser(raw.user ?? raw.author),
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+  };
+}
+
 // ============================================================================
 // Token Management
 // ============================================================================
@@ -1151,7 +1201,11 @@ class ApiClient {
     limit?: number;
   }): Promise<PaginatedResponse<Post>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<Post>>(`/api/feed${query}`);
+    const raw = await this.request<any>(`/api/feed${query}`);
+    return {
+      data: (raw?.data ?? []).map(normalizePost),
+      pagination: raw?.pagination,
+    };
   }
 
   async getPost(id: number): Promise<Post> {
@@ -1163,10 +1217,11 @@ class ApiClient {
     image_url?: string;
     group_id?: number;
   }): Promise<Post> {
-    return this.request<Post>("/api/feed", {
+    const raw = await this.request<any>("/api/feed", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizePost(raw);
   }
 
   async updatePost(
@@ -1201,15 +1256,16 @@ class ApiClient {
   }
 
   async getPostComments(postId: number): Promise<Comment[]> {
-    const res = await this.request<{ data: Comment[] }>(`/api/feed/${postId}/comments`);
-    return res?.data ?? [];
+    const res = await this.request<any>(`/api/feed/${postId}/comments`);
+    return (res?.data ?? []).map(normalizeComment);
   }
 
   async addComment(postId: number, content: string): Promise<Comment> {
-    return this.request<Comment>(`/api/feed/${postId}/comments`, {
+    const raw = await this.request<any>(`/api/feed/${postId}/comments`, {
       method: "POST",
       body: JSON.stringify({ content }),
     });
+    return normalizeComment(raw?.comment ?? raw);
   }
 
   async deleteComment(commentId: number): Promise<void> {
@@ -3136,16 +3192,24 @@ class ApiClient {
     return this.request<any>(`/api/feed/ranked?page=${page}`);
   }
 
-  async getTrendingPosts(): Promise<any[]> {
-    return this.request<any[]>("/api/feed/trending");
+  async getTrendingPosts(hours: number = 24, limit: number = 20): Promise<Post[]> {
+    const raw = await this.request<any>(`/api/feed/trending?hours=${hours}&limit=${limit}`);
+    return (raw?.data ?? []).map(normalizePost);
   }
 
   async bookmarkPost(postId: number): Promise<void> {
-    return this.request<void>(`/api/feed/posts/${postId}/bookmark`, { method: "POST" });
+    return this.request<void>(`/api/feed/${postId}/bookmark`, { method: "POST" });
   }
 
-  async getBookmarkedPosts(): Promise<any[]> {
-    return this.request<any[]>("/api/feed/bookmarks");
+  async unbookmarkPost(postId: number): Promise<void> {
+    return this.request<void>(`/api/feed/${postId}/bookmark`, { method: "DELETE" });
+  }
+
+  async getBookmarkedPosts(page: number = 1, limit: number = 20): Promise<Post[]> {
+    const raw = await this.request<any>(`/api/feed/bookmarks?page=${page}&limit=${limit}`);
+    return (raw?.data ?? [])
+      .filter((b: any) => b?.post)
+      .map((b: any) => normalizePost(b.post));
   }
 
   async sharePost(postId: number, data?: { message?: string }): Promise<void> {
