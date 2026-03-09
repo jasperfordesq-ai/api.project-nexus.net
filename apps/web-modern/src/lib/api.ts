@@ -3081,9 +3081,10 @@ class ApiClient {
   }
 
   async exportWalletHistory(format: string): Promise<Blob> {
-    const response = await fetch(`${this.baseUrl}/api/wallet/export?format=${format}`, {
-      headers: this.getHeaders(),
-    });
+    const token = getToken();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const response = await fetch(`${this.baseUrl}/api/wallet/export?format=${format}`, { headers });
     return response.blob();
   }
 
@@ -3117,7 +3118,7 @@ class ApiClient {
   }
 
   async uploadGroupFile(groupId: number, formData: FormData): Promise<any> {
-    const token = this.getToken();
+    const token = getToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const response = await fetch(`${this.baseUrl}/api/groups/${groupId}/files`, { method: "POST", headers, body: formData });
@@ -3190,7 +3191,7 @@ class ApiClient {
   }
 
   async requestVerification(type: string, data: FormData): Promise<any> {
-    const token = this.getToken();
+    const token = getToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const response = await fetch(`${this.baseUrl}/api/verification/request?type=${type}`, { method: "POST", headers, body: data });
@@ -3238,7 +3239,7 @@ class ApiClient {
   // ==========================================================================
 
   async uploadFile(formData: FormData, category?: string): Promise<any> {
-    const token = this.getToken();
+    const token = getToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const url = category ? `${this.baseUrl}/api/files/upload?category=${category}` : `${this.baseUrl}/api/files/upload`;
@@ -3383,10 +3384,6 @@ class ApiClient {
     return this.request<any[]>(`/api/jobs/${jobId}/applications`);
   }
 
-  async getMyJobApplications(): Promise<any[]> {
-    return this.request<any[]>("/api/jobs/my-applications");
-  }
-
   async withdrawJobApplication(jobId: number): Promise<void> {
     return this.request<void>(`/api/jobs/${jobId}/withdraw`, { method: "POST" });
   }
@@ -3400,14 +3397,11 @@ class ApiClient {
     return this.request<any>("/api/volunteering/hours");
   }
 
-  async logVolunteerHours(opportunityId: number, data: { hours: number; date: string; notes?: string }): Promise<any> {
-    return this.request<any>(`/api/volunteering/${opportunityId}/log-hours`, { method: "POST", body: JSON.stringify(data) });
-  }
-
   async getVolunteerCertificate(opportunityId: number): Promise<Blob> {
-    const response = await fetch(`${this.baseUrl}/api/volunteering/${opportunityId}/certificate`, {
-      headers: this.getHeaders(),
-    });
+    const token = getToken();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const response = await fetch(`${this.baseUrl}/api/volunteering/${opportunityId}/certificate`, { headers });
     return response.blob();
   }
 
