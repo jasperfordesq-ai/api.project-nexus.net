@@ -60,6 +60,11 @@ public class NexusDbContext : DbContext
     public DbSet<VolunteerShift> VolunteerShifts => Set<VolunteerShift>();
     public DbSet<VolunteerApplication> VolunteerApplications => Set<VolunteerApplication>();
     public DbSet<VolunteerCheckIn> VolunteerCheckIns => Set<VolunteerCheckIn>();
+    public DbSet<RecurringShiftPattern> RecurringShiftPatterns => Set<RecurringShiftPattern>();
+    public DbSet<ShiftGroupReservation> ShiftGroupReservations => Set<ShiftGroupReservation>();
+    public DbSet<ShiftGroupMember> ShiftGroupMembers => Set<ShiftGroupMember>();
+    public DbSet<ShiftSwapRequest> ShiftSwapRequests => Set<ShiftSwapRequest>();
+    public DbSet<ShiftWaitlistEntry> ShiftWaitlistEntries => Set<ShiftWaitlistEntry>();
 
     // Phase 19: Wallet expansion
     public DbSet<TransactionCategory> TransactionCategories => Set<TransactionCategory>();

@@ -59,12 +59,14 @@ public class VolunteerShift : ITenantEntity
     /// </summary>
     public ShiftStatus Status { get; set; } = ShiftStatus.Scheduled;
 
+    public int? RecurringPatternId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
     // Navigation properties
     public Tenant? Tenant { get; set; }
     public VolunteerOpportunity? Opportunity { get; set; }
+    public RecurringShiftPattern? RecurringPattern { get; set; }
     public ICollection<VolunteerCheckIn> CheckIns { get; set; } = new List<VolunteerCheckIn>();
 }
 

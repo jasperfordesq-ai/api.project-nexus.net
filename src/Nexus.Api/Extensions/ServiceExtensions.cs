@@ -36,6 +36,7 @@ public static class ServiceExtensions
         services.AddScoped<ExchangeService>();
         services.AddScoped<MatchingService>();
         services.AddScoped<VolunteerService>();
+        services.AddScoped<ShiftManagementService>();
         services.AddScoped<WalletFeatureService>();
         services.AddScoped<ListingFeatureService>();
         services.AddScoped<GroupFeatureService>();
