@@ -77,7 +77,7 @@ Only respond with the JSON, nothing else.";
             );
             return suggestions ?? new ListingSuggestions();
         }
-        catch (Exception ex)
+        catch (System.Text.Json.JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to parse AI listing suggestions");
             return new ListingSuggestions
@@ -180,7 +180,7 @@ Return up to {maxResults} matches, sorted by score. Only JSON, no markdown.";
             }
             return result;
         }
-        catch (Exception ex)
+        catch (System.Text.Json.JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to parse AI matches");
             return new List<MatchedUser>();
@@ -268,7 +268,7 @@ Return up to {maxResults} results sorted by relevance. Only JSON, no markdown.";
             }
             return results;
         }
-        catch (Exception ex)
+        catch (System.Text.Json.JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to parse AI search results");
             return new List<SearchResult>();
@@ -315,7 +315,7 @@ Only JSON, no markdown.";
             );
             return result ?? new ModerationResult { IsApproved = true, Severity = "none" };
         }
-        catch (Exception ex)
+        catch (System.Text.Json.JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to parse AI moderation result");
             return new ModerationResult { IsApproved = true, Severity = "unknown" };
@@ -376,7 +376,7 @@ Only JSON, no markdown.";
             );
             return suggestions ?? new ProfileSuggestions();
         }
-        catch (Exception ex)
+        catch (System.Text.Json.JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to parse AI profile suggestions");
             return new ProfileSuggestions();
@@ -441,7 +441,7 @@ Health score is 0-100. Only JSON, no markdown.";
             }
             return insights ?? new CommunityInsights();
         }
-        catch (Exception ex)
+        catch (System.Text.Json.JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to parse AI community insights");
             return new CommunityInsights
