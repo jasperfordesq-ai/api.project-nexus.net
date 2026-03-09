@@ -70,7 +70,17 @@ public class MeilisearchService
 
             return await response.Content.ReadFromJsonAsync<MeilisearchSearchResult>(JsonOptions);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Meilisearch search error for tenant {TenantId}, type {Type}", tenantId, indexType);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Meilisearch search error for tenant {TenantId}, type {Type}", tenantId, indexType);
+            return null;
+        }
+        catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Meilisearch search error for tenant {TenantId}, type {Type}", tenantId, indexType);
             return null;
@@ -113,7 +123,17 @@ public class MeilisearchService
             }
             return dict;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Meilisearch multi-search error for tenant {TenantId}", tenantId);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Meilisearch multi-search error for tenant {TenantId}", tenantId);
+            return null;
+        }
+        catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Meilisearch multi-search error for tenant {TenantId}", tenantId);
             return null;
@@ -132,7 +152,11 @@ public class MeilisearchService
             var index = IndexName(tenantId, indexType);
             await _http.PostAsJsonAsync($"/indexes/{index}/documents", new[] { document }, JsonOptions);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Meilisearch index document error");
+        }
+        catch (TaskCanceledException ex)
         {
             _logger.LogWarning(ex, "Meilisearch index document error");
         }
@@ -150,7 +174,11 @@ public class MeilisearchService
             var index = IndexName(tenantId, indexType);
             await _http.PostAsJsonAsync($"/indexes/{index}/documents", documents, JsonOptions);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Meilisearch batch index error");
+        }
+        catch (TaskCanceledException ex)
         {
             _logger.LogWarning(ex, "Meilisearch batch index error");
         }
@@ -168,7 +196,11 @@ public class MeilisearchService
             var index = IndexName(tenantId, indexType);
             await _http.DeleteAsync($"/indexes/{index}/documents/{documentId}");
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Meilisearch delete document error");
+        }
+        catch (TaskCanceledException ex)
         {
             _logger.LogWarning(ex, "Meilisearch delete document error");
         }
@@ -202,7 +234,12 @@ public class MeilisearchService
             _logger.LogInformation("Meilisearch index {Index} configured", index);
             return true;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Meilisearch ensure index error for {IndexType}", indexType);
+            return false;
+        }
+        catch (TaskCanceledException ex)
         {
             _logger.LogWarning(ex, "Meilisearch ensure index error for {IndexType}", indexType);
             return false;

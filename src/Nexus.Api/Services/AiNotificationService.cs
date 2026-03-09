@@ -94,7 +94,15 @@ public class AiNotificationService
                     notifications.Count, newListing.Id);
             }
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate listing match notifications for {ListingId}", newListing.Id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate listing match notifications for {ListingId}", newListing.Id);
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to generate listing match notifications for {ListingId}", newListing.Id);
         }
@@ -145,7 +153,15 @@ public class AiNotificationService
                 return notification;
             }
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate improvement notification for {ListingId}", listing.Id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate improvement notification for {ListingId}", listing.Id);
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to generate improvement notification for {ListingId}", listing.Id);
         }
@@ -210,7 +226,17 @@ public class AiNotificationService
 
             return notification;
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate weekly summary for user {UserId}", userId);
+            return null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate weekly summary for user {UserId}", userId);
+            return null;
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to generate weekly summary for user {UserId}", userId);
             return null;
@@ -278,7 +304,17 @@ public class AiNotificationService
 
             return notification;
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate engagement reminder for user {UserId}", userId);
+            return null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate engagement reminder for user {UserId}", userId);
+            return null;
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to generate engagement reminder for user {UserId}", userId);
             return null;
@@ -340,7 +376,15 @@ public class AiNotificationService
                 await _db.SaveChangesAsync(ct);
             }
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate community milestone notifications");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate community milestone notifications");
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to generate community milestone notifications");
         }

@@ -225,7 +225,11 @@ public class GroupsController : ControllerBase
             await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.GroupCreated, XpLog.Sources.GroupCreated, group.Id, $"Created group: {group.Name}");
             await _gamification.CheckAndAwardBadgesAsync(userId.Value, "group_created");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for group {GroupId}", group.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP/badges for group {GroupId}", group.Id);
         }

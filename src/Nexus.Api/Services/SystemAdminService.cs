@@ -247,7 +247,7 @@ public class SystemAdminService
             cmd.CommandText = "SELECT pg_size_pretty(pg_database_size(current_database()))";
             dbSize = (await cmd.ExecuteScalarAsync())?.ToString();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is InvalidOperationException or System.Data.Common.DbException or OperationCanceledException)
         {
             _logger.LogWarning(ex, "Failed to get database size");
             dbSize = "unavailable";

@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net.Http;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -160,7 +161,7 @@ public class PushNotificationService
                     "Push notification sent to device {DeviceId} for user {UserId}: {Title}",
                     device.Id, userId, title);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
             {
                 log.Status = PushStatus.Failed;
                 log.ErrorMessage = ex.Message.Length > 1000

@@ -105,7 +105,7 @@ public class FederationJwtService
                 TokenId = principal.FindFirstValue("jti") ?? ""
             };
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is Microsoft.IdentityModel.Tokens.SecurityTokenException or ArgumentException or System.Security.Cryptography.CryptographicException)
         {
             _logger.LogWarning(ex, "Federation JWT validation failed");
             return null;

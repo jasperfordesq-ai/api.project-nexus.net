@@ -133,7 +133,7 @@ public class LlamaClient : ILlamaClient
             var models = await GetModelsAsync(ct);
             return models.Models.Count > 0;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or InvalidOperationException)
         {
             _logger.LogWarning(ex, "Llama health check failed");
             return false;

@@ -94,7 +94,11 @@ public class RealTimeMessagingService : IRealTimeMessagingService
         {
             await _hubContext.Clients.Clients(connectionIds).SendAsync("ReceiveMessage", notification);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to send real-time notification to user {UserId}", recipientUserId);
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to send real-time notification to user {UserId}", recipientUserId);
         }
@@ -118,7 +122,11 @@ public class RealTimeMessagingService : IRealTimeMessagingService
                 }
             });
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to broadcast conversation update for conversation {ConversationId}", notification.ConversationId);
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to broadcast conversation update for conversation {ConversationId}", notification.ConversationId);
         }
@@ -139,7 +147,11 @@ public class RealTimeMessagingService : IRealTimeMessagingService
                 marked_read = markedReadCount
             });
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to broadcast MessageRead event for conversation {ConversationId}", conversationId);
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to broadcast MessageRead event for conversation {ConversationId}", conversationId);
         }
@@ -163,7 +175,11 @@ public class RealTimeMessagingService : IRealTimeMessagingService
                 unread_count = newUnreadCount
             });
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to send unread count update to user {UserId}", userId);
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to send unread count update to user {UserId}", userId);
         }
@@ -176,7 +192,11 @@ public class RealTimeMessagingService : IRealTimeMessagingService
         {
             await _hubContext.Clients.Group(groupName).SendAsync(eventName, data);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to broadcast {EventName} to conversation {ConversationId}", eventName, conversationId);
+        }
+        catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Failed to broadcast {EventName} to conversation {ConversationId}", eventName, conversationId);
         }

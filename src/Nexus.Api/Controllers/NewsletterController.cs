@@ -70,11 +70,6 @@ public class NewsletterController : ControllerBase
             _logger.LogError(ex, "Invalid operation while subscribing email {Email}", request.Email);
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error in Subscribe operation for email {Email}", request.Email);
-            return StatusCode(500, new { error = "Failed to subscribe" });
-        }
     }
 
     /// <summary>
@@ -110,11 +105,6 @@ public class NewsletterController : ControllerBase
         {
             _logger.LogError(ex, "Invalid operation while unsubscribing email {Email}", request.Email);
             return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error in Unsubscribe operation for email {Email}", request.Email);
-            return StatusCode(500, new { error = "Failed to unsubscribe" });
         }
     }
 
@@ -206,11 +196,6 @@ public class NewsletterController : ControllerBase
             _logger.LogError(ex, "Invalid operation while creating newsletter");
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error in CreateNewsletter operation");
-            return StatusCode(500, new { error = "Failed to create newsletter" });
-        }
     }
 
     /// <summary>
@@ -245,11 +230,6 @@ public class NewsletterController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error in UpdateNewsletter operation for newsletter {Id}", id);
-            return StatusCode(500, new { error = "Failed to update newsletter" });
-        }
     }
 
     /// <summary>
@@ -282,11 +262,6 @@ public class NewsletterController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error in SendNewsletter operation for newsletter {Id}", id);
-            return StatusCode(500, new { error = "Failed to send newsletter" });
-        }
     }
 
     /// <summary>
@@ -318,11 +293,6 @@ public class NewsletterController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error in CancelNewsletter operation for newsletter {Id}", id);
-            return StatusCode(500, new { error = "Failed to cancel newsletter" });
         }
     }
 

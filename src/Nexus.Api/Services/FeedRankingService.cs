@@ -103,7 +103,17 @@ public class FeedRankingService
                 .GroupBy(s => s.PostId)
                 .ToDictionaryAsync(g => g.Key, g => g.Count());
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            // PostShares table may not exist yet if migration hasn't run
+            _logger.LogWarning(ex, "PostShare table not available, share counts will be zero");
+        }
+        catch (InvalidOperationException ex)
+        {
+            // PostShares table may not exist yet if migration hasn't run
+            _logger.LogWarning(ex, "PostShare table not available, share counts will be zero");
+        }
+        catch (System.Data.Common.DbException ex)
         {
             // PostShares table may not exist yet if migration hasn't run
             _logger.LogWarning(ex, "PostShare table not available, share counts will be zero");
@@ -219,7 +229,15 @@ public class FeedRankingService
                 .GroupBy(s => s.PostId)
                 .ToDictionaryAsync(g => g.Key, g => g.Count());
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "PostShare table not available for trending calculation");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "PostShare table not available for trending calculation");
+        }
+        catch (System.Data.Common.DbException ex)
         {
             _logger.LogWarning(ex, "PostShare table not available for trending calculation");
         }
@@ -394,7 +412,15 @@ public class FeedRankingService
         {
             shareCount = await _db.Set<PostShare>().CountAsync(s => s.PostId == postId);
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "PostShare table not available for engagement stats");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "PostShare table not available for engagement stats");
+        }
+        catch (System.Data.Common.DbException ex)
         {
             _logger.LogWarning(ex, "PostShare table not available for engagement stats");
         }
@@ -403,7 +429,15 @@ public class FeedRankingService
         {
             bookmarkCount = await _db.Set<FeedBookmark>().CountAsync(b => b.PostId == postId);
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "FeedBookmark table not available for engagement stats");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "FeedBookmark table not available for engagement stats");
+        }
+        catch (System.Data.Common.DbException ex)
         {
             _logger.LogWarning(ex, "FeedBookmark table not available for engagement stats");
         }

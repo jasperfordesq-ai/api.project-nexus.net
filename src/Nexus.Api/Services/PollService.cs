@@ -172,7 +172,7 @@ public class PollService
         {
             await _gamification.AwardXpAsync(userId, XpLog.Amounts.PollVoted, XpLog.Sources.PollVoted, pollId, "Voted in a poll");
         }
-        catch (Exception ex) { _logger.LogWarning(ex, "Failed to award XP for poll vote {PollId}", pollId); }
+        catch (Exception ex) when (ex is InvalidOperationException or Microsoft.EntityFrameworkCore.DbUpdateException) { _logger.LogWarning(ex, "Failed to award XP for poll vote {PollId}", pollId); }
 
         _logger.LogInformation("User {UserId} voted on poll {PollId}", userId, pollId);
         return (true, null);

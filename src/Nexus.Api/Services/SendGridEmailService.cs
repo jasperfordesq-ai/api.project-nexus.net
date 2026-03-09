@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net.Http;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 
@@ -51,7 +52,7 @@ public class SendGridEmailService : IEmailService
             _logger.LogError("SendGrid failed ({StatusCode}): {Body}", response.StatusCode, body);
             return false;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
         {
             _logger.LogError(ex, "SendGrid error sending email to {To}", to);
             return false;

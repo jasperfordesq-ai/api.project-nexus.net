@@ -39,6 +39,11 @@ public class FeedPost : ITenantEntity
     /// </summary>
     public bool IsPinned { get; set; } = false;
 
+    /// <summary>
+    /// Set by admin to hide post from all users' feeds.
+    /// </summary>
+    public bool IsHidden { get; set; } = false;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

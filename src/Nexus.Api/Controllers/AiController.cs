@@ -3,7 +3,9 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net.Http;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -203,7 +205,25 @@ public class AiController : ControllerBase
                 QueueDepth: 0 // Not applicable for REST-only architecture
             ));
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to get AI service status");
+            return Ok(new AiStatusResponse(
+                Available: false,
+                Model: null,
+                QueueDepth: 0
+            ));
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to get AI service status");
+            return Ok(new AiStatusResponse(
+                Available: false,
+                Model: null,
+                QueueDepth: 0
+            ));
+        }
+        catch (TimeoutException ex)
         {
             _logger.LogWarning(ex, "Failed to get AI service status");
             return Ok(new AiStatusResponse(
@@ -556,7 +576,7 @@ public class AiController : ControllerBase
                 LastMessageAt = null
             });
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Failed to start conversation");
             return StatusCode(500, new { error = "Failed to start conversation" });
@@ -939,6 +959,200 @@ public class AiController : ControllerBase
     }
 
     // =========================================================================
+    // STREAMING, PROVIDERS, LIMITS, GENERATE
+    // =========================================================================
+
+    /// <summary>POST /api/ai/chat/stream — SSE streaming chat response.</summary>
+    [HttpPost("chat/stream")]
+    public async Task StreamChat([FromBody] AiChatRequest request, CancellationToken ct)
+    {
+        Response.Headers.Append("Content-Type", "text/event-stream");
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("Connection", "keep-alive");
+
+        var sanitized = SanitizeInput(request.Prompt ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(sanitized) || DetectPromptInjection(sanitized))
+        {
+            await Response.WriteAsync("data: {\"error\":\"Invalid prompt\"}\n\n", ct);
+            return;
+        }
+
+        try
+        {
+            var llamaRequest = new OllamaChatRequest(_options.Model, new List<OllamaChatMessage> { new("user", sanitized) });
+            var llamaResponse = await _llamaClient.ChatAsync(llamaRequest, ct);
+            var payload = JsonSerializer.Serialize(new { chunk = llamaResponse.Message.Content, done = true });
+            await Response.WriteAsync($"data: {payload}\n\n", ct);
+        }
+        catch (HttpRequestException)
+        {
+            await Response.WriteAsync("data: {\"error\":\"AI service unavailable\"}\n\n", ct);
+        }
+    }
+
+    /// <summary>GET /api/ai/providers — list configured AI providers.</summary>
+    [HttpGet("providers")]
+    public IActionResult GetProviders()
+    {
+        return Ok(new
+        {
+            providers = new[]
+            {
+                new
+                {
+                    id = "ollama",
+                    name = "Ollama (LLaMA)",
+                    model = _options.Model,
+                    baseUrl = _options.BaseUrl,
+                    status = "active"
+                }
+            }
+        });
+    }
+
+    /// <summary>GET /api/ai/limits — rate limits and quotas for current user.</summary>
+    [HttpGet("limits")]
+    public IActionResult GetLimits()
+    {
+        return Ok(new
+        {
+            requestsPerMinute = 20,
+            requestsPerDay = 200,
+            maxPromptLength = _options.MaxPromptLength,
+            maxResponseTokens = _options.DefaultMaxTokens,
+            resetAt = DateTime.UtcNow.Date.AddDays(1)
+        });
+    }
+
+    /// <summary>POST /api/ai/generate/event — generate event description from keywords.</summary>
+    [HttpPost("generate/event")]
+    public async Task<IActionResult> GenerateEventDescription([FromBody] GenerateContentRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Keywords))
+            return BadRequest(new { error = "keywords is required" });
+
+        var sanitized = SanitizeInput(request.Keywords);
+        if (DetectPromptInjection(sanitized))
+            return BadRequest(new { error = "Invalid input" });
+
+        var prompt = $"Write a compelling event description for a community timebank event about: {sanitized}. Be concise, welcoming and specific. Maximum 150 words.";
+        try
+        {
+            var llamaReq = new OllamaChatRequest(_options.Model, new List<OllamaChatMessage> { new("user", prompt) });
+            var llamaResp = await _llamaClient.ChatAsync(llamaReq, ct);
+            var result = llamaResp.Message.Content;
+            return Ok(new { description = result });
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(503, new { error = "AI service temporarily unavailable" });
+        }
+    }
+
+    /// <summary>POST /api/ai/generate/message — generate a smart message reply.</summary>
+    [HttpPost("generate/message")]
+    public async Task<IActionResult> GenerateMessageReply([FromBody] GenerateMessageRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.OriginalMessage))
+            return BadRequest(new { error = "original_message is required" });
+
+        var sanitized = SanitizeInput(request.OriginalMessage);
+        if (DetectPromptInjection(sanitized))
+            return BadRequest(new { error = "Invalid input" });
+
+        var prompt = $"Write a friendly, professional reply to this community platform message: \"{sanitized}\". Keep the reply concise (under 100 words) and helpful.";
+        try
+        {
+            var llamaReq = new OllamaChatRequest(_options.Model, new List<OllamaChatMessage> { new("user", prompt) });
+            var llamaResp = await _llamaClient.ChatAsync(llamaReq, ct);
+            var result = llamaResp.Message.Content;
+            return Ok(new { reply = result });
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(503, new { error = "AI service temporarily unavailable" });
+        }
+    }
+
+    /// <summary>POST /api/ai/generate/newsletter — generate newsletter content (admin only).</summary>
+    [HttpPost("generate/newsletter")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> GenerateNewsletter([FromBody] GenerateContentRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Keywords))
+            return BadRequest(new { error = "keywords is required" });
+
+        var sanitized = SanitizeInput(request.Keywords);
+        if (DetectPromptInjection(sanitized))
+            return BadRequest(new { error = "Invalid input" });
+
+        var prompt = $"Write a community timebank newsletter email covering these topics: {sanitized}. Include a subject line, introduction, main content, and call to action. Use a warm, inclusive tone.";
+        try
+        {
+            var llamaReq = new OllamaChatRequest(_options.Model, new List<OllamaChatMessage> { new("user", prompt) });
+            var llamaResp = await _llamaClient.ChatAsync(llamaReq, ct);
+            var result = llamaResp.Message.Content;
+            return Ok(new { content = result });
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(503, new { error = "AI service temporarily unavailable" });
+        }
+    }
+
+    /// <summary>POST /api/ai/generate/blog — generate blog post content (admin only).</summary>
+    [HttpPost("generate/blog")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> GenerateBlogPost([FromBody] GenerateContentRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Keywords))
+            return BadRequest(new { error = "keywords is required" });
+
+        var sanitized = SanitizeInput(request.Keywords);
+        if (DetectPromptInjection(sanitized))
+            return BadRequest(new { error = "Invalid input" });
+
+        var prompt = $"Write a blog post for a community timebank platform about: {sanitized}. Include a title, introduction, 2-3 sections with subheadings, and a conclusion. Aim for 400-600 words. Be informative and engaging.";
+        try
+        {
+            var llamaReq = new OllamaChatRequest(_options.Model, new List<OllamaChatMessage> { new("user", prompt) });
+            var llamaResp = await _llamaClient.ChatAsync(llamaReq, ct);
+            var result = llamaResp.Message.Content;
+            return Ok(new { content = result });
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(503, new { error = "AI service temporarily unavailable" });
+        }
+    }
+
+    /// <summary>POST /api/ai/generate/page — generate static page content (admin only).</summary>
+    [HttpPost("generate/page")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> GeneratePageContent([FromBody] GenerateContentRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Keywords))
+            return BadRequest(new { error = "keywords is required" });
+
+        var sanitized = SanitizeInput(request.Keywords);
+        if (DetectPromptInjection(sanitized))
+            return BadRequest(new { error = "Invalid input" });
+
+        var prompt = $"Write professional page content for a community timebank platform about: {sanitized}. The content should be clear, concise, and informative. Use plain language accessible to all community members.";
+        try
+        {
+            var llamaReq = new OllamaChatRequest(_options.Model, new List<OllamaChatMessage> { new("user", prompt) });
+            var llamaResp = await _llamaClient.ChatAsync(llamaReq, ct);
+            var result = llamaResp.Message.Content;
+            return Ok(new { content = result });
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(503, new { error = "AI service temporarily unavailable" });
+        }
+    }
+
+    // =========================================================================
     // HELPER METHODS
     // =========================================================================
 
@@ -1132,3 +1346,9 @@ public record GenerateBioRequest(
 public record SummarizeRequest(
     List<string> Messages
 );
+
+/// <summary>Request to generate content from keywords.</summary>
+public record GenerateContentRequest(string Keywords, string? Tone = null);
+
+/// <summary>Request to generate a message reply.</summary>
+public record GenerateMessageRequest(string OriginalMessage, string? Context = null);

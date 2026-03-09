@@ -309,7 +309,11 @@ public class EventsController : ControllerBase
             await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.EventCreated, XpLog.Sources.EventCreated, eventEntity.Id, $"Created event: {eventEntity.Title}");
             await _gamification.CheckAndAwardBadgesAsync(userId.Value, "event_created");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for event {EventId}", eventEntity.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP/badges for event {EventId}", eventEntity.Id);
         }
@@ -650,7 +654,13 @@ public class EventsController : ControllerBase
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
         }
-        catch (Exception ex)
+        catch (System.Data.Common.DbException ex)
+        {
+            _logger.LogWarning(ex, "RSVP transaction failed for event {EventId}, rolling back", id);
+            await transaction.RollbackAsync();
+            throw;
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "RSVP transaction failed for event {EventId}, rolling back", id);
             await transaction.RollbackAsync();

@@ -127,7 +127,7 @@ public class FederationApiMiddleware
                 context.Connection.RemoteIpAddress?.ToString(),
                 (int)elapsed.TotalMilliseconds);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is InvalidOperationException or Microsoft.EntityFrameworkCore.DbUpdateException or OperationCanceledException)
         {
             _logger.LogWarning(ex, "Failed to log rejected federation API call");
         }

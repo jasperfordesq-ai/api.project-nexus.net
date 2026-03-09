@@ -323,6 +323,26 @@ public class NexusDbContext : DbContext
     // Post Reactions
     public DbSet<PostReaction> PostReactions => Set<PostReaction>();
 
+    // Feed Moderation
+    public DbSet<HiddenPost> HiddenPosts => Set<HiddenPost>();
+    public DbSet<MutedUser> MutedUsers => Set<MutedUser>();
+    public DbSet<FeedReport> FeedReports => Set<FeedReport>();
+
+    // Gamification Challenges (GamificationChallenge + ChallengeProgress)
+    public DbSet<GamificationChallenge> GamificationChallenges => Set<GamificationChallenge>();
+    public DbSet<ChallengeProgress> ChallengeProgresses => Set<ChallengeProgress>();
+
+    // Daily Reward Log
+    public DbSet<DailyRewardLog> DailyRewardLogs => Set<DailyRewardLog>();
+
+    // Badge Collections & Showcase
+    public DbSet<BadgeCollection> BadgeCollections => Set<BadgeCollection>();
+    public DbSet<BadgeShowcase> BadgeShowcases => Set<BadgeShowcase>();
+
+    // XP Shop
+    public DbSet<ShopItem> ShopItems => Set<ShopItem>();
+    public DbSet<ShopPurchase> ShopPurchases => Set<ShopPurchase>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -367,6 +387,7 @@ public class NexusDbContext : DbContext
             new BrokerEnterpriseConfiguration(_tenantContext),
             new DiscoveryConfiguration(_tenantContext),
             new ContactEmergencyConfiguration(_tenantContext),
+            new FeedModerationGamificationConfiguration(_tenantContext),
         };
 
         foreach (var config in configurations)

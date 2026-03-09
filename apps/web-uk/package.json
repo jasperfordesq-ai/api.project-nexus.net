@@ -12,7 +12,8 @@
     "brand:check": "node scripts/brand-check.js",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "lint": "eslint src/"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",
@@ -28,6 +29,7 @@
     "nunjucks": "^3.2.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "concurrently": "^8.2.2",
     "jest": "^30.2.0",
     "nodemon": "^3.1.4",

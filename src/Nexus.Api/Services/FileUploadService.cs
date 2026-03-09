@@ -148,7 +148,7 @@ public class FileUploadService
         if (File.Exists(fullPath))
         {
             try { File.Delete(fullPath); }
-            catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete file from disk: {Path}", fullPath); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { _logger.LogWarning(ex, "Failed to delete file from disk: {Path}", fullPath); }
         }
 
         _db.Set<FileUpload>().Remove(file);

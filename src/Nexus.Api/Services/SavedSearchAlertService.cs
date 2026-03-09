@@ -42,7 +42,15 @@ public class SavedSearchAlertService : BackgroundService
                 // Graceful shutdown
                 break;
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Error checking saved searches for alerts");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "Error checking saved searches for alerts");
+            }
+            catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Error checking saved searches for alerts");
             }
@@ -98,7 +106,17 @@ public class SavedSearchAlertService : BackgroundService
                 search.LastRunAt = DateTime.UtcNow;
                 search.LastResultCount = newCount;
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
+            {
+                _logger.LogWarning(ex, "Failed to check saved search {SearchId} for user {UserId}",
+                    search.Id, search.UserId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Failed to check saved search {SearchId} for user {UserId}",
+                    search.Id, search.UserId);
+            }
+            catch (OperationCanceledException ex)
             {
                 _logger.LogWarning(ex, "Failed to check saved search {SearchId} for user {UserId}",
                     search.Id, search.UserId);

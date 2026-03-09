@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net.Http;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -55,7 +56,29 @@ public class ContentModerationService
 
             return outcome;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for listing {ListingId}, allowing with warning", listing.Id);
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for listing {ListingId}, allowing with warning", listing.Id);
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Moderation failed for listing {ListingId}, allowing with warning", listing.Id);
             return new ContentModerationOutcome
@@ -86,7 +109,29 @@ public class ContentModerationService
 
             return outcome;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for post {PostId}, allowing with warning", post.Id);
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for post {PostId}, allowing with warning", post.Id);
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Moderation failed for post {PostId}, allowing with warning", post.Id);
             return new ContentModerationOutcome
@@ -118,7 +163,29 @@ public class ContentModerationService
 
             return outcome;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for message, allowing with warning");
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for message, allowing with warning");
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Moderation failed for message, allowing with warning");
             return new ContentModerationOutcome
@@ -149,7 +216,29 @@ public class ContentModerationService
 
             return outcome;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for comment, allowing with warning");
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for comment, allowing with warning");
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Moderation failed for comment, allowing with warning");
             return new ContentModerationOutcome
@@ -181,7 +270,29 @@ public class ContentModerationService
 
             return outcome;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for profile {UserId}, allowing with warning", userId);
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for profile {UserId}, allowing with warning", userId);
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Moderation failed for profile {UserId}, allowing with warning", userId);
             return new ContentModerationOutcome
@@ -210,7 +321,31 @@ public class ContentModerationService
                 var result = await _aiService.ModerateContent(item.Content, item.ContentType, ct);
                 outcomes.Add(ProcessModerationResult(result, item.ContentType, item.EntityId));
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
+                    item.ContentType, item.EntityId);
+                outcomes.Add(new ContentModerationOutcome
+                {
+                    IsApproved = true,
+                    RequiresReview = true,
+                    Severity = "unknown",
+                    Message = "Moderation failed"
+                });
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
+                    item.ContentType, item.EntityId);
+                outcomes.Add(new ContentModerationOutcome
+                {
+                    IsApproved = true,
+                    RequiresReview = true,
+                    Severity = "unknown",
+                    Message = "Moderation failed"
+                });
+            }
+            catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
                     item.ContentType, item.EntityId);

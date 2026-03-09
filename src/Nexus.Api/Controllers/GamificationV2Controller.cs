@@ -7,6 +7,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 using Nexus.Api.Data;
@@ -29,6 +30,7 @@ public class GamificationV2Controller : ControllerBase
     private readonly DailyRewardService _dailyRewardService;
     private readonly GamificationService _gamificationService;
     private readonly TenantContext _tenantContext;
+    private readonly NexusDbContext _db;
     private readonly ILogger<GamificationV2Controller> _logger;
 
     public GamificationV2Controller(
@@ -38,6 +40,7 @@ public class GamificationV2Controller : ControllerBase
         DailyRewardService dailyRewardService,
         GamificationService gamificationService,
         TenantContext tenantContext,
+        NexusDbContext db,
         ILogger<GamificationV2Controller> logger)
     {
         _challengeService = challengeService;
@@ -46,6 +49,7 @@ public class GamificationV2Controller : ControllerBase
         _dailyRewardService = dailyRewardService;
         _gamificationService = gamificationService;
         _tenantContext = tenantContext;
+        _db = db;
         _logger = logger;
     }
 
@@ -440,6 +444,169 @@ public class GamificationV2Controller : ControllerBase
         if (!success) return NotFound(new { error = error ?? "Season not found" });
         return Ok(new { message = "Season ended", season_id = id });
     }
+
+    // ==================== Badge Collections ====================
+
+    /// <summary>GET /api/gamification/v2/collections — badge collection groupings</summary>
+    [HttpGet("collections")]
+    public async Task<IActionResult> GetBadgeCollections()
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var collections = await _db.BadgeCollections
+            .Where(c => c.TenantId == tenantId && c.IsActive)
+            .OrderBy(c => c.Name)
+            .Select(c => new { c.Id, c.Name, c.Description, c.IconUrl, c.BadgeIds })
+            .ToListAsync();
+        return Ok(new { data = collections, totalCount = collections.Count });
+    }
+
+    // ==================== XP Shop ====================
+
+    /// <summary>GET /api/gamification/v2/shop — available XP shop items</summary>
+    [HttpGet("shop")]
+    public async Task<IActionResult> GetShopItems([FromQuery] string? type)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var query = _db.ShopItems.Where(i => i.TenantId == tenantId && i.IsActive);
+        if (!string.IsNullOrWhiteSpace(type)) query = query.Where(i => i.Type == type);
+
+        var items = await query
+            .OrderBy(i => i.XpCost)
+            .Select(i => new { i.Id, i.Name, i.Description, i.Type, i.ItemKey, i.ImageUrl, i.XpCost, i.StockLimit, i.PurchasedCount })
+            .ToListAsync();
+        return Ok(new { data = items, totalCount = items.Count });
+    }
+
+    /// <summary>POST /api/gamification/v2/shop/purchase — purchase an XP shop item</summary>
+    [HttpPost("shop/purchase")]
+    public async Task<IActionResult> PurchaseShopItem([FromBody] PurchaseShopItemRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
+        var item = await _db.ShopItems.FirstOrDefaultAsync(i => i.Id == request.ItemId && i.TenantId == tenantId && i.IsActive);
+        if (item == null) return NotFound(new { error = "Shop item not found" });
+        if (item.StockLimit.HasValue && item.PurchasedCount >= item.StockLimit.Value)
+            return BadRequest(new { error = "Item out of stock" });
+
+        // Check user has enough XP
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+        if (user == null) return BadRequest(new { error = "User not found" });
+        if (user.TotalXp < item.XpCost)
+            return BadRequest(new { error = "Insufficient XP", required = item.XpCost, current = user.TotalXp });
+
+        // Check not already purchased (for unique items)
+        var alreadyPurchased = await _db.ShopPurchases.AnyAsync(p => p.UserId == userId.Value && p.ShopItemId == item.Id);
+        if (alreadyPurchased) return BadRequest(new { error = "You have already purchased this item" });
+
+        var purchase = new ShopPurchase { UserId = userId.Value, ShopItemId = item.Id, TenantId = tenantId };
+        item.PurchasedCount++;
+        _db.ShopPurchases.Add(purchase);
+        await _db.SaveChangesAsync();
+
+        // Deduct XP
+        await _gamificationService.AwardXpAsync(userId.Value, -item.XpCost, "shop_purchase", description: $"XP shop purchase: {item.Name}");
+
+        _logger.LogInformation("User {UserId} purchased shop item {ItemId} for {XpCost} XP", userId, item.Id, item.XpCost);
+        return Ok(new { message = "Purchase successful", item_id = item.Id, item_key = item.ItemKey, xp_spent = item.XpCost });
+    }
+
+    // ==================== Summary ====================
+
+    /// <summary>GET /api/gamification/v2/summary — user gamification dashboard summary</summary>
+    [HttpGet("summary")]
+    public async Task<IActionResult> GetGamificationSummary()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
+        var summaryUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+        var badges = await _db.UserBadges
+            .Where(ub => ub.UserId == userId.Value)
+            .CountAsync();
+        var streak = await _db.Set<Nexus.Api.Entities.Streak>()
+            .FirstOrDefaultAsync(s => s.UserId == userId.Value && s.StreakType == "daily_login");
+        var dailyStatus = await _dailyRewardService.GetDailyRewardStatusAsync(userId.Value);
+
+        return Ok(new
+        {
+            profile = summaryUser == null ? null : new { summaryUser.TotalXp, summaryUser.Level },
+            badgesEarned = badges,
+            currentStreak = streak?.CurrentStreak ?? 0,
+            dailyReward = dailyStatus,
+        });
+    }
+
+    // ==================== Badge Showcase ====================
+
+    /// <summary>POST /api/gamification/v2/showcase — toggle a badge in/out of showcase</summary>
+    [HttpPost("showcase")]
+    public async Task<IActionResult> ToggleBadgeShowcase([FromBody] ToggleBadgeShowcaseRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
+        // Verify user has earned this badge
+        var earned = await _db.UserBadges.AnyAsync(ub => ub.UserId == userId.Value && ub.BadgeId == request.BadgeId);
+        if (!earned) return BadRequest(new { error = "You have not earned this badge" });
+
+        var existing = await _db.BadgeShowcases.FirstOrDefaultAsync(s => s.UserId == userId.Value && s.BadgeId == request.BadgeId);
+        if (existing != null)
+        {
+            _db.BadgeShowcases.Remove(existing);
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "Badge removed from showcase", badge_id = request.BadgeId, showcased = false });
+        }
+
+        // Limit showcase to 5 badges
+        var showcaseCount = await _db.BadgeShowcases.CountAsync(s => s.UserId == userId.Value);
+        if (showcaseCount >= 5) return BadRequest(new { error = "Showcase is full (max 5 badges)" });
+
+        var displayOrder = showcaseCount;
+        _db.BadgeShowcases.Add(new BadgeShowcase { UserId = userId.Value, BadgeId = request.BadgeId, TenantId = tenantId, DisplayOrder = displayOrder });
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Badge added to showcase", badge_id = request.BadgeId, showcased = true });
+    }
+
+    // ==================== Admin: Badge Definitions ====================
+
+    /// <summary>GET /api/admin/gamification/badges/definitions — all badge definitions</summary>
+    [HttpGet("/api/admin/gamification/badges/definitions")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminGetBadgeDefinitions()
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var badges = await _db.Badges
+            .Where(b => b.TenantId == tenantId)
+            .OrderBy(b => b.Name)
+            .Select(b => new { b.Id, b.Name, b.Description, b.Icon, b.XpReward, b.IsActive, b.Slug })
+            .ToListAsync();
+        return Ok(new { data = badges, totalCount = badges.Count });
+    }
+
+    /// <summary>POST /api/admin/gamification/badges — create a badge definition</summary>
+    [HttpPost("/api/admin/gamification/badges")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminCreateBadge([FromBody] CreateBadgeDefinitionRequest request)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var badge = new Badge
+        {
+            TenantId = tenantId,
+            Name = request.Name,
+            Description = request.Description ?? string.Empty,
+            Icon = request.ImageUrl,
+            XpReward = request.XpReward,
+            Slug = request.Name.ToLower().Replace(" ", "_"),
+        };
+        _db.Badges.Add(badge);
+        await _db.SaveChangesAsync();
+        return Ok(new { id = badge.Id, name = badge.Name, message = "Badge definition created" });
+    }
 }
 
 #region Request DTOs
@@ -457,6 +624,39 @@ public class CreateSeasonRequest
 
     [System.Text.Json.Serialization.JsonPropertyName("prize_description")]
     public string? PrizeDescription { get; set; }
+}
+
+public class PurchaseShopItemRequest
+{
+    [System.Text.Json.Serialization.JsonPropertyName("item_id")]
+    public int ItemId { get; set; }
+}
+
+public class ToggleBadgeShowcaseRequest
+{
+    [System.Text.Json.Serialization.JsonPropertyName("badge_id")]
+    public int BadgeId { get; set; }
+}
+
+public class CreateBadgeDefinitionRequest
+{
+    [System.Text.Json.Serialization.JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("image_url")]
+    public string? ImageUrl { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("xp_reward")]
+    public int XpReward { get; set; } = 0;
+
+    [System.Text.Json.Serialization.JsonPropertyName("is_auto_award")]
+    public bool IsAutoAward { get; set; } = false;
+
+    [System.Text.Json.Serialization.JsonPropertyName("trigger_event")]
+    public string? TriggerEvent { get; set; }
 }
 
 #endregion

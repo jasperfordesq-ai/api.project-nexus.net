@@ -117,7 +117,8 @@ public class GoalService
             {
                 await _gamification.AwardXpAsync(userId, XpLog.Amounts.GoalCompleted, XpLog.Sources.GoalCompleted, goalId, $"Completed goal: {goal.Title}");
             }
-            catch (Exception ex) { _logger.LogWarning(ex, "Failed to award XP for goal {GoalId}", goalId); }
+            catch (DbUpdateException ex) { _logger.LogWarning(ex, "Failed to award XP for goal {GoalId}", goalId); }
+            catch (InvalidOperationException ex) { _logger.LogWarning(ex, "Failed to award XP for goal {GoalId}", goalId); }
         }
 
         await _db.SaveChangesAsync();
@@ -148,7 +149,7 @@ public class GoalService
             {
                 await _gamification.AwardXpAsync(userId, XpLog.Amounts.GoalCompleted, XpLog.Sources.GoalCompleted, goalId, $"Completed goal: {goal.Title}");
             }
-            catch (Exception ex) { _logger.LogWarning(ex, "Failed to award XP for goal {GoalId}", goalId); }
+            catch (Exception ex) when (ex is InvalidOperationException or Microsoft.EntityFrameworkCore.DbUpdateException) { _logger.LogWarning(ex, "Failed to award XP for goal {GoalId}", goalId); }
         }
 
         await _db.SaveChangesAsync();

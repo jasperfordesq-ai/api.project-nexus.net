@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net.Http;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -69,7 +70,7 @@ public class EmailNotificationService
             log.Status = EmailSendStatus.Sent;
             log.SentAt = DateTime.UtcNow;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
         {
             log.Status = EmailSendStatus.Failed;
             log.ErrorMessage = ex.Message;

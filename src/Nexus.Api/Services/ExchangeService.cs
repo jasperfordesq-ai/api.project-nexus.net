@@ -302,14 +302,36 @@ public class ExchangeService
                 await _gamification.CheckAndAwardBadgesAsync(exchange.ProviderId.Value, "exchange_completed");
                 await _gamification.CheckAndAwardBadgesAsync(exchange.ReceiverId.Value, "exchange_completed");
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
+            {
+                _logger.LogWarning(ex, "Failed to award XP for exchange {ExchangeId}", exchangeId);
+            }
+            catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Failed to award XP for exchange {ExchangeId}", exchangeId);
             }
 
             return (exchange, null);
         }
-        catch (Exception ex)
+        catch (DbUpdateConcurrencyException ex)
+        {
+            await dbTransaction.RollbackAsync();
+            _logger.LogError(ex, "Failed to complete exchange {ExchangeId}", exchangeId);
+            return (null, "Failed to complete exchange. Please try again.");
+        }
+        catch (DbUpdateException ex)
+        {
+            await dbTransaction.RollbackAsync();
+            _logger.LogError(ex, "Failed to complete exchange {ExchangeId}", exchangeId);
+            return (null, "Failed to complete exchange. Please try again.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            await dbTransaction.RollbackAsync();
+            _logger.LogError(ex, "Failed to complete exchange {ExchangeId}", exchangeId);
+            return (null, "Failed to complete exchange. Please try again.");
+        }
+        catch (OperationCanceledException ex)
         {
             await dbTransaction.RollbackAsync();
             _logger.LogError(ex, "Failed to complete exchange {ExchangeId}", exchangeId);
@@ -429,7 +451,11 @@ public class ExchangeService
             if (rating == 5)
                 await _gamification.CheckAndAwardBadgesAsync(ratedUserId.Value, "five_star_received");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP for rating exchange {ExchangeId}", exchangeId);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP for rating exchange {ExchangeId}", exchangeId);
         }

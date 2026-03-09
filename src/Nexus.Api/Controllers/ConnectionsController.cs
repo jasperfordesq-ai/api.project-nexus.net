@@ -205,7 +205,11 @@ public class ConnectionsController : ControllerBase
                         await _gamification.CheckAndAwardBadgesAsync(userId.Value, "connection_accepted");
                         await _gamification.CheckAndAwardBadgesAsync(request.UserId, "connection_accepted");
                     }
-                    catch (Exception ex)
+                    catch (DbUpdateException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to award XP/badges for connection {ConnectionId}", existingConnection.Id);
+                    }
+                    catch (InvalidOperationException ex)
                     {
                         _logger.LogWarning(ex, "Failed to award XP/badges for connection {ConnectionId}", existingConnection.Id);
                     }
@@ -351,7 +355,11 @@ public class ConnectionsController : ControllerBase
             await _gamification.CheckAndAwardBadgesAsync(userId.Value, "connection_accepted");
             await _gamification.CheckAndAwardBadgesAsync(connection.RequesterId, "connection_accepted");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for connection {ConnectionId}", connection.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP/badges for connection {ConnectionId}", connection.Id);
         }
