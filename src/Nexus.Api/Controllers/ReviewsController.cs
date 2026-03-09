@@ -172,7 +172,11 @@ public class ReviewsController : ControllerBase
             await _gamification.AwardXpAsync(currentUserId.Value, XpLog.Amounts.ReviewLeft, XpLog.Sources.ReviewLeft, review.Id, $"Left review for user {targetUser.FirstName}");
             await _gamification.CheckAndAwardBadgesAsync(currentUserId.Value, "review_left");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for review {ReviewId}", review.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP/badges for review {ReviewId}", review.Id);
         }
@@ -338,7 +342,11 @@ public class ReviewsController : ControllerBase
             await _gamification.AwardXpAsync(currentUserId.Value, XpLog.Amounts.ReviewLeft, XpLog.Sources.ReviewLeft, review.Id, $"Left review for listing: {listing.Title}");
             await _gamification.CheckAndAwardBadgesAsync(currentUserId.Value, "review_left");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for review {ReviewId}", review.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP/badges for review {ReviewId}", review.Id);
         }

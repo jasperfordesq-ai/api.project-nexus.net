@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net.Http;
 using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
@@ -408,7 +409,11 @@ public class AuthController : ControllerBase
                         user.FirstName ?? "User",
                         tenant.Name ?? tenant.Slug);
                 }
-                catch (Exception ex)
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "Failed to send welcome email for user {UserId}", user.Id);
+                }
+                catch (InvalidOperationException ex)
                 {
                     _logger.LogError(ex, "Failed to send welcome email for user {UserId}", user.Id);
                 }
@@ -431,7 +436,11 @@ public class AuthController : ControllerBase
                         "Verify your email - Project NEXUS",
                         $"<h2>Welcome to Project NEXUS!</h2><p>Your verification code is: <strong>{code}</strong></p><p>This code expires in 30 minutes.</p>");
                 }
-                catch (Exception ex)
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "Failed to send verification email for user {UserId}", user.Id);
+                }
+                catch (InvalidOperationException ex)
                 {
                     _logger.LogError(ex, "Failed to send verification email for user {UserId}", user.Id);
                 }
@@ -589,7 +598,11 @@ public class AuthController : ControllerBase
                     user.FirstName ?? "User",
                     resetUrl);
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Failed to send password reset email for user {UserId}", user.Id);
+            }
+            catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Failed to send password reset email for user {UserId}", user.Id);
             }
@@ -803,7 +816,11 @@ public class AuthController : ControllerBase
                     "Verify your email - Project NEXUS",
                     $"<h2>Email Verification</h2><p>Your verification code is: <strong>{code}</strong></p><p>This code expires in 30 minutes.</p>");
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Failed to send verification email for user {UserId}", userId);
+            }
+            catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Failed to send verification email for user {UserId}", userId);
             }

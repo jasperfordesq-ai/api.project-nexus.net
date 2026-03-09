@@ -504,7 +504,7 @@ public class FederationService
 
             return (exchange, null);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is Microsoft.EntityFrameworkCore.DbUpdateException or Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException or InvalidOperationException or OperationCanceledException)
         {
             await dbTransaction.RollbackAsync();
             _logger.LogError(ex, "Failed to complete federated exchange {ExchangeId}", exchangeId);

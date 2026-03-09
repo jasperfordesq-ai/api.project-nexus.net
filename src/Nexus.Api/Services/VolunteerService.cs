@@ -254,7 +254,11 @@ public class VolunteerService
             await _gamification.AwardXpAsync(userId, 5, "volunteer_applied", application.Id,
                 "Applied to a volunteer opportunity");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP for volunteer application {ApplicationId}", application.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP for volunteer application {ApplicationId}", application.Id);
         }
@@ -529,7 +533,28 @@ public class VolunteerService
                 await _db.SaveChangesAsync();
                 await dbTransaction.CommitAsync();
             }
-            catch (Exception ex)
+            catch (DbUpdateConcurrencyException ex)
+            {
+                await dbTransaction.RollbackAsync();
+                _logger.LogError(ex, "Failed to process credit reward for shift {ShiftId}, user {UserId}", shiftId, userId);
+                // Still save the checkout even if credit transfer fails
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                await dbTransaction.RollbackAsync();
+                _logger.LogError(ex, "Failed to process credit reward for shift {ShiftId}, user {UserId}", shiftId, userId);
+                // Still save the checkout even if credit transfer fails
+                await _db.SaveChangesAsync();
+            }
+            catch (InvalidOperationException ex)
+            {
+                await dbTransaction.RollbackAsync();
+                _logger.LogError(ex, "Failed to process credit reward for shift {ShiftId}, user {UserId}", shiftId, userId);
+                // Still save the checkout even if credit transfer fails
+                await _db.SaveChangesAsync();
+            }
+            catch (OperationCanceledException ex)
             {
                 await dbTransaction.RollbackAsync();
                 _logger.LogError(ex, "Failed to process credit reward for shift {ShiftId}, user {UserId}", shiftId, userId);
@@ -553,7 +578,11 @@ public class VolunteerService
                 $"Completed volunteer shift ({checkIn.HoursLogged:F1}h)");
             await _gamification.CheckAndAwardBadgesAsync(userId, "volunteer_shift_completed");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP for volunteer check-out {CheckInId}", checkIn.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP for volunteer check-out {CheckInId}", checkIn.Id);
         }

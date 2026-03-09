@@ -70,7 +70,19 @@ public class GdprService
             {
                 await ProcessDataExportAsync(request.Id);
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Failed to process data export {RequestId}", request.Id);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to process data export {RequestId}", request.Id);
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "Failed to process data export {RequestId}", request.Id);
+            }
+            catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Failed to process data export {RequestId}", request.Id);
             }
@@ -128,7 +140,34 @@ public class GdprService
             _logger.LogInformation("Data export {RequestId} completed for user {UserId}, size: {Size} bytes",
                 requestId, request.UserId, request.FileSizeBytes);
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            request.Status = ExportStatus.Failed;
+            request.ErrorMessage = ex.Message;
+            await _db.SaveChangesAsync();
+
+            _logger.LogError(ex, "Data export {RequestId} failed for user {UserId}", requestId, request.UserId);
+            throw;
+        }
+        catch (JsonException ex)
+        {
+            request.Status = ExportStatus.Failed;
+            request.ErrorMessage = ex.Message;
+            await _db.SaveChangesAsync();
+
+            _logger.LogError(ex, "Data export {RequestId} failed for user {UserId}", requestId, request.UserId);
+            throw;
+        }
+        catch (IOException ex)
+        {
+            request.Status = ExportStatus.Failed;
+            request.ErrorMessage = ex.Message;
+            await _db.SaveChangesAsync();
+
+            _logger.LogError(ex, "Data export {RequestId} failed for user {UserId}", requestId, request.UserId);
+            throw;
+        }
+        catch (InvalidOperationException ex)
         {
             request.Status = ExportStatus.Failed;
             request.ErrorMessage = ex.Message;
@@ -511,7 +550,31 @@ public class GdprService
             _logger.LogInformation("Data deletion completed for user {UserId}, request {RequestId}",
                 request.UserId, requestId);
         }
-        catch (Exception ex)
+        catch (DbUpdateConcurrencyException ex)
+        {
+            request.Status = DeletionStatus.Approved; // Revert to approved so it can be retried
+            await _db.SaveChangesAsync();
+
+            _logger.LogError(ex, "Data deletion failed for request {RequestId}", requestId);
+            throw;
+        }
+        catch (DbUpdateException ex)
+        {
+            request.Status = DeletionStatus.Approved; // Revert to approved so it can be retried
+            await _db.SaveChangesAsync();
+
+            _logger.LogError(ex, "Data deletion failed for request {RequestId}", requestId);
+            throw;
+        }
+        catch (InvalidOperationException ex)
+        {
+            request.Status = DeletionStatus.Approved; // Revert to approved so it can be retried
+            await _db.SaveChangesAsync();
+
+            _logger.LogError(ex, "Data deletion failed for request {RequestId}", requestId);
+            throw;
+        }
+        catch (OperationCanceledException ex)
         {
             request.Status = DeletionStatus.Approved; // Revert to approved so it can be retried
             await _db.SaveChangesAsync();

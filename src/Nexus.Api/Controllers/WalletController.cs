@@ -359,7 +359,12 @@ public class WalletController : ControllerBase
                 await _gamification.CheckAndAwardBadgesAsync(senderId.Value, "transaction_completed");
                 await _gamification.CheckAndAwardBadgesAsync(request.ReceiverId, "transaction_completed");
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
+            {
+                // Log but don't fail the transfer if gamification fails
+                _logger.LogWarning(ex, "Failed to award XP/badges for transaction {TransactionId}", transaction.Id);
+            }
+            catch (InvalidOperationException ex)
             {
                 // Log but don't fail the transfer if gamification fails
                 _logger.LogWarning(ex, "Failed to award XP/badges for transaction {TransactionId}", transaction.Id);

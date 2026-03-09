@@ -221,7 +221,7 @@ public class GamificationService
                     break;
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is InvalidOperationException or Microsoft.EntityFrameworkCore.DbUpdateException or OperationCanceledException)
         {
             _logger.LogWarning(ex, "Badge check failed for user {UserId} action {Action}", userId, action);
         }
@@ -467,7 +467,7 @@ public class GamificationService
                 catch (DbUpdateException)
                 {
                     _db.Entry(userBadge).State = EntityState.Detached;
-                    // Already earned (race) — skip
+                    // Already earned (race) ï¿½ skip
                 }
             }
         }

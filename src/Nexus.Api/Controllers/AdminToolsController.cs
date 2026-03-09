@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.ComponentModel.DataAnnotations;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
@@ -119,7 +120,7 @@ public class AdminToolsController : ControllerBase
         var sw = Stopwatch.StartNew();
         bool dbOk = false;
         string dbError = "";
-        try { dbOk = await _db.Database.CanConnectAsync(); } catch (Exception ex) { dbError = ex.Message; }
+        try { dbOk = await _db.Database.CanConnectAsync(); } catch (DbException ex) { dbError = ex.Message; }
         sw.Stop();
         return Ok(new
         {

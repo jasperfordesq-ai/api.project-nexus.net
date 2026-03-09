@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Extensions;
@@ -43,7 +44,17 @@ public class SecretsController : ControllerBase
             var keys = await _secrets.ListSecretKeysAsync(tenantId.Value);
             return Ok(new { count = keys.Count, keys });
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Error listing secrets for tenant {TenantId}", tenantId);
+            return StatusCode(500, new { error = "Failed to list secrets" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Error listing secrets for tenant {TenantId}", tenantId);
+            return StatusCode(500, new { error = "Failed to list secrets" });
+        }
+        catch (CryptographicException ex)
         {
             _logger.LogError(ex, "Error listing secrets for tenant {TenantId}", tenantId);
             return StatusCode(500, new { error = "Failed to list secrets" });
@@ -65,7 +76,17 @@ public class SecretsController : ControllerBase
             if (value == null) return NotFound(new { error = "Secret not found" });
             return Ok(new { key, value });
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Error getting secret {Key} for tenant {TenantId}", key, tenantId);
+            return StatusCode(500, new { error = "Failed to get secret" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Error getting secret {Key} for tenant {TenantId}", key, tenantId);
+            return StatusCode(500, new { error = "Failed to get secret" });
+        }
+        catch (CryptographicException ex)
         {
             _logger.LogError(ex, "Error getting secret {Key} for tenant {TenantId}", key, tenantId);
             return StatusCode(500, new { error = "Failed to get secret" });
@@ -88,7 +109,17 @@ public class SecretsController : ControllerBase
             _logger.LogInformation("Secret {Key} set for tenant {TenantId}", key, tenantId);
             return Ok(new { key, updatedAt = DateTime.UtcNow });
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Error setting secret {Key} for tenant {TenantId}", key, tenantId);
+            return StatusCode(500, new { error = "Failed to set secret" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Error setting secret {Key} for tenant {TenantId}", key, tenantId);
+            return StatusCode(500, new { error = "Failed to set secret" });
+        }
+        catch (CryptographicException ex)
         {
             _logger.LogError(ex, "Error setting secret {Key} for tenant {TenantId}", key, tenantId);
             return StatusCode(500, new { error = "Failed to set secret" });
@@ -110,7 +141,17 @@ public class SecretsController : ControllerBase
             if (!deleted) return NotFound(new { error = "Secret not found" });
             return NoContent();
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Error deleting secret {Key} for tenant {TenantId}", key, tenantId);
+            return StatusCode(500, new { error = "Failed to delete secret" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Error deleting secret {Key} for tenant {TenantId}", key, tenantId);
+            return StatusCode(500, new { error = "Failed to delete secret" });
+        }
+        catch (CryptographicException ex)
         {
             _logger.LogError(ex, "Error deleting secret {Key} for tenant {TenantId}", key, tenantId);
             return StatusCode(500, new { error = "Failed to delete secret" });
@@ -136,7 +177,17 @@ public class SecretsController : ControllerBase
             _logger.LogInformation("Secret {Key} rotated for tenant {TenantId}", key, tenantId);
             return Ok(new { key, rotatedAt = DateTime.UtcNow, newValue });
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Error rotating secret {Key} for tenant {TenantId}", key, tenantId);
+            return StatusCode(500, new { error = "Failed to rotate secret" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Error rotating secret {Key} for tenant {TenantId}", key, tenantId);
+            return StatusCode(500, new { error = "Failed to rotate secret" });
+        }
+        catch (CryptographicException ex)
         {
             _logger.LogError(ex, "Error rotating secret {Key} for tenant {TenantId}", key, tenantId);
             return StatusCode(500, new { error = "Failed to rotate secret" });

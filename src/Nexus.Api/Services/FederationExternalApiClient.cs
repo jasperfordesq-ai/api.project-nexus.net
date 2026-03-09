@@ -34,7 +34,17 @@ public class FederationExternalApiClient
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<JsonElement>();
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to get API info from {BaseUrl}", baseUrl);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Failed to get API info from {BaseUrl}", baseUrl);
+            return null;
+        }
+        catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to get API info from {BaseUrl}", baseUrl);
             return null;
@@ -62,7 +72,17 @@ public class FederationExternalApiClient
             var result = await response.Content.ReadFromJsonAsync<JsonElement>();
             return result.GetProperty("access_token").GetString();
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to request federation token from {BaseUrl}", baseUrl);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Failed to request federation token from {BaseUrl}", baseUrl);
+            return null;
+        }
+        catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to request federation token from {BaseUrl}", baseUrl);
             return null;
@@ -87,7 +107,17 @@ public class FederationExternalApiClient
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<JsonElement>();
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to search listings on {BaseUrl}", baseUrl);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Failed to search listings on {BaseUrl}", baseUrl);
+            return null;
+        }
+        catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to search listings on {BaseUrl}", baseUrl);
             return null;
@@ -117,7 +147,17 @@ public class FederationExternalApiClient
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<JsonElement>();
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to initiate exchange on {BaseUrl}", baseUrl);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Failed to initiate exchange on {BaseUrl}", baseUrl);
+            return null;
+        }
+        catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to initiate exchange on {BaseUrl}", baseUrl);
             return null;
@@ -137,7 +177,12 @@ public class FederationExternalApiClient
             var response = await _httpClient.SendAsync(request);
             return response.IsSuccessStatusCode;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Webhook test failed for {BaseUrl}", baseUrl);
+            return false;
+        }
+        catch (TaskCanceledException ex)
         {
             _logger.LogWarning(ex, "Webhook test failed for {BaseUrl}", baseUrl);
             return false;

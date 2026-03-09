@@ -48,7 +48,7 @@ public class LlamaHealthCheck : IHealthCheck
             _logger.LogError(ex, "Llama health check timed out");
             return HealthCheckResult.Unhealthy("Llama service health check timed out", ex);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException or InvalidOperationException)
         {
             _logger.LogError(ex, "Llama health check failed with unexpected error");
             return HealthCheckResult.Unhealthy("Llama service health check failed", ex);

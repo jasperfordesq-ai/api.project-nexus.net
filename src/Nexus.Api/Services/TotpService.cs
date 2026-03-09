@@ -326,7 +326,7 @@ public class TotpService
 
             return System.Text.Encoding.UTF8.GetString(plaintext);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is System.Security.Cryptography.CryptographicException or ArgumentException or FormatException)
         {
             _logger.LogError(ex, "Failed to decrypt TOTP secret");
             return null;

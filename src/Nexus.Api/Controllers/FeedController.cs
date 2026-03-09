@@ -185,7 +185,11 @@ public class FeedController : ControllerBase
             await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.PostCreated, XpLog.Sources.PostCreated, post.Id, "Created a post");
             await _gamification.CheckAndAwardBadgesAsync(userId.Value, "post_created");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for post {PostId}", post.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP/badges for post {PostId}", post.Id);
         }
@@ -360,7 +364,11 @@ public class FeedController : ControllerBase
         {
             await _gamification.CheckAndAwardBadgesAsync(post.UserId, "post_liked");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to check badges for post {PostId} like", post.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to check badges for post {PostId} like", post.Id);
         }
@@ -509,7 +517,11 @@ public class FeedController : ControllerBase
         {
             await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.CommentAdded, XpLog.Sources.CommentAdded, comment.Id, "Added a comment");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP for comment {CommentId}", comment.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP for comment {CommentId}", comment.Id);
         }
@@ -727,6 +739,120 @@ public class FeedController : ControllerBase
         return Ok(new { message = "Post shared", share_id = share!.Id, post_id = id });
     }
 
+    /// <summary>GET /api/feed/{id}/likers — users who liked a post</summary>
+    [HttpGet("{id}/likers")]
+    public async Task<IActionResult> GetLikers(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        var tenantId = _tenantContext.TenantId ?? 0;
+        var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
+        if (post == null) return NotFound(new { error = "Post not found" });
+
+        var query = _db.PostLikes
+            .Where(l => l.PostId == id)
+            .Include(l => l.User)
+            .OrderByDescending(l => l.CreatedAt);
+
+        var total = await query.CountAsync();
+        var likers = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(l => new { l.UserId, l.User!.FirstName, l.User.LastName, likedAt = l.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = likers, totalCount = total, page, pageSize });
+    }
+
+    /// <summary>GET /api/feed/{id}/shares — list shares/reposts of a post</summary>
+    [HttpGet("{id}/shares")]
+    public async Task<IActionResult> GetShares(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        var tenantId = _tenantContext.TenantId ?? 0;
+        var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
+        if (post == null) return NotFound(new { error = "Post not found" });
+
+        var query = _db.PostShares
+            .Where(s => s.PostId == id)
+            .Include(s => s.User)
+            .OrderByDescending(s => s.CreatedAt);
+
+        var total = await query.CountAsync();
+        var shares = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(s => new { s.Id, s.UserId, s.User!.FirstName, s.User.LastName, s.SharedTo, sharedAt = s.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = shares, totalCount = total, page, pageSize });
+    }
+
+    /// <summary>POST /api/feed/{id}/comments/{commentId}/reply — reply to a comment (nested)</summary>
+    [HttpPost("{id}/comments/{commentId}/reply")]
+    public async Task<IActionResult> ReplyToComment(int id, int commentId, [FromBody] AddCommentRequest request)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        if (string.IsNullOrWhiteSpace(request.Content)) return BadRequest(new { error = "Reply content is required" });
+
+        var tenantId = _tenantContext.TenantId ?? 0;
+        var parent = await _db.PostComments
+            .FirstOrDefaultAsync(c => c.Id == commentId && c.PostId == id);
+        if (parent == null) return NotFound(new { error = "Comment not found" });
+
+        var reply = new PostComment
+        {
+            PostId = id,
+            UserId = userId.Value,
+            Content = request.Content,
+            ParentCommentId = commentId,
+            CreatedAt = DateTime.UtcNow,
+        };
+        _db.PostComments.Add(reply);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { id = reply.Id, postId = id, parentCommentId = commentId, content = reply.Content, createdAt = reply.CreatedAt });
+    }
+
+    /// <summary>POST /api/feed/{id}/hide — hide a post from the current user's feed</summary>
+    [HttpPost("{id}/hide")]
+    public async Task<IActionResult> HidePost(int id)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.TenantId ?? 0;
+        var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
+        if (post == null) return NotFound(new { error = "Post not found" });
+
+        var existing = await _db.HiddenPosts.FirstOrDefaultAsync(h => h.PostId == id && h.UserId == userId.Value);
+        if (existing != null) return Ok(new { message = "Post already hidden" });
+
+        _db.HiddenPosts.Add(new HiddenPost { PostId = id, UserId = userId.Value, TenantId = tenantId });
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Post hidden from your feed" });
+    }
+
+    /// <summary>POST /api/feed/{id}/mute — mute the author of a post</summary>
+    [HttpPost("{id}/mute")]
+    public async Task<IActionResult> MutePostAuthor(int id)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.TenantId ?? 0;
+        var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
+        if (post == null) return NotFound(new { error = "Post not found" });
+        if (post.UserId == userId.Value) return BadRequest(new { error = "Cannot mute yourself" });
+
+        var existing = await _db.MutedUsers.FirstOrDefaultAsync(m => m.MutedUserId == post.UserId && m.UserId == userId.Value);
+        if (existing != null) return Ok(new { message = "User already muted" });
+
+        _db.MutedUsers.Add(new MutedUser { UserId = userId.Value, MutedUserId = post.UserId, TenantId = tenantId });
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "User muted", mutedUserId = post.UserId });
+    }
+
     private int? GetCurrentUserId() => User.GetUserId();
 }
 
@@ -775,4 +901,5 @@ public class SharePostRequest
     [JsonPropertyName("shared_to")]
     public string? SharedTo { get; set; }
 }
+
 

@@ -268,7 +268,11 @@ public class ListingsController : ControllerBase
             await _gamification.AwardXpAsync(userId.Value, XpLog.Amounts.ListingCreated, XpLog.Sources.ListingCreated, listing.Id, $"Created listing: {listing.Title}");
             await _gamification.CheckAndAwardBadgesAsync(userId.Value, "listing_created");
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Failed to award XP/badges for listing {ListingId}", listing.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to award XP/badges for listing {ListingId}", listing.Id);
         }

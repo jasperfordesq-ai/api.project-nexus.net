@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
@@ -71,7 +72,7 @@ public class HealthController : ControllerBase
                 timestamp = DateTime.UtcNow
             });
         }
-        catch (Exception ex)
+        catch (DbException ex)
         {
             _logger.LogError(ex, "Database health check failed");
             return StatusCode(503, new
