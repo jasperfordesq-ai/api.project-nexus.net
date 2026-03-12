@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net.Http;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -216,7 +217,7 @@ public class ContentModerationServiceTests : IDisposable
 
         _aiServiceMock
             .Setup(x => x.ModerateContent(It.IsAny<string>(), "listing", It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new Exception("AI service unavailable"));
+            .ThrowsAsync(new HttpRequestException("AI service unavailable"));
 
         // Act
         var result = await _service.ModerateListingAsync(listing);
@@ -382,7 +383,7 @@ public class ContentModerationServiceTests : IDisposable
 
         _aiServiceMock
             .Setup(x => x.ModerateContent("Failing content", "listing", It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new Exception("Service error"));
+            .ThrowsAsync(new HttpRequestException("Service error"));
 
         // Act
         var results = await _service.BatchModerateAsync(items);

@@ -72,7 +72,7 @@ public class GamificationService
                 {
                     _logger.LogInformation("User {UserId} leveled up from {OldLevel} to {NewLevel}!", userId, previousLevel, newLevel);
                     // Check level milestone badges
-                    try { await CheckLevelBadges(userId); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to check level badges for user {UserId}", userId); }
+                    try { await CheckLevelBadges(userId); } catch (Exception ex) when (ex is InvalidOperationException or Microsoft.EntityFrameworkCore.DbUpdateException or OperationCanceledException) { _logger.LogWarning(ex, "Failed to check level badges for user {UserId}", userId); }
                 }
 
                 return new XpAwardResult

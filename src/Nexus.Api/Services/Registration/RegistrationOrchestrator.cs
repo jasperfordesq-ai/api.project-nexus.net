@@ -548,7 +548,7 @@ public class RegistrationOrchestrator
 
             await _emailNotification.SendTemplatedEmailAsync(user.Id, $"registration_{status}", placeholders);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        catch (Exception ex) // Broad catch intentional: email is fire-and-forget, must never break registration
         {
             _logger.LogWarning(ex, "Failed to send registration status email to user {UserId} for status {Status}",
                 user.Id, status);
