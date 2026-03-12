@@ -89,6 +89,17 @@ public class ContentModerationService
                 Message = "Moderation service unavailable, content allowed pending review"
             };
         }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for listing {ListingId}, allowing with warning", listing.Id);
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
     }
 
     /// <summary>
@@ -132,6 +143,17 @@ public class ContentModerationService
             };
         }
         catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for post {PostId}, allowing with warning", post.Id);
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Moderation failed for post {PostId}, allowing with warning", post.Id);
             return new ContentModerationOutcome
@@ -196,6 +218,17 @@ public class ContentModerationService
                 Message = "Moderation service unavailable, content allowed pending review"
             };
         }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for message, allowing with warning");
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
     }
 
     /// <summary>
@@ -239,6 +272,17 @@ public class ContentModerationService
             };
         }
         catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for comment, allowing with warning");
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Moderation failed for comment, allowing with warning");
             return new ContentModerationOutcome
@@ -303,6 +347,17 @@ public class ContentModerationService
                 Message = "Moderation service unavailable, content allowed pending review"
             };
         }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Moderation failed for profile {UserId}, allowing with warning", userId);
+            return new ContentModerationOutcome
+            {
+                IsApproved = true,
+                RequiresReview = true,
+                Severity = "unknown",
+                Message = "Moderation service unavailable, content allowed pending review"
+            };
+        }
     }
 
     /// <summary>
@@ -346,6 +401,18 @@ public class ContentModerationService
                 });
             }
             catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
+                    item.ContentType, item.EntityId);
+                outcomes.Add(new ContentModerationOutcome
+                {
+                    IsApproved = true,
+                    RequiresReview = true,
+                    Severity = "unknown",
+                    Message = "Moderation failed"
+                });
+            }
+            catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
                     item.ContentType, item.EntityId);

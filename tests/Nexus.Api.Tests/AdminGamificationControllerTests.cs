@@ -52,8 +52,8 @@ public class AdminGamificationControllerTests : IntegrationTestBase
         {
             name = "Test Badge",
             description = "A test badge",
-            icon_url = "https://example.com/badge.png",
-            xp_required = 100
+            icon = "https://example.com/badge.png",
+            xp_reward = 100
         });
         r.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Created);
     }
