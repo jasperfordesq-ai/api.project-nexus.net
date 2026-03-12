@@ -296,11 +296,23 @@ public class WalletController : ControllerBase
             return BadRequest(new { error = "Cannot transfer to yourself" });
         }
 
-        // Validate receiver exists in same tenant
+        // Validate sender account is active
+        var senderUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == senderId.Value);
+        if (senderUser == null || !senderUser.IsActive)
+        {
+            return BadRequest(new { error = "Your account is suspended or inactive" });
+        }
+
+        // Validate receiver exists in same tenant and is active
         var receiver = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.ReceiverId);
         if (receiver == null)
         {
             return BadRequest(new { error = "Receiver not found" });
+        }
+
+        if (!receiver.IsActive)
+        {
+            return BadRequest(new { error = "Receiver account is suspended or inactive" });
         }
 
         // Use a SERIALIZABLE transaction with advisory lock for atomic balance check + transfer
@@ -371,7 +383,7 @@ public class WalletController : ControllerBase
             }
 
             // Load sender info for response
-            var sender = await _db.Users.FindAsync(senderId.Value);
+            var sender = await _db.Users.FirstOrDefaultAsync(u => u.Id == senderId.Value);
             if (sender == null)
             {
                 return StatusCode(500, new { error = "Sender data unavailable" });

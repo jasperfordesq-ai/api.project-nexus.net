@@ -103,7 +103,7 @@ public class PersonalInsightsService
     public async Task<(List<PersonalInsight>? Insights, string? Error)> GetPublicInsightsAsync(
         int tenantId, int userId)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null)
             return (null, "User not found.");
 
@@ -185,7 +185,7 @@ public class PersonalInsightsService
         var categoryName = "None";
         if (topCategory != null)
         {
-            var cat = await _db.Set<Category>().FindAsync(topCategory.Value);
+            var cat = await _db.Set<Category>().FirstOrDefaultAsync(x => x.Id == topCategory.Value);
             categoryName = cat?.Name ?? "Unknown";
         }
         insights.Add(CreateInsight(tenantId, userId, "top_category", categoryName, "Top Category", period));

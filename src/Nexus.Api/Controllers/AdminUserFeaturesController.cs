@@ -32,6 +32,9 @@ public class AdminUserFeaturesController : ControllerBase
     [HttpGet("sessions")]
     public async Task<IActionResult> GetSessions([FromQuery] int page = 1, [FromQuery] int limit = 50, [FromQuery] bool active_only = true)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var tenantId = _tenant.GetTenantIdOrThrow();
         var query = _db.UserSessions
             .AsNoTracking()
@@ -106,6 +109,9 @@ public class AdminUserFeaturesController : ControllerBase
     [HttpGet("saved-searches")]
     public async Task<IActionResult> GetSavedSearches([FromQuery] int page = 1, [FromQuery] int limit = 50, [FromQuery] string? search_type = null)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var tenantId = _tenant.GetTenantIdOrThrow();
         var query = _db.SavedSearches
             .AsNoTracking()
@@ -156,6 +162,9 @@ public class AdminUserFeaturesController : ControllerBase
     [HttpGet("sub-accounts")]
     public async Task<IActionResult> GetSubAccounts([FromQuery] int page = 1, [FromQuery] int limit = 50)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var tenantId = _tenant.GetTenantIdOrThrow();
         var query = _db.SubAccounts
             .AsNoTracking()

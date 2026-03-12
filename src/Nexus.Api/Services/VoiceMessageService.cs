@@ -76,7 +76,7 @@ public class VoiceMessageService
 
     public async Task<string?> MarkAsReadAsync(int id, int userId)
     {
-        var msg = await _db.Set<VoiceMessage>().FindAsync(id);
+        var msg = await _db.Set<VoiceMessage>().FirstOrDefaultAsync(x => x.Id == id);
         if (msg == null) return "Voice message not found";
         if (msg.SenderId == userId) return null; // Sender can't mark own as read
 
@@ -87,7 +87,7 @@ public class VoiceMessageService
 
     public async Task<string?> DeleteAsync(int id, int userId)
     {
-        var msg = await _db.Set<VoiceMessage>().FindAsync(id);
+        var msg = await _db.Set<VoiceMessage>().FirstOrDefaultAsync(x => x.Id == id);
         if (msg == null) return "Voice message not found";
         if (msg.SenderId != userId) return "Not authorized";
 
@@ -98,7 +98,7 @@ public class VoiceMessageService
 
     public async Task<(VoiceMessage? Msg, string? Error)> SetTranscriptionAsync(int id, string transcription)
     {
-        var msg = await _db.Set<VoiceMessage>().FindAsync(id);
+        var msg = await _db.Set<VoiceMessage>().FirstOrDefaultAsync(x => x.Id == id);
         if (msg == null) return (null, "Voice message not found");
 
         msg.Transcription = transcription;

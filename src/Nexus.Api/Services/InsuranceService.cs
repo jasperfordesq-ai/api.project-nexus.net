@@ -67,7 +67,7 @@ public class InsuranceService
         int id, int userId, string? type, string? provider, string? policyNumber,
         decimal? coverAmount, DateTime? startDate, DateTime? expiryDate, string? documentUrl)
     {
-        var cert = await _db.Set<InsuranceCertificate>().FindAsync(id);
+        var cert = await _db.Set<InsuranceCertificate>().FirstOrDefaultAsync(x => x.Id == id);
         if (cert == null) return (null, "Certificate not found");
         if (cert.UserId != userId) return (null, "Not authorized");
 
@@ -87,7 +87,7 @@ public class InsuranceService
 
     public async Task<string?> DeleteAsync(int id, int userId)
     {
-        var cert = await _db.Set<InsuranceCertificate>().FindAsync(id);
+        var cert = await _db.Set<InsuranceCertificate>().FirstOrDefaultAsync(x => x.Id == id);
         if (cert == null) return "Certificate not found";
         if (cert.UserId != userId) return "Not authorized";
 
@@ -118,7 +118,7 @@ public class InsuranceService
 
     public async Task<(InsuranceCertificate? Cert, string? Error)> AdminVerifyAsync(int id, int verifiedById)
     {
-        var cert = await _db.Set<InsuranceCertificate>().FindAsync(id);
+        var cert = await _db.Set<InsuranceCertificate>().FirstOrDefaultAsync(x => x.Id == id);
         if (cert == null) return (null, "Certificate not found");
 
         cert.Status = "verified";
@@ -131,7 +131,7 @@ public class InsuranceService
 
     public async Task<(InsuranceCertificate? Cert, string? Error)> AdminRejectAsync(int id, int verifiedById)
     {
-        var cert = await _db.Set<InsuranceCertificate>().FindAsync(id);
+        var cert = await _db.Set<InsuranceCertificate>().FirstOrDefaultAsync(x => x.Id == id);
         if (cert == null) return (null, "Certificate not found");
 
         cert.Status = "rejected";

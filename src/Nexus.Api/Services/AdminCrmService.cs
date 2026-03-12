@@ -376,10 +376,11 @@ public class AdminCrmService
     {
         tag = tag.Trim().ToLower();
         if (string.IsNullOrWhiteSpace(tag)) return (false, "Tag cannot be empty");
+        if (tag.Length > 100) return (false, "Tag must be 100 characters or fewer");
 
         var existing = await _db.Set<UserTag>()
             .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.UserId == userId && t.Tag == tag);
-        if (existing != null) return (false, "Tag already applied");
+        if (existing != null) return (true, null); // Idempotent: already applied is success
 
         var userTag = new UserTag
         {
@@ -389,7 +390,15 @@ public class AdminCrmService
             AppliedByAdminId = adminId
         };
         _db.Set<UserTag>().Add(userTag);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Concurrent insert race — tag was added between check and insert; treat as success
+            return (true, null);
+        }
         return (true, null);
     }
 

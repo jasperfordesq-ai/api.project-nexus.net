@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -53,6 +54,8 @@ public class AdminCrmController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
         var filters = new AdvancedUserSearchFilters
         {
             Role = role,
@@ -107,6 +110,8 @@ public class AdminCrmController : ControllerBase
     [HttpGet("users/{userId}/notes")]
     public async Task<IActionResult> GetNotes(int userId, [FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
         var result = await _crmService.GetNotesAsync(userId, page, limit);
         return Ok(result);
     }
@@ -164,6 +169,8 @@ public class AdminCrmController : ControllerBase
     [HttpGet("flagged-notes")]
     public async Task<IActionResult> GetFlaggedNotes([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
         var result = await _crmService.GetFlaggedNotesAsync(page, limit);
         return Ok(result);
     }
@@ -334,10 +341,10 @@ public class AdminCrmController : ControllerBase
 
 public class AddNoteRequest
 {
-    [JsonPropertyName("content")]
+    [JsonPropertyName("content"), MaxLength(5000)]
     public string Content { get; set; } = string.Empty;
 
-    [JsonPropertyName("category")]
+    [JsonPropertyName("category"), MaxLength(100)]
     public string? Category { get; set; }
 
     [JsonPropertyName("is_flagged")]
@@ -346,10 +353,10 @@ public class AddNoteRequest
 
 public class UpdateNoteRequest
 {
-    [JsonPropertyName("content")]
+    [JsonPropertyName("content"), MaxLength(5000)]
     public string Content { get; set; } = string.Empty;
 
-    [JsonPropertyName("category")]
+    [JsonPropertyName("category"), MaxLength(100)]
     public string? Category { get; set; }
 
     [JsonPropertyName("is_flagged")]
@@ -361,13 +368,13 @@ public class CreateCrmTaskRequest
     [System.Text.Json.Serialization.JsonPropertyName("target_user_id")]
     public int TargetUserId { get; set; }
 
-    [System.Text.Json.Serialization.JsonPropertyName("title")]
+    [System.Text.Json.Serialization.JsonPropertyName("title"), MaxLength(200)]
     public string Title { get; set; } = string.Empty;
 
-    [System.Text.Json.Serialization.JsonPropertyName("description")]
+    [System.Text.Json.Serialization.JsonPropertyName("description"), MaxLength(2000)]
     public string? Description { get; set; }
 
-    [System.Text.Json.Serialization.JsonPropertyName("priority")]
+    [System.Text.Json.Serialization.JsonPropertyName("priority"), MaxLength(50)]
     public string? Priority { get; set; }
 
     [System.Text.Json.Serialization.JsonPropertyName("due_date")]
@@ -376,7 +383,7 @@ public class CreateCrmTaskRequest
 
 public class TagRequest
 {
-    [System.Text.Json.Serialization.JsonPropertyName("tag")]
+    [System.Text.Json.Serialization.JsonPropertyName("tag"), MaxLength(100)]
     public string Tag { get; set; } = string.Empty;
 }
 

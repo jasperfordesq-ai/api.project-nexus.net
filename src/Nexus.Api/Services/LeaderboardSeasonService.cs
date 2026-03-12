@@ -59,7 +59,7 @@ public class LeaderboardSeasonService
     /// </summary>
     public async Task<(List<object> Data, int Total)?> GetSeasonLeaderboardAsync(int seasonId, int page, int limit)
     {
-        var season = await _db.Set<LeaderboardSeason>().FindAsync(seasonId);
+        var season = await _db.Set<LeaderboardSeason>().FirstOrDefaultAsync(x => x.Id == seasonId);
         if (season == null) return null;
 
         var query = _db.Set<LeaderboardEntry>()

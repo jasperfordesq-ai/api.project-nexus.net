@@ -125,7 +125,7 @@ public class BlogService
         int postId, string? title, string? content, string? excerpt,
         string? featuredImageUrl, int? categoryId, string? tags, string? status)
     {
-        var post = await _db.Set<BlogPost>().FindAsync(postId);
+        var post = await _db.Set<BlogPost>().FirstOrDefaultAsync(x => x.Id == postId);
         if (post == null) return (null, "Post not found");
 
         if (title != null) { post.Title = title; post.Slug = GenerateSlug(title); }
@@ -149,7 +149,7 @@ public class BlogService
 
     public async Task<string?> DeletePostAsync(int postId)
     {
-        var post = await _db.Set<BlogPost>().FindAsync(postId);
+        var post = await _db.Set<BlogPost>().FirstOrDefaultAsync(x => x.Id == postId);
         if (post == null) return "Post not found";
 
         _db.Set<BlogPost>().Remove(post);
@@ -159,7 +159,7 @@ public class BlogService
 
     public async Task<(BlogPost? Post, string? Error)> ToggleStatusAsync(int postId)
     {
-        var post = await _db.Set<BlogPost>().FindAsync(postId);
+        var post = await _db.Set<BlogPost>().FirstOrDefaultAsync(x => x.Id == postId);
         if (post == null) return (null, "Post not found");
 
         post.Status = post.Status == "published" ? "draft" : "published";
@@ -173,7 +173,7 @@ public class BlogService
 
     public async Task<(BlogPost? Post, string? Error)> ToggleFeaturedAsync(int postId)
     {
-        var post = await _db.Set<BlogPost>().FindAsync(postId);
+        var post = await _db.Set<BlogPost>().FirstOrDefaultAsync(x => x.Id == postId);
         if (post == null) return (null, "Post not found");
 
         post.IsFeatured = !post.IsFeatured;
@@ -215,7 +215,7 @@ public class BlogService
     public async Task<(BlogCategory? Category, string? Error)> UpdateCategoryAsync(
         int id, string? name, string? description, string? color)
     {
-        var cat = await _db.Set<BlogCategory>().FindAsync(id);
+        var cat = await _db.Set<BlogCategory>().FirstOrDefaultAsync(x => x.Id == id);
         if (cat == null) return (null, "Category not found");
 
         if (name != null) { cat.Name = name; cat.Slug = GenerateSlug(name); }
@@ -228,7 +228,7 @@ public class BlogService
 
     public async Task<string?> DeleteCategoryAsync(int id)
     {
-        var cat = await _db.Set<BlogCategory>().FindAsync(id);
+        var cat = await _db.Set<BlogCategory>().FirstOrDefaultAsync(x => x.Id == id);
         if (cat == null) return "Category not found";
 
         // Unlink posts

@@ -148,14 +148,14 @@ public class ConnectionsController : ControllerBase
         }
 
         // Check if target user exists (in same tenant due to global filter)
-        var targetUser = await _db.Users.FindAsync(request.UserId);
+        var targetUser = await _db.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
         if (targetUser == null)
         {
             return NotFound(new { error = "User not found" });
         }
 
         // Get current user for notification
-        var currentUser = await _db.Users.FindAsync(userId.Value);
+        var currentUser = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId.Value);
 
         // Check for existing connection (in either direction)
         var existingConnection = await _db.Connections
@@ -312,7 +312,7 @@ public class ConnectionsController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var connection = await _db.Connections.FindAsync(id);
+        var connection = await _db.Connections.FirstOrDefaultAsync(x => x.Id == id);
         if (connection == null)
         {
             return NotFound(new { error = "Connection request not found" });
@@ -330,7 +330,7 @@ public class ConnectionsController : ControllerBase
         }
 
         // Get current user for notification
-        var currentUser = await _db.Users.FindAsync(userId.Value);
+        var currentUser = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId.Value);
 
         connection.Status = Connection.Statuses.Accepted;
         connection.UpdatedAt = DateTime.UtcNow;
@@ -389,7 +389,7 @@ public class ConnectionsController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var connection = await _db.Connections.FindAsync(id);
+        var connection = await _db.Connections.FirstOrDefaultAsync(x => x.Id == id);
         if (connection == null)
         {
             return NotFound(new { error = "Connection request not found" });
@@ -428,7 +428,7 @@ public class ConnectionsController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var connection = await _db.Connections.FindAsync(id);
+        var connection = await _db.Connections.FirstOrDefaultAsync(x => x.Id == id);
         if (connection == null)
         {
             return NotFound(new { error = "Connection not found" });

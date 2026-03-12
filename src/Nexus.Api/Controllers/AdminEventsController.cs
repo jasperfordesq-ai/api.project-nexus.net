@@ -63,7 +63,7 @@ public class AdminEventsController : ControllerBase
     [HttpPut("{id}/cancel")]
     public async Task<IActionResult> CancelEvent(int id)
     {
-        var evt = await _db.Events.FindAsync(id);
+        var evt = await _db.Events.FirstOrDefaultAsync(x => x.Id == id);
         if (evt == null) return NotFound(new { error = "Event not found" });
 
         evt.IsCancelled = true;
@@ -75,7 +75,7 @@ public class AdminEventsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteEvent(int id)
     {
-        var evt = await _db.Events.FindAsync(id);
+        var evt = await _db.Events.FirstOrDefaultAsync(x => x.Id == id);
         if (evt == null) return NotFound(new { error = "Event not found" });
 
         var rsvps = await _db.EventRsvps.Where(r => r.EventId == id).ToListAsync();

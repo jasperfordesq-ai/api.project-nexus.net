@@ -70,7 +70,17 @@ public class FederationExternalApiClient
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<JsonElement>();
-            return result.GetProperty("access_token").GetString();
+            if (result.ValueKind == JsonValueKind.Undefined || result.ValueKind == JsonValueKind.Null)
+            {
+                _logger.LogWarning("Empty or null response from federation token endpoint at {BaseUrl}", baseUrl);
+                return null;
+            }
+            if (!result.TryGetProperty("access_token", out var tokenElement))
+            {
+                _logger.LogWarning("Federation token response missing access_token from {BaseUrl}", baseUrl);
+                return null;
+            }
+            return tokenElement.GetString();
         }
         catch (HttpRequestException ex)
         {

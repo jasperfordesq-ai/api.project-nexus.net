@@ -122,6 +122,9 @@ public class NewsletterController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         Entities.NewsletterStatus? parsedStatus = null;
         if (!string.IsNullOrEmpty(status) &&
             Enum.TryParse<Entities.NewsletterStatus>(status, ignoreCase: true, out var s))
@@ -306,6 +309,9 @@ public class NewsletterController : ControllerBase
         [FromQuery] int limit = 20,
         [FromQuery] bool? subscribed_only = null)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var (items, total) = await _newsletterService.GetSubscribersAsync(page, limit, subscribed_only);
 
         return Ok(new

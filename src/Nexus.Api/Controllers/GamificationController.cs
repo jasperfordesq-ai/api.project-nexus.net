@@ -313,7 +313,7 @@ public class GamificationController : ControllerBase
         }
         else
         {
-            var currentUser = await _db.Users.FindAsync(userId);
+            var currentUser = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
             if (currentUser != null)
             {
                 currentUserRank = await _db.Users

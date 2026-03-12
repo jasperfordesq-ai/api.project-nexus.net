@@ -65,13 +65,33 @@ public class SubscriptionService
 
     public async Task<(bool, string?)> DeletePlanAsync(int tenantId, int planId)
     {
-        var plan = await GetPlanAsync(tenantId, planId);
-        if (plan == null) return (false, "Plan not found");
-        var hasActive = await _db.UserSubscriptions.AnyAsync(s => s.PlanId == planId && s.Status == SubscriptionStatus.Active);
-        if (hasActive) return (false, "Plan has active subscribers");
-        _db.SubscriptionPlans.Remove(plan);
-        await _db.SaveChangesAsync();
-        return (true, null);
+        // Use serializable transaction to prevent TOCTOU race:
+        // without it, a subscriber could be assigned between the AnyAsync check and Remove
+        await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
+        {
+            var plan = await _db.SubscriptionPlans.FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == planId);
+            if (plan == null)
+            {
+                await transaction.RollbackAsync();
+                return (false, "Plan not found");
+            }
+            var hasActive = await _db.UserSubscriptions.AnyAsync(s => s.PlanId == planId && s.Status == SubscriptionStatus.Active);
+            if (hasActive)
+            {
+                await transaction.RollbackAsync();
+                return (false, "Plan has active subscribers");
+            }
+            _db.SubscriptionPlans.Remove(plan);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return (true, null);
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync();
+            return (false, "Failed to delete plan. Please try again.");
+        }
     }
 
     public async Task<UserSubscription?> GetUserSubscriptionAsync(int tenantId, int userId)
@@ -81,26 +101,42 @@ public class SubscriptionService
 
     public async Task<(UserSubscription?, string?)> AssignPlanAsync(int tenantId, int userId, int planId)
     {
-        var plan = await GetPlanAsync(tenantId, planId);
-        if (plan == null || !plan.IsActive) return (null, "Plan not found or inactive");
-        var existing = await GetUserSubscriptionAsync(tenantId, userId);
-        if (existing != null)
+        // Wrap in transaction to prevent concurrent requests creating duplicate active subscriptions
+        await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
         {
-            existing.Status = SubscriptionStatus.Cancelled;
-            existing.CancelledAt = DateTime.UtcNow;
+            var plan = await _db.SubscriptionPlans.FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == planId);
+            if (plan == null || !plan.IsActive)
+            {
+                await transaction.RollbackAsync();
+                return (null, "Plan not found or inactive");
+            }
+            var existing = await _db.UserSubscriptions
+                .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.UserId == userId && s.Status == SubscriptionStatus.Active);
+            if (existing != null)
+            {
+                existing.Status = SubscriptionStatus.Cancelled;
+                existing.CancelledAt = DateTime.UtcNow;
+            }
+            var sub = new UserSubscription
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                PlanId = planId,
+                StartedAt = DateTime.UtcNow,
+                NextBillingDate = DateTime.UtcNow.AddMonths(1)
+            };
+            _db.UserSubscriptions.Add(sub);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            await _db.Entry(sub).Reference(s => s.Plan).LoadAsync();
+            return (sub, null);
         }
-        var sub = new UserSubscription
+        catch (DbUpdateException)
         {
-            TenantId = tenantId,
-            UserId = userId,
-            PlanId = planId,
-            StartedAt = DateTime.UtcNow,
-            NextBillingDate = DateTime.UtcNow.AddMonths(1)
-        };
-        _db.UserSubscriptions.Add(sub);
-        await _db.SaveChangesAsync();
-        await _db.Entry(sub).Reference(s => s.Plan).LoadAsync();
-        return (sub, null);
+            await transaction.RollbackAsync();
+            return (null, "Failed to assign plan. Please try again.");
+        }
     }
 
     public async Task<(bool, string?)> CancelSubscriptionAsync(int tenantId, int userId)

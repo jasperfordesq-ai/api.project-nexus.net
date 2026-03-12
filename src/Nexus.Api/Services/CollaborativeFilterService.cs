@@ -336,7 +336,7 @@ public class CollaborativeFilterService
         if (existing)
             return (null, "You have already submitted feedback for this match.");
 
-        var matchResult = await _db.Set<MatchResult>().FindAsync(matchResultId);
+        var matchResult = await _db.Set<MatchResult>().FirstOrDefaultAsync(x => x.Id == matchResultId);
         if (matchResult == null)
             return (null, "Match result not found.");
 

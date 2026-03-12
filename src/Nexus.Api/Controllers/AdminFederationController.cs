@@ -95,6 +95,8 @@ public class AdminFederationController : ControllerBase
     [HttpGet("audit-log")]
     public async Task<IActionResult> GetAuditLog([FromQuery] int? partnerId, [FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
         var (logs, total) = await _svc.GetAuditLogAsync(partnerId, page, limit);
         var data = logs.Select(l => new {
             id = l.Id, tenant_id = l.TenantId, partner_tenant_id = l.PartnerTenantId,

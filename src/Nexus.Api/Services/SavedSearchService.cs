@@ -48,7 +48,7 @@ public class SavedSearchService
     /// </summary>
     public async Task<(SavedSearch? Search, string? Error)> GetByIdAsync(int tenantId, int userId, int id)
     {
-        var search = await _db.Set<SavedSearch>().FindAsync(id);
+        var search = await _db.Set<SavedSearch>().FirstOrDefaultAsync(x => x.Id == id);
 
         if (search == null)
             return (null, "Saved search not found.");
@@ -104,7 +104,7 @@ public class SavedSearchService
     public async Task<(SavedSearch? Search, string? Error)> UpdateAsync(
         int tenantId, int userId, int id, string? name, string? queryJson, bool? notifyOnNewResults)
     {
-        var search = await _db.Set<SavedSearch>().FindAsync(id);
+        var search = await _db.Set<SavedSearch>().FirstOrDefaultAsync(x => x.Id == id);
 
         if (search == null)
             return (null, "Saved search not found.");
@@ -132,7 +132,7 @@ public class SavedSearchService
     /// </summary>
     public async Task<string?> DeleteAsync(int tenantId, int userId, int id)
     {
-        var search = await _db.Set<SavedSearch>().FindAsync(id);
+        var search = await _db.Set<SavedSearch>().FirstOrDefaultAsync(x => x.Id == id);
 
         if (search == null)
             return "Saved search not found.";
@@ -154,7 +154,7 @@ public class SavedSearchService
     public async Task<(SavedSearch? Search, string? Error)> MarkAsRunAsync(
         int tenantId, int userId, int id, int resultCount)
     {
-        var search = await _db.Set<SavedSearch>().FindAsync(id);
+        var search = await _db.Set<SavedSearch>().FirstOrDefaultAsync(x => x.Id == id);
 
         if (search == null)
             return (null, "Saved search not found.");
@@ -209,7 +209,7 @@ public class SavedSearchService
     /// <summary>Mark search run (original name).</summary>
     public async Task<(SavedSearch? Search, string? Error)> MarkSearchRunAsync(int id, int resultCount)
     {
-        var search = await _db.Set<SavedSearch>().FindAsync(id);
+        var search = await _db.Set<SavedSearch>().FirstOrDefaultAsync(x => x.Id == id);
         if (search == null)
             return (null, "Saved search not found.");
 

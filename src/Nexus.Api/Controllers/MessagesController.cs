@@ -328,7 +328,7 @@ public class MessagesController : ControllerBase
         await _db.SaveChangesAsync();
 
         // Load sender for response
-        var sender = await _db.Users.FindAsync(userId.Value);
+        var sender = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId.Value);
         if (sender == null)
         {
             return StatusCode(500, new { error = "Sender data unavailable" });

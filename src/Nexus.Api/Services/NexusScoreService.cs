@@ -105,7 +105,7 @@ public class NexusScoreService
         }
 
         // 5. Tenure Score (0-200): based on account age
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user != null)
         {
             var daysSinceJoined = (DateTime.UtcNow - user.CreatedAt).TotalDays;

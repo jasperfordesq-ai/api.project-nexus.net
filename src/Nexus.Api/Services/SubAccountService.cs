@@ -75,7 +75,7 @@ public class SubAccountService
             return (null, "Invalid relationship. Must be one of: " + string.Join(", ", ValidRelationships));
 
         // Verify sub user exists
-        var subUser = await _db.Users.FindAsync(subUserId);
+        var subUser = await _db.Users.FirstOrDefaultAsync(x => x.Id == subUserId);
         if (subUser == null)
             return (null, "Sub-account user not found.");
 
@@ -127,7 +127,7 @@ public class SubAccountService
     public async Task<(SubAccount? SubAccount, string? Error)> UpdateSubAccountAsync(
         int id, int primaryUserId, string? displayName, bool? canTransact, bool? canMessage, bool? canJoinGroups)
     {
-        var sub = await _db.Set<SubAccount>().FindAsync(id);
+        var sub = await _db.Set<SubAccount>().FirstOrDefaultAsync(x => x.Id == id);
 
         if (sub == null)
             return (null, "Sub-account not found.");
@@ -161,7 +161,7 @@ public class SubAccountService
     /// </summary>
     public async Task<(bool Success, string? Error)> RemoveSubAccountAsync(int id, int primaryUserId)
     {
-        var sub = await _db.Set<SubAccount>().FindAsync(id);
+        var sub = await _db.Set<SubAccount>().FirstOrDefaultAsync(x => x.Id == id);
 
         if (sub == null)
             return (false, "Sub-account not found.");
@@ -213,7 +213,7 @@ public class SubAccountService
             .Where(s => s.PrimaryUserId == primaryUserId && s.IsActive)
             .ToListAsync();
 
-        var primaryUser = await _db.Users.FindAsync(primaryUserId);
+        var primaryUser = await _db.Users.FirstOrDefaultAsync(x => x.Id == primaryUserId);
         if (primaryUser == null)
             return (0m, new List<SubAccountBalanceItem>(), "Primary user not found.");
 
@@ -342,7 +342,7 @@ public class SubAccountService
             .Where(s => s.PrimaryUserId == primaryUserId && s.IsActive)
             .ToListAsync();
 
-        var primaryUser = await _db.Users.FindAsync(primaryUserId);
+        var primaryUser = await _db.Users.FirstOrDefaultAsync(x => x.Id == primaryUserId);
         if (primaryUser == null)
             return (new List<FamilyActivityItem>(), "Primary user not found.");
 

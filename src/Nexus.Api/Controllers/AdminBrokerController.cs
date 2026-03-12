@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -249,13 +250,13 @@ public class AdminBrokerController : ControllerBase
     {
         [JsonPropertyName("broker_id")] public int BrokerId { get; set; }
         [JsonPropertyName("member_id")] public int MemberId { get; set; }
-        [JsonPropertyName("notes")] public string? Notes { get; set; }
+        [JsonPropertyName("notes"), MaxLength(2000)] public string? Notes { get; set; }
     }
 
     public class UpdateAssignmentRequest
     {
-        [JsonPropertyName("status")] public string Status { get; set; } = "active";
-        [JsonPropertyName("notes")] public string? Notes { get; set; }
+        [JsonPropertyName("status"), MaxLength(50)] public string Status { get; set; } = "active";
+        [JsonPropertyName("notes"), MaxLength(2000)] public string? Notes { get; set; }
     }
 
     public class ReassignRequest
@@ -267,7 +268,7 @@ public class AdminBrokerController : ControllerBase
     {
         [JsonPropertyName("member_id")] public int? MemberId { get; set; }
         [JsonPropertyName("exchange_id")] public int? ExchangeId { get; set; }
-        [JsonPropertyName("content")] public string Content { get; set; } = string.Empty;
+        [JsonPropertyName("content"), MaxLength(5000)] public string Content { get; set; } = string.Empty;
         [JsonPropertyName("is_private")] public bool IsPrivate { get; set; } = true;
     }
 }

@@ -37,6 +37,9 @@ public class FeedRankingController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
@@ -84,6 +87,8 @@ public class FeedRankingController : ControllerBase
         [FromQuery] int hours = 24,
         [FromQuery] int limit = 10)
     {
+        limit = Math.Clamp(limit, 1, 100);
+
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
@@ -174,6 +179,9 @@ public class FeedRankingController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 

@@ -312,6 +312,9 @@ public class FederationService
     public async Task<(List<FederatedListing> Listings, int Total)> GetFederatedListingsAsync(
         int tenantId, int page, int limit)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var query = _db.Set<FederatedListing>()
             .Where(fl => fl.TenantId == tenantId && fl.Status == FederatedListingStatus.Active)
             .Include(fl => fl.SourceTenant)
@@ -518,6 +521,9 @@ public class FederationService
     public async Task<(List<FederatedExchange> Exchanges, int Total)> GetFederatedExchangesAsync(
         int userId, int page, int limit)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var query = _db.Set<FederatedExchange>()
             .Where(fe => fe.LocalUserId == userId)
             .Include(fe => fe.PartnerTenant)

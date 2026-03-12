@@ -263,7 +263,7 @@ public class AdminController : ControllerBase
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var user = await _db.Users.FindAsync(id);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == id);
         if (user == null)
         {
             return NotFound(new { error = "User not found" });
@@ -368,7 +368,7 @@ public class AdminController : ControllerBase
             return BadRequest(new { error = "Cannot suspend yourself" });
         }
 
-        var user = await _db.Users.FindAsync(id);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == id);
         if (user == null)
         {
             return NotFound(new { error = "User not found" });
@@ -420,7 +420,7 @@ public class AdminController : ControllerBase
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var user = await _db.Users.FindAsync(id);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == id);
         if (user == null)
         {
             return NotFound(new { error = "User not found" });
@@ -523,7 +523,7 @@ public class AdminController : ControllerBase
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var listing = await _db.Listings.FindAsync(id);
+        var listing = await _db.Listings.FirstOrDefaultAsync(x => x.Id == id);
         if (listing == null)
         {
             return NotFound(new { error = "Listing not found" });
@@ -578,7 +578,7 @@ public class AdminController : ControllerBase
             return BadRequest(new { error = "Rejection reason is required" });
         }
 
-        var listing = await _db.Listings.FindAsync(id);
+        var listing = await _db.Listings.FirstOrDefaultAsync(x => x.Id == id);
         if (listing == null)
         {
             return NotFound(new { error = "Listing not found" });
@@ -753,7 +753,7 @@ public class AdminController : ControllerBase
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var category = await _db.Categories.FindAsync(id);
+        var category = await _db.Categories.FirstOrDefaultAsync(x => x.Id == id);
         if (category == null)
         {
             return NotFound(new { error = "Category not found" });
@@ -1098,7 +1098,7 @@ public class AdminController : ControllerBase
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var role = await _db.Roles.FindAsync(id);
+        var role = await _db.Roles.FirstOrDefaultAsync(x => x.Id == id);
         if (role == null)
         {
             return NotFound(new { error = "Role not found" });
@@ -1182,7 +1182,7 @@ public class AdminController : ControllerBase
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var role = await _db.Roles.FindAsync(id);
+        var role = await _db.Roles.FirstOrDefaultAsync(x => x.Id == id);
         if (role == null)
         {
             return NotFound(new { error = "Role not found" });

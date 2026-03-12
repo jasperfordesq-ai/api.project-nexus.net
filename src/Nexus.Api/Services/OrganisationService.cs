@@ -146,7 +146,7 @@ public class OrganisationService
         string? websiteUrl, string? email, string? phone, string? address,
         double? latitude, double? longitude, string? type, string? industry, bool? isPublic)
     {
-        var org = await _db.Set<Organisation>().FindAsync(orgId);
+        var org = await _db.Set<Organisation>().FirstOrDefaultAsync(x => x.Id == orgId);
         if (org == null) return (null, "Organisation not found");
 
         // Only owner or org admin can update
@@ -175,7 +175,7 @@ public class OrganisationService
 
     public async Task<string?> DeleteAsync(int orgId, int userId)
     {
-        var org = await _db.Set<Organisation>().FindAsync(orgId);
+        var org = await _db.Set<Organisation>().FirstOrDefaultAsync(x => x.Id == orgId);
         if (org == null) return "Organisation not found";
         if (org.OwnerId != userId) return "Only the owner can delete this organisation";
 
@@ -280,7 +280,7 @@ public class OrganisationService
 
     public async Task<(Organisation? Org, string? Error)> AdminVerifyAsync(int orgId)
     {
-        var org = await _db.Set<Organisation>().FindAsync(orgId);
+        var org = await _db.Set<Organisation>().FirstOrDefaultAsync(x => x.Id == orgId);
         if (org == null) return (null, "Organisation not found");
 
         org.Status = "verified";
@@ -292,7 +292,7 @@ public class OrganisationService
 
     public async Task<(Organisation? Org, string? Error)> AdminSuspendAsync(int orgId)
     {
-        var org = await _db.Set<Organisation>().FindAsync(orgId);
+        var org = await _db.Set<Organisation>().FirstOrDefaultAsync(x => x.Id == orgId);
         if (org == null) return (null, "Organisation not found");
 
         org.Status = "suspended";

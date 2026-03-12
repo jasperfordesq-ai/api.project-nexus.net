@@ -71,6 +71,7 @@ public class AdminAnalyticsController : ControllerBase
         [FromQuery] string metric = "exchanges",
         [FromQuery] int limit = 10)
     {
+        limit = Math.Clamp(limit, 1, 100);
         var validMetrics = new[] { "exchanges", "hours_given", "hours_received", "xp", "listings", "connections" };
         if (!validMetrics.Contains(metric.ToLowerInvariant()))
         {

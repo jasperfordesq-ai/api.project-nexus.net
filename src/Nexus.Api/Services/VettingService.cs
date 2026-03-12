@@ -62,7 +62,7 @@ public class VettingService
         int tenantId, int userId, string type, string? reference,
         DateTime? issuedAt, DateTime? expiresAt, string? documentUrl)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null) return (null, "User not found");
 
         if (!ValidVettingTypes.Contains(type))
@@ -93,7 +93,7 @@ public class VettingService
         int id, string? type, string? reference, DateTime? issuedAt,
         DateTime? expiresAt, string? documentUrl, string? notes)
     {
-        var record = await _db.Set<VettingRecord>().FindAsync(id);
+        var record = await _db.Set<VettingRecord>().FirstOrDefaultAsync(x => x.Id == id);
         if (record == null) return (null, "Record not found");
 
         if (type != null)
@@ -118,7 +118,7 @@ public class VettingService
 
     public async Task<(VettingRecord? Record, string? Error)> VerifyRecordAsync(int id, int verifiedById)
     {
-        var record = await _db.Set<VettingRecord>().FindAsync(id);
+        var record = await _db.Set<VettingRecord>().FirstOrDefaultAsync(x => x.Id == id);
         if (record == null) return (null, "Record not found");
 
         record.Status = "verified";
@@ -133,7 +133,7 @@ public class VettingService
 
     public async Task<(VettingRecord? Record, string? Error)> RejectRecordAsync(int id, int verifiedById, string? notes)
     {
-        var record = await _db.Set<VettingRecord>().FindAsync(id);
+        var record = await _db.Set<VettingRecord>().FirstOrDefaultAsync(x => x.Id == id);
         if (record == null) return (null, "Record not found");
 
         record.Status = "rejected";
@@ -177,7 +177,7 @@ public class VettingService
 
     public async Task<string?> DeleteRecordAsync(int id)
     {
-        var record = await _db.Set<VettingRecord>().FindAsync(id);
+        var record = await _db.Set<VettingRecord>().FirstOrDefaultAsync(x => x.Id == id);
         if (record == null) return "Record not found";
 
         _db.Set<VettingRecord>().Remove(record);
@@ -187,7 +187,7 @@ public class VettingService
 
     public async Task<(VettingRecord? Record, string? Error)> RenewRecordAsync(int id, int defaultMonths = 12)
     {
-        var record = await _db.Set<VettingRecord>().FindAsync(id);
+        var record = await _db.Set<VettingRecord>().FirstOrDefaultAsync(x => x.Id == id);
         if (record == null) return (null, "Record not found");
 
         var baseDate = record.ExpiresAt ?? DateTime.UtcNow;

@@ -138,6 +138,9 @@ public class ContentReportService
     /// </summary>
     public async Task<(List<ContentReport> Reports, int Total)> GetMyReportsAsync(int userId, int page, int limit)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var query = _db.Set<ContentReport>()
             .Where(r => r.ReporterId == userId);
 
@@ -159,6 +162,9 @@ public class ContentReportService
     /// </summary>
     public async Task<(List<ContentReport> Reports, int Total)> GetPendingReportsAsync(int page, int limit)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var query = _db.Set<ContentReport>()
             .Where(r => r.Status == ReportStatus.Pending || r.Status == ReportStatus.Escalated);
 

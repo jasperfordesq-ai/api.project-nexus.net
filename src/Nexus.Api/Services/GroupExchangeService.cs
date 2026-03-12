@@ -32,6 +32,9 @@ public class GroupExchangeService
     public async Task<(List<GroupExchange> Data, int Total)> GetGroupExchangesAsync(
         int groupId, string? status, int page, int limit)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var query = _db.Set<GroupExchange>()
             .AsNoTracking()
             .Where(ge => ge.GroupId == groupId);

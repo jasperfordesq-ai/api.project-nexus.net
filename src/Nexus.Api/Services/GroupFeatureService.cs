@@ -203,6 +203,9 @@ public class GroupFeatureService
 
     public async Task<List<GroupDiscussion>> GetDiscussionsAsync(int groupId, int userId, int page, int limit)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var membership = await GetMembershipAsync(groupId, userId);
         if (membership == null) return new List<GroupDiscussion>();
 

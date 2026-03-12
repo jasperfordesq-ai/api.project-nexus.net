@@ -70,6 +70,9 @@ public class GoalService
 
     public async Task<(List<Goal> Data, int Total)> ListGoalsAsync(int userId, int page, int limit, string? status = null)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var query = _db.Set<Goal>().Where(g => g.UserId == userId);
 
         if (!string.IsNullOrEmpty(status))

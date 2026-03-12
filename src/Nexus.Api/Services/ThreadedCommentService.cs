@@ -85,7 +85,7 @@ public class ThreadedCommentService
 
         if (parentId.HasValue)
         {
-            var parent = await _db.Set<ThreadedComment>().FindAsync(parentId.Value);
+            var parent = await _db.Set<ThreadedComment>().FirstOrDefaultAsync(x => x.Id == parentId.Value);
             if (parent == null)
                 return (null, "Parent comment not found");
 
@@ -124,7 +124,7 @@ public class ThreadedCommentService
         if (string.IsNullOrWhiteSpace(content))
             return (null, "Content is required");
 
-        var comment = await _db.Set<ThreadedComment>().FindAsync(id);
+        var comment = await _db.Set<ThreadedComment>().FirstOrDefaultAsync(x => x.Id == id);
         if (comment == null)
             return (null, "Comment not found");
 
@@ -149,7 +149,7 @@ public class ThreadedCommentService
     /// </summary>
     public async Task<(bool Success, string? Error)> DeleteCommentAsync(int id, int userId, bool isAdmin = false)
     {
-        var comment = await _db.Set<ThreadedComment>().FindAsync(id);
+        var comment = await _db.Set<ThreadedComment>().FirstOrDefaultAsync(x => x.Id == id);
         if (comment == null)
             return (false, "Comment not found");
 

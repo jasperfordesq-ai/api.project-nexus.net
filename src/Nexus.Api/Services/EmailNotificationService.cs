@@ -89,7 +89,7 @@ public class EmailNotificationService
     {
         await SendTemplatedEmailAsync(userId, $"exchange_{action}", new Dictionary<string, string>
         {
-            ["user_name"] = (await _db.Users.FindAsync(userId))?.FirstName ?? "User",
+            ["user_name"] = (await _db.Users.FirstOrDefaultAsync(x => x.Id == userId))?.FirstName ?? "User",
             ["exchange_id"] = exchangeId.ToString(),
             ["listing_title"] = listingTitle,
             ["other_user"] = otherUserName,

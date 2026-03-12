@@ -36,6 +36,8 @@ public class ChallengeService
     /// </summary>
     public async Task<(List<object> Data, int Total)> GetActiveChallengesAsync(int page, int limit)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
         var now = DateTime.UtcNow;
 
         var query = _db.Set<Challenge>()
@@ -218,7 +220,7 @@ public class ChallengeService
                 // Award badge if configured
                 if (participation.Challenge.BadgeId.HasValue)
                 {
-                    var badge = await _db.Badges.FindAsync(participation.Challenge.BadgeId.Value);
+                    var badge = await _db.Badges.FirstOrDefaultAsync(x => x.Id == participation.Challenge.BadgeId.Value);
                     if (badge != null)
                     {
                         await _gamificationService.AwardBadgeAsync(userId, badge.Slug);

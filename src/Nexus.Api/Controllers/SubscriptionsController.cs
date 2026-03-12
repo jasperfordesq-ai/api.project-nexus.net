@@ -122,6 +122,9 @@ public class SubscriptionsController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminListSubscriptions([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
         var (subs, total) = await _svc.ListSubscriptionsAsync(_tenantContext.TenantId.Value, page, limit);
         var data = subs.Select(s => new { id = s.Id, status = s.Status.ToString(), started_at = s.StartedAt });

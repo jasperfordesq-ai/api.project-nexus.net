@@ -88,7 +88,7 @@ public class AdminGroupsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteGroup(int id)
     {
-        var group = await _db.Groups.FindAsync(id);
+        var group = await _db.Groups.FirstOrDefaultAsync(g => g.Id == id);
         if (group == null) return NotFound(new { error = "Group not found" });
 
         var members = await _db.GroupMembers.Where(m => m.GroupId == id).ToListAsync();

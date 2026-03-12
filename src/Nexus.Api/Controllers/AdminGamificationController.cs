@@ -86,7 +86,7 @@ public class AdminGamificationController : ControllerBase
     [HttpPut("badges/{id}")]
     public async Task<IActionResult> UpdateBadge(int id, [FromBody] AdminUpdateBadgeRequest request)
     {
-        var badge = await _db.Badges.FindAsync(id);
+        var badge = await _db.Badges.FirstOrDefaultAsync(x => x.Id == id);
         if (badge == null) return NotFound(new { error = "Badge not found" });
 
         if (request.Name != null) badge.Name = request.Name;
@@ -102,7 +102,7 @@ public class AdminGamificationController : ControllerBase
     [HttpDelete("badges/{id}")]
     public async Task<IActionResult> DeleteBadge(int id)
     {
-        var badge = await _db.Badges.FindAsync(id);
+        var badge = await _db.Badges.FirstOrDefaultAsync(x => x.Id == id);
         if (badge == null) return NotFound(new { error = "Badge not found" });
 
         var earned = await _db.UserBadges.Where(ub => ub.BadgeId == id).ToListAsync();
@@ -115,10 +115,10 @@ public class AdminGamificationController : ControllerBase
     [HttpPost("badges/{id}/award")]
     public async Task<IActionResult> AwardBadge(int id, [FromBody] AwardBadgeRequest request)
     {
-        var badge = await _db.Badges.FindAsync(id);
+        var badge = await _db.Badges.FirstOrDefaultAsync(x => x.Id == id);
         if (badge == null) return NotFound(new { error = "Badge not found" });
 
-        var user = await _db.Users.FindAsync(request.UserId);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
         if (user == null) return NotFound(new { error = "User not found" });
 
         var existing = await _db.UserBadges.AnyAsync(ub => ub.BadgeId == id && ub.UserId == request.UserId);

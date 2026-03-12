@@ -167,6 +167,9 @@ public class FederationAdminService
     public async Task<(List<FederationAuditLog> Logs, int Total)> GetAuditLogAsync(
         int? partnerId, int page = 1, int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var query = _db.Set<FederationAuditLog>()
             .IgnoreQueryFilters()
             .AsQueryable();

@@ -33,6 +33,8 @@ public class AdminOrganisationsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
         var orgs = await _orgs.AdminListAsync(status, page, limit);
         return Ok(new
         {

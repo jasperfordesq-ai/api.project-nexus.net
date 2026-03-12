@@ -363,6 +363,9 @@ public class RegistrationPolicyController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetPendingRegistrations([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var tenantId = _tenantContext.GetTenantIdOrThrow();
 
         var query = _db.Users

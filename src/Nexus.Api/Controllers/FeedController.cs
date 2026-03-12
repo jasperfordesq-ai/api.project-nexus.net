@@ -195,7 +195,7 @@ public class FeedController : ControllerBase
         }
 
         // Load user for response
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null)
         {
             return StatusCode(500, new { error = "User data unavailable" });
@@ -526,7 +526,7 @@ public class FeedController : ControllerBase
             _logger.LogWarning(ex, "Failed to award XP for comment {CommentId}", comment.Id);
         }
 
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null)
         {
             return StatusCode(500, new { error = "User data unavailable" });
@@ -743,6 +743,9 @@ public class FeedController : ControllerBase
     [HttpGet("{id}/likers")]
     public async Task<IActionResult> GetLikers(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
         var tenantId = _tenantContext.TenantId ?? 0;
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
         if (post == null) return NotFound(new { error = "Post not found" });
@@ -766,6 +769,9 @@ public class FeedController : ControllerBase
     [HttpGet("{id}/shares")]
     public async Task<IActionResult> GetShares(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
         var tenantId = _tenantContext.TenantId ?? 0;
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
         if (post == null) return NotFound(new { error = "Post not found" });
@@ -858,10 +864,10 @@ public class FeedController : ControllerBase
 
 public class CreatePostRequest
 {
-    [JsonPropertyName("content")]
+    [JsonPropertyName("content"), MaxLength(10000)]
     public string Content { get; set; } = string.Empty;
 
-    [JsonPropertyName("image_url")]
+    [JsonPropertyName("image_url"), MaxLength(2000)]
     [Url(ErrorMessage = "ImageUrl must be a valid URL")]
     public string? ImageUrl { get; set; }
 
@@ -871,17 +877,17 @@ public class CreatePostRequest
 
 public class UpdatePostRequest
 {
-    [JsonPropertyName("content")]
+    [JsonPropertyName("content"), MaxLength(10000)]
     public string? Content { get; set; }
 
-    [JsonPropertyName("image_url")]
+    [JsonPropertyName("image_url"), MaxLength(2000)]
     [Url(ErrorMessage = "ImageUrl must be a valid URL")]
     public string? ImageUrl { get; set; }
 }
 
 public class AddCommentRequest
 {
-    [JsonPropertyName("content")]
+    [JsonPropertyName("content"), MaxLength(5000)]
     public string Content { get; set; } = string.Empty;
 
     [JsonPropertyName("parent_comment_id")]
@@ -890,15 +896,15 @@ public class AddCommentRequest
 
 public class AddReactionRequest
 {
-    [JsonPropertyName("reaction_type")]
+    [JsonPropertyName("reaction_type"), MaxLength(50)]
     public string? ReactionType { get; set; }
 }
 
 public class SharePostRequest
 {
-    [JsonPropertyName("comment")]
+    [JsonPropertyName("comment"), MaxLength(5000)]
     public string? Comment { get; set; }
-    [JsonPropertyName("shared_to")]
+    [JsonPropertyName("shared_to"), MaxLength(100)]
     public string? SharedTo { get; set; }
 }
 

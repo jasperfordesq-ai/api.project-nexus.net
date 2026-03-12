@@ -44,6 +44,9 @@ public class AuditController : ControllerBase
         [FromQuery(Name = "page")] int page = 1,
         [FromQuery(Name = "limit")] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         AuditSeverity? severityEnum = null;
         if (!string.IsNullOrWhiteSpace(severity))
         {
@@ -87,6 +90,9 @@ public class AuditController : ControllerBase
         [FromQuery(Name = "page")] int page = 1,
         [FromQuery(Name = "limit")] int limit = 20)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var result = await _auditLogService.GetUserActivityAsync(userId, page, limit);
 
         return Ok(new AuditLogListResponse
@@ -105,6 +111,8 @@ public class AuditController : ControllerBase
     public async Task<IActionResult> GetRecentCritical(
         [FromQuery(Name = "limit")] int limit = 50)
     {
+        limit = Math.Clamp(limit, 1, 100);
+
         var items = await _auditLogService.GetRecentCriticalAsync(limit);
         return Ok(new { items, total_count = items.Count });
     }

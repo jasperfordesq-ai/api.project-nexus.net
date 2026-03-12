@@ -64,6 +64,9 @@ public class ContactController : ControllerBase
         [FromQuery] bool unresolved_only = false,
         [FromQuery] string? category = null)
     {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
         var tenantId = _tenant.GetTenantIdOrThrow();
         var query = _db.ContactSubmissions.AsNoTracking().Where(c => c.TenantId == tenantId);
 

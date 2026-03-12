@@ -46,7 +46,7 @@ public class AdminEmailController : ControllerBase
     [HttpGet("templates/{id}")]
     public async Task<IActionResult> GetTemplate(int id)
     {
-        var template = await _db.EmailTemplates.FindAsync(id);
+        var template = await _db.EmailTemplates.FirstOrDefaultAsync(x => x.Id == id);
         if (template == null) return NotFound(new { error = "Template not found" });
         return Ok(new
         {
@@ -79,7 +79,7 @@ public class AdminEmailController : ControllerBase
     [HttpPut("templates/{id}")]
     public async Task<IActionResult> UpdateTemplate(int id, [FromBody] UpdateEmailTemplateRequest request)
     {
-        var template = await _db.EmailTemplates.FindAsync(id);
+        var template = await _db.EmailTemplates.FirstOrDefaultAsync(x => x.Id == id);
         if (template == null) return NotFound(new { error = "Template not found" });
 
         if (request.Key != null) template.Key = request.Key;
@@ -96,7 +96,7 @@ public class AdminEmailController : ControllerBase
     [HttpDelete("templates/{id}")]
     public async Task<IActionResult> DeleteTemplate(int id)
     {
-        var template = await _db.EmailTemplates.FindAsync(id);
+        var template = await _db.EmailTemplates.FirstOrDefaultAsync(x => x.Id == id);
         if (template == null) return NotFound(new { error = "Template not found" });
 
         _db.EmailTemplates.Remove(template);

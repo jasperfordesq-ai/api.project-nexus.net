@@ -849,7 +849,7 @@ public class AuthController : ControllerBase
 
         if (id.HasValue)
         {
-            return await _db.Tenants.FindAsync(id.Value);
+            return await _db.Tenants.FirstOrDefaultAsync(x => x.Id == id.Value);
         }
 
         return null;

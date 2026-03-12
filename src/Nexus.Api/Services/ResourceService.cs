@@ -83,7 +83,7 @@ public class ResourceService
         int id, string title, string? description, string? url,
         string resourceType, int? categoryId)
     {
-        var resource = await _db.Set<Resource>().FindAsync(id);
+        var resource = await _db.Set<Resource>().FirstOrDefaultAsync(x => x.Id == id);
         if (resource == null) return (null, "Resource not found");
         if (string.IsNullOrWhiteSpace(title)) return (null, "Title is required");
         var normalizedType = resourceType?.Trim().ToLower() ?? "link";
@@ -103,7 +103,7 @@ public class ResourceService
 
     public async Task<(bool Success, string? Error)> DeleteResourceAsync(int id)
     {
-        var resource = await _db.Set<Resource>().FindAsync(id);
+        var resource = await _db.Set<Resource>().FirstOrDefaultAsync(x => x.Id == id);
         if (resource == null) return (false, "Resource not found");
         _db.Set<Resource>().Remove(resource);
         await _db.SaveChangesAsync();
@@ -170,7 +170,7 @@ public class ResourceService
 
     public async Task<(ResourceCategory? Category, string? Error)> UpdateCategoryAsync(int id, string name, string? description)
     {
-        var category = await _db.Set<ResourceCategory>().FindAsync(id);
+        var category = await _db.Set<ResourceCategory>().FirstOrDefaultAsync(x => x.Id == id);
         if (category == null) return (null, "Category not found");
         if (string.IsNullOrWhiteSpace(name)) return (null, "Name is required");
         if (await _db.Set<ResourceCategory>().AnyAsync(c => c.Id != id && c.Name.ToLower() == name.Trim().ToLower() && c.ParentId == category.ParentId))

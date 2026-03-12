@@ -126,7 +126,7 @@ public class PageService
         bool? showInMenu, string? menuLocation, int? parentId, DateTime? publishAt,
         string? metaTitle, string? metaDescription)
     {
-        var page = await _db.Set<Page>().FindAsync(pageId);
+        var page = await _db.Set<Page>().FirstOrDefaultAsync(x => x.Id == pageId);
         if (page == null) return (null, "Page not found");
 
         if (title != null) { page.Title = title; page.Slug = GenerateSlug(title); }
@@ -160,7 +160,7 @@ public class PageService
 
     public async Task<string?> DeletePageAsync(int pageId)
     {
-        var page = await _db.Set<Page>().FindAsync(pageId);
+        var page = await _db.Set<Page>().FirstOrDefaultAsync(x => x.Id == pageId);
         if (page == null) return "Page not found";
 
         // Unparent children
@@ -187,7 +187,7 @@ public class PageService
 
     public async Task<(Page? Page, string? Error)> RevertToVersionAsync(int pageId, int versionNumber, int userId)
     {
-        var page = await _db.Set<Page>().FindAsync(pageId);
+        var page = await _db.Set<Page>().FirstOrDefaultAsync(x => x.Id == pageId);
         if (page == null) return (null, "Page not found");
 
         var version = await _db.Set<PageVersion>()
@@ -218,7 +218,7 @@ public class PageService
 
     public async Task<(Page? Page, string? Error)> DuplicatePageAsync(int pageId, int userId)
     {
-        var original = await _db.Set<Page>().FindAsync(pageId);
+        var original = await _db.Set<Page>().FirstOrDefaultAsync(x => x.Id == pageId);
         if (original == null) return (null, "Page not found");
 
         var slug = $"{original.Slug}-copy-{DateTime.UtcNow.Ticks % 10000}";
@@ -259,7 +259,7 @@ public class PageService
     {
         foreach (var (pageId, sortOrder) in ordering)
         {
-            var page = await _db.Set<Page>().FindAsync(pageId);
+            var page = await _db.Set<Page>().FirstOrDefaultAsync(x => x.Id == pageId);
             if (page != null) page.SortOrder = sortOrder;
         }
         await _db.SaveChangesAsync();

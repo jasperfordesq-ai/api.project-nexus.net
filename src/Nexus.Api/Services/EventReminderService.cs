@@ -160,7 +160,7 @@ public class EventReminderService
     /// </summary>
     public async Task MarkSentAsync(int id)
     {
-        var reminder = await _db.EventReminders.FindAsync(id);
+        var reminder = await _db.EventReminders.FirstOrDefaultAsync(x => x.Id == id);
         if (reminder != null)
         {
             reminder.IsSent = true;

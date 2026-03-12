@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Entities;
 using Nexus.Api.Data.Configurations;
@@ -15,6 +16,12 @@ namespace Nexus.Api.Data;
 public class NexusDbContext : DbContext
 {
     private readonly TenantContext _tenantContext;
+
+    // Direct properties for EF Core query filter parameterization.
+    // EF Core can only parameterize expressions that reference DbContext members directly —
+    // chained access like _tenantContext.TenantId is evaluated once at model build time.
+    public int? CurrentTenantId => _tenantContext.TenantId;
+    public bool IsTenantResolved => _tenantContext.IsResolved;
 
     public NexusDbContext(DbContextOptions<NexusDbContext> options, TenantContext tenantContext)
         : base(options)
@@ -399,6 +406,19 @@ public class NexusDbContext : DbContext
         {
             config.Configure(modelBuilder);
         }
+
+        // Re-apply tenant query filters referencing DbContext's _tenantContext field
+        // so EF Core can parameterize them per-query (fixes broken config class references)
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                var method = typeof(NexusDbContext)
+                    .GetMethod(nameof(ApplyTenantQueryFilter), BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .MakeGenericMethod(entityType.ClrType);
+                method.Invoke(this, new object[] { modelBuilder });
+            }
+        }
     }
 
         public override int SaveChanges()
@@ -411,6 +431,21 @@ public class NexusDbContext : DbContext
     {
         SetTenantIdOnInsert();
         return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyTenantQueryFilter<T>(ModelBuilder modelBuilder) where T : class, ITenantEntity
+    {
+        if (typeof(T) == typeof(Listing))
+        {
+            modelBuilder.Entity<Listing>().HasQueryFilter(e =>
+                (!IsTenantResolved || e.TenantId == CurrentTenantId)
+                && e.DeletedAt == null);
+        }
+        else
+        {
+            modelBuilder.Entity<T>().HasQueryFilter(e =>
+                !IsTenantResolved || e.TenantId == CurrentTenantId);
+        }
     }
 
     /// <summary>

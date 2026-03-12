@@ -230,6 +230,8 @@ public class RecommendationsController : ControllerBase
     public async Task<IActionResult> GetWeightedRecommendations(
         [FromQuery] string targetType = "listings", [FromQuery] int limit = 10)
     {
+        limit = Math.Clamp(limit, 1, 100);
+
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
         var recommendations = await _collaborativeFilter.GetWeightedRecommendationsAsync(userId.Value, targetType, limit);

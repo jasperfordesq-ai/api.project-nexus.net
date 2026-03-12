@@ -127,7 +127,7 @@ public class OnboardingService
     public async Task<(OnboardingStep? Step, string? Error)> UpdateStepAsync(
         int id, string? title, string? description, int? sortOrder, bool? isRequired, int? xpReward)
     {
-        var step = await _db.Set<OnboardingStep>().FindAsync(id);
+        var step = await _db.Set<OnboardingStep>().FirstOrDefaultAsync(x => x.Id == id);
         if (step == null) return (null, "Step not found");
 
         if (title != null) step.Title = title;
@@ -142,7 +142,7 @@ public class OnboardingService
 
     public async Task<string?> DeleteStepAsync(int id)
     {
-        var step = await _db.Set<OnboardingStep>().FindAsync(id);
+        var step = await _db.Set<OnboardingStep>().FirstOrDefaultAsync(x => x.Id == id);
         if (step == null) return "Step not found";
 
         var progress = await _db.Set<OnboardingProgress>()

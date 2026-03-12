@@ -114,7 +114,7 @@ public class XpShopController : ControllerBase
         if (item.IsLimitedTime && item.AvailableUntil.HasValue && item.AvailableUntil.Value < DateTime.UtcNow)
             return BadRequest(new { error = "This limited-time item is no longer available" });
 
-        var user = await _db.Users.FindAsync(userId.Value);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId.Value);
         if (user == null) return Unauthorized(new { error = "User not found" });
 
         if (user.TotalXp < item.XpCost)

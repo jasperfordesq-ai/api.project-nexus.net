@@ -53,10 +53,10 @@ public class TenantHierarchyService
         int parentTenantId, int childTenantId, string inheritanceMode)
     {
         // Validate tenants exist
-        var parent = await _db.Tenants.FindAsync(parentTenantId);
+        var parent = await _db.Tenants.FirstOrDefaultAsync(x => x.Id == parentTenantId);
         if (parent == null) return (null, "Parent tenant not found");
 
-        var child = await _db.Tenants.FindAsync(childTenantId);
+        var child = await _db.Tenants.FirstOrDefaultAsync(x => x.Id == childTenantId);
         if (child == null) return (null, "Child tenant not found");
 
         if (parentTenantId == childTenantId)
@@ -88,7 +88,7 @@ public class TenantHierarchyService
     public async Task<(TenantHierarchy? Hierarchy, string? Error)> UpdateRelationshipAsync(
         int id, string? inheritanceMode, bool? isActive)
     {
-        var hierarchy = await _db.Set<TenantHierarchy>().FindAsync(id);
+        var hierarchy = await _db.Set<TenantHierarchy>().FirstOrDefaultAsync(x => x.Id == id);
         if (hierarchy == null) return (null, "Relationship not found");
 
         if (inheritanceMode != null) hierarchy.InheritanceMode = inheritanceMode;
@@ -100,7 +100,7 @@ public class TenantHierarchyService
 
     public async Task<string?> DeleteRelationshipAsync(int id)
     {
-        var hierarchy = await _db.Set<TenantHierarchy>().FindAsync(id);
+        var hierarchy = await _db.Set<TenantHierarchy>().FirstOrDefaultAsync(x => x.Id == id);
         if (hierarchy == null) return "Relationship not found";
 
         _db.Set<TenantHierarchy>().Remove(hierarchy);

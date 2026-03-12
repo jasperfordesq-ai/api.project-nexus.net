@@ -38,7 +38,7 @@ public class EmailVerificationService
     /// </summary>
     public async Task<(bool Success, string? Error)> SendVerificationEmailAsync(int userId, string email)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null) return (false, "User not found");
         if (user.EmailVerified) return (false, "Email is already verified");
 
@@ -116,7 +116,7 @@ public class EmailVerificationService
     /// </summary>
     public async Task<(bool Success, string? Error)> ResendVerificationAsync(int userId)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
         if (user == null) return (false, "User not found");
         if (user.EmailVerified) return (false, "Email is already verified");
         return await SendVerificationEmailAsync(userId, user.Email);

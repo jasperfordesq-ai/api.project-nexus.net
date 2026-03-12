@@ -71,40 +71,59 @@ public class OrgWalletService
         if (amount <= 0) return (null, "Amount must be positive");
         if (amount > 100) return (null, "Maximum donation is 100 credits per transaction");
 
-        // Check user has sufficient balance (computed from Transactions)
-        var received = await _db.Transactions
-            .Where(t => t.ReceiverId == fromUserId && t.Status == TransactionStatus.Completed)
-            .SumAsync(t => t.Amount);
-        var sent = await _db.Transactions
-            .Where(t => t.SenderId == fromUserId && t.Status == TransactionStatus.Completed)
-            .SumAsync(t => t.Amount);
-        var userBalance = received - sent;
-        if (userBalance < amount) return (null, "Insufficient balance");
-
-        var wallet = await EnsureWalletAsync(organisationId);
-
-        // Credit org wallet
-        wallet.Balance += amount;
-        wallet.TotalReceived += amount;
-        wallet.UpdatedAt = DateTime.UtcNow;
-
-        var tx = new OrgWalletTransaction
+        // Use serializable transaction with advisory lock to prevent race conditions
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
         {
-            OrgWalletId = wallet.Id,
-            Type = "credit",
-            Amount = amount,
-            BalanceAfter = wallet.Balance,
-            Category = "donation",
-            Description = description ?? "Personal donation",
-            InitiatedById = fromUserId,
-            FromUserId = fromUserId
-        };
+            // Lock on sender to serialize concurrent donations from same user
+            await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", fromUserId);
 
-        _db.Set<OrgWalletTransaction>().Add(tx);
-        await _db.SaveChangesAsync();
+            // Check user has sufficient balance (now protected by lock)
+            var received = await _db.Transactions
+                .Where(t => t.ReceiverId == fromUserId && t.Status == TransactionStatus.Completed)
+                .SumAsync(t => t.Amount);
+            var sent = await _db.Transactions
+                .Where(t => t.SenderId == fromUserId && t.Status == TransactionStatus.Completed)
+                .SumAsync(t => t.Amount);
+            var userBalance = received - sent;
+            if (userBalance < amount)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Insufficient balance");
+            }
 
-        _logger.LogInformation("User {UserId} donated {Amount} to org {OrgId}", fromUserId, amount, organisationId);
-        return (tx, null);
+            var wallet = await EnsureWalletAsync(organisationId);
+
+            // Credit org wallet
+            wallet.Balance += amount;
+            wallet.TotalReceived += amount;
+            wallet.UpdatedAt = DateTime.UtcNow;
+
+            var tx = new OrgWalletTransaction
+            {
+                OrgWalletId = wallet.Id,
+                Type = "credit",
+                Amount = amount,
+                BalanceAfter = wallet.Balance,
+                Category = "donation",
+                Description = description ?? "Personal donation",
+                InitiatedById = fromUserId,
+                FromUserId = fromUserId
+            };
+
+            _db.Set<OrgWalletTransaction>().Add(tx);
+            await _db.SaveChangesAsync();
+            await dbTransaction.CommitAsync();
+
+            _logger.LogInformation("User {UserId} donated {Amount} to org {OrgId}", fromUserId, amount, organisationId);
+            return (tx, null);
+        }
+        catch (DbUpdateException ex)
+        {
+            await dbTransaction.RollbackAsync();
+            _logger.LogError(ex, "Database error during donation from user {UserId} to org {OrgId}", fromUserId, organisationId);
+            return (null, "Donation failed due to a database error. Please try again.");
+        }
     }
 
     public async Task<(OrgWalletTransaction? Tx, string? Error)> TransferToUserAsync(
@@ -112,42 +131,65 @@ public class OrgWalletService
     {
         if (amount <= 0) return (null, "Amount must be positive");
 
-        var wallet = await _db.Set<OrgWallet>()
-            .FirstOrDefaultAsync(w => w.OrganisationId == organisationId);
-        if (wallet == null) return (null, "Organisation wallet not found");
-        if (wallet.Balance < amount) return (null, "Insufficient org wallet balance");
-
-        // Check initiator is org admin/owner
+        // Check initiator is org admin/owner (before transaction — read-only check)
         var member = await _db.Set<OrganisationMember>()
             .FirstOrDefaultAsync(m => m.OrganisationId == organisationId && m.UserId == initiatedById);
         if (member == null || (member.Role != "owner" && member.Role != "admin"))
             return (null, "Not authorized to transfer from this wallet");
 
-        var targetUser = await _db.Set<User>().FindAsync(toUserId);
+        var targetUser = await _db.Set<User>().FirstOrDefaultAsync(u => u.Id == toUserId);
         if (targetUser == null) return (null, "Target user not found");
 
-        // Debit org wallet
-        wallet.Balance -= amount;
-        wallet.TotalSpent += amount;
-        wallet.UpdatedAt = DateTime.UtcNow;
-
-        var tx = new OrgWalletTransaction
+        // Use serializable transaction with advisory lock to prevent race conditions
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
         {
-            OrgWalletId = wallet.Id,
-            Type = "debit",
-            Amount = amount,
-            BalanceAfter = wallet.Balance,
-            Category = "transfer",
-            Description = description ?? "Transfer to member",
-            InitiatedById = initiatedById,
-            ToUserId = toUserId
-        };
+            // Lock on org ID to serialize concurrent transfers from same wallet
+            await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", organisationId + int.MaxValue / 2);
 
-        _db.Set<OrgWalletTransaction>().Add(tx);
-        await _db.SaveChangesAsync();
+            var wallet = await _db.Set<OrgWallet>()
+                .FirstOrDefaultAsync(w => w.OrganisationId == organisationId);
+            if (wallet == null)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Organisation wallet not found");
+            }
+            if (wallet.Balance < amount)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Insufficient org wallet balance");
+            }
 
-        _logger.LogInformation("Org {OrgId} transferred {Amount} to user {UserId}", organisationId, amount, toUserId);
-        return (tx, null);
+            // Debit org wallet
+            wallet.Balance -= amount;
+            wallet.TotalSpent += amount;
+            wallet.UpdatedAt = DateTime.UtcNow;
+
+            var tx = new OrgWalletTransaction
+            {
+                OrgWalletId = wallet.Id,
+                Type = "debit",
+                Amount = amount,
+                BalanceAfter = wallet.Balance,
+                Category = "transfer",
+                Description = description ?? "Transfer to member",
+                InitiatedById = initiatedById,
+                ToUserId = toUserId
+            };
+
+            _db.Set<OrgWalletTransaction>().Add(tx);
+            await _db.SaveChangesAsync();
+            await dbTransaction.CommitAsync();
+
+            _logger.LogInformation("Org {OrgId} transferred {Amount} to user {UserId}", organisationId, amount, toUserId);
+            return (tx, null);
+        }
+        catch (DbUpdateException ex)
+        {
+            await dbTransaction.RollbackAsync();
+            _logger.LogError(ex, "Database error during transfer from org {OrgId} to user {UserId}", organisationId, toUserId);
+            return (null, "Transfer failed due to a database error. Please try again.");
+        }
     }
 
     public async Task<(OrgWalletTransaction? Tx, string? Error)> AdminGrantAsync(
@@ -155,25 +197,34 @@ public class OrgWalletService
     {
         if (amount <= 0) return (null, "Amount must be positive");
 
-        var wallet = await EnsureWalletAsync(organisationId);
-
-        wallet.Balance += amount;
-        wallet.TotalReceived += amount;
-        wallet.UpdatedAt = DateTime.UtcNow;
-
-        var tx = new OrgWalletTransaction
+        try
         {
-            OrgWalletId = wallet.Id,
-            Type = "credit",
-            Amount = amount,
-            BalanceAfter = wallet.Balance,
-            Category = "admin_grant",
-            Description = description ?? "Admin grant"
-        };
+            var wallet = await EnsureWalletAsync(organisationId);
 
-        _db.Set<OrgWalletTransaction>().Add(tx);
-        await _db.SaveChangesAsync();
+            wallet.Balance += amount;
+            wallet.TotalReceived += amount;
+            wallet.UpdatedAt = DateTime.UtcNow;
 
-        return (tx, null);
+            var tx = new OrgWalletTransaction
+            {
+                OrgWalletId = wallet.Id,
+                Type = "credit",
+                Amount = amount,
+                BalanceAfter = wallet.Balance,
+                Category = "admin_grant",
+                Description = description ?? "Admin grant"
+            };
+
+            _db.Set<OrgWalletTransaction>().Add(tx);
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Admin granted {Amount} to org {OrgId}", amount, organisationId);
+            return (tx, null);
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error during admin grant to org {OrgId}", organisationId);
+            return (null, "Grant failed due to a database error. Please try again.");
+        }
     }
 }

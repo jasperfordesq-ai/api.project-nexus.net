@@ -217,7 +217,7 @@ public class PasskeysController : ControllerBase
             var user = await _passkeyService.FinishAuthenticationAsync(options, request.AssertionResponse);
 
             // Resolve tenant for response
-            var tenant = await _db.Tenants.FindAsync(user.TenantId);
+            var tenant = await _db.Tenants.FirstOrDefaultAsync(x => x.Id == user.TenantId);
 
             // Generate JWT (same as password login)
             var accessToken = _tokenService.GenerateJwt(user);

@@ -119,8 +119,8 @@ public class UsersController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
-        // Tenant filter is automatically applied
-        var user = await _db.Users.FindAsync(id);
+        // Use FirstOrDefaultAsync so global tenant query filter is applied (FindAsync bypasses filters)
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
 
         if (user == null)
         {

@@ -64,7 +64,7 @@ public class ListingFeatureService
         }
 
         // Also increment the ViewCount on the listing itself for backward compat
-        var listing = await _db.Listings.FindAsync(listingId);
+        var listing = await _db.Listings.FirstOrDefaultAsync(x => x.Id == listingId);
         if (listing != null)
         {
             listing.ViewCount++;

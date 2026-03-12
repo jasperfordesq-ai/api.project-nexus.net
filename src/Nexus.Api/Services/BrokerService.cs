@@ -50,10 +50,10 @@ public class BrokerService
     public async Task<(BrokerAssignment? Assignment, string? Error)> CreateAssignmentAsync(
         int tenantId, int brokerId, int memberId, string? notes)
     {
-        var broker = await _db.Users.FindAsync(brokerId);
+        var broker = await _db.Users.FirstOrDefaultAsync(x => x.Id == brokerId);
         if (broker == null) return (null, "Broker not found");
 
-        var member = await _db.Users.FindAsync(memberId);
+        var member = await _db.Users.FirstOrDefaultAsync(x => x.Id == memberId);
         if (member == null) return (null, "Member not found");
 
         var existing = await _db.Set<BrokerAssignment>()
@@ -78,7 +78,7 @@ public class BrokerService
     public async Task<(BrokerAssignment? Assignment, string? Error)> UpdateAssignmentAsync(
         int id, string status, string? notes)
     {
-        var assignment = await _db.Set<BrokerAssignment>().FindAsync(id);
+        var assignment = await _db.Set<BrokerAssignment>().FirstOrDefaultAsync(x => x.Id == id);
         if (assignment == null) return (null, "Assignment not found");
 
         assignment.Status = status;
@@ -91,7 +91,7 @@ public class BrokerService
 
     public async Task<(BrokerAssignment? Assignment, string? Error)> CompleteAssignmentAsync(int id)
     {
-        var assignment = await _db.Set<BrokerAssignment>().FindAsync(id);
+        var assignment = await _db.Set<BrokerAssignment>().FirstOrDefaultAsync(x => x.Id == id);
         if (assignment == null) return (null, "Assignment not found");
         if (assignment.Status == "completed") return (null, "Assignment is already completed");
 
@@ -106,10 +106,10 @@ public class BrokerService
 
     public async Task<(BrokerAssignment? Assignment, string? Error)> ReassignAsync(int id, int newBrokerId)
     {
-        var assignment = await _db.Set<BrokerAssignment>().FindAsync(id);
+        var assignment = await _db.Set<BrokerAssignment>().FirstOrDefaultAsync(x => x.Id == id);
         if (assignment == null) return (null, "Assignment not found");
 
-        var broker = await _db.Users.FindAsync(newBrokerId);
+        var broker = await _db.Users.FirstOrDefaultAsync(x => x.Id == newBrokerId);
         if (broker == null) return (null, "New broker not found");
 
         var oldBrokerId = assignment.BrokerId;
@@ -123,7 +123,7 @@ public class BrokerService
 
     public async Task<string?> DeleteAssignmentAsync(int id)
     {
-        var assignment = await _db.Set<BrokerAssignment>().FindAsync(id);
+        var assignment = await _db.Set<BrokerAssignment>().FirstOrDefaultAsync(x => x.Id == id);
         if (assignment == null) return "Assignment not found";
 
         _db.Set<BrokerAssignment>().Remove(assignment);

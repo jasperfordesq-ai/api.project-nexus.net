@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -127,17 +128,17 @@ public class AdminBlogController : ControllerBase
 
 public class CreateBlogPostRequest
 {
-    [JsonPropertyName("title")]
+    [JsonPropertyName("title"), MaxLength(200)]
     public string Title { get; set; } = string.Empty;
-    [JsonPropertyName("content")]
+    [JsonPropertyName("content"), MaxLength(50000)]
     public string Content { get; set; } = string.Empty;
-    [JsonPropertyName("excerpt")]
+    [JsonPropertyName("excerpt"), MaxLength(500)]
     public string? Excerpt { get; set; }
-    [JsonPropertyName("featured_image_url")]
+    [JsonPropertyName("featured_image_url"), MaxLength(2000)]
     public string? FeaturedImageUrl { get; set; }
     [JsonPropertyName("category_id")]
     public int? CategoryId { get; set; }
-    [JsonPropertyName("tags")]
+    [JsonPropertyName("tags"), MaxLength(1000)]
     public string? Tags { get; set; }
     [JsonPropertyName("publish")]
     public bool Publish { get; set; } = false;
@@ -145,38 +146,38 @@ public class CreateBlogPostRequest
 
 public class UpdateBlogPostRequest
 {
-    [JsonPropertyName("title")]
+    [JsonPropertyName("title"), MaxLength(200)]
     public string? Title { get; set; }
-    [JsonPropertyName("content")]
+    [JsonPropertyName("content"), MaxLength(50000)]
     public string? Content { get; set; }
-    [JsonPropertyName("excerpt")]
+    [JsonPropertyName("excerpt"), MaxLength(500)]
     public string? Excerpt { get; set; }
-    [JsonPropertyName("featured_image_url")]
+    [JsonPropertyName("featured_image_url"), MaxLength(2000)]
     public string? FeaturedImageUrl { get; set; }
     [JsonPropertyName("category_id")]
     public int? CategoryId { get; set; }
-    [JsonPropertyName("tags")]
+    [JsonPropertyName("tags"), MaxLength(1000)]
     public string? Tags { get; set; }
-    [JsonPropertyName("status")]
+    [JsonPropertyName("status"), MaxLength(50)]
     public string? Status { get; set; }
 }
 
 public class CreateBlogCategoryRequest
 {
-    [JsonPropertyName("name")]
+    [JsonPropertyName("name"), MaxLength(100)]
     public string Name { get; set; } = string.Empty;
-    [JsonPropertyName("description")]
+    [JsonPropertyName("description"), MaxLength(500)]
     public string? Description { get; set; }
-    [JsonPropertyName("color")]
+    [JsonPropertyName("color"), MaxLength(20)]
     public string? Color { get; set; }
 }
 
 public class UpdateBlogCategoryRequest
 {
-    [JsonPropertyName("name")]
+    [JsonPropertyName("name"), MaxLength(100)]
     public string? Name { get; set; }
-    [JsonPropertyName("description")]
+    [JsonPropertyName("description"), MaxLength(500)]
     public string? Description { get; set; }
-    [JsonPropertyName("color")]
+    [JsonPropertyName("color"), MaxLength(20)]
     public string? Color { get; set; }
 }
