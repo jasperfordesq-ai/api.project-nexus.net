@@ -42,7 +42,7 @@ router.get('/', asyncRoute(async (req, res) => {
     upcoming_only: upcomingOnly
   });
 
-  const events = result.data || [];
+  const events = result.items || result.data || [];
 
   res.render('events/index', {
     title: 'Events',
@@ -59,7 +59,15 @@ router.get('/', asyncRoute(async (req, res) => {
 // My events (RSVPs)
 router.get('/my', asyncRoute(async (req, res) => {
   const result = await getMyEvents(req.token);
-  const events = result.data || [];
+  const events = (result.items || result.data || []).map(e => {
+    const startsAt = e.starts_at || e.startsAt;
+    return {
+      ...e,
+      // Normalize for template: add myRsvp object and is_past flag
+      myRsvp: { status: (e.my_rsvp || e.myRsvp || '').toLowerCase() },
+      is_past: startsAt ? new Date(startsAt) < new Date() : false
+    };
+  });
 
   res.render('events/my', {
     title: 'My events',
@@ -140,10 +148,10 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
       title: title.trim(),
       description: description ? description.trim() : null,
       location: location ? location.trim() : null,
-      startsAt: startsAt,
-      endsAt: endsAt,
-      maxAttendees: max_attendees ? parseInt(max_attendees, 10) : null,
-      groupId: group_id ? parseInt(group_id, 10) : null
+      starts_at: startsAt,
+      ends_at: endsAt,
+      max_attendees: max_attendees ? parseInt(max_attendees, 10) : null,
+      group_id: group_id ? parseInt(group_id, 10) : null
     };
 
     const result = await createEvent(req.token, eventData);
@@ -280,9 +288,9 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
       title: title.trim(),
       description: description ? description.trim() : null,
       location: location ? location.trim() : null,
-      startsAt: startsAt,
-      endsAt: endsAt,
-      maxAttendees: max_attendees ? parseInt(max_attendees, 10) : null
+      starts_at: startsAt,
+      ends_at: endsAt,
+      max_attendees: max_attendees ? parseInt(max_attendees, 10) : null
     });
 
     if (req.flash) {

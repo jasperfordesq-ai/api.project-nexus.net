@@ -74,7 +74,7 @@ function AdminUsersContent() {
 
       const response = await api.adminGetUsers(params);
       setUsers(response.data);
-      setTotalPages(response.pagination.total_pages);
+      setTotalPages(response?.pagination?.total_pages || 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load users");
     } finally {

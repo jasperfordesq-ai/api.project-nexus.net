@@ -1,5 +1,7 @@
 // Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
 
 /*
  * SubmitServicePage — form example using GOV.IE design-system patterns
@@ -50,9 +52,9 @@ interface FormErrors {
 function validate(values: FormValues): FormErrors {
   const errors: FormErrors = {}
   if (!values.title.trim()) errors.title = 'Enter a title for your service'
-  if (values.title.trim().length < 5) errors.title = 'Title must be at least 5 characters'
+  else if (values.title.trim().length < 5) errors.title = 'Title must be at least 5 characters'
   if (!values.description.trim()) errors.description = 'Enter a description'
-  if (values.description.trim().length < 20) errors.description = 'Description must be at least 20 characters'
+  else if (values.description.trim().length < 20) errors.description = 'Description must be at least 20 characters'
   if (!values.type) errors.type = 'Select whether you are offering or requesting'
   if (!values.category) errors.category = 'Select a category'
   const rate = Number(values.creditRate)

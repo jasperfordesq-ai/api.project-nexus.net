@@ -214,8 +214,9 @@ public class WalletFeatureService
 
             return donation;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Donation processing failed for donor {DonorId}, amount {Amount}", donorId, amount);
             await dbTransaction.RollbackAsync();
             throw;
         }

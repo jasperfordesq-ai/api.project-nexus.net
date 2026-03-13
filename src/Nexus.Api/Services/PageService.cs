@@ -129,7 +129,15 @@ public class PageService
         var page = await _db.Set<Page>().FirstOrDefaultAsync(x => x.Id == pageId);
         if (page == null) return (null, "Page not found");
 
-        if (title != null) { page.Title = title; page.Slug = GenerateSlug(title); }
+        if (title != null)
+        {
+            page.Title = title;
+            var newSlug = GenerateSlug(title);
+            var slugExists = await _db.Set<Page>().AnyAsync(p => p.Slug == newSlug && p.Id != pageId);
+            if (slugExists)
+                newSlug = $"{newSlug}-{DateTime.UtcNow.Ticks % 10000}";
+            page.Slug = newSlug;
+        }
         if (content != null) page.Content = content;
         if (isPublished.HasValue) page.IsPublished = isPublished.Value;
         if (showInMenu.HasValue) page.ShowInMenu = showInMenu.Value;

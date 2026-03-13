@@ -11,6 +11,32 @@ import { isApiError } from '../context/AuthContext'
 interface Event { id: number; title: string; description: string; location: string; startsAt: string; endsAt: string; rsvpCount: number; isCancelled: boolean; organizerName?: string; myRsvp?: boolean }
 interface Attendee { id: number; userId: number; userName: string; status: string }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapEvent(raw: any): Event {
+  return {
+    id: raw.id,
+    title: raw.title ?? '',
+    description: raw.description ?? '',
+    location: raw.location ?? '',
+    startsAt: raw.starts_at ?? raw.startsAt ?? '',
+    endsAt: raw.ends_at ?? raw.endsAt ?? '',
+    rsvpCount: raw.rsvp_count ?? raw.rsvpCount ?? 0,
+    isCancelled: raw.is_cancelled ?? raw.isCancelled ?? false,
+    organizerName: raw.organizer_name ?? raw.organizerName ?? undefined,
+    myRsvp: raw.my_rsvp ?? raw.myRsvp ?? undefined,
+  }
+}
+
+function mapAttendee(raw: any): Attendee {
+  return {
+    id: raw.id,
+    userId: raw.user_id ?? raw.userId ?? 0,
+    userName: raw.user_name ?? raw.userName ?? 'Unknown',
+    status: raw.status ?? 'confirmed',
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [event, setEvent] = useState<Event | null>(null)
@@ -22,8 +48,12 @@ export function EventDetailPage() {
 
   useEffect(() => {
     Promise.all([
-      apiClient.get<Event>(`/api/events/${id}`).then(r => r.data),
-      apiClient.get<Attendee[]>(`/api/events/${id}/rsvps`).then(r => r.data ?? []),
+      apiClient.get(`/api/events/${id}`).then(r => mapEvent(r.data)),
+      apiClient.get(`/api/events/${id}/rsvps`).then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        return items.map(mapAttendee)
+      }),
     ])
       .then(([e, a]) => { setEvent(e); setAttendees(a) })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load event.'))

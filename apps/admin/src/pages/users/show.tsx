@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { Show } from "@refinedev/antd";
 import { useShow, useCustom } from "@refinedev/core";
 import { Typography, Descriptions, Card, Row, Col, Statistic, Button, Modal, Input, Space, message } from "antd";
@@ -96,16 +101,16 @@ export const UserShow = () => {
           {record.stats && (
             <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
               <Col span={6}>
-                <Card><Statistic title="Listings" value={record.stats.listings_count ?? 0} /></Card>
+                <Card><Statistic title="Listings" value={record.stats.listings ?? 0} /></Card>
               </Col>
               <Col span={6}>
-                <Card><Statistic title="Exchanges" value={record.stats.exchanges_count ?? 0} /></Card>
+                <Card><Statistic title="Transactions" value={record.stats.transactions ?? 0} /></Card>
               </Col>
               <Col span={6}>
-                <Card><Statistic title="XP" value={record.stats.xp ?? 0} /></Card>
+                <Card><Statistic title="XP" value={record.total_xp ?? 0} /></Card>
               </Col>
               <Col span={6}>
-                <Card><Statistic title="Connections" value={record.stats.connections_count ?? 0} /></Card>
+                <Card><Statistic title="Connections" value={record.stats.connections ?? 0} /></Card>
               </Col>
             </Row>
           )}

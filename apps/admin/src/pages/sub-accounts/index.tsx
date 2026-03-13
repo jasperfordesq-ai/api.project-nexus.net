@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Tag, Button, Space, Popconfirm, message, Tooltip } from "antd";
 import { useState } from "react";
@@ -24,7 +29,7 @@ export const SubAccountsPage = () => {
   });
 
   const raw = data?.data as any;
-  const subAccounts = raw?.data || [];
+  const subAccounts = raw?.items || raw?.data || [];
   const total = raw?.total || raw?.totalCount || subAccounts.length;
 
   const deactivate = async (id: number) => {

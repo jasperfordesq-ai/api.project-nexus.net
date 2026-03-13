@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Row, Col, Card, Statistic, Typography, Table, Spin, Select } from "antd";
 import { useState } from "react";
@@ -32,7 +37,7 @@ export const AnalyticsPage = () => {
 
   const overview = overviewData?.data as any;
   const growth = growthData?.data as any;
-  const topUsers = (topUsersData?.data as any)?.data || topUsersData?.data || [];
+  const topUsers = (topUsersData?.data as any)?.users || [];
   const exchange = exchangeData?.data as any;
 
   if (overviewLoading) return <Spin size="large" style={{ display: "flex", justifyContent: "center", marginTop: 100 }} />;

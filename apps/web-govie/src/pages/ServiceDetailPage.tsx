@@ -1,9 +1,12 @@
 // Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
 
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { listingsApi } from '../api/listings'
+import { exchangesApi } from '../api/exchanges'
 import type { Listing } from '../api/types'
 import { isApiError, useAuth } from '../context/AuthContext'
 
@@ -14,6 +17,7 @@ export function ServiceDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [requestSent, setRequestSent] = useState(false)
+  const [isRequesting, setIsRequesting] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -149,9 +153,21 @@ export function ServiceDetailPage() {
             <button
               className="nexus-btn nexus-btn--primary"
               style={{ width: '100%' }}
-              onClick={() => setRequestSent(true)}
+              disabled={isRequesting}
+              onClick={async () => {
+                setIsRequesting(true)
+                setError(null)
+                try {
+                  await exchangesApi.propose({ listingId: listing.id })
+                  setRequestSent(true)
+                } catch (err) {
+                  setError(isApiError(err) ? err.message : 'Could not send request. Please try again.')
+                } finally {
+                  setIsRequesting(false)
+                }
+              }}
             >
-              {listing.type === 'offer' ? 'Request this service' : 'Offer to help'}
+              {isRequesting ? 'Sending…' : listing.type === 'offer' ? 'Request this service' : 'Offer to help'}
             </button>
           ) : (
             <div>

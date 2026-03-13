@@ -749,7 +749,7 @@ function normalizeExchangeRating(raw: any): ExchangeRating {
 }
 
 function normalizeGamificationProfile(raw: any): GamificationProfile {
-  if (!raw) return raw;
+  if (!raw) return { id: 0, first_name: '', last_name: '', total_xp: 0, level: 0, xp_to_next_level: 0, xp_required_for_current_level: 0, xp_required_for_next_level: 0, badges_earned: 0 };
   return {
     id: raw.id ?? raw.userId ?? 0,
     first_name: raw.firstName ?? raw.first_name ?? '',
@@ -764,7 +764,7 @@ function normalizeGamificationProfile(raw: any): GamificationProfile {
 }
 
 function normalizeBadge(raw: any): Badge {
-  if (!raw) return raw;
+  if (!raw) return { id: 0, slug: '', name: '', description: '', icon: '', xp_reward: 0, is_earned: false };
   return {
     id: raw.id,
     slug: raw.slug ?? '',
@@ -816,12 +816,12 @@ function normalizeReview(raw: any): Review {
       first_name: raw.reviewer?.firstName ?? raw.reviewer?.first_name ?? '',
       last_name: raw.reviewer?.lastName ?? raw.reviewer?.last_name ?? '',
     },
-    target_user: raw.targetUser ?? raw.target_user ? {
+    target_user: (raw.targetUser ?? raw.target_user) ? {
       id: (raw.targetUser ?? raw.target_user)?.id ?? 0,
       first_name: (raw.targetUser ?? raw.target_user)?.firstName ?? (raw.targetUser ?? raw.target_user)?.first_name ?? '',
       last_name: (raw.targetUser ?? raw.target_user)?.lastName ?? (raw.targetUser ?? raw.target_user)?.last_name ?? '',
     } : undefined,
-    target_listing: raw.targetListing ?? raw.target_listing ? {
+    target_listing: (raw.targetListing ?? raw.target_listing) ? {
       id: (raw.targetListing ?? raw.target_listing)?.id ?? 0,
       title: (raw.targetListing ?? raw.target_listing)?.title ?? '',
     } : undefined,
@@ -1543,10 +1543,7 @@ class ApiClient {
   }): Promise<PaginatedResponse<Post>> {
     const query = this.buildQueryString(params || {});
     const raw = await this.request<any>(`/api/feed${query}`);
-    return {
-      data: (raw?.data ?? []).map(normalizePost),
-      pagination: raw?.pagination,
-    };
+    return normalizePaginated(raw, normalizePost);
   }
 
   async getPost(id: number): Promise<Post> {
@@ -1574,10 +1571,11 @@ class ApiClient {
       image_url: string;
     }>
   ): Promise<Post> {
-    return this.request<Post>(`/api/feed/${id}`, {
+    const raw = await this.request<any>(`/api/feed/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    return normalizePost(raw?.post ?? raw);
   }
 
   async deletePost(id: number): Promise<void> {
@@ -1611,8 +1609,8 @@ class ApiClient {
     return normalizeComment(raw?.comment ?? raw);
   }
 
-  async deleteComment(commentId: number): Promise<void> {
-    return this.request<void>(`/api/feed/comments/${commentId}`, {
+  async deleteComment(postId: number, commentId: number): Promise<void> {
+    return this.request<void>(`/api/feed/${postId}/comments/${commentId}`, {
       method: "DELETE",
     });
   }
@@ -3514,6 +3512,7 @@ class ApiClient {
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
     const response = await fetch(`${this.baseUrl}/api/wallet/features/export?format=${format}`, { headers });
+    if (!response.ok) throw new Error(`Export failed with status ${response.status}`);
     return response.blob();
   }
 
@@ -3552,7 +3551,7 @@ class ApiClient {
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
     const response = await fetch(`${this.baseUrl}/api/groups/${groupId}/files`, { method: "POST", headers, body: formData });
-    if (!response.ok) throw new Error("Upload failed");
+    if (!response.ok) throw new Error(`Upload failed with status ${response.status}`);
     return response.json();
   }
 

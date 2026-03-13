@@ -10,6 +10,21 @@ import { isApiError } from '../context/AuthContext'
 
 interface BlogPost { id: number; slug: string; title: string; excerpt?: string; authorName?: string; publishedAt: string; category?: string; readTimeMinutes?: number }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapBlogPost(raw: any): BlogPost {
+  return {
+    id: raw.id,
+    slug: raw.slug ?? '',
+    title: raw.title ?? '',
+    excerpt: raw.excerpt ?? undefined,
+    authorName: raw.author_name ?? raw.authorName ?? undefined,
+    publishedAt: raw.published_at ?? raw.publishedAt ?? '',
+    category: raw.category ?? undefined,
+    readTimeMinutes: raw.read_time_minutes ?? raw.readTimeMinutes ?? undefined,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -17,8 +32,13 @@ export function BlogPage() {
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    apiClient.get<BlogPost[]>('/api/blog/posts')
-      .then(r => setPosts(r.data ?? []))
+    apiClient.get('/api/blog/posts')
+      .then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setPosts(items.map(mapBlogPost))
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load blog posts.'))
       .finally(() => setIsLoading(false))
   }, [])

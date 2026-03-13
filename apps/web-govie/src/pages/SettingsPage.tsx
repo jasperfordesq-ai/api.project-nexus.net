@@ -23,8 +23,27 @@ export function SettingsPage() {
 
   useEffect(() => {
     Promise.all([
-      apiClient.get<Preferences>('/api/preferences').then(r => r.data),
-      apiClient.get<Session[]>('/api/sessions').then(r => r.data ?? []),
+      apiClient.get('/api/preferences').then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        return {
+          theme: raw.theme ?? raw.display?.theme ?? 'light',
+          language: raw.language ?? raw.display?.language ?? 'en',
+          timezone: raw.timezone ?? raw.display?.timezone ?? 'Europe/Dublin',
+          emailNotifications: raw.email_notifications ?? raw.emailNotifications ?? true,
+          pushNotifications: raw.push_notifications ?? raw.pushNotifications ?? false,
+        } as Preferences
+      }),
+      apiClient.get('/api/sessions').then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        return items.map((s: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+          id: s.id,
+          device: s.device ?? s.user_agent ?? 'Unknown device',
+          ip: s.ip ?? s.ip_address ?? '',
+          lastActiveAt: s.last_active_at ?? s.lastActiveAt ?? '',
+          isCurrent: s.is_current ?? s.isCurrent ?? false,
+        })) as Session[]
+      }),
     ])
       .then(([p, s]) => { setPrefs(p); setSessions(s) })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load settings.'))
@@ -34,7 +53,18 @@ export function SettingsPage() {
   const savePrefs = async () => {
     if (!prefs) return
     try {
-      await apiClient.put('/api/preferences', prefs)
+      // Backend has separate endpoints for display vs notification preferences
+      await Promise.all([
+        apiClient.put('/api/preferences/display', {
+          theme: prefs.theme,
+          language: prefs.language,
+          timezone: prefs.timezone,
+        }),
+        apiClient.put('/api/preferences/notifications-global', {
+          email_notifications: prefs.emailNotifications,
+          push_notifications: prefs.pushNotifications,
+        }),
+      ])
       setSaveMsg('Settings saved.')
       setTimeout(() => setSaveMsg(null), 3000)
     } catch (err) {

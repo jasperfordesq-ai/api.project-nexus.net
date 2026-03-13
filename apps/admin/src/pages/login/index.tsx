@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useState } from "react";
 import { useLogin } from "@refinedev/core";
 import { Card, Form, Input, Button, Typography, Alert, Space } from "antd";

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Spin, Tabs, Button, Space, message, Modal, Form, Input, Tag } from "antd";
 import { PlusOutlined, UploadOutlined } from "@ant-design/icons";
@@ -12,7 +17,7 @@ export const TranslationsPage = () => {
 
   const rawStats = statsData?.data as any;
   const statsEntries = rawStats ? (Array.isArray(rawStats) ? rawStats : rawStats.data || []) : [];
-  const missing = Array.isArray(missingData?.data) ? missingData.data : (missingData?.data as any)?.data || [];
+  const missing = (missingData?.data as any)?.items || (missingData?.data as any)?.data || (Array.isArray(missingData?.data) ? missingData.data : []);
 
   const [localeModalOpen, setLocaleModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);

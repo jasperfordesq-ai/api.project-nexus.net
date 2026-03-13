@@ -10,9 +10,29 @@ import { isApiError } from '../context/AuthContext'
 
 interface Exchange {
   id: number; listingTitle: string; listingId: number; requesterName: string; requesterId: number
-  providerName: string; providerId: number; status: string; credits: number; message?: string
+  providerName: string; providerId: number; status: string; creditAmount: number; message?: string
   scheduledAt?: string; completedAt?: string; createdAt: string
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapExchange(raw: any): Exchange {
+  return {
+    id: raw.id,
+    listingTitle: raw.listing_title ?? raw.listingTitle ?? '',
+    listingId: raw.listing_id ?? raw.listingId ?? 0,
+    requesterName: raw.requester_name ?? raw.requesterName ?? '',
+    requesterId: raw.requester_id ?? raw.requesterId ?? 0,
+    providerName: raw.provider_name ?? raw.providerName ?? '',
+    providerId: raw.provider_id ?? raw.providerId ?? 0,
+    status: raw.status ?? 'pending',
+    creditAmount: raw.credit_amount ?? raw.creditAmount ?? 0,
+    message: raw.message ?? undefined,
+    scheduledAt: raw.scheduled_at ?? raw.scheduledAt ?? undefined,
+    completedAt: raw.completed_at ?? raw.completedAt ?? undefined,
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const STATUS_COLORS: Record<string, string> = { pending: '#C8640C', active: '#006B6B', completed: '#15803d', cancelled: '#64748b', declined: '#dc2626' }
 
@@ -25,8 +45,8 @@ export function ExchangeDetailPage() {
   const [acting, setActing] = useState(false)
 
   useEffect(() => {
-    apiClient.get<Exchange>(`/api/exchanges/${id}`)
-      .then(r => setExchange(r.data))
+    apiClient.get(`/api/exchanges/${id}`)
+      .then(r => setExchange(mapExchange(r.data)))
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load exchange.'))
       .finally(() => setIsLoading(false))
   }, [id])
@@ -78,7 +98,7 @@ export function ExchangeDetailPage() {
             <dt style={{ fontWeight: 600, color: 'var(--nexus-color-text-secondary)', fontSize: 14 }}>Provider</dt>
             <dd style={{ margin: 0 }}><Link to={`/members/${exchange.providerId}`}>{exchange.providerName}</Link></dd>
             <dt style={{ fontWeight: 600, color: 'var(--nexus-color-text-secondary)', fontSize: 14 }}>Credits</dt>
-            <dd style={{ margin: 0, fontWeight: 700 }}>{exchange.credits}</dd>
+            <dd style={{ margin: 0, fontWeight: 700 }}>{exchange.creditAmount}</dd>
             {exchange.scheduledAt && <>
               <dt style={{ fontWeight: 600, color: 'var(--nexus-color-text-secondary)', fontSize: 14 }}>Scheduled</dt>
               <dd style={{ margin: 0 }}>{new Date(exchange.scheduledAt).toLocaleString('en-IE', { dateStyle: 'medium', timeStyle: 'short' })}</dd>

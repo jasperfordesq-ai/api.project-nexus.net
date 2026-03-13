@@ -113,7 +113,7 @@ router.get('/my', asyncRoute(async (req, res) => {
   const status = req.query.status || null;
 
   const result = await getMyReports(req.token, { page, limit: 20, status });
-  const reports = result.data || [];
+  const reports = result.items || result.data || [];
 
   res.render('reports/my', {
     title: 'My reports',

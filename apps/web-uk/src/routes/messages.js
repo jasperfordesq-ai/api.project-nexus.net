@@ -22,8 +22,8 @@ router.get('/', asyncRoute(async (req, res) => {
 
   res.render('messages/index', {
     title: 'Messages',
-    conversations: conversationsData.data || conversationsData,
-    unreadCount: unreadData.unreadCount || unreadData.count || unreadData,
+    conversations: conversationsData.items || conversationsData.data || (Array.isArray(conversationsData) ? conversationsData : []),
+    unreadCount: unreadData.unread_count ?? unreadData.unreadCount ?? unreadData.count ?? 0,
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
@@ -34,7 +34,8 @@ router.get('/new', asyncRoute(async (req, res) => {
 
   // Get connected users to populate recipient dropdown
   const connectionsResult = await getConnections(req.token, 'accepted');
-  const connections = connectionsResult.connections || [];
+  const rawConns = connectionsResult.items || connectionsResult.data || connectionsResult.connections || connectionsResult;
+  const connections = Array.isArray(rawConns) ? rawConns : [];
 
   // If user_id provided, get that user's info
   let selectedUser = null;
@@ -72,7 +73,8 @@ router.post('/new', audit.conversationCreate(), asyncRoute(async (req, res, next
 
   if (errors.length > 0) {
     const connectionsResult = await getConnections(req.token, 'accepted');
-    const connections = connectionsResult.connections || [];
+    const rawConns = connectionsResult.items || connectionsResult.data || connectionsResult.connections || connectionsResult;
+  const connections = Array.isArray(rawConns) ? rawConns : [];
 
     return res.render('messages/new', {
       title: 'New message',
@@ -102,7 +104,8 @@ router.post('/new', audit.conversationCreate(), asyncRoute(async (req, res, next
     // Handle API errors by re-rendering form with error message
     if (error instanceof ApiError && error.status !== 401) {
       const connectionsResult = await getConnections(req.token, 'accepted');
-      const connections = connectionsResult.connections || [];
+      const rawConns = connectionsResult.items || connectionsResult.data || connectionsResult.connections || connectionsResult;
+  const connections = Array.isArray(rawConns) ? rawConns : [];
 
       return res.render('messages/new', {
         title: 'New message',

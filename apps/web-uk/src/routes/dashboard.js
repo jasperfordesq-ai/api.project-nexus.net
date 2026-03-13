@@ -47,14 +47,14 @@ router.get('/', asyncRoute(async (req, res) => {
     getFeedPosts(req.token, { limit: 5 }).catch(() => ({ data: [] })),
     getMyEvents(req.token).catch(() => ({ data: [] })),
     getMyGroups(req.token).catch(() => ({ data: [] })),
-    getGamificationProfile(req.token).catch(() => ({ profile: { level: 1, totalXp: 0 } }))
+    getGamificationProfile(req.token).catch(() => ({ profile: { level: 1, total_xp: 0, totalXp: 0 } }))
   ]);
 
   // Build activity feed from various sources
   const activityItems = [];
 
   // Add recent notifications
-  const notifications = notificationsData.data || [];
+  const notifications = notificationsData.items || notificationsData.data || [];
   notifications.slice(0, 3).forEach(n => {
     activityItems.push({
       type: 'notification',
@@ -67,7 +67,7 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 
   // Add recent feed posts
-  const posts = feedData.data || [];
+  const posts = feedData.items || feedData.data || [];
   posts.slice(0, 3).forEach(p => {
     activityItems.push({
       type: 'post',
@@ -82,22 +82,31 @@ router.get('/', asyncRoute(async (req, res) => {
   activityItems.sort((a, b) => new Date(b.time) - new Date(a.time));
 
   // Get upcoming events (next 3)
-  const events = eventsData.data || [];
+  const events = eventsData.items || eventsData.data || [];
+  const now = new Date();
   const upcomingEvents = events
-    .filter(e => !(e.isPast || e.is_past) && (e.myRsvp || e.my_rsvp)?.status === 'going')
+    .filter(e => {
+      const startsAt = e.starts_at || e.startsAt;
+      const isPast = startsAt ? new Date(startsAt) < now : false;
+      // my_rsvp is a string from backend (e.g. "Going"), not an object
+      const rsvpStatus = (typeof (e.my_rsvp || e.myRsvp) === 'string')
+        ? (e.my_rsvp || e.myRsvp)
+        : (e.my_rsvp || e.myRsvp)?.status || '';
+      return !isPast && rsvpStatus.toLowerCase() === 'going';
+    })
     .slice(0, 3);
 
   res.render('dashboard/index', {
     title: 'Dashboard',
     profile,
     balance: balanceData.balance ?? balanceData,
-    listings: listingsData.data || listingsData,
-    unreadCount: unreadData.unreadCount ?? unreadData.count ?? unreadData,
-    recentTransactions: transactionsData.data || transactionsData,
+    listings: listingsData.items || listingsData.data || (Array.isArray(listingsData) ? listingsData : []),
+    unreadCount: unreadData.unread_count ?? unreadData.unreadCount ?? unreadData.count ?? 0,
+    recentTransactions: transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []),
     activityItems: activityItems.slice(0, 5),
     upcomingEvents,
-    myGroups: (groupsData.data || []).slice(0, 3),
-    gamification: gamificationData.profile || { level: 1, totalXp: 0 },
+    myGroups: (groupsData.items || groupsData.data || []).slice(0, 3),
+    gamification: gamificationData.profile || { level: 1, total_xp: 0, totalXp: 0 },
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));

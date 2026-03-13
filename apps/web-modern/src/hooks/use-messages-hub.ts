@@ -19,7 +19,7 @@ export type SignalRStatus = "connecting" | "connected" | "disconnected" | "recon
 
 export interface MessageNotification {
   id: number;
-  conversation_id: number;
+  conversationId: number;
   content: string;
   sender: {
     id: number;

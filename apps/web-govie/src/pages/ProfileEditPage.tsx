@@ -25,9 +25,9 @@ export function ProfileEditPage() {
   useEffect(() => {
     apiClient.get<UserProfile>('/api/users/me')
       .then(r => {
-        const p = r.data
-        setFirstName(p.firstName ?? '')
-        setLastName(p.lastName ?? '')
+        const p = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        setFirstName(p.first_name ?? p.firstName ?? '')
+        setLastName(p.last_name ?? p.lastName ?? '')
         setBio(p.bio ?? '')
         setLocation(p.location ?? '')
       })
@@ -48,8 +48,8 @@ export function ProfileEditPage() {
     setIsSubmitting(true)
     try {
       await apiClient.patch('/api/users/me', {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         bio: bio.trim() || null,
         location: location.trim() || null,
       })

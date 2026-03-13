@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Button, Space, Tag, message, Spin, Modal } from "antd";
 import { EditOutlined, PlusOutlined, StarOutlined, StarFilled } from "@ant-design/icons";
@@ -10,7 +15,7 @@ const { Title } = Typography;
 export const BlogListPage = () => {
   const navigate = useNavigate();
   const { data, isLoading, refetch } = useCustom({ url: "/api/admin/blog", method: "get" });
-  const posts = Array.isArray(data?.data) ? data.data : (data?.data as any)?.data || [];
+  const posts = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
 
   const toggleStatus = (id: number, currentStatus: string) => {
     const action = currentStatus === "published" ? "unpublish" : "publish";

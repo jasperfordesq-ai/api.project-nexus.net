@@ -27,7 +27,8 @@ router.get('/', asyncRoute(async (req, res) => {
   const limit = 20;
 
   const result = await getConnections(req.token, status);
-  const allConnections = result.connections || [];
+  const raw = result.items || result.data || result.connections || result;
+  const allConnections = Array.isArray(raw) ? raw : [];
 
   // Client-side pagination
   const total = allConnections.length;
@@ -53,10 +54,11 @@ router.get('/', asyncRoute(async (req, res) => {
 router.get('/pending', asyncRoute(async (req, res) => {
   const result = await getPendingConnections(req.token);
 
+  const pendingData = result.data || result;
   res.render('connections/pending', {
     title: 'Pending requests',
-    incoming: result.incoming || [],
-    outgoing: result.outgoing || [],
+    incoming: pendingData.incoming || result.incoming || [],
+    outgoing: pendingData.outgoing || result.outgoing || [],
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));

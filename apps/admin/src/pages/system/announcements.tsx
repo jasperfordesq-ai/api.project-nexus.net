@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Button, Modal, Form, Input, Select, message, Tag, Space, Spin } from "antd";
 import { PlusOutlined, StopOutlined } from "@ant-design/icons";
@@ -16,7 +21,7 @@ export const AnnouncementsPage = () => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
 
-  const announcements = Array.isArray(data?.data) ? data.data : (data?.data as any)?.data || [];
+  const announcements = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
 
   const handleCreate = async () => {
     try {

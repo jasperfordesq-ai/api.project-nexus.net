@@ -17,6 +17,11 @@ interface DashboardData {
   upcomingEvents: { id: number; title: string; startsAt: string; location?: string }[]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractCount(raw: any): number {
+  return raw?.unread_count ?? raw?.unreadCount ?? raw?.count ?? 0
+}
+
 export function DashboardPage() {
   const { user } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
@@ -36,8 +41,8 @@ export function DashboardPage() {
         setData({
           wallet: wallet as DashboardData['wallet'],
           gamification: gam as DashboardData['gamification'],
-          notifications: notif as DashboardData['notifications'],
-          messages: msgs as DashboardData['messages'],
+          notifications: { unreadCount: extractCount(notif) },
+          messages: { unreadCount: extractCount(msgs) },
           recentExchanges: exchanges as DashboardData['recentExchanges'],
           upcomingEvents: events as DashboardData['upcomingEvents'],
         })

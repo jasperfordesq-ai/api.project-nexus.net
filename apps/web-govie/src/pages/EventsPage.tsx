@@ -10,14 +10,33 @@ import { isApiError } from '../context/AuthContext'
 
 interface Event { id: number; title: string; description: string; location: string; startsAt: string; endsAt: string; rsvpCount: number; isCancelled: boolean }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapEvent(raw: any): Event {
+  return {
+    id: raw.id,
+    title: raw.title ?? '',
+    description: raw.description ?? '',
+    location: raw.location ?? '',
+    startsAt: raw.starts_at ?? raw.startsAt ?? '',
+    endsAt: raw.ends_at ?? raw.endsAt ?? '',
+    rsvpCount: raw.rsvp_count ?? raw.rsvpCount ?? 0,
+    isCancelled: raw.is_cancelled ?? raw.isCancelled ?? false,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function EventsPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get<{ items: Event[] }>('/api/events')
-      .then(r => setEvents(r.data?.items ?? (r.data as unknown as Event[]) ?? []))
+    apiClient.get('/api/events')
+      .then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setEvents(items.map(mapEvent))
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load events.'))
       .finally(() => setIsLoading(false))
   }, [])

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import type { DataProvider } from "@refinedev/core";
 import axiosInstance from "../utils/axios";
 import { API_URL } from "../config/constants";
@@ -51,16 +56,27 @@ function normalizeList(responseData: any): { data: any[]; total: number } {
   return { data: [responseData], total: 1 };
 }
 
-// Normalize single-item responses
+// Normalize single-item responses.
+// For wrapped responses like { user: {...}, stats: {...} }, merge sibling
+// properties onto the primary object so pages can access e.g. record.stats.
 function normalizeOne(responseData: any): any {
   if (responseData.success && responseData.data) return responseData.data;
   if (responseData.data && !Array.isArray(responseData.data)) return responseData.data;
-  if (responseData.user) return responseData.user;
-  if (responseData.category) return responseData.category;
-  if (responseData.role) return responseData.role;
-  if (responseData.config) return responseData.config;
-  if (responseData.policy) return responseData.policy;
-  if (responseData.record) return responseData.record;
+
+  const wrapperKeys = ["user", "category", "role", "config", "policy", "record"] as const;
+  for (const key of wrapperKeys) {
+    if (responseData[key] && typeof responseData[key] === "object") {
+      // Merge any sibling properties (e.g. stats) onto the primary object
+      const primary = { ...responseData[key] };
+      for (const [k, v] of Object.entries(responseData)) {
+        if (k !== key) {
+          primary[k] = v;
+        }
+      }
+      return primary;
+    }
+  }
+
   return responseData;
 }
 
@@ -154,6 +170,9 @@ export const dataProvider: DataProvider = {
         break;
       case "put":
         response = await axiosInstance.put(url, payload, config);
+        break;
+      case "patch":
+        response = await axiosInstance.patch(url, payload, config);
         break;
       case "delete":
         response = await axiosInstance.delete(url, config);

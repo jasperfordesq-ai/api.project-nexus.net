@@ -31,7 +31,7 @@
         rows: [
           {
             key: { text: "Name" },
-            value: { text: profile.name or "Not set" },
+            value: { text: ((profile.first_name or profile.firstName or "") + " " + (profile.last_name or profile.lastName or "")).trim() or "Not set" },
             actions: {
               items: [
                 { href: "/profile/edit", text: "Change", visuallyHiddenText: "name" }

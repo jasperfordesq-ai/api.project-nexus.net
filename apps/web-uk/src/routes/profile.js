@@ -68,8 +68,8 @@ router.post('/edit', asyncRoute(async (req, res) => {
 
   try {
     const updateData = {
-      firstName: first_name.trim(),
-      lastName: last_name.trim()
+      first_name: first_name.trim(),
+      last_name: last_name.trim()
     };
     if (phone !== undefined) updateData.phone = phone;
     if (bio !== undefined) updateData.bio = bio ? bio.trim() : null;
@@ -82,7 +82,7 @@ router.post('/edit', asyncRoute(async (req, res) => {
     res.redirect('/profile');
   } catch (error) {
     // Handle validation errors from API by re-rendering form
-    if (error instanceof ApiError && error.status === 400) {
+    if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
       return res.render('profile/edit', {
         title: 'Edit your profile',
         profile: null,

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, Modal, Form, Input, InputNumber, Select, message } from "antd";
 import { PlusOutlined, TrophyOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -11,7 +16,7 @@ export const GamificationPage = () => {
   const { data: badgesData, isLoading, refetch } = useCustom({ url: "/api/admin/gamification/badges", method: "get" });
 
   const stats = statsData?.data as any;
-  const badges = Array.isArray(badgesData?.data) ? badgesData.data : (badgesData?.data as any)?.data || [];
+  const badges = (badgesData?.data as any)?.items || (badgesData?.data as any)?.data || (Array.isArray(badgesData?.data) ? badgesData.data : []);
   const [createOpen, setCreateOpen] = useState(false);
   const [awardOpen, setAwardOpen] = useState(false);
   const [awardBadgeId, setAwardBadgeId] = useState<number | null>(null);

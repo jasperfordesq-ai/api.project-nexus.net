@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { API_URL } from "../config/constants";
 import { getToken, getRefreshToken, setToken, setRefreshToken, clearAuth } from "./token";

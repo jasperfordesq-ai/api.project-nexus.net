@@ -1,5 +1,7 @@
 // Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -15,10 +17,27 @@ export function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     Promise.all([
-      apiClient.get<UserProfile>('/api/users/me').then((r) => r.data),
-      apiClient.get<WalletBalance>('/api/wallet/balance').then((r) => r.data),
+      apiClient.get('/api/users/me').then((r) => {
+        const raw = r.data as any
+        return {
+          id: raw.id,
+          email: raw.email ?? '',
+          firstName: raw.first_name ?? raw.firstName ?? '',
+          lastName: raw.last_name ?? raw.lastName ?? '',
+          role: raw.role ?? 'member',
+          tenantId: raw.tenant_id ?? raw.tenantId ?? 0,
+          createdAt: raw.created_at ?? raw.createdAt ?? '',
+          bio: raw.bio ?? undefined,
+          location: raw.location ?? undefined,
+          skills: raw.skills ?? undefined,
+          totalExchanges: raw.total_exchanges ?? raw.totalExchanges ?? undefined,
+        } as UserProfile
+      }),
+      apiClient.get('/api/wallet/balance').then((r) => r.data as WalletBalance),
     ])
+    /* eslint-enable @typescript-eslint/no-explicit-any */
       .then(([p, b]) => { setProfile(p); setBalance(b) })
       .catch((err) => {
         if (isApiError(err)) setError(err.message)

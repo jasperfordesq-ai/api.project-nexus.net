@@ -293,39 +293,57 @@ public class SubAccountService
         if (!isSubAccount)
             return (false, "The target account is not an active sub-account of this primary user.");
 
-        // Check sender has sufficient balance
-        var received = await _db.Transactions
-            .Where(t => t.ReceiverId == fromUserId && t.Status == TransactionStatus.Completed)
-            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
-
-        var sent = await _db.Transactions
-            .Where(t => t.SenderId == fromUserId && t.Status == TransactionStatus.Completed)
-            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
-
-        var senderBalance = received - sent;
-        if (senderBalance < amount)
-            return (false, $"Insufficient balance. Available: {senderBalance:F2}, requested: {amount:F2}.");
-
-        // Create the transaction
-        var transaction = new Transaction
+        // Use serializable transaction with advisory lock to prevent race conditions
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
         {
-            TenantId = tenantId,
-            SenderId = fromUserId,
-            ReceiverId = toUserId,
-            Amount = amount,
-            Description = description ?? "Family pool transfer",
-            Status = TransactionStatus.Completed,
-            CreatedAt = DateTime.UtcNow
-        };
+            // Lock on sender to serialize concurrent transfers from same user
+            await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", fromUserId);
 
-        _db.Transactions.Add(transaction);
-        await _db.SaveChangesAsync();
+            // Check sender has sufficient balance (now protected by lock)
+            var received = await _db.Transactions
+                .Where(t => t.ReceiverId == fromUserId && t.Status == TransactionStatus.Completed)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0m;
 
-        _logger.LogInformation(
-            "Pool transfer: {Amount} credits from user {FromUserId} to user {ToUserId} (primary: {PrimaryUserId})",
-            amount, fromUserId, toUserId, primaryUserId);
+            var sent = await _db.Transactions
+                .Where(t => t.SenderId == fromUserId && t.Status == TransactionStatus.Completed)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0m;
 
-        return (true, null);
+            var senderBalance = received - sent;
+            if (senderBalance < amount)
+            {
+                await dbTransaction.RollbackAsync();
+                return (false, $"Insufficient balance. Available: {senderBalance:F2}, requested: {amount:F2}.");
+            }
+
+            // Create the transaction
+            var transaction = new Transaction
+            {
+                TenantId = tenantId,
+                SenderId = fromUserId,
+                ReceiverId = toUserId,
+                Amount = amount,
+                Description = description ?? "Family pool transfer",
+                Status = TransactionStatus.Completed,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _db.Transactions.Add(transaction);
+            await _db.SaveChangesAsync();
+            await dbTransaction.CommitAsync();
+
+            _logger.LogInformation(
+                "Pool transfer: {Amount} credits from user {FromUserId} to user {ToUserId} (primary: {PrimaryUserId})",
+                amount, fromUserId, toUserId, primaryUserId);
+
+            return (true, null);
+        }
+        catch (DbUpdateException ex)
+        {
+            await dbTransaction.RollbackAsync();
+            _logger.LogError(ex, "Database error during pool transfer from user {FromUserId} to user {ToUserId}", fromUserId, toUserId);
+            return (false, "Transfer failed due to a database error. Please try again.");
+        }
     }
 
 

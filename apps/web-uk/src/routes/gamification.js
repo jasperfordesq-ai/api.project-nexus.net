@@ -46,7 +46,7 @@ router.get('/leaderboard', asyncRoute(async (req, res) => {
 
   res.render('gamification/leaderboard', {
     title: 'Leaderboard',
-    leaderboard: result.data || [],
+    leaderboard: result.items || result.data || [],
     currentUserRank: result.currentUserRank || result.current_user_rank,
     period,
     pagination: result.pagination || { page: 1, totalPages: 1 }

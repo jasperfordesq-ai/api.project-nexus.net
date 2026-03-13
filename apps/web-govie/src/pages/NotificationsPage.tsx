@@ -27,7 +27,7 @@ export function NotificationsPage() {
       .then(r => {
         /* eslint-disable @typescript-eslint/no-explicit-any */
         const raw = r.data as any
-        const items: any[] = raw?.data ?? (Array.isArray(raw) ? raw : [])
+        const items: any[] = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
         setNotifications(items.map((n: any) => ({
           id: n.id,
           type: n.type ?? 'system',

@@ -126,7 +126,7 @@ public class DeliverableService
             by_status = all.GroupBy(d => d.Status.ToString()).ToDictionary(g => g.Key, g => g.Count()),
             by_priority = all.GroupBy(d => d.Priority.ToString()).ToDictionary(g => g.Key, g => g.Count()),
             overdue_count = all.Count(d => d.DueDate < now && d.Status != DeliverableStatus.Completed && d.Status != DeliverableStatus.Cancelled),
-            due_soon_count = all.Count(d => d.DueDate >= now && d.DueDate <= now.AddDays(7) && d.Status == DeliverableStatus.Pending || d.Status == DeliverableStatus.InProgress)
+            due_soon_count = all.Count(d => d.DueDate >= now && d.DueDate <= now.AddDays(7) && (d.Status == DeliverableStatus.Pending || d.Status == DeliverableStatus.InProgress))
         };
     }
 

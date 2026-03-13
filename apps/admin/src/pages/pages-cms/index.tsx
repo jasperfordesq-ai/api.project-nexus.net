@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Spin, Button, Space, message, Tag, Modal, Form, Input } from "antd";
 import { PlusOutlined, CopyOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -9,7 +14,7 @@ const { Title } = Typography;
 
 export const PagesCmsPage = () => {
   const { data, isLoading, refetch } = useCustom({ url: "/api/admin/pages", method: "get" });
-  const pages = Array.isArray(data?.data) ? data.data : (data?.data as any)?.data || [];
+  const pages = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
   const [createOpen, setCreateOpen] = useState(false);
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);

@@ -10,6 +10,25 @@ import { isApiError, useAuth } from '../context/AuthContext'
 
 interface Job { id: number; title: string; organisationName?: string; location?: string; jobType: string; salaryRange?: string; description: string; requirements?: string; createdAt: string; closingDate?: string; applicationCount: number; hasApplied: boolean }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapJob(raw: any): Job {
+  return {
+    id: raw.id,
+    title: raw.title ?? '',
+    organisationName: raw.organisation_name ?? raw.organisationName ?? undefined,
+    location: raw.location ?? undefined,
+    jobType: raw.job_type ?? raw.jobType ?? '',
+    salaryRange: raw.salary_range ?? raw.salaryRange ?? undefined,
+    description: raw.description ?? '',
+    requirements: raw.requirements ?? undefined,
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+    closingDate: raw.closing_date ?? raw.closingDate ?? undefined,
+    applicationCount: raw.application_count ?? raw.applicationCount ?? 0,
+    hasApplied: raw.has_applied ?? raw.hasApplied ?? false,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
@@ -22,8 +41,8 @@ export function JobDetailPage() {
   const [actionMsg, setActionMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get<Job>(`/api/jobs/${id}`)
-      .then(r => setJob(r.data))
+    apiClient.get(`/api/jobs/${id}`)
+      .then(r => setJob(mapJob(r.data)))
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load job.'))
       .finally(() => setIsLoading(false))
   }, [id])
@@ -32,7 +51,7 @@ export function JobDetailPage() {
     e.preventDefault()
     setApplying(true)
     try {
-      await apiClient.post(`/api/jobs/${id}/apply`, { coverLetter: coverLetter.trim() })
+      await apiClient.post(`/api/jobs/${id}/apply`, { cover_letter: coverLetter.trim() })
       setJob(j => j ? { ...j, hasApplied: true, applicationCount: j.applicationCount + 1 } : j)
       setActionMsg('Application submitted successfully.')
       setShowForm(false)

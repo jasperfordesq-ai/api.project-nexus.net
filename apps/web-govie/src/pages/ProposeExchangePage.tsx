@@ -36,10 +36,10 @@ export function ProposeExchangePage() {
     setIsSubmitting(true)
     try {
       const res = await apiClient.post<{ id: number }>('/api/exchanges', {
-        listingId: Number(listingId),
+        listing_id: Number(listingId),
         message: message.trim() || null,
-        scheduledAt: scheduledAt || null,
-        hours: Number(hours),
+        scheduled_at: scheduledAt || null,
+        agreed_hours: Number(hours),
       })
       navigate(`/exchanges/${res.data.id}`)
     } catch (err) {

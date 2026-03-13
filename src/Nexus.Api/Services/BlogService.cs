@@ -128,7 +128,15 @@ public class BlogService
         var post = await _db.Set<BlogPost>().FirstOrDefaultAsync(x => x.Id == postId);
         if (post == null) return (null, "Post not found");
 
-        if (title != null) { post.Title = title; post.Slug = GenerateSlug(title); }
+        if (title != null)
+        {
+            post.Title = title;
+            var newSlug = GenerateSlug(title);
+            var slugExists = await _db.Set<BlogPost>().AnyAsync(p => p.Slug == newSlug && p.Id != postId);
+            if (slugExists)
+                newSlug = $"{newSlug}-{DateTime.UtcNow.Ticks % 10000}";
+            post.Slug = newSlug;
+        }
         if (content != null) post.Content = content;
         if (excerpt != null) post.Excerpt = excerpt;
         if (featuredImageUrl != null) post.FeaturedImageUrl = featuredImageUrl;
@@ -218,7 +226,15 @@ public class BlogService
         var cat = await _db.Set<BlogCategory>().FirstOrDefaultAsync(x => x.Id == id);
         if (cat == null) return (null, "Category not found");
 
-        if (name != null) { cat.Name = name; cat.Slug = GenerateSlug(name); }
+        if (name != null)
+        {
+            cat.Name = name;
+            var newSlug = GenerateSlug(name);
+            var slugExists = await _db.Set<BlogCategory>().AnyAsync(c => c.Slug == newSlug && c.Id != id);
+            if (slugExists)
+                return (null, "A category with this name already exists");
+            cat.Slug = newSlug;
+        }
         if (description != null) cat.Description = description;
         if (color != null) cat.Color = color;
 

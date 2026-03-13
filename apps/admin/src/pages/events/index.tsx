@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, message, Tag, Modal } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
@@ -14,7 +19,7 @@ export const EventsAdminPage = () => {
   const { data: statsData } = useCustom({ url: "/api/admin/events/stats", method: "get" });
 
   const raw = data?.data as any;
-  const events = raw?.data || [];
+  const events = raw?.items || raw?.data || [];
   const totalCount = raw?.total || raw?.totalCount || events.length;
   const stats = statsData?.data as any;
 

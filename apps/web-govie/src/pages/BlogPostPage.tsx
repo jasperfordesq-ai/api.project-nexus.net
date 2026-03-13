@@ -10,6 +10,24 @@ import { isApiError } from '../context/AuthContext'
 
 interface BlogPost { id: number; slug: string; title: string; content: string; excerpt?: string; authorName?: string; publishedAt: string; updatedAt?: string; category?: string; readTimeMinutes?: number; tags?: string[] }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapBlogPost(raw: any): BlogPost {
+  return {
+    id: raw.id,
+    slug: raw.slug ?? '',
+    title: raw.title ?? '',
+    content: raw.content ?? '',
+    excerpt: raw.excerpt ?? undefined,
+    authorName: raw.author_name ?? raw.authorName ?? undefined,
+    publishedAt: raw.published_at ?? raw.publishedAt ?? '',
+    updatedAt: raw.updated_at ?? raw.updatedAt ?? undefined,
+    category: raw.category ?? undefined,
+    readTimeMinutes: raw.read_time_minutes ?? raw.readTimeMinutes ?? undefined,
+    tags: raw.tags ?? undefined,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>()
   const [post, setPost] = useState<BlogPost | null>(null)
@@ -17,8 +35,8 @@ export function BlogPostPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get<BlogPost>(`/api/blog/posts/${slug}`)
-      .then(r => setPost(r.data))
+    apiClient.get(`/api/blog/posts/${slug}`)
+      .then(r => setPost(mapBlogPost(r.data)))
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load post.'))
       .finally(() => setIsLoading(false))
   }, [slug])

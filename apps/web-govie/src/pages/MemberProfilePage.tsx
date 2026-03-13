@@ -11,6 +11,33 @@ import { isApiError } from '../context/AuthContext'
 interface MemberProfile { id: number; firstName: string; lastName: string; bio?: string; skills?: string[]; exchangeCount: number; totalXp: number; level: number; memberSince: string; isConnected: boolean }
 interface Review { id: number; reviewerName: string; rating: number; comment: string; createdAt: string }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapProfile(raw: any): MemberProfile {
+  return {
+    id: raw.id,
+    firstName: raw.first_name ?? raw.firstName ?? '',
+    lastName: raw.last_name ?? raw.lastName ?? '',
+    bio: raw.bio ?? undefined,
+    skills: raw.skills ?? undefined,
+    exchangeCount: raw.exchange_count ?? raw.exchangeCount ?? 0,
+    totalXp: raw.total_xp ?? raw.totalXp ?? 0,
+    level: raw.level ?? 1,
+    memberSince: raw.member_since ?? raw.memberSince ?? raw.created_at ?? raw.createdAt ?? '',
+    isConnected: raw.is_connected ?? raw.isConnected ?? false,
+  }
+}
+
+function mapReview(raw: any): Review {
+  return {
+    id: raw.id,
+    reviewerName: raw.reviewer_name ?? raw.reviewerName ?? '',
+    rating: raw.rating ?? 0,
+    comment: raw.comment ?? '',
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function MemberProfilePage() {
   const { id } = useParams<{ id: string }>()
   const [profile, setProfile] = useState<MemberProfile | null>(null)
@@ -20,8 +47,13 @@ export function MemberProfilePage() {
 
   useEffect(() => {
     Promise.all([
-      apiClient.get<MemberProfile>(`/api/users/${id}`).then(r => r.data),
-      apiClient.get<Review[]>(`/api/reviews/user/${id}`).then(r => r.data ?? []).catch(() => []),
+      apiClient.get(`/api/users/${id}`).then(r => mapProfile(r.data)),
+      apiClient.get(`/api/reviews/user/${id}`).then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        return items.map(mapReview)
+      }).catch(() => [] as Review[]),
     ])
       .then(([p, r]) => { setProfile(p); setReviews(r) })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load profile.'))

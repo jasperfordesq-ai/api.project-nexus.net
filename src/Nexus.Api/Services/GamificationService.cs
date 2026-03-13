@@ -139,8 +139,9 @@ public class GamificationService
         {
             await _db.SaveChangesAsync();
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
+            _logger.LogDebug(ex, "Badge '{BadgeSlug}' already earned by user {UserId} (duplicate key)", badgeSlug, userId);
             _db.Entry(userBadge).State = EntityState.Detached;
             return new BadgeAwardResult { Success = false, Error = "User already has this badge", AlreadyEarned = true };
         }
@@ -464,8 +465,9 @@ public class GamificationService
 
                     _logger.LogInformation("Recheck: user {UserId} earned badge '{BadgeName}'", userId, badge.Name);
                 }
-                catch (DbUpdateException)
+                catch (DbUpdateException ex)
                 {
+                    _logger.LogDebug(ex, "Recheck: badge '{BadgeName}' already earned by user {UserId} (race condition)", badge.Name, userId);
                     _db.Entry(userBadge).State = EntityState.Detached;
                     // Already earned (race) � skip
                 }
@@ -561,8 +563,9 @@ public class GamificationService
         {
             await _db.SaveChangesAsync();
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
+            _logger.LogDebug(ex, "Manual badge award: badge {BadgeId} already earned by user {UserId} (duplicate key)", badgeId, userId);
             _db.Entry(userBadge).State = EntityState.Detached;
             return (null, "User already has this badge");
         }

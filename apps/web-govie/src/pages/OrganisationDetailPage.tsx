@@ -11,6 +11,31 @@ import { isApiError } from '../context/AuthContext'
 interface Organisation { id: number; name: string; type: string; description: string; mission?: string; website?: string; memberCount: number; isVerified: boolean; createdAt: string }
 interface OrgMember { id: number; userId: number; userName: string; role: string }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapOrg(raw: any): Organisation {
+  return {
+    id: raw.id,
+    name: raw.name ?? '',
+    type: raw.type ?? '',
+    description: raw.description ?? '',
+    mission: raw.mission ?? undefined,
+    website: raw.website ?? undefined,
+    memberCount: raw.member_count ?? raw.memberCount ?? 0,
+    isVerified: raw.is_verified ?? raw.isVerified ?? false,
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+  }
+}
+
+function mapOrgMember(raw: any): OrgMember {
+  return {
+    id: raw.id,
+    userId: raw.user_id ?? raw.userId ?? 0,
+    userName: raw.user_name ?? raw.userName ?? '',
+    role: raw.role ?? 'member',
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function OrganisationDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [org, setOrg] = useState<Organisation | null>(null)
@@ -19,9 +44,16 @@ export function OrganisationDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get<Organisation>(`/api/organisations/${id}`)
-      .then(r => { setOrg(r.data); return apiClient.get<OrgMember[]>(`/api/organisations/${id}/members`) })
-      .then(r => setMembers(r.data ?? []))
+    apiClient.get(`/api/organisations/${id}`)
+      .then(r => {
+        setOrg(mapOrg(r.data))
+        return apiClient.get(`/api/organisations/${id}/members`)
+      })
+      .then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setMembers(items.map(mapOrgMember))
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load organisation.'))
       .finally(() => setIsLoading(false))
   }, [id])

@@ -20,14 +20,14 @@ export function TransferPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!recipientId || !amount || Number(amount) <= 0) {
+    if (!recipientId || !amount || !Number(amount) || Number(amount) <= 0) {
       setError('Please provide a valid recipient ID and amount.')
       return
     }
     setIsSubmitting(true)
     try {
       await apiClient.post('/api/wallet/transfer', {
-        recipientId: Number(recipientId),
+        receiver_id: Number(recipientId),
         amount: Number(amount),
         description: description.trim() || 'Credit transfer',
       })

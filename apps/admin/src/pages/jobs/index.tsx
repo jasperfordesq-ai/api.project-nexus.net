@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, message, Tag, Select, Modal } from "antd";
 import { StarOutlined, StarFilled } from "@ant-design/icons";
@@ -14,7 +19,7 @@ export const JobsAdminPage = () => {
   const { data: statsData } = useCustom({ url: "/api/admin/jobs/stats", method: "get" });
 
   const raw = data?.data as any;
-  const jobs = raw?.data || [];
+  const jobs = raw?.items || raw?.data || [];
   const totalCount = raw?.total || raw?.totalCount || jobs.length;
   const stats = statsData?.data as any;
 

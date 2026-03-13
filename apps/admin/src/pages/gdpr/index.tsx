@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Tag, Tabs } from "antd";
 import { useState } from "react";
@@ -39,10 +44,10 @@ export const GdprPage = () => {
   });
 
   const breachRaw = breachData?.data as any;
-  const breaches = breachRaw?.data || [];
+  const breaches = breachRaw?.items || breachRaw?.data || [];
   const breachTotalCount = breachRaw?.total || breachRaw?.totalCount || breaches.length;
-  const consentTypes = (consentTypesData?.data as any)?.data || [];
-  const consentStats = (consentStatsData?.data as any)?.data || {};
+  const consentTypes = (consentTypesData?.data as any)?.items || (consentTypesData?.data as any)?.data || [];
+  const consentStats = (consentStatsData?.data as any)?.items || (consentStatsData?.data as any)?.data || {};
 
   const breachesTab = (
     <>

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, message, Tag } from "antd";
 import dayjs from "dayjs";
@@ -23,7 +28,7 @@ export const FederationPage = () => {
     method: "get",
   });
 
-  const partners = (data?.data as any)?.data || [];
+  const partners = (data?.data as any)?.items || (data?.data as any)?.data || [];
   const stats = (statsData?.data as any) || {};
 
   const handleApprove = async (id: number) => {

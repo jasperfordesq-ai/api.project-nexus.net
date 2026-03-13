@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Tabs, Button, Modal, Form, Input, message, Tag } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
@@ -14,9 +19,9 @@ export const EmailTemplatesPage = () => {
   const { data: logsData, isLoading: logsLoading } = useCustom({ url: "/api/admin/emails/logs", method: "get", config: { query: { page: logsPage, limit: logsPageSize } } });
   const { data: statsData } = useCustom({ url: "/api/admin/emails/stats", method: "get" });
 
-  const templates = Array.isArray(templatesData?.data) ? templatesData.data : (templatesData?.data as any)?.data || [];
+  const templates = (templatesData?.data as any)?.items || (templatesData?.data as any)?.data || (Array.isArray(templatesData?.data) ? templatesData.data : []);
   const logsRaw = logsData?.data as any;
-  const logs = logsRaw?.data || [];
+  const logs = logsRaw?.items || logsRaw?.data || [];
   const logsTotalCount = logsRaw?.total || logsRaw?.totalCount || logs.length;
   const stats = statsData?.data as any;
   const [modalOpen, setModalOpen] = useState(false);

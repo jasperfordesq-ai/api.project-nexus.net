@@ -10,6 +10,20 @@ import { isApiError } from '../context/AuthContext'
 
 interface Member { id: number; firstName: string; lastName: string; bio?: string; skills?: string[]; exchangeCount: number; isConnected: boolean }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapMember(raw: any): Member {
+  return {
+    id: raw.id,
+    firstName: raw.first_name ?? raw.firstName ?? '',
+    lastName: raw.last_name ?? raw.lastName ?? '',
+    bio: raw.bio ?? undefined,
+    skills: raw.skills ?? undefined,
+    exchangeCount: raw.exchange_count ?? raw.exchangeCount ?? 0,
+    isConnected: raw.is_connected ?? raw.isConnected ?? false,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function MembersPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -17,8 +31,13 @@ export function MembersPage() {
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    apiClient.get<Member[]>('/api/users')
-      .then(r => setMembers(r.data ?? []))
+    apiClient.get('/api/users')
+      .then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setMembers(items.map(mapMember))
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load members.'))
       .finally(() => setIsLoading(false))
   }, [])

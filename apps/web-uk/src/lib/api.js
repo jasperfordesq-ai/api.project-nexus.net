@@ -91,7 +91,7 @@ async function login(email, password, tenantSlug) {
     body: JSON.stringify({
       email,
       password,
-      tenantSlug: tenantSlug
+      tenant_slug: tenantSlug
     })
   });
 }
@@ -112,7 +112,7 @@ async function register(data) {
 async function refreshToken(refreshToken) {
   return request('/api/auth/refresh', {
     method: 'POST',
-    body: JSON.stringify({ refreshToken: refreshToken })
+    body: JSON.stringify({ refresh_token: refreshToken })
   });
 }
 
@@ -128,7 +128,7 @@ async function forgotPassword(email, tenantSlug) {
     method: 'POST',
     body: JSON.stringify({
       email,
-      tenantSlug: tenantSlug
+      tenant_slug: tenantSlug
     })
   });
 }
@@ -138,7 +138,7 @@ async function resetPassword(token, newPassword) {
     method: 'POST',
     body: JSON.stringify({
       token,
-      newPassword: newPassword
+      new_password: newPassword
     })
   });
 }
@@ -248,7 +248,7 @@ async function transferCredits(token, receiverId, amount, description) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({
-      receiverId: receiverId,
+      receiver_id: receiverId,
       amount,
       description
     })
@@ -297,7 +297,7 @@ async function startConversation(token, recipientId, content) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({
-      recipientId: recipientId,
+      recipient_id: recipientId,
       content
     })
   });
@@ -333,7 +333,7 @@ async function sendConnectionRequest(token, userId) {
   return request('/api/connections', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ userId: userId })
+    body: JSON.stringify({ user_id: userId })
   });
 }
 
@@ -505,7 +505,7 @@ async function addGroupMember(token, groupId, userId) {
   return request(`/api/groups/${encodeURIComponent(groupId)}/members`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ userId: userId })
+    body: JSON.stringify({ user_id: userId })
   });
 }
 
@@ -528,7 +528,7 @@ async function transferGroupOwnership(token, groupId, newOwnerId) {
   return request(`/api/groups/${encodeURIComponent(groupId)}/transfer-ownership`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ newOwnerId: newOwnerId })
+    body: JSON.stringify({ new_owner_id: newOwnerId })
   });
 }
 
@@ -1001,7 +1001,7 @@ async function adminUpdateConfig(token, config) {
   return request('/api/admin/config', {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ config })
+    body: JSON.stringify(config)
   });
 }
 

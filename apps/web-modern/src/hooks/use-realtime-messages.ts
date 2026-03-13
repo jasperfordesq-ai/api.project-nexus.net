@@ -67,13 +67,13 @@ export function useRealtimeMessages({
       // Convert SignalR MessageNotification to MessageType
       const message: MessageType = {
         id: notification.id,
-        conversation_id: notification.conversation_id,
+        conversation_id: notification.conversationId,
         content: notification.content,
         sender_id: notification.sender.id,
         read: notification.isRead,
         created_at: notification.createdAt,
       };
-      onNewMessage?.(message, notification.conversation_id);
+      onNewMessage?.(message, notification.conversationId);
     },
     [onNewMessage]
   );

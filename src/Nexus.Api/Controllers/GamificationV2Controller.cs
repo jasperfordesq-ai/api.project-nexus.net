@@ -588,25 +588,7 @@ public class GamificationV2Controller : ControllerBase
         return Ok(new { data = badges, totalCount = badges.Count });
     }
 
-    /// <summary>POST /api/admin/gamification/badges — create a badge definition</summary>
-    [HttpPost("/api/admin/gamification/badges")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> AdminCreateBadge([FromBody] CreateBadgeDefinitionRequest request)
-    {
-        var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var badge = new Badge
-        {
-            TenantId = tenantId,
-            Name = request.Name,
-            Description = request.Description ?? string.Empty,
-            Icon = request.ImageUrl,
-            XpReward = request.XpReward,
-            Slug = request.Name.ToLower().Replace(" ", "_"),
-        };
-        _db.Badges.Add(badge);
-        await _db.SaveChangesAsync();
-        return Ok(new { id = badge.Id, name = badge.Name, message = "Badge definition created" });
-    }
+    // NOTE: AdminCreateBadge removed — duplicate of AdminGamificationController.CreateBadge
 }
 
 #region Request DTOs

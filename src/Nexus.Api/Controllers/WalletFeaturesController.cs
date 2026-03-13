@@ -174,7 +174,8 @@ public class WalletFeaturesController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            _logger.LogWarning(ex, "Donation failed for user {UserId}: {Message}", userId, ex.Message);
+            return BadRequest(new { error = "Donation could not be processed. Please check your balance and try again." });
         }
     }
 

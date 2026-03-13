@@ -94,6 +94,30 @@ public class OrgWalletService
 
             var wallet = await EnsureWalletAsync(organisationId);
 
+            // Look up org owner to use as receiver in the personal Transaction
+            // (personal balance is computed from Transactions: received - sent)
+            var org = await _db.Set<Organisation>()
+                .FirstOrDefaultAsync(o => o.Id == organisationId);
+            if (org == null)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Organisation not found");
+            }
+
+            // Debit donor's personal wallet by creating a Transaction
+            // The org owner receives the credits on behalf of the org
+            var debitTx = new Transaction
+            {
+                TenantId = _tenantContext.GetTenantIdOrThrow(),
+                SenderId = fromUserId,
+                ReceiverId = org.OwnerId,
+                Amount = amount,
+                Description = description ?? $"Donation to organisation #{organisationId}",
+                Status = TransactionStatus.Completed,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Transactions.Add(debitTx);
+
             // Credit org wallet
             wallet.Balance += amount;
             wallet.TotalReceived += amount;
@@ -164,6 +188,29 @@ public class OrgWalletService
             wallet.Balance -= amount;
             wallet.TotalSpent += amount;
             wallet.UpdatedAt = DateTime.UtcNow;
+
+            // Look up org owner to use as sender in the personal Transaction
+            var org = await _db.Set<Organisation>()
+                .FirstOrDefaultAsync(o => o.Id == organisationId);
+            if (org == null)
+            {
+                await dbTransaction.RollbackAsync();
+                return (null, "Organisation not found");
+            }
+
+            // Credit target user's personal wallet by creating a Transaction
+            // The org owner sends credits on behalf of the org
+            var creditTx = new Transaction
+            {
+                TenantId = _tenantContext.GetTenantIdOrThrow(),
+                SenderId = org.OwnerId,
+                ReceiverId = toUserId,
+                Amount = amount,
+                Description = description ?? $"Transfer from organisation #{organisationId}",
+                Status = TransactionStatus.Completed,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Transactions.Add(creditTx);
 
             var tx = new OrgWalletTransaction
             {

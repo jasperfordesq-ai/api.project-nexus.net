@@ -23,7 +23,7 @@ router.get('/', asyncRoute(async (req, res) => {
   res.render('wallet/index', {
     title: 'Wallet',
     balance: balanceData.balance || balanceData,
-    transactions: transactionsData.data || transactionsData,
+    transactions: transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []),
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
@@ -35,7 +35,7 @@ router.get('/transactions', asyncRoute(async (req, res) => {
 
   const transactionsData = await getTransactions(req.token, { page, limit: 20, type });
 
-  const transactions = transactionsData.data || transactionsData;
+  const transactions = transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []);
   const pagination = transactionsData.pagination || {
     page,
     totalPages: 1,
@@ -74,7 +74,7 @@ router.get('/transfer', asyncRoute(async (req, res) => {
   res.render('wallet/transfer', {
     title: 'Transfer credits',
     balance: balanceData.balance || balanceData,
-    users: usersData.data || usersData,
+    users: usersData.items || usersData.data || (Array.isArray(usersData) ? usersData : []),
     values: null,
     errors: null,
     fieldErrors: {},
@@ -110,7 +110,7 @@ router.post('/transfer', audit.walletTransfer(), asyncRoute(async (req, res) => 
     return res.render('wallet/transfer', {
       title: 'Transfer credits',
       balance: balanceData.balance || balanceData,
-      users: usersData.data || usersData,
+      users: usersData.items || usersData.data || (Array.isArray(usersData) ? usersData : []),
       values: { receiver_id, amount, description },
       errors,
       fieldErrors,
@@ -136,7 +136,7 @@ router.post('/transfer', audit.walletTransfer(), asyncRoute(async (req, res) => 
       return res.render('wallet/transfer', {
         title: 'Transfer credits',
         balance: balanceData.balance || balanceData,
-        users: usersData.data || usersData,
+        users: usersData.items || usersData.data || (Array.isArray(usersData) ? usersData : []),
         values: req.body,
         errors: [{ text: error.message }],
         fieldErrors: error.data?.errors || {},

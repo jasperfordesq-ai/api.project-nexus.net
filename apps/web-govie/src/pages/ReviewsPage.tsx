@@ -10,6 +10,21 @@ import { isApiError } from '../context/AuthContext'
 
 interface Review { id: number; listingTitle?: string; reviewerName: string; targetUserName: string; rating: number; comment: string; createdAt: string; type: 'given' | 'received' }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapReview(raw: any): Review {
+  return {
+    id: raw.id,
+    listingTitle: raw.listing_title ?? raw.listingTitle ?? undefined,
+    reviewerName: raw.reviewer_name ?? raw.reviewerName ?? '',
+    targetUserName: raw.target_user_name ?? raw.targetUserName ?? '',
+    rating: raw.rating ?? 0,
+    comment: raw.comment ?? '',
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+    type: raw.type ?? 'received',
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -17,8 +32,13 @@ export function ReviewsPage() {
   const [tab, setTab] = useState<'received' | 'given'>('received')
 
   useEffect(() => {
-    apiClient.get<Review[]>('/api/reviews/my')
-      .then(r => setReviews(r.data ?? []))
+    apiClient.get('/api/reviews/my')
+      .then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setReviews(items.map(mapReview))
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load reviews.'))
       .finally(() => setIsLoading(false))
   }, [])

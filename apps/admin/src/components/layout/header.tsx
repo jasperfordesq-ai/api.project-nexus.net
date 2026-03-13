@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { Space, Typography, Avatar, Dropdown, Button, Tooltip, theme } from "antd";
 import { UserOutlined, LogoutOutlined, BulbOutlined, BulbFilled } from "@ant-design/icons";
 import { useGetIdentity, useLogout } from "@refinedev/core";

@@ -10,6 +10,22 @@ import { isApiError } from '../context/AuthContext'
 
 interface Job { id: number; title: string; organisationName?: string; location?: string; jobType: string; salaryRange?: string; description: string; createdAt: string; applicationCount: number }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapJob(raw: any): Job {
+  return {
+    id: raw.id,
+    title: raw.title ?? '',
+    organisationName: raw.organisation_name ?? raw.organisationName ?? undefined,
+    location: raw.location ?? undefined,
+    jobType: raw.job_type ?? raw.jobType ?? '',
+    salaryRange: raw.salary_range ?? raw.salaryRange ?? undefined,
+    description: raw.description ?? '',
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+    applicationCount: raw.application_count ?? raw.applicationCount ?? 0,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 const jobTypeColors: Record<string, string> = {
   'full-time': '#059669', 'part-time': '#2563EB', 'volunteer': '#7C3AED', 'contract': '#D97706',
 }
@@ -21,8 +37,13 @@ export function JobsPage() {
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    apiClient.get<Job[]>('/api/jobs')
-      .then(r => setJobs(r.data ?? []))
+    apiClient.get('/api/jobs')
+      .then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setJobs(items.map(mapJob))
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load jobs.'))
       .finally(() => setIsLoading(false))
   }, [])

@@ -83,11 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithPasskey = useCallback(
     (passkeyResponse: PasskeyAuthResponse) => {
-      // Handle both camelCase and snake_case token field names
-      const token = (passkeyResponse as any).accessToken ?? passkeyResponse.access_token;
+      const token = passkeyResponse.access_token;
       setToken(token);
-      const user = passkeyResponse.user as unknown as User;
-      setStoredUser(user);
+      const user = passkeyResponse.user;
+      setStoredUser(user as User);
       setUser(user);
     },
     []

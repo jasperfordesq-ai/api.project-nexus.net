@@ -31,8 +31,8 @@ export function CreateEventPage() {
         title: title.trim(),
         description: description.trim(),
         location: location.trim() || null,
-        startsAt,
-        endsAt,
+        starts_at: startsAt,
+        ends_at: endsAt,
       })
       navigate(`/events/${res.data.id}`)
     } catch (err) {

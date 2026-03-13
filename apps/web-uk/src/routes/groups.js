@@ -59,7 +59,7 @@ router.get('/', asyncRoute(async (req, res) => {
 // My groups
 router.get('/my', asyncRoute(async (req, res) => {
   const result = await getMyGroups(req.token);
-  const groups = result.data || [];
+  const groups = result.items || result.data || [];
 
   res.render('groups/my', {
     title: 'My groups',
@@ -305,7 +305,8 @@ router.get('/:id/members', asyncRoute(async (req, res) => {
   const group = groupResult.group || groupResult;
   const members = membersResult.data || [];
   const myMembership = groupResult.myMembership || groupResult.my_membership;
-  const allUsers = usersResult.data || usersResult.users || usersResult || [];
+  const rawUsers = usersResult.items || usersResult.data || usersResult.users || usersResult;
+  const allUsers = Array.isArray(rawUsers) ? rawUsers : [];
 
   // Filter out users who are already members
   const memberIds = new Set(members.map(m => m.id));

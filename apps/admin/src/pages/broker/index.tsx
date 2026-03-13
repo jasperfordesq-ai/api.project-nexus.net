@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Tabs, Tag, Button, Space, message } from "antd";
 import { StatusTag } from "../../components/common/status-tag";
@@ -11,9 +16,9 @@ export const BrokerPage = () => {
   const { data: statsData } = useCustom({ url: "/api/admin/broker/stats", method: "get" });
   const { data: brokersData } = useCustom({ url: "/api/admin/broker/brokers", method: "get" });
 
-  const assignments = (assignmentsData?.data as any)?.data || [];
+  const assignments = (assignmentsData?.data as any)?.items || (assignmentsData?.data as any)?.data || [];
   const stats = statsData?.data as any;
-  const brokers = Array.isArray(brokersData?.data) ? brokersData.data : (brokersData?.data as any)?.data || [];
+  const brokers = (brokersData?.data as any)?.items || (brokersData?.data as any)?.data || (Array.isArray(brokersData?.data) ? brokersData.data : []);
 
   const handleComplete = async (id: number) => {
     try {

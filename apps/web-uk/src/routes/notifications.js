@@ -28,7 +28,7 @@ router.get('/', asyncRoute(async (req, res) => {
     unread_only: unread_only === 'true'
   });
 
-  const notifications = result.data || [];
+  const notifications = result.items || result.data || [];
   const unreadCount = result.unreadCount || result.unread_count || 0;
   const pagination = result.pagination || { page: 1, totalPages: 1 };
 
@@ -85,7 +85,8 @@ router.post('/:id/delete', asyncRoute(async (req, res) => {
 
 // Helper to get notification link based on type
 function getNotificationLink(notification) {
-  const data = notification.data ? JSON.parse(notification.data) : {};
+  let data = {};
+  try { data = notification.data ? JSON.parse(notification.data) : {}; } catch { /* malformed JSON */ }
 
   switch (notification.type) {
     case 'connection_request':

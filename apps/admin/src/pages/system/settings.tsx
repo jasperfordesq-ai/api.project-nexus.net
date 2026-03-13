@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Spin, Button, Modal, Form, Input, Select, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
@@ -15,7 +20,7 @@ export const SystemSettingsPage = () => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
 
-  const settings = Array.isArray(data?.data) ? data.data : (data?.data as any)?.data || [];
+  const settings = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
 
   const handleSave = async () => {
     try {

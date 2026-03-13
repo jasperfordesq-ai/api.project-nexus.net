@@ -71,8 +71,8 @@ export function ConversationPage() {
     if (!newMessage.trim()) return
     setIsSending(true)
     try {
-      // Backend POST /api/messages expects { recipientId, content }
-      await apiClient.post('/api/messages', { recipientId: otherUserId, content: newMessage.trim() })
+      // Backend POST /api/messages expects { recipient_id, content }
+      await apiClient.post('/api/messages', { recipient_id: otherUserId, content: newMessage.trim() })
       setNewMessage('')
       await fetchMessages()
     } catch (err) {

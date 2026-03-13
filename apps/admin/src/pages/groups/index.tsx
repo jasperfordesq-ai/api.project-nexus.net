@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, message, Modal } from "antd";
 import { ExclamationCircleOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -9,7 +14,7 @@ export const GroupsAdminPage = () => {
   const { data, isLoading, refetch } = useCustom({ url: "/api/admin/groups", method: "get" });
   const { data: statsData } = useCustom({ url: "/api/admin/groups/stats", method: "get" });
 
-  const groups = Array.isArray(data?.data) ? data.data : (data?.data as any)?.data || [];
+  const groups = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
   const stats = statsData?.data as any;
 
   const handleDelete = (id: number, name: string) => {

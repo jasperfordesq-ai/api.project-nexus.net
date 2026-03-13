@@ -86,7 +86,7 @@ router.get('/users', asyncRoute(async (req, res) => {
 
   res.render('admin/users/index', {
     title: 'Manage Users',
-    users: result.data || [],
+    users: result.items || result.data || [],
     pagination: result.pagination,
     filters: { search: validatedSearch, role: validatedRole, status: validatedStatus },
     user: req.user
@@ -95,10 +95,11 @@ router.get('/users', asyncRoute(async (req, res) => {
 
 router.get('/users/:id', asyncRoute(async (req, res) => {
   const result = await adminGetUser(req.token, req.params.id);
+  const userData = result.user || result.data || result;
 
   res.render('admin/users/view', {
     title: 'User Details',
-    userData: result.user,
+    userData,
     stats: result.stats,
     user: req.user,
     successMessage: req.flash ? req.flash('success')[0] : null,
@@ -108,10 +109,11 @@ router.get('/users/:id', asyncRoute(async (req, res) => {
 
 router.get('/users/:id/edit', asyncRoute(async (req, res) => {
   const result = await adminGetUser(req.token, req.params.id);
+  const userData = result.user || result.data || result;
 
   res.render('admin/users/edit', {
     title: 'Edit User',
-    userData: result.user,
+    userData,
     user: req.user
   });
 }));
@@ -199,7 +201,7 @@ router.get('/moderation', asyncRoute(async (req, res) => {
 
   res.render('admin/moderation/index', {
     title: 'Content Moderation',
-    listings: result.data || [],
+    listings: result.items || result.data || [],
     pagination: result.pagination,
     user: req.user,
     successMessage: req.flash ? req.flash('success')[0] : null,
@@ -240,7 +242,7 @@ router.get('/categories', asyncRoute(async (req, res) => {
 
   res.render('admin/categories/index', {
     title: 'Manage Categories',
-    categories: result.data || [],
+    categories: result.items || result.data || [],
     user: req.user,
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
@@ -310,7 +312,7 @@ router.post('/categories/new', audit.categoryCreate(), asyncRoute(async (req, re
 
 router.get('/categories/:id/edit', asyncRoute(async (req, res) => {
   const result = await adminGetCategories(req.token);
-  const category = (result.data || []).find(c => c.id === parseInt(req.params.id));
+  const category = (result.items || result.data || []).find(c => c.id === parseInt(req.params.id));
 
   if (!category) {
     return res.status(404).render('errors/404', { title: 'Category not found' });
@@ -432,7 +434,7 @@ router.get('/roles', asyncRoute(async (req, res) => {
 
   res.render('admin/roles/index', {
     title: 'Manage Roles',
-    roles: result.data || [],
+    roles: result.items || result.data || [],
     user: req.user,
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
@@ -500,7 +502,7 @@ router.post('/roles/new', audit.roleCreate(), asyncRoute(async (req, res) => {
 
 router.get('/roles/:id/edit', asyncRoute(async (req, res) => {
   const result = await adminGetRoles(req.token);
-  const role = (result.data || []).find(r => r.id === parseInt(req.params.id));
+  const role = (result.items || result.data || []).find(r => r.id === parseInt(req.params.id));
 
   if (!role) {
     return res.status(404).render('errors/404', { title: 'Role not found' });

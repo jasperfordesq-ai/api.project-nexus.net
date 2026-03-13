@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useState } from "react";
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Spin, Button, Space, message, Switch, Modal, Input, Form } from "antd";
@@ -17,7 +22,7 @@ export const FaqPage = () => {
     method: "get",
   });
 
-  const faqs = (data?.data as any)?.data || [];
+  const faqs = (data?.data as any)?.items || (data?.data as any)?.data || [];
 
   const handleSave = async () => {
     try {

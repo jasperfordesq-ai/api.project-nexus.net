@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Tabs, Button, Space, message, Tag, Modal, Input } from "antd";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
@@ -17,11 +22,11 @@ export const VettingPage = () => {
   const { data: pendingData } = useCustom({ url: "/api/admin/vetting/pending", method: "get" });
 
   const recordsRaw = recordsData?.data as any;
-  const records = recordsRaw?.data || [];
+  const records = recordsRaw?.items || recordsRaw?.data || [];
   const totalCount = recordsRaw?.total || recordsRaw?.totalCount || records.length;
   const stats = statsData?.data as any;
-  const expiring = Array.isArray(expiringData?.data) ? expiringData.data : (expiringData?.data as any)?.data || [];
-  const pending = Array.isArray(pendingData?.data) ? pendingData.data : (pendingData?.data as any)?.data || [];
+  const expiring = (expiringData?.data as any)?.items || (expiringData?.data as any)?.data || (Array.isArray(expiringData?.data) ? expiringData.data : []);
+  const pending = (pendingData?.data as any)?.items || (pendingData?.data as any)?.data || (Array.isArray(pendingData?.data) ? pendingData.data : []);
 
   const [rejectId, setRejectId] = useState<number | null>(null);
   const [rejectNotes, setRejectNotes] = useState("");

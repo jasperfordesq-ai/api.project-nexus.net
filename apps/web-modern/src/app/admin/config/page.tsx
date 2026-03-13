@@ -111,7 +111,7 @@ function AdminConfigContent() {
     try {
       const response = await api.adminGetConfig();
       const configMap: Record<string, string> = {};
-      response.data.forEach((item: TenantConfig) => {
+      (response?.data ?? []).forEach((item: TenantConfig) => {
         configMap[item.key] = item.value;
       });
       setConfig(configMap);

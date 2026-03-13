@@ -1,5 +1,7 @@
 // Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
 
 import apiClient from './client'
 import { normalizePaginated, fullName } from './normalize'
@@ -58,10 +60,26 @@ export const listingsApi = {
     apiClient.get<RawListing>(`/api/listings/${id}`).then((r) => mapListing(r.data)),
 
   create: (payload: CreateListingRequest) =>
-    apiClient.post<Listing>('/api/listings', payload).then((r) => r.data),
+    apiClient.post('/api/listings', {
+      title: payload.title,
+      description: payload.description,
+      type: payload.type,
+      location: payload.location,
+      estimated_hours: payload.creditRate,
+    }).then((r) => {
+      const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+      return { ...raw, id: raw.id } as Listing
+    }),
 
   update: (id: number, payload: UpdateListingRequest) =>
-    apiClient.put<Listing>(`/api/listings/${id}`, payload).then((r) => r.data),
+    apiClient.put(`/api/listings/${id}`, {
+      ...(payload.title !== undefined && { title: payload.title }),
+      ...(payload.description !== undefined && { description: payload.description }),
+      ...(payload.type !== undefined && { type: payload.type }),
+      ...(payload.location !== undefined && { location: payload.location }),
+      ...(payload.creditRate !== undefined && { estimated_hours: payload.creditRate }),
+      ...(payload.status !== undefined && { status: payload.status }),
+    }).then((r) => r.data as Listing),
 
   delete: (id: number) =>
     apiClient.delete(`/api/listings/${id}`).then((r) => r.data),

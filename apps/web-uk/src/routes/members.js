@@ -31,16 +31,18 @@ router.get('/', asyncRoute(async (req, res) => {
     getConnections(req.token)
   ]);
 
-  let allUsers = usersResult.data || usersResult.users || usersResult || [];
+  let allUsers = usersResult.items || usersResult.data || usersResult.users || usersResult || [];
   // Ensure allUsers is always an array
   if (!Array.isArray(allUsers)) {
     allUsers = [];
   }
-  const connections = connectionsResult.connections || connectionsResult.data || [];
+  const connections = connectionsResult.items || connectionsResult.data || connectionsResult.connections || [];
+  // Ensure connections is always an array
+  const connectionsList = Array.isArray(connections) ? connections : [];
 
   // Build a map of connection status by user ID
   const connectionMap = {};
-  connections.forEach(conn => {
+  connectionsList.forEach(conn => {
     const otherUser = conn.otherUser || conn.other_user;
     if (otherUser) {
       connectionMap[otherUser.id] = {
@@ -103,10 +105,11 @@ router.get('/:id', asyncRoute(async (req, res) => {
     return res.status(404).render('errors/404', { title: 'User not found' });
   }
 
-  const connections = connectionsResult.connections || [];
+  const connections = connectionsResult.items || connectionsResult.data || connectionsResult.connections || [];
+  const connectionsArr = Array.isArray(connections) ? connections : [];
 
   // Find connection with this user
-  const connection = connections.find(conn => {
+  const connection = connectionsArr.find(conn => {
     const otherUser = conn.otherUser || conn.other_user;
     return otherUser && otherUser.id === parseInt(id);
   });

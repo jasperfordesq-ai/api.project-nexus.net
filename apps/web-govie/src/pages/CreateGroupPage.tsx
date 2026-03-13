@@ -22,7 +22,7 @@ export function CreateGroupPage() {
     if (!name.trim()) { setError('Group name is required.'); return }
     setIsSubmitting(true)
     try {
-      const res = await apiClient.post<{ id: number }>('/api/groups', { name: name.trim(), description: description.trim(), type: groupType })
+      const res = await apiClient.post<{ id: number }>('/api/groups', { name: name.trim(), description: description.trim(), is_private: groupType === 'private' })
       navigate(`/groups/${res.data.id}`)
     } catch (err) {
       setError(isApiError(err) ? err.message : 'Failed to create group. Please try again.')

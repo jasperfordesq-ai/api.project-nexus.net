@@ -133,7 +133,7 @@ router.post('/register', asyncRoute(async (req, res) => {
     });
 
     // Auto-login after registration
-    const result = await login(email.trim(), password, tenant_slug.trim());
+    const result = await login(email.trim().toLowerCase(), password, tenant_slug.trim());
 
     if (result.access_token) {
       setAuthCookies(res, result.access_token, result.refresh_token);
@@ -191,7 +191,7 @@ router.post('/logout', asyncRoute(async (req, res) => {
 
   // Destroy session to prevent session fixation
   if (req.session) {
-    req.session.destroy(() => {});
+    req.session.destroy((err) => { if (err) console.error('Session destroy error:', err); });
   }
 
   clearAuthCookies(res);
@@ -214,7 +214,7 @@ router.get('/logout', asyncRoute(async (req, res) => {
 
   // Destroy session to prevent session fixation
   if (req.session) {
-    req.session.destroy(() => {});
+    req.session.destroy((err) => { if (err) console.error('Session destroy error:', err); });
   }
 
   clearAuthCookies(res);

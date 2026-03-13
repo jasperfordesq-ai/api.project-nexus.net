@@ -155,7 +155,15 @@ public class OrganisationService
         if (member == null || (member.Role != "owner" && member.Role != "admin"))
             return (null, "Not authorized to update this organisation");
 
-        if (name != null) { org.Name = name; org.Slug = GenerateSlug(name); }
+        if (name != null)
+        {
+            org.Name = name;
+            var newSlug = GenerateSlug(name);
+            var slugExists = await _db.Set<Organisation>().AnyAsync(o => o.Slug == newSlug && o.Id != orgId);
+            if (slugExists)
+                newSlug = $"{newSlug}-{DateTime.UtcNow.Ticks % 10000}";
+            org.Slug = newSlug;
+        }
         if (description != null) org.Description = description;
         if (logoUrl != null) org.LogoUrl = logoUrl;
         if (websiteUrl != null) org.WebsiteUrl = websiteUrl;

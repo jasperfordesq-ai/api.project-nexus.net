@@ -125,5 +125,6 @@ public class BulkAssignRoleRequest
 {
     [JsonPropertyName("user_ids")]
     public int[] UserIds { get; set; } = Array.Empty<int>();
+    [JsonPropertyName("role")]
     public string Role { get; set; } = string.Empty;
 }

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useState } from "react";
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Input, Select, Space, Spin, Tag, Button, Modal, Form, Switch, message, Tabs } from "antd";
@@ -30,9 +35,9 @@ export const CrmPage = () => {
   });
 
   const raw = data?.data as any;
-  const users = raw?.data || raw?.items || [];
+  const users = raw?.items || raw?.data || [];
   const totalCount = raw?.total || raw?.totalCount || users.length;
-  const flaggedNotes = Array.isArray(flaggedData?.data) ? flaggedData.data : (flaggedData?.data as any)?.data || [];
+  const flaggedNotes = (flaggedData?.data as any)?.items || (flaggedData?.data as any)?.data || (Array.isArray(flaggedData?.data) ? flaggedData.data : []);
 
   const updateFilter = (key: string, value: any) => {
     const f = { ...filters, [key]: value || undefined };

@@ -1,3 +1,8 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, message, Tag } from "antd";
 import { useState } from "react";
@@ -28,9 +33,9 @@ export const ReportsPage = () => {
   });
 
   const raw = data?.data as any;
-  const reports = raw?.data || [];
+  const reports = raw?.items || raw?.data || [];
   const totalCount = raw?.total || raw?.totalCount || reports.length;
-  const stats = (statsData?.data as any)?.data || {};
+  const stats = (statsData?.data as any)?.items || (statsData?.data as any)?.data || {};
 
   const handleReview = async (id: number) => {
     try {
