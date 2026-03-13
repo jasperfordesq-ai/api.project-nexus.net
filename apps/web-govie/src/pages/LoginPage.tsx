@@ -20,7 +20,7 @@ export function LoginPage() {
   const validate = () => {
     const errs: typeof errors = {}
     if (!email.trim()) errs.email = 'Enter your email address'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Enter a valid email address'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Enter a valid email address'
     if (!password) errs.password = 'Enter your password'
     return errs
   }

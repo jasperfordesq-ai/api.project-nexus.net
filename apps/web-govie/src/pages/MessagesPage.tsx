@@ -18,17 +18,20 @@ interface Conversation {
   unreadCount: number
 }
 
-/** Map backend conversation shape to frontend Conversation */
+/** Map backend conversation shape to frontend Conversation.
+ *  Handles both snake_case and camelCase field names. */
 function mapConversation(raw: Record<string, unknown>): Conversation {
-  const participant = raw.participant as { id?: number; first_name?: string; last_name?: string } | null
-  const lastMsg = raw.last_message as { content?: string; created_at?: string } | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const participant = (raw.participant ?? raw.otherUser) as any | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lastMsg = (raw.last_message ?? raw.lastMessage) as any | null
   return {
     id: raw.id as number,
     otherUserId: participant?.id ?? 0,
     otherUserName: fullName(participant),
-    lastMessage: lastMsg?.content ?? '',
-    lastMessageAt: (lastMsg?.created_at ?? raw.created_at ?? '') as string,
-    unreadCount: (raw.unread_count ?? 0) as number,
+    lastMessage: lastMsg?.content ?? (raw.lastMessageContent as string) ?? '',
+    lastMessageAt: (lastMsg?.created_at ?? lastMsg?.createdAt ?? raw.created_at ?? raw.createdAt ?? '') as string,
+    unreadCount: (raw.unread_count ?? raw.unreadCount ?? 0) as number,
   }
 }
 

@@ -22,7 +22,7 @@ function mapUser(raw: RawAuthResponse['user']): UserSummary {
     lastName: raw.last_name,
     role: raw.role as UserSummary['role'],
     tenantId: raw.tenant_id,
-    createdAt: new Date().toISOString(),
+    createdAt: raw.created_at || new Date().toISOString(),
   }
 }
 
@@ -39,7 +39,7 @@ export const authApi = {
   login: (email: string, password: string) =>
     apiClient
       .post<RawAuthResponse>('/api/auth/login', {
-        email,
+        email: email.toLowerCase(),
         password,
         tenant_slug: TENANT_SLUG,
       } satisfies LoginRequest)
@@ -49,6 +49,7 @@ export const authApi = {
     apiClient
       .post<RawAuthResponse>('/api/auth/register', {
         ...payload,
+        email: payload.email.toLowerCase(),
         tenant_slug: TENANT_SLUG,
       } satisfies RegisterRequest)
       .then((r) => mapAuthResponse(r.data)),

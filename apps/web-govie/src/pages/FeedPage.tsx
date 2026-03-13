@@ -69,7 +69,7 @@ export function FeedPage() {
         await apiClient.post(`/api/feed/${post.id}/like`)
       }
       setPosts(ps => ps.map(p => p.id === post.id ? { ...p, isLiked: !p.isLiked, likeCount: p.likeCount + (p.isLiked ? -1 : 1) } : p))
-    } catch (_) {}
+    } catch (_) { /* like toggle failed — non-critical, UI stays in sync since update is after await */ }
   }
 
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading feed…" /></div>

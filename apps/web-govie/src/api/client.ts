@@ -8,6 +8,9 @@ import type { ApiError } from './types'
 // In production VITE_API_BASE_URL should be the full backend origin.
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
+// Tenant slug for X-Tenant-ID header (required for unauthenticated API requests)
+const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'acme'
+
 function getStoredTokens() {
   try {
     return {
@@ -48,12 +51,15 @@ const apiClient: AxiosInstance = axios.create({
   },
 })
 
-// ─── Request interceptor: attach JWT ─────────────────────────────────────────
+// ─── Request interceptor: attach JWT + tenant header ─────────────────────────
 apiClient.interceptors.request.use((config) => {
   const { access } = getStoredTokens()
   if (access) {
     config.headers.Authorization = `Bearer ${access}`
   }
+  // Always send X-Tenant-ID so unauthenticated endpoints (FAQs, legal docs,
+  // translations, blog, pages, subscriptions, etc.) can resolve the tenant.
+  config.headers['X-Tenant-ID'] = TENANT_SLUG
   return config
 })
 
@@ -101,6 +107,7 @@ apiClient.interceptors.response.use(
         const res = await axios.post<{ access_token: string; refresh_token: string }>(
           `${BASE_URL}/api/auth/refresh`,
           { refresh_token: refresh },
+          { headers: { 'X-Tenant-ID': TENANT_SLUG } },
         )
         const newAccessToken = res.data.access_token
         const newRefreshToken = res.data.refresh_token

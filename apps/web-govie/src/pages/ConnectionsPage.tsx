@@ -16,12 +16,12 @@ type Tab = 'connections' | 'pending'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function mapConnection(raw: any): Connection {
-  const other = raw.other_user ?? raw.otherUser ?? {}
-  return { id: raw.id, userId: other.id ?? 0, name: fullName(other), role: other.role ?? 'member', createdAt: raw.created_at ?? raw.createdAt ?? '' }
+  const other = raw.other_user ?? raw.otherUser ?? raw.connectedUser ?? {}
+  return { id: raw.id, userId: other.id ?? raw.userId ?? 0, name: fullName(other), role: other.role ?? 'member', createdAt: raw.created_at ?? raw.createdAt ?? '' }
 }
 function mapPending(raw: any): PendingRequest {
-  const sender = raw.from_user ?? raw.fromUser ?? {}
-  return { id: raw.id, senderId: sender.id ?? 0, senderName: fullName(sender), createdAt: raw.created_at ?? raw.createdAt ?? '' }
+  const sender = raw.from_user ?? raw.fromUser ?? raw.sender ?? {}
+  return { id: raw.id, senderId: sender.id ?? raw.senderId ?? 0, senderName: fullName(sender), createdAt: raw.created_at ?? raw.createdAt ?? '' }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

@@ -63,12 +63,16 @@ export function ConversationPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Determine the other participant's user ID for sending replies
+  const otherUserId = messages.find(m => m.senderId !== user?.id)?.senderId ?? 0
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim()) return
     setIsSending(true)
     try {
-      await apiClient.post('/api/messages', { conversationId: Number(id), content: newMessage.trim() })
+      // Backend POST /api/messages expects { recipientId, content }
+      await apiClient.post('/api/messages', { recipientId: otherUserId, content: newMessage.trim() })
       setNewMessage('')
       await fetchMessages()
     } catch (err) {

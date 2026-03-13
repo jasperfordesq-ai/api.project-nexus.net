@@ -38,6 +38,7 @@ export interface RawAuthResponse {
     role: string
     tenant_id: number
     tenant_slug?: string
+    created_at?: string
   }
 }
 

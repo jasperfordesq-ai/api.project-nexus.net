@@ -12,7 +12,7 @@ export function CreateGroupPage() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [isPublic, setIsPublic] = useState(true)
+  const [groupType, setGroupType] = useState<'public' | 'private'>('public')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,7 +22,7 @@ export function CreateGroupPage() {
     if (!name.trim()) { setError('Group name is required.'); return }
     setIsSubmitting(true)
     try {
-      const res = await apiClient.post<{ id: number }>('/api/groups', { name: name.trim(), description: description.trim(), isPublic })
+      const res = await apiClient.post<{ id: number }>('/api/groups', { name: name.trim(), description: description.trim(), type: groupType })
       navigate(`/groups/${res.data.id}`)
     } catch (err) {
       setError(isApiError(err) ? err.message : 'Failed to create group. Please try again.')
@@ -81,15 +81,15 @@ export function CreateGroupPage() {
               <legend className="nexus-label" style={{ marginBottom: 'var(--nexus-space-2)' }}>Group type</legend>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--nexus-space-2)' }}>
                 {[
-                  { value: true, label: 'Public', desc: 'Anyone can view and join this group' },
-                  { value: false, label: 'Private', desc: 'Members must be invited by an admin' },
+                  { value: 'public' as const, label: 'Public', desc: 'Anyone can view and join this group' },
+                  { value: 'private' as const, label: 'Private', desc: 'Members must be invited by an admin' },
                 ].map(opt => (
-                  <label key={String(opt.value)} style={{ display: 'flex', gap: 'var(--nexus-space-3)', alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <label key={opt.value} style={{ display: 'flex', gap: 'var(--nexus-space-3)', alignItems: 'flex-start', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="group-type"
-                      checked={isPublic === opt.value}
-                      onChange={() => setIsPublic(opt.value)}
+                      checked={groupType === opt.value}
+                      onChange={() => setGroupType(opt.value)}
                       disabled={isSubmitting}
                       style={{ marginTop: 3 }}
                     />

@@ -20,6 +20,7 @@ import { EventsPage } from './pages/EventsPage'
 import { ExchangeDetailPage } from './pages/ExchangeDetailPage'
 import { ExchangesPage } from './pages/ExchangesPage'
 import { FaqPage } from './pages/FaqPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { FeedPage } from './pages/FeedPage'
 import { GamificationPage } from './pages/GamificationPage'
 import { GroupDetailPage } from './pages/GroupDetailPage'
@@ -38,6 +39,7 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { OrganisationDetailPage } from './pages/OrganisationDetailPage'
 import { OrganisationsPage } from './pages/OrganisationsPage'
 import { PrivacyPage } from './pages/PrivacyPage'
+import { ProfileEditPage } from './pages/ProfileEditPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { ProposeExchangePage } from './pages/ProposeExchangePage'
 import { RegisterPage } from './pages/RegisterPage'
@@ -71,6 +73,7 @@ export default function App() {
               <Route path="/services/:id" element={<ServiceDetailPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/legal/privacy" element={<PrivacyPage />} />
               <Route path="/legal/terms" element={<TermsPage />} />
               <Route path="/legal/cookies" element={<CookiesPage />} />
@@ -93,6 +96,7 @@ export default function App() {
 
               {/* Protected routes */}
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/profile/edit" element={<ProtectedRoute><ProfileEditPage /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/wallet" element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
               <Route path="/wallet/transfer" element={<ProtectedRoute><TransferPage /></ProtectedRoute>} />

@@ -55,7 +55,7 @@ export function NotificationsPage() {
     try {
       await apiClient.put(`/api/notifications/${id}/read`)
       setNotifications(n => n.map(x => x.id === id ? { ...x, isRead: true } : x))
-    } catch (_) {}
+    } catch (_) { /* mark-read failed — non-critical, already updated optimistically */ }
   }
 
   const typeBadgeColor = (type: string) => {
