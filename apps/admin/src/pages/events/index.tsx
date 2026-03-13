@@ -1,16 +1,21 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, message, Tag, Modal } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
+import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
 
 const { Title } = Typography;
 
 export const EventsAdminPage = () => {
-  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/events", method: "get", config: { query: { page: 1, limit: 50 } } });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/events", method: "get", config: { query: { page, limit: pageSize } } });
   const { data: statsData } = useCustom({ url: "/api/admin/events/stats", method: "get" });
 
-  const events = (data?.data as any)?.data || [];
+  const raw = data?.data as any;
+  const events = raw?.data || [];
+  const totalCount = raw?.total || raw?.totalCount || events.length;
   const stats = statsData?.data as any;
 
   const handleCancel = (id: number) => {
@@ -59,7 +64,14 @@ export const EventsAdminPage = () => {
       )}
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={events} rowKey="id" size="small">
+          <Table dataSource={events} rowKey="id" size="small" pagination={{
+              current: page,
+              pageSize,
+              total: totalCount,
+              showSizeChanger: true,
+              showTotal: (t: number) => `${t} total`,
+              onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+            }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
             <Table.Column dataIndex="status" title="Status" render={(s: string) => <Tag color={s === "cancelled" ? "red" : s === "active" ? "green" : "default"}>{s}</Tag>} />

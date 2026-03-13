@@ -1,16 +1,21 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, message, Tag, Select, Modal } from "antd";
 import { StarOutlined, StarFilled } from "@ant-design/icons";
+import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
 
 const { Title } = Typography;
 
 export const JobsAdminPage = () => {
-  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/jobs", method: "get", config: { query: { page: 1, limit: 50 } } });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/jobs", method: "get", config: { query: { page, limit: pageSize } } });
   const { data: statsData } = useCustom({ url: "/api/admin/jobs/stats", method: "get" });
 
-  const jobs = (data?.data as any)?.data || [];
+  const raw = data?.data as any;
+  const jobs = raw?.data || [];
+  const totalCount = raw?.total || raw?.totalCount || jobs.length;
   const stats = statsData?.data as any;
 
   const handleStatusChange = async (id: number, status: string) => {
@@ -43,7 +48,14 @@ export const JobsAdminPage = () => {
 
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={jobs} rowKey="id" size="small">
+          <Table dataSource={jobs} rowKey="id" size="small" pagination={{
+              current: page,
+              pageSize,
+              total: totalCount,
+              showSizeChanger: true,
+              showTotal: (t: number) => `${t} total`,
+              onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+            }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
             <Table.Column dataIndex="status" title="Status" render={(s: string) => (

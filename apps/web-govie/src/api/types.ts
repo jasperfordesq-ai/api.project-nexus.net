@@ -17,24 +17,49 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string
   password: string
-  firstName: string
-  lastName: string
+  first_name: string
+  last_name: string
   tenant_slug: string
 }
 
-export interface AuthResponse {
-  accessToken: string
-  refreshToken: string
-  expiresIn: number
-  user: UserSummary
+/** Raw auth response from backend (snake_case) */
+export interface RawAuthResponse {
+  success: boolean
+  requires_2fa: boolean
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in: number
+  user: {
+    id: number
+    email: string
+    first_name: string
+    last_name: string
+    role: string
+    tenant_id: number
+    tenant_slug?: string
+  }
 }
 
-export interface RefreshRequest {
+/** Raw refresh response from backend (snake_case) */
+export interface RawRefreshResponse {
+  success: boolean
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in: number
+}
+
+/** Normalized auth result for internal use (camelCase) */
+export interface AuthResult {
+  accessToken: string
   refreshToken: string
+  user: UserSummary
 }
 
 // ─── User ────────────────────────────────────────────────────────────────────
 
+/** User object — matches camelCase serialization from entity endpoints */
 export interface UserSummary {
   id: number
   email: string

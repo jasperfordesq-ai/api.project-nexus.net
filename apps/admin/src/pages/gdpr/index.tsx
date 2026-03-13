@@ -1,5 +1,6 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Tag, Tabs } from "antd";
+import { useState } from "react";
 import dayjs from "dayjs";
 
 const { Title } = Typography;
@@ -19,10 +20,12 @@ const statusColors: Record<string, string> = {
 };
 
 export const GdprPage = () => {
+  const [breachPage, setBreachPage] = useState(1);
+  const [breachPageSize, setBreachPageSize] = useState(20);
   const { data: breachData, isLoading: breachLoading } = useCustom({
     url: "/api/admin/gdpr/breaches",
     method: "get",
-    config: { query: { page: 1, limit: 20 } },
+    config: { query: { page: breachPage, limit: breachPageSize } },
   });
 
   const { data: consentTypesData, isLoading: consentTypesLoading } = useCustom({
@@ -35,7 +38,9 @@ export const GdprPage = () => {
     method: "get",
   });
 
-  const breaches = (breachData?.data as any)?.data || [];
+  const breachRaw = breachData?.data as any;
+  const breaches = breachRaw?.data || [];
+  const breachTotalCount = breachRaw?.total || breachRaw?.totalCount || breaches.length;
   const consentTypes = (consentTypesData?.data as any)?.data || [];
   const consentStats = (consentStatsData?.data as any)?.data || {};
 
@@ -45,7 +50,14 @@ export const GdprPage = () => {
         <Spin />
       ) : (
         <Card>
-          <Table dataSource={breaches} rowKey="id" size="small">
+          <Table dataSource={breaches} rowKey="id" size="small" pagination={{
+              current: breachPage,
+              pageSize: breachPageSize,
+              total: breachTotalCount,
+              showSizeChanger: true,
+              showTotal: (t: number) => `${t} total`,
+              onChange: (p: number, ps: number) => { setBreachPage(p); setBreachPageSize(ps); },
+            }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
             <Table.Column

@@ -17,16 +17,19 @@ const TYPE_COLORS: Record<string, string> = {
 
 export const SavedSearchesPage = () => {
   const [searchType, setSearchType] = useState<string | undefined>(undefined);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   const { data, isLoading, refetch } = useCustom({
     url: "/api/admin/saved-searches",
     method: "get",
-    config: { query: { page: 1, limit: 100, ...(searchType ? { search_type: searchType } : {}) } },
-    queryOptions: { queryKey: ["admin-saved-searches", searchType] },
+    config: { query: { page, limit: pageSize, ...(searchType ? { search_type: searchType } : {}) } },
+    queryOptions: { queryKey: ["admin-saved-searches", searchType, page, pageSize] },
   });
 
-  const searches = (data?.data as any)?.data || [];
-  const total = (data?.data as any)?.total || 0;
+  const raw = data?.data as any;
+  const searches = raw?.data || [];
+  const total = raw?.total || raw?.totalCount || searches.length;
 
   const deleteSearch = async (id: number) => {
     try {
@@ -88,7 +91,14 @@ export const SavedSearchesPage = () => {
         </Space>
       </div>
       <Card>
-        <Table dataSource={searches} rowKey="id" loading={isLoading} size="small" columns={columns} pagination={{ pageSize: 50 }} />
+        <Table dataSource={searches} rowKey="id" loading={isLoading} size="small" columns={columns} pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showTotal: (t: number) => `${t} total`,
+            onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+          }} />
       </Card>
     </div>
   );

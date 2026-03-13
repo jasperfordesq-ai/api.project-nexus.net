@@ -11,11 +11,13 @@ const { TextArea } = Input;
 export const NewsletterPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [form] = Form.useForm();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   const { data, isLoading, refetch } = useCustom({
     url: "/api/admin/newsletter",
     method: "get",
-    config: { query: { page: 1, limit: 50 } },
+    config: { query: { page, limit: pageSize } },
   });
 
   const { data: statsData } = useCustom({
@@ -23,7 +25,9 @@ export const NewsletterPage = () => {
     method: "get",
   });
 
-  const newsletters = (data?.data as any)?.newsletters || [];
+  const raw = data?.data as any;
+  const newsletters = raw?.newsletters || [];
+  const totalCount = raw?.total || raw?.totalCount || newsletters.length;
   const stats = (statsData?.data as any) || {};
 
   const handleSend = async (id: number) => {
@@ -80,7 +84,14 @@ export const NewsletterPage = () => {
         <Spin />
       ) : (
         <Card>
-          <Table dataSource={newsletters} rowKey="id" size="small">
+          <Table dataSource={newsletters} rowKey="id" size="small" pagination={{
+              current: page,
+              pageSize,
+              total: totalCount,
+              showSizeChanger: true,
+              showTotal: (t: number) => `${t} total`,
+              onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+            }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="subject" title="Subject" />
             <Table.Column

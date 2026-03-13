@@ -8,12 +8,16 @@ import axiosInstance from "../../utils/axios";
 const { Title } = Typography;
 
 export const EmailTemplatesPage = () => {
+  const [logsPage, setLogsPage] = useState(1);
+  const [logsPageSize, setLogsPageSize] = useState(50);
   const { data: templatesData, isLoading, refetch } = useCustom({ url: "/api/admin/emails/templates", method: "get" });
-  const { data: logsData, isLoading: logsLoading } = useCustom({ url: "/api/admin/emails/logs", method: "get", config: { query: { page: 1, limit: 50 } } });
+  const { data: logsData, isLoading: logsLoading } = useCustom({ url: "/api/admin/emails/logs", method: "get", config: { query: { page: logsPage, limit: logsPageSize } } });
   const { data: statsData } = useCustom({ url: "/api/admin/emails/stats", method: "get" });
 
   const templates = Array.isArray(templatesData?.data) ? templatesData.data : (templatesData?.data as any)?.data || [];
-  const logs = (logsData?.data as any)?.data || [];
+  const logsRaw = logsData?.data as any;
+  const logs = logsRaw?.data || [];
+  const logsTotalCount = logsRaw?.total || logsRaw?.totalCount || logs.length;
   const stats = statsData?.data as any;
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
@@ -66,7 +70,14 @@ export const EmailTemplatesPage = () => {
           label: "Send Logs",
           children: logsLoading ? <Spin /> : (
             <Card>
-              <Table dataSource={logs} rowKey={(r: any) => r.id || `${r.sent_at}-${r.to}`} size="small">
+              <Table dataSource={logs} rowKey={(r: any) => r.id || `${r.sent_at}-${r.to}`} size="small" pagination={{
+                  current: logsPage,
+                  pageSize: logsPageSize,
+                  total: logsTotalCount,
+                  showSizeChanger: true,
+                  showTotal: (t: number) => `${t} total`,
+                  onChange: (p: number, ps: number) => { setLogsPage(p); setLogsPageSize(ps); },
+                }}>
                 <Table.Column dataIndex="to" title="To" />
                 <Table.Column dataIndex="subject" title="Subject" />
                 <Table.Column dataIndex="status" title="Status" render={(s: string) => <Tag color={s === "sent" ? "green" : "red"}>{s}</Tag>} />

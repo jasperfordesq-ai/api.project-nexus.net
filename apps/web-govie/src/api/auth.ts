@@ -2,34 +2,66 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import apiClient from './client'
-import type { AuthResponse, LoginRequest, RegisterRequest } from './types'
+import type {
+  AuthResult,
+  LoginRequest,
+  RawAuthResponse,
+  RawRefreshResponse,
+  RegisterRequest,
+  UserSummary,
+} from './types'
 
 const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'acme'
+
+/** Map snake_case auth user to camelCase UserSummary */
+function mapUser(raw: RawAuthResponse['user']): UserSummary {
+  return {
+    id: raw.id,
+    email: raw.email,
+    firstName: raw.first_name,
+    lastName: raw.last_name,
+    role: raw.role as UserSummary['role'],
+    tenantId: raw.tenant_id,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+/** Map raw auth response to normalized AuthResult */
+function mapAuthResponse(raw: RawAuthResponse): AuthResult {
+  return {
+    accessToken: raw.access_token,
+    refreshToken: raw.refresh_token,
+    user: mapUser(raw.user),
+  }
+}
 
 export const authApi = {
   login: (email: string, password: string) =>
     apiClient
-      .post<AuthResponse>('/api/auth/login', {
+      .post<RawAuthResponse>('/api/auth/login', {
         email,
         password,
         tenant_slug: TENANT_SLUG,
       } satisfies LoginRequest)
-      .then((r) => r.data),
+      .then((r) => mapAuthResponse(r.data)),
 
-  register: (payload: Omit<RegisterRequest, 'tenant_slug'>) =>
+  register: (payload: { email: string; password: string; first_name: string; last_name: string }) =>
     apiClient
-      .post<AuthResponse>('/api/auth/register', {
+      .post<RawAuthResponse>('/api/auth/register', {
         ...payload,
         tenant_slug: TENANT_SLUG,
       } satisfies RegisterRequest)
-      .then((r) => r.data),
+      .then((r) => mapAuthResponse(r.data)),
 
   logout: () => apiClient.post('/api/auth/logout').then((r) => r.data),
 
   refresh: (refreshToken: string) =>
     apiClient
-      .post<{ accessToken: string; refreshToken: string }>('/api/auth/refresh', { refreshToken })
-      .then((r) => r.data),
+      .post<RawRefreshResponse>('/api/auth/refresh', { refresh_token: refreshToken })
+      .then((r) => ({
+        accessToken: r.data.access_token,
+        refreshToken: r.data.refresh_token,
+      })),
 
   validate: () => apiClient.get('/api/auth/validate').then((r) => r.data),
 }

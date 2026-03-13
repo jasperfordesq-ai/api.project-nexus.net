@@ -75,7 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (email: string, password: string, firstName: string, lastName: string) => {
-      const data = await authApi.register({ email, password, firstName, lastName })
+      const data = await authApi.register({
+        email,
+        password,
+        first_name: firstName,
+        last_name: lastName,
+      })
       setStoredTokens(data.accessToken, data.refreshToken)
       localStorage.setItem('nexus:user', JSON.stringify(data.user))
       setState({ user: data.user, isAuthenticated: true, isLoading: false })

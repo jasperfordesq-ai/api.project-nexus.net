@@ -189,7 +189,7 @@ public class AdminVettingController : ControllerBase
 
         var results = await _vetting.BulkVerifyAsync(request.RecordIds, userId.Value);
 
-        var verified = results.Where(r => r.Error == null).Select(r => r.Record.Id).ToList();
+        var verified = results.Where(r => r.Error == null && r.Record != null).Select(r => r.Record!.Id).ToList();
         var failed = results.Where(r => r.Error != null).Select(r => new { id = r.Record?.Id, error = r.Error }).ToList();
 
         return Ok(new { data = new { verified_count = verified.Count, verified, failed_count = failed.Count, failed } });

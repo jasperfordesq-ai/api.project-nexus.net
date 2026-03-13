@@ -1,5 +1,6 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, message, Tag } from "antd";
+import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
 
@@ -13,10 +14,12 @@ const statusColors: Record<string, string> = {
 };
 
 export const ReportsPage = () => {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const { data, isLoading, refetch } = useCustom({
     url: "/api/admin/reports",
     method: "get",
-    config: { query: { page: 1, limit: 50 } },
+    config: { query: { page, limit: pageSize } },
   });
 
   const { data: statsData } = useCustom({
@@ -24,7 +27,9 @@ export const ReportsPage = () => {
     method: "get",
   });
 
-  const reports = (data?.data as any)?.data || [];
+  const raw = data?.data as any;
+  const reports = raw?.data || [];
+  const totalCount = raw?.total || raw?.totalCount || reports.length;
   const stats = (statsData?.data as any)?.data || {};
 
   const handleReview = async (id: number) => {
@@ -57,7 +62,14 @@ export const ReportsPage = () => {
         <Spin />
       ) : (
         <Card>
-          <Table dataSource={reports} rowKey="id" size="small">
+          <Table dataSource={reports} rowKey="id" size="small" pagination={{
+              current: page,
+              pageSize,
+              total: totalCount,
+              showSizeChanger: true,
+              showTotal: (t: number) => `${t} total`,
+              onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+            }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="content_type" title="Content Type" />
             <Table.Column dataIndex="reason" title="Reason" />

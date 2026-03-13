@@ -1,6 +1,7 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Tabs, Button, Space, message, Tag, Modal } from "antd";
 import { CheckOutlined, CloseOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { useState } from "react";
 import { StatusTag } from "../../components/common/status-tag";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
@@ -8,12 +9,16 @@ import axiosInstance from "../../utils/axios";
 const { Title } = Typography;
 
 export const VettingPage = () => {
-  const { data: recordsData, isLoading, refetch } = useCustom({ url: "/api/admin/vetting/records", method: "get", config: { query: { page: 1, limit: 50 } } });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const { data: recordsData, isLoading, refetch } = useCustom({ url: "/api/admin/vetting/records", method: "get", config: { query: { page, limit: pageSize } } });
   const { data: statsData } = useCustom({ url: "/api/admin/vetting/stats", method: "get" });
   const { data: expiringData } = useCustom({ url: "/api/admin/vetting/expiring", method: "get" });
   const { data: pendingData } = useCustom({ url: "/api/admin/vetting/pending", method: "get" });
 
-  const records = (recordsData?.data as any)?.data || [];
+  const recordsRaw = recordsData?.data as any;
+  const records = recordsRaw?.data || [];
+  const totalCount = recordsRaw?.total || recordsRaw?.totalCount || records.length;
   const stats = statsData?.data as any;
   const expiring = Array.isArray(expiringData?.data) ? expiringData.data : (expiringData?.data as any)?.data || [];
   const pending = Array.isArray(pendingData?.data) ? pendingData.data : (pendingData?.data as any)?.data || [];
@@ -60,7 +65,14 @@ export const VettingPage = () => {
           label: "All Records",
           children: isLoading ? <Spin /> : (
             <Card>
-              <Table dataSource={records} rowKey="id" size="small" columns={[
+              <Table dataSource={records} rowKey="id" size="small" pagination={{
+                  current: page,
+                  pageSize,
+                  total: totalCount,
+                  showSizeChanger: true,
+                  showTotal: (t: number) => `${t} total`,
+                  onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+                }} columns={[
                 ...vettingColumns,
                 {
                   title: "Actions",

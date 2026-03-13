@@ -15,11 +15,13 @@ export const CrmPage = () => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("search");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const { data, isLoading, refetch } = useCustom({
     url: "/api/admin/crm/users/search",
     method: "get",
-    config: { query: { page: 1, limit: 50, ...filters } },
+    config: { query: { page, limit: pageSize, ...filters } },
   });
 
   const { data: flaggedData, isLoading: flaggedLoading } = useCustom({
@@ -27,7 +29,9 @@ export const CrmPage = () => {
     method: "get",
   });
 
-  const users = (data?.data as any)?.data || [];
+  const raw = data?.data as any;
+  const users = raw?.data || raw?.items || [];
+  const totalCount = raw?.total || raw?.totalCount || users.length;
   const flaggedNotes = Array.isArray(flaggedData?.data) ? flaggedData.data : (flaggedData?.data as any)?.data || [];
 
   const updateFilter = (key: string, value: any) => {
@@ -71,7 +75,19 @@ export const CrmPage = () => {
 
               {isLoading ? <Spin /> : (
                 <Card>
-                  <Table dataSource={users} rowKey="id" size="small">
+                  <Table
+                    dataSource={users}
+                    rowKey="id"
+                    size="small"
+                    pagination={{
+                      current: page,
+                      pageSize,
+                      total: totalCount,
+                      showSizeChanger: true,
+                      showTotal: (t) => `${t} users`,
+                      onChange: (p, ps) => { setPage(p); setPageSize(ps); },
+                    }}
+                  >
                     <Table.Column dataIndex="id" title="ID" width={60} />
                     <Table.Column dataIndex="email" title="Email" />
                     <Table.Column title="Name" render={(_, r: any) => `${r.first_name || ""} ${r.last_name || ""}`.trim() || "—"} />

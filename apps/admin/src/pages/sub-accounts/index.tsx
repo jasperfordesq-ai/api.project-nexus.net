@@ -1,5 +1,6 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Tag, Button, Space, Popconfirm, message, Tooltip } from "antd";
+import { useState } from "react";
 import { StopOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
@@ -14,14 +15,17 @@ const RELATIONSHIP_COLORS: Record<string, string> = {
 };
 
 export const SubAccountsPage = () => {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const { data, isLoading, refetch } = useCustom({
     url: "/api/admin/sub-accounts",
     method: "get",
-    config: { query: { page: 1, limit: 100 } },
+    config: { query: { page, limit: pageSize } },
   });
 
-  const subAccounts = (data?.data as any)?.data || [];
-  const total = (data?.data as any)?.total || 0;
+  const raw = data?.data as any;
+  const subAccounts = raw?.data || [];
+  const total = raw?.total || raw?.totalCount || subAccounts.length;
 
   const deactivate = async (id: number) => {
     try {
@@ -107,7 +111,14 @@ export const SubAccountsPage = () => {
         <span style={{ color: "#999" }}>{total} relationships</span>
       </div>
       <Card>
-        <Table dataSource={subAccounts} rowKey="id" loading={isLoading} size="small" columns={columns} pagination={{ pageSize: 50 }} />
+        <Table dataSource={subAccounts} rowKey="id" loading={isLoading} size="small" columns={columns} pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showTotal: (t: number) => `${t} total`,
+            onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+          }} />
       </Card>
     </div>
   );

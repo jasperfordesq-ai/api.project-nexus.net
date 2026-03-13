@@ -7,14 +7,17 @@ const { Title } = Typography;
 
 export const AuditLogList = () => {
   const [filters, setFilters] = useState<Record<string, any>>({});
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const { data, isLoading, refetch } = useCustom({
     url: "/api/admin/audit",
     method: "get",
-    config: { query: { page: 1, limit: 50, ...filters } },
+    config: { query: { page, limit: pageSize, ...filters } },
   });
 
   const responseData = data?.data as any;
   const logs = responseData?.items || responseData?.data || [];
+  const totalCount = responseData?.total || responseData?.totalCount || logs.length;
 
   const updateFilter = (key: string, value: any) => {
     const newFilters = { ...filters, [key]: value || undefined };
@@ -39,7 +42,14 @@ export const AuditLogList = () => {
 
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={logs} rowKey={(r: any) => r.id || `${r.timestamp}-${r.action}`} size="small" pagination={{ pageSize: 50 }}>
+          <Table dataSource={logs} rowKey={(r: any) => r.id || `${r.timestamp}-${r.action}`} size="small" pagination={{
+              current: page,
+              pageSize,
+              total: totalCount,
+              showSizeChanger: true,
+              showTotal: (t: number) => `${t} total`,
+              onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+            }}>
             <Table.Column dataIndex="timestamp" title="Time" width={160}
               render={(d: string) => d ? dayjs(d).format("DD/MM/YY HH:mm:ss") : "—"} />
             <Table.Column dataIndex="user_id" title="User" width={70} />

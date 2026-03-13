@@ -97,14 +97,16 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const res = await axios.post<{ accessToken: string; refreshToken: string }>(
+        // Call backend directly (bypass interceptors) with snake_case field names
+        const res = await axios.post<{ access_token: string; refresh_token: string }>(
           `${BASE_URL}/api/auth/refresh`,
-          { refreshToken: refresh },
+          { refresh_token: refresh },
         )
-        const { accessToken, refreshToken } = res.data
-        setStoredTokens(accessToken, refreshToken)
-        notifyRefreshed(accessToken)
-        if (original.headers) original.headers.Authorization = `Bearer ${accessToken}`
+        const newAccessToken = res.data.access_token
+        const newRefreshToken = res.data.refresh_token
+        setStoredTokens(newAccessToken, newRefreshToken)
+        notifyRefreshed(newAccessToken)
+        if (original.headers) original.headers.Authorization = `Bearer ${newAccessToken}`
         return apiClient(original)
       } catch {
         clearStoredTokens()

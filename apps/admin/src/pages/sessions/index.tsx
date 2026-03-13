@@ -11,16 +11,19 @@ const { Title } = Typography;
 
 export const SessionsPage = () => {
   const [activeOnly, setActiveOnly] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   const { data, isLoading, refetch } = useCustom({
     url: "/api/admin/sessions",
     method: "get",
-    config: { query: { page: 1, limit: 100, active_only: activeOnly } },
-    queryOptions: { queryKey: ["admin-sessions", activeOnly] },
+    config: { query: { page, limit: pageSize, active_only: activeOnly } },
+    queryOptions: { queryKey: ["admin-sessions", activeOnly, page, pageSize] },
   });
 
-  const sessions = (data?.data as any)?.data || [];
-  const total = (data?.data as any)?.total || 0;
+  const raw = data?.data as any;
+  const sessions = raw?.data || [];
+  const total = raw?.total || raw?.totalCount || sessions.length;
 
   const terminate = async (id: number) => {
     try {
@@ -99,7 +102,14 @@ export const SessionsPage = () => {
         </Space>
       </div>
       <Card>
-        <Table dataSource={sessions} rowKey="id" loading={isLoading} size="small" columns={columns} pagination={{ pageSize: 50 }} />
+        <Table dataSource={sessions} rowKey="id" loading={isLoading} size="small" columns={columns} pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showTotal: (t: number) => `${t} total`,
+            onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+          }} />
       </Card>
     </div>
   );
