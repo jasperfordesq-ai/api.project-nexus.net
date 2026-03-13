@@ -26,7 +26,7 @@
         <div class="app-xp-summary__stats">
           <p class="govuk-heading-m govuk-!-margin-bottom-1">{{ profile.totalXp or 0 }} XP</p>
           <p class="govuk-body-s govuk-!-margin-bottom-0">
-            {{ profile.xp_to_next_level or 100 }} XP until level {{ (profile.level or 1) + 1 }}
+            {{ profile.xpToNextLevel or profile.xp_to_next_level or 100 }} XP until level {{ (profile.level or 1) + 1 }}
           </p>
         </div>
       </div>
@@ -64,9 +64,10 @@
         </table>
 
         {# Pagination #}
-        {% if pagination.total_pages > 1 %}
+        {% set xpTotalPages = pagination.totalPages or pagination.total_pages %}
+        {% if xpTotalPages > 1 %}
           {% set paginationItems = [] %}
-          {% for i in range(1, pagination.total_pages + 1) %}
+          {% for i in range(1, xpTotalPages + 1) %}
             {% set paginationItems = (paginationItems.push({
               number: i,
               href: "/progress/xp-history?page=" + i,
@@ -80,7 +81,7 @@
             } if pagination.page > 1 else undefined,
             next: {
               href: "/progress/xp-history?page=" + (pagination.page + 1)
-            } if pagination.page < pagination.total_pages else undefined,
+            } if pagination.page < pagination.totalPages or pagination.total_pages else undefined,
             items: paginationItems
           }) }}
         {% endif %}

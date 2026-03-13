@@ -19,7 +19,7 @@
       <li class="govuk-breadcrumbs__list-item">
         <a class="govuk-breadcrumbs__link" href="/admin/users">Users</a>
       </li>
-      <li class="govuk-breadcrumbs__list-item" aria-current="page">{{ userData.first_name }} {{ userData.last_name }}</li>
+      <li class="govuk-breadcrumbs__list-item" aria-current="page">{{ userData.firstName or userData.first_name }} {{ userData.lastName or userData.last_name }}</li>
     </ol>
   </nav>
 {% endblock %}
@@ -42,13 +42,13 @@
 
       <h1 class="govuk-heading-xl">
         <span class="govuk-caption-xl">User details</span>
-        {{ userData.first_name }} {{ userData.last_name }}
+        {{ userData.firstName or userData.first_name }} {{ userData.lastName or userData.last_name }}
       </h1>
 
       <!-- Status banner -->
-      {% if userData.suspended_at %}
+      {% if userData.suspendedAt or userData.suspended_at %}
         {{ govukWarningText({
-          text: "This user is suspended" ~ (": " + userData.suspension_reason if userData.suspension_reason else ""),
+          text: "This user is suspended" ~ (": " + (userData.suspensionReason or userData.suspension_reason) if userData.suspensionReason or userData.suspension_reason else ""),
           iconFallbackText: "Warning"
         }) }}
       {% endif %}
@@ -65,19 +65,19 @@
           },
           {
             key: { text: "Status" },
-            value: { html: '<strong class="govuk-tag govuk-tag--' + ('red' if userData.suspended_at else ('green' if userData.is_active else 'yellow')) + '">' + ('Suspended' if userData.suspended_at else ('Active' if userData.is_active else 'Inactive')) + '</strong>' }
+            value: { html: '<strong class="govuk-tag govuk-tag--' + ('red' if userData.suspendedAt or userData.suspended_at else ('green' if userData.isActive or userData.is_active else 'yellow')) + '">' + ('Suspended' if userData.suspendedAt or userData.suspended_at else ('Active' if userData.isActive or userData.is_active else 'Inactive')) + '</strong>' }
           },
           {
             key: { text: "Member since" },
-            value: { text: userData.created_at | date }
+            value: { text: (userData.createdAt or userData.created_at) | date }
           },
           {
             key: { text: "Last login" },
-            value: { text: (userData.last_login_at | date) if userData.last_login_at else "Never" }
+            value: { text: ((userData.lastLoginAt or userData.last_login_at) | date) if userData.lastLoginAt or userData.last_login_at else "Never" }
           },
           {
             key: { text: "Level" },
-            value: { text: "Level " + (userData.level or 1) + " (" + (userData.total_xp or 0) + " XP)" }
+            value: { text: "Level " + (userData.level or 1) + " (" + (userData.totalXp or userData.total_xp or 0) + " XP)" }
           }
         ]
       }) }}

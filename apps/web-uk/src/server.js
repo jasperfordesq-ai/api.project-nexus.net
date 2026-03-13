@@ -258,11 +258,11 @@ app.use(async (req, res, next) => {
     try {
       const { getNotificationUnreadCount, getUnreadCount } = require('./lib/api');
       const [notifResult, msgResult] = await Promise.all([
-        getNotificationUnreadCount(token).catch(() => ({ unread_count: 0 })),
-        getUnreadCount(token).catch(() => ({ unread_count: 0 }))
+        getNotificationUnreadCount(token).catch(() => ({ unreadCount: 0 })),
+        getUnreadCount(token).catch(() => ({ unreadCount: 0 }))
       ]);
-      res.locals.notificationCount = notifResult.unread_count || 0;
-      res.locals.unreadMessageCount = msgResult.unread_count || 0;
+      res.locals.notificationCount = notifResult.unreadCount || notifResult.unread_count || 0;
+      res.locals.unreadMessageCount = msgResult.unreadCount || msgResult.unread_count || 0;
     } catch (error) {
       // Silently fail - don't break the page if counts fail
       res.locals.notificationCount = 0;
@@ -369,6 +369,16 @@ app.use(errorLogger);
 
 // Final error handler
 app.use(finalErrorHandler);
+
+// Process-level error handlers to prevent silent crashes
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
 
 // Only start listening if not in test mode
 if (NODE_ENV !== 'test') {

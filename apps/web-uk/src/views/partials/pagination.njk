@@ -5,7 +5,7 @@
   {% set paginationConfig = {
     baseUrl: "/members",
     page: pagination.page,
-    totalPages: pagination.total_pages,
+    totalPages: pagination.totalPages or pagination.total_pages,
     queryParams: { search: searchQuery }
   } %}
   {% include "partials/pagination.njk" %}

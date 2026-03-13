@@ -70,8 +70,8 @@
       {% if posts.length > 0 %}
         <div class="app-feed">
           {% for post in posts %}
-            <article class="app-post {% if post.is_pinned %}app-post--pinned{% endif %}">
-              {% if post.is_pinned %}
+            <article class="app-post {% if post.isPinned or post.is_pinned %}app-post--pinned{% endif %}">
+              {% if post.isPinned or post.is_pinned %}
                 <div class="app-post__pinned-badge">
                   {{ govukTag({ text: "Pinned", classes: "govuk-tag--yellow" }) }}
                 </div>
@@ -86,7 +86,7 @@
                       {{ post.user.first_name or post.user.firstName }} {{ post.user.last_name or post.user.lastName }}
                     </a>
                     <span class="govuk-body-s govuk-!-margin-bottom-0 app-post__meta">
-                      {{ post.created_at | formatDate }}
+                      {{ (post.createdAt or post.created_at) | formatDate }}
                       {% if post.group %}
                         in <a href="/groups/{{ post.group.id }}" class="govuk-link">{{ post.group.name }}</a>
                       {% endif %}
@@ -97,20 +97,20 @@
 
               <div class="app-post__content">
                 <p class="govuk-body">{{ post.content | truncate(500) }}</p>
-                {% if post.image_url %}
-                  <img src="{{ post.image_url }}" alt="Image attached to post by {{ post.user.first_name or post.user.firstName }}" class="app-post__image">
+                {% if post.imageUrl or post.image_url %}
+                  <img src="{{ post.imageUrl or post.image_url }}" alt="Image attached to post by {{ post.user.first_name or post.user.firstName }}" class="app-post__image">
                 {% endif %}
               </div>
 
               <footer class="app-post__footer">
                 <div class="app-post__actions">
                   {# Like button #}
-                  {% if post.is_liked %}
+                  {% if post.isLiked or post.is_liked %}
                     <form action="/feed/{{ post.id }}/unlike" method="post" class="app-post__action-form">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <input type="hidden" name="return_to" value="/feed{% if groupId %}?group_id={{ groupId }}{% endif %}">
                       <button type="submit" class="app-link-button app-post__action-button app-post__action-button--active">
-                        <span aria-hidden="true">&#9829;</span> {{ post.like_count }} Like{{ 's' if post.like_count != 1 else '' }}
+                        <span aria-hidden="true">&#9829;</span> {{ post.likeCount or post.like_count }} Like{{ 's' if post.likeCount or post.like_count != 1 else '' }}
                       </button>
                     </form>
                   {% else %}
@@ -118,14 +118,14 @@
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <input type="hidden" name="return_to" value="/feed{% if groupId %}?group_id={{ groupId }}{% endif %}">
                       <button type="submit" class="app-link-button app-post__action-button">
-                        <span aria-hidden="true">&#9825;</span> {{ post.like_count }} Like{{ 's' if post.like_count != 1 else '' }}
+                        <span aria-hidden="true">&#9825;</span> {{ post.likeCount or post.like_count }} Like{{ 's' if post.likeCount or post.like_count != 1 else '' }}
                       </button>
                     </form>
                   {% endif %}
 
                   {# Comment link #}
                   <a href="/feed/{{ post.id }}" class="govuk-link app-post__action-button">
-                    <span aria-hidden="true">&#128172;</span> {{ post.comment_count }} Comment{{ 's' if post.comment_count != 1 else '' }}
+                    <span aria-hidden="true">&#128172;</span> {{ post.commentCount or post.comment_count }} Comment{{ 's' if post.commentCount or post.comment_count != 1 else '' }}
                   </a>
                 </div>
 
@@ -136,9 +136,10 @@
         </div>
 
         {# Pagination #}
-        {% if pagination.total_pages > 1 %}
+        {% set feedTotalPages = pagination.totalPages or pagination.total_pages %}
+        {% if feedTotalPages > 1 %}
           {% set paginationItems = [] %}
-          {% for i in range(1, pagination.total_pages + 1) %}
+          {% for i in range(1, feedTotalPages + 1) %}
             {% set paginationItems = (paginationItems.push({
               number: i,
               href: "/feed?page=" + i + ("&group_id=" + groupId if groupId else ""),
@@ -152,7 +153,7 @@
             } if pagination.page > 1 else undefined,
             next: {
               href: "/feed?page=" + (pagination.page + 1) + ("&group_id=" + groupId if groupId else "")
-            } if pagination.page < pagination.total_pages else undefined,
+            } if pagination.page < pagination.totalPages or pagination.total_pages else undefined,
             items: paginationItems
           }) }}
         {% endif %}

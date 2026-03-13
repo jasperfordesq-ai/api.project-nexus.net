@@ -31,7 +31,7 @@ router.post('/login', asyncRoute(async (req, res) => {
   }
 
   try {
-    const result = await login(email, password, tenant_slug);
+    const result = await login(email.toLowerCase(), password, tenant_slug);
 
     if (!result.access_token) {
       throw new Error('No access token received');
@@ -125,7 +125,7 @@ router.post('/register', asyncRoute(async (req, res) => {
 
   try {
     await register({
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password,
       first_name: first_name.trim(),
       last_name: last_name.trim(),

@@ -29,8 +29,8 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 
   const notifications = result.data || [];
-  const unreadCount = result.unread_count || 0;
-  const pagination = result.pagination || { page: 1, total_pages: 1 };
+  const unreadCount = result.unreadCount || result.unread_count || 0;
+  const pagination = result.pagination || { page: 1, totalPages: 1 };
 
   res.render('notifications/index', {
     title: 'Notifications',
@@ -63,7 +63,7 @@ router.post('/read-all', asyncRoute(async (req, res) => {
   const result = await markAllNotificationsRead(req.token);
 
   if (req.flash) {
-    const count = result.marked_count || 0;
+    const count = result.markedCount || result.marked_count || 0;
     req.flash('success', `Marked ${count} notification${count !== 1 ? 's' : ''} as read`);
   }
 
@@ -91,13 +91,13 @@ function getNotificationLink(notification) {
     case 'connection_request':
       return '/connections/pending';
     case 'connection_accepted':
-      return data.user_id ? `/members/${data.user_id}` : '/connections';
+      return (data.userId || data.user_id) ? `/members/${data.userId || data.user_id}` : '/connections';
     case 'connection_declined':
       return '/connections';
     case 'message_received':
-      return data.conversation_id ? `/messages/${data.conversation_id}` : '/messages';
+      return (data.conversationId || data.conversation_id) ? `/messages/${data.conversationId || data.conversation_id}` : '/messages';
     case 'transfer_received':
-      return data.transaction_id ? `/wallet/transactions/${data.transaction_id}` : '/wallet';
+      return (data.transactionId || data.transaction_id) ? `/wallet/transactions/${data.transactionId || data.transaction_id}` : '/wallet';
     default:
       return null;
   }

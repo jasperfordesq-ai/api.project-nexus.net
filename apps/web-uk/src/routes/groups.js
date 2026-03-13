@@ -50,7 +50,7 @@ router.get('/', asyncRoute(async (req, res) => {
     groups,
     myGroupIds,
     searchQuery,
-    pagination: groupsResult.pagination || { page, total_pages: 1 },
+    pagination: groupsResult.pagination || { page, totalPages: 1 },
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
   });
@@ -137,7 +137,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
   const group = groupResult.group || groupResult;
   const members = membersResult.data || [];
   const events = eventsResult.data || [];
-  const myMembership = groupResult.my_membership;
+  const myMembership = groupResult.myMembership || groupResult.my_membership;
 
   res.render('groups/detail', {
     title: group.name,
@@ -156,7 +156,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
 
   const groupResult = await getGroup(req.token, id);
   const group = groupResult.group || groupResult;
-  const myMembership = groupResult.my_membership;
+  const myMembership = groupResult.myMembership || groupResult.my_membership;
 
   // Check permission
   if (!myMembership || !['admin', 'owner'].includes(myMembership.role)) {
@@ -304,8 +304,8 @@ router.get('/:id/members', asyncRoute(async (req, res) => {
 
   const group = groupResult.group || groupResult;
   const members = membersResult.data || [];
-  const myMembership = groupResult.my_membership;
-  const allUsers = usersResult.users || usersResult || [];
+  const myMembership = groupResult.myMembership || groupResult.my_membership;
+  const allUsers = usersResult.data || usersResult.users || usersResult || [];
 
   // Filter out users who are already members
   const memberIds = new Set(members.map(m => m.id));

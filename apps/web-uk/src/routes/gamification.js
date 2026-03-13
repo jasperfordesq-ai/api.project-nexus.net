@@ -27,9 +27,9 @@ router.get('/badges', asyncRoute(async (req, res) => {
   res.render('gamification/badges', {
     title: 'Badges',
     badges: badgesResult.data || [],
-    summary: badgesResult.summary || { total: 0, earned: 0, progress_percent: 0 },
+    summary: badgesResult.summary || { total: 0, earned: 0, progressPercent: 0 },
     profile: profileResult.profile || {},
-    successMessage: req.query.success
+    successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
 
@@ -47,9 +47,9 @@ router.get('/leaderboard', asyncRoute(async (req, res) => {
   res.render('gamification/leaderboard', {
     title: 'Leaderboard',
     leaderboard: result.data || [],
-    currentUserRank: result.current_user_rank,
+    currentUserRank: result.currentUserRank || result.current_user_rank,
     period,
-    pagination: result.pagination || { page: 1, total_pages: 1 }
+    pagination: result.pagination || { page: 1, totalPages: 1 }
   });
 }));
 
@@ -66,7 +66,7 @@ router.get('/xp-history', asyncRoute(async (req, res) => {
     title: 'XP History',
     xpHistory: historyResult.data || [],
     profile: profileResult.profile || {},
-    pagination: historyResult.pagination || { page: 1, total_pages: 1 }
+    pagination: historyResult.pagination || { page: 1, totalPages: 1 }
   });
 }));
 
@@ -80,9 +80,9 @@ router.get('/', asyncRoute(async (req, res) => {
   res.render('gamification/index', {
     title: 'My Progress',
     profile: profileResult.profile || {},
-    recentXp: profileResult.recent_xp || [],
+    recentXp: profileResult.recentXp || profileResult.recent_xp || [],
     badges: badgesResult.data || [],
-    successMessage: req.query.success
+    successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
 

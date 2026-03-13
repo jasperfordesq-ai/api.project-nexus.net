@@ -71,10 +71,10 @@
                   {% endif %}
                 </td>
                 <td class="govuk-table__cell"><code>{{ cat.slug }}</code></td>
-                <td class="govuk-table__cell">{{ cat.listing_count or 0 }}</td>
-                <td class="govuk-table__cell">{{ cat.sort_order }}</td>
+                <td class="govuk-table__cell">{{ cat.listingCount or cat.listing_count or 0 }}</td>
+                <td class="govuk-table__cell">{{ cat.sortOrder or cat.sort_order }}</td>
                 <td class="govuk-table__cell">
-                  {% if cat.is_active %}
+                  {% if cat.isActive or cat.is_active %}
                     {{ govukTag({ text: "Active", classes: "govuk-tag--green" }) }}
                   {% else %}
                     {{ govukTag({ text: "Inactive", classes: "govuk-tag--grey" }) }}
@@ -82,7 +82,7 @@
                 </td>
                 <td class="govuk-table__cell">
                   <a href="/admin/categories/{{ cat.id }}/edit" class="govuk-link">Edit</a>
-                  {% if (cat.listing_count or 0) == 0 %}
+                  {% if (cat.listingCount or cat.listing_count or 0) == 0 %}
                     |
                     <form method="post" action="/admin/categories/{{ cat.id }}/delete" style="display: inline;">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">

@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5080';
+const TENANT_ID = process.env.TENANT_ID || '';
 const { cache } = require('./cache');
 
 // Cache TTL for different types of data (in milliseconds)
@@ -38,12 +39,19 @@ class ApiOfflineError extends Error {
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
 
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+
+  // Include X-Tenant-ID header for tenant resolution (required for unauthenticated requests)
+  if (TENANT_ID) {
+    headers['X-Tenant-ID'] = TENANT_ID;
+  }
+
   const config = {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
+    headers
   };
 
   let response;
@@ -83,7 +91,7 @@ async function login(email, password, tenantSlug) {
     body: JSON.stringify({
       email,
       password,
-      tenant_slug: tenantSlug
+      tenantSlug: tenantSlug
     })
   });
 }
@@ -104,7 +112,7 @@ async function register(data) {
 async function refreshToken(refreshToken) {
   return request('/api/auth/refresh', {
     method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken })
+    body: JSON.stringify({ refreshToken: refreshToken })
   });
 }
 
@@ -120,7 +128,7 @@ async function forgotPassword(email, tenantSlug) {
     method: 'POST',
     body: JSON.stringify({
       email,
-      tenant_slug: tenantSlug
+      tenantSlug: tenantSlug
     })
   });
 }
@@ -130,7 +138,7 @@ async function resetPassword(token, newPassword) {
     method: 'POST',
     body: JSON.stringify({
       token,
-      new_password: newPassword
+      newPassword: newPassword
     })
   });
 }
@@ -240,7 +248,7 @@ async function transferCredits(token, receiverId, amount, description) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({
-      receiver_id: receiverId,
+      receiverId: receiverId,
       amount,
       description
     })
@@ -289,7 +297,7 @@ async function startConversation(token, recipientId, content) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({
-      recipient_id: recipientId,
+      recipientId: recipientId,
       content
     })
   });
@@ -325,7 +333,7 @@ async function sendConnectionRequest(token, userId) {
   return request('/api/connections', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ user_id: userId })
+    body: JSON.stringify({ userId: userId })
   });
 }
 
@@ -497,7 +505,7 @@ async function addGroupMember(token, groupId, userId) {
   return request(`/api/groups/${encodeURIComponent(groupId)}/members`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ user_id: userId })
+    body: JSON.stringify({ userId: userId })
   });
 }
 
@@ -520,7 +528,7 @@ async function transferGroupOwnership(token, groupId, newOwnerId) {
   return request(`/api/groups/${encodeURIComponent(groupId)}/transfer-ownership`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ new_owner_id: newOwnerId })
+    body: JSON.stringify({ newOwnerId: newOwnerId })
   });
 }
 
@@ -796,7 +804,7 @@ async function getMembers(token, query = '', page = 1, limit = 20) {
   if (limit) params.set('limit', limit);
 
   const queryString = params.toString();
-  return request(`/api/members${queryString ? `?${queryString}` : ''}`, {
+  return request(`/api/users${queryString ? `?${queryString}` : ''}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }

@@ -36,7 +36,7 @@
         {% for user in nonMembers %}
           {% set userItems = (userItems.push({
             value: user.id | string,
-            text: user.first_name + " " + user.last_name + " (" + user.email + ")"
+            text: (user.firstName or user.first_name) + " " + (user.lastName or user.last_name) + " (" + user.email + ")"
           }), userItems) %}
         {% endfor %}
         <div class="app-card govuk-!-margin-bottom-6">
@@ -96,7 +96,7 @@
                   {% endif %}
                 </td>
                 <td class="govuk-table__cell">
-                  {{ member.joined_at | formatDate if member.joined_at else '-' }}
+                  {{ (member.joinedAt or member.joined_at) | formatDate if member.joinedAt or member.joined_at else '-' }}
                 </td>
                 {% if myMembership and (myMembership.role == 'owner' or myMembership.role == 'admin') %}
                   <td class="govuk-table__cell">
@@ -141,7 +141,7 @@
           {% if member.role != 'owner' %}
             {% set ownerItems = (ownerItems.push({
               value: member.id | string,
-              text: member.first_name + " " + member.last_name
+              text: (member.firstName or member.first_name) + " " + (member.lastName or member.last_name)
             }), ownerItems) %}
           {% endif %}
         {% endfor %}

@@ -99,7 +99,7 @@
             {% for u in users %}
               <tr class="govuk-table__row">
                 <td class="govuk-table__cell">
-                  <a href="/admin/users/{{ u.id }}" class="govuk-link">{{ u.first_name }} {{ u.last_name }}</a>
+                  <a href="/admin/users/{{ u.id }}" class="govuk-link">{{ u.firstName or u.first_name }} {{ u.lastName or u.last_name }}</a>
                 </td>
                 <td class="govuk-table__cell">{{ u.email }}</td>
                 <td class="govuk-table__cell">
@@ -110,15 +110,15 @@
                   {% endif %}
                 </td>
                 <td class="govuk-table__cell">
-                  {% if u.suspended_at %}
+                  {% if u.suspendedAt or u.suspended_at %}
                     {{ govukTag({ text: "Suspended", classes: "govuk-tag--red" }) }}
-                  {% elif u.is_active %}
+                  {% elif u.isActive or u.is_active %}
                     {{ govukTag({ text: "Active", classes: "govuk-tag--green" }) }}
                   {% else %}
                     {{ govukTag({ text: "Inactive", classes: "govuk-tag--yellow" }) }}
                   {% endif %}
                 </td>
-                <td class="govuk-table__cell">{{ u.created_at | date }}</td>
+                <td class="govuk-table__cell">{{ (u.createdAt or u.created_at) | date }}</td>
                 <td class="govuk-table__cell">
                   <a href="/admin/users/{{ u.id }}" class="govuk-link">View</a>
                 </td>
@@ -128,7 +128,7 @@
         </table>
 
         <!-- Pagination -->
-        {% if pagination and pagination.total_pages > 1 %}
+        {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
           {% include "partials/pagination.njk" %}
         {% endif %}
       {% else %}

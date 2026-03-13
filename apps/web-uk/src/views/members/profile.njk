@@ -171,7 +171,7 @@
                   {% endif %}
                 </strong>
                 <span class="govuk-body-s govuk-!-margin-left-2" style="color: #505a5f;">
-                  {{ review.created_at | formatDate }}
+                  {{ (review.createdAt or review.created_at) | formatDate }}
                 </span>
               </div>
               {% if review.comment %}

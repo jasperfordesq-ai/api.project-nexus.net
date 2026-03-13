@@ -39,24 +39,24 @@
                   <a href="/groups/{{ group.id }}" class="govuk-link govuk-!-font-weight-bold">
                     {{ group.name }}
                   </a>
-                  {% if group.is_private %}
+                  {% if group.isPrivate or group.is_private %}
                     {{ govukTag({ text: "Private", classes: "govuk-tag--grey govuk-!-margin-left-2" }) }}
                   {% endif %}
                 </td>
                 <td class="govuk-table__cell">
-                  {{ group.member_count }}
+                  {{ group.memberCount or group.member_count }}
                 </td>
                 <td class="govuk-table__cell">
-                  {% if group.my_role == 'owner' %}
+                  {% if (group.myRole or group.my_role) == 'owner' %}
                     {{ govukTag({ text: "Owner", classes: "govuk-tag--purple" }) }}
-                  {% elif group.my_role == 'admin' %}
+                  {% elif (group.myRole or group.my_role) == 'admin' %}
                     {{ govukTag({ text: "Admin", classes: "govuk-tag--blue" }) }}
                   {% else %}
                     {{ govukTag({ text: "Member", classes: "govuk-tag--grey" }) }}
                   {% endif %}
                 </td>
                 <td class="govuk-table__cell">
-                  {{ group.joined_at | formatDate if group.joined_at else '-' }}
+                  {{ (group.joinedAt or group.joined_at) | formatDate if group.joinedAt or group.joined_at else '-' }}
                 </td>
               </tr>
             {% endfor %}

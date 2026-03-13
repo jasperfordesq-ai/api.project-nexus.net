@@ -50,7 +50,7 @@ router.get('/', asyncRoute(async (req, res) => {
     searchQuery,
     groupId,
     upcomingOnly,
-    pagination: result.pagination || { page, total_pages: 1 },
+    pagination: result.pagination || { page, totalPages: 1 },
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
   });
@@ -140,10 +140,10 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
       title: title.trim(),
       description: description ? description.trim() : null,
       location: location ? location.trim() : null,
-      starts_at: startsAt,
-      ends_at: endsAt,
-      max_attendees: max_attendees ? parseInt(max_attendees, 10) : null,
-      group_id: group_id ? parseInt(group_id, 10) : null
+      startsAt: startsAt,
+      endsAt: endsAt,
+      maxAttendees: max_attendees ? parseInt(max_attendees, 10) : null,
+      groupId: group_id ? parseInt(group_id, 10) : null
     };
 
     const result = await createEvent(req.token, eventData);
@@ -173,7 +173,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
   ]);
 
   const event = eventResult.event || eventResult;
-  const myRsvp = eventResult.my_rsvp;
+  const myRsvp = eventResult.myRsvp || eventResult.my_rsvp;
   const rsvps = rsvpsResult.data || [];
 
   // Group RSVPs by status
@@ -205,9 +205,9 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
   const event = eventResult.event || eventResult;
   const myGroups = myGroupsResult.data || [];
 
-  // Parse dates for form
-  const startsAt = event.starts_at ? new Date(event.starts_at) : null;
-  const endsAt = event.ends_at ? new Date(event.ends_at) : null;
+  // Parse dates for form (backend returns camelCase: startsAt, endsAt)
+  const startsAt = (event.startsAt || event.starts_at) ? new Date(event.startsAt || event.starts_at) : null;
+  const endsAt = (event.endsAt || event.ends_at) ? new Date(event.endsAt || event.ends_at) : null;
 
   res.render('events/edit', {
     title: `Edit ${event.title}`,
@@ -280,9 +280,9 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
       title: title.trim(),
       description: description ? description.trim() : null,
       location: location ? location.trim() : null,
-      starts_at: startsAt,
-      ends_at: endsAt,
-      max_attendees: max_attendees ? parseInt(max_attendees, 10) : null
+      startsAt: startsAt,
+      endsAt: endsAt,
+      maxAttendees: max_attendees ? parseInt(max_attendees, 10) : null
     });
 
     if (req.flash) {

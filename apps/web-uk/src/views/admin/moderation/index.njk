@@ -56,8 +56,8 @@
                 </p>
                 <p class="govuk-body">{{ listing.description | truncate(200) }}</p>
                 <p class="govuk-body-s">
-                  Submitted by <strong>{{ listing.user.first_name }} {{ listing.user.last_name }}</strong>
-                  ({{ listing.user.email }}) on {{ listing.created_at | date }}
+                  Submitted by <strong>{{ listing.user.firstName or listing.user.first_name }} {{ listing.user.lastName or listing.user.last_name }}</strong>
+                  ({{ listing.user.email }}) on {{ (listing.createdAt or listing.created_at) | date }}
                 </p>
               </div>
               <div class="govuk-grid-column-one-third">
@@ -98,7 +98,7 @@
         {% endfor %}
 
         <!-- Pagination -->
-        {% if pagination and pagination.total_pages > 1 %}
+        {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
           {% include "partials/pagination.njk" %}
         {% endif %}
 

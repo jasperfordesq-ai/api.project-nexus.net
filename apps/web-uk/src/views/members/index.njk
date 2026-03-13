@@ -126,11 +126,11 @@
       {% endif %}
 
       {# Pagination #}
-      {% if pagination and pagination.total_pages > 1 %}
+      {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
         {% set paginationConfig = {
           baseUrl: "/members",
           page: pagination.page,
-          totalPages: pagination.total_pages,
+          totalPages: pagination.totalPages or pagination.total_pages,
           queryParams: { search: searchQuery }
         } %}
         {% include "partials/pagination.njk" %}

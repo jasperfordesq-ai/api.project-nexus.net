@@ -23,7 +23,7 @@ router.get('/', asyncRoute(async (req, res) => {
   res.render('messages/index', {
     title: 'Messages',
     conversations: conversationsData.data || conversationsData,
-    unreadCount: unreadData.count || unreadData,
+    unreadCount: unreadData.unreadCount || unreadData.count || unreadData,
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
@@ -92,7 +92,7 @@ router.post('/new', audit.conversationCreate(), asyncRoute(async (req, res, next
     }
 
     // Redirect to the new conversation if ID is returned
-    const conversationId = result.conversation_id || result.id;
+    const conversationId = result.conversationId || result.conversation_id || result.id;
     if (conversationId) {
       return res.redirect(`/messages/${conversationId}`);
     }

@@ -41,7 +41,7 @@ router.get('/', asyncRoute(async (req, res) => {
     getProfile(req.token),
     getBalance(req.token).catch(() => ({ balance: 0 })),
     getListings(req.token, { limit: 5 }).catch(() => ({ data: [] })),
-    getUnreadCount(req.token).catch(() => ({ count: 0 })),
+    getUnreadCount(req.token).catch(() => ({ unreadCount: 0 })),
     getTransactions(req.token, { limit: 5 }).catch(() => ({ data: [] })),
     getNotifications(req.token, { limit: 5 }).catch(() => ({ data: [] })),
     getFeedPosts(req.token, { limit: 5 }).catch(() => ({ data: [] })),
@@ -61,8 +61,8 @@ router.get('/', asyncRoute(async (req, res) => {
       icon: '🔔',
       content: n.message || n.content,
       link: n.link || '/notifications',
-      time: n.created_at,
-      read: n.read_at != null
+      time: n.createdAt || n.created_at,
+      read: (n.readAt || n.read_at) != null
     });
   });
 
@@ -72,9 +72,9 @@ router.get('/', asyncRoute(async (req, res) => {
     activityItems.push({
       type: 'post',
       icon: '📝',
-      content: `${p.user?.first_name || 'Someone'} posted: "${(p.content || '').substring(0, 50)}${p.content?.length > 50 ? '...' : ''}"`,
+      content: `${p.user?.firstName || p.user?.first_name || 'Someone'} posted: "${(p.content || '').substring(0, 50)}${p.content?.length > 50 ? '...' : ''}"`,
       link: `/feed/${p.id}`,
-      time: p.created_at
+      time: p.createdAt || p.created_at
     });
   });
 
@@ -84,7 +84,7 @@ router.get('/', asyncRoute(async (req, res) => {
   // Get upcoming events (next 3)
   const events = eventsData.data || [];
   const upcomingEvents = events
-    .filter(e => !e.is_past && e.my_rsvp?.status === 'going')
+    .filter(e => !(e.isPast || e.is_past) && (e.myRsvp || e.my_rsvp)?.status === 'going')
     .slice(0, 3);
 
   res.render('dashboard/index', {
@@ -92,7 +92,7 @@ router.get('/', asyncRoute(async (req, res) => {
     profile,
     balance: balanceData.balance ?? balanceData,
     listings: listingsData.data || listingsData,
-    unreadCount: unreadData.count ?? unreadData,
+    unreadCount: unreadData.unreadCount ?? unreadData.count ?? unreadData,
     recentTransactions: transactionsData.data || transactionsData,
     activityItems: activityItems.slice(0, 5),
     upcomingEvents,

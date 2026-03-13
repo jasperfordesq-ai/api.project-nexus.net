@@ -47,7 +47,7 @@
         {{ govukInput({
           id: "image_url",
           name: "image_url",
-          value: post.image_url,
+          value: post.imageUrl or post.image_url,
           label: {
             text: "Image URL",
             classes: "govuk-label--m"

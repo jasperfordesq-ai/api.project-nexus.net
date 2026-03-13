@@ -56,15 +56,15 @@
               <tr class="govuk-table__row">
                 <td class="govuk-table__cell">
                   <div class="app-member-cell">
-                    {% set user = connection.other_user %}
+                    {% set user = (connection.otherUser or connection.other_user) %}
                     {% include "partials/avatar.njk" %}
-                    <a href="/members/{{ connection.other_user.id }}" class="govuk-link">
-                      {{ connection.other_user.first_name or connection.other_user.firstName }} {{ connection.other_user.last_name or connection.other_user.lastName }}
+                    <a href="/members/{{ (connection.otherUser or connection.other_user).id }}" class="govuk-link">
+                      {{ (connection.otherUser or connection.other_user).first_name or (connection.otherUser or connection.other_user).firstName }} {{ (connection.otherUser or connection.other_user).last_name or (connection.otherUser or connection.other_user).lastName }}
                     </a>
                   </div>
                 </td>
                 <td class="govuk-table__cell">
-                  {{ connection.other_user.email }}
+                  {{ (connection.otherUser or connection.other_user).email }}
                 </td>
                 <td class="govuk-table__cell">
                   {% if connection.status == 'accepted' %}
@@ -79,7 +79,7 @@
                 </td>
                 <td class="govuk-table__cell">
                   {% if connection.status == 'accepted' %}
-                    {{ connection.updated_at | date }}
+                    {{ (connection.updatedAt or connection.updated_at) | date }}
                   {% else %}
                     -
                   {% endif %}
@@ -97,7 +97,7 @@
                       }) }}
                     </form>
                   {% elif connection.status == 'pending' %}
-                    {% if connection.is_requester %}
+                    {% if connection.isRequester or connection.is_requester %}
                       <form action="/connections/{{ connection.id }}/remove" method="post" style="display: inline;">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         {{ govukButton({
@@ -159,11 +159,11 @@
       {% endif %}
 
       {# Pagination #}
-      {% if pagination and pagination.total_pages > 1 %}
+      {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
         {% set paginationConfig = {
           baseUrl: "/connections",
           page: pagination.page,
-          totalPages: pagination.total_pages,
+          totalPages: pagination.totalPages or pagination.total_pages,
           queryParams: { status: currentStatus if currentStatus != 'all' else '' }
         } %}
         {% include "partials/pagination.njk" %}

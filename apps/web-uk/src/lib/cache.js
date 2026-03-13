@@ -124,6 +124,7 @@ function withCache(fn, keyFn, ttl = 30000) {
  * @param {string} token - User's auth token (used as part of cache key)
  */
 function invalidateUserCache(token) {
+  if (!token) return;
   // Create a short hash of the token for the cache key prefix
   const prefix = token.substring(0, 20);
   cache.deletePattern(prefix);

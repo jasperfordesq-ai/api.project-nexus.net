@@ -1,6 +1,7 @@
 {% extends "layouts/base.njk" %}
 
 {% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
@@ -34,14 +35,26 @@
 
         {{ govukInput({
           label: {
-            text: "Full name",
+            text: "First name",
             classes: "govuk-label--m"
           },
-          id: "name",
-          name: "name",
-          value: values.name if values else (profile.name if profile else ""),
-          autocomplete: "name",
-          errorMessage: { text: fieldErrors.name } if fieldErrors.name else undefined
+          id: "first_name",
+          name: "first_name",
+          value: values.first_name if values else (profile.firstName or profile.first_name if profile else ""),
+          autocomplete: "given-name",
+          errorMessage: { text: fieldErrors.first_name } if fieldErrors.first_name else undefined
+        }) }}
+
+        {{ govukInput({
+          label: {
+            text: "Last name",
+            classes: "govuk-label--m"
+          },
+          id: "last_name",
+          name: "last_name",
+          value: values.last_name if values else (profile.lastName or profile.last_name if profile else ""),
+          autocomplete: "family-name",
+          errorMessage: { text: fieldErrors.last_name } if fieldErrors.last_name else undefined
         }) }}
 
         {{ govukInput({
@@ -49,11 +62,17 @@
             text: "Email address",
             classes: "govuk-label--m"
           },
+          hint: {
+            text: "Your email address cannot be changed here"
+          },
           id: "email",
           name: "email",
           type: "email",
           value: values.email if values else (profile.email if profile else ""),
           autocomplete: "email",
+          attributes: {
+            readonly: "readonly"
+          },
           errorMessage: { text: fieldErrors.email } if fieldErrors.email else undefined
         }) }}
 
@@ -71,6 +90,21 @@
           value: values.phone if values else (profile.phone if profile else ""),
           autocomplete: "tel",
           errorMessage: { text: fieldErrors.phone } if fieldErrors.phone else undefined
+        }) }}
+
+        {{ govukTextarea({
+          label: {
+            text: "Bio",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Optional - tell the community a bit about yourself"
+          },
+          id: "bio",
+          name: "bio",
+          value: values.bio if values else (profile.bio if profile else ""),
+          rows: 4,
+          errorMessage: { text: fieldErrors.bio } if fieldErrors.bio else undefined
         }) }}
 
         <div class="govuk-button-group">

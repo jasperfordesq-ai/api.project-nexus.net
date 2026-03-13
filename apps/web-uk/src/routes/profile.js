@@ -39,30 +39,27 @@ router.get('/edit', asyncRoute(async (req, res) => {
 
 // Update profile
 router.post('/edit', asyncRoute(async (req, res) => {
-  const { name, email, phone } = req.body;
+  const { first_name, last_name, email, phone, bio } = req.body;
 
   // Basic validation
   const errors = [];
   const fieldErrors = {};
 
-  if (!name || !name.trim()) {
-    errors.push({ text: 'Enter your name', href: '#name' });
-    fieldErrors.name = 'Enter your name';
+  if (!first_name || !first_name.trim()) {
+    errors.push({ text: 'Enter your first name', href: '#first_name' });
+    fieldErrors.first_name = 'Enter your first name';
   }
 
-  if (!email || !email.trim()) {
-    errors.push({ text: 'Enter your email address', href: '#email' });
-    fieldErrors.email = 'Enter your email address';
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.push({ text: 'Enter a valid email address', href: '#email' });
-    fieldErrors.email = 'Enter a valid email address';
+  if (!last_name || !last_name.trim()) {
+    errors.push({ text: 'Enter your last name', href: '#last_name' });
+    fieldErrors.last_name = 'Enter your last name';
   }
 
   if (errors.length > 0) {
     return res.render('profile/edit', {
       title: 'Edit your profile',
       profile: null,
-      values: { name, email, phone },
+      values: { first_name, last_name, email, phone, bio },
       errors,
       fieldErrors,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -70,7 +67,14 @@ router.post('/edit', asyncRoute(async (req, res) => {
   }
 
   try {
-    await updateProfile(req.token, { name: name.trim(), email: email.trim(), phone });
+    const updateData = {
+      firstName: first_name.trim(),
+      lastName: last_name.trim()
+    };
+    if (phone !== undefined) updateData.phone = phone;
+    if (bio !== undefined) updateData.bio = bio ? bio.trim() : null;
+
+    await updateProfile(req.token, updateData);
 
     if (req.flash) {
       req.flash('success', 'Profile updated successfully');

@@ -58,11 +58,11 @@
             {% if notification.type == 'connection_request' %}
               {% set notificationLink = '/connections/pending' %}
             {% elif notification.type == 'connection_accepted' %}
-              {% set notificationLink = '/members/' + (notificationData.user_id or '') if notificationData.user_id else '/connections' %}
+              {% set notificationLink = '/members/' + (notificationData.userId or notificationData.user_id or '') if notificationData.userId or notificationData.user_id else '/connections' %}
             {% elif notification.type == 'connection_declined' %}
               {% set notificationLink = '/connections' %}
             {% elif notification.type == 'message_received' %}
-              {% set notificationLink = '/messages/' + (notificationData.conversation_id or '') if notificationData.conversation_id else '/messages' %}
+              {% set notificationLink = '/messages/' + (notificationData.conversationId or notificationData.conversation_id or '') if notificationData.conversationId or notificationData.conversation_id else '/messages' %}
             {% elif notification.type == 'transfer_received' %}
               {% set notificationLink = '/wallet' %}
             {% endif %}
@@ -125,11 +125,11 @@
         </ul>
 
         {# Pagination #}
-        {% if pagination and pagination.total_pages > 1 %}
+        {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
           {% set paginationConfig = {
             baseUrl: "/notifications",
             page: pagination.page,
-            totalPages: pagination.total_pages,
+            totalPages: pagination.totalPages or pagination.total_pages,
             queryParams: { unread_only: 'true' if showUnreadOnly else '' }
           } %}
           {% include "partials/pagination.njk" %}

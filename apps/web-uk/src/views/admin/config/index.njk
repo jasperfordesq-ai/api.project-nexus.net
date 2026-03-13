@@ -52,7 +52,7 @@
           label: { text: "Site name", classes: "govuk-label--s" },
           id: "site_name",
           name: "site_name",
-          value: config.site_name or "",
+          value: config.siteName or config.site_name or "",
           hint: { text: "The name displayed in the header" }
         }) }}
 
@@ -60,7 +60,7 @@
           label: { text: "Primary colour", classes: "govuk-label--s" },
           id: "primary_color",
           name: "primary_color",
-          value: config.primary_color or "#1d70b8",
+          value: config.primaryColor or config.primary_color or "#1d70b8",
           hint: { text: "Hex colour code (e.g., #1d70b8)" },
           classes: "govuk-input--width-10"
         }) }}
@@ -69,7 +69,7 @@
           label: { text: "Logo URL", classes: "govuk-label--s" },
           id: "logo_url",
           name: "logo_url",
-          value: config.logo_url or "",
+          value: config.logoUrl or config.logo_url or "",
           hint: { text: "URL to your logo image (optional)" }
         }) }}
 
@@ -82,8 +82,8 @@
           name: "enable_messaging",
           fieldset: { legend: { text: "Messaging", classes: "govuk-fieldset__legend--s" } },
           items: [
-            { value: "true", text: "Enabled", checked: config.enable_messaging != "false" },
-            { value: "false", text: "Disabled", checked: config.enable_messaging == "false" }
+            { value: "true", text: "Enabled", checked: (config.enableMessaging or config.enable_messaging) != "false" },
+            { value: "false", text: "Disabled", checked: (config.enableMessaging or config.enable_messaging) == "false" }
           ],
           classes: "govuk-radios--inline govuk-radios--small"
         }) }}
@@ -92,8 +92,8 @@
           name: "enable_groups",
           fieldset: { legend: { text: "Groups", classes: "govuk-fieldset__legend--s" } },
           items: [
-            { value: "true", text: "Enabled", checked: config.enable_groups != "false" },
-            { value: "false", text: "Disabled", checked: config.enable_groups == "false" }
+            { value: "true", text: "Enabled", checked: (config.enableGroups or config.enable_groups) != "false" },
+            { value: "false", text: "Disabled", checked: (config.enableGroups or config.enable_groups) == "false" }
           ],
           classes: "govuk-radios--inline govuk-radios--small"
         }) }}
@@ -102,8 +102,8 @@
           name: "enable_events",
           fieldset: { legend: { text: "Events", classes: "govuk-fieldset__legend--s" } },
           items: [
-            { value: "true", text: "Enabled", checked: config.enable_events != "false" },
-            { value: "false", text: "Disabled", checked: config.enable_events == "false" }
+            { value: "true", text: "Enabled", checked: (config.enableEvents or config.enable_events) != "false" },
+            { value: "false", text: "Disabled", checked: (config.enableEvents or config.enable_events) == "false" }
           ],
           classes: "govuk-radios--inline govuk-radios--small"
         }) }}
@@ -112,8 +112,8 @@
           name: "enable_gamification",
           fieldset: { legend: { text: "Gamification (XP and badges)", classes: "govuk-fieldset__legend--s" } },
           items: [
-            { value: "true", text: "Enabled", checked: config.enable_gamification != "false" },
-            { value: "false", text: "Disabled", checked: config.enable_gamification == "false" }
+            { value: "true", text: "Enabled", checked: (config.enableGamification or config.enable_gamification) != "false" },
+            { value: "false", text: "Disabled", checked: (config.enableGamification or config.enable_gamification) == "false" }
           ],
           classes: "govuk-radios--inline govuk-radios--small"
         }) }}
@@ -128,8 +128,8 @@
           fieldset: { legend: { text: "Require listing approval", classes: "govuk-fieldset__legend--s" } },
           hint: { text: "New listings must be approved by an admin before they become visible" },
           items: [
-            { value: "true", text: "Yes", checked: config.require_listing_approval == "true" },
-            { value: "false", text: "No", checked: config.require_listing_approval != "true" }
+            { value: "true", text: "Yes", checked: (config.requireListingApproval or config.require_listing_approval) == "true" },
+            { value: "false", text: "No", checked: (config.requireListingApproval or config.require_listing_approval) != "true" }
           ],
           classes: "govuk-radios--inline govuk-radios--small"
         }) }}
@@ -139,8 +139,8 @@
           fieldset: { legend: { text: "Auto-approve trusted users", classes: "govuk-fieldset__legend--s" } },
           hint: { text: "Skip approval for established users with good standing" },
           items: [
-            { value: "true", text: "Yes", checked: config.auto_approve_trusted == "true" },
-            { value: "false", text: "No", checked: config.auto_approve_trusted != "true" }
+            { value: "true", text: "Yes", checked: (config.autoApproveTrusted or config.auto_approve_trusted) == "true" },
+            { value: "false", text: "No", checked: (config.autoApproveTrusted or config.auto_approve_trusted) != "true" }
           ],
           classes: "govuk-radios--inline govuk-radios--small"
         }) }}
@@ -154,8 +154,8 @@
           name: "email_notifications",
           fieldset: { legend: { text: "Email notifications", classes: "govuk-fieldset__legend--s" } },
           items: [
-            { value: "true", text: "Enabled", checked: config.email_notifications != "false" },
-            { value: "false", text: "Disabled", checked: config.email_notifications == "false" }
+            { value: "true", text: "Enabled", checked: (config.emailNotifications or config.email_notifications) != "false" },
+            { value: "false", text: "Disabled", checked: (config.emailNotifications or config.email_notifications) == "false" }
           ],
           classes: "govuk-radios--inline govuk-radios--small"
         }) }}
@@ -164,7 +164,7 @@
           label: { text: "Digest frequency", classes: "govuk-label--s" },
           id: "digest_frequency",
           name: "digest_frequency",
-          value: config.digest_frequency or "weekly",
+          value: config.digestFrequency or config.digest_frequency or "weekly",
           hint: { text: "daily, weekly, or never" },
           classes: "govuk-input--width-10"
         }) }}

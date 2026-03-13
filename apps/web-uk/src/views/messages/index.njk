@@ -38,7 +38,7 @@
       {% if conversations and conversations.length > 0 %}
         <ul class="govuk-list app-conversation-list">
           {% for conversation in conversations %}
-            <li class="app-conversation-item{% if conversation.unread_count > 0 %} app-conversation-item--unread{% endif %}">
+            <li class="app-conversation-item{% if (conversation.unreadCount or conversation.unread_count) > 0 %} app-conversation-item--unread{% endif %}">
               <a href="/messages/{{ conversation.id }}" class="govuk-link app-conversation-link">
                 <div class="app-conversation-header">
                   <div class="app-member-cell">
@@ -57,9 +57,9 @@
                 <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">
                   {{ conversation.last_message or conversation.lastMessage or "No messages yet" }}
                 </p>
-                {% if conversation.unread_count > 0 %}
+                {% if (conversation.unreadCount or conversation.unread_count) > 0 %}
                   <span class="govuk-tag govuk-tag--blue app-conversation-badge">
-                    {{ conversation.unread_count }} new
+                    {{ conversation.unreadCount or conversation.unread_count }} new
                   </span>
                 {% endif %}
               </a>

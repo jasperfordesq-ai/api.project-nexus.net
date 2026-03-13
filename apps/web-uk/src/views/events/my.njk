@@ -25,8 +25,8 @@
       <h1 class="govuk-heading-xl">My events</h1>
       <p class="govuk-body-l">Events you've RSVP'd to.</p>
 
-      {% set goingEvents = events | selectattr("my_rsvp.status", "equalto", "going") | list %}
-      {% set maybeEvents = events | selectattr("my_rsvp.status", "equalto", "maybe") | list %}
+      {% set goingEvents = events | selectattr("myRsvp.status", "equalto", "going") | list %}
+      {% set maybeEvents = events | selectattr("myRsvp.status", "equalto", "maybe") | list %}
       {% set pastEvents = events | selectattr("is_past", "equalto", true) | list %}
       {% set upcomingEvents = events | rejectattr("is_past", "equalto", true) | list %}
 
@@ -36,7 +36,7 @@
           <h2 class="govuk-heading-l">Going</h2>
           <div class="app-card-grid govuk-!-margin-bottom-8">
             {% for event in goingEvents %}
-              {% if not event.is_past %}
+              {% if not (event.isPast or event.is_past) %}
                 <div class="app-card app-card--event">
                   <div class="app-card__header">
                     <h3 class="govuk-heading-m govuk-!-margin-bottom-1">
@@ -48,9 +48,9 @@
                   </div>
 
                   <div class="app-card__body">
-                    {% if event.starts_at %}
+                    {% if event.startsAt or event.starts_at %}
                       <p class="govuk-body-s govuk-!-margin-bottom-1">
-                        <strong>When:</strong> {{ event.starts_at | formatEventDate }}
+                        <strong>When:</strong> {{ (event.startsAt or event.starts_at) | formatEventDate }}
                       </p>
                     {% endif %}
 
@@ -62,7 +62,7 @@
                   </div>
 
                   <div class="app-card__footer">
-                    <span class="govuk-body-s">{{ event.attendee_count or 0 }} attending</span>
+                    <span class="govuk-body-s">{{ event.attendeeCount or event.attendee_count or 0 }} attending</span>
                   </div>
                 </div>
               {% endif %}
@@ -75,7 +75,7 @@
           <h2 class="govuk-heading-l">Maybe</h2>
           <div class="app-card-grid govuk-!-margin-bottom-8">
             {% for event in maybeEvents %}
-              {% if not event.is_past %}
+              {% if not (event.isPast or event.is_past) %}
                 <div class="app-card app-card--event">
                   <div class="app-card__header">
                     <h3 class="govuk-heading-m govuk-!-margin-bottom-1">
@@ -87,9 +87,9 @@
                   </div>
 
                   <div class="app-card__body">
-                    {% if event.starts_at %}
+                    {% if event.startsAt or event.starts_at %}
                       <p class="govuk-body-s govuk-!-margin-bottom-1">
-                        <strong>When:</strong> {{ event.starts_at | formatEventDate }}
+                        <strong>When:</strong> {{ (event.startsAt or event.starts_at) | formatEventDate }}
                       </p>
                     {% endif %}
 
@@ -101,7 +101,7 @@
                   </div>
 
                   <div class="app-card__footer">
-                    <span class="govuk-body-s">{{ event.attendee_count or 0 }} attending</span>
+                    <span class="govuk-body-s">{{ event.attendeeCount or event.attendee_count or 0 }} attending</span>
                   </div>
                 </div>
               {% endif %}
@@ -132,9 +132,9 @@
                     </div>
 
                     <div class="app-card__body">
-                      {% if event.starts_at %}
+                      {% if event.startsAt or event.starts_at %}
                         <p class="govuk-body-s govuk-!-margin-bottom-0">
-                          {{ event.starts_at | formatEventDate }}
+                          {{ (event.startsAt or event.starts_at) | formatEventDate }}
                         </p>
                       {% endif %}
                     </div>

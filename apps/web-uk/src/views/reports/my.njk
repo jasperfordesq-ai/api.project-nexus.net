@@ -46,9 +46,9 @@
             {% for report in reports %}
               <tr class="govuk-table__row">
                 <td class="govuk-table__cell">
-                  {{ report.content_type | capitalize }}
-                  {% if report.content_preview %}
-                    <br><span class="govuk-body-s">{{ report.content_preview | truncate(50) }}</span>
+                  {{ (report.contentType or report.content_type) | capitalize }}
+                  {% if report.contentPreview or report.content_preview %}
+                    <br><span class="govuk-body-s">{{ (report.contentPreview or report.content_preview) | truncate(50) }}</span>
                   {% endif %}
                 </td>
                 <td class="govuk-table__cell">
@@ -68,7 +68,7 @@
                   {% endif %}
                 </td>
                 <td class="govuk-table__cell">
-                  {{ report.created_at | formatDate }}
+                  {{ (report.createdAt or report.created_at) | formatDate }}
                 </td>
               </tr>
             {% endfor %}
@@ -76,9 +76,10 @@
         </table>
 
         {# Pagination #}
-        {% if pagination.total_pages > 1 %}
+        {% set reportsTotalPages = pagination.totalPages or pagination.total_pages %}
+        {% if reportsTotalPages > 1 %}
           {% set paginationItems = [] %}
-          {% for i in range(1, pagination.total_pages + 1) %}
+          {% for i in range(1, reportsTotalPages + 1) %}
             {% set paginationItems = (paginationItems.push({
               number: i,
               href: "/reports/my?page=" + i + ("&status=" + status if status else ""),
@@ -92,7 +93,7 @@
             } if pagination.page > 1 else undefined,
             next: {
               href: "/reports/my?page=" + (pagination.page + 1) + ("&status=" + status if status else "")
-            } if pagination.page < pagination.total_pages else undefined,
+            } if pagination.page < reportsTotalPages else undefined,
             items: paginationItems
           }) }}
         {% endif %}

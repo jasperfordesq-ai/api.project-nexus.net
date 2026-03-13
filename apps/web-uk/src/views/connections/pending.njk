@@ -39,18 +39,18 @@
               <tr class="govuk-table__row">
                 <td class="govuk-table__cell">
                   <div class="app-member-cell">
-                    {% set user = request.from_user %}
+                    {% set user = (request.fromUser or request.from_user) %}
                     {% include "partials/avatar.njk" %}
-                    <a href="/members/{{ request.from_user.id }}" class="govuk-link">
-                      {{ request.from_user.first_name or request.from_user.firstName }} {{ request.from_user.last_name or request.from_user.lastName }}
+                    <a href="/members/{{ (request.fromUser or request.from_user).id }}" class="govuk-link">
+                      {{ (request.fromUser or request.from_user).first_name or (request.fromUser or request.from_user).firstName }} {{ (request.fromUser or request.from_user).last_name or (request.fromUser or request.from_user).lastName }}
                     </a>
                   </div>
                 </td>
                 <td class="govuk-table__cell">
-                  {{ request.from_user.email }}
+                  {{ (request.fromUser or request.from_user).email }}
                 </td>
                 <td class="govuk-table__cell">
-                  {{ request.created_at | date }}
+                  {{ (request.createdAt or request.created_at) | date }}
                 </td>
                 <td class="govuk-table__cell">
                   <form action="/connections/{{ request.id }}/accept" method="post" style="display: inline;">
@@ -93,18 +93,18 @@
               <tr class="govuk-table__row">
                 <td class="govuk-table__cell">
                   <div class="app-member-cell">
-                    {% set user = request.to_user %}
+                    {% set user = (request.toUser or request.to_user) %}
                     {% include "partials/avatar.njk" %}
-                    <a href="/members/{{ request.to_user.id }}" class="govuk-link">
-                      {{ request.to_user.first_name or request.to_user.firstName }} {{ request.to_user.last_name or request.to_user.lastName }}
+                    <a href="/members/{{ (request.toUser or request.to_user).id }}" class="govuk-link">
+                      {{ (request.toUser or request.to_user).first_name or (request.toUser or request.to_user).firstName }} {{ (request.toUser or request.to_user).last_name or (request.toUser or request.to_user).lastName }}
                     </a>
                   </div>
                 </td>
                 <td class="govuk-table__cell">
-                  {{ request.to_user.email }}
+                  {{ (request.toUser or request.to_user).email }}
                 </td>
                 <td class="govuk-table__cell">
-                  {{ request.created_at | date }}
+                  {{ (request.createdAt or request.created_at) | date }}
                 </td>
                 <td class="govuk-table__cell">
                   <form action="/connections/{{ request.id }}/remove" method="post" style="display: inline;">

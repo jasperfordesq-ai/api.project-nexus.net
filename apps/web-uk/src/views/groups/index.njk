@@ -72,7 +72,7 @@
               <a href="/groups/{{ group.id }}" class="app-card__link">
                 <div class="app-card__header">
                   <h2 class="govuk-heading-m govuk-!-margin-bottom-1">{{ group.name }}</h2>
-                  {% if group.is_private %}
+                  {% if group.isPrivate or group.is_private %}
                     {{ govukTag({ text: "Private", classes: "govuk-tag--grey" }) }}
                   {% endif %}
                   {% if myGroupIds.has(group.id) %}
@@ -83,7 +83,7 @@
                   <p class="govuk-body-s govuk-!-margin-bottom-2">{{ group.description | truncate(100) }}</p>
                 {% endif %}
                 <p class="govuk-body-s app-card__meta">
-                  {{ group.member_count }} member{{ 's' if group.member_count != 1 else '' }}
+                  {{ group.memberCount or group.member_count }} member{{ 's' if group.memberCount or group.member_count != 1 else '' }}
                 </p>
               </a>
             </div>
@@ -103,11 +103,11 @@
       {% endif %}
 
       {# Pagination #}
-      {% if pagination and pagination.total_pages > 1 %}
+      {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
         {% set paginationConfig = {
           baseUrl: "/groups",
           page: pagination.page,
-          totalPages: pagination.total_pages,
+          totalPages: pagination.totalPages or pagination.total_pages,
           queryParams: { search: searchQuery }
         } %}
         {% include "partials/pagination.njk" %}

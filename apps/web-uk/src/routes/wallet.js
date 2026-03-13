@@ -38,7 +38,7 @@ router.get('/transactions', asyncRoute(async (req, res) => {
   const transactions = transactionsData.data || transactionsData;
   const pagination = transactionsData.pagination || {
     page,
-    total_pages: 1,
+    totalPages: 1,
     total: transactions.length
   };
 
@@ -46,9 +46,9 @@ router.get('/transactions', asyncRoute(async (req, res) => {
     title: 'Transaction history',
     transactions,
     pagination: {
-      currentPage: pagination.page,
-      totalPages: pagination.total_pages,
-      total: pagination.total
+      currentPage: pagination.page || pagination.currentPage,
+      totalPages: pagination.totalPages || pagination.total_pages || 1,
+      total: pagination.total || pagination.totalCount
     },
     filters: { type }
   });

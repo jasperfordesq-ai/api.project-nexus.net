@@ -43,7 +43,7 @@ router.get('/', asyncRoute(async (req, res) => {
       page,
       limit,
       total,
-      total_pages: totalPages
+      totalPages: totalPages
     },
     successMessage: req.flash ? req.flash('success')[0] : null
   });

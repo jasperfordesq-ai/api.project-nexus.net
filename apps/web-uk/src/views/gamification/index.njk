@@ -42,16 +42,18 @@
               <span>Level {{ (profile.level or 1) + 1 }}</span>
             </div>
             {% set progressPercent = 0 %}
-            {% if profile.xp_required_for_next_level and profile.xp_required_for_current_level %}
-              {% set levelRange = profile.xp_required_for_next_level - profile.xp_required_for_current_level %}
-              {% set currentProgress = (profile.totalXp or 0) - profile.xp_required_for_current_level %}
+            {% set xpForNext = profile.xpRequiredForNextLevel or profile.xp_required_for_next_level %}
+            {% set xpForCurrent = profile.xpRequiredForCurrentLevel or profile.xp_required_for_current_level %}
+            {% if xpForNext and xpForCurrent %}
+              {% set levelRange = xpForNext - xpForCurrent %}
+              {% set currentProgress = (profile.totalXp or 0) - xpForCurrent %}
               {% set progressPercent = ((currentProgress / levelRange) * 100) | round %}
             {% endif %}
             <div class="app-xp-bar__track" role="progressbar" aria-valuenow="{{ progressPercent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Progress to level {{ (profile.level or 1) + 1 }}: {{ progressPercent }}%">
               <div class="app-xp-bar__fill" style="width: {{ progressPercent }}%"></div>
             </div>
             <p class="govuk-body-s govuk-!-margin-top-1 govuk-!-margin-bottom-0">
-              {{ profile.xp_to_next_level or 100 }} XP to next level
+              {{ profile.xpToNextLevel or profile.xp_to_next_level or 100 }} XP to next level
             </p>
           </div>
         </div>
@@ -60,8 +62,8 @@
       {# Quick Links #}
       <nav class="govuk-grid-row govuk-!-margin-bottom-6" aria-label="Progress navigation">
         <div class="govuk-grid-column-one-third">
-          <a href="/progress/badges" class="app-stat-card" aria-label="View badges - {{ profile.badges_earned or 0 }} earned">
-            <span class="app-stat-card__value" aria-hidden="true">{{ profile.badges_earned or 0 }}</span>
+          <a href="/progress/badges" class="app-stat-card" aria-label="View badges - {{ profile.badgesEarned or profile.badges_earned or 0 }} earned">
+            <span class="app-stat-card__value" aria-hidden="true">{{ profile.badgesEarned or profile.badges_earned or 0 }}</span>
             <span class="app-stat-card__label">Badges earned</span>
           </a>
         </div>
@@ -87,7 +89,7 @@
             <li class="app-xp-list__item">
               <div class="app-xp-list__content">
                 <span class="app-xp-list__description">{{ xp.description }}</span>
-                <span class="govuk-body-s app-xp-list__time"><span class="govuk-visually-hidden">Earned on </span>{{ xp.createdAt | formatDate }}</span>
+                <span class="govuk-body-s app-xp-list__time"><span class="govuk-visually-hidden">Earned on </span>{{ (xp.createdAt or xp.created_at) | formatDate }}</span>
               </div>
               <span class="app-xp-list__amount app-xp-list__amount--positive" aria-label="Earned {{ xp.amount }} XP">+{{ xp.amount }} XP</span>
             </li>

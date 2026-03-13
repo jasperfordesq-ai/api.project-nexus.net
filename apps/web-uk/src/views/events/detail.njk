@@ -33,7 +33,7 @@
         <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ event.title }}</h1>
         {% if event.status == 'cancelled' %}
           {{ govukTag({ text: "Cancelled", classes: "govuk-tag--red" }) }}
-        {% elif event.is_past %}
+        {% elif event.isPast or event.is_past %}
           {{ govukTag({ text: "Past event", classes: "govuk-tag--grey" }) }}
         {% else %}
           {{ govukTag({ text: "Upcoming", classes: "govuk-tag--green" }) }}
@@ -53,10 +53,10 @@
           {
             key: { text: "Date and time" },
             value: {
-              html: (event.starts_at | formatEventDate) +
-                    ("<br>to " + (event.ends_at | formatEventDate) if event.ends_at else "")
+              html: ((event.startsAt or event.starts_at) | formatEventDate) +
+                    ("<br>to " + ((event.endsAt or event.ends_at) | formatEventDate) if event.endsAt or event.ends_at else "")
             }
-          } if event.starts_at,
+          } if event.startsAt or event.starts_at,
           {
             key: { text: "Location" },
             value: { text: event.location or "Not specified" }
@@ -70,15 +70,15 @@
           {
             key: { text: "Organised by" },
             value: {
-              html: "<a href='/members/" + event.created_by.id + "' class='govuk-link'>" +
-                    event.created_by.first_name + " " + event.created_by.last_name + "</a>"
+              html: "<a href='/members/" + (event.createdBy or event.created_by).id + "' class='govuk-link'>" +
+                    ((event.createdBy or event.created_by).firstName or (event.createdBy or event.created_by).first_name) + " " + ((event.createdBy or event.created_by).lastName or (event.createdBy or event.created_by).last_name) + "</a>"
             }
-          } if event.created_by,
+          } if event.createdBy or event.created_by,
           {
             key: { text: "Capacity" },
             value: {
-              text: (event.attendee_count or 0) + " attending" +
-                    (" / " + event.max_attendees + " max" if event.max_attendees else "")
+              text: (event.attendeeCount or event.attendee_count or 0) + " attending" +
+                    (" / " + event.maxAttendees or event.max_attendees + " max" if event.maxAttendees or event.max_attendees else "")
             }
           }
         ] | selectattr("key") | list
@@ -99,7 +99,7 @@
       </p>
 
       {# RSVP section #}
-      {% if event.status != 'cancelled' and not event.is_past %}
+      {% if event.status != 'cancelled' and not (event.isPast or event.is_past) %}
         <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
         <h2 class="govuk-heading-m">Your RSVP</h2>
@@ -117,7 +117,9 @@
           </p>
         {% endif %}
 
-        {% set isFull = event.max_attendees and event.attendee_count >= event.max_attendees %}
+        {% set eventMaxAttendees = event.maxAttendees or event.max_attendees %}
+        {% set eventAttendeeCount = event.attendeeCount or event.attendee_count or 0 %}
+        {% set isFull = eventMaxAttendees and eventAttendeeCount >= eventMaxAttendees %}
 
         <div class="app-rsvp-buttons">
           {% if not isFull or (myRsvp and myRsvp.status == 'going') %}
@@ -171,7 +173,7 @@
       {% endif %}
 
       {# Admin actions #}
-      {% if event.can_edit %}
+      {% if event.canEdit or event.can_edit %}
         <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
         <h2 class="govuk-heading-m">Manage event</h2>

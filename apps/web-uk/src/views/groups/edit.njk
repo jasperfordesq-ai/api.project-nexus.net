@@ -71,13 +71,13 @@
               value: "false",
               text: "Public",
               hint: { text: "Anyone can find and join this group" },
-              checked: not group.is_private
+              checked: not (group.isPrivate or group.is_private)
             },
             {
               value: "true",
               text: "Private",
               hint: { text: "Only admins can add members" },
-              checked: group.is_private
+              checked: group.isPrivate or group.is_private
             }
           ]
         }) }}

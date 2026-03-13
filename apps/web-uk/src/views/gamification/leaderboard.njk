@@ -89,9 +89,9 @@
                 </td>
                 <td class="govuk-table__cell govuk-table__cell--numeric">
                   {% if period == 'all' %}
-                    {{ entry.total_xp or 0 }}
+                    {{ entry.totalXp or entry.total_xp or 0 }}
                   {% else %}
-                    {{ entry.period_xp or 0 }}
+                    {{ entry.periodXp or entry.period_xp or 0 }}
                   {% endif %}
                 </td>
               </tr>
@@ -100,9 +100,10 @@
         </table>
 
         {# Pagination #}
-        {% if pagination.total_pages > 1 %}
+        {% set lbTotalPages = pagination.totalPages or pagination.total_pages %}
+        {% if lbTotalPages > 1 %}
           {% set paginationItems = [] %}
-          {% for i in range(1, pagination.total_pages + 1) %}
+          {% for i in range(1, lbTotalPages + 1) %}
             {% set paginationItems = (paginationItems.push({
               number: i,
               href: "/progress/leaderboard?period=" + period + "&page=" + i,
@@ -116,7 +117,7 @@
             } if pagination.page > 1 else undefined,
             next: {
               href: "/progress/leaderboard?period=" + period + "&page=" + (pagination.page + 1)
-            } if pagination.page < pagination.total_pages else undefined,
+            } if pagination.page < pagination.totalPages or pagination.total_pages else undefined,
             items: paginationItems
           }) }}
         {% endif %}

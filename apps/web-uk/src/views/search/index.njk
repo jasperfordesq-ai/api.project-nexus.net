@@ -175,12 +175,13 @@
                   <a href="/groups/{{ group.id }}" class="govuk-link">{{ group.name }}</a>
                 </h3>
                 <p class="govuk-body-s govuk-!-margin-bottom-1">
-                  {% if group.is_public %}
+                  {% if group.isPublic or group.is_public %}
                     {{ govukTag({ text: "Public", classes: "govuk-tag--green" }) }}
                   {% else %}
                     {{ govukTag({ text: "Private", classes: "govuk-tag--grey" }) }}
                   {% endif %}
-                  <span class="govuk-!-margin-left-2">{{ group.member_count or 0 }} member{% if (group.member_count or 0) != 1 %}s{% endif %}</span>
+                  {% set groupMemberCount = group.memberCount or group.member_count or 0 %}
+                  <span class="govuk-!-margin-left-2">{{ groupMemberCount }} member{% if groupMemberCount != 1 %}s{% endif %}</span>
                 </p>
                 {% if group.description %}
                   <p class="govuk-body-s govuk-!-margin-bottom-0 app-search-result__description">
@@ -209,8 +210,8 @@
                   <a href="/events/{{ event.id }}" class="govuk-link">{{ event.title }}</a>
                 </h3>
                 <p class="govuk-body-s govuk-!-margin-bottom-1">
-                  {% if event.starts_at %}
-                    <time datetime="{{ event.starts_at }}">{{ event.starts_at | date }}</time>
+                  {% if event.startsAt or event.starts_at %}
+                    <time datetime="{{ event.startsAt or event.starts_at }}">{{ (event.startsAt or event.starts_at) | date }}</time>
                   {% endif %}
                   {% if event.location %}
                     <span class="govuk-!-margin-left-2">{{ event.location }}</span>
@@ -263,11 +264,11 @@
         {% endif %}
 
         {# Pagination #}
-        {% if pagination and pagination.total_pages > 1 %}
+        {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
           {% set paginationConfig = {
             baseUrl: "/search",
             page: pagination.page,
-            totalPages: pagination.total_pages,
+            totalPages: pagination.totalPages or pagination.total_pages,
             queryParams: { q: query, type: type }
           } %}
           {% include "partials/pagination.njk" %}

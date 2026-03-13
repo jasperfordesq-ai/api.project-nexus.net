@@ -29,7 +29,7 @@
 
       <h1 class="govuk-heading-xl">
         {{ group.name }}
-        {% if group.is_private %}
+        {% if group.isPrivate or group.is_private %}
           {{ govukTag({ text: "Private", classes: "govuk-tag--grey govuk-!-margin-left-2" }) }}
         {% endif %}
       </h1>
@@ -42,15 +42,15 @@
         rows: [
           {
             key: { text: "Created by" },
-            value: { text: (group.created_by.first_name + " " + group.created_by.last_name) if group.created_by else "Unknown" }
+            value: { text: (((group.createdBy or group.created_by).firstName or (group.createdBy or group.created_by).first_name) + " " + ((group.createdBy or group.created_by).lastName or (group.createdBy or group.created_by).last_name)) if group.createdBy or group.created_by else "Unknown" }
           },
           {
             key: { text: "Members" },
-            value: { text: group.member_count | string }
+            value: { text: (group.memberCount or group.member_count) | string }
           },
           {
             key: { text: "Created" },
-            value: { text: group.created_at | formatDate if group.created_at else "Unknown" }
+            value: { text: (group.createdAt or group.created_at) | formatDate if group.createdAt or group.created_at else "Unknown" }
           }
         ]
       }) }}
@@ -95,7 +95,7 @@
           {% endif %}
         {% else %}
           {# User is not a member #}
-          {% if not group.is_private %}
+          {% if not (group.isPrivate or group.is_private) %}
             <form action="/groups/{{ group.id }}/join" method="post" style="display: inline;">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               {{ govukButton({
@@ -150,7 +150,7 @@
                 {{ event.title }}
               </a>
               <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">
-                {{ event.starts_at | formatDate }}
+                {{ (event.startsAt or event.starts_at) | formatDate }}
                 {% if event.location %}
                    - {{ event.location }}
                 {% endif %}

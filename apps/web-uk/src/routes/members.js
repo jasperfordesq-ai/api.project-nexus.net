@@ -41,11 +41,12 @@ router.get('/', asyncRoute(async (req, res) => {
   // Build a map of connection status by user ID
   const connectionMap = {};
   connections.forEach(conn => {
-    if (conn.other_user) {
-      connectionMap[conn.other_user.id] = {
+    const otherUser = conn.otherUser || conn.other_user;
+    if (otherUser) {
+      connectionMap[otherUser.id] = {
         id: conn.id,
         status: conn.status,
-        is_requester: conn.is_requester
+        isRequester: conn.isRequester || conn.is_requester
       };
     }
   });
@@ -80,7 +81,7 @@ router.get('/', asyncRoute(async (req, res) => {
       page,
       limit,
       total,
-      total_pages: totalPages
+      totalPages: totalPages
     },
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
@@ -105,9 +106,10 @@ router.get('/:id', asyncRoute(async (req, res) => {
   const connections = connectionsResult.connections || [];
 
   // Find connection with this user
-  const connection = connections.find(conn =>
-    conn.other_user && conn.other_user.id === parseInt(id)
-  );
+  const connection = connections.find(conn => {
+    const otherUser = conn.otherUser || conn.other_user;
+    return otherUser && otherUser.id === parseInt(id);
+  });
 
   res.render('members/profile', {
     title: `${user.first_name || user.firstName} ${user.last_name || user.lastName}`,

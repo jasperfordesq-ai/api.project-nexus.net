@@ -19,7 +19,7 @@
         <a class="govuk-breadcrumbs__link" href="/admin/users">Users</a>
       </li>
       <li class="govuk-breadcrumbs__list-item">
-        <a class="govuk-breadcrumbs__link" href="/admin/users/{{ userData.id }}">{{ userData.first_name }} {{ userData.last_name }}</a>
+        <a class="govuk-breadcrumbs__link" href="/admin/users/{{ userData.id }}">{{ userData.firstName or userData.first_name }} {{ userData.lastName or userData.last_name }}</a>
       </li>
       <li class="govuk-breadcrumbs__list-item" aria-current="page">Edit</li>
     </ol>
@@ -39,7 +39,7 @@
 
       <h1 class="govuk-heading-xl">
         <span class="govuk-caption-xl">Edit user</span>
-        {{ userData.first_name }} {{ userData.last_name }}
+        {{ userData.firstName or userData.first_name }} {{ userData.lastName or userData.last_name }}
       </h1>
 
       <form method="post" action="/admin/users/{{ userData.id }}/edit">
@@ -49,14 +49,14 @@
           label: { text: "First name", classes: "govuk-label--s" },
           id: "first_name",
           name: "first_name",
-          value: userData.first_name
+          value: userData.firstName or userData.first_name
         }) }}
 
         {{ govukInput({
           label: { text: "Last name", classes: "govuk-label--s" },
           id: "last_name",
           name: "last_name",
-          value: userData.last_name
+          value: userData.lastName or userData.last_name
         }) }}
 
         {{ govukInput({
