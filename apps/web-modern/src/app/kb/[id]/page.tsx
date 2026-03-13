@@ -15,6 +15,7 @@ import { GlassCard } from "@/components/glass-card";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface KBArticleDetail {
   id: number;
@@ -83,7 +84,7 @@ function KBArticleContent({ params }: { params: Promise<{ id: string }> }) {
               <h1 className="text-2xl font-bold text-white mb-6">{article.title}</h1>
               <div
                 className="prose prose-invert max-w-none text-white/80 mb-8"
-                dangerouslySetInnerHTML={{ __html: article.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.content) }}
               />
 
               <div className="flex items-center justify-between pt-4 border-t border-white/10">

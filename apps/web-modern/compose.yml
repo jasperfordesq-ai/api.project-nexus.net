@@ -25,6 +25,7 @@ services:
     environment:
       - NODE_ENV=development
       - WATCHPACK_POLLING=true  # Enable polling for Windows/Docker file watching
+      - NEXT_PUBLIC_TENANT_ID=${NEXT_PUBLIC_TENANT_ID:-1}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -38,6 +39,7 @@ services:
       target: production
       args:
         NEXT_PUBLIC_API_URL: http://host.docker.internal:5080
+        NEXT_PUBLIC_TENANT_ID: ${NEXT_PUBLIC_TENANT_ID:-1}
     container_name: nexus-frontend-prod
     ports:
       - "5171:3002"  # Different port to avoid conflict with dev
@@ -45,6 +47,7 @@ services:
       - .env.docker
     environment:
       - NODE_ENV=production
+      - NEXT_PUBLIC_TENANT_ID=${NEXT_PUBLIC_TENANT_ID:-1}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     profiles:

@@ -83,7 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithPasskey = useCallback(
     (passkeyResponse: PasskeyAuthResponse) => {
-      setToken(passkeyResponse.access_token);
+      // Handle both camelCase and snake_case token field names
+      const token = (passkeyResponse as any).accessToken ?? passkeyResponse.access_token;
+      setToken(token);
       const user = passkeyResponse.user as unknown as User;
       setStoredUser(user);
       setUser(user);
@@ -91,8 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const logout = useCallback(() => {
-    api.logout();
+  const logout = useCallback(async () => {
+    await api.logout();
     setUser(null);
     router.push("/login");
   }, [router]);

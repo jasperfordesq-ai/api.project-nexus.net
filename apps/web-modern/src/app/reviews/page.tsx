@@ -10,14 +10,10 @@ import { motion } from "framer-motion";
 import {
   Button,
   Avatar,
-  Chip,
   Skeleton,
-  Tabs,
-  Tab,
 } from "@heroui/react";
 import {
   Star,
-  ArrowLeftRight,
   Clock,
 } from "lucide-react";
 import Link from "next/link";
@@ -64,8 +60,6 @@ function ReviewsContent() {
   } | null>(null);
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("received");
-
   const fetchData = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);

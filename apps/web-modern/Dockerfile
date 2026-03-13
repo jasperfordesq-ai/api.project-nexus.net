@@ -42,7 +42,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Build arguments for environment variables needed at build time
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_TENANT_ID
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_TENANT_ID=${NEXT_PUBLIC_TENANT_ID}
 ENV NEXT_TELEMETRY_DISABLED=1
 # Build the application
 RUN npm run build

@@ -10,6 +10,7 @@
  */
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5080";
+const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || "";
 
 // ============================================================================
 // Types - All use snake_case to match API responses
@@ -535,8 +536,9 @@ export interface ApiError {
 
 // ============================================================================
 // Response Normalization Helpers
-// The main-feed endpoint returns camelCase from C# entity properties;
-// trending/bookmarks use explicit snake_case. These helpers unify both.
+// The ASP.NET Core backend returns camelCase JSON by default.
+// Frontend types use snake_case. These normalizers bridge both formats
+// so code works regardless of which format the API returns.
 // ============================================================================
 
 function normalizeUser(raw: any): User | undefined {
@@ -554,6 +556,278 @@ function normalizeUser(raw: any): User | undefined {
   };
 }
 
+function normalizeUserRequired(raw: any): User {
+  return normalizeUser(raw) ?? {
+    id: 0, email: '', first_name: '', last_name: '',
+    role: 'member', tenant_id: 0, created_at: '',
+  };
+}
+
+function normalizeListing(raw: any): Listing {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    title: raw.title ?? '',
+    description: raw.description ?? '',
+    type: raw.type ?? 'offer',
+    status: raw.status ?? 'active',
+    time_credits: raw.timeCredits ?? raw.time_credits ?? 0,
+    user_id: raw.userId ?? raw.user_id ?? 0,
+    user: normalizeUser(raw.user),
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  };
+}
+
+function normalizeTransaction(raw: any): Transaction {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    sender_id: raw.senderId ?? raw.sender_id ?? 0,
+    receiver_id: raw.receiverId ?? raw.receiver_id ?? 0,
+    amount: raw.amount ?? 0,
+    description: raw.description ?? '',
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    sender: normalizeUser(raw.sender),
+    receiver: normalizeUser(raw.receiver),
+  };
+}
+
+function normalizeWalletBalance(raw: any): WalletBalance {
+  if (!raw) return raw;
+  return {
+    balance: raw.balance ?? 0,
+    user_id: raw.userId ?? raw.user_id ?? 0,
+  };
+}
+
+function normalizeMessage(raw: any): Message {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    conversation_id: raw.conversationId ?? raw.conversation_id ?? 0,
+    sender_id: raw.senderId ?? raw.sender_id ?? 0,
+    content: raw.content ?? '',
+    read: raw.read ?? raw.isRead ?? false,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    sender: normalizeUser(raw.sender),
+  };
+}
+
+function normalizeConversation(raw: any): Conversation {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    participant_ids: raw.participantIds ?? raw.participant_ids ?? [],
+    participants: (raw.participants ?? []).map((p: any) => normalizeUser(p)).filter(Boolean) as User[],
+    last_message: raw.lastMessage ?? raw.last_message ? normalizeMessage(raw.lastMessage ?? raw.last_message) : undefined,
+    unread_count: raw.unreadCount ?? raw.unread_count ?? 0,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  };
+}
+
+function normalizeConnection(raw: any): Connection {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    requester_id: raw.requesterId ?? raw.requester_id ?? 0,
+    recipient_id: raw.recipientId ?? raw.recipient_id ?? 0,
+    status: raw.status ?? 'pending',
+    requester: normalizeUser(raw.requester),
+    recipient: normalizeUser(raw.recipient),
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  };
+}
+
+function normalizeNotification(raw: any): Notification {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    user_id: raw.userId ?? raw.user_id ?? 0,
+    type: raw.type ?? '',
+    title: raw.title ?? '',
+    message: raw.message ?? '',
+    read: raw.read ?? raw.isRead ?? false,
+    data: raw.data,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+  };
+}
+
+function normalizeGroup(raw: any): Group {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    name: raw.name ?? '',
+    description: raw.description ?? '',
+    image_url: raw.imageUrl ?? raw.image_url,
+    is_public: raw.isPublic ?? raw.is_public ?? true,
+    member_count: raw.memberCount ?? raw.member_count ?? 0,
+    created_by: raw.createdBy ?? raw.created_by ?? 0,
+    creator: normalizeUser(raw.creator),
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  };
+}
+
+function normalizeGroupMember(raw: any): GroupMember {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    group_id: raw.groupId ?? raw.group_id ?? 0,
+    user_id: raw.userId ?? raw.user_id ?? 0,
+    role: raw.role ?? 'member',
+    user: normalizeUser(raw.user),
+    joined_at: raw.joinedAt ?? raw.joined_at ?? '',
+  };
+}
+
+function normalizeEvent(raw: any): Event {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    title: raw.title ?? '',
+    description: raw.description ?? '',
+    location: raw.location,
+    start_time: raw.startsAt ?? raw.startTime ?? raw.starts_at ?? raw.start_time ?? '',
+    end_time: raw.endsAt ?? raw.endTime ?? raw.ends_at ?? raw.end_time ?? '',
+    max_attendees: raw.maxAttendees ?? raw.max_attendees,
+    attendee_count: raw.attendeeCount ?? raw.attendee_count ?? 0,
+    organizer_id: raw.organizerId ?? raw.organizer_id ?? 0,
+    group_id: raw.groupId ?? raw.group_id,
+    organizer: normalizeUser(raw.organizer),
+    group: raw.group ? normalizeGroup(raw.group) : undefined,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  };
+}
+
+function normalizeEventAttendee(raw: any): EventAttendee {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    event_id: raw.eventId ?? raw.event_id ?? 0,
+    user_id: raw.userId ?? raw.user_id ?? 0,
+    status: raw.status ?? 'going',
+    user: normalizeUser(raw.user),
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+  };
+}
+
+function normalizeExchange(raw: any): Exchange {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    listing_id: raw.listingId ?? raw.listing_id ?? 0,
+    requester_id: raw.requesterId ?? raw.requester_id ?? 0,
+    provider_id: raw.providerId ?? raw.provider_id ?? 0,
+    status: raw.status ?? 'requested',
+    hours: raw.hours ?? 0,
+    description: raw.description,
+    listing: raw.listing ? normalizeListing(raw.listing) : undefined,
+    requester: normalizeUser(raw.requester),
+    provider: normalizeUser(raw.provider),
+    started_at: raw.startedAt ?? raw.started_at,
+    completed_at: raw.completedAt ?? raw.completed_at,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  };
+}
+
+function normalizeExchangeRating(raw: any): ExchangeRating {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    exchange_id: raw.exchangeId ?? raw.exchange_id ?? 0,
+    rater_id: raw.raterId ?? raw.rater_id ?? 0,
+    rated_user_id: raw.ratedUserId ?? raw.rated_user_id ?? 0,
+    rating: raw.rating ?? 0,
+    comment: raw.comment,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+  };
+}
+
+function normalizeGamificationProfile(raw: any): GamificationProfile {
+  if (!raw) return raw;
+  return {
+    id: raw.id ?? raw.userId ?? 0,
+    first_name: raw.firstName ?? raw.first_name ?? '',
+    last_name: raw.lastName ?? raw.last_name ?? '',
+    total_xp: raw.totalXp ?? raw.total_xp ?? 0,
+    level: raw.level ?? 0,
+    xp_to_next_level: raw.xpToNextLevel ?? raw.xp_to_next_level ?? 0,
+    xp_required_for_current_level: raw.xpRequiredForCurrentLevel ?? raw.xp_required_for_current_level ?? 0,
+    xp_required_for_next_level: raw.xpRequiredForNextLevel ?? raw.xp_required_for_next_level ?? 0,
+    badges_earned: raw.badgesEarned ?? raw.badges_earned ?? 0,
+  };
+}
+
+function normalizeBadge(raw: any): Badge {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    slug: raw.slug ?? '',
+    name: raw.name ?? '',
+    description: raw.description ?? '',
+    icon: raw.icon ?? '',
+    xp_reward: raw.xpReward ?? raw.xp_reward ?? 0,
+    is_earned: raw.isEarned ?? raw.is_earned ?? false,
+    earned_at: raw.earnedAt ?? raw.earned_at,
+  };
+}
+
+function normalizeXpTransaction(raw: any): XpTransaction {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    amount: raw.amount ?? 0,
+    source: raw.source ?? '',
+    description: raw.description ?? '',
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+  };
+}
+
+function normalizeLeaderboardEntry(raw: any): LeaderboardEntry {
+  if (!raw) return raw;
+  return {
+    rank: raw.rank ?? 0,
+    user: {
+      id: raw.user?.id ?? 0,
+      first_name: raw.user?.firstName ?? raw.user?.first_name ?? '',
+      last_name: raw.user?.lastName ?? raw.user?.last_name ?? '',
+    },
+    period_xp: raw.periodXp ?? raw.period_xp ?? 0,
+    total_xp: raw.totalXp ?? raw.total_xp ?? 0,
+    level: raw.level ?? 0,
+  };
+}
+
+function normalizeReview(raw: any): Review {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    rating: raw.rating ?? 0,
+    comment: raw.comment ?? null,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
+    updated_at: raw.updatedAt ?? raw.updated_at ?? null,
+    reviewer: {
+      id: raw.reviewer?.id ?? 0,
+      first_name: raw.reviewer?.firstName ?? raw.reviewer?.first_name ?? '',
+      last_name: raw.reviewer?.lastName ?? raw.reviewer?.last_name ?? '',
+    },
+    target_user: raw.targetUser ?? raw.target_user ? {
+      id: (raw.targetUser ?? raw.target_user)?.id ?? 0,
+      first_name: (raw.targetUser ?? raw.target_user)?.firstName ?? (raw.targetUser ?? raw.target_user)?.first_name ?? '',
+      last_name: (raw.targetUser ?? raw.target_user)?.lastName ?? (raw.targetUser ?? raw.target_user)?.last_name ?? '',
+    } : undefined,
+    target_listing: raw.targetListing ?? raw.target_listing ? {
+      id: (raw.targetListing ?? raw.target_listing)?.id ?? 0,
+      title: (raw.targetListing ?? raw.target_listing)?.title ?? '',
+    } : undefined,
+  };
+}
+
 function normalizePost(raw: any): Post {
   return {
     id: raw.id,
@@ -565,7 +839,7 @@ function normalizePost(raw: any): Post {
     is_liked: raw.isLiked ?? raw.is_liked ?? false,
     author: normalizeUser(raw.user ?? raw.author),
     group_id: raw.groupId ?? raw.group_id ?? raw.group?.id,
-    group: raw.group,
+    group: raw.group ? normalizeGroup(raw.group) : undefined,
     created_at: raw.createdAt ?? raw.created_at ?? '',
     updated_at: raw.updatedAt ?? raw.updated_at ?? '',
   };
@@ -579,6 +853,29 @@ function normalizeComment(raw: any): Comment {
     content: raw.content ?? '',
     author: normalizeUser(raw.user ?? raw.author),
     created_at: raw.createdAt ?? raw.created_at ?? '',
+  };
+}
+
+/** Normalize a paginated response, applying a normalizer to each item in data[] */
+function normalizePaginated<T>(raw: any, normalizer: (item: any) => T): PaginatedResponse<T> {
+  return {
+    data: (raw?.data ?? []).map(normalizer),
+    pagination: {
+      page: raw?.pagination?.page ?? 1,
+      limit: raw?.pagination?.limit ?? 20,
+      total: raw?.pagination?.total ?? 0,
+      total_pages: raw?.pagination?.totalPages ?? raw?.pagination?.total_pages ?? 0,
+    },
+  };
+}
+
+/** Normalize an AuthResponse (login/register) */
+function normalizeAuthResponse(raw: any): AuthResponse {
+  return {
+    access_token: raw.accessToken ?? raw.access_token ?? raw.token ?? '',
+    token_type: raw.tokenType ?? raw.token_type ?? 'Bearer',
+    expires_in: raw.expiresIn ?? raw.expires_in ?? 0,
+    user: normalizeUserRequired(raw.user),
   };
 }
 
@@ -657,6 +954,11 @@ class ApiClient {
       (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
     }
 
+    // Always send tenant ID header for unauthenticated requests (FAQs, legal, translations, etc.)
+    if (TENANT_ID) {
+      (headers as Record<string, string>)["X-Tenant-ID"] = TENANT_ID;
+    }
+
     // Create abort controller for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(
@@ -690,10 +992,12 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      const error: ApiError = await response.json().catch(() => ({
+      const error = await response.json().catch(() => ({
         error: "An unexpected error occurred",
       }));
-      throw new Error(error.error);
+      throw new Error(
+        error.error || error.title || error.detail || "An unexpected error occurred"
+      );
     }
 
       // Handle empty responses (204 No Content)
@@ -731,7 +1035,7 @@ class ApiClient {
     password: string,
     tenantSlug: string
   ): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>("/api/auth/login", {
+    const raw = await this.request<any>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({
         email,
@@ -740,6 +1044,7 @@ class ApiClient {
       }),
     });
 
+    const response = normalizeAuthResponse(raw);
     setToken(response.access_token);
     setStoredUser(response.user);
 
@@ -747,10 +1052,16 @@ class ApiClient {
   }
 
   async validateToken(): Promise<User> {
-    return this.request<User>("/api/auth/validate");
+    const raw = await this.request<any>("/api/auth/validate");
+    return normalizeUserRequired(raw);
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
+    try {
+      await this.request<void>("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Server-side logout is best-effort; always clear local state
+    }
     removeToken();
   }
 
@@ -761,11 +1072,12 @@ class ApiClient {
     last_name: string;
     tenant_slug: string;
   }): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>("/api/auth/register", {
+    const raw = await this.request<any>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify(data),
     });
 
+    const response = normalizeAuthResponse(raw);
     setToken(response.access_token);
     setStoredUser(response.user);
 
@@ -791,25 +1103,29 @@ class ApiClient {
   // ==========================================================================
 
   async getUsers(): Promise<User[]> {
-    return this.request<User[]>("/api/users");
+    const raw = await this.request<any[]>("/api/users");
+    return (raw ?? []).map((u: any) => normalizeUserRequired(u));
   }
 
   async getUser(id: number): Promise<User> {
-    return this.request<User>(`/api/users/${id}`);
+    const raw = await this.request<any>(`/api/users/${id}`);
+    return normalizeUserRequired(raw);
   }
 
   async getCurrentUser(): Promise<User> {
-    return this.request<User>("/api/users/me");
+    const raw = await this.request<any>("/api/users/me");
+    return normalizeUserRequired(raw);
   }
 
   async updateCurrentUser(data: {
     first_name?: string;
     last_name?: string;
   }): Promise<User> {
-    const user = await this.request<User>("/api/users/me", {
+    const raw = await this.request<any>("/api/users/me", {
       method: "PATCH",
       body: JSON.stringify(data),
     });
+    const user = normalizeUserRequired(raw);
     setStoredUser(user);
     return user;
   }
@@ -820,7 +1136,8 @@ class ApiClient {
     q?: string;
   }): Promise<PaginatedResponse<User>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<User>>(`/api/members${query}`);
+    const raw = await this.request<any>(`/api/users${query}`);
+    return normalizePaginated(raw, normalizeUserRequired);
   }
 
   // ==========================================================================
@@ -835,11 +1152,13 @@ class ApiClient {
     limit?: number;
   }): Promise<PaginatedResponse<Listing>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<Listing>>(`/api/listings${query}`);
+    const raw = await this.request<any>(`/api/listings${query}`);
+    return normalizePaginated(raw, normalizeListing);
   }
 
   async getListing(id: number): Promise<Listing> {
-    return this.request<Listing>(`/api/listings/${id}`);
+    const raw = await this.request<any>(`/api/listings/${id}`);
+    return normalizeListing(raw);
   }
 
   async createListing(data: {
@@ -849,10 +1168,11 @@ class ApiClient {
     time_credits: number;
     status?: "active" | "draft";
   }): Promise<Listing> {
-    return this.request<Listing>("/api/listings", {
+    const raw = await this.request<any>("/api/listings", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizeListing(raw);
   }
 
   async updateListing(
@@ -865,10 +1185,11 @@ class ApiClient {
       status: "active" | "draft" | "completed" | "cancelled";
     }>
   ): Promise<Listing> {
-    return this.request<Listing>(`/api/listings/${id}`, {
+    const raw = await this.request<any>(`/api/listings/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    return normalizeListing(raw);
   }
 
   async deleteListing(id: number): Promise<void> {
@@ -882,7 +1203,8 @@ class ApiClient {
   // ==========================================================================
 
   async getBalance(): Promise<WalletBalance> {
-    return this.request<WalletBalance>("/api/wallet/balance");
+    const raw = await this.request<any>("/api/wallet/balance");
+    return normalizeWalletBalance(raw);
   }
 
   async getTransactions(params?: {
@@ -891,13 +1213,13 @@ class ApiClient {
     limit?: number;
   }): Promise<PaginatedResponse<Transaction>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<Transaction>>(
-      `/api/wallet/transactions${query}`
-    );
+    const raw = await this.request<any>(`/api/wallet/transactions${query}`);
+    return normalizePaginated(raw, normalizeTransaction);
   }
 
   async getTransaction(id: number): Promise<Transaction> {
-    return this.request<Transaction>(`/api/wallet/transactions/${id}`);
+    const raw = await this.request<any>(`/api/wallet/transactions/${id}`);
+    return normalizeTransaction(raw);
   }
 
   async transfer(data: {
@@ -905,26 +1227,33 @@ class ApiClient {
     amount: number;
     description: string;
   }): Promise<Transaction> {
-    return this.request<Transaction>("/api/wallet/transfer", {
+    const raw = await this.request<any>("/api/wallet/transfer", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizeTransaction(raw);
   }
 
   // ==========================================================================
   // Messages
   // ==========================================================================
 
-  async getConversations(): Promise<Conversation[] | { data: Conversation[] }> {
-    return this.request<Conversation[] | { data: Conversation[] }>("/api/messages");
+  async getConversations(): Promise<Conversation[]> {
+    const raw = await this.request<any>("/api/messages");
+    // Handle both array and paginated response formats
+    const items = Array.isArray(raw) ? raw : (raw?.data ?? []);
+    return items.map(normalizeConversation);
   }
 
   async getConversation(
     id: number
   ): Promise<Conversation & { messages: Message[] }> {
-    return this.request<Conversation & { messages: Message[] }>(
-      `/api/messages/${id}`
-    );
+    const raw = await this.request<any>(`/api/messages/${id}`);
+    const conv = normalizeConversation(raw);
+    return {
+      ...conv,
+      messages: (raw.messages ?? []).map(normalizeMessage),
+    };
   }
 
   async getUnreadMessageCount(): Promise<{ count: number }> {
@@ -936,10 +1265,11 @@ class ApiClient {
     conversation_id?: number;
     content: string;
   }): Promise<Message> {
-    return this.request<Message>("/api/messages", {
+    const raw = await this.request<any>("/api/messages", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizeMessage(raw);
   }
 
   async markConversationAsRead(id: number): Promise<void> {
@@ -958,30 +1288,33 @@ class ApiClient {
     limit?: number;
   }): Promise<PaginatedResponse<Connection>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<Connection>>(
-      `/api/connections${query}`
-    );
+    const raw = await this.request<any>(`/api/connections${query}`);
+    return normalizePaginated(raw, normalizeConnection);
   }
 
   async getConnection(id: number): Promise<Connection> {
-    return this.request<Connection>(`/api/connections/${id}`);
+    const raw = await this.request<any>(`/api/connections/${id}`);
+    return normalizeConnection(raw);
   }
 
   async sendConnectionRequest(recipientId: number): Promise<Connection> {
-    return this.request<Connection>("/api/connections", {
+    const raw = await this.request<any>("/api/connections", {
       method: "POST",
       body: JSON.stringify({ user_id: recipientId }),
     });
+    return normalizeConnection(raw);
   }
 
   async respondToConnection(
     id: number,
     status: "accepted" | "rejected"
   ): Promise<Connection> {
-    return this.request<Connection>(`/api/connections/${id}`, {
+    // Backend has separate /accept and /decline endpoints
+    const action = status === "accepted" ? "accept" : "decline";
+    const raw = await this.request<any>(`/api/connections/${id}/${action}`, {
       method: "PUT",
-      body: JSON.stringify({ status }),
     });
+    return normalizeConnection(raw);
   }
 
   async removeConnection(id: number): Promise<void> {
@@ -1000,9 +1333,8 @@ class ApiClient {
     limit?: number;
   }): Promise<PaginatedResponse<Notification>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<Notification>>(
-      `/api/notifications${query}`
-    );
+    const raw = await this.request<any>(`/api/notifications${query}`);
+    return normalizePaginated(raw, normalizeNotification);
   }
 
   async getUnreadNotificationCount(): Promise<{ count: number }> {
@@ -1030,11 +1362,13 @@ class ApiClient {
     limit?: number;
   }): Promise<PaginatedResponse<Group>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<Group>>(`/api/groups${query}`);
+    const raw = await this.request<any>(`/api/groups${query}`);
+    return normalizePaginated(raw, normalizeGroup);
   }
 
   async getGroup(id: number): Promise<Group> {
-    return this.request<Group>(`/api/groups/${id}`);
+    const raw = await this.request<any>(`/api/groups/${id}`);
+    return normalizeGroup(raw);
   }
 
   async createGroup(data: {
@@ -1043,10 +1377,11 @@ class ApiClient {
     is_public?: boolean;
     image_url?: string;
   }): Promise<Group> {
-    return this.request<Group>("/api/groups", {
+    const raw = await this.request<any>("/api/groups", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizeGroup(raw);
   }
 
   async updateGroup(
@@ -1058,10 +1393,11 @@ class ApiClient {
       image_url: string;
     }>
   ): Promise<Group> {
-    return this.request<Group>(`/api/groups/${id}`, {
+    const raw = await this.request<any>(`/api/groups/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    return normalizeGroup(raw);
   }
 
   async deleteGroup(id: number): Promise<void> {
@@ -1071,23 +1407,23 @@ class ApiClient {
   }
 
   async joinGroup(id: number): Promise<GroupMember> {
-    return this.request<GroupMember>(`/api/groups/${id}/join`, {
+    const raw = await this.request<any>(`/api/groups/${id}/join`, {
       method: "POST",
     });
+    return normalizeGroupMember(raw);
   }
 
   async leaveGroup(id: number): Promise<void> {
     return this.request<void>(`/api/groups/${id}/leave`, {
-      method: "POST",
+      method: "DELETE",
     });
   }
 
   async getGroupMembers(
     groupId: number
   ): Promise<PaginatedResponse<GroupMember>> {
-    return this.request<PaginatedResponse<GroupMember>>(
-      `/api/groups/${groupId}/members`
-    );
+    const raw = await this.request<any>(`/api/groups/${groupId}/members`);
+    return normalizePaginated(raw, normalizeGroupMember);
   }
 
   async updateGroupMemberRole(
@@ -1095,13 +1431,14 @@ class ApiClient {
     userId: number,
     role: "admin" | "moderator" | "member"
   ): Promise<GroupMember> {
-    return this.request<GroupMember>(
+    const raw = await this.request<any>(
       `/api/groups/${groupId}/members/${userId}`,
       {
         method: "PUT",
         body: JSON.stringify({ role }),
       }
     );
+    return normalizeGroupMember(raw);
   }
 
   async removeGroupMember(groupId: number, userId: number): Promise<void> {
@@ -1121,11 +1458,13 @@ class ApiClient {
     limit?: number;
   }): Promise<PaginatedResponse<Event>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<Event>>(`/api/events${query}`);
+    const raw = await this.request<any>(`/api/events${query}`);
+    return normalizePaginated(raw, normalizeEvent);
   }
 
   async getEvent(id: number): Promise<Event> {
-    return this.request<Event>(`/api/events/${id}`);
+    const raw = await this.request<any>(`/api/events/${id}`);
+    return normalizeEvent(raw);
   }
 
   async createEvent(data: {
@@ -1137,10 +1476,11 @@ class ApiClient {
     max_attendees?: number;
     group_id?: number;
   }): Promise<Event> {
-    return this.request<Event>("/api/events", {
+    const raw = await this.request<any>("/api/events", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizeEvent(raw);
   }
 
   async updateEvent(
@@ -1154,10 +1494,11 @@ class ApiClient {
       max_attendees: number;
     }>
   ): Promise<Event> {
-    return this.request<Event>(`/api/events/${id}`, {
+    const raw = await this.request<any>(`/api/events/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    return normalizeEvent(raw);
   }
 
   async deleteEvent(id: number): Promise<void> {
@@ -1170,10 +1511,11 @@ class ApiClient {
     id: number,
     status: "going" | "maybe" | "not_going"
   ): Promise<EventAttendee> {
-    return this.request<EventAttendee>(`/api/events/${id}/rsvp`, {
+    const raw = await this.request<any>(`/api/events/${id}/rsvp`, {
       method: "POST",
       body: JSON.stringify({ status }),
     });
+    return normalizeEventAttendee(raw);
   }
 
   async cancelRsvp(id: number): Promise<void> {
@@ -1185,9 +1527,8 @@ class ApiClient {
   async getEventAttendees(
     eventId: number
   ): Promise<PaginatedResponse<EventAttendee>> {
-    return this.request<PaginatedResponse<EventAttendee>>(
-      `/api/events/${eventId}/rsvps`
-    );
+    const raw = await this.request<any>(`/api/events/${eventId}/rsvps`);
+    return normalizePaginated(raw, normalizeEventAttendee);
   }
 
   // ==========================================================================
@@ -1209,7 +1550,8 @@ class ApiClient {
   }
 
   async getPost(id: number): Promise<Post> {
-    return this.request<Post>(`/api/feed/${id}`);
+    const raw = await this.request<any>(`/api/feed/${id}`);
+    return normalizePost(raw);
   }
 
   async createPost(data: {
@@ -1283,18 +1625,20 @@ class ApiClient {
     profile: GamificationProfile;
     recent_xp: XpTransaction[];
   }> {
-    return this.request<{
-      profile: GamificationProfile;
-      recent_xp: XpTransaction[];
-    }>("/api/gamification/profile");
+    const raw = await this.request<any>("/api/gamification/profile");
+    return {
+      profile: normalizeGamificationProfile(raw.profile ?? raw),
+      recent_xp: (raw.recentXp ?? raw.recent_xp ?? []).map(normalizeXpTransaction),
+    };
   }
 
   async getUserGamificationProfile(userId: number): Promise<{
     profile: GamificationProfile;
   }> {
-    return this.request<{ profile: GamificationProfile }>(
-      `/api/gamification/profile/${userId}`
-    );
+    const raw = await this.request<any>(`/api/gamification/profile/${userId}`);
+    return {
+      profile: normalizeGamificationProfile(raw.profile ?? raw),
+    };
   }
 
   async getAllBadges(): Promise<{
@@ -1305,14 +1649,20 @@ class ApiClient {
       progress_percent: number;
     };
   }> {
-    return this.request<{
-      data: Badge[];
-      summary: { total: number; earned: number; progress_percent: number };
-    }>("/api/gamification/badges");
+    const raw = await this.request<any>("/api/gamification/badges");
+    return {
+      data: (raw.data ?? []).map(normalizeBadge),
+      summary: {
+        total: raw.summary?.total ?? 0,
+        earned: raw.summary?.earned ?? 0,
+        progress_percent: raw.summary?.progressPercent ?? raw.summary?.progress_percent ?? 0,
+      },
+    };
   }
 
   async getMyBadges(): Promise<Badge[]> {
-    return this.request<Badge[]>("/api/gamification/badges/my");
+    const raw = await this.request<any[]>("/api/gamification/badges/my");
+    return (raw ?? []).map(normalizeBadge);
   }
 
   async getLeaderboard(params?: {
@@ -1326,12 +1676,13 @@ class ApiClient {
     }
   > {
     const query = this.buildQueryString(params || {});
-    return this.request<
-      PaginatedResponse<LeaderboardEntry> & {
-        current_user_rank: number;
-        period: string;
-      }
-    >(`/api/gamification/leaderboard${query}`);
+    const raw = await this.request<any>(`/api/gamification/leaderboard${query}`);
+    const paginated = normalizePaginated(raw, normalizeLeaderboardEntry);
+    return {
+      ...paginated,
+      current_user_rank: raw.currentUserRank ?? raw.current_user_rank ?? 0,
+      period: raw.period ?? '',
+    };
   }
 
   async getXpHistory(params?: {
@@ -1339,9 +1690,8 @@ class ApiClient {
     limit?: number;
   }): Promise<PaginatedResponse<XpTransaction>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<XpTransaction>>(
-      `/api/gamification/xp-history${query}`
-    );
+    const raw = await this.request<any>(`/api/gamification/xp-history${query}`);
+    return normalizePaginated(raw, normalizeXpTransaction);
   }
 
   // ==========================================================================
@@ -1357,17 +1707,26 @@ class ApiClient {
     pagination: { page: number; limit: number; total: number; pages: number };
   }> {
     const query = this.buildQueryString(params || {});
-    return this.request(`/api/users/${userId}/reviews${query}`);
+    const raw = await this.request<any>(`/api/users/${userId}/reviews${query}`);
+    return {
+      data: (raw.data ?? []).map(normalizeReview),
+      summary: {
+        average_rating: raw.summary?.averageRating ?? raw.summary?.average_rating ?? 0,
+        total_reviews: raw.summary?.totalReviews ?? raw.summary?.total_reviews ?? 0,
+      },
+      pagination: raw.pagination ?? { page: 1, limit: 20, total: 0, pages: 0 },
+    };
   }
 
   async createUserReview(
     userId: number,
     data: { rating: number; comment?: string }
   ): Promise<Review> {
-    return this.request<Review>(`/api/users/${userId}/reviews`, {
+    const raw = await this.request<any>(`/api/users/${userId}/reviews`, {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizeReview(raw);
   }
 
   async getListingReviews(
@@ -1379,31 +1738,42 @@ class ApiClient {
     pagination: { page: number; limit: number; total: number; pages: number };
   }> {
     const query = this.buildQueryString(params || {});
-    return this.request(`/api/listings/${listingId}/reviews${query}`);
+    const raw = await this.request<any>(`/api/listings/${listingId}/reviews${query}`);
+    return {
+      data: (raw.data ?? []).map(normalizeReview),
+      summary: {
+        average_rating: raw.summary?.averageRating ?? raw.summary?.average_rating ?? 0,
+        total_reviews: raw.summary?.totalReviews ?? raw.summary?.total_reviews ?? 0,
+      },
+      pagination: raw.pagination ?? { page: 1, limit: 20, total: 0, pages: 0 },
+    };
   }
 
   async createListingReview(
     listingId: number,
     data: { rating: number; comment?: string }
   ): Promise<Review> {
-    return this.request<Review>(`/api/listings/${listingId}/reviews`, {
+    const raw = await this.request<any>(`/api/listings/${listingId}/reviews`, {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizeReview(raw);
   }
 
   async getReview(id: number): Promise<Review> {
-    return this.request<Review>(`/api/reviews/${id}`);
+    const raw = await this.request<any>(`/api/reviews/${id}`);
+    return normalizeReview(raw);
   }
 
   async updateReview(
     id: number,
     data: { rating?: number; comment?: string }
   ): Promise<Review> {
-    return this.request<Review>(`/api/reviews/${id}`, {
+    const raw = await this.request<any>(`/api/reviews/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    return normalizeReview(raw);
   }
 
   async deleteReview(id: number): Promise<void> {
@@ -1413,7 +1783,8 @@ class ApiClient {
   }
 
   async getPendingReviews(): Promise<Exchange[]> {
-    return this.request<Exchange[]>("/api/reviews/pending");
+    const raw = await this.request<any[]>("/api/reviews/pending");
+    return (raw ?? []).map(normalizeExchange);
   }
 
   async getUserTrustScore(userId: number): Promise<{
@@ -2971,11 +3342,13 @@ class ApiClient {
     limit?: number;
   }): Promise<PaginatedResponse<Exchange>> {
     const query = this.buildQueryString(params || {});
-    return this.request<PaginatedResponse<Exchange>>(`/api/exchanges${query}`);
+    const raw = await this.request<any>(`/api/exchanges${query}`);
+    return normalizePaginated(raw, normalizeExchange);
   }
 
   async getExchange(id: number): Promise<Exchange> {
-    return this.request<Exchange>(`/api/exchanges/${id}`);
+    const raw = await this.request<any>(`/api/exchanges/${id}`);
+    return normalizeExchange(raw);
   }
 
   async createExchange(data: {
@@ -2983,60 +3356,57 @@ class ApiClient {
     hours: number;
     description?: string;
   }): Promise<Exchange> {
-    return this.request<Exchange>("/api/exchanges", {
+    const raw = await this.request<any>("/api/exchanges", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizeExchange(raw);
   }
 
   async acceptExchange(id: number): Promise<Exchange> {
-    return this.request<Exchange>(`/api/exchanges/${id}/accept`, {
-      method: "PUT",
-    });
+    const raw = await this.request<any>(`/api/exchanges/${id}/accept`, { method: "PUT" });
+    return normalizeExchange(raw);
   }
 
   async declineExchange(id: number): Promise<Exchange> {
-    return this.request<Exchange>(`/api/exchanges/${id}/decline`, {
-      method: "PUT",
-    });
+    const raw = await this.request<any>(`/api/exchanges/${id}/decline`, { method: "PUT" });
+    return normalizeExchange(raw);
   }
 
   async startExchange(id: number): Promise<Exchange> {
-    return this.request<Exchange>(`/api/exchanges/${id}/start`, {
-      method: "PUT",
-    });
+    const raw = await this.request<any>(`/api/exchanges/${id}/start`, { method: "PUT" });
+    return normalizeExchange(raw);
   }
 
   async completeExchange(id: number): Promise<Exchange> {
-    return this.request<Exchange>(`/api/exchanges/${id}/complete`, {
-      method: "PUT",
-    });
+    const raw = await this.request<any>(`/api/exchanges/${id}/complete`, { method: "PUT" });
+    return normalizeExchange(raw);
   }
 
   async cancelExchange(id: number): Promise<Exchange> {
-    return this.request<Exchange>(`/api/exchanges/${id}/cancel`, {
-      method: "PUT",
-    });
+    const raw = await this.request<any>(`/api/exchanges/${id}/cancel`, { method: "PUT" });
+    return normalizeExchange(raw);
   }
 
   async disputeExchange(id: number): Promise<Exchange> {
-    return this.request<Exchange>(`/api/exchanges/${id}/dispute`, {
-      method: "PUT",
-    });
+    const raw = await this.request<any>(`/api/exchanges/${id}/dispute`, { method: "PUT" });
+    return normalizeExchange(raw);
   }
 
   async rateExchange(
     id: number,
     data: { rating: number; comment?: string }
   ): Promise<ExchangeRating> {
-    return this.request<ExchangeRating>(`/api/exchanges/${id}/rate`, {
+    const raw = await this.request<any>(`/api/exchanges/${id}/rate`, {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return normalizeExchangeRating(raw);
   }
 
   async getExchangesByListing(listingId: number): Promise<Exchange[]> {
-    return this.request<Exchange[]>(`/api/exchanges/by-listing/${listingId}`);
+    const raw = await this.request<any[]>(`/api/exchanges/by-listing/${listingId}`);
+    return (raw ?? []).map(normalizeExchange);
   }
 
 
@@ -3142,6 +3512,7 @@ class ApiClient {
     const token = getToken();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
     const response = await fetch(`${this.baseUrl}/api/wallet/features/export?format=${format}`, { headers });
     return response.blob();
   }
@@ -3179,6 +3550,7 @@ class ApiClient {
     const token = getToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
     const response = await fetch(`${this.baseUrl}/api/groups/${groupId}/files`, { method: "POST", headers, body: formData });
     if (!response.ok) throw new Error("Upload failed");
     return response.json();
@@ -3260,6 +3632,7 @@ class ApiClient {
     const token = getToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
     const response = await fetch(`${this.baseUrl}/api/verification/request?type=${type}`, { method: "POST", headers, body: data });
     if (!response.ok) throw new Error("Verification request failed");
     return response.json();
@@ -3308,6 +3681,7 @@ class ApiClient {
     const token = getToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
     const url = category ? `${this.baseUrl}/api/files/upload?category=${category}` : `${this.baseUrl}/api/files/upload`;
     const response = await fetch(url, { method: "POST", headers, body: formData });
     if (!response.ok) throw new Error("Upload failed");
@@ -3467,6 +3841,7 @@ class ApiClient {
     const token = getToken();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
     const response = await fetch(`${this.baseUrl}/api/volunteering/${opportunityId}/certificate`, { headers });
     return response.blob();
   }

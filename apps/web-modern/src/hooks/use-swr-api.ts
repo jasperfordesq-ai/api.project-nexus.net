@@ -135,17 +135,7 @@ export function useTransaction(
 export function useConversations(config?: SWRConfiguration<Conversation[]>) {
   return useSWR<Conversation[]>(
     "conversations",
-    async () => {
-      const response = await api.getConversations();
-      // Handle both array and paginated response formats
-      if (Array.isArray(response)) {
-        return response;
-      }
-      if (response && typeof response === "object" && "data" in response) {
-        return Array.isArray(response.data) ? response.data : [];
-      }
-      return [];
-    },
+    () => api.getConversations(),
     {
       revalidateOnFocus: true,
       refreshInterval: 30000, // Poll for new conversations

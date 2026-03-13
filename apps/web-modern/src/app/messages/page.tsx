@@ -136,14 +136,7 @@ function MessagesContent() {
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        const response = await api.getConversations();
-        // Handle both array and paginated response formats
-        let convos: Conversation[] = [];
-        if (Array.isArray(response)) {
-          convos = response;
-        } else if (response && typeof response === "object" && "data" in response) {
-          convos = Array.isArray(response.data) ? response.data : [];
-        }
+        const convos = await api.getConversations();
         setConversations(convos);
       } catch (error) {
         logger.error("Failed to fetch conversations:", error);

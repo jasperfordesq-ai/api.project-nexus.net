@@ -79,6 +79,15 @@ function EditEventContent() {
     e.preventDefault();
     setError("");
 
+    if (!formData.title.trim()) {
+      setError("Event title is required");
+      return;
+    }
+    if (!formData.description.trim()) {
+      setError("Description is required");
+      return;
+    }
+
     const start = new Date(formData.start_time);
     const end = new Date(formData.end_time);
 

@@ -85,7 +85,7 @@ export function useFileUpload({
 
       try {
         const token = getToken();
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5080";
 
         // Create form data
         const formData = new FormData();

@@ -22,7 +22,6 @@ import {
   ModalBody,
   ModalFooter,
   useDisclosure,
-  Pagination,
 } from "@heroui/react";
 import {
   Users,

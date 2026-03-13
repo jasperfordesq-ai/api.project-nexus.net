@@ -20,7 +20,6 @@ import {
 import {
   Trophy,
   Star,
-  Medal,
   TrendingUp,
   Clock,
   Edit2,

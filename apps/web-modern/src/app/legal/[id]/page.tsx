@@ -5,9 +5,9 @@
 
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, use } from "react";
 import { Button, Chip, Skeleton } from "@heroui/react";
-import { ArrowLeft, CheckCircle, FileText } from "lucide-react";
+import { ArrowLeft, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -15,6 +15,7 @@ import { GlassCard } from "@/components/glass-card";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface LegalDocDetail {
   id: number;
@@ -86,7 +87,7 @@ function LegalDocDetailContent({ params }: { params: Promise<{ id: string }> }) 
                 </Button>
               ) : null}
             </div>
-            <div className="prose prose-invert max-w-none text-white/80" dangerouslySetInnerHTML={{ __html: doc.content }} />
+            <div className="prose prose-invert max-w-none text-white/80" dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content) }} />
           </GlassCard>
         ) : (
           <div className="text-center py-16">

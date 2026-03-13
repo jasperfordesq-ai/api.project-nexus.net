@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Chip, Skeleton } from "@heroui/react";
 import { Flag, Clock } from "lucide-react";

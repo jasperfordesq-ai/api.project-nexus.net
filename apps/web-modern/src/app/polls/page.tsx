@@ -9,7 +9,6 @@ import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
-  Avatar,
   Chip,
   Skeleton,
   Pagination,

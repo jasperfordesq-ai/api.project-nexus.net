@@ -23,13 +23,11 @@ import {
   LogIn,
   LogOut,
   ArrowLeft,
-  Wallet,
-  ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
-import { GlassCard, MotionGlassCard } from "@/components/glass-card";
+import { MotionGlassCard } from "@/components/glass-card";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
@@ -71,8 +69,6 @@ function OrganisationDetailContent({
   const [org, setOrg] = useState<OrgDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
-  const [orgWallet, setOrgWallet] = useState<any>(null);
-  const [orgTransactions, setOrgTransactions] = useState<any[]>([]);
 
   const fetchOrg = useCallback(async () => {
     setIsLoading(true);
@@ -92,18 +88,6 @@ function OrganisationDetailContent({
   useEffect(() => {
     fetchOrg();
   }, [fetchOrg]);
-  const fetchOrgWallet = useCallback(async (id: number) => {
-    try {
-      const [wallet, txs] = await Promise.all([
-        api.getOrgWallet(id),
-        api.getOrgTransactions(id),
-      ]);
-      setOrgWallet(wallet);
-      setOrgTransactions(txs || []);
-    } catch (error) {
-      logger.error("Failed to fetch org wallet:", error);
-    }
-  }, []);
   const handleJoin = async () => {
     try {
       await api.joinOrganisation(Number(id));

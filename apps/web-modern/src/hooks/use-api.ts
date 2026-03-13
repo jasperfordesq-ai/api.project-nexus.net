@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface UseApiOptions<T> {
   immediate?: boolean;
@@ -27,24 +27,33 @@ export function useApi<T>(
   const [isLoading, setIsLoading] = useState(immediate);
   const [error, setError] = useState<Error | null>(null);
 
+  // Use refs for callbacks to avoid infinite re-render loops when callers
+  // pass inline functions (e.g., () => api.getUser(id))
+  const fetcherRef = useRef(fetcher);
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  fetcherRef.current = fetcher;
+  onSuccessRef.current = onSuccess;
+  onErrorRef.current = onError;
+
   const execute = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await fetcher();
+      const result = await fetcherRef.current();
       setData(result);
-      onSuccess?.(result);
+      onSuccessRef.current?.(result);
       return result;
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Unknown error");
       setError(error);
-      onError?.(error);
+      onErrorRef.current?.(error);
       return undefined;
     } finally {
       setIsLoading(false);
     }
-  }, [fetcher, onSuccess, onError]);
+  }, []);
 
   const reset = useCallback(() => {
     setData(initialData);
@@ -85,26 +94,34 @@ export function useMutation<T, V = void>(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  // Use refs to avoid re-render loops from inline callback references
+  const mutatorRef = useRef(mutator);
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  mutatorRef.current = mutator;
+  onSuccessRef.current = onSuccess;
+  onErrorRef.current = onError;
+
   const mutate = useCallback(
     async (variables: V) => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const result = await mutator(variables);
+        const result = await mutatorRef.current(variables);
         setData(result);
-        onSuccess?.(result);
+        onSuccessRef.current?.(result);
         return result;
       } catch (err) {
         const error = err instanceof Error ? err : new Error("Unknown error");
         setError(error);
-        onError?.(error);
+        onErrorRef.current?.(error);
         return undefined;
       } finally {
         setIsLoading(false);
       }
     },
-    [mutator, onSuccess, onError]
+    []
   );
 
   const reset = useCallback(() => {

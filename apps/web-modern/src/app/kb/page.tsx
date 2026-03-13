@@ -13,7 +13,7 @@ import {
   Pagination,
   Chip,
 } from "@heroui/react";
-import { HelpCircle, Search, BookOpen, FolderOpen } from "lucide-react";
+import { HelpCircle, Search, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";

@@ -14,7 +14,7 @@ import {
   Pagination,
   Progress,
 } from "@heroui/react";
-import { Target, CheckCircle, Circle, Calendar } from "lucide-react";
+import { Target, CheckCircle, Calendar } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";

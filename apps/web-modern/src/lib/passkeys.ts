@@ -24,6 +24,14 @@ import type {
 } from "@simplewebauthn/browser";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5080";
+const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || "";
+
+/** Build common headers for passkey API calls */
+function passkeyHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (TENANT_ID) h["X-Tenant-ID"] = TENANT_ID;
+  return h;
+}
 
 // ============================================================================
 // Feature Detection
@@ -79,8 +87,8 @@ async function beginRegistration(
   const res = await fetch(`${API_BASE}/api/passkeys/register/begin`, {
     method: "POST",
     headers: {
+      ...passkeyHeaders(),
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
     },
   });
 
@@ -106,8 +114,8 @@ async function finishRegistration(
   const res = await fetch(`${API_BASE}/api/passkeys/register/finish`, {
     method: "POST",
     headers: {
+      ...passkeyHeaders(),
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       attestation_response: attestationResponse,
@@ -163,7 +171,7 @@ async function beginAuthentication(params?: {
 }): Promise<AuthBeginResponse> {
   const res = await fetch(`${API_BASE}/api/passkeys/authenticate/begin`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: passkeyHeaders(),
     body: JSON.stringify({
       tenant_slug: params?.tenantSlug,
       email: params?.email,
@@ -188,7 +196,7 @@ async function finishAuthentication(
 ): Promise<PasskeyAuthResponse> {
   const res = await fetch(`${API_BASE}/api/passkeys/authenticate/finish`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: passkeyHeaders(),
     body: JSON.stringify({
       session_id: sessionId,
       assertion_response: assertionResponse,
@@ -273,7 +281,7 @@ export interface PasskeyInfo {
  */
 export async function listPasskeys(token: string): Promise<PasskeyInfo[]> {
   const res = await fetch(`${API_BASE}/api/passkeys`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { ...passkeyHeaders(), Authorization: `Bearer ${token}` },
   });
 
   if (!res.ok) throw new Error("Failed to list passkeys");
@@ -291,7 +299,7 @@ export async function deletePasskey(
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/api/passkeys/${passkeyId}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { ...passkeyHeaders(), Authorization: `Bearer ${token}` },
   });
 
   if (!res.ok) {
@@ -314,8 +322,8 @@ export async function renamePasskey(
   const res = await fetch(`${API_BASE}/api/passkeys/${passkeyId}`, {
     method: "PUT",
     headers: {
+      ...passkeyHeaders(),
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
     },
     body: JSON.stringify({ display_name: displayName }),
   });

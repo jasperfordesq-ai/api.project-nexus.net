@@ -48,6 +48,16 @@ function NewGroupContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!formData.name.trim()) {
+      setError("Group name is required");
+      return;
+    }
+    if (!formData.description.trim()) {
+      setError("Description is required");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

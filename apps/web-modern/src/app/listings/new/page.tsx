@@ -51,6 +51,20 @@ function NewListingContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!formData.title.trim()) {
+      setError("Title is required");
+      return;
+    }
+    if (!formData.description.trim()) {
+      setError("Description is required");
+      return;
+    }
+    if (formData.title.trim().length < 3) {
+      setError("Title must be at least 3 characters");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

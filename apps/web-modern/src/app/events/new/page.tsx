@@ -61,6 +61,16 @@ function NewEventContent() {
     e.preventDefault();
     setError("");
 
+    // Validate required fields
+    if (!formData.title.trim()) {
+      setError("Event title is required");
+      return;
+    }
+    if (!formData.description.trim()) {
+      setError("Description is required");
+      return;
+    }
+
     // Validate dates
     const start = new Date(formData.start_time);
     const end = new Date(formData.end_time);

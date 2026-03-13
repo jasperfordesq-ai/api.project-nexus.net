@@ -22,13 +22,11 @@ import {
   Users,
   ArrowLeft,
   HandHeart,
-  Download,
-  Award,
 } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
-import { GlassCard, MotionGlassCard } from "@/components/glass-card";
+import { MotionGlassCard } from "@/components/glass-card";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
@@ -72,8 +70,6 @@ function VolunteeringDetailContent({
   const [isLoading, setIsLoading] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
-  const [volunteerHours, setVolunteerHours] = useState<any>(null);
-
   const fetchOpp = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -92,33 +88,6 @@ function VolunteeringDetailContent({
   useEffect(() => {
     fetchOpp();
   }, [fetchOpp]);
-  const fetchVolunteerHours = useCallback(async () => {
-    try {
-      const hours = await api.getVolunteerHours();
-      setVolunteerHours(hours);
-    } catch (error) {
-      logger.error("Failed to fetch volunteer hours:", error);
-    }
-  }, []);
-
-  const handleDownloadCertificate = async (opportunityId: number) => {
-    try {
-      const blob = await api.getVolunteerCertificate(opportunityId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "volunteer-certificate.pdf";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      logger.error("Failed to download certificate:", error);
-    }
-  };
-
-    useEffect(() => {
-    fetchVolunteerHours();
-  }, [fetchVolunteerHours]);
-
   const handleApply = async () => {
     setIsApplying(true);
     try {

@@ -34,7 +34,7 @@ import {
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
-import { GlassCard, MotionGlassCard } from "@/components/glass-card";
+import { MotionGlassCard } from "@/components/glass-card";
 import { useAuth } from "@/contexts/auth-context";
 import {
   api,

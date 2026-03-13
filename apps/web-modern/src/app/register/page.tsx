@@ -86,7 +86,7 @@ export default function RegisterPage() {
 
     try {
       await api.register({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
         first_name: firstName.trim(),
         last_name: lastName.trim(),

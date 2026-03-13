@@ -16,6 +16,7 @@ import { MotionGlassCard } from "@/components/glass-card";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import { containerVariantsFast, itemVariants } from "@/lib/animations";
 
 interface CmsPage {
@@ -101,7 +102,7 @@ export default function CmsPageView() {
                 className="prose prose-invert max-w-none text-white/80
                   prose-headings:text-white prose-a:text-indigo-400
                   prose-strong:text-white prose-p:leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: page.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(page.content) }}
               />
 
               {page.updated_at && (

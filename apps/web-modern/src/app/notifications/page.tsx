@@ -18,7 +18,6 @@ import {
   Bell,
   Check,
   CheckCheck,
-  Trash2,
   MessageSquare,
   UserPlus,
   Wallet,
@@ -33,7 +32,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
-import { MotionGlassCard, GlassCard } from "@/components/glass-card";
+import { MotionGlassCard } from "@/components/glass-card";
 import { useAuth } from "@/contexts/auth-context";
 import { api, type Notification, type PaginatedResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";

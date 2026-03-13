@@ -15,7 +15,7 @@ import {
   Skeleton,
   Pagination,
 } from "@heroui/react";
-import { Building2, Search, Users, Globe, ExternalLink } from "lucide-react";
+import { Building2, Search, Users, Globe } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";

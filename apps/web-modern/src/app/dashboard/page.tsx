@@ -19,18 +19,13 @@ import {
   Plus,
   ChevronRight,
   Sparkles,
-  Users,
   Calendar,
   Trophy,
   Star,
   Award,
   ArrowLeftRight,
   Briefcase,
-  Heart,
-  Target,
   Lightbulb,
-  BookOpen,
-  Rocket,
 } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
@@ -190,10 +185,12 @@ function DashboardContent() {
                   </div>
                   <Progress
                     value={
-                      ((gamification.total_xp - gamification.xp_required_for_current_level) /
-                        (gamification.xp_required_for_next_level -
-                          gamification.xp_required_for_current_level)) *
-                      100
+                      gamification.xp_required_for_next_level > gamification.xp_required_for_current_level
+                        ? ((gamification.total_xp - gamification.xp_required_for_current_level) /
+                            (gamification.xp_required_for_next_level -
+                              gamification.xp_required_for_current_level)) *
+                          100
+                        : 0
                     }
                     className="h-2"
                     classNames={{

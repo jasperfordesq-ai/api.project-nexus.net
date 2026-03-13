@@ -55,7 +55,9 @@ export default function LoginPage() {
 
   // Detect passkey capabilities on mount
   useEffect(() => {
-    detectPasskeyCapabilities().then(setPasskeyCapabilities);
+    detectPasskeyCapabilities()
+      .then(setPasskeyCapabilities)
+      .catch(() => { /* passkey detection failed — non-critical */ });
   }, []);
 
   // Start conditional mediation (passkey autofill) once when capabilities are known.
@@ -65,12 +67,14 @@ export default function LoginPage() {
     if (!passkeyCapabilities?.conditionalMediation) return;
     if (authLoading || isAuthenticated) return;
 
-    startConditionalAuthentication().then((result) => {
-      if (result) {
-        loginWithPasskey(result);
-        router.push("/dashboard");
-      }
-    });
+    startConditionalAuthentication()
+      .then((result) => {
+        if (result) {
+          loginWithPasskey(result);
+          router.push("/dashboard");
+        }
+      })
+      .catch(() => { /* conditional auth cancelled or failed — non-critical */ });
 
     return () => {
       conditionalAbortRef.current?.abort();
@@ -95,7 +99,7 @@ export default function LoginPage() {
         throw new Error("Please fill in all fields");
       }
 
-      await login(email, password, tenantSlug);
+      await login(email.toLowerCase(), password, tenantSlug);
       setPassword("");
       router.push("/dashboard");
     } catch (err) {

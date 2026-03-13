@@ -15,6 +15,7 @@ import { GlassCard } from "@/components/glass-card";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface BlogPostDetail {
   id: number;
@@ -96,7 +97,7 @@ function BlogPostContent({ params }: { params: Promise<{ slug: string }> }) {
               </div>
               <div
                 className="prose prose-invert max-w-none text-white/80"
-                dangerouslySetInnerHTML={{ __html: post.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
               />
             </GlassCard>
           </article>
