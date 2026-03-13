@@ -27,6 +27,7 @@ export const CrmPage = () => {
     url: "/api/admin/crm/users/search",
     method: "get",
     config: { query: { page, limit: pageSize, ...filters } },
+    queryOptions: { queryKey: ["admin-crm-search", page, pageSize, filters] },
   });
 
   const { data: flaggedData, isLoading: flaggedLoading } = useCustom({
@@ -43,6 +44,7 @@ export const CrmPage = () => {
     const f = { ...filters, [key]: value || undefined };
     Object.keys(f).forEach(k => f[k] === undefined && delete f[k]);
     setFilters(f);
+    setPage(1);
   };
 
   const handleAddNote = async () => {
@@ -71,10 +73,10 @@ export const CrmPage = () => {
           children: (
             <>
               <Space style={{ marginBottom: 16 }} wrap>
-                <Input.Search placeholder="Search..." style={{ width: 200 }} onSearch={(v) => { updateFilter("search", v); refetch(); }} allowClear />
-                <Select placeholder="Role" allowClear style={{ width: 130 }} onChange={(v) => { updateFilter("role", v); refetch(); }}
+                <Input.Search placeholder="Search..." style={{ width: 200 }} onSearch={(v) => updateFilter("search", v)} allowClear />
+                <Select placeholder="Role" allowClear style={{ width: 130 }} onChange={(v) => updateFilter("role", v)}
                   options={[{ label: "Admin", value: "admin" }, { label: "Member", value: "member" }]} />
-                <Select placeholder="Status" allowClear style={{ width: 130 }} onChange={(v) => { updateFilter("active", v); refetch(); }}
+                <Select placeholder="Status" allowClear style={{ width: 130 }} onChange={(v) => updateFilter("active", v)}
                   options={[{ label: "Active", value: "true" }, { label: "Inactive", value: "false" }]} />
               </Space>
 
@@ -113,7 +115,7 @@ export const CrmPage = () => {
           label: <>Flagged Notes {flaggedNotes.length > 0 && <Tag color="red">{flaggedNotes.length}</Tag>}</>,
           children: flaggedLoading ? <Spin /> : (
             <Card>
-              <Table dataSource={flaggedNotes} rowKey="id" size="small">
+              <Table dataSource={flaggedNotes} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
                 <Table.Column dataIndex="id" title="ID" width={60} />
                 <Table.Column dataIndex="user_id" title="User ID" width={80} />
                 <Table.Column dataIndex="category" title="Category" />

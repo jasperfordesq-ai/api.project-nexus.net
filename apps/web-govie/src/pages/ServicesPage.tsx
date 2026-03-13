@@ -233,16 +233,23 @@ export function ServicesPage() {
               ← Previous
             </button>
           )}
-          {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              className={`nexus-btn nexus-btn--sm ${p === currentPage ? 'nexus-btn--primary' : 'nexus-btn--secondary'}`}
-              onClick={() => setParam('page', String(p))}
-              aria-current={p === currentPage ? 'page' : undefined}
-            >
-              {p}
-            </button>
-          ))}
+          {(() => {
+            // Show up to 7 page buttons, centered around the current page
+            const maxVisible = 7
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2))
+            const endPage = Math.min(totalPages, startPage + maxVisible - 1)
+            startPage = Math.max(1, endPage - maxVisible + 1)
+            return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map((p) => (
+              <button
+                key={p}
+                className={`nexus-btn nexus-btn--sm ${p === currentPage ? 'nexus-btn--primary' : 'nexus-btn--secondary'}`}
+                onClick={() => setParam('page', String(p))}
+                aria-current={p === currentPage ? 'page' : undefined}
+              >
+                {p}
+              </button>
+            ))
+          })()}
           {currentPage < totalPages && (
             <button
               className="nexus-btn nexus-btn--secondary nexus-btn--sm"

@@ -16,7 +16,8 @@ export const GamificationPage = () => {
   const { data: badgesData, isLoading, refetch } = useCustom({ url: "/api/admin/gamification/badges", method: "get" });
 
   const stats = statsData?.data as any;
-  const badges = (badgesData?.data as any)?.items || (badgesData?.data as any)?.data || (Array.isArray(badgesData?.data) ? badgesData.data : []);
+  const badgesRaw = badgesData?.data as any;
+  const badges = badgesRaw?.items || badgesRaw?.data || (Array.isArray(badgesData?.data) ? badgesData.data : []);
   const [createOpen, setCreateOpen] = useState(false);
   const [awardOpen, setAwardOpen] = useState(false);
   const [awardBadgeId, setAwardBadgeId] = useState<number | null>(null);
@@ -78,7 +79,7 @@ export const GamificationPage = () => {
       )}
       <Card title="Badges" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>New Badge</Button>}>
         {isLoading ? <Spin /> : (
-          <Table dataSource={badges} rowKey="id" size="small">
+          <Table dataSource={badges} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="name" title="Name" />
             <Table.Column dataIndex="description" title="Description" ellipsis />

@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { getConversations, getConversation, getUnreadCount, sendMessage, startConversation, getUser, getConnections, markConversationRead, ApiError } = require('../lib/api');
+const { getConversations, getConversation, getUnreadCount, sendMessage, startConversation, getUser, getConnections, markConversationRead, getProfile, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
@@ -122,7 +122,10 @@ router.post('/new', audit.conversationCreate(), asyncRoute(async (req, res, next
 
 // View conversation
 router.get('/:id', asyncRoute(async (req, res) => {
-  const conversation = await getConversation(req.token, req.params.id);
+  const [conversation, profile] = await Promise.all([
+    getConversation(req.token, req.params.id),
+    getProfile(req.token).catch(() => null)
+  ]);
 
   // Auto-mark conversation as read when viewed
   // Fire and forget - don't wait for response or fail the page if this fails
@@ -134,6 +137,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
     title: 'Conversation',
     conversation,
     messages: conversation.messages || [],
+    currentUser: profile,
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
     error: req.flash ? req.flash('error')[0] : null

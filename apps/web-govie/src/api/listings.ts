@@ -28,6 +28,7 @@ interface RawListing {
   created_at: string
   updated_at: string | null
   user: { id: number; first_name: string; last_name: string } | null
+  category_id?: number | null
   category?: { id: number; name: string } | null
 }
 
@@ -39,6 +40,7 @@ function mapListing(raw: RawListing): Listing {
     type: raw.type as Listing['type'],
     status: raw.status as Listing['status'],
     category: raw.category?.name ?? '',
+    categoryId: raw.category_id ?? raw.category?.id ?? undefined,
     creditRate: raw.estimated_hours ?? 1,
     userId: raw.user?.id ?? 0,
     userName: fullName(raw.user),
@@ -66,9 +68,10 @@ export const listingsApi = {
       type: payload.type,
       location: payload.location,
       estimated_hours: payload.creditRate,
+      category_id: payload.categoryId,
     }).then((r) => {
-      const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
-      return { ...raw, id: raw.id } as Listing
+      const raw = r.data as RawListing // eslint-disable-line @typescript-eslint/no-explicit-any
+      return mapListing(raw)
     }),
 
   update: (id: number, payload: UpdateListingRequest) =>
@@ -78,6 +81,7 @@ export const listingsApi = {
       ...(payload.type !== undefined && { type: payload.type }),
       ...(payload.location !== undefined && { location: payload.location }),
       ...(payload.creditRate !== undefined && { estimated_hours: payload.creditRate }),
+      ...(payload.categoryId !== undefined && { category_id: payload.categoryId }),
       ...(payload.status !== undefined && { status: payload.status }),
     }).then((r) => r.data as Listing),
 

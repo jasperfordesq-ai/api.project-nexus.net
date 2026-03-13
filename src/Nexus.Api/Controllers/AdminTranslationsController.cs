@@ -88,6 +88,13 @@ public class AdminTranslationsController : ControllerBase
     [HttpPost("bulk")]
     public async Task<IActionResult> BulkImport([FromBody] BulkTranslationRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Locale))
+            return BadRequest(new { error = "Locale is required" });
+        if (request.Translations == null || request.Translations.Count == 0)
+            return BadRequest(new { error = "At least one translation is required" });
+        if (request.Translations.Count > 1000)
+            return BadRequest(new { error = "Maximum 1000 translations per bulk import" });
+
         var imported = 0;
 
         foreach (var item in request.Translations)

@@ -25,6 +25,7 @@ export const ReportsPage = () => {
     url: "/api/admin/reports",
     method: "get",
     config: { query: { page, limit: pageSize } },
+    queryOptions: { queryKey: ["admin-reports", page, pageSize] },
   });
 
   const { data: statsData } = useCustom({

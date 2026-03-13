@@ -65,7 +65,7 @@ public class ContactController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Contact form submitted: {Subject} from {Email}", submission.Subject, submission.Email);
-        return Ok(new { success = true, message = "Your message has been received. We will respond shortly.", id = submission.Id });
+        return StatusCode(201, new { success = true, message = "Your message has been received. We will respond shortly.", id = submission.Id });
     }
 
     /// <summary>GET /api/admin/contact - List contact submissions (admin).</summary>

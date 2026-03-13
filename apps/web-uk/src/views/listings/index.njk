@@ -101,7 +101,7 @@
                     {{ listing.status or "N/A" }}
                   </strong>
                 </td>
-                <td class="govuk-table__cell">{{ listing.createdAt or listing.created_at or "N/A" }}</td>
+                <td class="govuk-table__cell">{{ (listing.createdAt or listing.created_at) | formatDate if listing.createdAt or listing.created_at else "N/A" }}</td>
                 <td class="govuk-table__cell">
                   <a href="/listings/{{ listing.id }}/edit" class="govuk-link govuk-!-margin-right-2">Edit</a>
                   <a href="/listings/{{ listing.id }}/delete" class="govuk-link app-link--destructive">Delete</a>

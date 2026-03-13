@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
-import { isApiError } from '../context/AuthContext'
+import { isApiError, useAuth } from '../context/AuthContext'
 
 interface Review { id: number; listingTitle?: string; reviewerName: string; targetUserName: string; rating: number; comment: string; createdAt: string; type: 'given' | 'received' }
 
@@ -26,13 +26,15 @@ function mapReview(raw: any): Review {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export function ReviewsPage() {
+  const { user } = useAuth()
   const [reviews, setReviews] = useState<Review[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<'received' | 'given'>('received')
 
   useEffect(() => {
-    apiClient.get('/api/reviews/my')
+    if (!user?.id) return
+    apiClient.get(`/api/users/${user.id}/reviews`)
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any
@@ -41,7 +43,7 @@ export function ReviewsPage() {
       })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load reviews.'))
       .finally(() => setIsLoading(false))
-  }, [])
+  }, [user?.id])
 
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading reviews…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>

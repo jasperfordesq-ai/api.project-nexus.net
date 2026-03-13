@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
@@ -60,7 +60,9 @@ interface SearchSuggestion {
 export default function SearchPage() {
   return (
     <ProtectedRoute>
-      <SearchContent />
+      <Suspense fallback={null}>
+        <SearchContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }

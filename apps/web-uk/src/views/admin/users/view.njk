@@ -115,7 +115,7 @@
           href: "/admin/users/" + userData.id + "/edit"
         }) }}
 
-        {% if userData.suspended_at %}
+        {% if userData.suspendedAt or userData.suspended_at %}
           <form method="post" action="/admin/users/{{ userData.id }}/activate" style="display: inline;">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             {{ govukButton({

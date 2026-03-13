@@ -48,7 +48,7 @@ export function MemberProfilePage() {
   useEffect(() => {
     Promise.all([
       apiClient.get(`/api/users/${id}`).then(r => mapProfile(r.data)),
-      apiClient.get(`/api/reviews/user/${id}`).then(r => {
+      apiClient.get(`/api/users/${id}/reviews`).then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any
         const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])

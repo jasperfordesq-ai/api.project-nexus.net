@@ -50,7 +50,7 @@
                     Earned {{ (badge.earnedAt or badge.earned_at) | formatDate }}
                   </span>
                 {% else %}
-                  <span class="app-badge__reward">Reward: {{ badge.xpReward }} XP</span>
+                  <span class="app-badge__reward">Reward: {{ badge.xpReward or badge.xp_reward }} XP</span>
                 {% endif %}
               </div>
               {% if badge.isEarned or badge.is_earned %}

@@ -68,7 +68,7 @@ export const TranslationsPage = () => {
           label: "Coverage",
           children: statsLoading ? <Spin /> : (
             <Card>
-              <Table dataSource={statsEntries} rowKey={(r: any) => r.locale || r.code} size="small">
+              <Table dataSource={statsEntries} rowKey={(r: any) => r.locale || r.code} size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
                 <Table.Column dataIndex="locale" title="Locale" />
                 <Table.Column dataIndex="coverage" title="Coverage" />
                 <Table.Column dataIndex="total_keys" title="Total Keys" />
@@ -82,7 +82,7 @@ export const TranslationsPage = () => {
           label: <span>Missing Keys {missing.length > 0 && <Tag color="orange">{missing.length}</Tag>}</span>,
           children: missingLoading ? <Spin /> : (
             <Card>
-              <Table dataSource={missing} rowKey={(r: any) => r.key || String(r)} size="small">
+              <Table dataSource={missing} rowKey={(r: any) => r.key || String(r)} size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
                 <Table.Column title="Key" render={(_, r: any) => r.key || (typeof r === "string" ? r : "—")} />
                 <Table.Column dataIndex="locale" title="Missing In" />
               </Table>

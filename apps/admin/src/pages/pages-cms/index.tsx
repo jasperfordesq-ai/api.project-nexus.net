@@ -65,7 +65,7 @@ export const PagesCmsPage = () => {
       </div>
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={pages} rowKey="id" size="small">
+          <Table dataSource={pages} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
             <Table.Column dataIndex="slug" title="Slug" />

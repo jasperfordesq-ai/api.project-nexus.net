@@ -21,7 +21,7 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  role: "admin" | "member";
+  role: "admin" | "member" | "super_admin";
   tenant_id: number;
   created_at: string;
   bio?: string;

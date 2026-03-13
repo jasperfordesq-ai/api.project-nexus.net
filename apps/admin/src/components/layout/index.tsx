@@ -144,13 +144,29 @@ export const AdminLayout = () => {
   const location = useLocation();
   const { token: themeToken } = theme.useToken();
 
-  // Find the active menu key
-  const selectedKey = location.pathname === "/" ? "/" : location.pathname;
+  // Find the active menu key — match deepest menu item whose key is a prefix
+  // of the current path (e.g. /users/123/edit -> /users)
+  const selectedKey = (() => {
+    if (location.pathname === "/") return "/";
+    let best = location.pathname;
+    for (const item of menuItems) {
+      if ("children" in item && item.children) {
+        for (const child of item.children) {
+          if (location.pathname === child.key || location.pathname.startsWith(child.key + "/")) {
+            return child.key;
+          }
+        }
+      }
+    }
+    return best;
+  })();
 
-  // Find open submenu
-  const openKeys = menuItems
-    .filter((item) => "children" in item && item.children?.some((c) => selectedKey.startsWith(c.key)))
+  // Find open submenu — keep user-collapsed state but auto-open on navigation
+  const [userOpenKeys, setUserOpenKeys] = useState<string[]>([]);
+  const autoOpenKeys = menuItems
+    .filter((item) => "children" in item && item.children?.some((c) => location.pathname === c.key || location.pathname.startsWith(c.key + "/")))
     .map((item) => item.key);
+  const mergedOpenKeys = [...new Set([...userOpenKeys, ...autoOpenKeys])];
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -191,7 +207,8 @@ export const AdminLayout = () => {
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
-          defaultOpenKeys={openKeys}
+          openKeys={collapsed ? [] : mergedOpenKeys}
+          onOpenChange={(keys) => setUserOpenKeys(keys as string[])}
           items={menuItems}
           onClick={({ key }) => {
             if (key && !["people", "content", "community", "communication", "security", "system"].includes(key)) {

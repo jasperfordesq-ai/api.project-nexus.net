@@ -46,7 +46,7 @@
           },
           errorMessage: { text: titleError.text } if titleError else undefined,
           attributes: {
-            "data-validate": "required,maxLength:255",
+            "data-validate": "required maxLength:255",
             "data-label": "event title"
           }
         }) }}
@@ -143,7 +143,7 @@
           classes: "govuk-input--width-4",
           inputmode: "numeric",
           attributes: {
-            "data-validate": "number,min:1",
+            "data-validate": "number min:1",
             "data-label": "maximum attendees"
           }
         }) }}

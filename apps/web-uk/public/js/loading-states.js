@@ -31,7 +31,7 @@
     // Add spinner and loading text
     const text = loadingText || button.dataset.loadingText || 'Loading...';
     button.innerHTML = '<span class="app-button__spinner" aria-hidden="true"></span>' +
-                       '<span class="app-button__text">' + text + '</span>';
+                       '<span class="app-button__text">' + escapeHtml(text) + '</span>';
     button.setAttribute('aria-label', text);
   }
 
@@ -74,7 +74,7 @@
     loader.setAttribute('role', 'status');
     loader.setAttribute('aria-live', 'polite');
     loader.innerHTML = '<span class="app-loading__spinner" aria-hidden="true"></span>' +
-                       '<span class="app-loading__text">' + (message || 'Loading...') + '</span>';
+                       '<span class="app-loading__text">' + escapeHtml(message || 'Loading...') + '</span>';
 
     container.appendChild(loader);
     return loader;
@@ -96,7 +96,7 @@
     overlay.setAttribute('aria-live', 'assertive');
     overlay.innerHTML = '<div class="app-loading-overlay__content">' +
                         '<span class="app-loading__spinner app-loading__spinner--large" aria-hidden="true"></span>' +
-                        '<p class="govuk-body-l">' + (message || 'Loading...') + '</p>' +
+                        '<p class="govuk-body-l">' + escapeHtml(message || 'Loading...') + '</p>' +
                         '</div>';
 
     document.body.appendChild(overlay);
@@ -161,6 +161,17 @@
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
+  }
+
+  /**
+   * Escape HTML to prevent XSS in dynamically created elements
+   * @param {string} str - The string to escape
+   * @returns {string} The escaped string
+   */
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
   }
 
   // Export API

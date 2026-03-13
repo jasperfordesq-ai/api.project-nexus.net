@@ -80,11 +80,11 @@
           },
           {
             key: { text: "Created" },
-            value: { text: listing.createdAt or listing.created_at or "N/A" }
+            value: { text: (listing.createdAt or listing.created_at) | formatDate if listing.createdAt or listing.created_at else "N/A" }
           },
           {
             key: { text: "Updated" },
-            value: { text: listing.updatedAt or listing.updated_at or "N/A" }
+            value: { text: (listing.updatedAt or listing.updated_at) | formatDate if listing.updatedAt or listing.updated_at else "N/A" }
           }
         ]
       }) }}

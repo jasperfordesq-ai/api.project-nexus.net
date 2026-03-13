@@ -23,6 +23,7 @@ export const NewsletterPage = () => {
     url: "/api/admin/newsletter",
     method: "get",
     config: { query: { page, limit: pageSize } },
+    queryOptions: { queryKey: ["admin-newsletter", page, pageSize] },
   });
 
   const { data: statsData } = useCustom({

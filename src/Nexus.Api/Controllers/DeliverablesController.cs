@@ -112,7 +112,7 @@ public class DeliverablesController : ControllerBase
         if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
         var (comment, error) = await _svc.AddCommentAsync(_tenantContext.TenantId.Value, id, userId.Value, req.Content);
         if (error != null) return BadRequest(new { error });
-        return Ok(new { id = comment!.Id, content = comment.Content, created_at = comment.CreatedAt });
+        return StatusCode(201, new { id = comment!.Id, content = comment.Content, created_at = comment.CreatedAt });
     }
 }
 

@@ -51,7 +51,7 @@
                   <span class="govuk-body-s app-text--secondary">{{ entry.source | replace("_", " ") | capitalize }}</span>
                 </td>
                 <td class="govuk-table__cell">
-                  {{ entry.createdAt | formatDate }}
+                  {{ (entry.createdAt or entry.created_at) | formatDate }}
                 </td>
                 <td class="govuk-table__cell govuk-table__cell--numeric">
                   <span class="app-xp-amount {% if entry.amount > 0 %}app-xp-amount--positive{% else %}app-xp-amount--negative{% endif %}">
@@ -81,7 +81,7 @@
             } if pagination.page > 1 else undefined,
             next: {
               href: "/progress/xp-history?page=" + (pagination.page + 1)
-            } if pagination.page < pagination.totalPages or pagination.total_pages else undefined,
+            } if pagination.page < xpTotalPages else undefined,
             items: paginationItems
           }) }}
         {% endif %}

@@ -135,8 +135,8 @@ router.get('/:id', asyncRoute(async (req, res) => {
   ]);
 
   const group = groupResult.group || groupResult;
-  const members = membersResult.data || [];
-  const events = eventsResult.data || [];
+  const members = membersResult.data || membersResult.items || [];
+  const events = eventsResult.data || eventsResult.items || [];
   const myMembership = groupResult.myMembership || groupResult.my_membership;
 
   res.render('groups/detail', {

@@ -77,7 +77,7 @@ public class AdminToolsController : ControllerBase
         redirects.Add(new UrlRedirect { From = req.From, To = req.To, IsPermanent = req.IsPermanent, CreatedAt = DateTime.UtcNow });
         setting.Value = JsonSerializer.Serialize(redirects);
         await _db.SaveChangesAsync();
-        return Ok(new { message = "Redirect created", from = req.From, to = req.To });
+        return StatusCode(201, new { message = "Redirect created", from = req.From, to = req.To });
     }
 
     [HttpDelete("redirects")]
