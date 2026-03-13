@@ -68,6 +68,7 @@ public class AiNotificationService
                 {
                     var notification = new Notification
                     {
+                        TenantId = newListing.TenantId,
                         UserId = user.Id,
                         Type = "ai_listing_match",
                         Title = $"New {newListing.Type} that matches your interests!",
@@ -130,6 +131,7 @@ public class AiNotificationService
             {
                 var notification = new Notification
                 {
+                    TenantId = listing.TenantId,
                     UserId = listing.UserId,
                     Type = "ai_listing_tips",
                     Title = "Tips to improve your listing",

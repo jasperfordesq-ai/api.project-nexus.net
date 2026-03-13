@@ -271,12 +271,40 @@ public class WalletFeatureService
             var counterparty = t.SenderId == userId
                 ? $"{t.Receiver?.FirstName} {t.Receiver?.LastName}"
                 : $"{t.Sender?.FirstName} {t.Sender?.LastName}";
-            var description = (t.Description ?? "").Replace(",", ";").Replace("\n", " ");
 
-            sb.AppendLine($"{t.Id},{t.CreatedAt:yyyy-MM-dd HH:mm:ss},{type},{t.Amount},{description},{counterparty},{t.Status}");
+            // CSV-escape all user-controlled fields to prevent CSV injection
+            // (formulae starting with =, +, -, @, tab, CR can be exploited)
+            sb.AppendLine($"{t.Id},{t.CreatedAt:yyyy-MM-dd HH:mm:ss},{type},{t.Amount},{CsvEscape(t.Description)},{CsvEscape(counterparty)},{t.Status}");
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Escape a value for safe inclusion in CSV output.
+    /// Prevents CSV injection by quoting fields and escaping formulae characters.
+    /// </summary>
+    private static string CsvEscape(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "";
+
+        // Remove newlines and carriage returns
+        var cleaned = value.Replace("\r", " ").Replace("\n", " ");
+
+        // Prefix with single-quote if value starts with a formula character
+        // to prevent spreadsheet formula injection
+        if (cleaned.Length > 0 && "=+-@\t\r".IndexOf(cleaned[0]) >= 0)
+            cleaned = "'" + cleaned;
+
+        // If value contains comma, quote, or whitespace, wrap in double quotes
+        if (cleaned.Contains(',') || cleaned.Contains('"') || cleaned.Contains(' '))
+        {
+            cleaned = cleaned.Replace("\"", "\"\"");
+            cleaned = $"\"{cleaned}\"";
+        }
+
+        return cleaned;
     }
 
     /// <summary>

@@ -141,8 +141,7 @@ public class JobsController : ControllerBase
         if (!_tenantContext.TenantId.HasValue)
             return BadRequest(new { error = "Tenant context not resolved" });
 
-        var role = User.GetRole();
-        var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = User.IsAdmin();
 
         var (job, error) = await _jobService.UpdateJobAsync(
             _tenantContext.TenantId.Value, userId.Value, id, isAdmin,
@@ -176,8 +175,7 @@ public class JobsController : ControllerBase
         if (!_tenantContext.TenantId.HasValue)
             return BadRequest(new { error = "Tenant context not resolved" });
 
-        var role = User.GetRole();
-        var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = User.IsAdmin();
 
         var error = await _jobService.DeleteJobAsync(
             _tenantContext.TenantId.Value, userId.Value, id, isAdmin);
@@ -389,8 +387,7 @@ public class JobsController : ControllerBase
             return BadRequest(new { error = "Tenant context not resolved" });
 
         var days = request?.Days is > 0 ? request.Days : 30;
-        var role = User.GetRole();
-        var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = User.IsAdmin();
 
         Entities.JobVacancy? job;
         string? error;
@@ -437,8 +434,7 @@ public class JobsController : ControllerBase
     [HttpPost("{id:int}/feature")]
     public async Task<IActionResult> FeatureJob(int id, [FromBody] FeatureJobRequest request)
     {
-        var role = User.GetRole();
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        if (!User.IsAdmin())
             return StatusCode(403, new { error = "Admin only" });
         if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
 
@@ -452,8 +448,7 @@ public class JobsController : ControllerBase
     [HttpDelete("{id:int}/feature")]
     public async Task<IActionResult> UnfeatureJob(int id)
     {
-        var role = User.GetRole();
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        if (!User.IsAdmin())
             return StatusCode(403, new { error = "Admin only" });
         if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
 

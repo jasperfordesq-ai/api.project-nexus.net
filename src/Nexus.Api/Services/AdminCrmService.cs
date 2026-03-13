@@ -444,11 +444,27 @@ public class AdminCrmService
         return sb.ToString();
     }
 
-    private static string EscapeCsv(string value)
+    private static string EscapeCsv(string? value)
     {
-        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
-            return $"\"{value.Replace("\"", "\"\"")}\"";
-        return value;
+        if (string.IsNullOrEmpty(value))
+            return "";
+
+        // Remove newlines and carriage returns
+        var cleaned = value.Replace("\r", " ").Replace("\n", " ");
+
+        // Prefix with single-quote if value starts with a formula character
+        // to prevent spreadsheet formula injection
+        if (cleaned.Length > 0 && "=+-@\t\r".IndexOf(cleaned[0]) >= 0)
+            cleaned = "'" + cleaned;
+
+        // If value contains comma, quote, or whitespace, wrap in double quotes
+        if (cleaned.Contains(',') || cleaned.Contains('"') || cleaned.Contains(' '))
+        {
+            cleaned = cleaned.Replace("\"", "\"\"");
+            cleaned = $"\"{cleaned}\"";
+        }
+
+        return cleaned;
     }
 
     #region Private helpers

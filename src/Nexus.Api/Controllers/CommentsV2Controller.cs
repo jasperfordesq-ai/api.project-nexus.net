@@ -86,8 +86,7 @@ public class CommentsV2Controller : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var role = User.GetRole();
-        var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = User.IsAdmin();
         var (success, error) = await _commentService.DeleteCommentAsync(id, userId.Value, isAdmin);
         if (error == "Comment not found") return NotFound(new { error });
         if (error == "You can only delete your own comments") return StatusCode(403, new { error });

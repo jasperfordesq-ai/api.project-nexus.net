@@ -122,9 +122,12 @@ public class ContactController : ControllerBase
         var item = await _db.ContactSubmissions.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
         if (item == null) return NotFound(new { error = "Not found" });
 
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
         item.IsResolved = true;
         item.ResolvedAt = DateTime.UtcNow;
-        item.ResolvedById = User.GetUserId();
+        item.ResolvedById = adminId.Value;
         item.ResolvedNote = request.Note;
         await _db.SaveChangesAsync();
 

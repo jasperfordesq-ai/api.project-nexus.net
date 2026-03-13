@@ -140,6 +140,7 @@ public class ConnectionsController : ControllerBase
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = User.GetTenantId() ?? 0;
 
         // Validate: cannot connect to yourself
         if (request.UserId == userId)
@@ -180,6 +181,7 @@ public class ConnectionsController : ControllerBase
                     // Notify both users about the mutual connection
                     _db.Notifications.Add(new Notification
                     {
+                        TenantId = tenantId,
                         UserId = request.UserId,
                         Type = Notification.Types.ConnectionAccepted,
                         Title = "Connection accepted",
@@ -188,6 +190,7 @@ public class ConnectionsController : ControllerBase
                     });
                     _db.Notifications.Add(new Notification
                     {
+                        TenantId = tenantId,
                         UserId = userId.Value,
                         Type = Notification.Types.ConnectionAccepted,
                         Title = "Connection accepted",
@@ -278,6 +281,7 @@ public class ConnectionsController : ControllerBase
         // Notify the addressee about the connection request (after save so connection.Id is assigned)
         _db.Notifications.Add(new Notification
         {
+            TenantId = tenantId,
             UserId = request.UserId,
             Type = Notification.Types.ConnectionRequest,
             Title = "New connection request",
@@ -311,6 +315,7 @@ public class ConnectionsController : ControllerBase
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = User.GetTenantId() ?? 0;
 
         var connection = await _db.Connections.FirstOrDefaultAsync(x => x.Id == id);
         if (connection == null)
@@ -338,6 +343,7 @@ public class ConnectionsController : ControllerBase
         // Notify the requester that their request was accepted
         _db.Notifications.Add(new Notification
         {
+            TenantId = tenantId,
             UserId = connection.RequesterId,
             Type = Notification.Types.ConnectionAccepted,
             Title = "Connection accepted",

@@ -70,8 +70,7 @@ public class ResourcesController : ControllerBase
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
         var existing = await _resourceService.GetResourceAsync(id);
         if (existing == null) return NotFound(new { error = "Resource not found" });
-        var role = User.GetRole();
-        var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = User.IsAdmin();
         if (existing.CreatedById != userId.Value && !isAdmin)
             return StatusCode(403, new { error = "You can only update your own resources" });
         var (resource, error) = await _resourceService.UpdateResourceAsync(
@@ -87,8 +86,7 @@ public class ResourcesController : ControllerBase
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
         var existing = await _resourceService.GetResourceAsync(id);
         if (existing == null) return NotFound(new { error = "Resource not found" });
-        var role = User.GetRole();
-        var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = User.IsAdmin();
         if (existing.CreatedById != userId.Value && !isAdmin)
             return StatusCode(403, new { error = "You can only delete your own resources" });
         var (success, error) = await _resourceService.DeleteResourceAsync(id);
@@ -99,8 +97,7 @@ public class ResourcesController : ControllerBase
     [HttpPut("reorder")]
     public async Task<IActionResult> Reorder([FromBody] ReorderRequest request)
     {
-        var role = User.GetRole();
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        if (!User.IsAdmin())
             return StatusCode(403, new { error = "Admin access required" });
         var (success, error) = await _resourceService.ReorderResourcesAsync(request.ResourceIds);
         if (!success) return BadRequest(new { error });
@@ -128,8 +125,7 @@ public class ResourcesController : ControllerBase
     [HttpPost("categories")]
     public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequest request)
     {
-        var role = User.GetRole();
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        if (!User.IsAdmin())
             return StatusCode(403, new { error = "Admin access required" });
         if (!_tenantContext.TenantId.HasValue)
             return BadRequest(new { error = "Tenant context not resolved" });
@@ -142,8 +138,7 @@ public class ResourcesController : ControllerBase
     [HttpPut("categories/{id:int}")]
     public async Task<IActionResult> UpdateCategory(int id, [FromBody] UpdateCategoryRequest request)
     {
-        var role = User.GetRole();
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        if (!User.IsAdmin())
             return StatusCode(403, new { error = "Admin access required" });
         var (category, error) = await _resourceService.UpdateCategoryAsync(id, request.Name, request.Description);
         if (error != null)
@@ -157,8 +152,7 @@ public class ResourcesController : ControllerBase
     [HttpDelete("categories/{id:int}")]
     public async Task<IActionResult> DeleteCategory(int id)
     {
-        var role = User.GetRole();
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        if (!User.IsAdmin())
             return StatusCode(403, new { error = "Admin access required" });
         var (success, error) = await _resourceService.DeleteCategoryAsync(id);
         if (!success)

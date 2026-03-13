@@ -215,8 +215,7 @@ public class GroupExchangeController : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var role = User.GetRole();
-        var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = User.IsAdmin();
         var exchange = await _db.GroupExchanges.FirstOrDefaultAsync(ge => ge.Id == id);
         if (exchange == null) return NotFound(new { error = "Group exchange not found" });
         if (exchange.Status == "completed") return BadRequest(new { error = "Cannot cancel a completed exchange" });

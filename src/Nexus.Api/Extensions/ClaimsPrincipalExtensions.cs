@@ -59,6 +59,18 @@ public static class ClaimsPrincipalExtensions
     }
 
     /// <summary>
+    /// Checks if the current user has an admin-level role (admin or super_admin).
+    /// Use this instead of manually comparing GetRole() to "admin" to ensure
+    /// super_admin users are not accidentally excluded.
+    /// </summary>
+    public static bool IsAdmin(this ClaimsPrincipal principal)
+    {
+        var role = principal.GetRole();
+        return string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "super_admin", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// Gets the current user's email from JWT claims.
     /// </summary>
     /// <param name="principal">The claims principal</param>

@@ -448,6 +448,7 @@ public class ContentModerationService
         {
             var notification = new Notification
             {
+                TenantId = admin.TenantId,
                 UserId = admin.Id,
                 Type = "content_flagged",
                 Title = $"Content Flagged: {contentType}",
