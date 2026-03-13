@@ -98,8 +98,8 @@ public class SearchController : ControllerBase
                         Id = l.Id,
                         Title = l.Title,
                         Description = l.Description,
-                        Type = l.Type.ToString().ToLowerInvariant(),
-                        Status = l.Status.ToString().ToLowerInvariant(),
+                        Type = l.Type.ToString().ToLower(),
+                        Status = l.Status.ToString().ToLower(),
                         CreatedAt = l.CreatedAt
                     })
                     .ToListAsync();
@@ -117,8 +117,8 @@ public class SearchController : ControllerBase
                         Id = l.Id,
                         Title = l.Title,
                         Description = l.Description,
-                        Type = l.Type.ToString().ToLowerInvariant(),
-                        Status = l.Status.ToString().ToLowerInvariant(),
+                        Type = l.Type.ToString().ToLower(),
+                        Status = l.Status.ToString().ToLower(),
                         CreatedAt = l.CreatedAt
                     })
                     .ToListAsync();

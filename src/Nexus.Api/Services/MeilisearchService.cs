@@ -263,7 +263,7 @@ public class MeilisearchService
 
         var listings = await db.Listings
             .Where(l => l.TenantId == tenantId && l.Status == ListingStatus.Active)
-            .Select(l => new { l.Id, l.Title, l.Description, l.Location, type = l.Type.ToString().ToLowerInvariant(), status = l.Status.ToString().ToLowerInvariant(), l.CategoryId, l.EstimatedHours, l.CreatedAt })
+            .Select(l => new { l.Id, l.Title, l.Description, l.Location, type = l.Type.ToString().ToLower(), status = l.Status.ToString().ToLower(), l.CategoryId, l.EstimatedHours, l.CreatedAt })
             .ToListAsync();
         if (listings.Any())
             await IndexDocumentsAsync(tenantId, "listings", listings.Cast<object>());
