@@ -53,7 +53,8 @@ export const TenantSwitcher = () => {
       };
       setStoredUser(user);
 
-      if (user.role !== "admin") {
+      const adminRoles = ["admin", "super_admin"];
+      if (!adminRoles.includes(user.role)) {
         message.error("You don't have admin access on that tenant.");
         return;
       }

@@ -1,5 +1,5 @@
 import { useCustom } from "@refinedev/core";
-import { Card, Typography, Form, Select, Switch, Button, Spin, message, Descriptions } from "antd";
+import { Card, Typography, Form, Select, Switch, Button, Spin, message } from "antd";
 import { useState, useEffect } from "react";
 import axiosInstance from "../../utils/axios";
 

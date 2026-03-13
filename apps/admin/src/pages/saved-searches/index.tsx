@@ -6,8 +6,6 @@ import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
 
 const { Title } = Typography;
-const { Option } = Select;
-
 const TYPE_COLORS: Record<string, string> = {
   listings: "blue",
   users: "green",
@@ -81,12 +79,19 @@ export const SavedSearchesPage = () => {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0 }}>Saved Searches</Title>
         <Space>
-          <Select placeholder="Filter by type" allowClear style={{ width: 160 }} onChange={setSearchType} value={searchType}>
-            <Option value="listings">Listings</Option>
-            <Option value="users">Users</Option>
-            <Option value="events">Events</Option>
-            <Option value="groups">Groups</Option>
-          </Select>
+          <Select
+            placeholder="Filter by type"
+            allowClear
+            style={{ width: 160 }}
+            onChange={setSearchType}
+            value={searchType}
+            options={[
+              { label: "Listings", value: "listings" },
+              { label: "Users", value: "users" },
+              { label: "Events", value: "events" },
+              { label: "Groups", value: "groups" },
+            ]}
+          />
           <span style={{ color: "#999" }}>{total} total</span>
         </Space>
       </div>

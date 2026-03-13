@@ -1,5 +1,5 @@
 import { useCustom } from "@refinedev/core";
-import { Card, Table, Typography, Row, Col, Statistic, Spin, Tabs, Button, Space, Modal, Form, Input, InputNumber, Select, message } from "antd";
+import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, Modal, Form, Input, InputNumber, Select, message } from "antd";
 import { PlusOutlined, TrophyOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
@@ -50,9 +50,13 @@ export const GamificationPage = () => {
       content: "This will delete the badge and all earned records.",
       okType: "danger",
       onOk: async () => {
-        await axiosInstance.delete(`/api/admin/gamification/badges/${id}`);
-        message.success("Badge deleted");
-        refetch();
+        try {
+          await axiosInstance.delete(`/api/admin/gamification/badges/${id}`);
+          message.success("Badge deleted");
+          refetch();
+        } catch (err: any) {
+          message.error(err?.response?.data?.message || "Failed to delete badge");
+        }
       },
     });
   };

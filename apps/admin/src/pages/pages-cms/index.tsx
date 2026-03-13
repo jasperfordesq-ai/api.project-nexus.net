@@ -1,6 +1,6 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Spin, Button, Space, message, Tag, Modal, Form, Input } from "antd";
-import { PlusOutlined, CopyOutlined, HistoryOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, CopyOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
@@ -41,9 +41,13 @@ export const PagesCmsPage = () => {
       content: "This will permanently delete the page.",
       okType: "danger",
       onOk: async () => {
-        await axiosInstance.delete(`/api/admin/pages/${id}`);
-        message.success("Page deleted");
-        refetch();
+        try {
+          await axiosInstance.delete(`/api/admin/pages/${id}`);
+          message.success("Page deleted");
+          refetch();
+        } catch (err: any) {
+          message.error(err?.response?.data?.message || "Failed to delete page");
+        }
       },
     });
   };

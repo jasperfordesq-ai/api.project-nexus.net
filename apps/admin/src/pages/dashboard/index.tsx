@@ -7,7 +7,6 @@ import {
   TeamOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
-  TrophyOutlined,
   RiseOutlined,
   CalendarOutlined,
   ThunderboltOutlined,
