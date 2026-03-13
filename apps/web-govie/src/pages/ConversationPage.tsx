@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import apiClient from '../api/client'
+import { fullName } from '../api/normalize'
 import { isApiError, useAuth } from '../context/AuthContext'
 
 interface Message {
@@ -16,6 +17,20 @@ interface Message {
   createdAt: string
   isRead: boolean
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapMessage(raw: any): Message {
+  const sender = raw.sender ?? {}
+  return {
+    id: raw.id,
+    senderId: sender.id ?? raw.sender_id ?? raw.senderId ?? 0,
+    senderName: sender.id ? fullName(sender) : (raw.senderName ?? 'Unknown'),
+    content: raw.content ?? '',
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+    isRead: raw.is_read ?? raw.isRead ?? false,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export function ConversationPage() {
   const { id } = useParams<{ id: string }>()
@@ -28,8 +43,13 @@ export function ConversationPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const fetchMessages = () => {
-    return apiClient.get<Message[]>(`/api/messages/${id}`)
-      .then(r => setMessages(r.data ?? []))
+    return apiClient.get(`/api/messages/${id}`)
+      .then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        // Backend returns { messages: [...], participant: {...}, ... }
+        const items = raw?.messages ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setMessages(items.map(mapMessage))
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load conversation.'))
   }
 

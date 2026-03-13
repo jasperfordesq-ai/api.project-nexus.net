@@ -6,12 +6,32 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
-import { isApiError } from '../context/AuthContext'
+import { fullName } from '../api/normalize'
+import { isApiError, useAuth } from '../context/AuthContext'
 
 interface WalletBalance { balance: number }
 interface Transaction { id: number; amount: number; description: string; createdAt: string; type: string; counterpartName?: string }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapTransaction(raw: any, currentUserId?: number): Transaction {
+  // Backend returns sender/receiver objects; determine counterpart based on current user
+  const sender = raw.sender ?? {}
+  const receiver = raw.receiver ?? {}
+  const isSender = sender.id === currentUserId
+  const counterpart = isSender ? receiver : sender
+  return {
+    id: raw.id,
+    amount: raw.amount ?? 0,
+    description: raw.description ?? '',
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+    type: raw.type ?? (isSender ? 'debit' : 'credit'),
+    counterpartName: counterpart.id ? fullName(counterpart) : undefined,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function WalletPage() {
+  const { user } = useAuth()
   const [balance, setBalance] = useState<WalletBalance | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -19,13 +39,20 @@ export function WalletPage() {
 
   useEffect(() => {
     Promise.all([
-      apiClient.get<WalletBalance>('/api/wallet/balance').then(r => r.data),
-      apiClient.get<{ items: Transaction[] }>('/api/wallet/transactions').then(r => r.data),
+      apiClient.get('/api/wallet/balance').then(r => r.data),
+      apiClient.get('/api/wallet/transactions').then(r => r.data),
     ])
-      .then(([b, t]) => { setBalance(b); setTransactions(t.items ?? []) })
+      .then(([b, t]) => {
+        setBalance(b as WalletBalance)
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const raw = t as any
+        const items: any[] = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+        setTransactions(items.map((tx: any) => mapTransaction(tx, user?.id)))
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load wallet data.'))
       .finally(() => setIsLoading(false))
-  }, [])
+  }, [user?.id])
 
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading wallet…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>

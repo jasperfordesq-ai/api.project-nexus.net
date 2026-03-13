@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
+import { fullName } from '../api/normalize'
 import { isApiError } from '../context/AuthContext'
 
 interface Conversation {
@@ -17,14 +18,32 @@ interface Conversation {
   unreadCount: number
 }
 
+/** Map backend conversation shape to frontend Conversation */
+function mapConversation(raw: Record<string, unknown>): Conversation {
+  const participant = raw.participant as { id?: number; first_name?: string; last_name?: string } | null
+  const lastMsg = raw.last_message as { content?: string; created_at?: string } | null
+  return {
+    id: raw.id as number,
+    otherUserId: participant?.id ?? 0,
+    otherUserName: fullName(participant),
+    lastMessage: lastMsg?.content ?? '',
+    lastMessageAt: (lastMsg?.created_at ?? raw.created_at ?? '') as string,
+    unreadCount: (raw.unread_count ?? 0) as number,
+  }
+}
+
 export function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get<Conversation[]>('/api/messages')
-      .then(r => setConversations(r.data ?? []))
+    apiClient.get('/api/messages')
+      .then(r => {
+        const raw = r.data as { data?: unknown[] } | unknown[]
+        const items = Array.isArray(raw) ? raw : (raw?.data ?? [])
+        setConversations((items as Record<string, unknown>[]).map(mapConversation))
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load messages.'))
       .finally(() => setIsLoading(false))
   }, [])

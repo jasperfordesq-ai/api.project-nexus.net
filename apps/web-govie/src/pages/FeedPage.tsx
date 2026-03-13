@@ -6,9 +6,25 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
+import { fullName } from '../api/normalize'
 import { isApiError, useAuth } from '../context/AuthContext'
 
 interface Post { id: number; authorId: number; authorName: string; content: string; likeCount: number; commentCount: number; isLiked: boolean; createdAt: string }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapPost(raw: any): Post {
+  return {
+    id: raw.id,
+    authorId: raw.user?.id ?? raw.authorId ?? 0,
+    authorName: raw.user ? fullName(raw.user) : (raw.authorName ?? 'Unknown'),
+    content: raw.content ?? '',
+    likeCount: raw.like_count ?? raw.likeCount ?? 0,
+    commentCount: raw.comment_count ?? raw.commentCount ?? 0,
+    isLiked: raw.is_liked ?? raw.isLiked ?? false,
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export function FeedPage() {
   const { user } = useAuth()
@@ -18,7 +34,11 @@ export function FeedPage() {
   const [newPost, setNewPost] = useState('')
   const [isPosting, setIsPosting] = useState(false)
 
-  const fetchFeed = () => apiClient.get<{ items: Post[] }>('/api/feed').then(r => setPosts(r.data?.items ?? (r.data as unknown as Post[]) ?? []))
+  const fetchFeed = () => apiClient.get('/api/feed').then(r => {
+    const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+    setPosts(items.map(mapPost))
+  })
 
   useEffect(() => {
     fetchFeed()

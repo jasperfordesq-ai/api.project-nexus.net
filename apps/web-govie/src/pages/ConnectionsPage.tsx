@@ -6,12 +6,24 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
+import { fullName } from '../api/normalize'
 import { isApiError } from '../context/AuthContext'
 
 interface Connection { id: number; userId: number; name: string; role: string; createdAt: string }
 interface PendingRequest { id: number; senderId: number; senderName: string; createdAt: string }
 
 type Tab = 'connections' | 'pending'
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapConnection(raw: any): Connection {
+  const other = raw.other_user ?? raw.otherUser ?? {}
+  return { id: raw.id, userId: other.id ?? 0, name: fullName(other), role: other.role ?? 'member', createdAt: raw.created_at ?? raw.createdAt ?? '' }
+}
+function mapPending(raw: any): PendingRequest {
+  const sender = raw.from_user ?? raw.fromUser ?? {}
+  return { id: raw.id, senderId: sender.id ?? 0, senderName: fullName(sender), createdAt: raw.created_at ?? raw.createdAt ?? '' }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export function ConnectionsPage() {
   const [tab, setTab] = useState<Tab>('connections')
@@ -23,8 +35,16 @@ export function ConnectionsPage() {
 
   useEffect(() => {
     Promise.all([
-      apiClient.get<Connection[]>('/api/connections').then(r => r.data ?? []),
-      apiClient.get<PendingRequest[]>('/api/connections/pending').then(r => r.data ?? []),
+      apiClient.get('/api/connections').then(r => {
+        const raw = r.data as any
+        const items = raw?.connections ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        return items.map(mapConnection)
+      }),
+      apiClient.get('/api/connections/pending').then(r => {
+        const raw = r.data as any
+        const incoming = raw?.incoming ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        return incoming.map(mapPending)
+      }),
     ])
       .then(([c, p]) => { setConnections(c); setPending(p) })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load connections.'))

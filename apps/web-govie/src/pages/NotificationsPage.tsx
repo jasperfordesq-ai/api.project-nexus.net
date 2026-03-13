@@ -23,8 +23,21 @@ export function NotificationsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get<Notification[]>('/api/notifications')
-      .then(r => setNotifications(r.data ?? []))
+    apiClient.get('/api/notifications')
+      .then(r => {
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const raw = r.data as any
+        const items: any[] = raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setNotifications(items.map((n: any) => ({
+          id: n.id,
+          type: n.type ?? 'system',
+          title: n.title ?? '',
+          message: n.body ?? n.message ?? '',
+          isRead: n.is_read ?? n.isRead ?? false,
+          createdAt: n.created_at ?? n.createdAt ?? '',
+        })))
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load notifications.'))
       .finally(() => setIsLoading(false))
   }, [])

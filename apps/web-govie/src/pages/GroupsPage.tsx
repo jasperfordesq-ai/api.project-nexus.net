@@ -10,6 +10,20 @@ import { isApiError } from '../context/AuthContext'
 
 interface Group { id: number; name: string; description: string; memberCount: number; type: string; isPublic: boolean }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapGroup(raw: any): Group {
+  return {
+    id: raw.id,
+    name: raw.name ?? '',
+    description: raw.description ?? '',
+    memberCount: raw.member_count ?? raw.memberCount ?? 0,
+    type: raw.type ?? (raw.is_private ? 'private' : 'public'),
+    // Backend returns is_private (boolean), frontend uses isPublic (inverted)
+    isPublic: raw.isPublic ?? !(raw.is_private ?? false),
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function GroupsPage() {
   const [groups, setGroups] = useState<Group[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -17,8 +31,12 @@ export function GroupsPage() {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    apiClient.get<{ items: Group[] }>('/api/groups')
-      .then(r => setGroups(r.data?.items ?? (r.data as unknown as Group[]) ?? []))
+    apiClient.get('/api/groups')
+      .then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+        setGroups(items.map(mapGroup))
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load groups.'))
       .finally(() => setIsLoading(false))
   }, [])
