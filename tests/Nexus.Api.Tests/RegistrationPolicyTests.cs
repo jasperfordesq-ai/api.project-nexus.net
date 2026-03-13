@@ -31,12 +31,12 @@ public class RegistrationPolicyTests : IntegrationTestBase
     [Fact]
     public async Task GetPublicConfig_DefaultPolicy_ReturnsStandard()
     {
-        // Arrange: Authenticate so the tenant context is resolved from JWT
-        // (the /api/registration/config path requires tenant context via middleware)
-        await AuthenticateAsMemberAsync();
+        // Arrange: The /api/registration/config path is excluded from TenantResolutionMiddleware,
+        // so the controller handles its own tenant resolution via query params.
+        // Pass tenant_slug so the controller can resolve the tenant.
 
         // Act
-        var response = await Client.GetAsync("/api/registration/config");
+        var response = await Client.GetAsync("/api/registration/config?tenant_slug=test-tenant");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -62,14 +62,13 @@ public class RegistrationPolicyTests : IntegrationTestBase
     [Fact]
     public async Task GetPublicConfig_InvalidTenant_ReturnsNotFound()
     {
-        // The /api/registration/config path is not excluded from TenantResolutionMiddleware.
-        // Without authentication, the middleware cannot resolve tenant context and returns 400
-        // before the controller is reached. This is the expected behavior: unauthenticated
-        // requests to tenant-scoped endpoints require tenant context.
+        // The /api/registration/config path IS excluded from TenantResolutionMiddleware.
+        // The controller handles its own tenant resolution: it looks up the slug in the DB,
+        // and returns 404 when the tenant doesn't exist.
         var response = await Client.GetAsync("/api/registration/config?tenant_slug=nonexistent");
 
-        // Assert: middleware returns BadRequest because tenant context cannot be resolved
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // Assert: controller returns NotFound because tenant slug doesn't exist
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     #endregion
@@ -319,9 +318,9 @@ public class RegistrationPolicyTests : IntegrationTestBase
         user.IsActive.Should().BeFalse();
         token.Should().NotBeNullOrEmpty();
 
-        // Verify the token works by accessing a protected endpoint
+        // Verify the token works by accessing the registration config endpoint
         SetAuthToken(token);
-        var configResponse = await Client.GetAsync("/api/registration/config");
+        var configResponse = await Client.GetAsync("/api/registration/config?tenant_slug=test-tenant");
         configResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -400,8 +399,8 @@ public class RegistrationPolicyTests : IntegrationTestBase
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Verify public config reflects the change (stay authenticated so middleware resolves tenant)
-        var configResponse = await Client.GetAsync("/api/registration/config");
+        // Verify public config reflects the change (pass tenant_slug since middleware skips this path)
+        var configResponse = await Client.GetAsync("/api/registration/config?tenant_slug=test-tenant");
         configResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var configContent = await configResponse.Content.ReadFromJsonAsync<JsonElement>();
         configContent.GetProperty("data").GetProperty("mode").GetString().Should().Be("StandardWithApproval");

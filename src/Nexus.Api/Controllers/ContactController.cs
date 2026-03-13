@@ -5,10 +5,12 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 
 namespace Nexus.Api.Controllers;
 
@@ -29,11 +31,21 @@ public class ContactController : ControllerBase
 
     /// <summary>POST /api/contact - Submit a contact form (public or authenticated).</summary>
     [HttpPost("contact")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     public async Task<IActionResult> Submit([FromBody] ContactRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Subject) || string.IsNullOrWhiteSpace(request.Message))
             return BadRequest(new { error = "Name, email, subject, and message are required" });
+
+        if (request.Name.Length > 200)
+            return BadRequest(new { error = "Name must be 200 characters or less" });
+        if (request.Email.Length > 320 || !request.Email.Contains('@'))
+            return BadRequest(new { error = "Invalid email address" });
+        if (request.Subject.Length > 500)
+            return BadRequest(new { error = "Subject must be 500 characters or less" });
+        if (request.Message.Length > 5000)
+            return BadRequest(new { error = "Message must be 5000 characters or less" });
 
         var tenantId = _tenant.GetTenantIdOrThrow();
         var userId = User.GetUserId();

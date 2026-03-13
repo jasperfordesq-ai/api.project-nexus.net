@@ -441,7 +441,7 @@ public class ContentModerationService
     {
         // Get admin users in the current tenant
         var admins = await _db.Users
-            .Where(u => u.Role == "admin" && u.IsActive)
+            .Where(u => (u.Role == "admin" || u.Role == "super_admin") && u.IsActive)
             .ToListAsync(ct);
 
         foreach (var admin in admins)

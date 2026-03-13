@@ -93,7 +93,7 @@ public class BulkOperationsController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Role))
             return BadRequest(new { error = "Role required" });
 
-        var validRoles = new[] { "member", "admin", "coordinator", "moderator" };
+        var validRoles = new[] { "member", "admin", "super_admin", "coordinator", "moderator" };
         if (!validRoles.Contains(request.Role.ToLower()))
             return BadRequest(new { error = $"Valid roles: {string.Join(", ", validRoles)}" });
 

@@ -62,6 +62,13 @@ public class AdminEmailController : ControllerBase
     [HttpPost("templates")]
     public async Task<IActionResult> CreateTemplate([FromBody] CreateEmailTemplateRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Key))
+            return BadRequest(new { error = "Key is required" });
+        if (string.IsNullOrWhiteSpace(request.Subject))
+            return BadRequest(new { error = "Subject is required" });
+        if (string.IsNullOrWhiteSpace(request.BodyHtml))
+            return BadRequest(new { error = "Body HTML is required" });
+
         var template = new EmailTemplate
         {
             Key = request.Key,

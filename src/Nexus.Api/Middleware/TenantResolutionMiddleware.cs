@@ -14,8 +14,8 @@ namespace Nexus.Api.Middleware;
 ///
 /// SECURITY RULES:
 /// - If user is authenticated (has JWT), tenant_id MUST come from JWT claim.
-/// - X-Tenant-ID header is ONLY allowed for unauthenticated requests (e.g., login)
-///   OR in Development environment for testing.
+/// - X-Tenant-ID header is allowed for unauthenticated requests in all environments.
+/// - Unauthenticated requests without X-Tenant-ID are BLOCKED (prevents cross-tenant data leak).
 /// - This prevents authenticated users from spoofing tenant context via headers.
 ///
 /// TENANT VALIDATION:
@@ -47,7 +47,11 @@ public class TenantResolutionMiddleware
         "/api/auth/reset-password",            // Reset password determines tenant from token lookup
         "/api/passkeys/authenticate/begin",    // Passkey auth determines tenant from request body
         "/api/passkeys/authenticate/finish",   // Passkey auth determines tenant from session
-        "/api/v1/federation"                   // Federation external API uses its own auth
+        "/api/v1/federation",                  // Federation external API uses its own auth
+        "/api/registration/config",            // Public registration config
+        "/api/registration/webhook",           // Provider webhook callback
+        "/api/announcements",                  // Handles optional tenant context itself
+        "/api/realtime/config"                 // Static config, no tenant-scoped data
     };
 
     public TenantResolutionMiddleware(
@@ -99,13 +103,28 @@ public class TenantResolutionMiddleware
             return;
         }
 
-        // Tenant required but not found
-        _logger.LogWarning("Tenant could not be resolved for path {Path}", path);
+        // For authenticated users, tenant is required (it should always be in the JWT)
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            _logger.LogWarning("Authenticated user has no tenant context for path {Path}", path);
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "Tenant context required",
+                message = "Authentication required with valid tenant_id claim"
+            });
+            return;
+        }
+
+        // Unauthenticated requests without tenant context are blocked.
+        // Public endpoints must provide X-Tenant-ID header to identify the tenant.
+        // Without this, EF Core global query filters become permissive (return all tenants' data).
+        _logger.LogWarning("Unauthenticated request to {Path} without tenant context - blocked", path);
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
         await context.Response.WriteAsJsonAsync(new
         {
             error = "Tenant context required",
-            message = "Authentication required with valid tenant_id claim"
+            message = "X-Tenant-ID header is required for this endpoint"
         });
     }
 
@@ -157,16 +176,13 @@ public class TenantResolutionMiddleware
             return (null, "JWT_MISSING_CLAIM");
         }
 
-        // 2. Not authenticated - allow header ONLY in Development for testing
-        if (_environment.IsDevelopment())
+        // 2. Not authenticated - allow X-Tenant-ID header in all environments for public endpoints
+        if (context.Request.Headers.TryGetValue("X-Tenant-ID", out var headerValue))
         {
-            if (context.Request.Headers.TryGetValue("X-Tenant-ID", out var headerValue))
+            if (int.TryParse(headerValue.FirstOrDefault(), out var headerTenantId))
             {
-                if (int.TryParse(headerValue.FirstOrDefault(), out var headerTenantId))
-                {
-                    _logger.LogDebug("Development mode: tenant from X-Tenant-ID header");
-                    return (headerTenantId, "Header_Dev");
-                }
+                _logger.LogDebug("Tenant from X-Tenant-ID header for unauthenticated request");
+                return (headerTenantId, "Header");
             }
         }
 

@@ -197,7 +197,7 @@ public class AdminBrokerController : ControllerBase
     public async Task<IActionResult> ListBrokers()
     {
         var brokers = await _db.Users
-            .Where(u => u.Role == "broker" || u.Role == "admin")
+            .Where(u => u.Role == "broker" || u.Role == "admin" || u.Role == "super_admin")
             .OrderBy(u => u.LastName)
             .ThenBy(u => u.FirstName)
             .Select(u => new

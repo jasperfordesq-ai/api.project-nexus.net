@@ -46,21 +46,44 @@ public class AdminNotificationsController : ControllerBase
     [HttpPost("broadcast")]
     public async Task<IActionResult> Broadcast([FromBody] BroadcastNotificationRequest request)
     {
-        var users = await _db.Users.Select(u => u.Id).ToListAsync();
+        if (string.IsNullOrWhiteSpace(request.Title))
+            return BadRequest(new { error = "Title is required" });
+        if (string.IsNullOrWhiteSpace(request.Message))
+            return BadRequest(new { error = "Message is required" });
 
-        var notifications = users.Select(userId => new Notification
+        // Use batched processing to avoid loading all users into memory at once
+        const int batchSize = 500;
+        var totalSent = 0;
+        var skip = 0;
+
+        while (true)
         {
-            UserId = userId,
-            Type = "admin_broadcast",
-            Title = request.Title,
-            Body = request.Message,
-            IsRead = false
-        }).ToList();
+            var userIds = await _db.Users
+                .OrderBy(u => u.Id)
+                .Skip(skip)
+                .Take(batchSize)
+                .Select(u => u.Id)
+                .ToListAsync();
 
-        _db.Notifications.AddRange(notifications);
-        await _db.SaveChangesAsync();
+            if (userIds.Count == 0) break;
 
-        return Ok(new { message = $"Broadcast sent to {notifications.Count} users" });
+            var notifications = userIds.Select(userId => new Notification
+            {
+                UserId = userId,
+                Type = "admin_broadcast",
+                Title = request.Title,
+                Body = request.Message,
+                IsRead = false
+            }).ToList();
+
+            _db.Notifications.AddRange(notifications);
+            await _db.SaveChangesAsync();
+
+            totalSent += notifications.Count;
+            skip += batchSize;
+        }
+
+        return Ok(new { message = $"Broadcast sent to {totalSent} users" });
     }
 
     /// <summary>
@@ -69,15 +92,14 @@ public class AdminNotificationsController : ControllerBase
     [HttpDelete("cleanup")]
     public async Task<IActionResult> Cleanup([FromQuery] int days_old = 90)
     {
+        if (days_old < 1) days_old = 1;
+
         var cutoff = DateTime.UtcNow.AddDays(-days_old);
-        var old = await _db.Notifications
+        var deletedCount = await _db.Notifications
             .Where(n => n.IsRead && n.CreatedAt < cutoff)
-            .ToListAsync();
+            .ExecuteDeleteAsync();
 
-        _db.Notifications.RemoveRange(old);
-        await _db.SaveChangesAsync();
-
-        return Ok(new { message = $"Deleted {old.Count} old notifications" });
+        return Ok(new { message = $"Deleted {deletedCount} old notifications" });
     }
 }
 

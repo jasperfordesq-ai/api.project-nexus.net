@@ -307,7 +307,7 @@ public class SystemAdminController : ControllerBase
         if (user == null)
             return NotFound(new { error = "User not found" });
 
-        if (user.Role == "admin")
+        if (user.Role == "admin" || user.Role == "super_admin")
             return BadRequest(new { error = "User is already an admin" });
 
         user.Role = "admin";
@@ -430,7 +430,7 @@ public class SystemAdminController : ControllerBase
     {
         var admins = await _db.Users
             .IgnoreQueryFilters()
-            .Where(u => u.Role == "admin")
+            .Where(u => u.Role == "admin" || u.Role == "super_admin")
             .OrderBy(u => u.TenantId)
             .ThenBy(u => u.LastName)
             .Select(u => new AdminUserResponse

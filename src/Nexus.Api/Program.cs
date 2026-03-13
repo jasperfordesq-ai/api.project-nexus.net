@@ -199,9 +199,10 @@ builder.Services.AddCors(options =>
                 // - Authorization: JWT Bearer token
                 // - Content-Type: JSON request bodies
                 // - X-Api-Version: API versioning header
+                // - X-Tenant-ID: Tenant context for unauthenticated requests
                 // - X-Requested-With: Required by SignalR client
                 // - X-SignalR-User-Agent: SignalR connection metadata
-                .WithHeaders("Authorization", "Content-Type", "X-Api-Version", "X-Requested-With", "X-SignalR-User-Agent")
+                .WithHeaders("Authorization", "Content-Type", "X-Api-Version", "X-Tenant-ID", "X-Requested-With", "X-SignalR-User-Agent")
                 // Performance: Cache preflight responses for 30 minutes
                 // Reduces OPTIONS requests from browsers
                 .SetPreflightMaxAge(TimeSpan.FromMinutes(30));

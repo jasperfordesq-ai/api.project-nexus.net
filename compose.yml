@@ -251,6 +251,7 @@ services:
       - ./apps/web-modern/.env.docker
     environment:
       - NODE_ENV=development
+      - NEXT_PUBLIC_TENANT_ID=${NEXT_PUBLIC_TENANT_ID:-1}
     networks:
       - nexus-backend-net
     restart: unless-stopped
