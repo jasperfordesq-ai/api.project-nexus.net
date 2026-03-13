@@ -18,20 +18,30 @@ export const JobsAdminPage = () => {
   const totalCount = raw?.total || raw?.totalCount || jobs.length;
   const stats = statsData?.data as any;
 
-  const handleStatusChange = async (id: number, status: string) => {
-    try {
-      await axiosInstance.put("/api/admin/jobs/" + id + "/status", { status });
-      message.success("Status updated");
-      refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+  const handleStatusChange = (id: number, status: string) => {
+    Modal.confirm({
+      title: `Change job status to "${status}"?`,
+      onOk: async () => {
+        try {
+          await axiosInstance.put("/api/admin/jobs/" + id + "/status", { status });
+          message.success("Status updated");
+          refetch();
+        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+      },
+    });
   };
 
-  const handleFeature = async (id: number) => {
-    try {
-      await axiosInstance.post("/api/admin/jobs/" + id + "/feature");
-      message.success("Featured toggled");
-      refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+  const handleFeature = (id: number) => {
+    Modal.confirm({
+      title: "Toggle featured status?",
+      onOk: async () => {
+        try {
+          await axiosInstance.post("/api/admin/jobs/" + id + "/feature");
+          message.success("Featured toggled");
+          refetch();
+        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+      },
+    });
   };
 
   return (

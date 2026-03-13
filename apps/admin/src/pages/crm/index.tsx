@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useCustom } from "@refinedev/core";
-import { Card, Table, Typography, Input, Select, Space, Spin, Tag, Button, Modal, Form, message, Tabs } from "antd";
+import { Card, Table, Typography, Input, Select, Space, Spin, Tag, Button, Modal, Form, Switch, message, Tabs } from "antd";
 import { FlagOutlined, PlusOutlined } from "@ant-design/icons";
 import { StatusTag } from "../../components/common/status-tag";
 import dayjs from "dayjs";
@@ -125,7 +125,7 @@ export const CrmPage = () => {
           <Form.Item name="content" label="Note" rules={[{ required: true }]}><Input.TextArea rows={3} /></Form.Item>
           <Form.Item name="category" label="Category"><Input placeholder="e.g. follow-up, complaint, feedback" /></Form.Item>
           <Form.Item name="flagged" label="Flag this note?" valuePropName="checked" initialValue={false}>
-            <Select options={[{ label: "No", value: false }, { label: "Yes - Flagged", value: true }]} />
+            <Switch checkedChildren="Flagged" unCheckedChildren="Normal" />
           </Form.Item>
         </Form>
       </Modal>

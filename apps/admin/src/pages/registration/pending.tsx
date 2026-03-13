@@ -1,5 +1,5 @@
 import { useCustom } from "@refinedev/core";
-import { Card, Table, Typography, Button, Space, message, Spin } from "antd";
+import { Card, Table, Typography, Button, Space, message, Spin, Modal } from "antd";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
@@ -14,24 +14,37 @@ export const RegistrationPendingPage = () => {
 
   const pending = Array.isArray(data?.data) ? data.data : (data?.data as any)?.data || [];
 
-  const handleApprove = async (userId: number) => {
-    try {
-      await axiosInstance.put(`/api/registration/admin/users/${userId}/approve`);
-      message.success("User approved");
-      refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to approve");
-    }
+  const handleApprove = (userId: number) => {
+    Modal.confirm({
+      title: "Approve this registration?",
+      onOk: async () => {
+        try {
+          await axiosInstance.put(`/api/registration/admin/users/${userId}/approve`);
+          message.success("User approved");
+          refetch();
+        } catch (err: any) {
+          message.error(err?.response?.data?.message || "Failed to approve");
+        }
+      },
+    });
   };
 
-  const handleReject = async (userId: number) => {
-    try {
-      await axiosInstance.put(`/api/registration/admin/users/${userId}/reject`);
-      message.success("User rejected");
-      refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to reject");
-    }
+  const handleReject = (userId: number) => {
+    Modal.confirm({
+      title: "Reject this registration?",
+      content: "This user will not be able to access the platform.",
+      okButtonProps: { danger: true },
+      okText: "Reject",
+      onOk: async () => {
+        try {
+          await axiosInstance.put(`/api/registration/admin/users/${userId}/reject`);
+          message.success("User rejected");
+          refetch();
+        } catch (err: any) {
+          message.error(err?.response?.data?.message || "Failed to reject");
+        }
+      },
+    });
   };
 
   return (

@@ -1,5 +1,5 @@
 import { useCustom } from "@refinedev/core";
-import { Card, Table, Typography, Row, Col, Statistic, Spin, Tabs, Button, Space, message, Tag, Modal } from "antd";
+import { Card, Table, Typography, Row, Col, Statistic, Spin, Tabs, Button, Space, message, Tag, Modal, Input } from "antd";
 import { CheckOutlined, CloseOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { StatusTag } from "../../components/common/status-tag";
@@ -23,18 +23,29 @@ export const VettingPage = () => {
   const expiring = Array.isArray(expiringData?.data) ? expiringData.data : (expiringData?.data as any)?.data || [];
   const pending = Array.isArray(pendingData?.data) ? pendingData.data : (pendingData?.data as any)?.data || [];
 
-  const handleVerify = async (id: number) => {
-    try {
-      await axiosInstance.put("/api/admin/vetting/records/" + id + "/verify");
-      message.success("Record verified");
-      refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+  const [rejectId, setRejectId] = useState<number | null>(null);
+  const [rejectNotes, setRejectNotes] = useState("");
+
+  const handleVerify = (id: number) => {
+    Modal.confirm({
+      title: "Verify this DBS record?",
+      onOk: async () => {
+        try {
+          await axiosInstance.put("/api/admin/vetting/records/" + id + "/verify");
+          message.success("Record verified");
+          refetch();
+        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+      },
+    });
   };
 
-  const handleReject = async (id: number) => {
+  const submitReject = async () => {
+    if (!rejectId) return;
     try {
-      await axiosInstance.put("/api/admin/vetting/records/" + id + "/reject", { notes: "Did not meet requirements" });
+      await axiosInstance.put("/api/admin/vetting/records/" + rejectId + "/reject", { notes: rejectNotes || "Did not meet requirements" });
       message.success("Record rejected");
+      setRejectId(null);
+      setRejectNotes("");
       refetch();
     } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
   };
@@ -80,7 +91,7 @@ export const VettingPage = () => {
                     <Space>
                       {r.status === "pending" && <>
                         <Button size="small" type="primary" icon={<CheckOutlined />} onClick={() => handleVerify(r.id)}>Verify</Button>
-                        <Button size="small" danger icon={<CloseOutlined />} onClick={() => handleReject(r.id)}>Reject</Button>
+                        <Button size="small" danger icon={<CloseOutlined />} onClick={() => { setRejectId(r.id); setRejectNotes(""); }}>Reject</Button>
                       </>}
                     </Space>
                   ),
@@ -101,7 +112,7 @@ export const VettingPage = () => {
                   render: (_: any, r: any) => (
                     <Space>
                       <Button size="small" type="primary" icon={<CheckOutlined />} onClick={() => handleVerify(r.id)}>Verify</Button>
-                      <Button size="small" danger icon={<CloseOutlined />} onClick={() => handleReject(r.id)}>Reject</Button>
+                      <Button size="small" danger icon={<CloseOutlined />} onClick={() => { setRejectId(r.id); setRejectNotes(""); }}>Reject</Button>
                     </Space>
                   ),
                 },
@@ -119,6 +130,22 @@ export const VettingPage = () => {
           ),
         },
       ]} />
+
+      <Modal
+        title="Reject Vetting Record"
+        open={rejectId !== null}
+        onOk={submitReject}
+        onCancel={() => setRejectId(null)}
+        okText="Reject"
+        okButtonProps={{ danger: true }}
+      >
+        <Input.TextArea
+          rows={3}
+          placeholder="Reason for rejection (optional)"
+          value={rejectNotes}
+          onChange={(e) => setRejectNotes(e.target.value)}
+        />
+      </Modal>
     </div>
   );
 };

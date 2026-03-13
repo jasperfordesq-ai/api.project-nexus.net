@@ -1,5 +1,5 @@
 import { useCustom } from "@refinedev/core";
-import { Card, Table, Typography, Spin, Button, Space, message, Tag } from "antd";
+import { Card, Table, Typography, Spin, Button, Space, message, Tag, Modal } from "antd";
 import { CheckOutlined, StopOutlined } from "@ant-design/icons";
 import axiosInstance from "../../utils/axios";
 
@@ -9,20 +9,32 @@ export const OrganisationsPage = () => {
   const { data, isLoading, refetch } = useCustom({ url: "/api/admin/organisations", method: "get" });
   const orgs = Array.isArray(data?.data) ? data.data : (data?.data as any)?.data || [];
 
-  const handleVerify = async (id: number) => {
-    try {
-      await axiosInstance.put(`/api/admin/organisations/${id}/verify`);
-      message.success("Organisation verified");
-      refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+  const handleVerify = (id: number) => {
+    Modal.confirm({
+      title: "Verify this organisation?",
+      onOk: async () => {
+        try {
+          await axiosInstance.put(`/api/admin/organisations/${id}/verify`);
+          message.success("Organisation verified");
+          refetch();
+        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+      },
+    });
   };
 
-  const handleSuspend = async (id: number) => {
-    try {
-      await axiosInstance.put(`/api/admin/organisations/${id}/suspend`);
-      message.success("Organisation suspended");
-      refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+  const handleSuspend = (id: number) => {
+    Modal.confirm({
+      title: "Suspend this organisation?",
+      content: "Members will lose access until the organisation is re-verified.",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await axiosInstance.put(`/api/admin/organisations/${id}/suspend`);
+          message.success("Organisation suspended");
+          refetch();
+        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+      },
+    });
   };
 
   return (

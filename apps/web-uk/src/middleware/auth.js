@@ -122,7 +122,7 @@ async function requireAdmin(req, res, next) {
     // Validate token and get user info
     const user = await validateToken(req.token);
 
-    if (user.role !== 'admin') {
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
       return res.status(403).render('errors/403', {
         title: 'Access denied',
         message: 'You do not have permission to access this page. Admin access required.'

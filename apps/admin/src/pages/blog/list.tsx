@@ -1,5 +1,5 @@
 import { useCustom } from "@refinedev/core";
-import { Card, Table, Typography, Button, Space, Tag, message, Spin } from "antd";
+import { Card, Table, Typography, Button, Space, Tag, message, Spin, Modal } from "antd";
 import { EditOutlined, PlusOutlined, StarOutlined, StarFilled } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -12,20 +12,31 @@ export const BlogListPage = () => {
   const { data, isLoading, refetch } = useCustom({ url: "/api/admin/blog", method: "get" });
   const posts = Array.isArray(data?.data) ? data.data : (data?.data as any)?.data || [];
 
-  const toggleStatus = async (id: number) => {
-    try {
-      await axiosInstance.post(`/api/admin/blog/${id}/toggle-status`);
-      message.success("Status toggled");
-      refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+  const toggleStatus = (id: number, currentStatus: string) => {
+    const action = currentStatus === "published" ? "unpublish" : "publish";
+    Modal.confirm({
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} this post?`,
+      onOk: async () => {
+        try {
+          await axiosInstance.post(`/api/admin/blog/${id}/toggle-status`);
+          message.success("Status toggled");
+          refetch();
+        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+      },
+    });
   };
 
-  const toggleFeatured = async (id: number) => {
-    try {
-      await axiosInstance.post(`/api/admin/blog/${id}/toggle-featured`);
-      message.success("Featured toggled");
-      refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+  const toggleFeatured = (id: number) => {
+    Modal.confirm({
+      title: "Toggle featured status?",
+      onOk: async () => {
+        try {
+          await axiosInstance.post(`/api/admin/blog/${id}/toggle-featured`);
+          message.success("Featured toggled");
+          refetch();
+        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+      },
+    });
   };
 
   return (
@@ -47,7 +58,7 @@ export const BlogListPage = () => {
             <Table.Column title="Actions" render={(_, record: any) => (
               <Space>
                 <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/blog/${record.id}/edit`)}>Edit</Button>
-                <Button size="small" onClick={() => toggleStatus(record.id)}>{record.status === "published" ? "Unpublish" : "Publish"}</Button>
+                <Button size="small" onClick={() => toggleStatus(record.id, record.status)}>{record.status === "published" ? "Unpublish" : "Publish"}</Button>
                 <Button size="small" onClick={() => toggleFeatured(record.id)}>{record.is_featured ? "Unfeature" : "Feature"}</Button>
               </Space>
             )} />
