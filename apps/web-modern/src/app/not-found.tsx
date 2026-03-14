@@ -26,15 +26,14 @@ export default function NotFound() {
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <div className="flex gap-3 justify-center">
-          <Link href="javascript:history.back()">
-            <Button
-              variant="flat"
-              className="bg-white/10 text-white hover:bg-white/20"
-              startContent={<ArrowLeft className="w-4 h-4" />}
-            >
-              Go Back
-            </Button>
-          </Link>
+          <Button
+            variant="flat"
+            className="bg-white/10 text-white hover:bg-white/20"
+            startContent={<ArrowLeft className="w-4 h-4" />}
+            onPress={() => window.history.back()}
+          >
+            Go Back
+          </Button>
           <Link href="/">
             <Button
               className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white"

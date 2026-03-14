@@ -34,7 +34,7 @@ function mapExchange(raw: any): Exchange {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-const STATUS_COLORS: Record<string, string> = { pending: '#C8640C', active: '#006B6B', completed: '#15803d', cancelled: '#64748b', declined: '#dc2626' }
+const STATUS_COLORS: Record<string, string> = { requested: '#C8640C', pending: '#C8640C', accepted: '#006B6B', active: '#006B6B', inprogress: '#006B6B', in_progress: '#006B6B', completed: '#15803d', cancelled: '#64748b', declined: '#dc2626', disputed: '#dc2626' }
 
 export function ExchangeDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -55,7 +55,7 @@ export function ExchangeDetailPage() {
     setActing(true)
     try {
       await apiClient.put(`/api/exchanges/${id}/${action}`)
-      setExchange(e => e ? { ...e, status: action === 'accept' ? 'active' : action === 'complete' ? 'completed' : 'cancelled' } : e)
+      setExchange(e => e ? { ...e, status: action === 'accept' ? 'accepted' : action === 'complete' ? 'completed' : action === 'decline' ? 'declined' : 'cancelled' } : e)
       setActionMsg('Action completed successfully.')
     } catch (err) {
       setActionMsg(isApiError(err) ? err.message : 'Action failed.')
@@ -117,13 +117,13 @@ export function ExchangeDetailPage() {
         <div className="nexus-card">
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 'var(--nexus-space-4)' }}>Actions</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--nexus-space-3)' }}>
-            {status === 'pending' && (
+            {(status === 'requested' || status === 'pending') && (
               <>
                 <button className="nexus-btn nexus-btn--primary" onClick={() => doAction('accept')} disabled={acting}>Accept exchange</button>
                 <button className="nexus-btn nexus-btn--secondary" onClick={() => doAction('decline')} disabled={acting} style={{ color: 'var(--nexus-color-warning)' }}>Decline</button>
               </>
             )}
-            {status === 'active' && (
+            {(status === 'accepted' || status === 'active' || status === 'inprogress' || status === 'in_progress') && (
               <>
                 <button className="nexus-btn nexus-btn--primary" onClick={() => doAction('complete')} disabled={acting}>Mark as completed</button>
                 <button className="nexus-btn nexus-btn--secondary" onClick={() => doAction('cancel')} disabled={acting} style={{ color: 'var(--nexus-color-warning)' }}>Cancel</button>

@@ -34,8 +34,26 @@ export function DashboardPage() {
       apiClient.get('/api/gamification/profile').then(r => r.data),
       apiClient.get('/api/notifications/unread-count').then(r => r.data),
       apiClient.get('/api/messages/unread-count').then(r => r.data),
-      apiClient.get('/api/exchanges?status=active&limit=5').then(r => (r.data as { items?: unknown[] })?.items ?? r.data ?? []).catch(() => []),
-      apiClient.get('/api/events?upcoming=true&limit=3').then(r => (r.data as { items?: unknown[] })?.items ?? r.data ?? []).catch(() => []),
+      apiClient.get('/api/exchanges?limit=5').then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+        return items.map((ex: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+          id: ex.id,
+          title: ex.listing_title ?? ex.listingTitle ?? ex.title ?? '',
+          status: ex.status ?? 'pending',
+          createdAt: ex.created_at ?? ex.createdAt ?? '',
+        }))
+      }).catch(() => []),
+      apiClient.get('/api/events?upcoming_only=true&limit=3').then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+        return items.map((ev: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+          id: ev.id,
+          title: ev.title ?? '',
+          startsAt: ev.starts_at ?? ev.startsAt ?? '',
+          location: ev.location ?? undefined,
+        }))
+      }).catch(() => []),
     ])
       .then(([wallet, gam, notif, msgs, exchanges, events]) => {
         setData({
@@ -55,7 +73,7 @@ export function DashboardPage() {
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
   const exchangeStatusColor: Record<string, string> = {
-    active: '#059669', pending: '#D97706', completed: '#6B7280', cancelled: '#DC2626',
+    requested: '#D97706', pending: '#D97706', accepted: '#059669', active: '#059669', inprogress: '#059669', in_progress: '#059669', completed: '#6B7280', cancelled: '#DC2626', declined: '#DC2626',
   }
 
   return (

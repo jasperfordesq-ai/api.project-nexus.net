@@ -6,6 +6,7 @@
 {% from "govuk/components/tabs/macro.njk" import govukTabs %}
 
 {% block beforeContent %}
+  {{ super() }}
   {{ govukBackLink({
     text: "Back to all events",
     href: "/events"

@@ -70,7 +70,7 @@
                 <td class="govuk-table__cell">{{ role.description or "-" }}</td>
                 <td class="govuk-table__cell">
                   {% if perms and perms.length > 0 %}
-                    {% for perm in perms | slice(0, 3) %}
+                    {% for perm in perms | take(3) %}
                       {{ govukTag({ text: perm, classes: "govuk-tag--grey govuk-!-margin-right-1" }) }}
                     {% endfor %}
                     {% if perms.length > 3 %}

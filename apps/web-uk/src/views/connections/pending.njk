@@ -4,6 +4,7 @@
 {% from "govuk/components/back-link/macro.njk" import govukBackLink %}
 
 {% block beforeContent %}
+  {{ super() }}
   {{ govukBackLink({
     text: "Back to connections",
     href: "/connections"

@@ -4,6 +4,7 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/select/macro.njk" import govukSelect %}
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Groups", href: "/groups" },
     { text: group.name, href: "/groups/" + group.id },

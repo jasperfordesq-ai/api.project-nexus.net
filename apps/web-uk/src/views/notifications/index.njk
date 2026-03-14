@@ -67,7 +67,7 @@
               {% set notificationLink = '/wallet' %}
             {% endif %}
 
-            <li class="app-notification-item{% if not notification.isRead or notification.is_read %} app-notification-item--unread{% endif %}">
+            <li class="app-notification-item{% if not (notification.isRead or notification.is_read) %} app-notification-item--unread{% endif %}">
               <div class="app-notification-content">
                 <div class="app-notification-icon app-notification-icon--{{ notification.type }}">
                   {% if notification.type == 'connection_request' %}
@@ -88,7 +88,7 @@
                 <div class="app-notification-body">
                   <p class="govuk-body govuk-!-margin-bottom-1">
                     <strong class="govuk-!-font-weight-bold">{{ notification.title }}</strong>
-                    {% if not notification.isRead or notification.is_read %}
+                    {% if not (notification.isRead or notification.is_read) %}
                       <span class="govuk-tag govuk-tag--blue app-notification-badge">New</span>
                     {% endif %}
                   </p>
@@ -104,10 +104,10 @@
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <input type="hidden" name="redirect" value="{{ notificationLink }}">
                       <button type="submit" class="govuk-link app-link-button">
-                        {% if not notification.isRead or notification.is_read %}View{% else %}Go to{% endif %}
+                        {% if not (notification.isRead or notification.is_read) %}View{% else %}Go to{% endif %}
                       </button>
                     </form>
-                  {% elif not notification.isRead or notification.is_read %}
+                  {% elif not (notification.isRead or notification.is_read) %}
                     <form method="post" action="/notifications/{{ notification.id }}/read" style="display: inline">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <button type="submit" class="govuk-link app-link-button">Mark read</button>

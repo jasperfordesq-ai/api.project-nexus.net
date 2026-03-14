@@ -4,6 +4,7 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Groups", href: "/groups" },
     { text: group.name }
@@ -113,7 +114,7 @@
 
       {% if members and members.length > 0 %}
         <ul class="govuk-list">
-          {% for member in members | slice(0, 10) %}
+          {% for member in members | take(10) %}
             <li class="govuk-!-margin-bottom-2">
               <div class="app-member-cell">
                 {% set user = member %}

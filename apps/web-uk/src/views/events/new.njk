@@ -10,6 +10,7 @@
 {% from "govuk/components/hint/macro.njk" import govukHint %}
 
 {% block beforeContent %}
+  {{ super() }}
   {{ govukBackLink({
     text: "Back",
     href: "/events"

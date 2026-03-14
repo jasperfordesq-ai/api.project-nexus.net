@@ -8,6 +8,7 @@
 {% from "govuk/components/character-count/macro.njk" import govukCharacterCount %}
 
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Feed", href: "/feed" },
     { text: "Create a post" }

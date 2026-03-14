@@ -3,6 +3,7 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Dashboard", href: "/dashboard" },
     { text: "My Progress", href: "/progress" },

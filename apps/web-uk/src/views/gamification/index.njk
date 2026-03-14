@@ -3,6 +3,7 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Dashboard", href: "/dashboard" },
     { text: "My Progress" }
@@ -111,7 +112,7 @@
       {% if badges.length > 0 %}
         <h2 class="govuk-heading-m govuk-!-margin-top-6" id="my-badges-heading">My badges</h2>
         <ul class="app-badge-grid app-badge-grid--compact" aria-labelledby="my-badges-heading" role="list">
-          {% for badge in badges | slice(0, 6) %}
+          {% for badge in badges | take(6) %}
             <li class="app-badge app-badge--earned" role="listitem">
               <span class="app-badge__icon" aria-hidden="true">{{ badge.icon }}</span>
               <span class="app-badge__name">{{ badge.name }}</span>
