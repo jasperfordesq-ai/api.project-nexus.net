@@ -18,12 +18,14 @@ public class GdprService
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<GdprService> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public GdprService(NexusDbContext db, TenantContext tenantContext, ILogger<GdprService> logger)
+    public GdprService(NexusDbContext db, TenantContext tenantContext, ILogger<GdprService> logger, IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _tenantContext = tenantContext;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     #region Data Export
@@ -63,28 +65,33 @@ public class GdprService
 
         _logger.LogInformation("Data export requested by user {UserId} in format {Format}", userId, format);
 
-        // Process immediately (in production, this would be a background job)
+        // Process in background with its own DI scope.
+        // The scoped NexusDbContext from the HTTP request will be disposed when the
+        // request ends, so the background task must create its own scope.
+        var requestId = request.Id;
         _ = Task.Run(async () =>
         {
             try
             {
-                await ProcessDataExportAsync(request.Id);
+                using var scope = _scopeFactory.CreateScope();
+                var bgGdpr = scope.ServiceProvider.GetRequiredService<GdprService>();
+                await bgGdpr.ProcessDataExportAsync(requestId);
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Failed to process data export {RequestId}", request.Id);
+                _logger.LogError(ex, "Failed to process data export {RequestId}", requestId);
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Failed to process data export {RequestId}", request.Id);
+                _logger.LogError(ex, "Failed to process data export {RequestId}", requestId);
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "Failed to process data export {RequestId}", request.Id);
+                _logger.LogError(ex, "Failed to process data export {RequestId}", requestId);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Failed to process data export {RequestId}", request.Id);
+                _logger.LogError(ex, "Failed to process data export {RequestId}", requestId);
             }
         });
 

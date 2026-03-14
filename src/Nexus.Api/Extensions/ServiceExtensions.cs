@@ -77,6 +77,9 @@ public static class ServiceExtensions
         services.AddScoped<SystemAdminService>();
         services.AddScoped<LockdownService>();
         services.AddScoped<JobService>();
+        services.AddScoped<IdeationService>();
+        services.AddScoped<SubscriptionService>();
+        services.AddScoped<DeliverableService>();
 
         // WebAuthn/Passkeys (FIDO2)
         var fido2Config = configuration.GetSection("Fido2");

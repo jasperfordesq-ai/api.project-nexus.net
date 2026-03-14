@@ -398,13 +398,17 @@ Only JSON, no markdown.";
             .Select(g => new { Type = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
-        var topCategories = await _db.Listings
+        var activeTitles = await _db.Listings
             .Where(l => l.Status == ListingStatus.Active)
-            .GroupBy(l => l.Title.ToLower().Substring(0, Math.Min(20, l.Title.Length)))
+            .Select(l => l.Title)
+            .ToListAsync(ct);
+
+        var topCategories = activeTitles
+            .GroupBy(t => t.ToLower().Substring(0, Math.Min(20, t.Length)))
             .OrderByDescending(g => g.Count())
             .Take(5)
             .Select(g => new { Category = g.Key, Count = g.Count() })
-            .ToListAsync(ct);
+            .ToList();
 
         var prompt = $@"You are analyzing a timebanking community.
 
@@ -1126,13 +1130,17 @@ Respond with JSON only:
             .ToListAsync(ct);
 
         // Get community demand (what people are requesting)
-        var communityRequests = await _db.Listings
+        var requestTitles = await _db.Listings
             .Where(l => l.Type == ListingType.Request && l.Status == ListingStatus.Active)
-            .GroupBy(l => l.Title.ToLower().Substring(0, Math.Min(30, l.Title.Length)))
+            .Select(l => l.Title)
+            .ToListAsync(ct);
+
+        var communityRequests = requestTitles
+            .GroupBy(t => t.ToLower().Substring(0, Math.Min(30, t.Length)))
             .OrderByDescending(g => g.Count())
             .Take(10)
             .Select(g => g.Key)
-            .ToListAsync(ct);
+            .ToList();
 
         var prompt = $@"Recommend skills/services for a timebanking community member.
 
