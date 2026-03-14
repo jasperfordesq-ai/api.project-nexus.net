@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
@@ -105,15 +105,7 @@ function ProfileContent() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (activeTab === "leaderboard") {
-      fetchLeaderboard();
-    } else if (activeTab === "history") {
-      fetchXpHistory();
-    }
-  }, [activeTab, leaderboardPeriod, currentPage]);
-
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     try {
       const res = await api.getLeaderboard({
         period: leaderboardPeriod,
@@ -127,9 +119,9 @@ function ProfileContent() {
       logger.error("Failed to fetch leaderboard:", error);
       setLeaderboard([]);
     }
-  };
+  }, [leaderboardPeriod, currentPage]);
 
-  const fetchXpHistory = async () => {
+  const fetchXpHistory = useCallback(async () => {
     try {
       const res = await api.getXpHistory({ page: currentPage, limit: 20 });
       setXpHistory(res?.data || []);
@@ -138,7 +130,15 @@ function ProfileContent() {
       logger.error("Failed to fetch XP history:", error);
       setXpHistory([]);
     }
-  };
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (activeTab === "leaderboard") {
+      fetchLeaderboard();
+    } else if (activeTab === "history") {
+      fetchXpHistory();
+    }
+  }, [activeTab, fetchLeaderboard, fetchXpHistory]);
 
   const handleSaveProfile = async () => {
     if (!firstName.trim() || !lastName.trim()) return;

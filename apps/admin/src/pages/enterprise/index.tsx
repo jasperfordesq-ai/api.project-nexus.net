@@ -70,7 +70,7 @@ export const EnterprisePage = () => {
         <Spin />
       ) : (
         <Card>
-          <Table dataSource={configItems.map((item: any, i: number) => ({ ...item, _key: item.key || i }))} rowKey="_key" size="small">
+          <Table dataSource={configItems.map((item: any, i: number) => ({ ...item, _key: item.key || i }))} rowKey="_key" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
             <Table.Column dataIndex="key" title="Key" />
             <Table.Column dataIndex="value" title="Value" />
             <Table.Column dataIndex="description" title="Description" />

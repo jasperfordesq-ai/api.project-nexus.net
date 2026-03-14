@@ -27,7 +27,7 @@ export function ForgotPasswordPage() {
     }
     setIsSubmitting(true)
     try {
-      await apiClient.post('/api/auth/forgot-password', { email })
+      await apiClient.post('/api/auth/forgot-password', { email: email.trim().toLowerCase() })
       setSubmitted(true)
     } catch (err) {
       if (isApiError(err)) setError(err.message)

@@ -42,6 +42,9 @@ public class CookieConsentController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> RecordConsent([FromBody] RecordConsentRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.SessionId))
+            return BadRequest(new { error = "Session ID is required" });
+
         try
         {
             var userId = GetCurrentUserId();

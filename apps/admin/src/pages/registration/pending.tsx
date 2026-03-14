@@ -6,18 +6,25 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Button, Space, message, Spin, Modal } from "antd";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
 
 const { Title } = Typography;
 
 export const RegistrationPendingPage = () => {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const { data, isLoading, refetch } = useCustom({
     url: "/api/registration/admin/pending",
     method: "get",
+    config: { query: { page, limit: pageSize } },
+    queryOptions: { queryKey: ["admin-reg-pending", page, pageSize] },
   });
 
-  const pending = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
+  const raw = data?.data as any;
+  const pending = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
+  const totalCount = raw?.total || raw?.totalCount || pending.length;
 
   const handleApprove = (userId: number) => {
     Modal.confirm({
@@ -57,7 +64,14 @@ export const RegistrationPendingPage = () => {
       <Title level={4}>Pending Registrations</Title>
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={pending} rowKey="id" size="middle">
+          <Table dataSource={pending} rowKey="id" size="middle" pagination={{
+                current: page,
+                pageSize,
+                total: totalCount,
+                showSizeChanger: true,
+                showTotal: (t: number) => `${t} total`,
+                onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+              }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="email" title="Email" />
             <Table.Column title="Name" render={(_, r: any) => `${r.first_name || ""} ${r.last_name || ""}`.trim() || "—"} />

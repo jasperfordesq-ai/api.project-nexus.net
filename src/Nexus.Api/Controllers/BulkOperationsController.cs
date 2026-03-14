@@ -18,11 +18,13 @@ namespace Nexus.Api.Controllers;
 public class BulkOperationsController : ControllerBase
 {
     private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
     private readonly ILogger<BulkOperationsController> _logger;
 
-    public BulkOperationsController(NexusDbContext db, ILogger<BulkOperationsController> logger)
+    public BulkOperationsController(NexusDbContext db, TenantContext tenantContext, ILogger<BulkOperationsController> logger)
     {
         _db = db;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -35,14 +37,20 @@ public class BulkOperationsController : ControllerBase
         if (request.UserIds.Length > 500)
             return BadRequest(new { error = "Maximum 500 users per bulk operation" });
 
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        // ExecuteUpdateAsync bypasses EF global query filters, so we must
+        // explicitly enforce tenant isolation in the WHERE clause.
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
         var count = await _db.Users
-            .Where(u => request.UserIds.Contains(u.Id) && !u.IsActive)
+            .Where(u => u.TenantId == tenantId && request.UserIds.Contains(u.Id) && !u.IsActive)
             .ExecuteUpdateAsync(u => u
                 .SetProperty(x => x.IsActive, true)
                 .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
 
-        var adminId = User.GetUserId();
-        _logger.LogInformation("Super admin {AdminId} bulk activated {Count} users", adminId, count);
+        _logger.LogInformation("Super admin {AdminId} bulk activated {Count} users in tenant {TenantId}", adminId, count, tenantId);
         return Ok(new { success = true, affected = count });
     }
 
@@ -55,14 +63,18 @@ public class BulkOperationsController : ControllerBase
         if (request.UserIds.Length > 500)
             return BadRequest(new { error = "Maximum 500 users per bulk operation" });
 
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
         var count = await _db.Users
-            .Where(u => request.UserIds.Contains(u.Id) && u.IsActive)
+            .Where(u => u.TenantId == tenantId && request.UserIds.Contains(u.Id) && u.IsActive)
             .ExecuteUpdateAsync(u => u
                 .SetProperty(x => x.IsActive, false)
                 .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
 
-        var adminId = User.GetUserId();
-        _logger.LogWarning("Super admin {AdminId} bulk suspended {Count} users", adminId, count);
+        _logger.LogWarning("Super admin {AdminId} bulk suspended {Count} users in tenant {TenantId}", adminId, count, tenantId);
         return Ok(new { success = true, affected = count });
     }
 
@@ -75,12 +87,16 @@ public class BulkOperationsController : ControllerBase
         if (request.ListingIds.Length > 200)
             return BadRequest(new { error = "Maximum 200 listings per bulk operation" });
 
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
         var count = await _db.Listings
-            .Where(l => request.ListingIds.Contains(l.Id))
+            .Where(l => l.TenantId == tenantId && request.ListingIds.Contains(l.Id))
             .ExecuteDeleteAsync();
 
-        var adminId = User.GetUserId();
-        _logger.LogWarning("Super admin {AdminId} bulk deleted {Count} listings", adminId, count);
+        _logger.LogWarning("Super admin {AdminId} bulk deleted {Count} listings in tenant {TenantId}", adminId, count, tenantId);
         return Ok(new { success = true, affected = count });
     }
 
@@ -97,14 +113,18 @@ public class BulkOperationsController : ControllerBase
         if (!validRoles.Contains(request.Role.ToLower()))
             return BadRequest(new { error = $"Valid roles: {string.Join(", ", validRoles)}" });
 
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
         var count = await _db.Users
-            .Where(u => request.UserIds.Contains(u.Id))
+            .Where(u => u.TenantId == tenantId && request.UserIds.Contains(u.Id))
             .ExecuteUpdateAsync(u => u
                 .SetProperty(x => x.Role, request.Role.ToLower())
                 .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
 
-        var adminId = User.GetUserId();
-        _logger.LogWarning("Super admin {AdminId} bulk assigned role '{Role}' to {Count} users", adminId, request.Role, count);
+        _logger.LogWarning("Super admin {AdminId} bulk assigned role '{Role}' to {Count} users in tenant {TenantId}", adminId, request.Role, count, tenantId);
         return Ok(new { success = true, affected = count });
     }
 }

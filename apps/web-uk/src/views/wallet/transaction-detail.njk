@@ -58,7 +58,7 @@
           },
           {
             key: { text: "Date" },
-            value: { text: transaction.created_at or transaction.createdAt or "N/A" }
+            value: { text: (transaction.created_at or transaction.createdAt) | formatDate if transaction.created_at or transaction.createdAt else "N/A" }
           }
         ]
       }) }}

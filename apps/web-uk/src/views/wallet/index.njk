@@ -63,7 +63,7 @@
           <tbody class="govuk-table__body">
             {% for tx in transactions %}
               <tr class="govuk-table__row">
-                <td class="govuk-table__cell">{{ tx.created_at or tx.createdAt or "N/A" }}</td>
+                <td class="govuk-table__cell">{{ (tx.created_at or tx.createdAt) | formatDate if tx.created_at or tx.createdAt else "N/A" }}</td>
                 <td class="govuk-table__cell">
                   <a href="/wallet/transactions/{{ tx.id }}" class="govuk-link">
                     {{ tx.description or "Transaction" }}

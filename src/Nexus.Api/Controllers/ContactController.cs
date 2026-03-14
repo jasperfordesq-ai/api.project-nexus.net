@@ -65,7 +65,7 @@ public class ContactController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Contact form submitted: {Subject} from {Email}", submission.Subject, submission.Email);
-        return Ok(new { success = true, message = "Your message has been received. We will respond shortly.", id = submission.Id });
+        return StatusCode(201, new { success = true, message = "Your message has been received. We will respond shortly.", id = submission.Id });
     }
 
     /// <summary>GET /api/admin/contact - List contact submissions (admin).</summary>
@@ -122,9 +122,12 @@ public class ContactController : ControllerBase
         var item = await _db.ContactSubmissions.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
         if (item == null) return NotFound(new { error = "Not found" });
 
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
         item.IsResolved = true;
         item.ResolvedAt = DateTime.UtcNow;
-        item.ResolvedById = User.GetUserId();
+        item.ResolvedById = adminId.Value;
         item.ResolvedNote = request.Note;
         await _db.SaveChangesAsync();
 

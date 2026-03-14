@@ -7,6 +7,7 @@
 {% from "govuk/components/back-link/macro.njk" import govukBackLink %}
 
 {% block beforeContent %}
+  {{ super() }}
   {{ govukBackLink({
     text: "Back to messages",
     href: "/messages"
@@ -37,10 +38,11 @@
 
           {% set recipientOptions = [{ value: "", text: "Select a recipient" }] %}
           {% for conn in connections %}
-            {% set userName = (conn.other_user.firstName or conn.other_user.first_name) + " " + (conn.other_user.lastName or conn.other_user.last_name) %}
-            {% set isSelected = selectedUserId and (conn.other_user.id | string) == (selectedUserId | string) %}
+            {% set otherUser = conn.otherUser or conn.other_user %}
+            {% set userName = (otherUser.firstName or otherUser.first_name) + " " + (otherUser.lastName or otherUser.last_name) %}
+            {% set isSelected = selectedUserId and (otherUser.id | string) == (selectedUserId | string) %}
             {% set recipientOptions = (recipientOptions.push({
-              value: conn.other_user.id,
+              value: otherUser.id,
               text: userName,
               selected: isSelected
             }), recipientOptions) %}

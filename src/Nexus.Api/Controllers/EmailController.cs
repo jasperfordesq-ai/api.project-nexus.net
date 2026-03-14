@@ -101,6 +101,13 @@ public class EmailController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> UpsertTemplate([FromBody] UpsertTemplateRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Key))
+            return BadRequest(new { error = "Template key is required" });
+        if (string.IsNullOrWhiteSpace(request.Subject))
+            return BadRequest(new { error = "Subject is required" });
+        if (string.IsNullOrWhiteSpace(request.BodyHtml) && string.IsNullOrWhiteSpace(request.BodyText))
+            return BadRequest(new { error = "Either body_html or body_text is required" });
+
         var template = await _emailService.UpsertTemplateAsync(
             request.Key, request.Subject, request.BodyHtml, request.BodyText);
 

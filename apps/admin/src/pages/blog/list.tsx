@@ -7,6 +7,7 @@ import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Button, Space, Tag, message, Spin, Modal } from "antd";
 import { EditOutlined, PlusOutlined, StarOutlined, StarFilled } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
 
@@ -14,8 +15,12 @@ const { Title } = Typography;
 
 export const BlogListPage = () => {
   const navigate = useNavigate();
-  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/blog", method: "get" });
-  const posts = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/blog", method: "get", config: { query: { page, limit: pageSize } }, queryOptions: { queryKey: ["admin-blog", page, pageSize] } });
+  const raw = data?.data as any;
+  const posts = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
+  const totalCount = raw?.total || raw?.totalCount || posts.length;
 
   const toggleStatus = (id: number, currentStatus: string) => {
     const action = currentStatus === "published" ? "unpublish" : "publish";
@@ -52,7 +57,14 @@ export const BlogListPage = () => {
       </div>
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={posts} rowKey="id" size="middle">
+          <Table dataSource={posts} rowKey="id" size="middle" pagination={{
+                current: page,
+                pageSize,
+                total: totalCount,
+                showSizeChanger: true,
+                showTotal: (t: number) => `${t} total`,
+                onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+              }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
             <Table.Column dataIndex="status" title="Status" render={(s: string) => (

@@ -128,7 +128,7 @@ public class GroupExchangeController : ControllerBase
         exchange.TotalHours = await _db.GroupExchangeParticipants.Where(p => p.GroupExchangeId == id).SumAsync(p => p.Hours) + request.Hours;
         exchange.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { success = true, message = "Participant added", participant = new { participant.Id, participant.UserId, participant.Hours, participant.Role, is_confirmed = participant.IsConfirmed } });
+        return StatusCode(201, new { success = true, message = "Participant added", participant = new { participant.Id, participant.UserId, participant.Hours, participant.Role, is_confirmed = participant.IsConfirmed } });
     }
 
     [HttpDelete("{id:int}/participants/{participantId:int}")]
@@ -215,8 +215,7 @@ public class GroupExchangeController : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var role = User.GetRole();
-        var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = User.IsAdmin();
         var exchange = await _db.GroupExchanges.FirstOrDefaultAsync(ge => ge.Id == id);
         if (exchange == null) return NotFound(new { error = "Group exchange not found" });
         if (exchange.Status == "completed") return BadRequest(new { error = "Cannot cancel a completed exchange" });

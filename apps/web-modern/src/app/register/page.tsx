@@ -28,7 +28,7 @@ import { validatePassword, validateEmail } from "@/lib/validation";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -96,6 +96,9 @@ export default function RegisterPage() {
       // Clear sensitive data from state
       setPassword("");
       setConfirmPassword("");
+
+      // Update auth context so ProtectedRoute sees the user
+      await refreshUser();
 
       setSuccess(true);
 

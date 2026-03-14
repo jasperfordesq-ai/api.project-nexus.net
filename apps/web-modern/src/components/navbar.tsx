@@ -102,9 +102,10 @@ const createItems = [
 export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [internalUnreadCount, setInternalUnreadCount] = useState(0);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
   const pathname = usePathname();
 
-  // Self-fetch unread count if not provided externally
+  // Self-fetch unread message count if not provided externally
   useEffect(() => {
     if (externalUnreadCount !== undefined) return;
     if (!user) return;
@@ -116,6 +117,18 @@ export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: Nav
     });
     return () => { cancelled = true; };
   }, [user, externalUnreadCount]);
+
+  // Fetch unread notification count separately
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    import("@/lib/api").then(({ api }) => {
+      api.getUnreadNotificationCount()
+        .then((res) => { if (!cancelled) setNotificationUnreadCount(res?.count || 0); })
+        .catch(() => {});
+    });
+    return () => { cancelled = true; };
+  }, [user]);
 
   const unreadCount = externalUnreadCount ?? internalUnreadCount;
 
@@ -362,15 +375,15 @@ export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: Nav
                   isIconOnly
                   variant="light"
                   className="text-white/70 hover:text-white relative"
-                  aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+                  aria-label={`Notifications${notificationUnreadCount > 0 ? `, ${notificationUnreadCount} unread` : ""}`}
                 >
                   <Bell className="w-5 h-5" aria-hidden="true" />
-                  {unreadCount > 0 && (
+                  {notificationUnreadCount > 0 && (
                     <span
                       className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold bg-red-500 text-white rounded-full"
                       aria-hidden="true"
                     >
-                      {unreadCount > 9 ? "9+" : unreadCount}
+                      {notificationUnreadCount > 9 ? "9+" : notificationUnreadCount}
                     </span>
                   )}
                 </Button>
@@ -660,9 +673,9 @@ export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: Nav
             >
               <Bell className="w-5 h-5" />
               <span>Notifications</span>
-              {unreadCount > 0 && (
+              {notificationUnreadCount > 0 && (
                 <span className="ml-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium bg-red-500 text-white rounded-full min-w-[18px]">
-                  {unreadCount > 9 ? "9+" : unreadCount}
+                  {notificationUnreadCount > 9 ? "9+" : notificationUnreadCount}
                 </span>
               )}
             </Link>

@@ -6,6 +6,7 @@
 {% from "govuk/components/select/macro.njk" import govukSelect %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Events", href: "/events" },
     { text: event.title, href: "/events/" + event.id },
@@ -43,7 +44,7 @@
           },
           errorMessage: { text: errors | selectattr("href", "equalto", "#title") | first | attr("text") } if errors | selectattr("href", "equalto", "#title") | first else undefined,
           attributes: {
-            "data-validate": "required,maxLength:255",
+            "data-validate": "required maxLength:255",
             "data-label": "event title"
           }
         }) }}
@@ -139,7 +140,7 @@
           classes: "govuk-input--width-4",
           inputmode: "numeric",
           attributes: {
-            "data-validate": "number,min:1",
+            "data-validate": "number min:1",
             "data-label": "maximum attendees"
           }
         }) }}

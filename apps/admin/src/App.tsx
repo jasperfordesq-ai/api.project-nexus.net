@@ -6,11 +6,10 @@
 import { Refine, Authenticated } from "@refinedev/core";
 import { RefineThemes, notificationProvider } from "@refinedev/antd";
 import routerProvider, {
-  NavigateToResource,
   CatchAllNavigate,
   DocumentTitleHandler,
 } from "@refinedev/react-router-v6";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { ConfigProvider, App as AntApp, theme } from "antd";
 import "@refinedev/antd/dist/reset.css";
 import { Component, type ReactNode, type ErrorInfo } from 'react';
@@ -127,7 +126,7 @@ function AppInner() {
             <Route
               element={
                 <Authenticated key="auth-pages" fallback={<Outlet />}>
-                  <NavigateToResource resource="dashboard" />
+                  <Navigate to="/" />
                 </Authenticated>
               }
             >

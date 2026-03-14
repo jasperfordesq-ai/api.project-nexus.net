@@ -51,7 +51,7 @@
                     </strong>
                   </div>
                   <span class="govuk-body-s govuk-!-margin-bottom-0">
-                    {{ conversation.last_message_at or conversation.lastMessageAt or "" }}
+                    {{ (conversation.last_message_at or conversation.lastMessageAt) | formatDate if conversation.last_message_at or conversation.lastMessageAt else "" }}
                   </span>
                 </div>
                 <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">

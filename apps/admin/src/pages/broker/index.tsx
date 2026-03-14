@@ -6,17 +6,22 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Tabs, Tag, Button, Space, message } from "antd";
 import { StatusTag } from "../../components/common/status-tag";
+import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
 
 const { Title } = Typography;
 
 export const BrokerPage = () => {
-  const { data: assignmentsData, isLoading, refetch } = useCustom({ url: "/api/admin/broker/assignments", method: "get" });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const { data: assignmentsData, isLoading, refetch } = useCustom({ url: "/api/admin/broker/assignments", method: "get", config: { query: { page, limit: pageSize } }, queryOptions: { queryKey: ["admin-broker", page, pageSize] } });
   const { data: statsData } = useCustom({ url: "/api/admin/broker/stats", method: "get" });
   const { data: brokersData } = useCustom({ url: "/api/admin/broker/brokers", method: "get" });
 
-  const assignments = (assignmentsData?.data as any)?.items || (assignmentsData?.data as any)?.data || [];
+  const assignmentsRaw = assignmentsData?.data as any;
+  const assignments = assignmentsRaw?.items || assignmentsRaw?.data || [];
+  const assignmentsTotalCount = assignmentsRaw?.total || assignmentsRaw?.totalCount || assignments.length;
   const stats = statsData?.data as any;
   const brokers = (brokersData?.data as any)?.items || (brokersData?.data as any)?.data || (Array.isArray(brokersData?.data) ? brokersData.data : []);
 
@@ -47,7 +52,14 @@ export const BrokerPage = () => {
           label: "Assignments",
           children: isLoading ? <Spin /> : (
             <Card>
-              <Table dataSource={assignments} rowKey="id" size="small">
+              <Table dataSource={assignments} rowKey="id" size="small" pagination={{
+                    current: page,
+                    pageSize,
+                    total: assignmentsTotalCount,
+                    showSizeChanger: true,
+                    showTotal: (t: number) => `${t} total`,
+                    onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+                  }}>
                 <Table.Column dataIndex="id" title="ID" width={60} />
                 <Table.Column dataIndex="broker_id" title="Broker ID" width={80} />
                 <Table.Column dataIndex="member_id" title="Member ID" width={80} />
@@ -67,7 +79,7 @@ export const BrokerPage = () => {
           label: "Brokers",
           children: (
             <Card>
-              <Table dataSource={brokers} rowKey="id" size="small">
+              <Table dataSource={brokers} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
                 <Table.Column dataIndex="id" title="ID" width={60} />
                 <Table.Column dataIndex="email" title="Email" />
                 <Table.Column title="Name" render={(_, r: any) => `${r.first_name || ""} ${r.last_name || ""}`.trim() || "—"} />

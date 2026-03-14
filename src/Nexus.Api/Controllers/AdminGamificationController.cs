@@ -69,6 +69,13 @@ public class AdminGamificationController : ControllerBase
     [HttpPost("badges")]
     public async Task<IActionResult> CreateBadge([FromBody] AdminCreateBadgeRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return BadRequest(new { error = "Name is required" });
+        if (request.Name.Length > 200)
+            return BadRequest(new { error = "Name must not exceed 200 characters" });
+        if (request.XpReward < 0)
+            return BadRequest(new { error = "XP reward cannot be negative" });
+
         var badge = new Badge
         {
             Slug = request.Slug ?? request.Name.ToLower().Replace(' ', '-'),

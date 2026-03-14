@@ -4,6 +4,7 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Groups", href: "/groups" },
     { text: group.name }
@@ -111,9 +112,9 @@
       {# Members section #}
       <h2 class="govuk-heading-l govuk-!-margin-top-8">Members</h2>
 
-      {% if members.length > 0 %}
+      {% if members and members.length > 0 %}
         <ul class="govuk-list">
-          {% for member in members | slice(0, 10) %}
+          {% for member in members | take(10) %}
             <li class="govuk-!-margin-bottom-2">
               <div class="app-member-cell">
                 {% set user = member %}
@@ -130,7 +131,7 @@
             </li>
           {% endfor %}
         </ul>
-        {% if members.length > 10 %}
+        {% if members and members.length > 10 %}
           <p class="govuk-body">
             <a href="/groups/{{ group.id }}/members" class="govuk-link">View all {{ members.length }} members</a>
           </p>
@@ -142,7 +143,7 @@
       {# Upcoming Events section #}
       <h2 class="govuk-heading-l govuk-!-margin-top-8">Upcoming events</h2>
 
-      {% if events.length > 0 %}
+      {% if events and events.length > 0 %}
         <ul class="govuk-list">
           {% for event in events %}
             <li class="govuk-!-margin-bottom-4">

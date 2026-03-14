@@ -16,7 +16,7 @@ export const EmailTemplatesPage = () => {
   const [logsPage, setLogsPage] = useState(1);
   const [logsPageSize, setLogsPageSize] = useState(50);
   const { data: templatesData, isLoading, refetch } = useCustom({ url: "/api/admin/emails/templates", method: "get" });
-  const { data: logsData, isLoading: logsLoading } = useCustom({ url: "/api/admin/emails/logs", method: "get", config: { query: { page: logsPage, limit: logsPageSize } } });
+  const { data: logsData, isLoading: logsLoading } = useCustom({ url: "/api/admin/emails/logs", method: "get", config: { query: { page: logsPage, limit: logsPageSize } }, queryOptions: { queryKey: ["admin-email-logs", logsPage, logsPageSize] } });
   const { data: statsData } = useCustom({ url: "/api/admin/emails/stats", method: "get" });
 
   const templates = (templatesData?.data as any)?.items || (templatesData?.data as any)?.data || (Array.isArray(templatesData?.data) ? templatesData.data : []);
@@ -61,7 +61,7 @@ export const EmailTemplatesPage = () => {
           label: "Templates",
           children: isLoading ? <Spin /> : (
             <Card extra={<Button icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>New Template</Button>}>
-              <Table dataSource={templates} rowKey="id" size="small">
+              <Table dataSource={templates} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
                 <Table.Column dataIndex="id" title="ID" width={60} />
                 <Table.Column dataIndex="name" title="Name" />
                 <Table.Column dataIndex="subject" title="Subject" />

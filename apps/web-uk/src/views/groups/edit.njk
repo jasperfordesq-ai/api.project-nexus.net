@@ -6,6 +6,7 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Groups", href: "/groups" },
     { text: group.name, href: "/groups/" + group.id },

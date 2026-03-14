@@ -106,9 +106,12 @@ public class EmergencyAlertsController : ControllerBase
         if (alert == null) return NotFound(new { error = "Alert not found" });
         if (!alert.IsActive) return BadRequest(new { error = "Alert is already resolved" });
 
+        var adminId = User.GetUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+
         alert.IsActive = false;
         alert.ResolvedAt = DateTime.UtcNow;
-        alert.ResolvedById = User.GetUserId();
+        alert.ResolvedById = adminId.Value;
         await _db.SaveChangesAsync();
 
         return Ok(new { success = true, message = "Emergency alert resolved" });

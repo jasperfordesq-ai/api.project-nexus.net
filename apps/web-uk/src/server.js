@@ -126,6 +126,11 @@ nunjucksEnv.addFilter('date', (dateStr) => {
   }
 });
 
+nunjucksEnv.addFilter('take', (arr, count) => {
+  if (!arr || !Array.isArray(arr)) return [];
+  return arr.slice(0, count);
+});
+
 nunjucksEnv.addFilter('nl2br', (str) => {
   if (!str) return '';
   // Escape HTML entities first to prevent XSS, then convert newlines to <br>
@@ -329,23 +334,33 @@ app.post('/forgot-password', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/reset-password', authRoutes);
 app.post('/reset-password', authLimiter, doubleCsrfProtection, authRoutes);
 
+// Rate limit only on state-changing methods (POST/PUT/DELETE), not GET
+function postOnly(limiter) {
+  return (req, res, next) => {
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      return next();
+    }
+    return limiter(req, res, next);
+  };
+}
+
 // Protected routes with CSRF and rate limiting
 app.use('/dashboard', doubleCsrfProtection, dashboardRoutes);
-app.use('/listings', doubleCsrfProtection, formLimiter, listingsRoutes);
+app.use('/listings', doubleCsrfProtection, postOnly(formLimiter), listingsRoutes);
 app.use('/profile', doubleCsrfProtection, profileRoutes);
-app.use('/wallet', doubleCsrfProtection, walletLimiter, walletRoutes);
-app.use('/messages', doubleCsrfProtection, formLimiter, messagesRoutes);
-app.use('/connections', doubleCsrfProtection, formLimiter, connectionsRoutes);
+app.use('/wallet', doubleCsrfProtection, postOnly(walletLimiter), walletRoutes);
+app.use('/messages', doubleCsrfProtection, postOnly(formLimiter), messagesRoutes);
+app.use('/connections', doubleCsrfProtection, postOnly(formLimiter), connectionsRoutes);
 app.use('/members', doubleCsrfProtection, membersRoutes);
 app.use('/notifications', doubleCsrfProtection, notificationsRoutes);
 app.use('/settings', doubleCsrfProtection, settingsRoutes);
-app.use('/groups', doubleCsrfProtection, formLimiter, groupsRoutes);
-app.use('/events', doubleCsrfProtection, formLimiter, eventsRoutes);
-app.use('/feed', doubleCsrfProtection, formLimiter, feedRoutes);
-app.use('/reports', doubleCsrfProtection, formLimiter, reportsRoutes);
+app.use('/groups', doubleCsrfProtection, postOnly(formLimiter), groupsRoutes);
+app.use('/events', doubleCsrfProtection, postOnly(formLimiter), eventsRoutes);
+app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedRoutes);
+app.use('/reports', doubleCsrfProtection, postOnly(formLimiter), reportsRoutes);
 app.use('/progress', doubleCsrfProtection, gamificationRoutes);
 app.use('/search', doubleCsrfProtection, searchRoutes);
-app.use('/reviews', doubleCsrfProtection, formLimiter, reviewsRoutes);
+app.use('/reviews', doubleCsrfProtection, postOnly(formLimiter), reviewsRoutes);
 app.use('/admin', doubleCsrfProtection, adminRoutes);
 
 // 404 handler

@@ -153,7 +153,7 @@
             } if pagination.page > 1 else undefined,
             next: {
               href: "/feed?page=" + (pagination.page + 1) + ("&group_id=" + groupId if groupId else "")
-            } if pagination.page < pagination.totalPages or pagination.total_pages else undefined,
+            } if pagination.page < feedTotalPages else undefined,
             items: paginationItems
           }) }}
         {% endif %}
@@ -182,7 +182,7 @@
         <div class="app-sidebar-card">
           <h2 class="govuk-heading-m">My groups</h2>
           <ul class="govuk-list">
-            {% for group in myGroups | slice(0, 5) %}
+            {% for group in myGroups | take(5) %}
               <li>
                 <a href="/feed?group_id={{ group.id }}" class="govuk-link">{{ group.name }}</a>
               </li>

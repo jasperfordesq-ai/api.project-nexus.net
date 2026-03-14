@@ -30,7 +30,8 @@ export function GamificationPage() {
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading gamification…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
-  const xpProgress = profile ? Math.round(((profile.totalXp - profile.xpForCurrentLevel) / (profile.xpToNextLevel - profile.xpForCurrentLevel)) * 100) : 0
+  const xpRange = profile ? (profile.xpToNextLevel - profile.xpForCurrentLevel) : 0
+  const xpProgress = profile && xpRange > 0 ? Math.min(100, Math.max(0, Math.round(((profile.totalXp - profile.xpForCurrentLevel) / xpRange) * 100))) : 0
 
   return (
     <div className="nexus-container">

@@ -54,11 +54,13 @@ public class ExceptionHandlingMiddleware
             context.TraceIdentifier);
 
         // Determine status code based on exception type
+        // NOTE: InvalidOperationException is NOT mapped to 409 because it's thrown
+        // by EF Core, ASP.NET Core internals, and .NET framework methods for many
+        // non-conflict reasons. Only domain-specific exceptions should map to specific codes.
         var (statusCode, errorType) = exception switch
         {
             ArgumentException => (HttpStatusCode.BadRequest, "bad_request"),
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "unauthorized"),
-            InvalidOperationException => (HttpStatusCode.Conflict, "conflict"),
             KeyNotFoundException => (HttpStatusCode.NotFound, "not_found"),
             NotSupportedException => (HttpStatusCode.NotImplemented, "not_implemented"),
             TimeoutException => (HttpStatusCode.GatewayTimeout, "timeout"),
@@ -77,8 +79,8 @@ public class ExceptionHandlingMiddleware
             ["trace_id"] = context.TraceIdentifier
         };
 
-        // In Development, include exception details for debugging
-        if (_env.IsDevelopment())
+        // In Development/Testing, include exception details for debugging
+        if (_env.IsDevelopment() || _env.EnvironmentName == "Testing")
         {
             response["exception"] = new
             {
@@ -92,7 +94,7 @@ public class ExceptionHandlingMiddleware
         var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = _env.IsDevelopment()
+            WriteIndented = _env.IsDevelopment() || _env.EnvironmentName == "Testing"
         });
 
         await context.Response.WriteAsync(json);

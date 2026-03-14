@@ -17,7 +17,7 @@ export function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/login");
-    } else if (!isLoading && isAuthenticated && user?.role !== "admin") {
+    } else if (!isLoading && isAuthenticated && user?.role !== "admin" && user?.role !== "super_admin") {
       router.push("/dashboard");
     }
   }, [isLoading, isAuthenticated, user, router]);
@@ -37,7 +37,7 @@ export function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
     return null;
   }
 
-  if (user?.role !== "admin") {
+  if (user?.role !== "admin" && user?.role !== "super_admin") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center">

@@ -188,7 +188,7 @@
     const errorSpan = document.createElement('p');
     errorSpan.id = `${field.id || field.name}-error`;
     errorSpan.className = 'govuk-error-message';
-    errorSpan.innerHTML = `<span class="govuk-visually-hidden">Error:</span> ${message}`;
+    errorSpan.innerHTML = '<span class="govuk-visually-hidden">Error:</span> ' + escapeHtml(message);
 
     // Insert before the input
     const inputWrapper = field.closest('.govuk-input__wrapper') || field;
@@ -237,7 +237,7 @@
     summary.setAttribute('role', 'alert');
 
     const errorList = errors.map(err =>
-      `<li><a href="${err.href}">${err.message}</a></li>`
+      '<li><a href="' + escapeHtml(err.href) + '">' + escapeHtml(err.message) + '</a></li>'
     ).join('');
 
     summary.innerHTML = `
@@ -279,6 +279,17 @@
     document.addEventListener('DOMContentLoaded', autoInit);
   } else {
     autoInit();
+  }
+
+  /**
+   * Escape HTML to prevent XSS in dynamically created elements
+   * @param {string} str - The string to escape
+   * @returns {string} The escaped string
+   */
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
   }
 
   // Export for manual initialization

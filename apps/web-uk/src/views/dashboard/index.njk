@@ -193,7 +193,7 @@
             <h2 class="govuk-heading-s">Recent transactions</h2>
             {% if recentTransactions and recentTransactions.length > 0 %}
               <ul class="govuk-list">
-                {% for tx in recentTransactions | slice(0, 3) %}
+                {% for tx in recentTransactions | take(3) %}
                   <li class="govuk-!-margin-bottom-2">
                     <span class="govuk-body-s">{{ tx.description or "Transaction" }}</span>
                     <br>

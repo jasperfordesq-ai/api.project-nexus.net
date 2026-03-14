@@ -26,6 +26,7 @@ export const SubAccountsPage = () => {
     url: "/api/admin/sub-accounts",
     method: "get",
     config: { query: { page, limit: pageSize } },
+    queryOptions: { queryKey: ["admin-sub-accounts", page, pageSize] },
   });
 
   const raw = data?.data as any;

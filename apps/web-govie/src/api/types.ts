@@ -98,6 +98,7 @@ export interface Listing {
   type: ListingType
   status: ListingStatus
   category: string
+  categoryId?: number
   creditRate: number
   userId: number
   userName: string
@@ -114,7 +115,8 @@ export interface CreateListingRequest {
   title: string
   description: string
   type: ListingType
-  category: string
+  category?: string
+  categoryId?: number
   creditRate: number
   tags?: string[]
   location?: string

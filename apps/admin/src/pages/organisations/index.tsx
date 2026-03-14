@@ -6,13 +6,18 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Spin, Button, Space, message, Tag, Modal } from "antd";
 import { CheckOutlined, StopOutlined } from "@ant-design/icons";
+import { useState } from "react";
 import axiosInstance from "../../utils/axios";
 
 const { Title } = Typography;
 
 export const OrganisationsPage = () => {
-  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/organisations", method: "get" });
-  const orgs = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/organisations", method: "get", config: { query: { page, limit: pageSize } }, queryOptions: { queryKey: ["admin-orgs", page, pageSize] } });
+  const raw = data?.data as any;
+  const orgs = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
+  const totalCount = raw?.total || raw?.totalCount || orgs.length;
 
   const handleVerify = (id: number) => {
     Modal.confirm({
@@ -47,7 +52,14 @@ export const OrganisationsPage = () => {
       <Title level={4}>Organisations</Title>
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={orgs} rowKey="id" size="small">
+          <Table dataSource={orgs} rowKey="id" size="small" pagination={{
+                current: page,
+                pageSize,
+                total: totalCount,
+                showSizeChanger: true,
+                showTotal: (t: number) => `${t} total`,
+                onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+              }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="name" title="Name" />
             <Table.Column dataIndex="status" title="Status" render={(s: string) => (

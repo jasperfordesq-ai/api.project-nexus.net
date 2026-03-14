@@ -14,10 +14,11 @@ export const AuditLogList = () => {
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const { data, isLoading, refetch } = useCustom({
+  const { data, isLoading } = useCustom({
     url: "/api/admin/audit",
     method: "get",
     config: { query: { page, limit: pageSize, ...filters } },
+    queryOptions: { queryKey: ["admin-audit", page, pageSize, filters] },
   });
 
   const responseData = data?.data as any;
@@ -28,6 +29,7 @@ export const AuditLogList = () => {
     const newFilters = { ...filters, [key]: value || undefined };
     Object.keys(newFilters).forEach(k => newFilters[k] === undefined && delete newFilters[k]);
     setFilters(newFilters);
+    setPage(1);
   };
 
   return (
@@ -35,9 +37,9 @@ export const AuditLogList = () => {
       <Title level={4}>Audit Logs</Title>
 
       <Space style={{ marginBottom: 16 }} wrap>
-        <Input.Search placeholder="User ID" style={{ width: 140 }} onSearch={(v) => { updateFilter("user_id", v); refetch(); }} allowClear />
-        <Input.Search placeholder="Action" style={{ width: 160 }} onSearch={(v) => { updateFilter("action", v); refetch(); }} allowClear />
-        <Select placeholder="Severity" allowClear style={{ width: 130 }} onChange={(v) => { updateFilter("severity", v); refetch(); }}
+        <Input.Search placeholder="User ID" style={{ width: 140 }} onSearch={(v) => updateFilter("user_id", v)} allowClear />
+        <Input.Search placeholder="Action" style={{ width: 160 }} onSearch={(v) => updateFilter("action", v)} allowClear />
+        <Select placeholder="Severity" allowClear style={{ width: 130 }} onChange={(v) => updateFilter("severity", v)}
           options={[
             { label: "Info", value: "info" },
             { label: "Warning", value: "warning" },

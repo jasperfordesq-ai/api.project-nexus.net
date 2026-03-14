@@ -5,6 +5,7 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Feed", href: "/feed" },
     { text: "Post" }
@@ -59,7 +60,7 @@
         </header>
 
         <div class="app-post__content app-post__content--full">
-          <div class="govuk-body app-formatted-text">{{ post.content | nl2br }}</div>
+          <div class="govuk-body app-formatted-text">{{ post.content | nl2br | safe }}</div>
           {% if post.imageUrl or post.image_url %}
             <img src="{{ post.imageUrl or post.image_url }}" alt="Image attached to post by {{ post.user.first_name or post.user.firstName }}" class="app-post__image app-post__image--large">
           {% endif %}
@@ -140,7 +141,7 @@
         </form>
 
         {# Comments list #}
-        {% if comments.length > 0 %}
+        {% if comments and comments.length > 0 %}
           <ul class="app-comment-list">
             {% for comment in comments %}
               <li class="app-comment">

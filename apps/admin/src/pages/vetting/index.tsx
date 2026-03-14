@@ -16,7 +16,7 @@ const { Title } = Typography;
 export const VettingPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const { data: recordsData, isLoading, refetch } = useCustom({ url: "/api/admin/vetting/records", method: "get", config: { query: { page, limit: pageSize } } });
+  const { data: recordsData, isLoading, refetch } = useCustom({ url: "/api/admin/vetting/records", method: "get", config: { query: { page, limit: pageSize } }, queryOptions: { queryKey: ["admin-vetting", page, pageSize] } });
   const { data: statsData } = useCustom({ url: "/api/admin/vetting/stats", method: "get" });
   const { data: expiringData } = useCustom({ url: "/api/admin/vetting/expiring", method: "get" });
   const { data: pendingData } = useCustom({ url: "/api/admin/vetting/pending", method: "get" });
@@ -110,7 +110,7 @@ export const VettingPage = () => {
           label: <span>Pending {pending.length > 0 && <Tag color="orange">{pending.length}</Tag>}</span>,
           children: (
             <Card>
-              <Table dataSource={pending} rowKey="id" size="small" columns={[
+              <Table dataSource={pending} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }} columns={[
                 ...vettingColumns,
                 {
                   title: "Actions",
@@ -130,7 +130,7 @@ export const VettingPage = () => {
           label: <span>Expiring {expiring.length > 0 && <Tag color="red">{expiring.length}</Tag>}</span>,
           children: (
             <Card>
-              <Table dataSource={expiring} rowKey="id" size="small" columns={vettingColumns} />
+              <Table dataSource={expiring} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }} columns={vettingColumns} />
             </Card>
           ),
         },

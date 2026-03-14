@@ -74,7 +74,7 @@ export const FederationPage = () => {
         <Spin />
       ) : (
         <Card>
-          <Table dataSource={partners} rowKey="id" size="small">
+          <Table dataSource={partners} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="name" title="Name" />
             <Table.Column

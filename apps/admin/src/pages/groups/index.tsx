@@ -6,15 +6,20 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, message, Modal } from "antd";
 import { ExclamationCircleOutlined, DeleteOutlined } from "@ant-design/icons";
+import { useState } from "react";
 import axiosInstance from "../../utils/axios";
 
 const { Title } = Typography;
 
 export const GroupsAdminPage = () => {
-  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/groups", method: "get" });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/groups", method: "get", config: { query: { page, limit: pageSize } }, queryOptions: { queryKey: ["admin-groups", page, pageSize] } });
   const { data: statsData } = useCustom({ url: "/api/admin/groups/stats", method: "get" });
 
-  const groups = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
+  const raw = data?.data as any;
+  const groups = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
+  const totalCount = raw?.total || raw?.totalCount || groups.length;
   const stats = statsData?.data as any;
 
   const handleDelete = (id: number, name: string) => {
@@ -45,7 +50,14 @@ export const GroupsAdminPage = () => {
       )}
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={groups} rowKey="id" size="small">
+          <Table dataSource={groups} rowKey="id" size="small" pagination={{
+                current: page,
+                pageSize,
+                total: totalCount,
+                showSizeChanger: true,
+                showTotal: (t: number) => `${t} total`,
+                onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); },
+              }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="name" title="Name" />
             <Table.Column dataIndex="member_count" title="Members" />

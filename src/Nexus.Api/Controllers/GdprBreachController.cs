@@ -129,13 +129,23 @@ public class GdprBreachController : ControllerBase
     public async Task<IActionResult> GetConsentStats()
     {
         var types = await _db.GdprConsentTypes.AsNoTracking().Where(c => c.IsActive).ToListAsync();
-        var stats = new List<object>();
-        foreach (var ct in types)
+
+        // Batch query: get all consent counts in a single DB round-trip instead of 2 queries per type
+        var consentCounts = await _db.ConsentRecords
+            .GroupBy(c => new { c.ConsentType, c.IsGranted })
+            .Select(g => new { g.Key.ConsentType, g.Key.IsGranted, Count = g.Count() })
+            .ToListAsync();
+
+        var countLookup = consentCounts.ToLookup(c => c.ConsentType);
+
+        var stats = types.Select(ct =>
         {
-            var granted = await _db.ConsentRecords.CountAsync(c => c.ConsentType == ct.Key && c.IsGranted);
-            var revoked = await _db.ConsentRecords.CountAsync(c => c.ConsentType == ct.Key && !c.IsGranted);
-            stats.Add(new { consent_type = ct.Key, name = ct.Name, is_required = ct.IsRequired, granted_count = granted, revoked_count = revoked, total_records = granted + revoked });
-        }
+            var typeRecords = countLookup[ct.Key];
+            var granted = typeRecords.Where(r => r.IsGranted).Sum(r => r.Count);
+            var revoked = typeRecords.Where(r => !r.IsGranted).Sum(r => r.Count);
+            return new { consent_type = ct.Key, name = ct.Name, is_required = ct.IsRequired, granted_count = granted, revoked_count = revoked, total_records = granted + revoked };
+        });
+
         return Ok(new { data = stats });
     }
 

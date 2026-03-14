@@ -15,7 +15,7 @@ const { Title } = Typography;
 export const JobsAdminPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/jobs", method: "get", config: { query: { page, limit: pageSize } } });
+  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/jobs", method: "get", config: { query: { page, limit: pageSize } }, queryOptions: { queryKey: ["admin-jobs", page, pageSize] } });
   const { data: statsData } = useCustom({ url: "/api/admin/jobs/stats", method: "get" });
 
   const raw = data?.data as any;

@@ -5,8 +5,8 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nexus.Api.Extensions;
 using Nexus.Api.Services;
-using System.Security.Claims;
 
 namespace Nexus.Api.Controllers;
 
@@ -17,8 +17,6 @@ public class ShiftManagementController : ControllerBase
     private readonly ShiftManagementService _svc;
 
     public ShiftManagementController(ShiftManagementService svc) => _svc = svc;
-
-    private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     // ── Recurring Patterns ────────────────────────────────────────────────────
 
@@ -33,7 +31,9 @@ public class ShiftManagementController : ControllerBase
     public async Task<IActionResult> CreatePattern(
         int opportunityId, [FromBody] CreatePatternRequest req)
     {
-        var (pattern, error) = await _svc.CreatePatternAsync(opportunityId, UserId, req);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (pattern, error) = await _svc.CreatePatternAsync(opportunityId, userId.Value, req);
         if (error != null) return BadRequest(new { error });
         return CreatedAtAction(nameof(GetPatterns),
             new { opportunityId }, pattern);
@@ -43,7 +43,9 @@ public class ShiftManagementController : ControllerBase
     public async Task<IActionResult> UpdatePattern(
         int patternId, [FromBody] CreatePatternRequest req)
     {
-        var (pattern, error) = await _svc.UpdatePatternAsync(patternId, UserId, req);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (pattern, error) = await _svc.UpdatePatternAsync(patternId, userId.Value, req);
         if (error != null) return NotFound(new { error });
         return Ok(pattern);
     }
@@ -51,7 +53,9 @@ public class ShiftManagementController : ControllerBase
     [HttpDelete("api/volunteering/recurring-patterns/{patternId:int}")]
     public async Task<IActionResult> DeactivatePattern(int patternId)
     {
-        var error = await _svc.DeactivatePatternAsync(patternId, UserId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var error = await _svc.DeactivatePatternAsync(patternId, userId.Value);
         if (error != null) return NotFound(new { error });
         return NoContent();
     }
@@ -61,14 +65,18 @@ public class ShiftManagementController : ControllerBase
     [HttpGet("api/volunteering/swaps")]
     public async Task<IActionResult> GetSwaps()
     {
-        var swaps = await _svc.GetSwapRequestsAsync(UserId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var swaps = await _svc.GetSwapRequestsAsync(userId.Value);
         return Ok(swaps);
     }
 
     [HttpPost("api/volunteering/swaps")]
     public async Task<IActionResult> RequestSwap([FromBody] SwapRequest req)
     {
-        var (swap, error) = await _svc.RequestSwapAsync(UserId, req);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (swap, error) = await _svc.RequestSwapAsync(userId.Value, req);
         if (error != null) return BadRequest(new { error });
         return CreatedAtAction(nameof(GetSwaps), swap);
     }
@@ -76,7 +84,9 @@ public class ShiftManagementController : ControllerBase
     [HttpPut("api/volunteering/swaps/{swapId:int}")]
     public async Task<IActionResult> RespondToSwap(int swapId, [FromBody] RespondSwapDto dto)
     {
-        var (swap, error) = await _svc.RespondToSwapAsync(swapId, UserId, dto.Accept);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (swap, error) = await _svc.RespondToSwapAsync(swapId, userId.Value, dto.Accept);
         if (error != null) return BadRequest(new { error });
         return Ok(swap);
     }
@@ -84,7 +94,9 @@ public class ShiftManagementController : ControllerBase
     [HttpDelete("api/volunteering/swaps/{swapId:int}")]
     public async Task<IActionResult> CancelSwap(int swapId)
     {
-        var error = await _svc.CancelSwapAsync(swapId, UserId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var error = await _svc.CancelSwapAsync(swapId, userId.Value);
         if (error != null) return BadRequest(new { error });
         return NoContent();
     }
@@ -94,14 +106,18 @@ public class ShiftManagementController : ControllerBase
     [HttpGet("api/volunteering/my-waitlists")]
     public async Task<IActionResult> GetMyWaitlists()
     {
-        var entries = await _svc.GetUserWaitlistsAsync(UserId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var entries = await _svc.GetUserWaitlistsAsync(userId.Value);
         return Ok(entries);
     }
 
     [HttpPost("api/volunteering/shifts/{shiftId:int}/waitlist")]
     public async Task<IActionResult> JoinWaitlist(int shiftId)
     {
-        var (entry, error) = await _svc.JoinWaitlistAsync(shiftId, UserId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (entry, error) = await _svc.JoinWaitlistAsync(shiftId, userId.Value);
         if (error != null) return BadRequest(new { error });
         return CreatedAtAction(nameof(GetMyWaitlists), entry);
     }
@@ -109,7 +125,9 @@ public class ShiftManagementController : ControllerBase
     [HttpDelete("api/volunteering/shifts/{shiftId:int}/waitlist")]
     public async Task<IActionResult> LeaveWaitlist(int shiftId)
     {
-        var error = await _svc.LeaveWaitlistAsync(shiftId, UserId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var error = await _svc.LeaveWaitlistAsync(shiftId, userId.Value);
         if (error != null) return BadRequest(new { error });
         return NoContent();
     }
@@ -128,7 +146,9 @@ public class ShiftManagementController : ControllerBase
     [HttpGet("api/volunteering/group-reservations")]
     public async Task<IActionResult> GetGroupReservations()
     {
-        var reservations = await _svc.GetUserGroupReservationsAsync(UserId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var reservations = await _svc.GetUserGroupReservationsAsync(userId.Value);
         return Ok(reservations);
     }
 
@@ -136,7 +156,9 @@ public class ShiftManagementController : ControllerBase
     public async Task<IActionResult> CreateGroupReservation(
         int shiftId, [FromBody] GroupReservationRequest req)
     {
-        var (reservation, error) = await _svc.CreateGroupReservationAsync(shiftId, UserId, req);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (reservation, error) = await _svc.CreateGroupReservationAsync(shiftId, userId.Value, req);
         if (error != null) return BadRequest(new { error });
         return CreatedAtAction(nameof(GetGroupReservations), reservation);
     }
@@ -145,7 +167,9 @@ public class ShiftManagementController : ControllerBase
     public async Task<IActionResult> AddGroupMember(
         int reservationId, [FromBody] AddGroupMemberRequest req)
     {
-        var (member, error) = await _svc.AddGroupMemberAsync(reservationId, UserId, req);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (member, error) = await _svc.AddGroupMemberAsync(reservationId, userId.Value, req);
         if (error != null) return BadRequest(new { error });
         return Ok(member);
     }
@@ -153,7 +177,9 @@ public class ShiftManagementController : ControllerBase
     [HttpDelete("api/volunteering/group-reservations/{reservationId:int}/members/{memberId:int}")]
     public async Task<IActionResult> RemoveGroupMember(int reservationId, int memberId)
     {
-        var error = await _svc.RemoveGroupMemberAsync(reservationId, memberId, UserId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var error = await _svc.RemoveGroupMemberAsync(reservationId, memberId, userId.Value);
         if (error != null) return BadRequest(new { error });
         return NoContent();
     }
@@ -161,7 +187,9 @@ public class ShiftManagementController : ControllerBase
     [HttpDelete("api/volunteering/group-reservations/{reservationId:int}")]
     public async Task<IActionResult> CancelGroupReservation(int reservationId)
     {
-        var error = await _svc.CancelGroupReservationAsync(reservationId, UserId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var error = await _svc.CancelGroupReservationAsync(reservationId, userId.Value);
         if (error != null) return BadRequest(new { error });
         return NoContent();
     }

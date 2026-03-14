@@ -15,7 +15,7 @@ const { Title } = Typography;
 export const EventsAdminPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/events", method: "get", config: { query: { page, limit: pageSize } } });
+  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/events", method: "get", config: { query: { page, limit: pageSize } }, queryOptions: { queryKey: ["admin-events", page, pageSize] } });
   const { data: statsData } = useCustom({ url: "/api/admin/events/stats", method: "get" });
 
   const raw = data?.data as any;

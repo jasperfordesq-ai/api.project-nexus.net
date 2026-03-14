@@ -185,9 +185,10 @@ public class TranslationService
 
             if (isDefault)
             {
-                // Clear other defaults
+                // ExecuteUpdateAsync bypasses EF global query filters, so we must
+                // explicitly enforce tenant isolation in the WHERE clause.
                 await _db.Set<SupportedLocale>()
-                    .Where(l => l.IsDefault && l.Id != existing.Id)
+                    .Where(l => l.TenantId == tenantId && l.IsDefault && l.Id != existing.Id)
                     .ExecuteUpdateAsync(s => s.SetProperty(l => l.IsDefault, false));
                 existing.IsDefault = true;
             }
@@ -198,9 +199,10 @@ public class TranslationService
 
         if (isDefault)
         {
-            // Clear other defaults
+            // ExecuteUpdateAsync bypasses EF global query filters, so we must
+            // explicitly enforce tenant isolation in the WHERE clause.
             await _db.Set<SupportedLocale>()
-                .Where(l => l.IsDefault)
+                .Where(l => l.TenantId == tenantId && l.IsDefault)
                 .ExecuteUpdateAsync(s => s.SetProperty(l => l.IsDefault, false));
         }
 

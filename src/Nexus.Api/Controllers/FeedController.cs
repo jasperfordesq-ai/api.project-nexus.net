@@ -736,7 +736,7 @@ public class FeedController : ControllerBase
         var (share, error) = await _feedRanking.SharePostWithCommentAsync(tenantId, id, userId.Value, request.Comment);
         if (error == "Post not found") return NotFound(new { error });
         if (error != null) return BadRequest(new { error });
-        return Ok(new { message = "Post shared", share_id = share!.Id, post_id = id });
+        return StatusCode(201, new { message = "Post shared", share_id = share!.Id, post_id = id });
     }
 
     /// <summary>GET /api/feed/{id}/likers — users who liked a post</summary>
@@ -815,7 +815,7 @@ public class FeedController : ControllerBase
         _db.PostComments.Add(reply);
         await _db.SaveChangesAsync();
 
-        return Ok(new { id = reply.Id, postId = id, parentCommentId = commentId, content = reply.Content, createdAt = reply.CreatedAt });
+        return StatusCode(201, new { id = reply.Id, postId = id, parentCommentId = commentId, content = reply.Content, createdAt = reply.CreatedAt });
     }
 
     /// <summary>POST /api/feed/{id}/hide — hide a post from the current user's feed</summary>

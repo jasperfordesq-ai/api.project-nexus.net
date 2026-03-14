@@ -21,10 +21,12 @@ namespace Nexus.Api.Controllers;
 public class AdminNotificationsController : ControllerBase
 {
     private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
 
-    public AdminNotificationsController(NexusDbContext db)
+    public AdminNotificationsController(NexusDbContext db, TenantContext tenantContext)
     {
         _db = db;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>
@@ -33,6 +35,7 @@ public class AdminNotificationsController : ControllerBase
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {
+        // EF global query filters handle tenant isolation for normal LINQ queries
         var total = await _db.Notifications.CountAsync();
         var unread = await _db.Notifications.CountAsync(n => !n.IsRead);
         var today = await _db.Notifications.CountAsync(n => n.CreatedAt >= DateTime.UtcNow.Date);
@@ -50,6 +53,8 @@ public class AdminNotificationsController : ControllerBase
             return BadRequest(new { error = "Title is required" });
         if (string.IsNullOrWhiteSpace(request.Message))
             return BadRequest(new { error = "Message is required" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
 
         // Use batched processing to avoid loading all users into memory at once
         const int batchSize = 500;
@@ -69,6 +74,7 @@ public class AdminNotificationsController : ControllerBase
 
             var notifications = userIds.Select(userId => new Notification
             {
+                TenantId = tenantId,
                 UserId = userId,
                 Type = "admin_broadcast",
                 Title = request.Title,
@@ -94,9 +100,13 @@ public class AdminNotificationsController : ControllerBase
     {
         if (days_old < 1) days_old = 1;
 
+        // ExecuteDeleteAsync bypasses EF global query filters, so we must
+        // explicitly enforce tenant isolation in the WHERE clause.
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
         var cutoff = DateTime.UtcNow.AddDays(-days_old);
         var deletedCount = await _db.Notifications
-            .Where(n => n.IsRead && n.CreatedAt < cutoff)
+            .Where(n => n.TenantId == tenantId && n.IsRead && n.CreatedAt < cutoff)
             .ExecuteDeleteAsync();
 
         return Ok(new { message = $"Deleted {deletedCount} old notifications" });

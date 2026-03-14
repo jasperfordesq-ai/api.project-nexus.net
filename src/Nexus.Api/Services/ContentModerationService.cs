@@ -44,62 +44,7 @@ public class ContentModerationService
         CancellationToken ct = default)
     {
         var content = $"Title: {listing.Title}\nDescription: {listing.Description ?? "N/A"}";
-
-        try
-        {
-            var result = await _aiService.ModerateContent(content, "listing", ct);
-            var outcome = ProcessModerationResult(result, "listing", listing.Id);
-
-            _logger.LogInformation(
-                "Listing {ListingId} moderation: Approved={Approved}, Severity={Severity}",
-                listing.Id, outcome.IsApproved, outcome.Severity);
-
-            return outcome;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for listing {ListingId}, allowing with warning", listing.Id);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (TaskCanceledException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for listing {ListingId}, allowing with warning", listing.Id);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for listing {ListingId}, allowing with warning", listing.Id);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for listing {ListingId}, allowing with warning", listing.Id);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
+        return await SafeModerateAsync(content, "listing", listing.Id, $"listing {listing.Id}", ct);
     }
 
     /// <summary>
@@ -109,61 +54,7 @@ public class ContentModerationService
         FeedPost post,
         CancellationToken ct = default)
     {
-        try
-        {
-            var result = await _aiService.ModerateContent(post.Content, "post", ct);
-            var outcome = ProcessModerationResult(result, "post", post.Id);
-
-            _logger.LogInformation(
-                "FeedPost {PostId} moderation: Approved={Approved}, Severity={Severity}",
-                post.Id, outcome.IsApproved, outcome.Severity);
-
-            return outcome;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for post {PostId}, allowing with warning", post.Id);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (TaskCanceledException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for post {PostId}, allowing with warning", post.Id);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for post {PostId}, allowing with warning", post.Id);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for post {PostId}, allowing with warning", post.Id);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
+        return await SafeModerateAsync(post.Content, "post", post.Id, $"post {post.Id}", ct);
     }
 
     /// <summary>
@@ -174,61 +65,7 @@ public class ContentModerationService
         int? messageId = null,
         CancellationToken ct = default)
     {
-        try
-        {
-            var result = await _aiService.ModerateContent(messageContent, "message", ct);
-            var outcome = ProcessModerationResult(result, "message", messageId ?? 0);
-
-            _logger.LogInformation(
-                "Message moderation: Approved={Approved}, Severity={Severity}",
-                outcome.IsApproved, outcome.Severity);
-
-            return outcome;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for message, allowing with warning");
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (TaskCanceledException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for message, allowing with warning");
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for message, allowing with warning");
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for message, allowing with warning");
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
+        return await SafeModerateAsync(messageContent, "message", messageId ?? 0, "message", ct);
     }
 
     /// <summary>
@@ -238,61 +75,7 @@ public class ContentModerationService
         string commentContent,
         CancellationToken ct = default)
     {
-        try
-        {
-            var result = await _aiService.ModerateContent(commentContent, "comment", ct);
-            var outcome = ProcessModerationResult(result, "comment", 0);
-
-            _logger.LogInformation(
-                "Comment moderation: Approved={Approved}, Severity={Severity}",
-                outcome.IsApproved, outcome.Severity);
-
-            return outcome;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for comment, allowing with warning");
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (TaskCanceledException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for comment, allowing with warning");
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for comment, allowing with warning");
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for comment, allowing with warning");
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
+        return await SafeModerateAsync(commentContent, "comment", 0, "comment", ct);
     }
 
     /// <summary>
@@ -303,61 +86,7 @@ public class ContentModerationService
         int userId,
         CancellationToken ct = default)
     {
-        try
-        {
-            var result = await _aiService.ModerateContent(profileContent, "profile", ct);
-            var outcome = ProcessModerationResult(result, "profile", userId);
-
-            _logger.LogInformation(
-                "Profile {UserId} moderation: Approved={Approved}, Severity={Severity}",
-                userId, outcome.IsApproved, outcome.Severity);
-
-            return outcome;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for profile {UserId}, allowing with warning", userId);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (TaskCanceledException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for profile {UserId}, allowing with warning", userId);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for profile {UserId}, allowing with warning", userId);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Moderation failed for profile {UserId}, allowing with warning", userId);
-            return new ContentModerationOutcome
-            {
-                IsApproved = true,
-                RequiresReview = true,
-                Severity = "unknown",
-                Message = "Moderation service unavailable, content allowed pending review"
-            };
-        }
+        return await SafeModerateAsync(profileContent, "profile", userId, $"profile {userId}", ct);
     }
 
     /// <summary>
@@ -371,59 +100,10 @@ public class ContentModerationService
 
         foreach (var item in items)
         {
-            try
-            {
-                var result = await _aiService.ModerateContent(item.Content, item.ContentType, ct);
-                outcomes.Add(ProcessModerationResult(result, item.ContentType, item.EntityId));
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
-                    item.ContentType, item.EntityId);
-                outcomes.Add(new ContentModerationOutcome
-                {
-                    IsApproved = true,
-                    RequiresReview = true,
-                    Severity = "unknown",
-                    Message = "Moderation failed"
-                });
-            }
-            catch (TaskCanceledException ex)
-            {
-                _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
-                    item.ContentType, item.EntityId);
-                outcomes.Add(new ContentModerationOutcome
-                {
-                    IsApproved = true,
-                    RequiresReview = true,
-                    Severity = "unknown",
-                    Message = "Moderation failed"
-                });
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
-                    item.ContentType, item.EntityId);
-                outcomes.Add(new ContentModerationOutcome
-                {
-                    IsApproved = true,
-                    RequiresReview = true,
-                    Severity = "unknown",
-                    Message = "Moderation failed"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Content moderation failed for {ContentType} entity {EntityId}, flagging for manual review",
-                    item.ContentType, item.EntityId);
-                outcomes.Add(new ContentModerationOutcome
-                {
-                    IsApproved = true,
-                    RequiresReview = true,
-                    Severity = "unknown",
-                    Message = "Moderation failed"
-                });
-            }
+            var outcome = await SafeModerateAsync(
+                item.Content, item.ContentType, item.EntityId,
+                $"{item.ContentType} entity {item.EntityId}", ct);
+            outcomes.Add(outcome);
         }
 
         return outcomes;
@@ -448,6 +128,7 @@ public class ContentModerationService
         {
             var notification = new Notification
             {
+                TenantId = admin.TenantId,
                 UserId = admin.Id,
                 Type = "content_flagged",
                 Title = $"Content Flagged: {contentType}",
@@ -467,6 +148,52 @@ public class ContentModerationService
 
         await _db.SaveChangesAsync(ct);
     }
+
+    /// <summary>
+    /// Safely moderate content with unified error handling.
+    /// On AI service failure, content is allowed but flagged for manual review.
+    /// </summary>
+    private async Task<ContentModerationOutcome> SafeModerateAsync(
+        string content,
+        string contentType,
+        int entityId,
+        string logContext,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await _aiService.ModerateContent(content, contentType, ct);
+            var outcome = ProcessModerationResult(result, contentType, entityId);
+
+            _logger.LogInformation(
+                "{ContentType} {LogContext} moderation: Approved={Approved}, Severity={Severity}",
+                contentType, logContext, outcome.IsApproved, outcome.Severity);
+
+            return outcome;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Moderation failed for {LogContext}, allowing with warning", logContext);
+            return ModerationUnavailableOutcome();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unexpected moderation failure for {LogContext}, allowing with warning", logContext);
+            return ModerationUnavailableOutcome();
+        }
+    }
+
+    /// <summary>
+    /// Returns a default outcome when the moderation service is unavailable.
+    /// Content is allowed but flagged for manual review.
+    /// </summary>
+    private static ContentModerationOutcome ModerationUnavailableOutcome() => new()
+    {
+        IsApproved = true,
+        RequiresReview = true,
+        Severity = "unknown",
+        Message = "Moderation service unavailable, content allowed pending review"
+    };
 
     /// <summary>
     /// Process the raw moderation result into an actionable outcome.

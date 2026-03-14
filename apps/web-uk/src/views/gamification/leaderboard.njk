@@ -4,6 +4,7 @@
 {% from "govuk/components/pagination/macro.njk" import govukPagination %}
 
 {% block beforeContent %}
+  {{ super() }}
   {% set breadcrumbs = [
     { text: "Dashboard", href: "/dashboard" },
     { text: "My Progress", href: "/progress" },
@@ -117,7 +118,7 @@
             } if pagination.page > 1 else undefined,
             next: {
               href: "/progress/leaderboard?period=" + period + "&page=" + (pagination.page + 1)
-            } if pagination.page < pagination.totalPages or pagination.total_pages else undefined,
+            } if pagination.page < lbTotalPages else undefined,
             items: paginationItems
           }) }}
         {% endif %}

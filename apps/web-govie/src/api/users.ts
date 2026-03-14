@@ -8,7 +8,19 @@ import type { PaginatedResponse, PaginationParams, UserProfile, UserSummary } fr
 
 export const usersApi = {
   list: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<UserSummary>>('/api/users', { params }).then((r) => r.data),
+    apiClient.get('/api/users', { params: { page: params?.page, limit: params?.pageSize, search: params?.search } }).then((r) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = r.data as any
+      const data = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+      const pagination = raw?.pagination
+      return {
+        items: data,
+        totalCount: pagination?.total ?? data.length,
+        page: pagination?.page ?? 1,
+        pageSize: pagination?.limit ?? data.length,
+        totalPages: pagination?.pages ?? 1,
+      } as PaginatedResponse<UserSummary>
+    }),
 
   get: (id: number) =>
     apiClient.get<UserProfile>(`/api/users/${id}`).then((r) => r.data),
@@ -17,5 +29,8 @@ export const usersApi = {
     apiClient.get<UserProfile>('/api/users/me').then((r) => r.data),
 
   updateMe: (payload: Partial<UserProfile>) =>
-    apiClient.patch<UserProfile>('/api/users/me', payload).then((r) => r.data),
+    apiClient.patch<UserProfile>('/api/users/me', {
+      first_name: payload.firstName,
+      last_name: payload.lastName,
+    }).then((r) => r.data),
 }

@@ -101,7 +101,7 @@ public class AuthController : ControllerBase
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u =>
                 u.TenantId == tenant.Id &&
-                u.Email.ToLowerInvariant() == request.Email.ToLowerInvariant());
+                u.Email.ToLower() == request.Email.ToLowerInvariant());
 
         if (user == null)
         {
@@ -370,7 +370,7 @@ public class AuthController : ControllerBase
         // Check if email already exists in this tenant
         var existingUser = await _db.Users
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.TenantId == tenant.Id && u.Email.ToLowerInvariant() == request.Email.ToLowerInvariant());
+            .FirstOrDefaultAsync(u => u.TenantId == tenant.Id && u.Email.ToLower() == request.Email.ToLowerInvariant());
 
         if (existingUser != null)
         {
@@ -549,7 +549,7 @@ public class AuthController : ControllerBase
         // Find user
         var user = await _db.Users
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.TenantId == tenant.Id && u.Email.ToLowerInvariant() == request.Email.ToLowerInvariant() && u.IsActive);
+            .FirstOrDefaultAsync(u => u.TenantId == tenant.Id && u.Email.ToLower() == request.Email.ToLowerInvariant() && u.IsActive);
 
         if (user == null)
         {
