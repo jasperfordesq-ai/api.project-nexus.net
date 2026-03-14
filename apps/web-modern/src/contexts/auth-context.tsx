@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = passkeyResponse.access_token;
       setToken(token);
       const user = passkeyResponse.user;
-      setStoredUser(user as User);
+      setStoredUser(user as unknown as User);
       setUser(user);
     },
     []
