@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
 import { isApiError } from '../context/AuthContext'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 
 interface BlogPost { id: number; slug: string; title: string; excerpt?: string; authorName?: string; publishedAt: string; category?: string; readTimeMinutes?: number }
 
@@ -25,30 +26,41 @@ function mapBlogPost(raw: any): BlogPost {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+const ITEMS_PER_PAGE = 12
+
 export function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
-    apiClient.get('/api/blog/posts')
+    const controller = new AbortController()
+    apiClient.get('/api/blog/posts', { signal: controller.signal })
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any
         const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
         setPosts(items.map(mapBlogPost))
       })
-      .catch(err => setError(isApiError(err) ? err.message : 'Could not load blog posts.'))
-      .finally(() => setIsLoading(false))
+      .catch(err => { if (!controller.signal.aborted) setError(isApiError(err) ? err.message : 'Could not load blog posts.') })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
   }, [])
 
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading blog…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
+  const debouncedQuery = useDebouncedValue(query)
   const filtered = posts.filter(p =>
-    query === '' || p.title.toLowerCase().includes(query.toLowerCase()) || (p.category ?? '').toLowerCase().includes(query.toLowerCase())
+    debouncedQuery === '' || p.title.toLowerCase().includes(debouncedQuery.toLowerCase()) || (p.category ?? '').toLowerCase().includes(debouncedQuery.toLowerCase())
   )
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginatedPosts = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+
+  // Reset to page 1 when search changes
+  useEffect(() => { setPage(1) }, [debouncedQuery])
 
   return (
     <div className="nexus-container">
@@ -81,7 +93,7 @@ export function BlogPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--nexus-space-4)' }}>
-          {filtered.map(post => (
+          {paginatedPosts.map(post => (
             <article key={post.id} className="nexus-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--nexus-space-2)', marginBottom: 'var(--nexus-space-2)' }}>
                 <div>
@@ -112,6 +124,14 @@ export function BlogPage() {
             </article>
           ))}
         </div>
+      )}
+
+      {!isLoading && totalPages > 1 && (
+        <nav className="nexus-pagination" aria-label="Pagination">
+          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</button>
+          <span>Page {page} of {totalPages}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
+        </nav>
       )}
     </div>
   )

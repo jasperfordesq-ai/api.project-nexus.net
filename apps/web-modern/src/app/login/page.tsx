@@ -322,6 +322,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               isLoading={isLoading}
+              isDisabled={isLoading || isPasskeyLoading}
               className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 text-white font-semibold h-12 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-shadow"
               endContent={!isLoading && <ArrowRight className="w-4 h-4" />}
             >

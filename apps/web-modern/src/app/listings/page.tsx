@@ -27,7 +27,6 @@ import {
   ChevronDown,
   Tag,
   Heart,
-  Star,
 } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
@@ -37,6 +36,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { api, type Listing, type PaginatedResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { containerVariantsFast, itemVariants } from "@/lib/animations";
+import { formatDate } from "@/lib/format-date";
 
 type ListingType = "all" | "offer" | "request";
 type ListingStatus = "all" | "active" | "draft" | "completed" | "cancelled";
@@ -273,6 +273,7 @@ function ListingsContent() {
         </div>
 
         {/* Listings Grid */}
+        <div role="region" aria-label="Listings" aria-busy={isLoading} aria-live="polite">
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
@@ -319,6 +320,7 @@ function ListingsContent() {
                         <button
                           onClick={(e) => toggleFavorite(listing.id, e)}
                           className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                          aria-label={favoriteIds.has(listing.id) ? "Remove from favorites" : "Add to favorites"}
                         >
                           <Heart
                             className={"w-4 h-4 " + (favoriteIds.has(listing.id) ? "fill-rose-500 text-rose-500" : "text-white/40")}
@@ -349,7 +351,7 @@ function ListingsContent() {
                           {listing.user?.first_name} {listing.user?.last_name}
                         </p>
                         <p className="text-xs text-white/40">
-                          {new Date(listing.created_at).toLocaleDateString()}
+                          {formatDate(listing.created_at)}
                         </p>
                       </div>
                     </div>
@@ -397,6 +399,7 @@ function ListingsContent() {
             </Link>
           </div>
         )}
+        </div>{/* end listings region */}
       </div>
     </div>
   );

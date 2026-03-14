@@ -60,7 +60,10 @@ function InsuranceContent() {
     setIsLoading(true);
     api.getMyCertificates()
       .then((data) => setCerts(data || []))
-      .catch((error) => logger.error("Failed to fetch certificates:", error))
+      .catch((err) => {
+        logger.error("Failed to fetch certificates:", err);
+        setActionError(err instanceof Error ? err.message : "Failed to load certificates. Please try again.");
+      })
       .finally(() => setIsLoading(false));
   };
 
@@ -123,6 +126,12 @@ function InsuranceContent() {
             </Button>
           </div>
         </div>
+
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-4">

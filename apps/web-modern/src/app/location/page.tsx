@@ -56,6 +56,7 @@ function LocationContent() {
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
   const [nearbyListings, setNearbyListings] = useState<NearbyListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [radius, setRadius] = useState(25);
   const [hasLocation, setHasLocation] = useState(false);
@@ -70,8 +71,9 @@ function LocationContent() {
       if (users.status === "fulfilled") setNearbyUsers(users.value || []);
       if (listings.status === "fulfilled")
         setNearbyListings(listings.value || []);
-    } catch (error) {
-      logger.error("Failed to fetch nearby:", error);
+    } catch (err) {
+      logger.error("Failed to fetch nearby:", err);
+      setError(err instanceof Error ? err.message : "Failed to load nearby data. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +131,12 @@ function LocationContent() {
             Update Location
           </Button>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {error}
+          </div>
+        )}
 
         {!hasLocation && !isLoading ? (
           <div className="text-center py-16">

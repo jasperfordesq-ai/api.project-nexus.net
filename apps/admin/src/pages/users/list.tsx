@@ -7,13 +7,14 @@ import { List, useTable, ShowButton, EditButton } from "@refinedev/antd";
 import { Table, Input, Select, Space } from "antd";
 import { StatusTag } from "../../components/common/status-tag";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { CrudFilters } from "@refinedev/core";
 
 export const UserList = () => {
   const [searchText, setSearchText] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { tableProps, setFilters } = useTable({
     resource: "users",
@@ -35,13 +36,23 @@ export const UserList = () => {
     setFilters(filters);
   };
 
+  const debouncedSearch = useCallback((value: string) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setSearchText(value);
+      applyFilters(value);
+    }, 300);
+  }, [roleFilter, statusFilter]);
+
   return (
     <List>
       <Space style={{ marginBottom: 16 }} wrap>
         <Input.Search
           placeholder="Search users..."
           allowClear
+          onChange={(e) => debouncedSearch(e.target.value)}
           onSearch={(value) => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
             setSearchText(value);
             applyFilters(value);
           }}
@@ -75,7 +86,7 @@ export const UserList = () => {
         />
       </Space>
 
-      <Table {...tableProps} rowKey="id" size="middle">
+      <Table {...tableProps} rowKey="id" size="middle" locale={{ emptyText: "No users found" }}>
         <Table.Column dataIndex="id" title="ID" width={60} />
         <Table.Column dataIndex="email" title="Email" />
         <Table.Column

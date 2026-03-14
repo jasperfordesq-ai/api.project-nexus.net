@@ -48,15 +48,27 @@ export const CrmPage = () => {
   };
 
   const handleAddNote = async () => {
+    let values;
     try {
-      const values = await form.validateFields();
+      values = await form.validateFields();
+    } catch {
+      // Validation failed — keep modal open so the user can see field errors
+      return;
+    }
+    try {
       setSaving(true);
       await axiosInstance.post(`/api/admin/crm/users/${noteUserId}/notes`, values);
       message.success("Note added");
       setNoteModalOpen(false);
       form.resetFields();
     } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.message || "Failed to add note");
+      if (err?.response) {
+        message.error(err.response.data?.message || err.response.data?.error || "Failed to add note");
+      } else if (err?.request) {
+        message.error("Network error — please check your connection and try again");
+      } else {
+        message.error("Failed to add note");
+      }
     } finally {
       setSaving(false);
     }

@@ -119,6 +119,12 @@ export {
   User,
   Avatar,
 } from "./glass-user";
+export { AvatarWithFallback } from "./avatar-with-fallback";
+
+// =============================================================================
+// Language Switcher Components
+// =============================================================================
+export { LanguageSwitcher } from "./language-switcher";
 
 // =============================================================================
 // Glass Listbox Components
@@ -150,17 +156,6 @@ export {
   GlassScrollContainer,
   ScrollShadow,
 } from "./glass-scroll-shadow";
-
-// =============================================================================
-// Glass Snippet/Code Components
-// =============================================================================
-export {
-  GlassSnippet,
-  GlassCodeBlock,
-  GlassCode,
-  Snippet,
-  Code,
-} from "./glass-snippet";
 
 // =============================================================================
 // Glass Keyboard Components

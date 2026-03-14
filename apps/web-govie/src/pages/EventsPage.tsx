@@ -31,17 +31,18 @@ export function EventsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get('/api/events')
+    const controller = new AbortController()
+    apiClient.get('/api/events', { signal: controller.signal })
       .then(r => {
         const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
         const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
         setEvents(items.map(mapEvent))
       })
-      .catch(err => setError(isApiError(err) ? err.message : 'Could not load events.'))
-      .finally(() => setIsLoading(false))
+      .catch(err => { if (!controller.signal.aborted) setError(isApiError(err) ? err.message : 'Could not load events.') })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
   }, [])
 
-  if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading events…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
   const upcoming = events.filter(e => !e.isCancelled && new Date(e.startsAt) >= new Date())
@@ -61,9 +62,28 @@ export function EventsPage() {
         <Link to="/events/new" className="nexus-btn nexus-btn--primary">Create event</Link>
       </div>
 
-      {upcoming.length === 0 && past.length === 0 && (
-        <div className="nexus-card" style={{ textAlign: 'center', padding: 'var(--nexus-space-7)', color: 'var(--nexus-color-text-secondary)' }}>
-          No events yet. <Link to="/events/new">Create the first one!</Link>
+      <div role="region" aria-label="Events list" aria-busy={isLoading} aria-live="polite">
+      {isLoading && (
+        <div className="nexus-skeleton-grid" aria-label="Loading events…">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="nexus-skeleton-card">
+              <div style={{ display: 'flex', gap: 'var(--nexus-space-4)' }}>
+                <div className="nexus-skeleton-line" style={{ width: 56, height: 56, borderRadius: 8, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div className="nexus-skeleton-line" style={{ width: '70%', height: '1rem', marginBottom: '0.5rem' }} />
+                  <div className="nexus-skeleton-line" style={{ width: '50%', height: '0.8rem', marginBottom: '0.5rem' }} />
+                  <div className="nexus-skeleton-line" style={{ width: '30%', height: '0.8rem' }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && upcoming.length === 0 && past.length === 0 && (
+        <div className="nexus-empty-state">
+          <p>No upcoming events. Check back soon!</p>
+          <Link to="/events/new" className="nexus-btn nexus-btn--primary">Create the first event</Link>
         </div>
       )}
 
@@ -114,6 +134,7 @@ export function EventsPage() {
           </div>
         </section>
       )}
+      </div>{/* end events region */}
     </div>
   )
 }

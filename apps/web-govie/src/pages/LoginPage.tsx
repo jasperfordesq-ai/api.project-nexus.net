@@ -15,9 +15,23 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({})
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const from = (location.state as { from?: { pathname: string } } | undefined)?.from?.pathname ?? '/'
+
+  const validateField = (name: string, value: string) => {
+    let error = ''
+    switch (name) {
+      case 'email':
+        if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Please enter a valid email address'
+        break
+      case 'password':
+        if (value.length > 0 && value.length === 0) error = 'Enter your password'
+        break
+    }
+    setFieldErrors(prev => ({ ...prev, [name]: error }))
+  }
 
   const validate = () => {
     const errs: typeof errors = {}
@@ -83,14 +97,16 @@ export function LoginPage() {
             <input
               id="email"
               type="email"
-              className={`nexus-input${errors.email ? ' nexus-input--error' : ''}`}
+              className={`nexus-input${errors.email || fieldErrors.email ? ' nexus-input--error' : ''}`}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: '' })) }}
+              onBlur={(e) => validateField('email', e.target.value)}
               autoComplete="email"
-              aria-invalid={!!errors.email}
-              aria-describedby={errors.email ? 'email-error' : undefined}
+              aria-invalid={!!(errors.email || fieldErrors.email)}
+              aria-describedby={errors.email ? 'email-error' : fieldErrors.email ? 'email-field-error' : undefined}
               spellCheck={false}
             />
+            {fieldErrors.email && <span className="nexus-field-error" id="email-field-error">{fieldErrors.email}</span>}
           </div>
 
           {/* Password */}
@@ -106,13 +122,15 @@ export function LoginPage() {
             <input
               id="password"
               type="password"
-              className={`nexus-input${errors.password ? ' nexus-input--error' : ''}`}
+              className={`nexus-input${errors.password || fieldErrors.password ? ' nexus-input--error' : ''}`}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' })) }}
+              onBlur={(e) => { if (e.target.value.length === 0 && password.length > 0) setFieldErrors(prev => ({ ...prev, password: 'Enter your password' })) }}
               autoComplete="current-password"
-              aria-invalid={!!errors.password}
-              aria-describedby={errors.password ? 'pw-error' : undefined}
+              aria-invalid={!!(errors.password || fieldErrors.password)}
+              aria-describedby={errors.password ? 'pw-error' : fieldErrors.password ? 'pw-field-error' : undefined}
             />
+            {fieldErrors.password && <span className="nexus-field-error" id="pw-field-error">{fieldErrors.password}</span>}
           </div>
 
           <div>

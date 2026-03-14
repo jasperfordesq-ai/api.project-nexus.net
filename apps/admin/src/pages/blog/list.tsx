@@ -53,11 +53,12 @@ export const BlogListPage = () => {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <Title level={4}>Blog Posts</Title>
+        {/* Route /blog/new/edit uses the shared BlogEditPage; id="new" triggers create mode (see edit.tsx line 19) */}
         <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/blog/new/edit")}>New Post</Button>
       </div>
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={posts} rowKey="id" size="middle" pagination={{
+          <Table dataSource={posts} rowKey="id" size="middle" loading={isLoading} locale={{ emptyText: "No blog posts found" }} pagination={{
                 current: page,
                 pageSize,
                 total: totalCount,

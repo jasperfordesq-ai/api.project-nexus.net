@@ -134,6 +134,7 @@ function GroupsContent() {
         </div>
 
         {/* Groups Grid */}
+        <div role="region" aria-label="Groups" aria-busy={isLoading} aria-live="polite">
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
@@ -255,6 +256,7 @@ function GroupsContent() {
             </Link>
           </div>
         )}
+        </div>{/* end groups region */}
       </div>
     </div>
   );

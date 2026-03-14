@@ -109,6 +109,7 @@ export default function ExchangeDetailPage() {
 function ExchangeDetailContent() {
   const params = useParams();
   const exchangeId = Number(params.id);
+  const isValidId = !isNaN(exchangeId) && exchangeId > 0;
   const { user, logout } = useAuth();
 
   const [exchange, setExchange] = useState<Exchange | null>(null);
@@ -133,6 +134,7 @@ function ExchangeDetailContent() {
   } = useDisclosure();
 
   const fetchExchange = useCallback(async () => {
+    if (!isValidId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
       const data = await api.getExchange(exchangeId);

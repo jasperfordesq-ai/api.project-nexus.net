@@ -20,18 +20,14 @@ import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import type { Post, Comment } from "@/lib/api";
 import { containerVariantsFast, itemVariants } from "@/lib/animations";
+import { formatRelativeTime } from "@/lib/format-date";
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function relativeTime(iso: string): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
-  const s = (Date.now() - d.getTime()) / 1000;
-  if (s < 60)  return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h`;
-  if (s < 604800) return `${Math.floor(s / 86400)}d`;
-  return d.toLocaleDateString("en-IE", { day: "numeric", month: "short" });
+  return formatRelativeTime(iso);
 }
 
 function postInitials(p: Post) {

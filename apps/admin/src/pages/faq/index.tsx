@@ -91,7 +91,7 @@ export const FaqPage = () => {
         <Spin />
       ) : (
         <Card>
-          <Table dataSource={faqs} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
+          <Table dataSource={faqs} rowKey="id" size="small" loading={isLoading} locale={{ emptyText: "No FAQs found" }} pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="question" title="Question" />
             <Table.Column dataIndex="category" title="Category" />

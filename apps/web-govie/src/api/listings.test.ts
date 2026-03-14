@@ -27,7 +27,7 @@ describe('listingsApi', () => {
   it('list calls GET /api/listings', async () => {
     mock.get.mockResolvedValue({ data: { data: [], totalCount: 0 } })
     await listingsApi.list()
-    expect(mock.get).toHaveBeenCalledWith('/api/listings', { params: undefined })
+    expect(mock.get).toHaveBeenCalledWith('/api/listings', { params: { page: undefined, limit: undefined, search: undefined, category: undefined, type: undefined } })
   })
 
   it('get calls GET /api/listings/:id', async () => {
@@ -39,9 +39,17 @@ describe('listingsApi', () => {
 
   it('create calls POST /api/listings', async () => {
     const payload = { title: 'New', description: 'Desc', type: 'offer' as const, category: 'Tech', creditRate: 2 }
-    mock.post.mockResolvedValue({ data: { id: 1, ...payload } })
+    const rawResponse = { id: 1, title: 'New', description: 'Desc', type: 'offer', status: 'active', location: null, estimated_hours: 2, is_featured: false, view_count: 0, expires_at: null, created_at: '2026-01-01', updated_at: null, user: null }
+    mock.post.mockResolvedValue({ data: rawResponse })
     await listingsApi.create(payload)
-    expect(mock.post).toHaveBeenCalledWith('/api/listings', payload)
+    expect(mock.post).toHaveBeenCalledWith('/api/listings', {
+      title: 'New',
+      description: 'Desc',
+      type: 'offer',
+      location: undefined,
+      estimated_hours: 2,
+      category_id: undefined,
+    })
   })
 
   it('update calls PUT /api/listings/:id', async () => {

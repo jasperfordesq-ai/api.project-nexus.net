@@ -47,6 +47,7 @@ function OrganisationsContent() {
   const { user, logout } = useAuth();
   const [orgs, setOrgs] = useState<Organisation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -62,8 +63,9 @@ function OrganisationsContent() {
       const response = await api.getOrganisations(params);
       setOrgs(response?.data || []);
       setTotalPages(response?.pagination?.total_pages || 1);
-    } catch (error) {
-      logger.error("Failed to fetch organisations:", error);
+    } catch (err) {
+      logger.error("Failed to fetch organisations:", err);
+      setError(err instanceof Error ? err.message : "Failed to load organisations. Please try again.");
       setOrgs([]);
     } finally {
       setIsLoading(false);
@@ -88,6 +90,12 @@ function OrganisationsContent() {
             </p>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {error}
+          </div>
+        )}
 
         <div className="mb-8">
           <Input

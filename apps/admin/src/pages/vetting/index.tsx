@@ -31,6 +31,12 @@ export const VettingPage = () => {
   const [rejectId, setRejectId] = useState<number | null>(null);
   const [rejectNotes, setRejectNotes] = useState("");
 
+  const getErrorMessage = (err: any, fallback: string) => {
+    if (err?.response) return err.response.data?.message || err.response.data?.error || fallback;
+    if (err?.request) return "Network error — please check your connection and try again";
+    return fallback;
+  };
+
   const handleVerify = (id: number) => {
     Modal.confirm({
       title: "Verify this DBS record?",
@@ -39,7 +45,7 @@ export const VettingPage = () => {
           await axiosInstance.put("/api/admin/vetting/records/" + id + "/verify");
           message.success("Record verified");
           refetch();
-        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+        } catch (err: any) { message.error(getErrorMessage(err, "Failed to verify record")); }
       },
     });
   };
@@ -52,7 +58,7 @@ export const VettingPage = () => {
       setRejectId(null);
       setRejectNotes("");
       refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+    } catch (err: any) { message.error(getErrorMessage(err, "Failed to reject record")); }
   };
 
   const vettingColumns = [

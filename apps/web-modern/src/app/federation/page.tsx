@@ -37,12 +37,16 @@ function FederationContent() {
   const { user, logout } = useAuth();
   const [instances, setInstances] = useState<FederatedInstance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
     api.getFederatedInstances()
       .then((data) => setInstances(data || []))
-      .catch((error) => logger.error("Failed to fetch instances:", error))
+      .catch((err) => {
+        logger.error("Failed to fetch instances:", err);
+        setError(err instanceof Error ? err.message : "Failed to load federation data. Please try again.");
+      })
       .finally(() => setIsLoading(false));
   }, []);
   return (
@@ -56,6 +60,12 @@ function FederationContent() {
           </h1>
           <p className="text-white/50 mt-1">Connected timebank instances</p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {error}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-4">

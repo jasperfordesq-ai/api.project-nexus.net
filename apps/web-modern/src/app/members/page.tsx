@@ -9,11 +9,11 @@ import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
-  Avatar,
   Skeleton,
   Input,
   Pagination,
 } from "@heroui/react";
+import { AvatarWithFallback } from "@/components/avatar-with-fallback";
 import {
   Users,
   Search,
@@ -46,6 +46,7 @@ function MembersContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [sendingRequest, setSendingRequest] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Debounce search query
@@ -67,8 +68,9 @@ function MembersContent() {
       });
       setMembers(response?.data || []);
       setTotalPages(response?.pagination?.total_pages || 1);
-    } catch (error) {
-      logger.error("Failed to fetch members:", error);
+    } catch (err) {
+      logger.error("Failed to fetch members:", err);
+      setError(err instanceof Error ? err.message : "Failed to load members. Please try again.");
       setMembers([]);
     } finally {
       setIsLoading(false);
@@ -106,6 +108,13 @@ function MembersContent() {
           </div>
         </div>
 
+        {/* Fetch Error */}
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
         {/* Action Error */}
         {actionError && (
           <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
@@ -135,6 +144,7 @@ function MembersContent() {
         </div>
 
         {/* Members Grid */}
+        <div role="region" aria-label="Member directory" aria-busy={isLoading} aria-live="polite">
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(9)].map((_, i) => (
@@ -168,7 +178,7 @@ function MembersContent() {
                   hover
                 >
                   <div className="flex flex-col items-center text-center">
-                    <Avatar
+                    <AvatarWithFallback
                       name={`${member.first_name} ${member.last_name}`}
                       size="lg"
                       className="w-20 h-20 text-xl ring-4 ring-white/10 mb-4"
@@ -245,6 +255,7 @@ function MembersContent() {
             </p>
           </div>
         )}
+        </div>{/* end members region */}
       </div>
     </div>
   );

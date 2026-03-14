@@ -7,7 +7,8 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Button, Avatar, Skeleton, Input } from "@heroui/react";
+import { Button, Skeleton, Input } from "@heroui/react";
+import { AvatarWithFallback } from "@/components/avatar-with-fallback";
 import {
   MessageSquare,
   Send,
@@ -354,7 +355,7 @@ function MessagesContent() {
                       }`}
                     >
                       <div className="relative">
-                        <Avatar
+                        <AvatarWithFallback
                           name={`${participant?.first_name} ${participant?.last_name}`}
                           className="ring-2 ring-white/10"
                         />
@@ -416,7 +417,7 @@ function MessagesContent() {
                     <ArrowLeft className="w-5 h-5" />
                   </Button>
                   <div className="relative">
-                    <Avatar
+                    <AvatarWithFallback
                       name={`${otherParticipant?.first_name} ${otherParticipant?.last_name}`}
                       className="ring-2 ring-white/10"
                     />

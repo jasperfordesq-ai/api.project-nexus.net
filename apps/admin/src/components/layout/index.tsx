@@ -170,6 +170,26 @@ export const AdminLayout = () => {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
+      {/* Skip to main content link for keyboard / assistive technology users */}
+      <a
+        href="#main-content"
+        style={{
+          position: "absolute",
+          top: -40,
+          left: 0,
+          background: "#000",
+          color: "#fff",
+          padding: "8px 16px",
+          zIndex: 9999,
+          transition: "top 0.2s",
+          textDecoration: "none",
+          fontWeight: 600,
+        }}
+        onFocus={(e) => { e.currentTarget.style.top = "0px"; }}
+        onBlur={(e) => { e.currentTarget.style.top = "-40px"; }}
+      >
+        Skip to main content
+      </a>
       <Sider
         collapsible
         collapsed={collapsed}
@@ -232,15 +252,17 @@ export const AdminLayout = () => {
             justifyContent: "space-between",
           }}
         >
-          <div
-            style={{ padding: "0 16px", cursor: "pointer" }}
+          <button
+            type="button"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            style={{ padding: "0 16px", cursor: "pointer", background: "none", border: "none", fontSize: "inherit", color: "inherit" }}
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          </div>
+          </button>
           <AdminHeader />
         </Header>
-        <Content style={{ margin: 24 }}>
+        <Content id="main-content" style={{ margin: 24 }}>
           <Outlet />
         </Content>
       </Layout>

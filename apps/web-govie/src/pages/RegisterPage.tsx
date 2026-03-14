@@ -52,7 +52,30 @@ export function RegisterPage() {
     agreeTerms: false,
   })
   const [errors, setErrors] = useState<FormErrors>({})
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const validateField = (name: string, value: string) => {
+    let error = ''
+    switch (name) {
+      case 'firstName':
+        if (!value.trim()) error = 'Enter your first name'
+        break
+      case 'lastName':
+        if (!value.trim()) error = 'Enter your last name'
+        break
+      case 'email':
+        if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Please enter a valid email address'
+        break
+      case 'password':
+        if (value.length > 0 && value.length < 8) error = 'Password must be at least 8 characters'
+        break
+      case 'confirmPassword':
+        if (value && value !== values.password) error = 'Passwords do not match'
+        break
+    }
+    setFieldErrors(prev => ({ ...prev, [name]: error }))
+  }
 
   const set =
     (field: keyof FormValues) =>
@@ -60,6 +83,7 @@ export function RegisterPage() {
       const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
       setValues((v) => ({ ...v, [field]: value }))
       if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
+      if (fieldErrors[field]) setFieldErrors(prev => ({ ...prev, [field]: '' }))
     }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,84 +152,99 @@ export function RegisterPage() {
             <div className="nexus-form-group" id="field-firstName">
               <label htmlFor="firstName" className="nexus-label">
                 First name
-                {errors.firstName && <span className="nexus-error-message" role="alert">{errors.firstName}</span>}
+                {errors.firstName && <span className="nexus-error-message" role="alert" id="firstName-error">{errors.firstName}</span>}
               </label>
               <input
                 id="firstName"
                 type="text"
-                className={`nexus-input${errors.firstName ? ' nexus-input--error' : ''}`}
+                className={`nexus-input${errors.firstName || fieldErrors.firstName ? ' nexus-input--error' : ''}`}
                 value={values.firstName}
                 onChange={set('firstName')}
+                onBlur={(e) => validateField('firstName', e.target.value)}
                 autoComplete="given-name"
-                aria-invalid={!!errors.firstName}
+                aria-invalid={!!(errors.firstName || fieldErrors.firstName)}
+                aria-describedby={errors.firstName ? 'firstName-error' : fieldErrors.firstName ? 'firstName-field-error' : undefined}
                 style={{ maxWidth: '100%' }}
               />
+              {fieldErrors.firstName && <span className="nexus-field-error" id="firstName-field-error">{fieldErrors.firstName}</span>}
             </div>
             <div className="nexus-form-group" id="field-lastName">
               <label htmlFor="lastName" className="nexus-label">
                 Last name
-                {errors.lastName && <span className="nexus-error-message" role="alert">{errors.lastName}</span>}
+                {errors.lastName && <span className="nexus-error-message" role="alert" id="lastName-error">{errors.lastName}</span>}
               </label>
               <input
                 id="lastName"
                 type="text"
-                className={`nexus-input${errors.lastName ? ' nexus-input--error' : ''}`}
+                className={`nexus-input${errors.lastName || fieldErrors.lastName ? ' nexus-input--error' : ''}`}
                 value={values.lastName}
                 onChange={set('lastName')}
+                onBlur={(e) => validateField('lastName', e.target.value)}
                 autoComplete="family-name"
-                aria-invalid={!!errors.lastName}
+                aria-invalid={!!(errors.lastName || fieldErrors.lastName)}
+                aria-describedby={errors.lastName ? 'lastName-error' : fieldErrors.lastName ? 'lastName-field-error' : undefined}
                 style={{ maxWidth: '100%' }}
               />
+              {fieldErrors.lastName && <span className="nexus-field-error" id="lastName-field-error">{fieldErrors.lastName}</span>}
             </div>
           </div>
 
           <div className="nexus-form-group" id="field-email">
             <label htmlFor="reg-email" className="nexus-label">
               Email address
-              {errors.email && <span className="nexus-error-message" role="alert">{errors.email}</span>}
+              {errors.email && <span className="nexus-error-message" role="alert" id="email-error">{errors.email}</span>}
             </label>
             <input
               id="reg-email"
               type="email"
-              className={`nexus-input${errors.email ? ' nexus-input--error' : ''}`}
+              className={`nexus-input${errors.email || fieldErrors.email ? ' nexus-input--error' : ''}`}
               value={values.email}
               onChange={set('email')}
+              onBlur={(e) => validateField('email', e.target.value)}
               autoComplete="email"
-              aria-invalid={!!errors.email}
+              aria-invalid={!!(errors.email || fieldErrors.email)}
+              aria-describedby={errors.email ? 'email-error' : fieldErrors.email ? 'email-field-error' : undefined}
             />
+            {fieldErrors.email && <span className="nexus-field-error" id="email-field-error">{fieldErrors.email}</span>}
           </div>
 
           <div className="nexus-form-group" id="field-password">
             <label htmlFor="reg-password" className="nexus-label">
               Password
               <span className="nexus-label__hint">At least 8 characters</span>
-              {errors.password && <span className="nexus-error-message" role="alert">{errors.password}</span>}
+              {errors.password && <span className="nexus-error-message" role="alert" id="password-error">{errors.password}</span>}
             </label>
             <input
               id="reg-password"
               type="password"
-              className={`nexus-input${errors.password ? ' nexus-input--error' : ''}`}
+              className={`nexus-input${errors.password || fieldErrors.password ? ' nexus-input--error' : ''}`}
               value={values.password}
               onChange={set('password')}
+              onBlur={(e) => validateField('password', e.target.value)}
               autoComplete="new-password"
-              aria-invalid={!!errors.password}
+              aria-invalid={!!(errors.password || fieldErrors.password)}
+              aria-describedby={errors.password ? 'password-error' : fieldErrors.password ? 'password-field-error' : undefined}
             />
+            {fieldErrors.password && <span className="nexus-field-error" id="password-field-error">{fieldErrors.password}</span>}
           </div>
 
           <div className="nexus-form-group" id="field-confirmPassword">
             <label htmlFor="confirmPassword" className="nexus-label">
               Confirm password
-              {errors.confirmPassword && <span className="nexus-error-message" role="alert">{errors.confirmPassword}</span>}
+              {errors.confirmPassword && <span className="nexus-error-message" role="alert" id="confirmPassword-error">{errors.confirmPassword}</span>}
             </label>
             <input
               id="confirmPassword"
               type="password"
-              className={`nexus-input${errors.confirmPassword ? ' nexus-input--error' : ''}`}
+              className={`nexus-input${errors.confirmPassword || fieldErrors.confirmPassword ? ' nexus-input--error' : ''}`}
               value={values.confirmPassword}
               onChange={set('confirmPassword')}
+              onBlur={(e) => validateField('confirmPassword', e.target.value)}
               autoComplete="new-password"
-              aria-invalid={!!errors.confirmPassword}
+              aria-invalid={!!(errors.confirmPassword || fieldErrors.confirmPassword)}
+              aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : fieldErrors.confirmPassword ? 'confirmPassword-field-error' : undefined}
             />
+            {fieldErrors.confirmPassword && <span className="nexus-field-error" id="confirmPassword-field-error">{fieldErrors.confirmPassword}</span>}
           </div>
 
           <div className="nexus-form-group" id="field-agreeTerms" style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 'var(--nexus-space-3)' }}>
@@ -215,6 +254,7 @@ export function RegisterPage() {
               checked={values.agreeTerms}
               onChange={set('agreeTerms')}
               aria-invalid={!!errors.agreeTerms}
+              aria-describedby={errors.agreeTerms ? 'agreeTerms-error' : undefined}
               style={{ width: 20, height: 20, marginTop: 2, flexShrink: 0 }}
             />
             <div>
@@ -224,7 +264,7 @@ export function RegisterPage() {
                 {' '}and{' '}
                 <Link to="/legal/privacy" target="_blank">privacy policy</Link>
               </label>
-              {errors.agreeTerms && <span className="nexus-error-message" role="alert" style={{ display: 'block' }}>{errors.agreeTerms}</span>}
+              {errors.agreeTerms && <span className="nexus-error-message" role="alert" id="agreeTerms-error" style={{ display: 'block' }}>{errors.agreeTerms}</span>}
             </div>
           </div>
 

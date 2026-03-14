@@ -10,16 +10,21 @@ import { isApiError } from '../context/AuthContext'
 
 interface Organisation { id: number; name: string; type: string; description: string; memberCount: number; isVerified: boolean }
 
+const ITEMS_PER_PAGE = 12
+
 export function OrganisationsPage() {
   const [orgs, setOrgs] = useState<Organisation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
-    apiClient.get<{ items: Organisation[] }>('/api/organisations')
+    const controller = new AbortController()
+    apiClient.get<{ items: Organisation[] }>('/api/organisations', { signal: controller.signal })
       .then(r => setOrgs(r.data?.items ?? (r.data as unknown as Organisation[]) ?? []))
-      .catch(err => setError(isApiError(err) ? err.message : 'Could not load organisations.'))
-      .finally(() => setIsLoading(false))
+      .catch(err => { if (!controller.signal.aborted) setError(isApiError(err) ? err.message : 'Could not load organisations.') })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
   }, [])
 
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading organisations..." /></div>
@@ -37,12 +42,12 @@ export function OrganisationsPage() {
       <h1 style={{ fontSize: 'clamp(26px, 4vw, 38px)', fontWeight: 900, marginBottom: 'var(--nexus-space-5)' }}>Community organisations</h1>
 
       {orgs.length === 0 ? (
-        <div className="nexus-card" style={{ textAlign: 'center', padding: 'var(--nexus-space-7)', color: 'var(--nexus-color-text-secondary)' }}>
-          No organisations listed yet.
+        <div className="nexus-empty-state">
+          <p>No organisations listed yet. Check back soon!</p>
         </div>
       ) : (
         <div className="nexus-cards">
-          {orgs.map(org => (
+          {orgs.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE).map(org => (
             <article key={org.id} className="nexus-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--nexus-space-2)' }}>
                 <span className="nexus-badge" style={{ background: '#006B6B', color: 'white', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>{org.type}</span>
@@ -59,6 +64,14 @@ export function OrganisationsPage() {
             </article>
           ))}
         </div>
+      )}
+
+      {orgs.length > ITEMS_PER_PAGE && (
+        <nav className="nexus-pagination" aria-label="Pagination">
+          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</button>
+          <span>Page {page} of {Math.ceil(orgs.length / ITEMS_PER_PAGE)}</span>
+          <button disabled={page >= Math.ceil(orgs.length / ITEMS_PER_PAGE)} onClick={() => setPage(p => p + 1)}>Next</button>
+        </nav>
       )}
     </div>
   )

@@ -12,7 +12,6 @@ import {
   NavbarMenu,
   NavbarMenuItem,
   Button,
-  Avatar,
   Dropdown,
   DropdownTrigger,
   DropdownMenu,
@@ -54,6 +53,8 @@ import {
   MapPin,
   Star,
 } from "lucide-react";
+import { LanguageSwitcher } from "./language-switcher";
+import { AvatarWithFallback } from "./avatar-with-fallback";
 
 interface NavbarProps {
   user?: {
@@ -321,6 +322,11 @@ export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: Nav
 
       {/* User Actions */}
       <NavbarContent justify="end">
+        {/* Language Switcher - always visible */}
+        <NavbarItem className="hidden sm:flex">
+          <LanguageSwitcher />
+        </NavbarItem>
+
         {user ? (
           <>
             {/* Search */}
@@ -409,15 +415,11 @@ export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: Nav
             {/* User Dropdown */}
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
-                <Avatar
+                <AvatarWithFallback
                   as="button"
                   name={`${user.first_name} ${user.last_name}`}
                   size="sm"
                   className="transition-transform cursor-pointer ring-2 ring-white/20 hover:ring-indigo-500/50"
-                  showFallback
-                  fallback={
-                    <User className="w-4 h-4 text-white/70" aria-hidden="true" />
-                  }
                   aria-label={`User menu for ${user.first_name} ${user.last_name}`}
                 />
               </DropdownTrigger>

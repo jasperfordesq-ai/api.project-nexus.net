@@ -18,6 +18,7 @@ import {
   api,
   getToken,
   setToken,
+  setRefreshToken,
   setStoredUser,
   getStoredUser,
   removeToken,
@@ -85,6 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (passkeyResponse: PasskeyAuthResponse) => {
       const token = passkeyResponse.access_token;
       setToken(token);
+      if (passkeyResponse.refresh_token) {
+        setRefreshToken(passkeyResponse.refresh_token);
+      }
       const passkeyUser: User = {
         id: passkeyResponse.user.id,
         email: passkeyResponse.user.email,

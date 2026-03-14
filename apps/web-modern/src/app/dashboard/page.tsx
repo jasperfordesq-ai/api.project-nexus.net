@@ -62,29 +62,40 @@ function DashboardContent() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [balanceRes, txRes, listingsRes, msgRes, gamRes] = await Promise.all([
-          api.getBalance().catch((err) => {
-            logger.error("Failed to fetch balance:", err);
-            return null;
-          }),
-          api.getTransactions({ limit: 5 }).catch((err) => {
-            logger.error("Failed to fetch transactions:", err);
-            return null;
-          }),
-          api.getListings({ status: "active", limit: 4 }).catch((err) => {
-            logger.error("Failed to fetch listings:", err);
-            return null;
-          }),
-          api.getUnreadMessageCount().catch(() => ({ count: 0 })),
-          api.getGamificationProfile().catch(() => null),
+        const results = await Promise.allSettled([
+          api.getBalance(),
+          api.getTransactions({ limit: 5 }),
+          api.getListings({ status: "active", limit: 4 }),
+          api.getUnreadMessageCount(),
+          api.getGamificationProfile(),
         ]);
 
-        setBalance(balanceRes);
-        setTransactions(txRes?.data || []);
-        setListings(listingsRes?.data || []);
-        setMessageCount(msgRes?.count || 0);
-        if (gamRes?.profile) {
-          setGamification(gamRes.profile);
+        const [balanceRes, txRes, listingsRes, msgRes, gamRes] = results;
+
+        if (balanceRes.status === "fulfilled") {
+          setBalance(balanceRes.value);
+        } else {
+          logger.error("Failed to fetch balance:", balanceRes.reason);
+        }
+
+        if (txRes.status === "fulfilled") {
+          setTransactions(txRes.value?.data || []);
+        } else {
+          logger.error("Failed to fetch transactions:", txRes.reason);
+        }
+
+        if (listingsRes.status === "fulfilled") {
+          setListings(listingsRes.value?.data || []);
+        } else {
+          logger.error("Failed to fetch listings:", listingsRes.reason);
+        }
+
+        if (msgRes.status === "fulfilled") {
+          setMessageCount(msgRes.value?.count || 0);
+        }
+
+        if (gamRes.status === "fulfilled" && gamRes.value?.profile) {
+          setGamification(gamRes.value.profile);
         }
       } catch (error) {
         logger.error("Failed to fetch dashboard data:", error);

@@ -73,6 +73,7 @@ function SkillsContent() {
   const [topEndorsed, setTopEndorsed] = useState<TopEndorsed[]>([]);
   const [selectedSkill, setSelectedSkill] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -86,8 +87,9 @@ function SkillsContent() {
       if (skills.status === "fulfilled") setMySkills(skills.value || []);
       if (cat.status === "fulfilled") setCatalog(cat.value || []);
       if (top.status === "fulfilled") setTopEndorsed(top.value || []);
-    } catch (error) {
-      logger.error("Failed to fetch skills:", error);
+    } catch (err) {
+      logger.error("Failed to fetch skills:", err);
+      setError(err instanceof Error ? err.message : "Failed to load skills. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +131,12 @@ function SkillsContent() {
           </h1>
           <p className="text-white/50 mt-1">Showcase your skills and endorse others</p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {error}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-4">

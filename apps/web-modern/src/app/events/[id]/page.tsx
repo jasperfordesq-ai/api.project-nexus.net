@@ -22,7 +22,6 @@ import {
 } from "@heroui/react";
 import {
   Calendar,
-  ArrowLeft,
   MapPin,
   Clock,
   Users,
@@ -37,9 +36,11 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { MotionGlassCard } from "@/components/glass-card";
+import { GlassBreadcrumbs } from "@/components/glass-breadcrumbs";
 import { useAuth } from "@/contexts/auth-context";
-import { api, type Event, type EventAttendee, type PaginatedResponse } from "@/lib/api";
+import { api, type Event, type EventAttendee } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { formatDateLong, formatTime as formatTimeUtil } from "@/lib/format-date";
 
 export default function EventDetailPage() {
   return (
@@ -53,6 +54,7 @@ function EventDetailContent() {
   const params = useParams();
   const router = useRouter();
   const eventId = Number(params.id);
+  const isValidId = !isNaN(eventId) && eventId > 0;
   const { user, logout } = useAuth();
 
   const [event, setEvent] = useState<Event | null>(null);
@@ -72,6 +74,7 @@ function EventDetailContent() {
   } = useDisclosure();
 
   const fetchEvent = useCallback(async () => {
+    if (!isValidId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
       const [eventData, attendeesData] = await Promise.all([
@@ -191,23 +194,8 @@ function EventDetailContent() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
+  const formatDate = (dateStr: string) => formatDateLong(dateStr);
+  const formatTime = (dateStr: string) => formatTimeUtil(dateStr);
 
   const isOrganizer = event?.organizer_id === user?.id;
   const isPastEvent = event ? new Date(event.end_time) < new Date() : false;
@@ -247,14 +235,16 @@ function EventDetailContent() {
       <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <Link
-          href="/events"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Events
-        </Link>
+        {/* Breadcrumbs */}
+        <div className="mb-6">
+          <GlassBreadcrumbs
+            showHome={false}
+            items={[
+              { label: "Events", href: "/events" },
+              { label: event?.title || "Loading..." },
+            ]}
+          />
+        </div>
 
         {actionError && (
           <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">

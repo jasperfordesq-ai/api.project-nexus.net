@@ -70,6 +70,7 @@ function JobsContent() {
   const { user, logout } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<JobType>("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,8 +88,9 @@ function JobsContent() {
       const response = await api.getJobs(params);
       setJobs(response?.data || []);
       setTotalPages(response?.pagination?.total_pages || 1);
-    } catch (error) {
-      logger.error("Failed to fetch jobs:", error);
+    } catch (err) {
+      logger.error("Failed to fetch jobs:", err);
+      setError(err instanceof Error ? err.message : "Failed to load jobs. Please try again.");
       setJobs([]);
     } finally {
       setIsLoading(false);
@@ -111,6 +113,12 @@ function JobsContent() {
             Find time-credit paid opportunities in the community
           </p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {error}
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <Input

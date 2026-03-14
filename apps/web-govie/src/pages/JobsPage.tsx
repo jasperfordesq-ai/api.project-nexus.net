@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
 import { isApiError } from '../context/AuthContext'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 
 interface Job { id: number; title: string; organisationName?: string; location?: string; jobType: string; salaryRange?: string; description: string; createdAt: string; applicationCount: number }
 
@@ -37,22 +38,25 @@ export function JobsPage() {
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    apiClient.get('/api/jobs')
+    const controller = new AbortController()
+    apiClient.get('/api/jobs', { signal: controller.signal })
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any
         const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
         setJobs(items.map(mapJob))
       })
-      .catch(err => setError(isApiError(err) ? err.message : 'Could not load jobs.'))
-      .finally(() => setIsLoading(false))
+      .catch(err => { if (!controller.signal.aborted) setError(isApiError(err) ? err.message : 'Could not load jobs.') })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
   }, [])
 
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading jobs…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
+  const debouncedQuery = useDebouncedValue(query)
   const filtered = jobs.filter(j =>
-    query === '' || j.title.toLowerCase().includes(query.toLowerCase()) || (j.organisationName ?? '').toLowerCase().includes(query.toLowerCase())
+    debouncedQuery === '' || j.title.toLowerCase().includes(debouncedQuery.toLowerCase()) || (j.organisationName ?? '').toLowerCase().includes(debouncedQuery.toLowerCase())
   )
 
   return (
@@ -80,9 +84,10 @@ export function JobsPage() {
         />
       </div>
 
+      <div role="region" aria-label="Jobs list" aria-live="polite">
       {filtered.length === 0 ? (
-        <div className="nexus-card" style={{ textAlign: 'center', padding: 'var(--nexus-space-7)', color: 'var(--nexus-color-text-secondary)' }}>
-          No jobs found{query ? ' matching your search' : ''}.
+        <div className="nexus-empty-state">
+          <p>{query ? 'No jobs found matching your search.' : 'No jobs posted yet. Check back soon for new opportunities!'}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--nexus-space-3)' }}>
@@ -118,6 +123,7 @@ export function JobsPage() {
           ))}
         </div>
       )}
+      </div>{/* end jobs region */}
     </div>
   )
 }
