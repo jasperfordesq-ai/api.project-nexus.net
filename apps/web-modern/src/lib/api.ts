@@ -145,6 +145,9 @@ export interface Event {
   group_id?: number;
   organizer?: User;
   group?: Group;
+  is_cancelled?: boolean;
+  my_rsvp?: { status: string; responded_at: string } | null;
+  rsvp_counts?: { going: number; maybe: number; not_going: number };
   created_at: string;
   updated_at: string;
 }
@@ -685,6 +688,8 @@ function normalizeGroupMember(raw: any): GroupMember {
 
 function normalizeEvent(raw: any): Event {
   if (!raw) return raw;
+  // Backend returns created_by (object) not organizer, and rsvp_count not attendee_count
+  const createdBy = raw.created_by ?? raw.createdBy;
   return {
     id: raw.id,
     title: raw.title ?? '',
@@ -693,11 +698,14 @@ function normalizeEvent(raw: any): Event {
     start_time: raw.startsAt ?? raw.startTime ?? raw.starts_at ?? raw.start_time ?? '',
     end_time: raw.endsAt ?? raw.endTime ?? raw.ends_at ?? raw.end_time ?? '',
     max_attendees: raw.maxAttendees ?? raw.max_attendees,
-    attendee_count: raw.attendeeCount ?? raw.attendee_count ?? 0,
-    organizer_id: raw.organizerId ?? raw.organizer_id ?? 0,
-    group_id: raw.groupId ?? raw.group_id,
-    organizer: normalizeUser(raw.organizer),
+    attendee_count: raw.rsvp_count ?? raw.rsvpCount ?? raw.attendeeCount ?? raw.attendee_count ?? 0,
+    organizer_id: createdBy?.id ?? raw.organizerId ?? raw.organizer_id ?? 0,
+    group_id: raw.groupId ?? raw.group_id ?? raw.group?.id,
+    organizer: normalizeUser(raw.organizer ?? createdBy),
     group: raw.group ? normalizeGroup(raw.group) : undefined,
+    is_cancelled: raw.isCancelled ?? raw.is_cancelled ?? false,
+    my_rsvp: raw._my_rsvp ?? undefined,
+    rsvp_counts: raw.rsvp_counts ?? raw.rsvpCounts ?? undefined,
     created_at: raw.createdAt ?? raw.created_at ?? '',
     updated_at: raw.updatedAt ?? raw.updated_at ?? '',
   };
@@ -864,7 +872,7 @@ function normalizePaginated<T>(raw: any, normalizer: (item: any) => T): Paginate
       page: raw?.pagination?.page ?? 1,
       limit: raw?.pagination?.limit ?? 20,
       total: raw?.pagination?.total ?? 0,
-      total_pages: raw?.pagination?.totalPages ?? raw?.pagination?.total_pages ?? 0,
+      total_pages: raw?.pagination?.totalPages ?? raw?.pagination?.total_pages ?? raw?.pagination?.pages ?? 0,
     },
   };
 }
@@ -1464,7 +1472,17 @@ class ApiClient {
 
   async getEvent(id: number): Promise<Event> {
     const raw = await this.request<any>(`/api/events/${id}`);
-    return normalizeEvent(raw);
+    // Backend returns { event: {...}, my_rsvp: {...} } wrapper
+    const eventData = raw?.event ?? raw;
+    const myRsvp = raw?.my_rsvp ?? raw?.myRsvp;
+    const event = normalizeEvent(eventData);
+    if (myRsvp) {
+      event.my_rsvp = {
+        status: myRsvp.status,
+        responded_at: myRsvp.respondedAt ?? myRsvp.responded_at ?? '',
+      };
+    }
+    return event;
   }
 
   async createEvent(data: {
@@ -1475,12 +1493,25 @@ class ApiClient {
     end_time: string;
     max_attendees?: number;
     group_id?: number;
+    image_url?: string;
   }): Promise<Event> {
+    // Backend expects starts_at/ends_at, not start_time/end_time
+    const payload = {
+      title: data.title,
+      description: data.description,
+      location: data.location,
+      starts_at: data.start_time,
+      ends_at: data.end_time,
+      max_attendees: data.max_attendees,
+      group_id: data.group_id,
+      image_url: data.image_url,
+    };
     const raw = await this.request<any>("/api/events", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
-    return normalizeEvent(raw);
+    // Backend returns { success, message, event: {...} }
+    return normalizeEvent(raw?.event ?? raw);
   }
 
   async updateEvent(
@@ -1492,13 +1523,30 @@ class ApiClient {
       start_time: string;
       end_time: string;
       max_attendees: number;
+      image_url: string;
     }>
   ): Promise<Event> {
+    // Backend expects starts_at/ends_at
+    const payload: Record<string, unknown> = {};
+    if (data.title !== undefined) payload.title = data.title;
+    if (data.description !== undefined) payload.description = data.description;
+    if (data.location !== undefined) payload.location = data.location;
+    if (data.start_time !== undefined) payload.starts_at = data.start_time;
+    if (data.end_time !== undefined) payload.ends_at = data.end_time;
+    if (data.max_attendees !== undefined) payload.max_attendees = data.max_attendees;
+    if (data.image_url !== undefined) payload.image_url = data.image_url;
     const raw = await this.request<any>(`/api/events/${id}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
-    return normalizeEvent(raw);
+    // Backend returns { success, message, event: {...} }
+    return normalizeEvent(raw?.event ?? raw);
+  }
+
+  async cancelEvent(id: number): Promise<void> {
+    return this.request<void>(`/api/events/${id}/cancel`, {
+      method: "PUT",
+    });
   }
 
   async deleteEvent(id: number): Promise<void> {
@@ -1515,7 +1563,8 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify({ status }),
     });
-    return normalizeEventAttendee(raw);
+    // Backend returns { success, message, rsvp: { event_id, status, responded_at } }
+    return normalizeEventAttendee(raw?.rsvp ?? raw);
   }
 
   async cancelRsvp(id: number): Promise<void> {
@@ -1528,7 +1577,30 @@ class ApiClient {
     eventId: number
   ): Promise<PaginatedResponse<EventAttendee>> {
     const raw = await this.request<any>(`/api/events/${eventId}/rsvps`);
-    return normalizePaginated(raw, normalizeEventAttendee);
+    // Backend returns flat { id, firstName, lastName, status, responded_at }
+    // where id is the user's ID (not a separate RSVP ID)
+    const normalizer = (item: any): EventAttendee => ({
+      id: item.id,
+      event_id: eventId,
+      user_id: item.id,
+      status: item.status ?? 'going',
+      user: {
+        id: item.id,
+        email: '',
+        first_name: item.firstName ?? item.first_name ?? '',
+        last_name: item.lastName ?? item.last_name ?? '',
+        role: 'member',
+        tenant_id: 0,
+        created_at: '',
+      },
+      created_at: item.respondedAt ?? item.responded_at ?? '',
+    });
+    // Backend wraps in { data: [...] } without pagination
+    const items = raw?.data ?? raw ?? [];
+    return {
+      data: Array.isArray(items) ? items.map(normalizer) : [],
+      pagination: { page: 1, limit: 100, total: Array.isArray(items) ? items.length : 0, total_pages: 1 },
+    };
   }
 
   // ==========================================================================
@@ -3700,16 +3772,28 @@ class ApiClient {
   // Event Reminders
   // ==========================================================================
 
-  async setEventReminder(eventId: number, data: { minutes_before: number }): Promise<void> {
-    return this.request<void>(`/api/events/${eventId}/reminder`, { method: "POST", body: JSON.stringify(data) });
+  async getEventReminders(eventId: number): Promise<any[]> {
+    const raw = await this.request<any>(`/api/events/${eventId}/reminders`);
+    return raw?.data ?? [];
   }
 
-  async removeEventReminder(eventId: number): Promise<void> {
-    return this.request<void>(`/api/events/${eventId}/reminder`, { method: "DELETE" });
+  async setEventReminder(eventId: number, data: { minutes_before: number; reminder_type?: string }): Promise<any> {
+    const raw = await this.request<any>(`/api/events/${eventId}/reminders`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return raw?.reminder ?? raw;
+  }
+
+  async removeEventReminder(eventId: number, reminderId: number): Promise<void> {
+    return this.request<void>(`/api/events/${eventId}/reminders/${reminderId}`, {
+      method: "DELETE",
+    });
   }
 
   async getMyEventReminders(): Promise<any[]> {
-    return this.request<any[]>("/api/events/reminders");
+    const raw = await this.request<any>("/api/users/me/reminders");
+    return raw?.data ?? [];
   }
 
 

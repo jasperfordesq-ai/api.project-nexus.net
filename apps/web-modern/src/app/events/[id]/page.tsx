@@ -30,6 +30,8 @@ import {
   CalendarX,
   Edit,
   Trash2,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
@@ -60,6 +62,8 @@ function EventDetailContent() {
   const [isRsvpLoading, setIsRsvpLoading] = useState(false);
   const [userRsvp, setUserRsvp] = useState<EventAttendee | null>(null);
   const [reminderMinutes, setReminderMinutes] = useState<number | null>(null);
+  const [reminderId, setReminderId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const {
     isOpen: isDeleteOpen,
@@ -81,11 +85,33 @@ function EventDetailContent() {
       const attendeesList = attendeesData?.data || [];
       setAttendees(attendeesList);
 
-      // Check user's RSVP status
-      const userAttendee = attendeesList.find(
-        (a) => a.user_id === user?.id
-      );
-      setUserRsvp(userAttendee || null);
+      // Load existing reminders
+      try {
+        const reminders = await api.getEventReminders(eventId);
+        if (reminders.length > 0) {
+          setReminderMinutes(reminders[0].minutes_before);
+          setReminderId(reminders[0].id);
+        }
+      } catch {
+        // Reminder fetch failure is non-critical
+      }
+
+      // Check user's RSVP status from event response (most reliable)
+      if (eventData.my_rsvp) {
+        setUserRsvp({
+          id: 0,
+          event_id: eventId,
+          user_id: user?.id ?? 0,
+          status: eventData.my_rsvp.status as "going" | "maybe" | "not_going",
+          created_at: eventData.my_rsvp.responded_at,
+        });
+      } else {
+        // Fallback: check attendees list
+        const userAttendee = attendeesList.find(
+          (a) => a.user_id === user?.id || a.id === user?.id
+        );
+        setUserRsvp(userAttendee || null);
+      }
     } catch (error) {
       logger.error("Failed to fetch event:", error);
       setAttendees([]);
@@ -98,31 +124,40 @@ function EventDetailContent() {
     fetchEvent();
   }, [fetchEvent]);
   const handleSetReminder = async (minutes: number) => {
+    setActionError(null);
     try {
-      await api.setEventReminder(eventId, { minutes_before: minutes });
+      const result = await api.setEventReminder(eventId, { minutes_before: minutes });
       setReminderMinutes(minutes);
+      if (result?.id) setReminderId(result.id);
     } catch (error) {
       logger.error("Failed to set reminder:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to set reminder.");
     }
   };
 
   const handleRemoveReminder = async () => {
+    if (!reminderId) return;
+    setActionError(null);
     try {
-      await api.removeEventReminder(eventId);
+      await api.removeEventReminder(eventId, reminderId);
       setReminderMinutes(null);
+      setReminderId(null);
     } catch (error) {
       logger.error("Failed to remove reminder:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to remove reminder.");
     }
   };
 
     const handleRsvp = async (status: "going" | "maybe" | "not_going") => {
     setIsRsvpLoading(true);
+    setActionError(null);
     try {
       const response = await api.rsvpToEvent(eventId, status);
       setUserRsvp(response);
       fetchEvent();
     } catch (error) {
       logger.error("Failed to RSVP:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to RSVP.");
     } finally {
       setIsRsvpLoading(false);
     }
@@ -130,12 +165,14 @@ function EventDetailContent() {
 
   const handleCancelRsvp = async () => {
     setIsRsvpLoading(true);
+    setActionError(null);
     try {
       await api.cancelRsvp(eventId);
       setUserRsvp(null);
       fetchEvent();
     } catch (error) {
       logger.error("Failed to cancel RSVP:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to cancel RSVP.");
     } finally {
       setIsRsvpLoading(false);
     }
@@ -143,11 +180,13 @@ function EventDetailContent() {
 
   const handleDelete = async () => {
     setIsDeleting(true);
+    setActionError(null);
     try {
       await api.deleteEvent(eventId);
       router.push("/events");
     } catch (error) {
       logger.error("Failed to delete event:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to delete event.");
       setIsDeleting(false);
     }
   };
@@ -172,6 +211,7 @@ function EventDetailContent() {
 
   const isOrganizer = event?.organizer_id === user?.id;
   const isPastEvent = event ? new Date(event.end_time) < new Date() : false;
+  const isCancelled = event?.is_cancelled ?? false;
   const isFull = Boolean(
     event?.max_attendees && event.attendee_count >= event.max_attendees
   );
@@ -216,6 +256,12 @@ function EventDetailContent() {
           Back to Events
         </Link>
 
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="space-y-6">
             <div className="p-8 rounded-xl bg-white/5 border border-white/10">
@@ -246,7 +292,12 @@ function EventDetailContent() {
                     {new Date(event.start_time).getDate()}
                   </p>
                 </div>
-                {isPastEvent && (
+                {isCancelled && (
+                  <div className="absolute top-4 right-4">
+                    <Chip className="bg-red-500/30 text-red-300 font-semibold">Cancelled</Chip>
+                  </div>
+                )}
+                {isPastEvent && !isCancelled && (
                   <div className="absolute top-4 right-4">
                     <Chip className="bg-white/20 text-white">Past Event</Chip>
                   </div>
@@ -326,6 +377,53 @@ function EventDetailContent() {
                   </p>
                 </div>
 
+                {/* Reminder Section */}
+                {!isPastEvent && !isCancelled && (
+                  <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
+                    <Bell className="w-5 h-5 text-indigo-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">
+                        {reminderMinutes
+                          ? `Reminder set: ${reminderMinutes >= 60 ? `${reminderMinutes / 60}h` : `${reminderMinutes}min`} before`
+                          : "Set a reminder"}
+                      </p>
+                      <p className="text-xs text-white/40">
+                        Get notified before the event starts
+                      </p>
+                    </div>
+                    {reminderMinutes ? (
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        className="text-white/60"
+                        startContent={<BellOff className="w-3 h-3" />}
+                        onPress={handleRemoveReminder}
+                      >
+                        Remove
+                      </Button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          className="bg-white/10 text-white text-xs"
+                          onPress={() => handleSetReminder(60)}
+                        >
+                          1h
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          className="bg-white/10 text-white text-xs"
+                          onPress={() => handleSetReminder(1440)}
+                        >
+                          1 day
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Organizer Info */}
                 <div className="flex items-center justify-between pt-6 border-t border-white/10">
                   <Link href={`/members/${event.organizer?.id}`}>
@@ -365,7 +463,7 @@ function EventDetailContent() {
                           Delete
                         </Button>
                       </>
-                    ) : !isPastEvent ? (
+                    ) : !isPastEvent && !isCancelled ? (
                       userRsvp ? (
                         <div className="flex items-center gap-2">
                           <Chip className={getRsvpStatusColor(userRsvp.status)}>

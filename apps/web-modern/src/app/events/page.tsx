@@ -82,15 +82,22 @@ function EventsContent() {
   );
 
   const [rsvpError, setRsvpError] = useState<string | null>(null);
+  const [rsvpSuccess, setRsvpSuccess] = useState<string | null>(null);
+  const [rsvpLoadingId, setRsvpLoadingId] = useState<number | null>(null);
 
   const handleRsvp = async (eventId: number) => {
     setRsvpError(null);
+    setRsvpSuccess(null);
+    setRsvpLoadingId(eventId);
     try {
       await api.rsvpToEvent(eventId, "going");
+      setRsvpSuccess("RSVP confirmed!");
       fetchEvents();
     } catch (error) {
       logger.error("Failed to RSVP:", error);
       setRsvpError(error instanceof Error ? error.message : "Failed to RSVP. Please try again.");
+    } finally {
+      setRsvpLoadingId(null);
     }
   };
 
@@ -130,10 +137,15 @@ function EventsContent() {
       <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* RSVP Error */}
+        {/* RSVP Feedback */}
         {rsvpError && (
           <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
             {rsvpError}
+          </div>
+        )}
+        {rsvpSuccess && (
+          <div className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-sm text-green-400">
+            {rsvpSuccess}
           </div>
         )}
 
@@ -217,63 +229,86 @@ function EventsContent() {
               animate="visible"
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {filteredEvents.map((event) => (
+              {filteredEvents.map((event) => {
+                const isPast = event.end_time
+                  ? new Date(event.end_time) < new Date()
+                  : event.start_time
+                  ? new Date(event.start_time) < new Date()
+                  : false;
+                const isCancelled = event.is_cancelled ?? false;
+
+                return (
                 <MotionGlassCard
                   key={event.id}
                   variants={itemVariants}
                   glow="none"
                   padding="none"
                   hover
+                  className="cursor-pointer"
                 >
-                  {/* Date Badge */}
-                  <div className="relative">
-                    <div className="absolute top-4 left-4 bg-indigo-500 rounded-lg px-3 py-2 text-center">
-                      <p className="text-xs text-white/80 uppercase">
-                        {getDatePart(event.start_time, "month")}
-                      </p>
-                      <p className="text-xl font-bold text-white">
-                        {getDatePart(event.start_time, "day")}
-                      </p>
-                    </div>
-                    <div className="h-32 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-t-xl flex items-center justify-center">
-                      <Calendar className="w-12 h-12 text-white/20" />
-                    </div>
-                  </div>
-
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1">
-                      {event.title}
-                    </h3>
-                    <p className="text-sm text-white/50 mb-4 line-clamp-2">
-                      {event.description}
-                    </p>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center gap-2 text-white/60">
-                        <Clock className="w-4 h-4" />
-                        <span className="text-sm">
-                          {formatDate(event.start_time)} at{" "}
-                          {formatTime(event.start_time)}
-                        </span>
+                  <Link href={`/events/${event.id}`} className="block">
+                    {/* Date Badge */}
+                    <div className="relative">
+                      <div className="absolute top-4 left-4 bg-indigo-500 rounded-lg px-3 py-2 text-center z-10">
+                        <p className="text-xs text-white/80 uppercase">
+                          {getDatePart(event.start_time, "month")}
+                        </p>
+                        <p className="text-xl font-bold text-white">
+                          {getDatePart(event.start_time, "day")}
+                        </p>
                       </div>
-                      {event.location && (
-                        <div className="flex items-center gap-2 text-white/60">
-                          <MapPin className="w-4 h-4" />
-                          <span className="text-sm truncate">
-                            {event.location}
-                          </span>
+                      {isCancelled && (
+                        <div className="absolute top-4 right-4 z-10">
+                          <Chip size="sm" className="bg-red-500/30 text-red-300">Cancelled</Chip>
                         </div>
                       )}
-                      <div className="flex items-center gap-2 text-white/60">
-                        <Users className="w-4 h-4" />
-                        <span className="text-sm">
-                          {event.attendee_count} attending
-                          {event.max_attendees &&
-                            ` / ${event.max_attendees} max`}
-                        </span>
+                      {isPast && !isCancelled && (
+                        <div className="absolute top-4 right-4 z-10">
+                          <Chip size="sm" className="bg-white/20 text-white">Past</Chip>
+                        </div>
+                      )}
+                      <div className="h-32 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-t-xl flex items-center justify-center">
+                        <Calendar className="w-12 h-12 text-white/20" />
                       </div>
                     </div>
 
+                    <div className="p-6">
+                      <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1">
+                        {event.title}
+                      </h3>
+                      <p className="text-sm text-white/50 mb-4 line-clamp-2">
+                        {event.description}
+                      </p>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center gap-2 text-white/60">
+                          <Clock className="w-4 h-4 flex-shrink-0" />
+                          <span className="text-sm">
+                            {formatDate(event.start_time)} at{" "}
+                            {formatTime(event.start_time)}
+                          </span>
+                        </div>
+                        {event.location && (
+                          <div className="flex items-center gap-2 text-white/60">
+                            <MapPin className="w-4 h-4 flex-shrink-0" />
+                            <span className="text-sm truncate">
+                              {event.location}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-white/60">
+                          <Users className="w-4 h-4 flex-shrink-0" />
+                          <span className="text-sm">
+                            {event.attendee_count} attending
+                            {event.max_attendees &&
+                              ` / ${event.max_attendees} max`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+
+                  <div className="px-6 pb-6">
                     <div className="flex items-center justify-between pt-4 border-t border-white/10">
                       <div className="flex items-center gap-2">
                         <Avatar
@@ -286,18 +321,32 @@ function EventsContent() {
                         </span>
                       </div>
 
-                      <Button
-                        size="sm"
-                        className="bg-white/10 text-white hover:bg-white/20"
-                        startContent={<CalendarCheck className="w-4 h-4" />}
-                        onPress={() => handleRsvp(event.id)}
-                      >
-                        RSVP
-                      </Button>
+                      {!isPast && !isCancelled && (
+                        <Button
+                          size="sm"
+                          className="bg-white/10 text-white hover:bg-white/20"
+                          startContent={<CalendarCheck className="w-4 h-4" />}
+                          isLoading={rsvpLoadingId === event.id}
+                          onPress={() => handleRsvp(event.id)}
+                        >
+                          RSVP
+                        </Button>
+                      )}
+                      {isCancelled && (
+                        <Chip size="sm" variant="flat" className="text-red-400/60">
+                          Cancelled
+                        </Chip>
+                      )}
+                      {isPast && !isCancelled && (
+                        <Chip size="sm" variant="flat" className="text-white/40">
+                          Ended
+                        </Chip>
+                      )}
                     </div>
                   </div>
                 </MotionGlassCard>
-              ))}
+                );
+              })}
             </motion.div>
 
             {/* Pagination */}

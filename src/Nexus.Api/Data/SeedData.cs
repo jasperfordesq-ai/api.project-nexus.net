@@ -405,6 +405,7 @@ public static class SeedData
                 Description = "Learn the basics of vegetable gardening in this hands-on workshop.",
                 Location = "Community Center",
                 StartsAt = DateTime.UtcNow.AddDays(7),
+                EndsAt = DateTime.UtcNow.AddDays(7).AddHours(2),
                 MaxAttendees = 20,
                 IsCancelled = false,
                 CreatedAt = DateTime.UtcNow.AddDays(-5)
@@ -419,6 +420,7 @@ public static class SeedData
                 Description = "Bring your broken items and we'll fix them together!",
                 Location = "Makerspace",
                 StartsAt = DateTime.UtcNow.AddDays(14),
+                EndsAt = DateTime.UtcNow.AddDays(14).AddHours(3),
                 MaxAttendees = 15,
                 IsCancelled = false,
                 CreatedAt = DateTime.UtcNow.AddDays(-3)
@@ -434,6 +436,7 @@ public static class SeedData
                 Description = "Learn to cook traditional dishes while practicing a new language.",
                 Location = "Kitchen",
                 StartsAt = DateTime.UtcNow.AddDays(10),
+                EndsAt = DateTime.UtcNow.AddDays(10).AddHours(2),
                 MaxAttendees = 10,
                 IsCancelled = false,
                 CreatedAt = DateTime.UtcNow.AddDays(-2)
