@@ -186,9 +186,12 @@ export const dataProvider: DataProvider = {
   getMany: async ({ resource, ids, meta }) => {
     // Backend doesn't support bulk get, fetch individually
     const apiPath = getApiPath(resource, meta);
-    const results = await Promise.all(
+    const settled = await Promise.allSettled(
       ids.map((id) => axiosInstance.get(`${apiPath}/${id}`).then((r) => normalizeOne(r.data)))
     );
+    const results = settled
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
+      .map((r) => r.value);
     return { data: results };
   },
 };

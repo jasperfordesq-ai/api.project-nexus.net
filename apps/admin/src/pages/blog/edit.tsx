@@ -24,6 +24,8 @@ export const BlogEditPage = () => {
       axiosInstance.get(`/api/admin/blog/${id}`).then(({ data }) => {
         const post = data?.data || data;
         form.setFieldsValue(post);
+      }).catch((err: any) => {
+        message.error(err?.response?.data?.message || "Failed to load blog post");
       }).finally(() => setLoading(false));
     }
   }, [id, isNew, form]);
