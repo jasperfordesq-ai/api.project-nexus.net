@@ -20,16 +20,25 @@ export const PagesCmsPage = () => {
   const [saving, setSaving] = useState(false);
 
   const handleCreate = async () => {
+    let values;
     try {
-      const values = await form.validateFields();
+      values = await form.validateFields();
+    } catch {
+      // Validation failed — keep modal open so the user can see field errors
+      return;
+    }
+    try {
       setSaving(true);
       await axiosInstance.post("/api/admin/pages", values);
       message.success("Page created");
       setCreateOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) { if (err?.response) message.error(err.response.data?.message || "Failed"); }
-    finally { setSaving(false); }
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to create page");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDuplicate = async (id: number) => {
@@ -65,7 +74,7 @@ export const PagesCmsPage = () => {
       </div>
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={pages} rowKey="id" size="small" pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
+          <Table dataSource={pages} rowKey="id" size="small" loading={isLoading} locale={{ emptyText: "No pages found" }} pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
             <Table.Column dataIndex="slug" title="Slug" />

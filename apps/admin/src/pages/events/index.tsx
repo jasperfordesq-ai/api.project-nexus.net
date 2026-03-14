@@ -23,6 +23,12 @@ export const EventsAdminPage = () => {
   const totalCount = raw?.total || raw?.totalCount || events.length;
   const stats = statsData?.data as any;
 
+  const getErrorMessage = (err: any, fallback: string) => {
+    if (err?.response) return err.response.data?.message || err.response.data?.error || fallback;
+    if (err?.request) return "Network error — please check your connection and try again";
+    return fallback;
+  };
+
   const handleCancel = (id: number) => {
     Modal.confirm({
       title: "Cancel Event",
@@ -35,7 +41,7 @@ export const EventsAdminPage = () => {
           await axiosInstance.put(`/api/admin/events/${id}/cancel`);
           message.success("Event cancelled");
           refetch();
-        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+        } catch (err: any) { message.error(getErrorMessage(err, "Failed to cancel event")); }
       },
     });
   };
@@ -52,7 +58,7 @@ export const EventsAdminPage = () => {
           await axiosInstance.delete(`/api/admin/events/${id}`);
           message.success("Event deleted");
           refetch();
-        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+        } catch (err: any) { message.error(getErrorMessage(err, "Failed to delete event")); }
       },
     });
   };
@@ -69,7 +75,7 @@ export const EventsAdminPage = () => {
       )}
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={events} rowKey="id" size="small" pagination={{
+          <Table dataSource={events} rowKey="id" size="small" loading={isLoading} locale={{ emptyText: "No events found" }} pagination={{
               current: page,
               pageSize,
               total: totalCount,

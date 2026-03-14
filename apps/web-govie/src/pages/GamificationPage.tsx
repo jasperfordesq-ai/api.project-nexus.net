@@ -18,13 +18,16 @@ export function GamificationPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const controller = new AbortController()
+    const signal = controller.signal
     Promise.all([
-      apiClient.get<GamProfile>('/api/gamification/profile').then(r => r.data),
-      apiClient.get<Badge[]>('/api/gamification/badges/my').then(r => r.data ?? []),
+      apiClient.get<GamProfile>('/api/gamification/profile', { signal }).then(r => r.data),
+      apiClient.get<Badge[]>('/api/gamification/badges/my', { signal }).then(r => r.data ?? []),
     ])
-      .then(([p, b]) => { setProfile(p); setBadges(b) })
-      .catch(err => setError(isApiError(err) ? err.message : 'Could not load gamification data.'))
-      .finally(() => setIsLoading(false))
+      .then(([p, b]) => { if (!signal.aborted) { setProfile(p); setBadges(b) } })
+      .catch(err => { if (!signal.aborted) setError(isApiError(err) ? err.message : 'Could not load gamification data.') })
+      .finally(() => { if (!signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
   }, [])
 
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading gamification…" /></div>

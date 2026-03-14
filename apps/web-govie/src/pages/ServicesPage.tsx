@@ -5,24 +5,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import apiClient from '../api/client'
 import { listingsApi } from '../api/listings'
 import type { Listing, ListingType, PaginationParams } from '../api/types'
 import { isApiError } from '../context/AuthContext'
-
-const CATEGORIES = [
-  'All categories',
-  'Education',
-  'Home & Garden',
-  'Tech Support',
-  'Transport',
-  'Cooking',
-  'Creative Arts',
-  'Childcare',
-  'Pets',
-  'Healthcare',
-  'Admin & Office',
-  'Other',
-]
 
 const PAGE_SIZE = 12
 
@@ -32,13 +18,32 @@ export function ServicesPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
 
-  const currentPage = Number(searchParams.get('page') ?? '1')
+  const currentPage = Math.max(1, Number(searchParams.get('page')) || 1)
   const searchQuery = searchParams.get('search') ?? ''
   const category = searchParams.get('category') ?? ''
   const type = (searchParams.get('type') ?? '') as ListingType | ''
 
   const searchRef = useRef<HTMLInputElement>(null)
+
+  // Fetch categories dynamically from the backend
+  useEffect(() => {
+    const controller = new AbortController()
+    apiClient.get('/api/admin/categories', { signal: controller.signal })
+      .then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setCategories(items.map((c: any) => ({ id: c.id, name: c.name ?? '' })))
+      })
+      .catch(() => {
+        // Fallback: categories endpoint may require admin — silently use empty list
+        if (!controller.signal.aborted) setCategories([])
+      })
+    return () => controller.abort()
+  }, [])
 
   const fetchListings = useCallback(async (params: PaginationParams) => {
     setIsLoading(true)
@@ -56,6 +61,7 @@ export function ServicesPage() {
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
     fetchListings({
       page: currentPage,
       pageSize: PAGE_SIZE,
@@ -63,6 +69,7 @@ export function ServicesPage() {
       category: category || undefined,
       type: type || undefined,
     })
+    return () => controller.abort()
   }, [fetchListings, currentPage, searchQuery, category, type])
 
   const handleSearch = (e: React.FormEvent) => {
@@ -127,9 +134,10 @@ export function ServicesPage() {
               value={category}
               onChange={(e) => setParam('category', e.target.value)}
             >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c === 'All categories' ? '' : c.toLowerCase().replace(/\s+/g, '-')}>
-                  {c}
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name.toLowerCase().replace(/\s+/g, '-')}>
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -157,15 +165,16 @@ export function ServicesPage() {
         </form>
       </section>
 
+      {/* Results region */}
+      <div role="region" aria-label="Services list" aria-busy={isLoading} aria-live="polite">
       {/* Results summary */}
       {!isLoading && (
         <p
-          aria-live="polite"
           aria-atomic="true"
           style={{ color: 'var(--nexus-color-text-secondary)', marginBottom: 'var(--nexus-space-4)' }}
         >
           {totalCount === 0
-            ? 'No services found matching your filters.'
+            ? 'No services found. Try adjusting your filters or check back later.'
             : `Showing ${listings.length} of ${totalCount} service${totalCount !== 1 ? 's' : ''}`}
         </p>
       )}
@@ -177,10 +186,17 @@ export function ServicesPage() {
         </div>
       )}
 
-      {/* Loading */}
+      {/* Loading skeleton */}
       {isLoading && (
-        <div className="nexus-loading">
-          <span className="nexus-spinner" aria-label="Loading services…" />
+        <div className="nexus-skeleton-grid" aria-label="Loading services…">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="nexus-skeleton-card">
+              <div className="nexus-skeleton-line" style={{ width: '40%', height: '0.75rem', marginBottom: '0.75rem' }} />
+              <div className="nexus-skeleton-line" style={{ width: '80%', height: '1.2rem', marginBottom: '0.5rem' }} />
+              <div className="nexus-skeleton-line" style={{ width: '100%', height: '0.9rem', marginBottom: '0.5rem' }} />
+              <div className="nexus-skeleton-line" style={{ width: '60%', height: '0.9rem' }} />
+            </div>
+          ))}
         </div>
       )}
 
@@ -221,6 +237,7 @@ export function ServicesPage() {
           ))}
         </div>
       )}
+      </div>{/* end results region */}
 
       {/* Pagination */}
       {totalPages > 1 && (

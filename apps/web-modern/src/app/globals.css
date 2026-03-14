@@ -96,6 +96,24 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Skip to content link (accessibility) */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 9999;
+  transition: top 0.2s;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
 /* Selection styling */
 ::selection {
   background: rgba(99, 102, 241, 0.3);

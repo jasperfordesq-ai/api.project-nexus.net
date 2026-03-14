@@ -30,7 +30,7 @@ describe('authApi', () => {
 
   describe('login', () => {
     it('calls POST /api/auth/login and returns data', async () => {
-      const response = { data: { accessToken: 'tok', refreshToken: 'ref', user: { id: 1 } } }
+      const response = { data: { access_token: 'tok', refresh_token: 'ref', user: { id: 1, email: 'user@test.com', first_name: 'Test', last_name: 'User', role: 'member', tenant_id: 1 } } }
       mockClient.post.mockResolvedValue(response)
 
       const result = await authApi.login('user@test.com', 'password123')
@@ -39,7 +39,7 @@ describe('authApi', () => {
         email: 'user@test.com',
         password: 'password123',
       }))
-      expect(result).toEqual(response.data)
+      expect(result).toMatchObject({ accessToken: 'tok', refreshToken: 'ref' })
     })
   })
 
@@ -61,11 +61,11 @@ describe('authApi', () => {
 
   describe('refresh', () => {
     it('calls POST /api/auth/refresh with token', async () => {
-      const response = { data: { accessToken: 'new-tok', refreshToken: 'new-ref' } }
+      const response = { data: { access_token: 'new-tok', refresh_token: 'new-ref' } }
       mockClient.post.mockResolvedValue(response)
       const result = await authApi.refresh('old-refresh-token')
-      expect(mockClient.post).toHaveBeenCalledWith('/api/auth/refresh', { refreshToken: 'old-refresh-token' })
-      expect(result).toEqual(response.data)
+      expect(mockClient.post).toHaveBeenCalledWith('/api/auth/refresh', { refresh_token: 'old-refresh-token' })
+      expect(result).toEqual({ accessToken: 'new-tok', refreshToken: 'new-ref' })
     })
   })
 })

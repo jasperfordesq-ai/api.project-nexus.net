@@ -207,6 +207,7 @@ function EventsContent() {
         </div>
 
         {/* Events Grid */}
+        <div role="region" aria-label="Events" aria-busy={isLoading} aria-live="polite">
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
@@ -388,6 +389,7 @@ function EventsContent() {
             </Link>
           </div>
         )}
+        </div>{/* end events region */}
       </div>
     </div>
   );

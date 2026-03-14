@@ -23,7 +23,8 @@ export function NotificationsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get('/api/notifications')
+    const controller = new AbortController()
+    apiClient.get('/api/notifications', { signal: controller.signal })
       .then(r => {
         /* eslint-disable @typescript-eslint/no-explicit-any */
         const raw = r.data as any
@@ -38,8 +39,9 @@ export function NotificationsPage() {
         })))
         /* eslint-enable @typescript-eslint/no-explicit-any */
       })
-      .catch(err => setError(isApiError(err) ? err.message : 'Could not load notifications.'))
-      .finally(() => setIsLoading(false))
+      .catch(err => { if (!controller.signal.aborted) setError(isApiError(err) ? err.message : 'Could not load notifications.') })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
   }, [])
 
   const markAllRead = async () => {

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
 import { isApiError } from '../context/AuthContext'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 
 interface Member { id: number; firstName: string; lastName: string; bio?: string; skills?: string[]; exchangeCount: number; isConnected: boolean }
 
@@ -24,30 +25,40 @@ function mapMember(raw: any): Member {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+const ITEMS_PER_PAGE = 12
+
 export function MembersPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
-    apiClient.get('/api/users')
+    const controller = new AbortController()
+    apiClient.get('/api/users', { signal: controller.signal })
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any
         const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
         setMembers(items.map(mapMember))
       })
-      .catch(err => setError(isApiError(err) ? err.message : 'Could not load members.'))
-      .finally(() => setIsLoading(false))
+      .catch(err => { if (!controller.signal.aborted) setError(isApiError(err) ? err.message : 'Could not load members.') })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
   }, [])
 
-  if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading members…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
+  const debouncedQuery = useDebouncedValue(query)
   const filtered = members.filter(m =>
-    query === '' || `${m.firstName} ${m.lastName}`.toLowerCase().includes(query.toLowerCase())
+    debouncedQuery === '' || `${m.firstName} ${m.lastName}`.toLowerCase().includes(debouncedQuery.toLowerCase())
   )
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginatedMembers = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+
+  // Reset to page 1 when search query changes
+  useEffect(() => { setPage(1) }, [debouncedQuery])
 
   return (
     <div className="nexus-container">
@@ -71,16 +82,34 @@ export function MembersPage() {
           value={query}
           onChange={e => setQuery(e.target.value)}
           style={{ maxWidth: 400 }}
+          disabled={isLoading}
         />
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="nexus-card" style={{ textAlign: 'center', padding: 'var(--nexus-space-7)', color: 'var(--nexus-color-text-secondary)' }}>
-          No members found matching your search.
+      <div role="region" aria-label="Members list" aria-busy={isLoading} aria-live="polite">
+      {isLoading ? (
+        <div className="nexus-skeleton-grid" aria-label="Loading members…">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="nexus-skeleton-card">
+              <div style={{ display: 'flex', gap: 'var(--nexus-space-3)', marginBottom: '0.75rem' }}>
+                <div className="nexus-skeleton-line" style={{ width: 48, height: 48, borderRadius: '50%', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div className="nexus-skeleton-line" style={{ width: '60%', height: '1rem', marginBottom: '0.5rem' }} />
+                  <div className="nexus-skeleton-line" style={{ width: '40%', height: '0.8rem' }} />
+                </div>
+              </div>
+              <div className="nexus-skeleton-line" style={{ width: '100%', height: '0.9rem', marginBottom: '0.5rem' }} />
+              <div className="nexus-skeleton-line" style={{ width: '50%', height: '0.8rem' }} />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="nexus-empty-state">
+          <p>No members found matching your search.</p>
         </div>
       ) : (
         <div className="nexus-cards">
-          {filtered.map(member => (
+          {paginatedMembers.map(member => (
             <div key={member.id} className="nexus-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--nexus-space-3)', marginBottom: 'var(--nexus-space-3)' }}>
                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--nexus-color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, flexShrink: 0 }} aria-hidden="true">
@@ -120,6 +149,15 @@ export function MembersPage() {
             </div>
           ))}
         </div>
+      )}
+      </div>{/* end members region */}
+
+      {!isLoading && totalPages > 1 && (
+        <nav className="nexus-pagination" aria-label="Pagination">
+          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</button>
+          <span>Page {page} of {totalPages}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
+        </nav>
       )}
     </div>
   )

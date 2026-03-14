@@ -30,6 +30,7 @@ export interface User {
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token?: string;
   token_type: string;
   expires_in: number;
   user: User;
@@ -881,6 +882,7 @@ function normalizePaginated<T>(raw: any, normalizer: (item: any) => T): Paginate
 function normalizeAuthResponse(raw: any): AuthResponse {
   return {
     access_token: raw.accessToken ?? raw.access_token ?? raw.token ?? '',
+    refresh_token: raw.refreshToken ?? raw.refresh_token ?? undefined,
     token_type: raw.tokenType ?? raw.token_type ?? 'Bearer',
     expires_in: raw.expiresIn ?? raw.expires_in ?? 0,
     user: normalizeUserRequired(raw.user),
@@ -892,6 +894,7 @@ function normalizeAuthResponse(raw: any): AuthResponse {
 // ============================================================================
 
 const TOKEN_KEY = "nexus_token";
+const REFRESH_TOKEN_KEY = "nexus_refresh_token";
 const USER_KEY = "nexus_user";
 
 export function getToken(): string | null {
@@ -904,9 +907,20 @@ export function setToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
 }
 
+export function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
 export function removeToken(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 }
 
@@ -941,10 +955,62 @@ const DEFAULT_TIMEOUT = 30000;
 class ApiClient {
   private baseUrl: string;
   private defaultTimeout: number;
+  private isRefreshing = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl: string, timeout: number = DEFAULT_TIMEOUT) {
     this.baseUrl = baseUrl;
     this.defaultTimeout = timeout;
+  }
+
+  /**
+   * Attempt to refresh the access token using the stored refresh token.
+   * Returns true if refresh succeeded, false otherwise.
+   */
+  private async tryRefreshToken(): Promise<boolean> {
+    // Deduplicate concurrent refresh attempts
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+
+    this.isRefreshing = true;
+    this.refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/api/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        if (!response.ok) return false;
+
+        const raw = await response.json();
+        const newAccessToken = raw.accessToken ?? raw.access_token ?? raw.token;
+        const newRefreshToken = raw.refreshToken ?? raw.refresh_token;
+
+        if (newAccessToken) {
+          setToken(newAccessToken);
+          if (newRefreshToken) {
+            setRefreshToken(newRefreshToken);
+          }
+          if (raw.user) {
+            setStoredUser(normalizeUserRequired(raw.user));
+          }
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      } finally {
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 
   private async request<T>(
@@ -984,13 +1050,40 @@ class ApiClient {
       clearTimeout(timeoutId);
 
     if (response.status === 401) {
-      // For auth endpoints (login, register), let the 401 fall through
+      // For auth endpoints (login, register, refresh), let the 401 fall through
       // to the generic !response.ok handler so the caller can display
       // the actual API error message (e.g. "Invalid credentials").
       const isAuthEndpoint = endpoint.startsWith("/api/auth/login") ||
-        endpoint.startsWith("/api/auth/register");
+        endpoint.startsWith("/api/auth/register") ||
+        endpoint.startsWith("/api/auth/refresh");
 
       if (!isAuthEndpoint) {
+        // Try refreshing the token before giving up
+        const refreshed = await this.tryRefreshToken();
+        if (refreshed) {
+          // Retry the original request with the new token
+          const retryToken = getToken();
+          const retryHeaders: HeadersInit = {
+            ...options.headers,
+            "Content-Type": "application/json",
+          };
+          if (retryToken) {
+            (retryHeaders as Record<string, string>)["Authorization"] = `Bearer ${retryToken}`;
+          }
+          if (TENANT_ID) {
+            (retryHeaders as Record<string, string>)["X-Tenant-ID"] = TENANT_ID;
+          }
+          const retryResponse = await fetch(`${this.baseUrl}${endpoint}`, {
+            ...options,
+            headers: retryHeaders,
+          });
+          if (retryResponse.ok) {
+            if (retryResponse.status === 204) return {} as T;
+            return retryResponse.json();
+          }
+        }
+
+        // Refresh failed or retry failed - log out
         removeToken();
         if (typeof window !== "undefined") {
           window.location.href = "/login";
@@ -1054,6 +1147,9 @@ class ApiClient {
 
     const response = normalizeAuthResponse(raw);
     setToken(response.access_token);
+    if (response.refresh_token) {
+      setRefreshToken(response.refresh_token);
+    }
     setStoredUser(response.user);
 
     return response;
@@ -1087,6 +1183,9 @@ class ApiClient {
 
     const response = normalizeAuthResponse(raw);
     setToken(response.access_token);
+    if (response.refresh_token) {
+      setRefreshToken(response.refresh_token);
+    }
     setStoredUser(response.user);
 
     return response;

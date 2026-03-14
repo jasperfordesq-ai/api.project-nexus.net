@@ -10,7 +10,6 @@ import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Button,
-  Avatar,
   Chip,
   Skeleton,
   Tabs,
@@ -18,8 +17,8 @@ import {
   Textarea,
   Progress,
 } from "@heroui/react";
+import { AvatarWithFallback } from "@/components/avatar-with-fallback";
 import {
-  ArrowLeft,
   MessageSquare,
   UserPlus,
   Star,
@@ -35,6 +34,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { MotionGlassCard } from "@/components/glass-card";
+import { GlassBreadcrumbs } from "@/components/glass-breadcrumbs";
 import { useAuth } from "@/contexts/auth-context";
 import {
   api,
@@ -42,9 +42,9 @@ import {
   type Review,
   type GamificationProfile,
   type Listing,
-  type PaginatedResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { formatDate } from "@/lib/format-date";
 
 function StarRating({
   rating,
@@ -100,6 +100,7 @@ export default function MemberDetailPage() {
 function MemberDetailContent() {
   const params = useParams();
   const memberId = Number(params.id);
+  const isValidId = !isNaN(memberId) && memberId > 0;
   const { user, logout } = useAuth();
 
   const [member, setMember] = useState<UserType | null>(null);
@@ -122,6 +123,7 @@ function MemberDetailContent() {
   const [reviewError, setReviewError] = useState<string | null>(null);
 
   const fetchMember = useCallback(async () => {
+    if (!isValidId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
       const [memberData, reviewsData, listingsData] = await Promise.all([
@@ -247,14 +249,16 @@ function MemberDetailContent() {
       <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <Link
-          href="/members"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Members
-        </Link>
+        {/* Breadcrumbs */}
+        <div className="mb-6">
+          <GlassBreadcrumbs
+            showHome={false}
+            items={[
+              { label: "Members", href: "/members" },
+              { label: member ? `${member.first_name} ${member.last_name}` : "Loading..." },
+            ]}
+          />
+        </div>
 
         {isLoading ? (
           <div className="space-y-6">
@@ -279,7 +283,7 @@ function MemberDetailContent() {
             {/* Profile Header */}
             <MotionGlassCard variants={itemVariants} glow="none" padding="lg">
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                <Avatar
+                <AvatarWithFallback
                   name={`${member.first_name} ${member.last_name}`}
                   className="w-24 h-24 text-3xl ring-4 ring-white/10"
                 />
@@ -314,7 +318,7 @@ function MemberDetailContent() {
 
                   <div className="text-sm text-white/40 flex items-center gap-1 justify-center sm:justify-start">
                     <Calendar className="w-4 h-4" />
-                    Member since {new Date(member.created_at).toLocaleDateString()}
+                    Member since {formatDate(member.created_at)}
                   </div>
                 </div>
 
@@ -556,7 +560,7 @@ function MemberDetailContent() {
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <Link href={`/members/${review.reviewer.id}`}>
-                            <Avatar
+                            <AvatarWithFallback
                               name={`${review.reviewer.first_name} ${review.reviewer.last_name}`}
                               size="sm"
                               className="ring-2 ring-white/10"
@@ -569,7 +573,7 @@ function MemberDetailContent() {
                               </p>
                             </Link>
                             <p className="text-xs text-white/40">
-                              {new Date(review.created_at).toLocaleDateString()}
+                              {formatDate(review.created_at)}
                             </p>
                           </div>
                         </div>

@@ -32,11 +32,14 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         <Providers>
+          {/* Skip to main content link for keyboard / assistive technology users */}
+          <a href="#main-content" className="skip-link">Skip to main content</a>
+
           {/* Animated gradient background */}
           <div className="gradient-background" aria-hidden="true" />
 
           {/* Main content */}
-          <main className="relative min-h-screen flex flex-col">
+          <main id="main-content" className="relative min-h-screen flex flex-col">
             <div className="flex-1">
               {children}
             </div>

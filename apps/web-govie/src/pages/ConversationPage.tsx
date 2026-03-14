@@ -65,10 +65,11 @@ export function ConversationPage() {
 
   // Determine the other participant's user ID for sending replies
   const otherUserId = messages.find(m => m.senderId !== user?.id)?.senderId ?? 0
+  const canSend = otherUserId > 0
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim()) return
+    if (!newMessage.trim() || !canSend) return
     setIsSending(true)
     try {
       // Backend POST /api/messages expects { recipient_id, content }
@@ -137,23 +138,29 @@ export function ConversationPage() {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSend} style={{ display: 'flex', gap: 'var(--nexus-space-3)', paddingTop: 'var(--nexus-space-3)', borderTop: '1px solid var(--nexus-color-border)' }}>
-        <label htmlFor="message-input" className="nexus-sr-only">Type a message</label>
-        <input
-          id="message-input"
-          type="text"
-          className="nexus-input"
-          value={newMessage}
-          onChange={e => setNewMessage(e.target.value)}
-          placeholder="Type a message…"
-          disabled={isSending}
-          style={{ flex: 1 }}
-          maxLength={2000}
-        />
-        <button type="submit" className="nexus-btn nexus-btn--primary" disabled={isSending || !newMessage.trim()}>
-          {isSending ? '…' : 'Send'}
-        </button>
-      </form>
+      {!canSend ? (
+        <div className="nexus-notification nexus-notification--warning" role="status" style={{ marginTop: 'var(--nexus-space-3)' }}>
+          Unable to determine the other participant. You cannot reply to this conversation.
+        </div>
+      ) : (
+        <form onSubmit={handleSend} style={{ display: 'flex', gap: 'var(--nexus-space-3)', paddingTop: 'var(--nexus-space-3)', borderTop: '1px solid var(--nexus-color-border)' }}>
+          <label htmlFor="message-input" className="nexus-sr-only">Type a message</label>
+          <input
+            id="message-input"
+            type="text"
+            className="nexus-input"
+            value={newMessage}
+            onChange={e => setNewMessage(e.target.value)}
+            placeholder="Type a message…"
+            disabled={isSending}
+            style={{ flex: 1 }}
+            maxLength={2000}
+          />
+          <button type="submit" className="nexus-btn nexus-btn--primary" disabled={isSending || !newMessage.trim()}>
+            {isSending ? '…' : 'Send'}
+          </button>
+        </form>
+      )}
     </div>
   )
 }

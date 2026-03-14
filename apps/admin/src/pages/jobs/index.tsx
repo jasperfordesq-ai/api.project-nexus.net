@@ -63,7 +63,7 @@ export const JobsAdminPage = () => {
 
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={jobs} rowKey="id" size="small" pagination={{
+          <Table dataSource={jobs} rowKey="id" size="small" loading={isLoading} locale={{ emptyText: "No jobs found" }} pagination={{
               current: page,
               pageSize,
               total: totalCount,

@@ -29,12 +29,14 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const controller = new AbortController()
+    const signal = controller.signal
     Promise.all([
-      apiClient.get('/api/wallet/balance').then(r => r.data).catch(() => ({ balance: 0 })),
-      apiClient.get('/api/gamification/profile').then(r => r.data).catch(() => ({ totalXp: 0, level: 1, streak: 0 })),
-      apiClient.get('/api/notifications/unread-count').then(r => r.data).catch(() => ({ count: 0 })),
-      apiClient.get('/api/messages/unread-count').then(r => r.data).catch(() => ({ count: 0 })),
-      apiClient.get('/api/exchanges?limit=5').then(r => {
+      apiClient.get('/api/wallet/balance', { signal }).then(r => r.data).catch(() => ({ balance: 0 })),
+      apiClient.get('/api/gamification/profile', { signal }).then(r => r.data).catch(() => ({ totalXp: 0, level: 1, streak: 0 })),
+      apiClient.get('/api/notifications/unread-count', { signal }).then(r => r.data).catch(() => ({ count: 0 })),
+      apiClient.get('/api/messages/unread-count', { signal }).then(r => r.data).catch(() => ({ count: 0 })),
+      apiClient.get('/api/exchanges?limit=5', { signal }).then(r => {
         const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
         const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
         return items.map((ex: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -44,7 +46,7 @@ export function DashboardPage() {
           createdAt: ex.created_at ?? ex.createdAt ?? '',
         }))
       }).catch(() => []),
-      apiClient.get('/api/events?upcoming_only=true&limit=3').then(r => {
+      apiClient.get('/api/events?upcoming_only=true&limit=3', { signal }).then(r => {
         const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
         const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
         return items.map((ev: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -56,6 +58,7 @@ export function DashboardPage() {
       }).catch(() => []),
     ])
       .then(([wallet, gam, notif, msgs, exchanges, events]) => {
+        if (signal.aborted) return
         setData({
           wallet: wallet as DashboardData['wallet'],
           gamification: gam as DashboardData['gamification'],
@@ -65,8 +68,9 @@ export function DashboardPage() {
           upcomingEvents: events as DashboardData['upcomingEvents'],
         })
       })
-      .catch(err => setError(isApiError(err) ? err.message : 'Could not load dashboard.'))
-      .finally(() => setIsLoading(false))
+      .catch(err => { if (!signal.aborted) setError(isApiError(err) ? err.message : 'Could not load dashboard.') })
+      .finally(() => { if (!signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
   }, [])
 
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading dashboard…" /></div>

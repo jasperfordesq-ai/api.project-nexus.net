@@ -48,6 +48,7 @@ function KBContent() {
   const [categories, setCategories] = useState<KBCategory[]>([]);
   const [articles, setArticles] = useState<KBArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,8 +71,9 @@ function KBContent() {
         setArticles(arts.value?.data || []);
         setTotalPages(arts.value?.pagination?.total_pages || 1);
       }
-    } catch (error) {
-      logger.error("Failed to fetch KB:", error);
+    } catch (err) {
+      logger.error("Failed to fetch KB:", err);
+      setError(err instanceof Error ? err.message : "Failed to load knowledge base. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +91,12 @@ function KBContent() {
           </h1>
           <p className="text-white/50 mt-1">Find answers to common questions</p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {error}
+          </div>
+        )}
 
         <div className="mb-8">
           <Input

@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { User, UserProps, Avatar } from "@heroui/react";
+import { AvatarWithFallback } from "./avatar-with-fallback";
 
 export interface GlassUserProps extends Omit<UserProps, "classNames"> {
   size?: "sm" | "md" | "lg";
@@ -66,7 +67,7 @@ export function GlassUserCard({
     <div className="p-4 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10">
       <div className="flex items-start gap-4">
         <div className="relative">
-          <Avatar
+          <AvatarWithFallback
             src={avatar}
             name={name}
             size="lg"
@@ -126,7 +127,7 @@ export function GlassUserCompact({
         onClick ? "hover:bg-white/5 transition-colors cursor-pointer w-full text-left" : ""
       }`}
     >
-      <Avatar src={avatar} name={name} size="sm" className="ring-1 ring-white/10" />
+      <AvatarWithFallback src={avatar} name={name} size="sm" className="ring-1 ring-white/10" />
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white font-medium truncate">{name}</p>
         {subtitle && <p className="text-xs text-white/50 truncate">{subtitle}</p>}

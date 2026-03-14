@@ -90,8 +90,9 @@ function IdeasContent() {
       const response = await api.getIdeas(params);
       setIdeas(response?.data || []);
       setTotalPages(response?.pagination?.total_pages || 1);
-    } catch (error) {
-      logger.error("Failed to fetch ideas:", error);
+    } catch (err) {
+      logger.error("Failed to fetch ideas:", err);
+      setActionError(err instanceof Error ? err.message : "Failed to load ideas. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -168,6 +169,12 @@ function IdeasContent() {
             Submit Idea
           </Button>
         </div>
+
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
 
         <div className="mb-8">
           <Input

@@ -18,8 +18,12 @@ interface UseWebSocketOptions {
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Event) => void;
+  /** Maximum number of reconnection attempts before giving up (default: 10) */
   reconnectAttempts?: number;
+  /** Base reconnection interval in ms; doubles each attempt up to maxReconnectInterval (default: 1000) */
   reconnectInterval?: number;
+  /** Maximum reconnection interval in ms (default: 30000) */
+  maxReconnectInterval?: number;
   enabled?: boolean;
 }
 
@@ -29,8 +33,9 @@ export function useWebSocket({
   onConnect,
   onDisconnect,
   onError,
-  reconnectAttempts = 5,
-  reconnectInterval = 3000,
+  reconnectAttempts = 10,
+  reconnectInterval = 1000,
+  maxReconnectInterval = 30000,
   enabled = true,
 }: UseWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -67,7 +72,7 @@ export function useWebSocket({
       ws.onopen = () => {
         logger.debug("WebSocket connected");
         setStatus("connected");
-        reconnectCountRef.current = 0;
+        reconnectCountRef.current = 0; // Reset retry count on successful connection
         onConnect?.();
       };
 
@@ -95,16 +100,22 @@ export function useWebSocket({
         wsRef.current = null;
         onDisconnect?.();
 
-        // Attempt to reconnect
+        // Attempt to reconnect with exponential backoff
         if (
           enabled &&
           reconnectCountRef.current < reconnectAttempts
         ) {
           reconnectCountRef.current += 1;
-          logger.debug(
-            `WebSocket: Attempting reconnect ${reconnectCountRef.current}/${reconnectAttempts}`
+          const delay = Math.min(
+            reconnectInterval * Math.pow(2, reconnectCountRef.current - 1),
+            maxReconnectInterval
           );
-          reconnectTimeoutRef.current = setTimeout(connect, reconnectInterval);
+          logger.debug(
+            `WebSocket: Attempting reconnect ${reconnectCountRef.current}/${reconnectAttempts} in ${delay}ms`
+          );
+          reconnectTimeoutRef.current = setTimeout(connect, delay);
+        } else if (reconnectCountRef.current >= reconnectAttempts) {
+          logger.warn(`WebSocket: Max reconnection attempts (${reconnectAttempts}) reached`);
         }
       };
     } catch (error) {
@@ -120,6 +131,7 @@ export function useWebSocket({
     onError,
     reconnectAttempts,
     reconnectInterval,
+    maxReconnectInterval,
   ]);
 
   const disconnect = useCallback(() => {

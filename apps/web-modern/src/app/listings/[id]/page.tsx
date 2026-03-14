@@ -23,7 +23,6 @@ import {
 } from "@heroui/react";
 import {
   Clock,
-  ArrowLeft,
   MessageSquare,
   Wallet,
   Star,
@@ -37,9 +36,11 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { MotionGlassCard } from "@/components/glass-card";
+import { GlassBreadcrumbs } from "@/components/glass-breadcrumbs";
 import { useAuth } from "@/contexts/auth-context";
 import { api, type Listing, type Review } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { formatDate } from "@/lib/format-date";
 
 export default function ListingDetailPage() {
   return (
@@ -96,6 +97,7 @@ function ListingDetailContent() {
   const params = useParams();
   const router = useRouter();
   const listingId = Number(params.id);
+  const isValidId = !isNaN(listingId) && listingId > 0;
   const { user, logout } = useAuth();
 
   const [listing, setListing] = useState<Listing | null>(null);
@@ -116,6 +118,7 @@ function ListingDetailContent() {
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
   const fetchListing = useCallback(async () => {
+    if (!isValidId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
       const [listingData, reviewsData] = await Promise.all([
@@ -221,14 +224,16 @@ function ListingDetailContent() {
       <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <Link
-          href="/listings"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Listings
-        </Link>
+        {/* Breadcrumbs */}
+        <div className="mb-6">
+          <GlassBreadcrumbs
+            showHome={false}
+            items={[
+              { label: "Listings", href: "/listings" },
+              { label: listing?.title || "Loading..." },
+            ]}
+          />
+        </div>
 
         {isLoading ? (
           <div className="space-y-6">
@@ -316,7 +321,7 @@ function ListingDetailContent() {
                       </p>
                       <p className="text-sm text-white/50 flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        Posted {new Date(listing.created_at).toLocaleDateString()}
+                        Posted {formatDate(listing.created_at)}
                       </p>
                     </div>
                   </div>
@@ -479,7 +484,7 @@ function ListingDetailContent() {
                               </p>
                             </Link>
                             <p className="text-xs text-white/40">
-                              {new Date(review.created_at).toLocaleDateString()}
+                              {formatDate(review.created_at)}
                             </p>
                           </div>
                         </div>

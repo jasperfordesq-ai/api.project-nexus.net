@@ -269,6 +269,7 @@ function NewListingContent() {
                 type="submit"
                 className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
                 isLoading={isSubmitting}
+                isDisabled={isSubmitting}
                 startContent={!isSubmitting && <Send className="w-4 h-4" />}
               >
                 {formData.status === "draft" ? "Save Draft" : "Publish Listing"}

@@ -25,7 +25,6 @@ import {
 } from "@heroui/react";
 import {
   Users,
-  ArrowLeft,
   Lock,
   Globe,
   UserPlus,
@@ -45,6 +44,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { GlassCard, MotionGlassCard } from "@/components/glass-card";
+import { GlassBreadcrumbs } from "@/components/glass-breadcrumbs";
 import { useAuth } from "@/contexts/auth-context";
 import {
   api,
@@ -52,10 +52,23 @@ import {
   type GroupMember,
   type Post,
   type Event,
-  type PaginatedResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { containerVariantsFast, itemVariants } from "@/lib/animations";
+
+interface GroupAnnouncement {
+  id: number;
+  title: string;
+  content: string;
+  created_at: string;
+}
+
+interface GroupDiscussion {
+  id: number;
+  title: string;
+  content?: string;
+  reply_count?: number;
+  created_at: string;
+}
 
 export default function GroupDetailPage() {
   return (
@@ -69,6 +82,7 @@ function GroupDetailContent() {
   const params = useParams();
   const router = useRouter();
   const groupId = Number(params.id);
+  const isValidId = !isNaN(groupId) && groupId > 0;
   const { user, logout } = useAuth();
 
   const [group, setGroup] = useState<Group | null>(null);
@@ -76,8 +90,8 @@ function GroupDetailContent() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [discussions, setDiscussions] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<GroupAnnouncement[]>([]);
+  const [discussions, setDiscussions] = useState<GroupDiscussion[]>([]);
   const [newDiscussionTitle, setNewDiscussionTitle] = useState("");
   const [newDiscussionContent, setNewDiscussionContent] = useState("");
   const [isCreatingDiscussion, setIsCreatingDiscussion] = useState(false);
@@ -106,6 +120,7 @@ function GroupDetailContent() {
   } = useDisclosure();
 
   const fetchGroup = useCallback(async () => {
+    if (!isValidId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
       const [groupData, membersData] = await Promise.all([
@@ -297,14 +312,16 @@ function GroupDetailContent() {
       <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <Link
-          href="/groups"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Groups
-        </Link>
+        {/* Breadcrumbs */}
+        <div className="mb-6">
+          <GlassBreadcrumbs
+            showHome={false}
+            items={[
+              { label: "Groups", href: "/groups" },
+              { label: group?.name || "Loading..." },
+            ]}
+          />
+        </div>
 
         {isLoading ? (
           <div className="space-y-6">
@@ -699,7 +716,7 @@ function GroupDetailContent() {
             {activeTab === "announcements" && (
               <div className="space-y-4">
                 {announcements.length > 0 ? (
-                  announcements.map((ann: any) => (
+                  announcements.map((ann) => (
                     <MotionGlassCard key={ann.id} variants={itemVariants} glow="none" padding="md" hover={false}>
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
@@ -757,7 +774,7 @@ function GroupDetailContent() {
                   </GlassCard>
                 )}
                 {discussions.length > 0 ? (
-                  discussions.map((disc: any) => (
+                  discussions.map((disc) => (
                     <MotionGlassCard key={disc.id} variants={itemVariants} glow="none" padding="md" hover={false}>
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">

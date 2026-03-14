@@ -27,7 +27,7 @@ export function ForgotPasswordPage() {
     }
     setIsSubmitting(true)
     try {
-      await apiClient.post('/api/auth/forgot-password', { email: email.trim().toLowerCase() })
+      await apiClient.post('/api/auth/forgot-password', { email: email.trim().toLowerCase(), tenant_slug: import.meta.env.VITE_TENANT_SLUG || 'acme' })
       setSubmitted(true)
     } catch (err) {
       if (isApiError(err)) setError(err.message)

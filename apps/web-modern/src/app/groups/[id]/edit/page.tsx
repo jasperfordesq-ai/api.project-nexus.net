@@ -37,6 +37,7 @@ function EditGroupContent() {
   const router = useRouter();
   const params = useParams();
   const id = Number(params.id);
+  const isValidId = !isNaN(id) && id > 0;
   const { user, logout } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,6 +51,7 @@ function EditGroupContent() {
   });
 
   useEffect(() => {
+    if (!isValidId) { setIsLoading(false); setError("Invalid group ID"); return; }
     const loadGroup = async () => {
       try {
         const group = await api.getGroup(id);
@@ -269,6 +271,7 @@ function EditGroupContent() {
                   type="submit"
                   className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
                   isLoading={isSubmitting}
+                  isDisabled={isSubmitting}
                   startContent={!isSubmitting && <Save className="w-4 h-4" />}
                 >
                   Save Changes

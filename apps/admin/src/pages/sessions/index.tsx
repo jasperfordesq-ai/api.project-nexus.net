@@ -36,7 +36,7 @@ export const SessionsPage = () => {
       message.success("Session terminated");
       refetch();
     } catch (err: any) {
-      message.error(err?.response?.data?.error || "Failed to terminate session");
+      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to terminate session");
     }
   };
 
@@ -46,7 +46,7 @@ export const SessionsPage = () => {
       message.success(`All sessions terminated for ${userName}`);
       refetch();
     } catch (err: any) {
-      message.error(err?.response?.data?.error || "Failed");
+      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to terminate sessions");
     }
   };
 

@@ -38,11 +38,14 @@ export function WalletPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const controller = new AbortController()
+    const signal = controller.signal
     Promise.all([
-      apiClient.get('/api/wallet/balance').then(r => r.data).catch(() => ({ balance: 0 })),
-      apiClient.get('/api/wallet/transactions').then(r => r.data),
+      apiClient.get('/api/wallet/balance', { signal }).then(r => r.data).catch(() => ({ balance: 0 })),
+      apiClient.get('/api/wallet/transactions', { signal }).then(r => r.data),
     ])
       .then(([b, t]) => {
+        if (signal.aborted) return
         setBalance(b as WalletBalance)
         /* eslint-disable @typescript-eslint/no-explicit-any */
         const raw = t as any
@@ -50,8 +53,9 @@ export function WalletPage() {
         setTransactions(items.map((tx: any) => mapTransaction(tx, user?.id)))
         /* eslint-enable @typescript-eslint/no-explicit-any */
       })
-      .catch(err => setError(isApiError(err) ? err.message : 'Could not load wallet data.'))
-      .finally(() => setIsLoading(false))
+      .catch(err => { if (!signal.aborted) setError(isApiError(err) ? err.message : 'Could not load wallet data.') })
+      .finally(() => { if (!signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
   }, [user?.id])
 
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading wallet…" /></div>

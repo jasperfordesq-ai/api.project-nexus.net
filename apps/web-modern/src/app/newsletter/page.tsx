@@ -48,7 +48,10 @@ function NewsletterContent() {
         setSubscribed(data.subscribed);
         setPreferences(data.preferences || []);
       })
-      .catch((error) => logger.error("Failed to fetch subscription:", error))
+      .catch((err) => {
+        logger.error("Failed to fetch subscription:", err);
+        setSaveError(err instanceof Error ? err.message : "Failed to load subscription. Please try again.");
+      })
       .finally(() => setIsLoading(false));
   }, []);
   const togglePref = (topic: string) => {
@@ -82,6 +85,12 @@ function NewsletterContent() {
           </h1>
           <p className="text-white/50 mt-1">Manage your newsletter subscription</p>
         </div>
+
+        {saveError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {saveError}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="p-6 rounded-xl bg-white/5 border border-white/10">

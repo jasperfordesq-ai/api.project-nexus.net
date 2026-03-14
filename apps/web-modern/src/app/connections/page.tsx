@@ -9,12 +9,12 @@ import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
-  Avatar,
   Skeleton,
   Tabs,
   Tab,
   Pagination,
 } from "@heroui/react";
+import { AvatarWithFallback } from "@/components/avatar-with-fallback";
 import {
   Users,
   UserPlus,
@@ -217,7 +217,7 @@ function ConnectionsContent() {
                     hover
                   >
                     <div className="flex items-center gap-4">
-                      <Avatar
+                      <AvatarWithFallback
                         name={`${otherUser?.first_name} ${otherUser?.last_name}`}
                         size="lg"
                         className="ring-2 ring-white/10"

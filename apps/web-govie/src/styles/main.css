@@ -300,6 +300,23 @@ body {
   padding: var(--nexus-space-7) 0;
 }
 
+.nexus-main:focus {
+  outline: none;
+}
+
+/* Screen-reader only utility */
+.nexus-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .nexus-main--narrow {
   max-width: var(--nexus-content-width);
   margin: 0 auto;
@@ -741,6 +758,93 @@ body {
 .nexus-breadcrumbs a {
   color: var(--nexus-color-primary);
   text-decoration: underline;
+}
+
+/* ─── Skeleton loading ──────────────────────────────────────────────────── */
+.nexus-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--nexus-space-5);
+}
+
+.nexus-skeleton-card {
+  padding: var(--nexus-space-5);
+  border: 1px solid var(--nexus-color-border);
+  border-radius: 6px;
+  background: var(--nexus-color-white);
+}
+
+.nexus-skeleton-line {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: nexus-skeleton-pulse 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes nexus-skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Pagination ────────────────────────────────────────────────────────── */
+.nexus-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nexus-space-3);
+  margin-top: var(--nexus-space-6);
+  padding: var(--nexus-space-4) 0;
+}
+
+.nexus-pagination button {
+  padding: 8px 16px;
+  border: 2px solid var(--nexus-color-primary);
+  border-radius: 4px;
+  background: var(--nexus-color-white);
+  color: var(--nexus-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.nexus-pagination button:hover:not(:disabled) {
+  background: var(--nexus-color-primary);
+  color: var(--nexus-color-white);
+}
+
+.nexus-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nexus-pagination span {
+  font-size: 14px;
+  color: var(--nexus-color-text-secondary);
+}
+
+/* ─── Empty state ───────────────────────────────────────────────────────── */
+.nexus-empty-state {
+  text-align: center;
+  padding: var(--nexus-space-7) var(--nexus-space-5);
+  color: var(--nexus-color-text-secondary);
+  border: 2px dashed var(--nexus-color-border);
+  border-radius: 8px;
+  background: var(--nexus-color-surface);
+}
+
+.nexus-empty-state p {
+  margin: 0 0 var(--nexus-space-4);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* ─── Field-level validation errors ─────────────────────────────────────── */
+.nexus-field-error {
+  color: #d4351c;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: block;
 }
 
 /* ─── Responsive utilities ───────────────────────────────────────────────── */
