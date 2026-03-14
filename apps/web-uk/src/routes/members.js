@@ -28,7 +28,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
   const [usersResult, connectionsResult] = await Promise.all([
     getUsers(req.token),
-    getConnections(req.token)
+    getConnections(req.token).catch(() => ({ data: [] }))
   ]);
 
   let allUsers = usersResult.items || usersResult.data || usersResult.users || usersResult || [];
@@ -96,7 +96,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
 
   const [user, connectionsResult, gamificationResult, reviewsResult] = await Promise.all([
     getUser(req.token, id),
-    getConnections(req.token),
+    getConnections(req.token).catch(() => ({ data: [] })),
     getGamificationProfileByUserId(req.token, id).catch(() => ({ profile: null })),
     getUserReviews(req.token, id).catch(() => ({ data: [], summary: null }))
   ]);

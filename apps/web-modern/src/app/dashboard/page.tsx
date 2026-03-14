@@ -63,9 +63,18 @@ function DashboardContent() {
     const fetchDashboardData = async () => {
       try {
         const [balanceRes, txRes, listingsRes, msgRes, gamRes] = await Promise.all([
-          api.getBalance(),
-          api.getTransactions({ limit: 5 }),
-          api.getListings({ status: "active", limit: 4 }),
+          api.getBalance().catch((err) => {
+            logger.error("Failed to fetch balance:", err);
+            return null;
+          }),
+          api.getTransactions({ limit: 5 }).catch((err) => {
+            logger.error("Failed to fetch transactions:", err);
+            return null;
+          }),
+          api.getListings({ status: "active", limit: 4 }).catch((err) => {
+            logger.error("Failed to fetch listings:", err);
+            return null;
+          }),
           api.getUnreadMessageCount().catch(() => ({ count: 0 })),
           api.getGamificationProfile().catch(() => null),
         ]);

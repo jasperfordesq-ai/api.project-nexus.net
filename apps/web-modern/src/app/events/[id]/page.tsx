@@ -72,7 +72,10 @@ function EventDetailContent() {
     try {
       const [eventData, attendeesData] = await Promise.all([
         api.getEvent(eventId),
-        api.getEventAttendees(eventId),
+        api.getEventAttendees(eventId).catch((err) => {
+          logger.error("Failed to fetch attendees:", err);
+          return null;
+        }),
       ]);
       setEvent(eventData);
       const attendeesList = attendeesData?.data || [];

@@ -53,7 +53,7 @@ export function EventDetailPage() {
         const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
         const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
         return items.map(mapAttendee)
-      }),
+      }).catch(() => [] as Attendee[]),
     ])
       .then(([e, a]) => { setEvent(e); setAttendees(a) })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load event.'))

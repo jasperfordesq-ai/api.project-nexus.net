@@ -60,13 +60,16 @@ function WalletContent() {
   const [txFilter, setTxFilter] = useState<TransactionFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [walletAlerts, setWalletAlerts] = useState<any[]>([]);
+  const [walletAlerts, setWalletAlerts] = useState<{ severity: string; message: string }[]>([]);
 
   const fetchWalletData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [balanceRes, txRes] = await Promise.all([
-        api.getBalance(),
+        api.getBalance().catch((err) => {
+          logger.error("Failed to fetch balance:", err);
+          return null;
+        }),
         api.getTransactions({
           type: txFilter,
           page: currentPage,

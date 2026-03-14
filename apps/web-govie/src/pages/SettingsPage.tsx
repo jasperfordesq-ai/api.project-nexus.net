@@ -43,7 +43,7 @@ export function SettingsPage() {
           lastActiveAt: s.last_active_at ?? s.lastActiveAt ?? '',
           isCurrent: s.is_current ?? s.isCurrent ?? false,
         })) as Session[]
-      }),
+      }).catch(() => [] as Session[]),
     ])
       .then(([p, s]) => { setPrefs(p); setSessions(s) })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load settings.'))

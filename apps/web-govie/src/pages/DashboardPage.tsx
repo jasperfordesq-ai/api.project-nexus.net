@@ -30,10 +30,10 @@ export function DashboardPage() {
 
   useEffect(() => {
     Promise.all([
-      apiClient.get('/api/wallet/balance').then(r => r.data),
-      apiClient.get('/api/gamification/profile').then(r => r.data),
-      apiClient.get('/api/notifications/unread-count').then(r => r.data),
-      apiClient.get('/api/messages/unread-count').then(r => r.data),
+      apiClient.get('/api/wallet/balance').then(r => r.data).catch(() => ({ balance: 0 })),
+      apiClient.get('/api/gamification/profile').then(r => r.data).catch(() => ({ totalXp: 0, level: 1, streak: 0 })),
+      apiClient.get('/api/notifications/unread-count').then(r => r.data).catch(() => ({ count: 0 })),
+      apiClient.get('/api/messages/unread-count').then(r => r.data).catch(() => ({ count: 0 })),
       apiClient.get('/api/exchanges?limit=5').then(r => {
         const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
         const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])

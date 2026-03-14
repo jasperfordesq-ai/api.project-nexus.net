@@ -78,6 +78,7 @@ function IdeasContent() {
   const [newDesc, setNewDesc] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchIdeas = useCallback(async () => {
     setIsLoading(true);
@@ -115,6 +116,7 @@ function IdeasContent() {
       );
     } catch (error) {
       logger.error("Failed to vote:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to vote.");
     }
   };
 
@@ -134,6 +136,7 @@ function IdeasContent() {
       router.push(`/ideas/${result.id}`);
     } catch (error) {
       logger.error("Failed to submit idea:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to submit idea.");
     } finally {
       setIsSubmitting(false);
     }

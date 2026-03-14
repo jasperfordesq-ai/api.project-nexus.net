@@ -48,6 +48,7 @@ function ConnectionsContent() {
   const [filter, setFilter] = useState<ConnectionFilter>("accepted");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchConnections = useCallback(async () => {
     setIsLoading(true);
@@ -71,29 +72,35 @@ function ConnectionsContent() {
     fetchConnections();
   }, [fetchConnections]);
   const handleAccept = async (connectionId: number) => {
+    setActionError(null);
     try {
       await api.respondToConnection(connectionId, "accepted");
       fetchConnections();
     } catch (error) {
       logger.error("Failed to accept connection:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to accept connection.");
     }
   };
 
   const handleReject = async (connectionId: number) => {
+    setActionError(null);
     try {
       await api.respondToConnection(connectionId, "rejected");
       setConnections((prev) => prev.filter((c) => c.id !== connectionId));
     } catch (error) {
       logger.error("Failed to reject connection:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to decline connection.");
     }
   };
 
   const handleRemove = async (connectionId: number) => {
+    setActionError(null);
     try {
       await api.removeConnection(connectionId);
       setConnections((prev) => prev.filter((c) => c.id !== connectionId));
     } catch (error) {
       logger.error("Failed to remove connection:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to remove connection.");
     }
   };
 
@@ -135,6 +142,13 @@ function ConnectionsContent() {
             </Button>
           </Link>
         </div>
+
+        {/* Action Error */}
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="mb-8">

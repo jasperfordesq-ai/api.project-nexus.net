@@ -81,12 +81,16 @@ function EventsContent() {
       (event.description || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const [rsvpError, setRsvpError] = useState<string | null>(null);
+
   const handleRsvp = async (eventId: number) => {
+    setRsvpError(null);
     try {
       await api.rsvpToEvent(eventId, "going");
       fetchEvents();
     } catch (error) {
       logger.error("Failed to RSVP:", error);
+      setRsvpError(error instanceof Error ? error.message : "Failed to RSVP. Please try again.");
     }
   };
 
@@ -126,6 +130,13 @@ function EventsContent() {
       <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* RSVP Error */}
+        {rsvpError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {rsvpError}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>

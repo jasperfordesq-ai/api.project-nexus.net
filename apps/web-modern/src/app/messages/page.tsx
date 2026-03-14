@@ -54,6 +54,15 @@ function MessagesContent() {
     selectedConvoIdRef.current = selectedConversation?.id ?? null;
   }, [selectedConversation?.id]);
 
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Handle incoming real-time messages
   const handleNewMessage = useCallback(
     (message: MessageType, conversationId: number) => {

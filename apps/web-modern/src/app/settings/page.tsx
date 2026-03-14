@@ -48,6 +48,7 @@ function SettingsContent() {
   const { user, logout, refreshUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Profile settings
   const [firstName, setFirstName] = useState(user?.first_name || "");
@@ -68,6 +69,7 @@ function SettingsContent() {
   const handleSaveProfile = async () => {
     setIsSaving(true);
     setSaveSuccess(false);
+    setSaveError(null);
     try {
       await api.updateCurrentUser({
         first_name: firstName,
@@ -78,6 +80,7 @@ function SettingsContent() {
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
       logger.error("Failed to update profile:", error);
+      setSaveError(error instanceof Error ? error.message : "Failed to save profile. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -219,6 +222,11 @@ function SettingsContent() {
                 {saveSuccess && (
                   <span className="text-emerald-400 text-sm">
                     Profile updated successfully!
+                  </span>
+                )}
+                {saveError && (
+                  <span className="text-red-400 text-sm">
+                    {saveError}
                   </span>
                 )}
               </div>

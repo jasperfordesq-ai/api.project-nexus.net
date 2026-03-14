@@ -72,6 +72,7 @@ function ProfileContent() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -79,7 +80,10 @@ function ProfileContent() {
       try {
         const [gamRes, badgesRes] = await Promise.all([
           api.getGamificationProfile(),
-          api.getAllBadges(),
+          api.getAllBadges().catch((err) => {
+            logger.error("Failed to fetch badges:", err);
+            return null;
+          }),
         ]);
 
         setProfile(gamRes?.profile || null);
@@ -144,6 +148,7 @@ function ProfileContent() {
     if (!firstName.trim() || !lastName.trim()) return;
 
     setIsSaving(true);
+    setSaveError(null);
     try {
       await api.updateCurrentUser({
         first_name: firstName.trim(),
@@ -153,6 +158,7 @@ function ProfileContent() {
       setIsEditing(false);
     } catch (error) {
       logger.error("Failed to update profile:", error);
+      setSaveError(error instanceof Error ? error.message : "Failed to save profile.");
     } finally {
       setIsSaving(false);
     }
@@ -215,6 +221,11 @@ function ProfileContent() {
                 </div>
 
                 <div className="flex-1 text-center sm:text-left">
+                  {saveError && (
+                    <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                      {saveError}
+                    </div>
+                  )}
                   {isEditing ? (
                     <div className="flex flex-col sm:flex-row gap-3 mb-4">
                       <Input

@@ -46,6 +46,7 @@ function MembersContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [sendingRequest, setSendingRequest] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Debounce search query
   useEffect(() => {
@@ -79,11 +80,12 @@ function MembersContent() {
   }, [fetchMembers]);
   const handleSendConnectionRequest = async (memberId: number) => {
     setSendingRequest(memberId);
+    setActionError(null);
     try {
       await api.sendConnectionRequest(memberId);
-      // Optionally show success toast
     } catch (error) {
       logger.error("Failed to send connection request:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to send connection request.");
     } finally {
       setSendingRequest(null);
     }
@@ -103,6 +105,13 @@ function MembersContent() {
             </p>
           </div>
         </div>
+
+        {/* Action Error */}
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
 
         {/* Search */}
         <div className="mb-8">

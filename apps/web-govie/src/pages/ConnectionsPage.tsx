@@ -44,7 +44,7 @@ export function ConnectionsPage() {
         const raw = r.data as any
         const incoming = raw?.incoming ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
         return incoming.map(mapPending)
-      }),
+      }).catch(() => [] as PendingRequest[]),
     ])
       .then(([c, p]) => { setConnections(c); setPending(p) })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load connections.'))

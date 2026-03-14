@@ -35,7 +35,7 @@ export function ProfilePage() {
           totalExchanges: raw.total_exchanges ?? raw.totalExchanges ?? undefined,
         } as UserProfile
       }),
-      apiClient.get('/api/wallet/balance').then((r) => r.data as WalletBalance),
+      apiClient.get('/api/wallet/balance').then((r) => r.data as WalletBalance).catch(() => ({ balance: 0 }) as WalletBalance),
     ])
     /* eslint-enable @typescript-eslint/no-explicit-any */
       .then(([p, b]) => { setProfile(p); setBalance(b) })

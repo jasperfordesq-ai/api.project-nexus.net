@@ -66,6 +66,7 @@ function FilesContent() {
   const [files, setFiles] = useState<UserFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -96,6 +97,7 @@ function FilesContent() {
       onClose();
     } catch (error) {
       logger.error("Failed to upload file:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to upload file.");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -108,6 +110,7 @@ function FilesContent() {
       setFiles((prev) => prev.filter((f) => f.id !== fileId));
     } catch (error) {
       logger.error("Failed to delete file:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to delete file.");
     }
   };
 
@@ -117,6 +120,11 @@ function FilesContent() {
     <div className="min-h-screen">
       <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white flex items-center gap-3">

@@ -111,6 +111,7 @@ function ListingDetailContent() {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [exchangeError, setExchangeError] = useState<string | null>(null);
 
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
@@ -119,7 +120,10 @@ function ListingDetailContent() {
     try {
       const [listingData, reviewsData] = await Promise.all([
         api.getListing(listingId),
-        api.getListingReviews(listingId),
+        api.getListingReviews(listingId).catch((err) => {
+          logger.error("Failed to fetch reviews:", err);
+          return null;
+        }),
       ]);
       setListing(listingData);
       setReviews(reviewsData?.data || []);
@@ -362,6 +366,7 @@ function ListingDetailContent() {
                         className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
                         startContent={<ArrowLeftRight className="w-4 h-4" />}
                         onPress={async () => {
+                          setExchangeError(null);
                           try {
                             const exchange = await api.createExchange({
                               listing_id: listing.id,
@@ -371,6 +376,7 @@ function ListingDetailContent() {
                             router.push("/exchanges/" + exchange.id);
                           } catch (error) {
                             logger.error("Failed to request exchange:", error);
+                            setExchangeError(error instanceof Error ? error.message : "Failed to request exchange. Please try again.");
                           }
                         }}
                       >
@@ -380,6 +386,11 @@ function ListingDetailContent() {
                   )}
                 </div>
               </div>
+              {exchangeError && (
+                <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                  {exchangeError}
+                </div>
+              )}
             </MotionGlassCard>
 
             {/* Reviews Section */}

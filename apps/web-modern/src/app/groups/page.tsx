@@ -40,6 +40,7 @@ function GroupsContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchGroups = useCallback(async () => {
     setIsLoading(true);
@@ -68,11 +69,13 @@ function GroupsContent() {
   );
 
   const handleJoinGroup = async (groupId: number) => {
+    setActionError(null);
     try {
       await api.joinGroup(groupId);
       fetchGroups();
     } catch (error) {
       logger.error("Failed to join group:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to join group. Please try again.");
     }
   };
 
@@ -98,6 +101,16 @@ function GroupsContent() {
             </Button>
           </Link>
         </div>
+
+        {actionError && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3"
+          >
+            <span className="text-sm text-red-400">{actionError}</span>
+          </motion.div>
+        )}
 
         {/* Search */}
         <div className="mb-8">

@@ -17,7 +17,7 @@ router.use(requireAuth);
 router.get('/', asyncRoute(async (req, res) => {
   const [conversationsData, unreadData] = await Promise.all([
     getConversations(req.token),
-    getUnreadCount(req.token)
+    getUnreadCount(req.token).catch(() => ({ count: 0 }))
   ]);
 
   res.render('messages/index', {

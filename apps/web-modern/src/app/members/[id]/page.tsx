@@ -119,14 +119,21 @@ function MemberDetailContent() {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const fetchMember = useCallback(async () => {
     setIsLoading(true);
     try {
       const [memberData, reviewsData, listingsData] = await Promise.all([
         api.getUser(memberId),
-        api.getUserReviews(memberId),
-        api.getListings({ user_id: memberId, status: "active", limit: 6 }),
+        api.getUserReviews(memberId).catch((err) => {
+          logger.error("Failed to fetch reviews:", err);
+          return null;
+        }),
+        api.getListings({ user_id: memberId, status: "active", limit: 6 }).catch((err) => {
+          logger.error("Failed to fetch listings:", err);
+          return null;
+        }),
       ]);
       setMember(memberData);
       setReviews(reviewsData?.data || []);
@@ -170,6 +177,7 @@ function MemberDetailContent() {
   const handleSubmitReview = async () => {
     if (!newRating) return;
     setIsSubmittingReview(true);
+    setReviewError(null);
     try {
       const review = await api.createUserReview(memberId, {
         rating: newRating,
@@ -190,6 +198,7 @@ function MemberDetailContent() {
       setNewComment("");
     } catch (error) {
       logger.error("Failed to submit review:", error);
+      setReviewError(error instanceof Error ? error.message : "Failed to submit review.");
     } finally {
       setIsSubmittingReview(false);
     }
@@ -492,6 +501,11 @@ function MemberDetailContent() {
                 {!isOwnProfile && !hasReviewed && (
                   <MotionGlassCard variants={itemVariants} glow="none" padding="lg">
                     <h3 className="text-white font-medium mb-4">Leave a Review</h3>
+                    {reviewError && (
+                      <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                        {reviewError}
+                      </div>
+                    )}
                     <div className="mb-4">
                       <label className="text-sm text-white/60 mb-2 block">
                         Rating

@@ -38,7 +38,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
   const [groupsResult, myGroupsResult] = await Promise.all([
     getGroups(req.token, { page, limit, search: searchQuery }),
-    getMyGroups(req.token)
+    getMyGroups(req.token).catch(() => ({ data: [] }))
   ]);
 
   const groups = groupsResult.data || [];
@@ -130,8 +130,8 @@ router.get('/:id', asyncRoute(async (req, res) => {
 
   const [groupResult, membersResult, eventsResult] = await Promise.all([
     getGroup(req.token, id),
-    getGroupMembers(req.token, id),
-    getEvents(req.token, { group_id: id, upcoming_only: true, limit: 5 })
+    getGroupMembers(req.token, id).catch(() => ({ data: [] })),
+    getEvents(req.token, { group_id: id, upcoming_only: true, limit: 5 }).catch(() => ({ data: [] }))
   ]);
 
   const group = groupResult.group || groupResult;
@@ -298,8 +298,8 @@ router.get('/:id/members', asyncRoute(async (req, res) => {
 
   const [groupResult, membersResult, usersResult] = await Promise.all([
     getGroup(req.token, id),
-    getGroupMembers(req.token, id),
-    getUsers(req.token)
+    getGroupMembers(req.token, id).catch(() => ({ data: [] })),
+    getUsers(req.token).catch(() => ({ data: [] }))
   ]);
 
   const group = groupResult.group || groupResult;

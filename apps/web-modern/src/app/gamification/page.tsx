@@ -141,6 +141,7 @@ function GamificationContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [joiningId, setJoiningId] = useState<number | null>(null);
   const [claimingReward, setClaimingReward] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("challenges");
 
   const fetchData = useCallback(async () => {
@@ -183,6 +184,7 @@ function GamificationContent() {
   useEffect(() => { fetchData(); }, [fetchData]);
   const handleJoinChallenge = async (challengeId: number) => {
     setJoiningId(challengeId);
+    setActionError(null);
     try {
       await api.joinChallenge(challengeId);
       setChallenges((prev) =>
@@ -190,6 +192,7 @@ function GamificationContent() {
       );
     } catch (error) {
       logger.error("Failed to join challenge:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to join challenge.");
     } finally {
       setJoiningId(null);
     }
@@ -197,6 +200,7 @@ function GamificationContent() {
 
   const handleClaimReward = async () => {
     setClaimingReward(true);
+    setActionError(null);
     try {
       const result = await api.claimDailyReward();
       setDailyReward(result);
@@ -205,6 +209,7 @@ function GamificationContent() {
       }
     } catch (error) {
       logger.error("Failed to claim daily reward:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to claim reward.");
     } finally {
       setClaimingReward(false);
     }
@@ -550,6 +555,11 @@ function GamificationContent() {
     <div className="min-h-screen">
       <Navbar user={user} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <Trophy className="w-8 h-8 text-amber-400" />

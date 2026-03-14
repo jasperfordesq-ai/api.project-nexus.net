@@ -57,6 +57,7 @@ function NotificationsContent() {
   const [notifConfig, setNotifConfig] = useState<Record<string, { email: boolean; push: boolean; in_app: boolean }> | null>(null);
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
@@ -133,6 +134,7 @@ function NotificationsContent() {
       setNotifConfig(updated as Record<string, { email: boolean; push: boolean; in_app: boolean }>);
     } catch (error) {
       logger.error("Failed to update notification config:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to update preferences.");
     }
   };
 
@@ -159,6 +161,7 @@ function NotificationsContent() {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       logger.error("Failed to mark notification as read:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to mark as read.");
     }
   };
 
@@ -169,6 +172,7 @@ function NotificationsContent() {
       setUnreadCount(0);
     } catch (error) {
       logger.error("Failed to mark all as read:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to mark all as read.");
     }
   };
 
@@ -231,6 +235,12 @@ function NotificationsContent() {
       <Navbar user={user} onLogout={logout} />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>

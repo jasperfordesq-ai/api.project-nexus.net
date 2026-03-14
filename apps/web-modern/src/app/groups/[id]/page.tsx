@@ -420,7 +420,7 @@ function GroupDetailContent() {
             {/* Tabs */}
             <div className="flex justify-center">
               <Tabs
-                selectedKey={activeTab as any}
+                selectedKey={activeTab}
                 onSelectionChange={(key) => setActiveTab(key as string)}
                 classNames={{
                   tabList: "bg-white/5 border border-white/10",
@@ -437,7 +437,7 @@ function GroupDetailContent() {
             </div>
 
             {/* Tab Content */}
-            {(activeTab as string) === "posts" && (
+            {activeTab === "posts" && (
               <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -563,7 +563,7 @@ function GroupDetailContent() {
               </motion.div>
             )}
 
-            {(activeTab as string) === "members" && (
+            {activeTab === "members" && (
               <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -628,7 +628,7 @@ function GroupDetailContent() {
               </motion.div>
             )}
 
-            {(activeTab as string) === "events" && (
+            {activeTab === "events" && (
               <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -696,7 +696,7 @@ function GroupDetailContent() {
               </motion.div>
             )}
 
-            {(activeTab as string) === "announcements" && (
+            {activeTab === "announcements" && (
               <div className="space-y-4">
                 {announcements.length > 0 ? (
                   announcements.map((ann: any) => (
@@ -722,7 +722,7 @@ function GroupDetailContent() {
               </div>
             )}
 
-            {(activeTab as string) === "discussions" && (
+            {activeTab === "discussions" && (
               <div className="space-y-4">
                 {isMember && (
                   <GlassCard padding="md">

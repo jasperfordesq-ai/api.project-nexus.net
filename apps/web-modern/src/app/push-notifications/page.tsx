@@ -47,6 +47,7 @@ function PushContent() {
   const [settings, setSettings] = useState<PushSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -65,6 +66,7 @@ function PushContent() {
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
       logger.error("Failed to save push settings:", error);
+      setSaveError(error instanceof Error ? error.message : "Failed to save settings.");
     } finally {
       setIsSaving(false);
     }

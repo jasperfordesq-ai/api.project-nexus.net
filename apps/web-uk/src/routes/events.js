@@ -177,7 +177,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
 
   const [eventResult, rsvpsResult] = await Promise.all([
     getEvent(req.token, id),
-    getEventRsvps(req.token, id)
+    getEventRsvps(req.token, id).catch(() => ({ data: [] }))
   ]);
 
   const event = eventResult.event || eventResult;

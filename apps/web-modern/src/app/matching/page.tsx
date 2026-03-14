@@ -41,6 +41,7 @@ function MatchingContent() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isComputing, setIsComputing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -62,6 +63,7 @@ function MatchingContent() {
       fetchData();
     } catch (error) {
       logger.error("Failed to compute matches:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to compute matches.");
     } finally {
       setIsComputing(false);
     }
@@ -73,6 +75,7 @@ function MatchingContent() {
       setMatches((prev) => prev.map((m) => m.id === id ? { ...m, status: response } : m));
     } catch (error) {
       logger.error("Failed to respond to match:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to respond.");
     }
   };
 

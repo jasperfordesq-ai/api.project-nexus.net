@@ -53,6 +53,7 @@ function InsuranceContent() {
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchCerts = () => {
@@ -75,6 +76,7 @@ function InsuranceContent() {
       fetchCerts();
     } catch (error) {
       logger.error("Failed to upload certificate:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to upload certificate.");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -87,6 +89,7 @@ function InsuranceContent() {
       setCerts((prev) => prev.filter((c) => c.id !== id));
     } catch (error) {
       logger.error("Failed to delete certificate:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to delete certificate.");
     }
   };
 

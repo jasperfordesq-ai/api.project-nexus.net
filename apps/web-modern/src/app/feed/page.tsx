@@ -314,6 +314,7 @@ function FeedContent() {
 
   const [draft, setDraft]               = useState("");
   const [posting, setPosting]           = useState(false);
+  const [postError, setPostError]       = useState<string | null>(null);
 
   const [expanded, setExpanded]         = useState<Set<number>>(new Set());
   const [commentMap, setCommentMap]     = useState<Record<number, Comment[]>>({});
@@ -423,11 +424,13 @@ function FeedContent() {
     const text = draft.trim();
     if (!text || posting || text.length > MAX_LEN) return;
     setPosting(true);
+    setPostError(null);
     try {
       const post = await api.createPost({ content: text });
       if (post?.id) { setFeedPosts((prev) => [post, ...prev]); setDraft(""); }
-    } catch (e) { console.error("Post error:", e); }
-    finally { setPosting(false); }
+    } catch (e) {
+      setPostError(e instanceof Error ? e.message : "Failed to create post. Please try again.");
+    } finally { setPosting(false); }
   };
 
   const userInitials = `${user?.first_name?.[0] ?? ""}${user?.last_name?.[0] ?? ""}`.toUpperCase() || "?";
@@ -508,6 +511,11 @@ function FeedContent() {
                       className="flex-1"
                     />
                   </div>
+                  {postError && (
+                    <div className="ml-11 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                      {postError}
+                    </div>
+                  )}
                   <div className="flex items-center justify-between pl-11">
                     <span className={`text-xs font-mono transition-colors ${
                       draft.length > MAX_LEN ? "text-red-400" :

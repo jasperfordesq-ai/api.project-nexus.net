@@ -65,6 +65,7 @@ function AvailabilityContent() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [exceptions, setExceptions] = useState<Exception[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // New slot form
   const [newDay, setNewDay] = useState("1");
@@ -105,6 +106,7 @@ function AvailabilityContent() {
       fetchData();
     } catch (error) {
       logger.error("Failed to add slot:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to add time slot.");
     }
   };
 
@@ -121,6 +123,7 @@ function AvailabilityContent() {
       fetchData();
     } catch (error) {
       logger.error("Failed to add exception:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to add exception.");
     }
   };
 

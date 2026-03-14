@@ -35,7 +35,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
   const [feedResult, myGroupsResult] = await Promise.all([
     getFeedPosts(req.token, { page, limit, group_id: groupId }),
-    getMyGroups(req.token)
+    getMyGroups(req.token).catch(() => ({ data: [] }))
   ]);
 
   const posts = feedResult.data || [];
@@ -140,7 +140,7 @@ router.get('/:id', asyncRoute(async (req, res) => {
 
   const [postResult, commentsResult] = await Promise.all([
     getFeedPost(req.token, id),
-    getFeedComments(req.token, id, { limit: 50 })
+    getFeedComments(req.token, id, { limit: 50 }).catch(() => ({ data: [] }))
   ]);
 
   const post = postResult.post || postResult;

@@ -38,6 +38,7 @@ function NewsletterContent() {
   const [preferences, setPreferences] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -64,6 +65,7 @@ function NewsletterContent() {
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
       logger.error("Failed to save subscription:", error);
+      setSaveError(error instanceof Error ? error.message : "Failed to save subscription.");
     } finally {
       setIsSaving(false);
     }

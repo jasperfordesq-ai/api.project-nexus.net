@@ -39,7 +39,7 @@ export function WalletPage() {
 
   useEffect(() => {
     Promise.all([
-      apiClient.get('/api/wallet/balance').then(r => r.data),
+      apiClient.get('/api/wallet/balance').then(r => r.data).catch(() => ({ balance: 0 })),
       apiClient.get('/api/wallet/transactions').then(r => r.data),
     ])
       .then(([b, t]) => {

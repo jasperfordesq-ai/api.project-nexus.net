@@ -23,7 +23,7 @@ export function GroupDetailPage() {
   useEffect(() => {
     Promise.all([
       apiClient.get<Group>(`/api/groups/${id}`).then(r => r.data),
-      apiClient.get<Member[]>(`/api/groups/${id}/members`).then(r => r.data ?? []),
+      apiClient.get<Member[]>(`/api/groups/${id}/members`).then(r => r.data ?? []).catch(() => [] as Member[]),
     ])
       .then(([g, m]) => { setGroup(g); setMembers(m) })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load group.'))

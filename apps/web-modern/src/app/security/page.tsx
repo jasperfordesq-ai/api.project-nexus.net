@@ -174,6 +174,7 @@ function SecurityContent() {
       setPasskeys((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       logger.error("Failed to delete passkey:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete passkey.");
     }
   };
 
@@ -183,6 +184,7 @@ function SecurityContent() {
       setSessions((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       logger.error("Failed to terminate session:", err);
+      setError(err instanceof Error ? err.message : "Failed to terminate session.");
     }
   };
 
@@ -192,6 +194,7 @@ function SecurityContent() {
       setSessions((prev) => prev.filter((s) => s.is_current));
     } catch (err) {
       logger.error("Failed to terminate sessions:", err);
+      setError(err instanceof Error ? err.message : "Failed to terminate sessions.");
     }
   };
 
