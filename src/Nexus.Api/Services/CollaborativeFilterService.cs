@@ -246,8 +246,9 @@ public class CollaborativeFilterService
         }
 
         // Remove existing similarities for this tenant
-        var existingSimilarities = await _db.Set<UserSimilarity>().ToListAsync();
-        _db.Set<UserSimilarity>().RemoveRange(existingSimilarities);
+        await _db.Set<UserSimilarity>()
+            .Where(s => s.TenantId == tenantId)
+            .ExecuteDeleteAsync();
 
         // Compute cosine similarity for each user pair
         var pairsUpdated = 0;
@@ -560,8 +561,9 @@ public class CollaborativeFilterService
         }
 
         // Remove existing similarities
-        var existingSimilarities = await _db.Set<UserSimilarity>().ToListAsync();
-        _db.Set<UserSimilarity>().RemoveRange(existingSimilarities);
+        await _db.Set<UserSimilarity>()
+            .Where(s => s.TenantId == tenantId)
+            .ExecuteDeleteAsync();
 
         var pairsComputed = 0;
         decimal totalSimilarity = 0m;
@@ -704,16 +706,9 @@ public class CollaborativeFilterService
 
         // Delete UserSimilarity records older than 30 days
         var cutoff = DateTime.UtcNow.AddDays(-30);
-        var staleRecords = await _db.Set<UserSimilarity>()
+        var staleRemoved = await _db.Set<UserSimilarity>()
             .Where(s => s.TenantId == tenantId && s.CalculatedAt < cutoff)
-            .ToListAsync();
-
-        var staleRemoved = staleRecords.Count;
-        if (staleRemoved > 0)
-        {
-            _db.Set<UserSimilarity>().RemoveRange(staleRecords);
-            await _db.SaveChangesAsync();
-        }
+            .ExecuteDeleteAsync();
 
         // Recalculate similarities
         var (recalcResult, recalcError) = await RecalculateSimilaritiesAsync(tenantId);

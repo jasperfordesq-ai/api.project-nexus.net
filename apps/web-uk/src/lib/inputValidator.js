@@ -143,7 +143,7 @@ function collectErrors(results) {
 
 // Allowed values for common enums
 const ALLOWED_USER_ROLES = ['member', 'moderator', 'admin'];
-const ALLOWED_USER_STATUSES = ['active', 'suspended', 'pending'];
+const ALLOWED_USER_STATUSES = ['active', 'suspended', 'pending', 'inactive', 'banned', 'deactivated'];
 
 module.exports = {
   validatePageNumber,

@@ -6,6 +6,12 @@
 import apiClient from './client'
 import type { PaginatedResponse, PaginationParams } from './types'
 
+/** Safely extract an array from backend response variants */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractItems(raw: any): any[] {
+  return raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+}
+
 export interface Notification {
   id: number
   type: string
@@ -18,7 +24,19 @@ export interface Notification {
 
 export const notificationsApi = {
   list: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<Notification>>('/api/notifications', { params }).then((r) => r.data),
+    apiClient.get('/api/notifications', { params }).then((r) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = r.data as any
+      const items = extractItems(raw)
+      const pagination = raw?.pagination
+      return {
+        items: items as Notification[],
+        totalCount: pagination?.total ?? raw?.totalCount ?? items.length,
+        page: pagination?.page ?? raw?.page ?? 1,
+        pageSize: pagination?.limit ?? raw?.pageSize ?? items.length,
+        totalPages: pagination?.pages ?? raw?.totalPages ?? 1,
+      } as PaginatedResponse<Notification>
+    }),
 
   unreadCount: () =>
     apiClient.get<{ count: number }>('/api/notifications/unread-count').then((r) => r.data),

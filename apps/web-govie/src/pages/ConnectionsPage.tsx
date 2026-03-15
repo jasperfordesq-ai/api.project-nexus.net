@@ -3,8 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, useRef } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import apiClient from '../api/client'
 import { fullName } from '../api/normalize'
 import { isApiError } from '../context/AuthContext'
@@ -26,12 +26,25 @@ function mapPending(raw: any): PendingRequest {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export function ConnectionsPage() {
+  const [searchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>('connections')
   const [connections, setConnections] = useState<Connection[]>([])
   const [pending, setPending] = useState<PendingRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionMsg, setActionMsg] = useState<string | null>(null)
+  const inviteSent = useRef(false)
+
+  // Auto-send connection request if ?invite=<userId> is present
+  const inviteUserId = searchParams.get('invite')
+  useEffect(() => {
+    if (inviteUserId && !inviteSent.current) {
+      inviteSent.current = true
+      apiClient.post('/api/connections', { user_id: Number(inviteUserId) })
+        .then(() => setActionMsg('Connection request sent.'))
+        .catch(err => setActionMsg(isApiError(err) ? err.message : 'Could not send connection request.'))
+    }
+  }, [inviteUserId])
 
   useEffect(() => {
     Promise.all([

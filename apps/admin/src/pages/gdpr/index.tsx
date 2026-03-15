@@ -55,7 +55,7 @@ export const GdprPage = () => {
   });
 
   const { data: requestsData, isLoading: requestsLoading, refetch: refetchRequests } = useCustom({
-    url: "/api/admin/gdpr/requests",
+    url: "/api/admin/privacy/deletions",
     method: "get",
     config: { query: { page: requestPage, limit: requestPageSize } },
     queryOptions: { queryKey: ["admin-gdpr-requests", requestPage, requestPageSize] },
@@ -70,7 +70,7 @@ export const GdprPage = () => {
 
   const requestsRaw = requestsData?.data as any;
   const requests = requestsRaw?.items || requestsRaw?.data || (Array.isArray(requestsData?.data) ? requestsData.data : []);
-  const requestsTotalCount = requestsRaw?.total || requestsRaw?.totalCount || requests.length;
+  const requestsTotalCount = requestsRaw?.pagination?.total || requestsRaw?.total || requestsRaw?.totalCount || requests.length;
 
   const getErrorMessage = (err: any, fallback: string) => {
     if (err?.response) return err.response.data?.message || err.response.data?.error || fallback;
@@ -83,20 +83,7 @@ export const GdprPage = () => {
       message.warning("Enter a user ID to export");
       return;
     }
-    Modal.confirm({
-      title: "Export User Data",
-      icon: <DownloadOutlined />,
-      content: `This will generate a GDPR data export for user #${exportUserId}. The user will be notified.`,
-      okText: "Export",
-      onOk: async () => {
-        try {
-          await axiosInstance.post(`/api/admin/gdpr/export/${exportUserId}`);
-          message.success("Data export request submitted");
-          setExportUserId("");
-          refetchRequests();
-        } catch (err: any) { message.error(getErrorMessage(err, "Failed to request export")); }
-      },
-    });
+    message.info("Data exports are self-service via the user's privacy settings (POST /api/privacy/export). Admin review is available through deletion requests.");
   };
 
   const handleProcessRequest = async (id: number, action: "approve" | "reject") => {
@@ -109,7 +96,9 @@ export const GdprPage = () => {
       okType: action === "reject" ? "danger" : "primary",
       onOk: async () => {
         try {
-          await axiosInstance.put(`/api/admin/gdpr/requests/${id}/${action}`);
+          await axiosInstance.put(`/api/admin/privacy/deletions/${id}/review`, {
+            approved: action === "approve",
+          });
           message.success(`Request ${action}d`);
           refetchRequests();
         } catch (err: any) { message.error(getErrorMessage(err, `Failed to ${action}`)); }
@@ -118,20 +107,7 @@ export const GdprPage = () => {
   };
 
   const handleDeleteUser = (userId: number) => {
-    Modal.confirm({
-      title: "Delete User Data (Right to Erasure)",
-      icon: <ExclamationCircleOutlined />,
-      content: `This will permanently delete all personal data for user #${userId} in compliance with GDPR Article 17. This action cannot be undone.`,
-      okText: "Permanently Delete",
-      okType: "danger",
-      onOk: async () => {
-        try {
-          await axiosInstance.delete(`/api/admin/gdpr/users/${userId}/data`);
-          message.success("User data deleted");
-          refetchRequests();
-        } catch (err: any) { message.error(getErrorMessage(err, "Failed to delete user data")); }
-      },
-    });
+    message.info(`Data deletion for user #${userId} is handled by approving the deletion request via the review endpoint.`);
   };
 
   const breachesTab = (
@@ -205,16 +181,12 @@ export const GdprPage = () => {
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column
               title="User"
-              render={(_, r: any) => r.user_email || (r.user_id ? `User #${r.user_id}` : "—")}
+              render={(_, r: any) => r.user?.email || (r.user?.id ? `User #${r.user.id}` : "—")}
             />
             <Table.Column
-              dataIndex="type"
-              title="Type"
-              render={(t: string) => (
-                <Tag color={t === "deletion" ? "red" : t === "export" ? "blue" : "default"}>
-                  {t ? t.charAt(0).toUpperCase() + t.slice(1) : "—"}
-                </Tag>
-              )}
+              dataIndex="reason"
+              title="Reason"
+              ellipsis
             />
             <Table.Column
               dataIndex="status"
@@ -241,10 +213,8 @@ export const GdprPage = () => {
                       <Button size="small" danger onClick={() => handleProcessRequest(r.id, "reject")}>Reject</Button>
                     </>
                   )}
-                  {r.type === "deletion" && r.status === "approved" && (
-                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteUser(r.user_id)}>
-                      Execute Deletion
-                    </Button>
+                  {r.status === "approved" && (
+                    <Tag color="green">Approved</Tag>
                   )}
                 </Space>
               )}

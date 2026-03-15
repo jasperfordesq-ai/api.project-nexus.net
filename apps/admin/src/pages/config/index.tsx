@@ -29,9 +29,8 @@ export const TenantConfigPage = () => {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      // Backend expects batch update format
-      const configs = [{ key: values.key, value: values.value }];
-      await axiosInstance.put("/api/admin/config", { configs });
+      // Backend expects { config: { key: value } } dictionary format
+      await axiosInstance.put("/api/admin/config", { config: { [values.key]: values.value } });
       message.success("Config saved");
       setModalOpen(false);
       form.resetFields();

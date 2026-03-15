@@ -31,7 +31,8 @@ export const NotificationsAdminPage = () => {
     queryOptions: { queryKey: ["admin-notifications", page, pageSize] },
   });
 
-  const stats = statsData?.data as any;
+  const statsRaw = statsData?.data as any;
+  const stats = statsRaw?.data || statsRaw;
   const recentRaw = recentData?.data as any;
   const notifications = recentRaw?.items || recentRaw?.data || (Array.isArray(recentData?.data) ? recentData.data : []);
   const totalCount = recentRaw?.total || recentRaw?.totalCount || notifications.length;
@@ -94,7 +95,7 @@ export const NotificationsAdminPage = () => {
           <Card>
             <Statistic
               title="Total Notifications"
-              value={stats?.total_notifications ?? stats?.total ?? 0}
+              value={stats?.total ?? 0}
               prefix={<BellOutlined />}
             />
           </Card>
@@ -103,7 +104,7 @@ export const NotificationsAdminPage = () => {
           <Card>
             <Statistic
               title="Unread"
-              value={stats?.unread_notifications ?? stats?.unread ?? 0}
+              value={stats?.unread ?? 0}
               prefix={<MailOutlined style={{ color: "#faad14" }} />}
             />
           </Card>
@@ -112,7 +113,7 @@ export const NotificationsAdminPage = () => {
           <Card>
             <Statistic
               title="Read"
-              value={stats?.read_notifications ?? stats?.read ?? 0}
+              value={(stats?.total ?? 0) - (stats?.unread ?? 0)}
               prefix={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
             />
           </Card>
@@ -120,8 +121,8 @@ export const NotificationsAdminPage = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Broadcasts Sent"
-              value={stats?.broadcasts_sent ?? stats?.broadcasts ?? 0}
+              title="Sent Today"
+              value={stats?.sent_today ?? 0}
               prefix={<SendOutlined style={{ color: "#1890ff" }} />}
             />
           </Card>

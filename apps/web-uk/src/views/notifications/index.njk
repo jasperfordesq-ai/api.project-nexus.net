@@ -87,12 +87,12 @@
 
                 <div class="app-notification-body">
                   <p class="govuk-body govuk-!-margin-bottom-1">
-                    <strong class="govuk-!-font-weight-bold">{{ notification.title }}</strong>
+                    <strong class="govuk-!-font-weight-bold">{{ notification.title or notification.message or 'Notification' }}</strong>
                     {% if not (notification.isRead or notification.is_read) %}
                       <span class="govuk-tag govuk-tag--blue app-notification-badge">New</span>
                     {% endif %}
                   </p>
-                  <p class="govuk-body-s govuk-!-margin-bottom-1">{{ notification.body }}</p>
+                  <p class="govuk-body-s govuk-!-margin-bottom-1">{{ notification.body or notification.content or '' }}</p>
                   <p class="govuk-body-s govuk-!-margin-bottom-0 app-notification-time">
                     {{ (notification.createdAt or notification.created_at) | formatDate if (notification.createdAt or notification.created_at) else '' }}
                   </p>

@@ -15,8 +15,8 @@ const CACHE_TTL = {
 
 // Helper to create a cache key from token
 function cacheKey(token, suffix) {
-  // Use first 20 chars of token as user identifier
-  return `${token.substring(0, 20)}:${suffix}`;
+  // Use first 40 chars of token as user identifier to avoid collisions
+  return `${token.substring(0, 40)}:${suffix}`;
 }
 
 class ApiError extends Error {
@@ -284,11 +284,11 @@ async function getUnreadCount(token) {
   return result;
 }
 
-async function sendMessage(token, conversationId, content) {
-  return request(`/api/messages/${encodeURIComponent(conversationId)}`, {
+async function sendMessage(token, recipientId, content) {
+  return request('/api/messages', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ content })
+    body: JSON.stringify({ recipient_id: recipientId, content })
   });
 }
 
@@ -871,7 +871,7 @@ async function deleteReview(token, reviewId) {
 
 // Helper to invalidate all cached data for a user (e.g., on logout)
 function invalidateUserCache(token) {
-  const prefix = token.substring(0, 20);
+  const prefix = token.substring(0, 40);
   for (const key of cache.cache.keys()) {
     if (key.startsWith(prefix)) {
       cache.delete(key);
@@ -1034,6 +1034,49 @@ async function adminDeleteRole(token, id) {
   });
 }
 
+// Preferences
+async function getPreferences(token) {
+  return request('/api/preferences', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function updatePreferences(token, data) {
+  return request('/api/preferences', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function getNotificationPreferences(token) {
+  return request('/api/preferences/notifications', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function updateNotificationPreference(token, data) {
+  return request('/api/preferences/notifications', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function getPrivacyPreferences(token) {
+  return request('/api/preferences/privacy', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function updatePrivacyPreferences(token, data) {
+  return request('/api/preferences/privacy', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 module.exports = {
   ApiError,
   ApiOfflineError,
@@ -1161,5 +1204,12 @@ module.exports = {
   adminGetRoles,
   adminCreateRole,
   adminUpdateRole,
-  adminDeleteRole
+  adminDeleteRole,
+  // Preferences
+  getPreferences,
+  updatePreferences,
+  getNotificationPreferences,
+  updateNotificationPreference,
+  getPrivacyPreferences,
+  updatePrivacyPreferences
 };

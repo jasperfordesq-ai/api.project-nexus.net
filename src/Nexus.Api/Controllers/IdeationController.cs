@@ -82,7 +82,8 @@ public class IdeationController : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var (favorited, error) = await _ideationService.ToggleFavoriteIdeaAsync(id, userId.Value);
+        var (favorited, error) = await _ideationService.AddFavoriteIdeaAsync(id, userId.Value);
+        if (error == "Already favorited") return Conflict(new { error });
         if (error != null) return BadRequest(new { error });
         return Ok(new { favorited, idea_id = id });
     }
@@ -92,9 +93,10 @@ public class IdeationController : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var (favorited, error) = await _ideationService.ToggleFavoriteIdeaAsync(id, userId.Value);
+        var (removed, error) = await _ideationService.RemoveFavoriteIdeaAsync(id, userId.Value);
+        if (error == "Not favorited") return NotFound(new { error });
         if (error != null) return BadRequest(new { error });
-        return Ok(new { favorited, idea_id = id });
+        return Ok(new { favorited = false, idea_id = id });
     }
 
     [HttpPost("api/ideas/{id:int}/duplicate")]

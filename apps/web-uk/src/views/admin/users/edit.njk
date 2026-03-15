@@ -30,7 +30,12 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
 
-      {% if error %}
+      {% if errors and errors.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errors
+        }) }}
+      {% elif error %}
         {{ govukErrorSummary({
           titleText: "There is a problem",
           errorList: [{ text: error }]

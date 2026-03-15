@@ -59,20 +59,20 @@ export const gamificationApi = {
     apiClient.get<XpHistoryEntry[]>('/api/gamification/xp-history', { params }).then((r) => r.data),
 
   summary: () =>
-    apiClient.get('/api/gamification/summary').then((r) => r.data),
+    apiClient.get('/api/gamification/v2/summary').then((r) => r.data),
 
   challenges: () =>
-    apiClient.get('/api/gamification/challenges').then((r) => r.data),
+    apiClient.get('/api/gamification/v2/challenges').then((r) => r.data),
 
   shop: () =>
-    apiClient.get('/api/gamification/shop').then((r) => r.data),
+    apiClient.get('/api/gamification/v2/shop').then((r) => r.data),
 
   purchase: (itemId: number) =>
-    apiClient.post('/api/gamification/shop/purchase', { itemId }).then((r) => r.data),
+    apiClient.post('/api/gamification/v2/shop/purchase', { itemId }).then((r) => r.data),
 
   dailyRewardStatus: () =>
-    apiClient.get('/api/daily-reward/status').then((r) => r.data),
+    apiClient.get('/api/gamification/v2/daily-reward/status').then((r) => r.data),
 
   claimDailyReward: () =>
-    apiClient.post('/api/daily-reward/check').then((r) => r.data),
+    apiClient.post('/api/gamification/v2/daily-reward').then((r) => r.data),
 }

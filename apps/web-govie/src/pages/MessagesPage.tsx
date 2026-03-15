@@ -22,15 +22,17 @@ interface Conversation {
  *  Handles both snake_case and camelCase field names. */
 function mapConversation(raw: Record<string, unknown>): Conversation {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const participant = (raw.participant ?? raw.otherUser) as any | null
+  const participant = (raw.participant ?? raw.otherUser ?? raw.other_user) as any | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lastMsg = (raw.last_message ?? raw.lastMessage) as any | null
+  const otherUserId = participant?.id ?? (raw.other_user_id ?? raw.otherUserId ?? 0) as number
+  const otherUserName = participant ? fullName(participant) : ((raw.otherUserName ?? raw.other_user_name ?? 'Unknown') as string)
   return {
     id: raw.id as number,
-    otherUserId: participant?.id ?? 0,
-    otherUserName: fullName(participant),
-    lastMessage: lastMsg?.content ?? (raw.lastMessageContent as string) ?? '',
-    lastMessageAt: (lastMsg?.created_at ?? lastMsg?.createdAt ?? raw.created_at ?? raw.createdAt ?? '') as string,
+    otherUserId,
+    otherUserName,
+    lastMessage: lastMsg?.content ?? (raw.lastMessageContent as string) ?? (raw.last_message_content as string) ?? '',
+    lastMessageAt: (lastMsg?.created_at ?? lastMsg?.createdAt ?? raw.last_message_at ?? raw.lastMessageAt ?? raw.created_at ?? raw.createdAt ?? '') as string,
     unreadCount: (raw.unread_count ?? raw.unreadCount ?? 0) as number,
   }
 }
@@ -43,8 +45,9 @@ export function MessagesPage() {
   useEffect(() => {
     apiClient.get('/api/messages')
       .then(r => {
-        const raw = r.data as { data?: unknown[] } | unknown[]
-        const items = Array.isArray(raw) ? raw : (raw?.data ?? [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
         setConversations((items as Record<string, unknown>[]).map(mapConversation))
       })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load messages.'))

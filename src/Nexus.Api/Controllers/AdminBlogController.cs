@@ -7,6 +7,8 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Data;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
@@ -21,10 +23,110 @@ namespace Nexus.Api.Controllers;
 public class AdminBlogController : ControllerBase
 {
     private readonly BlogService _blog;
+    private readonly NexusDbContext _db;
 
-    public AdminBlogController(BlogService blog)
+    public AdminBlogController(BlogService blog, NexusDbContext db)
     {
         _blog = blog;
+        _db = db;
+    }
+
+    /// <summary>
+    /// GET /api/admin/blog - List all blog posts (including drafts) with pagination.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ListPosts(
+        [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
+        [FromQuery] int? category_id = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 50)
+    {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var query = _db.Set<Entities.BlogPost>()
+            .Include(p => p.Author)
+            .Include(p => p.Category)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(p => p.Status == status);
+
+        if (category_id.HasValue)
+            query = query.Where(p => p.CategoryId == category_id.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(p => p.Title.ToLower().Contains(s));
+        }
+
+        var total = await query.CountAsync();
+
+        var posts = await query
+            .AsNoTracking()
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(p => new
+            {
+                p.Id,
+                p.Title,
+                p.Slug,
+                p.Excerpt,
+                p.Status,
+                p.Tags,
+                is_featured = p.IsFeatured,
+                view_count = p.ViewCount,
+                published_at = p.PublishedAt,
+                created_at = p.CreatedAt,
+                updated_at = p.UpdatedAt,
+                category = p.Category != null ? new { p.Category.Id, p.Category.Name } : null,
+                author = p.Author != null ? new { p.Author.Id, p.Author.FirstName, p.Author.LastName } : null
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = posts,
+            meta = new { page, limit, total }
+        });
+    }
+
+    /// <summary>
+    /// GET /api/admin/blog/{id} - Get a single blog post by ID (including drafts).
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetPost(int id)
+    {
+        var post = await _blog.GetPostByIdAsync(id);
+        if (post == null) return NotFound(new { error = "Post not found" });
+
+        return Ok(new
+        {
+            data = new
+            {
+                post.Id,
+                post.Title,
+                post.Slug,
+                post.Content,
+                post.Excerpt,
+                featured_image_url = post.FeaturedImageUrl,
+                post.Status,
+                post.Tags,
+                is_featured = post.IsFeatured,
+                view_count = post.ViewCount,
+                published_at = post.PublishedAt,
+                created_at = post.CreatedAt,
+                updated_at = post.UpdatedAt,
+                category_id = post.CategoryId,
+                category = post.Category != null ? new { post.Category.Id, post.Category.Name, post.Category.Slug, post.Category.Color } : null,
+                author = post.Author != null ? new { post.Author.Id, post.Author.FirstName, post.Author.LastName } : null,
+                meta_title = post.MetaTitle,
+                meta_description = post.MetaDescription
+            }
+        });
     }
 
     /// <summary>

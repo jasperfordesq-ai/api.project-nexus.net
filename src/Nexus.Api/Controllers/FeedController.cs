@@ -689,7 +689,7 @@ public class FeedController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var (success, error) = await _feedRanking.AddReactionAsync(tenantId, id, userId.Value, request.ReactionType ?? "like");
         if (error == "Post not found") return NotFound(new { error });
         if (error != null) return BadRequest(new { error });
@@ -702,7 +702,7 @@ public class FeedController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var (success, error) = await _feedRanking.RemoveReactionAsync(tenantId, id, userId.Value);
         if (error != null) return BadRequest(new { error });
         return Ok(new { message = "Reaction removed" });
@@ -711,7 +711,7 @@ public class FeedController : ControllerBase
     [HttpGet("{id}/reactions")]
     public async Task<IActionResult> GetReactions(int id)
     {
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var counts = await _feedRanking.GetReactionsAsync(tenantId, id);
         var total = counts.Values.Sum();
         return Ok(new { like = counts["like"], love = counts["love"], laugh = counts["laugh"], sad = counts["sad"], angry = counts["angry"], wow = counts["wow"], total });
@@ -720,7 +720,7 @@ public class FeedController : ControllerBase
     [HttpGet("mentions/search")]
     public async Task<IActionResult> SearchMentions([FromQuery] string? q)
     {
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         if (string.IsNullOrWhiteSpace(q)) return Ok(new { data = Array.Empty<object>() });
         var users = await _feedRanking.SearchMentionsAsync(tenantId, q);
         return Ok(new { data = users });
@@ -732,7 +732,7 @@ public class FeedController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var (share, error) = await _feedRanking.SharePostWithCommentAsync(tenantId, id, userId.Value, request.Comment);
         if (error == "Post not found") return NotFound(new { error });
         if (error != null) return BadRequest(new { error });
@@ -746,7 +746,7 @@ public class FeedController : ControllerBase
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
         if (post == null) return NotFound(new { error = "Post not found" });
 
@@ -772,7 +772,7 @@ public class FeedController : ControllerBase
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
         if (post == null) return NotFound(new { error = "Post not found" });
 
@@ -799,7 +799,7 @@ public class FeedController : ControllerBase
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
         if (string.IsNullOrWhiteSpace(request.Content)) return BadRequest(new { error = "Reply content is required" });
 
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var parent = await _db.PostComments
             .FirstOrDefaultAsync(c => c.Id == commentId && c.PostId == id);
         if (parent == null) return NotFound(new { error = "Comment not found" });
@@ -810,6 +810,7 @@ public class FeedController : ControllerBase
             UserId = userId.Value,
             Content = request.Content,
             ParentCommentId = commentId,
+            TenantId = tenantId,
             CreatedAt = DateTime.UtcNow,
         };
         _db.PostComments.Add(reply);
@@ -825,7 +826,7 @@ public class FeedController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
         if (post == null) return NotFound(new { error = "Post not found" });
 
@@ -845,7 +846,7 @@ public class FeedController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var tenantId = _tenantContext.TenantId ?? 0;
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var post = await _db.FeedPosts.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
         if (post == null) return NotFound(new { error = "Post not found" });
         if (post.UserId == userId.Value) return BadRequest(new { error = "Cannot mute yourself" });

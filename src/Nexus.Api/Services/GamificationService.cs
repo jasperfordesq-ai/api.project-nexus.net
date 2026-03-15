@@ -440,7 +440,7 @@ public class GamificationService
                 "Silver" => user.TotalXp >= 500,
                 "Gold" => user.TotalXp >= 1000,
                 "Platinum" => user.TotalXp >= 5000,
-                _ => exchangeCount >= 1
+                _ => false // Don't auto-award unrecognized badges
             };
 
             if (qualifies)
@@ -513,7 +513,7 @@ public class GamificationService
                 "Silver" => isEarned ? 100 : Math.Min(100, user.TotalXp / 500.0 * 100),
                 "Gold" => isEarned ? 100 : Math.Min(100, user.TotalXp / 1000.0 * 100),
                 "Platinum" => isEarned ? 100 : Math.Min(100, user.TotalXp / 5000.0 * 100),
-                _ => isEarned ? 100 : (exchangeCount >= 1 ? 100 : 0)
+                _ => isEarned ? 100 : 0 // Unknown badges show 0 progress
             };
 
             result.Add(new

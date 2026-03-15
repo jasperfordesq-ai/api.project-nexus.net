@@ -31,12 +31,23 @@ public class LockdownCheckMiddleware
     {
         var path = context.Request.Path.Value ?? "";
 
-        // Always allow health endpoints and admin endpoints
-        if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase))
+        // Always allow health endpoints
+        if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);
             return;
+        }
+
+        // Allow admin endpoints only if the user actually has admin or super_admin role
+        if (path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase))
+        {
+            var role = context.User?.FindFirst("role")?.Value;
+            if (role == "admin" || role == "super_admin")
+            {
+                await _next(context);
+                return;
+            }
+            // Non-admin users hitting admin paths during lockdown fall through to lockdown check
         }
 
         // Check lockdown status (cached for 10 seconds)

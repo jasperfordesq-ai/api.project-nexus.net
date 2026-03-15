@@ -29,11 +29,16 @@ let failedQueue: Array<{
 }> = [];
 
 const processQueue = (error: unknown, token: string | null) => {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (token) resolve(token);
-    else reject(error);
-  });
+  const queue = [...failedQueue];
   failedQueue = [];
+  queue.forEach(({ resolve, reject }) => {
+    try {
+      if (token) resolve(token);
+      else reject(error);
+    } catch {
+      // Prevent one failed callback from blocking the rest
+    }
+  });
 };
 
 axiosInstance.interceptors.response.use(

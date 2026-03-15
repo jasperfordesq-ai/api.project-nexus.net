@@ -8,7 +8,7 @@ import { Modal, Form, Input, Button, Tooltip, message } from "antd";
 import { SwapOutlined } from "@ant-design/icons";
 import { useLogout } from "@refinedev/core";
 import axiosInstance from "../../utils/axios";
-import { setToken, setRefreshToken, setStoredUser, getStoredUser, type StoredUser } from "../../utils/token";
+import { setToken, setRefreshToken, setStoredUser, getStoredUser, clearAuth, type StoredUser } from "../../utils/token";
 
 export const TenantSwitcher = () => {
   const [open, setOpen] = useState(false);
@@ -60,6 +60,7 @@ export const TenantSwitcher = () => {
 
       const adminRoles = ["admin", "super_admin"];
       if (!adminRoles.includes(user.role)) {
+        clearAuth();
         message.error("You don't have admin access on that tenant.");
         return;
       }

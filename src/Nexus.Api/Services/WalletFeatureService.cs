@@ -147,11 +147,10 @@ public class WalletFeatureService
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
 
-        // Determine effective receiver: if community fund (recipientId is null), use donor as both (self-transaction marked as donation)
-        // In practice, community fund donations go to a system account or are tracked separately.
-        // For now, if no recipient, we still need a receiver for the Transaction entity.
-        // We'll use the donor as receiver for community fund donations (amount is deducted, tracked as donation).
-        var effectiveReceiverId = recipientId ?? donorId;
+        // Determine effective receiver: if community fund (recipientId is null), use system account ID 0.
+        // This ensures the donor's balance decreases (sender != receiver) and the community fund
+        // is represented as a system account rather than creating a no-op self-transaction.
+        var effectiveReceiverId = recipientId ?? 0;
 
         await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
         try

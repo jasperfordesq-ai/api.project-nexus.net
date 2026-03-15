@@ -30,7 +30,7 @@ export function ServicesPage() {
   // Fetch categories dynamically from the backend
   useEffect(() => {
     const controller = new AbortController()
-    apiClient.get('/api/admin/categories', { signal: controller.signal })
+    apiClient.get('/api/categories', { signal: controller.signal })
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any

@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
   })
 
-  // Restore session from localStorage on mount
+  // Restore session from localStorage on mount and validate the token
   useEffect(() => {
     const storedUser = localStorage.getItem('nexus:user')
     const { access } = getStoredTokens()
@@ -50,8 +50,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedUser && access) {
       try {
         const user = JSON.parse(storedUser) as UserSummary
+        // Optimistically restore the session, then validate the token
         setState({ user, isAuthenticated: true, isLoading: false })
+        // Validate token with the backend — if invalid, clear the session
+        authApi.validate().catch(() => {
+          clearStoredTokens()
+          localStorage.removeItem('nexus:user')
+          setState({ user: null, isAuthenticated: false, isLoading: false })
+        })
       } catch {
+        clearStoredTokens()
+        localStorage.removeItem('nexus:user')
         setState({ user: null, isAuthenticated: false, isLoading: false })
       }
     } else {

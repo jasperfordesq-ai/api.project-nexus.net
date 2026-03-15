@@ -49,6 +49,7 @@
       {% endif %}
 
       {# Event details #}
+      {% set organizer = event.createdBy or event.created_by or event.organizer %}
       {{ govukSummaryList({
         rows: [
           {
@@ -71,15 +72,15 @@
           {
             key: { text: "Organised by" },
             value: {
-              html: "<a href='/members/" + (event.createdBy or event.created_by).id + "' class='govuk-link'>" +
-                    ((event.createdBy or event.created_by).firstName or (event.createdBy or event.created_by).first_name) + " " + ((event.createdBy or event.created_by).lastName or (event.createdBy or event.created_by).last_name) + "</a>"
+              html: "<a href='/members/" + organizer.id + "' class='govuk-link'>" +
+                    (organizer.firstName or organizer.first_name or "") + " " + (organizer.lastName or organizer.last_name or "") + "</a>"
             }
-          } if event.createdBy or event.created_by,
+          } if organizer,
           {
             key: { text: "Capacity" },
             value: {
               text: (event.attendeeCount or event.attendee_count or 0) + " attending" +
-                    (" / " + event.maxAttendees or event.max_attendees + " max" if event.maxAttendees or event.max_attendees else "")
+                    (" / " + (event.maxAttendees or event.max_attendees) + " max" if event.maxAttendees or event.max_attendees else "")
             }
           }
         ] | selectattr("key") | list

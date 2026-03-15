@@ -23,8 +23,17 @@ export function ProposeExchangePage() {
 
   useEffect(() => {
     if (listingId) {
-      apiClient.get<Listing>(`/api/listings/${listingId}`)
-        .then(r => setListing(r.data))
+      apiClient.get(`/api/listings/${listingId}`)
+        .then(r => {
+          const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+          const user = raw.user ?? raw.owner ?? {}
+          setListing({
+            id: raw.id,
+            title: raw.title ?? '',
+            creditRate: raw.creditRate ?? raw.credit_rate ?? 0,
+            userName: raw.userName ?? raw.user_name ?? (user.first_name || user.firstName ? `${user.first_name ?? user.firstName ?? ''} ${user.last_name ?? user.lastName ?? ''}`.trim() : 'Unknown'),
+          })
+        })
         .catch(() => setError('Could not load service details.'))
     }
   }, [listingId])

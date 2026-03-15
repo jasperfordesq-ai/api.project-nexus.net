@@ -25,6 +25,7 @@ public class JobVacancy : ITenantEntity
     public string? ContactEmail { get; set; }
     public string Status { get; set; } = "draft"; // draft, active, filled, expired, cancelled
     public bool IsFeatured { get; set; }
+    public DateTime? FeaturedUntil { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public DateTime? FilledAt { get; set; }
     public int ViewCount { get; set; }

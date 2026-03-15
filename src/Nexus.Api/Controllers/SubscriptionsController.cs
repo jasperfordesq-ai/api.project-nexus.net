@@ -84,8 +84,8 @@ public class SubscriptionsController : ControllerBase
     public async Task<IActionResult> AdminListPlans()
     {
         if (!_tenantContext.TenantId.HasValue) return BadRequest(new { error = "Tenant context not resolved" });
-        var plans = await _svc.ListPlansAsync(_tenantContext.TenantId.Value);
-        return Ok(new { data = plans.Select(p => new { id = p.Id, name = p.Name, price = p.Price, is_active = p.IsActive }) });
+        var plans = await _svc.ListPlansAsync(_tenantContext.TenantId.Value, adminView: true);
+        return Ok(new { data = plans.Select(p => new { id = p.Id, name = p.Name, price = p.Price, is_active = p.IsActive, is_public = p.IsPublic }) });
     }
 
     [HttpPost("api/admin/subscriptions/plans")]

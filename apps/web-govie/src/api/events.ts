@@ -6,6 +6,12 @@
 import apiClient from './client'
 import type { PaginatedResponse, PaginationParams } from './types'
 
+/** Safely extract an array from backend response variants */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractItems(raw: any): any[] {
+  return raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+}
+
 export interface Event {
   id: number
   title: string
@@ -29,30 +35,61 @@ export interface EventRsvp {
   rsvpAt: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapEvent(raw: any): Event {
+  const createdBy = raw?.created_by ?? raw?.createdBy
+  return {
+    ...raw,
+    organizerId: createdBy?.id ?? raw.organizerId ?? raw.organizer_id,
+    organizerName: createdBy
+      ? `${createdBy.first_name ?? createdBy.firstName ?? ''} ${createdBy.last_name ?? createdBy.lastName ?? ''}`.trim()
+      : raw.organizerName ?? raw.organizer_name ?? '',
+    startsAt: raw.starts_at ?? raw.startsAt,
+    endsAt: raw.ends_at ?? raw.endsAt,
+    rsvpCount: raw.rsvp_count ?? raw.rsvpCount ?? 0,
+    isCancelled: raw.is_cancelled ?? raw.isCancelled ?? false,
+    maxAttendees: raw.max_attendees ?? raw.maxAttendees,
+    myRsvpStatus: raw.my_rsvp_status ?? raw.myRsvpStatus,
+    tenantId: raw.tenant_id ?? raw.tenantId,
+  }
+}
+
 export const eventsApi = {
   list: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<Event>>('/api/events', { params }).then((r) => r.data),
+    apiClient.get('/api/events', { params }).then((r) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = r.data as any
+      const items = extractItems(raw)
+      const pagination = raw?.pagination
+      return {
+        items: items.map(mapEvent),
+        totalCount: pagination?.total ?? raw?.totalCount ?? items.length,
+        page: pagination?.page ?? raw?.page ?? 1,
+        pageSize: pagination?.limit ?? raw?.pageSize ?? items.length,
+        totalPages: pagination?.pages ?? raw?.totalPages ?? 1,
+      } as PaginatedResponse<Event>
+    }),
 
   my: () =>
-    apiClient.get<Event[]>('/api/events/my').then((r) => r.data),
+    apiClient.get('/api/events/my').then((r) => extractItems(r.data).map(mapEvent)),
 
   get: (id: number) =>
-    apiClient.get<Event>(`/api/events/${id}`).then((r) => r.data),
+    apiClient.get(`/api/events/${id}`).then((r) => mapEvent(r.data)),
 
   create: (payload: Partial<Event>) =>
-    apiClient.post<Event>('/api/events', payload).then((r) => r.data),
+    apiClient.post<Event>('/api/events', payload).then((r) => mapEvent(r.data)),
 
   update: (id: number, payload: Partial<Event>) =>
-    apiClient.put<Event>(`/api/events/${id}`, payload).then((r) => r.data),
+    apiClient.put<Event>(`/api/events/${id}`, payload).then((r) => mapEvent(r.data)),
 
   cancel: (id: number) =>
     apiClient.put(`/api/events/${id}/cancel`).then((r) => r.data),
 
   rsvps: (id: number) =>
-    apiClient.get<EventRsvp[]>(`/api/events/${id}/rsvps`).then((r) => r.data),
+    apiClient.get(`/api/events/${id}/rsvps`).then((r) => extractItems(r.data) as EventRsvp[]),
 
-  rsvp: (id: number) =>
-    apiClient.post(`/api/events/${id}/rsvp`).then((r) => r.data),
+  rsvp: (id: number, status: string = 'going') =>
+    apiClient.post(`/api/events/${id}/rsvp`, { status }).then((r) => r.data),
 
   cancelRsvp: (id: number) =>
     apiClient.delete(`/api/events/${id}/rsvp`).then((r) => r.data),

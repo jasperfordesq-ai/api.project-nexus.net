@@ -6,6 +6,12 @@
 import apiClient from './client'
 import type { PaginatedResponse, PaginationParams } from './types'
 
+/** Safely extract an array from backend response variants */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractItems(raw: any): any[] {
+  return raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+}
+
 export interface FeedPost {
   id: number
   authorId: number
@@ -34,7 +40,19 @@ export interface FeedComment {
 
 export const feedApi = {
   list: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<FeedPost>>('/api/feed', { params }).then((r) => r.data),
+    apiClient.get('/api/feed', { params }).then((r) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = r.data as any
+      const items = extractItems(raw)
+      const pagination = raw?.pagination
+      return {
+        items: items as FeedPost[],
+        totalCount: pagination?.total ?? raw?.totalCount ?? items.length,
+        page: pagination?.page ?? raw?.page ?? 1,
+        pageSize: pagination?.limit ?? raw?.pageSize ?? items.length,
+        totalPages: pagination?.pages ?? raw?.totalPages ?? 1,
+      } as PaginatedResponse<FeedPost>
+    }),
 
   get: (id: number) =>
     apiClient.get<FeedPost>(`/api/feed/${id}`).then((r) => r.data),
@@ -55,7 +73,7 @@ export const feedApi = {
     apiClient.delete(`/api/feed/${id}/like`).then((r) => r.data),
 
   comments: (id: number) =>
-    apiClient.get<FeedComment[]>(`/api/feed/${id}/comments`).then((r) => r.data),
+    apiClient.get(`/api/feed/${id}/comments`).then((r) => extractItems(r.data) as FeedComment[]),
 
   addComment: (id: number, content: string) =>
     apiClient.post<FeedComment>(`/api/feed/${id}/comments`, { content }).then((r) => r.data),

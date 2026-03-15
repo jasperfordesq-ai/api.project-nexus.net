@@ -27,6 +27,39 @@ export interface Message {
   sentAt: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapConversation(raw: any): Conversation {
+  const participant = raw?.participant ?? raw?.other_user
+  return {
+    id: raw.id,
+    otherUserId: participant?.id ?? raw.otherUserId ?? raw.other_user_id,
+    otherUserName: participant
+      ? `${participant.first_name ?? participant.firstName ?? ''} ${participant.last_name ?? participant.lastName ?? ''}`.trim()
+      : raw.otherUserName ?? '',
+    otherUserAvatarUrl: participant?.avatar_url ?? participant?.avatarUrl ?? raw.otherUserAvatarUrl,
+    lastMessage: raw.last_message ?? raw.lastMessage,
+    lastMessageAt: raw.last_message_at ?? raw.lastMessageAt,
+    unreadCount: raw.unread_count ?? raw.unreadCount ?? 0,
+    tenantId: raw.tenant_id ?? raw.tenantId,
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapMessage(raw: any): Message {
+  const sender = raw?.sender
+  return {
+    id: raw.id,
+    conversationId: raw.conversation_id ?? raw.conversationId,
+    senderId: sender?.id ?? raw.senderId ?? raw.sender_id,
+    senderName: sender
+      ? `${sender.first_name ?? sender.firstName ?? ''} ${sender.last_name ?? sender.lastName ?? ''}`.trim()
+      : raw.senderName ?? '',
+    content: raw.content,
+    isRead: raw.is_read ?? raw.isRead ?? false,
+    sentAt: raw.created_at ?? raw.createdAt ?? raw.sentAt ?? raw.sent_at,
+  }
+}
+
 export const messagesApi = {
   conversations: (params?: PaginationParams) =>
     apiClient.get('/api/messages', { params: { page: params?.page, limit: params?.pageSize } }).then((r) => {
@@ -35,7 +68,7 @@ export const messagesApi = {
       const data = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
       const pagination = raw?.pagination
       return {
-        items: data,
+        items: data.map(mapConversation),
         totalCount: pagination?.total ?? data.length,
         page: pagination?.page ?? 1,
         pageSize: pagination?.limit ?? data.length,
@@ -50,7 +83,7 @@ export const messagesApi = {
       const messages = raw?.messages ?? raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
       const pagination = raw?.pagination
       return {
-        items: messages,
+        items: messages.map(mapMessage),
         totalCount: pagination?.total ?? messages.length,
         page: pagination?.page ?? 1,
         pageSize: pagination?.limit ?? messages.length,
@@ -62,11 +95,15 @@ export const messagesApi = {
     apiClient.post<Message>('/api/messages', {
       recipient_id: payload.recipientId,
       content: payload.content,
-    }).then((r) => r.data),
+    }).then((r) => mapMessage(r.data)),
 
   markRead: (conversationId: number) =>
     apiClient.put(`/api/messages/${conversationId}/read`).then((r) => r.data),
 
   unreadCount: () =>
-    apiClient.get<{ count: number }>('/api/messages/unread-count').then((r) => r.data),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    apiClient.get('/api/messages/unread-count').then((r) => {
+      const raw = r.data as any
+      return { count: raw?.unread_count ?? raw?.count ?? 0 }
+    }),
 }

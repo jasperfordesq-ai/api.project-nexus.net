@@ -105,9 +105,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await api.logout();
-    setUser(null);
-    router.push("/login");
+    try {
+      await api.logout();
+    } catch {
+      // Ignore logout API errors (network failure, expired token, etc.)
+    } finally {
+      removeToken();
+      setUser(null);
+      router.push("/login");
+    }
   }, [router]);
 
   const refreshUser = useCallback(async () => {

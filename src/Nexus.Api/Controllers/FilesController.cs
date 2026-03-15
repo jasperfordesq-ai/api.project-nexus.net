@@ -92,8 +92,14 @@ public class FilesController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetFile(int id)
     {
+        var tenantId = User.GetTenantId();
+        if (tenantId == null) return Unauthorized(new { error = "Invalid token" });
+
         var file = await _fileService.GetByIdAsync(id);
         if (file == null)
+            return NotFound(new { error = "File not found" });
+
+        if (file.TenantId != tenantId.Value)
             return NotFound(new { error = "File not found" });
 
         return Ok(MapFileResponse(file));
@@ -105,14 +111,21 @@ public class FilesController : ControllerBase
     [HttpGet("{id:int}/download")]
     public async Task<IActionResult> DownloadFile(int id)
     {
+        var tenantId = User.GetTenantId();
+        if (tenantId == null) return Unauthorized(new { error = "Invalid token" });
+
         var file = await _fileService.GetByIdAsync(id);
         if (file == null)
+            return NotFound(new { error = "File not found" });
+
+        if (file.TenantId != tenantId.Value)
             return NotFound(new { error = "File not found" });
 
         var fullPath = _fileService.GetFullPath(file);
         if (!System.IO.File.Exists(fullPath))
             return NotFound(new { error = "File not found on disk" });
 
+        Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{file.OriginalFilename}\"");
         return PhysicalFile(fullPath, file.ContentType, file.OriginalFilename);
     }
 

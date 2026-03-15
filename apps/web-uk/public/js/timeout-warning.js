@@ -132,10 +132,13 @@
       var seconds = countdownSeconds % 60;
       var text = '';
 
-      if (minutes > 0) {
-        text = minutes + ' minute' + (minutes !== 1 ? 's' : '') + ' and ';
+      if (minutes > 0 && seconds > 0) {
+        text = minutes + ' minute' + (minutes !== 1 ? 's' : '') + ' and ' + seconds + ' second' + (seconds !== 1 ? 's' : '');
+      } else if (minutes > 0) {
+        text = minutes + ' minute' + (minutes !== 1 ? 's' : '');
+      } else {
+        text = seconds + ' second' + (seconds !== 1 ? 's' : '');
       }
-      text += seconds + ' second' + (seconds !== 1 ? 's' : '');
 
       countdownEl.textContent = text;
 

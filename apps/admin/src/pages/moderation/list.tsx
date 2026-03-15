@@ -19,17 +19,22 @@ export const ModerationList = () => {
 
   const [rejectId, setRejectId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [rejecting, setRejecting] = useState(false);
 
   const handleApprove = async (id: number) => {
     Modal.confirm({
       title: "Approve this listing?",
       onOk: async () => {
         try {
+          setApprovingId(id);
           await axiosInstance.put(`/api/admin/listings/${id}/approve`);
           message.success("Listing approved");
           tableQueryResult.refetch();
         } catch (err: any) {
           message.error(err?.response?.data?.message || "Failed to approve");
+        } finally {
+          setApprovingId(null);
         }
       },
     });
@@ -38,6 +43,7 @@ export const ModerationList = () => {
   const submitReject = async () => {
     if (!rejectId) return;
     try {
+      setRejecting(true);
       await axiosInstance.put(`/api/admin/listings/${rejectId}/reject`, { reason: rejectReason || "Does not meet guidelines" });
       message.success("Listing rejected");
       setRejectId(null);
@@ -45,6 +51,8 @@ export const ModerationList = () => {
       tableQueryResult.refetch();
     } catch (err: any) {
       message.error(err?.response?.data?.message || "Failed to reject");
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -72,6 +80,8 @@ export const ModerationList = () => {
                   type="primary"
                   size="small"
                   icon={<CheckOutlined />}
+                  loading={approvingId === record.id}
+                  disabled={approvingId !== null || rejecting}
                   onClick={() => handleApprove(record.id)}
                 >
                   Approve
@@ -80,6 +90,7 @@ export const ModerationList = () => {
                   danger
                   size="small"
                   icon={<CloseOutlined />}
+                  disabled={approvingId !== null || rejecting}
                   onClick={() => { setRejectId(record.id); setRejectReason(""); }}
                 >
                   Reject
@@ -96,6 +107,7 @@ export const ModerationList = () => {
         onCancel={() => setRejectId(null)}
         okText="Reject"
         okButtonProps={{ danger: true }}
+        confirmLoading={rejecting}
       >
         <Input.TextArea
           rows={3}

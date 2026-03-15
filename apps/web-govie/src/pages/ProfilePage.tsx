@@ -86,12 +86,12 @@ export function ProfilePage() {
         <section aria-labelledby="actions-heading" style={{ border: '1px solid var(--nexus-color-border)', borderRadius: 8, padding: 'var(--nexus-space-5)' }}>
           <h2 id="actions-heading" style={{ margin: '0 0 var(--nexus-space-4)', fontSize: 18 }}>Quick actions</h2>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--nexus-space-3)' }}>
-            {[{ to: '/services/submit', label: 'Post a new service', icon: '➕' }, { to: '/services', label: 'Browse services', icon: '🔍' }, { to: '/profile/edit', label: 'Edit profile', icon: '✏️' }].map((a) => (
+            {[{ to: '/services/submit', label: 'Post a new service', icon: '➕', iconLabel: 'Add' }, { to: '/services', label: 'Browse services', icon: '🔍', iconLabel: 'Search' }, { to: '/profile/edit', label: 'Edit profile', icon: '✏️', iconLabel: 'Edit' }].map((a) => (
               <li key={a.to}>
-                <Link to={a.to} style={{ display: 'flex', alignItems: 'center', gap: 'var(--nexus-space-3)', padding: 'var(--nexus-space-3)', borderRadius: 4, textDecoration: 'none', color: 'var(--nexus-color-text)', border: '1px solid var(--nexus-color-border)' }}>
-                  <span aria-hidden="true" style={{ fontSize: 20 }}>{a.icon}</span>
+                <Link to={a.to} aria-label={a.label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--nexus-space-3)', padding: 'var(--nexus-space-3)', borderRadius: 4, textDecoration: 'none', color: 'var(--nexus-color-text)', border: '1px solid var(--nexus-color-border)' }}>
+                  <span aria-hidden="true" role="img" aria-label={a.iconLabel} style={{ fontSize: 20 }}>{a.icon}</span>
                   <span>{a.label}</span>
-                  <span style={{ marginLeft: 'auto', color: 'var(--nexus-color-text-secondary)' }}>›</span>
+                  <span aria-hidden="true" style={{ marginLeft: 'auto', color: 'var(--nexus-color-text-secondary)' }}>›</span>
                 </Link>
               </li>
             ))}

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Button,
   Dropdown,
@@ -101,6 +101,7 @@ const createItems = [
 ];
 
 export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: NavbarProps) {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [internalUnreadCount, setInternalUnreadCount] = useState(0);
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
@@ -251,7 +252,7 @@ export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: Nav
                   aria-label="Community navigation"
                   className="min-w-[240px]"
                   classNames={dropdownClassNames}
-                  onAction={(key) => { closeAllDropdowns(); window.location.href = String(key); }}
+                  onAction={(key) => { closeAllDropdowns(); router.push(String(key)); }}
                 >
                   {communityItems.map((item) => (
                     <DropdownItem
@@ -285,7 +286,7 @@ export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: Nav
                   aria-label="Explore navigation"
                   className="min-w-[240px]"
                   classNames={dropdownClassNames}
-                  onAction={(key) => { closeAllDropdowns(); window.location.href = String(key); }}
+                  onAction={(key) => { closeAllDropdowns(); router.push(String(key)); }}
                 >
                   {exploreItems.map((item) => (
                     <DropdownItem
@@ -377,7 +378,7 @@ export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: Nav
                     <DropdownMenu
                       aria-label="Create actions"
                       classNames={dropdownClassNames}
-                      onAction={(key) => { closeAllDropdowns(); window.location.href = String(key); }}
+                      onAction={(key) => { closeAllDropdowns(); router.push(String(key)); }}
                     >
                       {createItems.map((item) => (
                         <DropdownItem key={item.href} startContent={<item.icon className="w-4 h-4" />}>
@@ -470,7 +471,7 @@ export function Navbar({ user, unreadCount: externalUnreadCount, onLogout }: Nav
                         if (k === "profile-header") return;
                         if (k === "logout") { onLogout?.(); closeAllDropdowns(); return; }
                         closeAllDropdowns();
-                        window.location.href = k;
+                        router.push(k);
                       }}
                     >
                       <DropdownSection showDivider>

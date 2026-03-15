@@ -456,12 +456,12 @@ public class FederationService
                 userId);
 
             // Create a local credit transaction
-            // The local user receives credits for providing a service to the remote user
-            // (or sends credits for receiving a service, depending on listing type)
+            // The local user receives credits for providing a service to the remote user.
+            // SenderId 0 represents the federation/system account (credits come from the federated network).
             var transaction = new Transaction
             {
                 TenantId = exchange.TenantId,
-                SenderId = userId, // Placeholder: in cross-tenant, we use the local user as both sender/receiver
+                SenderId = 0, // System/federation account — credits originate from the federated partner tenant
                 ReceiverId = userId,
                 Amount = adjustedHours,
                 Description = $"Federated exchange with {exchange.RemoteUserDisplayName} (Tenant {exchange.PartnerTenantId})",

@@ -53,60 +53,76 @@ router.get('/', asyncRoute(async (req, res) => {
   // Build activity feed from various sources
   const activityItems = [];
 
-  // Add recent notifications
-  const notifications = notificationsData.items || notificationsData.data || [];
-  notifications.slice(0, 3).forEach(n => {
-    activityItems.push({
-      type: 'notification',
-      icon: '🔔',
-      content: n.message || n.content,
-      link: n.link || '/notifications',
-      time: n.createdAt || n.created_at,
-      read: (n.readAt || n.read_at) != null
+  // Add recent notifications (with null checks)
+  const notifications = (notificationsData && (notificationsData.items || notificationsData.data)) || [];
+  if (Array.isArray(notifications)) {
+    notifications.slice(0, 3).forEach(n => {
+      if (!n) return;
+      activityItems.push({
+        type: 'notification',
+        icon: '🔔',
+        content: n.message || n.content || '',
+        link: n.link || '/notifications',
+        time: n.createdAt || n.created_at,
+        read: (n.readAt || n.read_at) != null
+      });
     });
-  });
+  }
 
-  // Add recent feed posts
-  const posts = feedData.items || feedData.data || [];
-  posts.slice(0, 3).forEach(p => {
-    activityItems.push({
-      type: 'post',
-      icon: '📝',
-      content: `${p.user?.firstName || p.user?.first_name || 'Someone'} posted: "${(p.content || '').substring(0, 50)}${p.content?.length > 50 ? '...' : ''}"`,
-      link: `/feed/${p.id}`,
-      time: p.createdAt || p.created_at
+  // Add recent feed posts (with null checks)
+  const posts = (feedData && (feedData.items || feedData.data)) || [];
+  if (Array.isArray(posts)) {
+    posts.slice(0, 3).forEach(p => {
+      if (!p) return;
+      const postContent = p.content || '';
+      activityItems.push({
+        type: 'post',
+        icon: '📝',
+        content: `${p.user?.firstName || p.user?.first_name || 'Someone'} posted: "${postContent.substring(0, 50)}${postContent.length > 50 ? '...' : ''}"`,
+        link: `/feed/${p.id}`,
+        time: p.createdAt || p.created_at
+      });
     });
-  });
+  }
 
   // Sort by time, most recent first
-  activityItems.sort((a, b) => new Date(b.time) - new Date(a.time));
+  activityItems.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
 
-  // Get upcoming events (next 3)
-  const events = eventsData.items || eventsData.data || [];
+  // Get upcoming events (next 3) with null checks
+  const events = (eventsData && (eventsData.items || eventsData.data)) || [];
   const now = new Date();
-  const upcomingEvents = events
+  const upcomingEvents = Array.isArray(events) ? events
     .filter(e => {
+      if (!e) return false;
       const startsAt = e.starts_at || e.startsAt;
       const isPast = startsAt ? new Date(startsAt) < now : false;
       // my_rsvp is a string from backend (e.g. "Going"), not an object
-      const rsvpStatus = (typeof (e.my_rsvp || e.myRsvp) === 'string')
-        ? (e.my_rsvp || e.myRsvp)
-        : (e.my_rsvp || e.myRsvp)?.status || '';
+      const rsvpValue = e.my_rsvp || e.myRsvp;
+      const rsvpStatus = (typeof rsvpValue === 'string')
+        ? rsvpValue
+        : (rsvpValue && rsvpValue.status) || '';
       return !isPast && rsvpStatus.toLowerCase() === 'going';
     })
-    .slice(0, 3);
+    .slice(0, 3) : [];
+
+  const safeBalance = balanceData != null ? (balanceData.balance ?? balanceData) : 0;
+  const safeListings = (listingsData && (listingsData.items || listingsData.data)) || (Array.isArray(listingsData) ? listingsData : []);
+  const safeUnreadCount = unreadData != null ? (unreadData.unread_count ?? unreadData.unreadCount ?? unreadData.count ?? 0) : 0;
+  const safeTransactions = (transactionsData && (transactionsData.items || transactionsData.data)) || (Array.isArray(transactionsData) ? transactionsData : []);
+  const safeGroups = (groupsData && (groupsData.items || groupsData.data)) || [];
+  const safeGamification = (gamificationData && gamificationData.profile) || { level: 1, total_xp: 0, totalXp: 0 };
 
   res.render('dashboard/index', {
     title: 'Dashboard',
-    profile,
-    balance: balanceData.balance ?? balanceData,
-    listings: listingsData.items || listingsData.data || (Array.isArray(listingsData) ? listingsData : []),
-    unreadCount: unreadData.unread_count ?? unreadData.unreadCount ?? unreadData.count ?? 0,
-    recentTransactions: transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []),
+    profile: profile || {},
+    balance: safeBalance,
+    listings: safeListings,
+    unreadCount: safeUnreadCount,
+    recentTransactions: safeTransactions,
     activityItems: activityItems.slice(0, 5),
     upcomingEvents,
-    myGroups: (groupsData.items || groupsData.data || []).slice(0, 3),
-    gamification: gamificationData.profile || { level: 1, total_xp: 0, totalXp: 0 },
+    myGroups: Array.isArray(safeGroups) ? safeGroups.slice(0, 3) : [],
+    gamification: safeGamification,
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));

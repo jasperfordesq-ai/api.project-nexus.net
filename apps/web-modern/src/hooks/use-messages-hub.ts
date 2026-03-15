@@ -109,8 +109,8 @@ export function useMessagesHub({
       return;
     }
 
-    const token = getToken();
-    if (!token) {
+    const initialToken = getToken();
+    if (!initialToken) {
       logger.warn("MessagesHub: No auth token available, skipping connection");
       return;
     }
@@ -123,7 +123,7 @@ export function useMessagesHub({
 
     const connection = new HubConnectionBuilder()
       .withUrl(hubUrl, {
-        accessTokenFactory: () => token,
+        accessTokenFactory: () => getToken() || "",
         withCredentials: false, // Don't send cookies - we use JWT Bearer token
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])

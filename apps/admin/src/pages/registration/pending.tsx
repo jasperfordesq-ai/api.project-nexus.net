@@ -23,8 +23,8 @@ export const RegistrationPendingPage = () => {
   });
 
   const raw = data?.data as any;
-  const pending = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
-  const totalCount = raw?.total || raw?.totalCount || pending.length;
+  const pending = raw?.items || raw?.data || (Array.isArray(raw) ? raw : []);
+  const totalCount = raw?.total || raw?.totalCount || raw?.count || pending.length;
 
   const handleApprove = (userId: number) => {
     Modal.confirm({
@@ -64,7 +64,7 @@ export const RegistrationPendingPage = () => {
       <Title level={4}>Pending Registrations</Title>
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={pending} rowKey="id" size="middle" pagination={{
+          <Table dataSource={pending} rowKey={(r: any) => r.id || r.user_id} size="middle" pagination={{
                 current: page,
                 pageSize,
                 total: totalCount,
@@ -78,8 +78,8 @@ export const RegistrationPendingPage = () => {
             <Table.Column dataIndex="created_at" title="Applied" render={(d: string) => d ? dayjs(d).format("DD MMM YYYY") : "—"} />
             <Table.Column title="Actions" render={(_, record: any) => (
               <Space>
-                <Button type="primary" size="small" icon={<CheckOutlined />} onClick={() => handleApprove(record.id)}>Approve</Button>
-                <Button danger size="small" icon={<CloseOutlined />} onClick={() => handleReject(record.id)}>Reject</Button>
+                <Button type="primary" size="small" icon={<CheckOutlined />} onClick={() => handleApprove(record.id || record.user_id)}>Approve</Button>
+                <Button danger size="small" icon={<CloseOutlined />} onClick={() => handleReject(record.id || record.user_id)}>Reject</Button>
               </Space>
             )} />
           </Table>

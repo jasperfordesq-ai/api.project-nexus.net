@@ -85,12 +85,12 @@ export const EventsAdminPage = () => {
             }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
-            <Table.Column dataIndex="status" title="Status" render={(s: string) => <Tag color={s === "cancelled" ? "red" : s === "active" ? "green" : "default"}>{s}</Tag>} />
-            <Table.Column dataIndex="start_date" title="Start" render={(d: string) => d ? dayjs(d).format("DD MMM YYYY HH:mm") : "—"} />
+            <Table.Column dataIndex="is_cancelled" title="Status" render={(v: boolean) => <Tag color={v ? "red" : "green"}>{v ? "Cancelled" : "Active"}</Tag>} />
+            <Table.Column dataIndex="starts_at" title="Start" render={(d: string) => d ? dayjs(d).format("DD MMM YYYY HH:mm") : "—"} />
             <Table.Column dataIndex="rsvp_count" title="RSVPs" />
             <Table.Column title="Actions" render={(_, r: any) => (
               <Space>
-                {r.status !== "cancelled" && <Button size="small" onClick={() => handleCancel(r.id)}>Cancel</Button>}
+                {!r.is_cancelled && <Button size="small" onClick={() => handleCancel(r.id)}>Cancel</Button>}
                 <Button size="small" danger onClick={() => handleDelete(r.id)}>Delete</Button>
               </Space>
             )} />

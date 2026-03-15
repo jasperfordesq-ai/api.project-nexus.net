@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import {
   Modal,
   ModalContent,
@@ -80,7 +80,7 @@ export interface ConfirmModalProps {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel?: () => void;
   variant?: "danger" | "warning" | "info";
   isLoading?: boolean;
@@ -96,12 +96,25 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
   variant = "info",
-  isLoading = false,
+  isLoading: externalLoading = false,
 }: ConfirmModalProps) {
+  const [internalLoading, setInternalLoading] = useState(false);
+  const isLoading = externalLoading || internalLoading;
+
   const variantStyles = {
     danger: "bg-red-500 hover:bg-red-600",
     warning: "bg-amber-500 hover:bg-amber-600",
     info: "bg-indigo-500 hover:bg-indigo-600",
+  };
+
+  const handleConfirm = async () => {
+    setInternalLoading(true);
+    try {
+      await onConfirm();
+    } finally {
+      setInternalLoading(false);
+      onOpenChange(false);
+    }
   };
 
   return (
@@ -117,15 +130,13 @@ export function ConfirmModal({
               onCancel?.();
               onOpenChange(false);
             }}
-            className="flex-1 px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors disabled:opacity-50"
           >
             {cancelLabel}
           </button>
           <button
-            onClick={() => {
-              onConfirm();
-              onOpenChange(false);
-            }}
+            onClick={handleConfirm}
             disabled={isLoading}
             className={`flex-1 px-4 py-2 rounded-lg text-white transition-colors ${variantStyles[variant]} disabled:opacity-50`}
           >

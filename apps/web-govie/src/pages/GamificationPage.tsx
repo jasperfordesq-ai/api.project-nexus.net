@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
 import { isApiError } from '../context/AuthContext'
 
-interface GamProfile { totalXp: number; level: number; xpToNextLevel: number; xpForCurrentLevel: number; streak: number; rank?: number }
+interface GamProfile { totalXp: number; level: number; nextLevelXp: number; currentLevelXp: number; streak: number; rank?: number }
 interface Badge { id: number; name: string; description: string; iconUrl?: string; earnedAt?: string }
 
 export function GamificationPage() {
@@ -21,7 +21,17 @@ export function GamificationPage() {
     const controller = new AbortController()
     const signal = controller.signal
     Promise.all([
-      apiClient.get<GamProfile>('/api/gamification/profile', { signal }).then(r => r.data),
+      apiClient.get('/api/gamification/profile', { signal }).then(r => {
+        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        return {
+          totalXp: raw.totalXp ?? raw.total_xp ?? 0,
+          level: raw.level ?? 0,
+          nextLevelXp: raw.nextLevelXp ?? raw.next_level_xp ?? 0,
+          currentLevelXp: raw.currentLevelXp ?? raw.current_level_xp ?? 0,
+          streak: raw.streak ?? 0,
+          rank: raw.rank ?? undefined,
+        } as GamProfile
+      }),
       apiClient.get<Badge[]>('/api/gamification/badges/my', { signal }).then(r => r.data ?? []),
     ])
       .then(([p, b]) => { if (!signal.aborted) { setProfile(p); setBadges(b) } })
@@ -33,8 +43,8 @@ export function GamificationPage() {
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading gamification…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
-  const xpRange = profile ? (profile.xpToNextLevel - profile.xpForCurrentLevel) : 0
-  const xpProgress = profile && xpRange > 0 ? Math.min(100, Math.max(0, Math.round(((profile.totalXp - profile.xpForCurrentLevel) / xpRange) * 100))) : 0
+  const xpRange = profile ? (profile.nextLevelXp - profile.currentLevelXp) : 0
+  const xpProgress = profile && xpRange > 0 ? Math.min(100, Math.max(0, Math.round(((profile.totalXp - profile.currentLevelXp) / xpRange) * 100))) : 0
 
   return (
     <div className="nexus-container">
@@ -56,7 +66,7 @@ export function GamificationPage() {
             <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 4, height: 8, marginBottom: 'var(--nexus-space-2)', overflow: 'hidden' }}>
               <div style={{ width: `${xpProgress}%`, height: '100%', background: 'white', borderRadius: 4, transition: 'width 0.5s' }} role="progressbar" aria-valuenow={xpProgress} aria-valuemin={0} aria-valuemax={100} aria-label="XP progress" />
             </div>
-            <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>{profile.totalXp} XP &bull; {profile.xpToNextLevel - profile.totalXp} to level {profile.level + 1}</p>
+            <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>{profile.totalXp} XP &bull; {profile.nextLevelXp - profile.totalXp} to level {profile.level + 1}</p>
           </section>
 
           {/* Streak */}
@@ -86,7 +96,9 @@ export function GamificationPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--nexus-space-4)' }}>
           {badges.map(badge => (
             <div key={badge.id} className="nexus-card" style={{ textAlign: 'center', padding: 'var(--nexus-space-5)' }}>
-              <div style={{ fontSize: 48, marginBottom: 'var(--nexus-space-3)' }} aria-hidden="true">{badge.iconUrl ?? '🏅'}</div>
+              <div style={{ fontSize: 48, marginBottom: 'var(--nexus-space-3)' }} aria-hidden="true">
+                {badge.iconUrl ? <img src={badge.iconUrl} alt="" style={{ width: 48, height: 48, objectFit: 'contain' }} /> : '🏅'}
+              </div>
               <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 var(--nexus-space-1)' }}>{badge.name}</h3>
               <p style={{ margin: '0 0 var(--nexus-space-2)', fontSize: 13, color: 'var(--nexus-color-text-secondary)' }}>{badge.description}</p>
               {badge.earnedAt && <p style={{ margin: 0, fontSize: 11, color: 'var(--nexus-color-text-secondary)' }}>Earned {new Date(badge.earnedAt).toLocaleDateString('en-IE')}</p>}

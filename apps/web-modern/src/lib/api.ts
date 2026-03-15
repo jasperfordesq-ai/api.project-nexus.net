@@ -620,11 +620,18 @@ function normalizeMessage(raw: any): Message {
 
 function normalizeConversation(raw: any): Conversation {
   if (!raw) return raw;
+  // Backend returns `participant` (singular object), not `participants` array
+  const participants: User[] = raw.participant
+    ? [normalizeUser(raw.participant)].filter(Boolean) as User[]
+    : (raw.participants ?? []).map((p: any) => normalizeUser(p)).filter(Boolean) as User[];
+  const participant_ids: number[] = raw.participantIds ?? raw.participant_ids ??
+    (raw.participant ? [raw.participant.id] : participants.map((p) => p.id));
+  const lastMsg = raw.lastMessage ?? raw.last_message ?? raw.last_message;
   return {
     id: raw.id,
-    participant_ids: raw.participantIds ?? raw.participant_ids ?? [],
-    participants: (raw.participants ?? []).map((p: any) => normalizeUser(p)).filter(Boolean) as User[],
-    last_message: raw.lastMessage ?? raw.last_message ? normalizeMessage(raw.lastMessage ?? raw.last_message) : undefined,
+    participant_ids,
+    participants,
+    last_message: lastMsg ? normalizeMessage(lastMsg) : undefined,
     unread_count: raw.unreadCount ?? raw.unread_count ?? 0,
     created_at: raw.createdAt ?? raw.created_at ?? '',
     updated_at: raw.updatedAt ?? raw.updated_at ?? '',
@@ -838,6 +845,7 @@ function normalizeReview(raw: any): Review {
 }
 
 function normalizePost(raw: any): Post {
+  const authorRaw = raw.user ?? raw.author;
   return {
     id: raw.id,
     author_id: raw.user?.id ?? raw.author?.id ?? raw.authorId ?? raw.author_id ?? 0,
@@ -846,7 +854,7 @@ function normalizePost(raw: any): Post {
     like_count: raw.likeCount ?? raw.like_count ?? 0,
     comment_count: raw.commentCount ?? raw.comment_count ?? 0,
     is_liked: raw.isLiked ?? raw.is_liked ?? false,
-    author: normalizeUser(raw.user ?? raw.author),
+    author: authorRaw ? normalizeUser(authorRaw) : undefined as any,
     group_id: raw.groupId ?? raw.group_id ?? raw.group?.id,
     group: raw.group ? normalizeGroup(raw.group) : undefined,
     created_at: raw.createdAt ?? raw.created_at ?? '',
@@ -855,12 +863,13 @@ function normalizePost(raw: any): Post {
 }
 
 function normalizeComment(raw: any): Comment {
+  const authorRaw = raw.user ?? raw.author;
   return {
     id: raw.id,
     post_id: raw.postId ?? raw.post_id ?? 0,
     author_id: raw.user?.id ?? raw.author?.id ?? raw.authorId ?? raw.author_id ?? 0,
     content: raw.content ?? '',
-    author: normalizeUser(raw.user ?? raw.author),
+    author: authorRaw ? normalizeUser(authorRaw) : undefined as any,
     created_at: raw.createdAt ?? raw.created_at ?? '',
   };
 }
@@ -1073,13 +1082,42 @@ class ApiClient {
           if (TENANT_ID) {
             (retryHeaders as Record<string, string>)["X-Tenant-ID"] = TENANT_ID;
           }
-          const retryResponse = await fetch(`${this.baseUrl}${endpoint}`, {
-            ...options,
-            headers: retryHeaders,
-          });
-          if (retryResponse.ok) {
-            if (retryResponse.status === 204) return {} as T;
-            return retryResponse.json();
+          // Clear the original timeout before retrying
+          clearTimeout(timeoutId);
+
+          // Create a new abort controller for the retry request
+          const retryController = new AbortController();
+          const retryTimeoutId = setTimeout(
+            () => retryController.abort(),
+            timeout ?? this.defaultTimeout
+          );
+
+          try {
+            const retryResponse = await fetch(`${this.baseUrl}${endpoint}`, {
+              ...options,
+              headers: retryHeaders,
+              signal: retryController.signal,
+            });
+            clearTimeout(retryTimeoutId);
+
+            if (retryResponse.ok) {
+              if (retryResponse.status === 204) return {} as T;
+              return retryResponse.json();
+            }
+
+            // Retry got a non-ok response — extract error like the normal path
+            const retryError = await retryResponse.json().catch(() => ({
+              error: "An unexpected error occurred",
+            }));
+            throw new Error(
+              retryError.error || retryError.title || retryError.detail || "An unexpected error occurred"
+            );
+          } catch (retryErr) {
+            clearTimeout(retryTimeoutId);
+            if (retryErr instanceof Error && retryErr.name === "AbortError") {
+              throw new Error("Request timed out. Please try again.");
+            }
+            throw retryErr;
           }
         }
 
@@ -2174,7 +2212,14 @@ class ApiClient {
     };
   }> {
     const query = this.buildQueryString(params);
-    return this.request(`/api/search${query}`);
+    const raw = await this.request<any>(`/api/search${query}`);
+    return {
+      listings: (raw.listings ?? []).map(normalizeListing),
+      users: (raw.users ?? []).map(normalizeUserRequired),
+      groups: (raw.groups ?? []).map(normalizeGroup),
+      events: (raw.events ?? []).map(normalizeEvent),
+      pagination: raw.pagination ?? { page: 1, limit: 20, total: 0, pages: 0 },
+    };
   }
 
   async searchSuggestions(

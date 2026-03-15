@@ -34,6 +34,7 @@ export function BlogPage() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
+  const debouncedQuery = useDebouncedValue(query)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -49,18 +50,17 @@ export function BlogPage() {
     return () => controller.abort()
   }, [])
 
+  // Reset to page 1 when search changes
+  useEffect(() => { setPage(1) }, [debouncedQuery])
+
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading blog…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
-  const debouncedQuery = useDebouncedValue(query)
   const filtered = posts.filter(p =>
     debouncedQuery === '' || p.title.toLowerCase().includes(debouncedQuery.toLowerCase()) || (p.category ?? '').toLowerCase().includes(debouncedQuery.toLowerCase())
   )
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginatedPosts = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
-
-  // Reset to page 1 when search changes
-  useEffect(() => { setPage(1) }, [debouncedQuery])
 
   return (
     <div className="nexus-container">

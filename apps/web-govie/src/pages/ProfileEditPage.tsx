@@ -6,7 +6,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import apiClient from '../api/client'
-import type { UserProfile } from '../api/types'
 import { isApiError } from '../context/AuthContext'
 
 export function ProfileEditPage() {
@@ -23,13 +22,13 @@ export function ProfileEditPage() {
   const [location, setLocation] = useState('')
 
   useEffect(() => {
-    apiClient.get<UserProfile>('/api/users/me')
+    apiClient.get('/api/users/me')
       .then(r => {
-        const p = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
-        setFirstName(p.first_name ?? p.firstName ?? '')
-        setLastName(p.last_name ?? p.lastName ?? '')
-        setBio(p.bio ?? '')
-        setLocation(p.location ?? '')
+        const p = r.data as Record<string, unknown>
+        setFirstName((p.first_name ?? p.firstName ?? '') as string)
+        setLastName((p.last_name ?? p.lastName ?? '') as string)
+        setBio((p.bio ?? '') as string)
+        setLocation((p.location ?? '') as string)
       })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load profile.'))
       .finally(() => setIsLoading(false))
@@ -48,6 +47,8 @@ export function ProfileEditPage() {
     setIsSubmitting(true)
     try {
       await apiClient.patch('/api/users/me', {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         bio: bio.trim() || null,

@@ -37,9 +37,14 @@ function handleApiError(error, req, res, options = {}) {
   }
 
   if (error instanceof ApiError) {
-    // Handle 401 - clear cookies and redirect to login
+    // Handle 401 - clear cookies, clear flash messages, and redirect to login
     if (error.status === 401) {
       clearAuthCookies(res);
+      // Consume any pending flash messages so they don't leak into the login page
+      if (req.flash) {
+        req.flash('success');
+        req.flash('error');
+      }
       res.redirect(redirectOn401);
       return true;
     }

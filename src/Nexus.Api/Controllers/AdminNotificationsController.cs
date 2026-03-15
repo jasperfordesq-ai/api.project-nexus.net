@@ -30,6 +30,45 @@ public class AdminNotificationsController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/admin/notifications - List recent notifications with pagination.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ListNotifications(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20)
+    {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var total = await _db.Notifications.CountAsync();
+
+        var notifications = await _db.Notifications
+            .AsNoTracking()
+            .OrderByDescending(n => n.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(n => new
+            {
+                n.Id,
+                n.Title,
+                message = n.Body,
+                type = n.Type,
+                user_id = n.UserId,
+                is_read = n.IsRead,
+                created_at = n.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = notifications,
+            total,
+            page,
+            limit
+        });
+    }
+
+    /// <summary>
     /// GET /api/admin/notifications/stats - Notification statistics.
     /// </summary>
     [HttpGet("stats")]

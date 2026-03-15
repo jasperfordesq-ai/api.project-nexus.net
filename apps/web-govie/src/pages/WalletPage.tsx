@@ -14,18 +14,28 @@ interface Transaction { id: number; amount: number; description: string; created
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function mapTransaction(raw: any, currentUserId?: number): Transaction {
-  // Backend returns sender/receiver objects; determine counterpart based on current user
+  // Backend may return nested sender/receiver objects OR flat sender_id/receiver_id fields
   const sender = raw.sender ?? {}
   const receiver = raw.receiver ?? {}
-  const isSender = sender.id === currentUserId
+  const senderId = sender.id ?? raw.sender_id ?? raw.senderId ?? 0
+  const receiverId = receiver.id ?? raw.receiver_id ?? raw.receiverId ?? 0
+  const isSender = currentUserId != null && senderId === currentUserId
   const counterpart = isSender ? receiver : sender
+  const counterpartId = isSender ? receiverId : senderId
+
+  // Determine type: explicit type from backend takes priority, then infer from direction
+  let txType: string = raw.type ?? ''
+  if (!txType) {
+    txType = isSender ? 'debit' : 'credit'
+  }
+
   return {
     id: raw.id,
     amount: raw.amount ?? 0,
     description: raw.description ?? '',
     createdAt: raw.created_at ?? raw.createdAt ?? '',
-    type: raw.type ?? (isSender ? 'debit' : 'credit'),
-    counterpartName: counterpart.id ? fullName(counterpart) : undefined,
+    type: txType,
+    counterpartName: counterpartId ? fullName(counterpart) : (raw.counterpartName ?? raw.counterpart_name ?? undefined),
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

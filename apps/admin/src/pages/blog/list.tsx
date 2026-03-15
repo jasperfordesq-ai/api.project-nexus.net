@@ -75,9 +75,9 @@ export const BlogListPage = () => {
             <Table.Column dataIndex="created_at" title="Created" render={(d: string) => d ? dayjs(d).format("DD MMM YYYY") : "—"} />
             <Table.Column title="Actions" render={(_, record: any) => (
               <Space>
-                <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/blog/${record.id}/edit`)}>Edit</Button>
-                <Button size="small" onClick={() => toggleStatus(record.id, record.status)}>{record.status === "published" ? "Unpublish" : "Publish"}</Button>
-                <Button size="small" onClick={() => toggleFeatured(record.id)}>{record.is_featured ? "Unfeature" : "Feature"}</Button>
+                <Button size="small" icon={<EditOutlined />} disabled={!record.id} onClick={() => record.id && navigate(`/blog/${record.id}/edit`)}>Edit</Button>
+                <Button size="small" disabled={!record.id} onClick={() => record.id && toggleStatus(record.id, record.status)}>{record.status === "published" ? "Unpublish" : "Publish"}</Button>
+                <Button size="small" disabled={!record.id} onClick={() => record.id && toggleFeatured(record.id)}>{record.is_featured ? "Unfeature" : "Feature"}</Button>
               </Space>
             )} />
           </Table>

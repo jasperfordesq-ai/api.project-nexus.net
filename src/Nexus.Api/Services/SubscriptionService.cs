@@ -18,9 +18,9 @@ public class SubscriptionService
 
     public SubscriptionService(NexusDbContext db) => _db = db;
 
-    public async Task<List<SubscriptionPlan>> ListPlansAsync(int tenantId)
+    public async Task<List<SubscriptionPlan>> ListPlansAsync(int tenantId, bool adminView = false)
         => await _db.SubscriptionPlans
-            .Where(p => p.TenantId == tenantId && p.IsActive && p.IsPublic)
+            .Where(p => p.TenantId == tenantId && (adminView || (p.IsActive && p.IsPublic)))
             .OrderBy(p => p.Price)
             .ToListAsync();
 

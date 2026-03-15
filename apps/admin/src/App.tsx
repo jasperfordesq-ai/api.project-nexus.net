@@ -97,6 +97,16 @@ import { SessionsPage } from "./pages/sessions";
 import { SavedSearchesPage } from "./pages/saved-searches";
 import { SubAccountsPage } from "./pages/sub-accounts";
 
+function NotFoundPage() {
+  return (
+    <div style={{ padding: 40, textAlign: "center" }}>
+      <h1>404 - Page not found</h1>
+      <p>The page you are looking for does not exist.</p>
+      <a href="/">Go to dashboard</a>
+    </div>
+  );
+}
+
 function AppInner() {
   const { mode } = useThemeMode();
 
@@ -200,6 +210,7 @@ function AppInner() {
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/saved-searches" element={<SavedSearchesPage />} />
               <Route path="/sub-accounts" element={<SubAccountsPage />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>
           <DocumentTitleHandler />

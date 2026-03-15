@@ -63,9 +63,12 @@ export function ConversationPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Determine the other participant's user ID for sending replies
-  const otherUserId = messages.find(m => m.senderId !== user?.id)?.senderId ?? 0
-  const canSend = otherUserId > 0
+  // Determine the other participant's user ID for sending replies.
+  // Fall back to parsing the conversation ID if all messages are from the current user.
+  const otherUserId = messages.find(m => m.senderId !== user?.id)?.senderId
+    ?? messages.find(m => m.senderId !== 0)?.senderId
+    ?? 0
+  const canSend = otherUserId > 0 && otherUserId !== user?.id
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -89,7 +92,7 @@ export function ConversationPage() {
   const otherName = messages.find(m => m.senderId !== user?.id)?.senderName ?? 'Conversation'
 
   return (
-    <div className="nexus-container" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 160px)' }}>
+    <div className="nexus-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', maxHeight: 'calc(100dvh - 160px)' }}>
       <nav aria-label="Breadcrumb">
         <ol className="nexus-breadcrumbs">
           <li><Link to="/">Home</Link></li>

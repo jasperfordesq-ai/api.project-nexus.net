@@ -28,23 +28,29 @@ public class AdminEventsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> ListEvents([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
-        var events = await _db.Events
-            .Include(e => e.CreatedBy)
-            .OrderByDescending(e => e.StartsAt)
-            .Skip((Math.Max(1, page) - 1) * Math.Clamp(limit, 1, 100))
-            .Take(Math.Clamp(limit, 1, 100))
-            .ToListAsync();
+        var clampedLimit = Math.Clamp(limit, 1, 100);
+        var clampedPage = Math.Max(1, page);
 
         var total = await _db.Events.CountAsync();
 
-        return Ok(new
-        {
-            data = events.Select(e => new
+        var events = await _db.Events
+            .Include(e => e.CreatedBy)
+            .Include(e => e.Rsvps)
+            .OrderByDescending(e => e.StartsAt)
+            .Skip((clampedPage - 1) * clampedLimit)
+            .Take(clampedLimit)
+            .Select(e => new
             {
                 e.Id, e.Title, starts_at = e.StartsAt, ends_at = e.EndsAt,
                 is_cancelled = e.IsCancelled, e.MaxAttendees, created_at = e.CreatedAt,
+                rsvp_count = e.Rsvps.Count(r => r.Status == Nexus.Api.Entities.Event.RsvpStatus.Going),
                 created_by = e.CreatedBy != null ? new { e.CreatedBy.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName } : null
-            }),
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = events,
             meta = new { page, limit, total }
         });
     }

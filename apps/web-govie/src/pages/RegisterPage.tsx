@@ -34,7 +34,8 @@ function validate(values: FormValues): FormErrors {
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) e.email = 'Enter a valid email address'
   if (!values.password) e.password = 'Enter a password'
   else if (values.password.length < 8) e.password = 'Password must be at least 8 characters'
-  if (values.password !== values.confirmPassword) e.confirmPassword = 'Passwords do not match'
+  if (!values.confirmPassword) e.confirmPassword = 'Confirm your password'
+  else if (values.password !== values.confirmPassword) e.confirmPassword = 'Passwords do not match'
   if (!values.agreeTerms) e.agreeTerms = 'You must agree to the terms to continue'
   return e
 }

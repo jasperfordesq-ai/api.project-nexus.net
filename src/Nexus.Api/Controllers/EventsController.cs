@@ -99,7 +99,7 @@ public class EventsController : ControllerBase
                 group = e.GroupId != null && e.Group != null
                     ? new { e.Group.Id, e.Group.Name }
                     : null,
-                rsvp_count = _db.EventRsvps.Count(r => r.EventId == e.Id && r.Status == Event.RsvpStatus.Going)
+                rsvp_count = e.Rsvps.Count(r => r.Status == Event.RsvpStatus.Going)
             })
             .ToListAsync();
 
@@ -155,7 +155,7 @@ public class EventsController : ControllerBase
                 group = r.Event.GroupId != null && r.Event.Group != null
                     ? new { r.Event.Group.Id, r.Event.Group.Name }
                     : null,
-                rsvp_count = _db.EventRsvps.Count(rsvp => rsvp.EventId == r.EventId && rsvp.Status == Event.RsvpStatus.Going)
+                rsvp_count = r.Event!.Rsvps.Count(rsvp => rsvp.Status == Event.RsvpStatus.Going)
             })
             .ToListAsync();
 
@@ -205,9 +205,9 @@ public class EventsController : ControllerBase
                     : null,
                 rsvp_counts = new
                 {
-                    going = _db.EventRsvps.Count(r => r.EventId == e.Id && r.Status == Event.RsvpStatus.Going),
-                    maybe = _db.EventRsvps.Count(r => r.EventId == e.Id && r.Status == Event.RsvpStatus.Maybe),
-                    not_going = _db.EventRsvps.Count(r => r.EventId == e.Id && r.Status == Event.RsvpStatus.NotGoing)
+                    going = e.Rsvps.Count(r => r.Status == Event.RsvpStatus.Going),
+                    maybe = e.Rsvps.Count(r => r.Status == Event.RsvpStatus.Maybe),
+                    not_going = e.Rsvps.Count(r => r.Status == Event.RsvpStatus.NotGoing)
                 }
             })
             .FirstOrDefaultAsync();

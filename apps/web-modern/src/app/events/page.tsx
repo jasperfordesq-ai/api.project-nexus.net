@@ -313,12 +313,12 @@ function EventsContent() {
                     <div className="flex items-center justify-between pt-4 border-t border-white/10">
                       <div className="flex items-center gap-2">
                         <Avatar
-                          name={`${event.organizer?.first_name} ${event.organizer?.last_name}`}
+                          name={event.organizer ? `${event.organizer.first_name} ${event.organizer.last_name}` : "?"}
                           size="sm"
                           className="ring-2 ring-white/10"
                         />
                         <span className="text-xs text-white/50">
-                          by {event.organizer?.first_name}
+                          by {event.organizer?.first_name ?? "Unknown organizer"}
                         </span>
                       </div>
 

@@ -99,7 +99,8 @@ export const authProvider: AuthProvider = {
 
     // Check if token is expired by decoding JWT payload
     try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
+      const base64 = token.split(".")[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(base64));
       const exp = payload.exp * 1000;
       if (Date.now() >= exp) {
         // Try to refresh

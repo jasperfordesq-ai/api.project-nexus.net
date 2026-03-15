@@ -61,19 +61,25 @@ function WalletContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [walletAlerts, setWalletAlerts] = useState<{ severity: string; message: string }[]>([]);
+  const [balanceError, setBalanceError] = useState(false);
 
   const fetchWalletData = useCallback(async () => {
     setIsLoading(true);
+    setBalanceError(false);
     try {
       const [balanceRes, txRes] = await Promise.all([
         api.getBalance().catch((err) => {
           logger.error("Failed to fetch balance:", err);
+          setBalanceError(true);
           return null;
         }),
         api.getTransactions({
           type: txFilter,
           page: currentPage,
           limit: 10,
+        }).catch((err) => {
+          logger.error("Failed to fetch transactions:", err);
+          return null;
         }),
       ]);
 
@@ -176,10 +182,24 @@ function WalletContent() {
                     <p className="text-sm text-white/50 mb-1">
                       Available Balance
                     </p>
+                    {balanceError ? (
+                      <div>
+                        <p className="text-lg font-semibold text-amber-400">
+                          Unable to load balance
+                        </p>
+                        <button
+                          onClick={() => fetchWalletData()}
+                          className="text-sm text-indigo-400 hover:text-indigo-300 underline mt-1"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : (
                     <p className="text-4xl font-bold text-white">
                       {balance?.balance ?? 0}
                       <span className="text-lg text-white/50 ml-1">hours</span>
                     </p>
+                    )}
                   </div>
                 </div>
 

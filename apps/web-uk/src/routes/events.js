@@ -112,11 +112,11 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
   let endsAt = null;
 
   if (starts_at_date && starts_at_time) {
-    startsAt = new Date(`${starts_at_date}T${starts_at_time}`).toISOString();
+    startsAt = `${starts_at_date}T${starts_at_time}:00Z`;
   }
 
   if (ends_at_date && ends_at_time) {
-    endsAt = new Date(`${ends_at_date}T${ends_at_time}`).toISOString();
+    endsAt = `${ends_at_date}T${ends_at_time}:00Z`;
   }
 
   // Helper to render form with errors
@@ -249,11 +249,11 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
   let endsAt = null;
 
   if (starts_at_date && starts_at_time) {
-    startsAt = new Date(`${starts_at_date}T${starts_at_time}`).toISOString();
+    startsAt = `${starts_at_date}T${starts_at_time}:00Z`;
   }
 
   if (ends_at_date && ends_at_time) {
-    endsAt = new Date(`${ends_at_date}T${ends_at_time}`).toISOString();
+    endsAt = `${ends_at_date}T${ends_at_time}:00Z`;
   }
 
   // Helper to render form with errors

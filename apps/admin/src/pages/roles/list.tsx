@@ -17,7 +17,7 @@ export const RoleList = () => {
       <Table {...tableProps} rowKey="id" size="middle">
         <Table.Column dataIndex="id" title="ID" width={60} />
         <Table.Column dataIndex="name" title="Name" />
-        <Table.Column dataIndex="display_name" title="Display Name" />
+        <Table.Column dataIndex="description" title="Description" />
         <Table.Column
           dataIndex="is_system"
           title="System"

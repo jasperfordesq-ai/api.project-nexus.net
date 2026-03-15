@@ -84,10 +84,24 @@ router.get('/users', asyncRoute(async (req, res) => {
     limit: 20
   });
 
+  const users = result.items || result.data || [];
+  const pagination = result.pagination;
+  const totalPages = pagination ? (pagination.totalPages || pagination.total_pages || 1) : 1;
+
   res.render('admin/users/index', {
     title: 'Manage Users',
-    users: result.items || result.data || [],
-    pagination: result.pagination,
+    users,
+    pagination,
+    paginationConfig: {
+      baseUrl: '/admin/users',
+      page: validatedPage,
+      totalPages,
+      queryParams: {
+        search: validatedSearch || '',
+        role: validatedRole || '',
+        status: validatedStatus || ''
+      }
+    },
     filters: { search: validatedSearch, role: validatedRole, status: validatedStatus },
     user: req.user
   });
@@ -199,10 +213,20 @@ router.get('/moderation', asyncRoute(async (req, res) => {
   const validatedPage = validatePageNumber(page);
   const result = await adminGetPendingListings(req.token, { page: validatedPage, limit: 20 });
 
+  const listings = result.items || result.data || [];
+  const moderationPagination = result.pagination;
+  const moderationTotalPages = moderationPagination ? (moderationPagination.totalPages || moderationPagination.total_pages || 1) : 1;
+
   res.render('admin/moderation/index', {
     title: 'Content Moderation',
-    listings: result.items || result.data || [],
-    pagination: result.pagination,
+    listings,
+    pagination: moderationPagination,
+    paginationConfig: {
+      baseUrl: '/admin/moderation',
+      page: validatedPage,
+      totalPages: moderationTotalPages,
+      queryParams: {}
+    },
     user: req.user,
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
@@ -475,7 +499,7 @@ router.post('/roles/new', audit.roleCreate(), asyncRoute(async (req, res) => {
 
   // Sanitize permissions - only allow alphanumeric and underscores
   const sanitizedPermissions = permissionsArray
-    .filter(p => typeof p === 'string' && /^[a-z_]+$/i.test(p))
+    .filter(p => typeof p === 'string' && /^[a-z_.]+$/i.test(p))
     .map(p => p.toLowerCase());
 
   try {
@@ -554,7 +578,7 @@ router.post('/roles/:id/edit', audit.roleUpdate(), asyncRoute(async (req, res) =
 
   // Sanitize permissions - only allow alphanumeric and underscores
   const sanitizedPermissions = permissionsArray
-    .filter(p => typeof p === 'string' && /^[a-z_]+$/i.test(p))
+    .filter(p => typeof p === 'string' && /^[a-z_.]+$/i.test(p))
     .map(p => p.toLowerCase());
 
   try {

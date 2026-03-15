@@ -136,6 +136,33 @@ public class IdeationService
         return (true, null);
     }
 
+    public async Task<(bool IsFavorited, string? Error)> AddFavoriteIdeaAsync(int ideaId, int userId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var idea = await _db.Set<Idea>().FirstOrDefaultAsync(i => i.Id == ideaId);
+        if (idea == null) return (false, "Idea not found");
+
+        var existing = await _db.Set<IdeaFavorite>().FirstOrDefaultAsync(f => f.IdeaId == ideaId && f.UserId == userId);
+        if (existing != null) return (true, "Already favorited");
+
+        _db.Set<IdeaFavorite>().Add(new IdeaFavorite { TenantId = tenantId, IdeaId = ideaId, UserId = userId });
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    public async Task<(bool Removed, string? Error)> RemoveFavoriteIdeaAsync(int ideaId, int userId)
+    {
+        var idea = await _db.Set<Idea>().FirstOrDefaultAsync(i => i.Id == ideaId);
+        if (idea == null) return (false, "Idea not found");
+
+        var existing = await _db.Set<IdeaFavorite>().FirstOrDefaultAsync(f => f.IdeaId == ideaId && f.UserId == userId);
+        if (existing == null) return (false, "Not favorited");
+
+        _db.Set<IdeaFavorite>().Remove(existing);
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
     public async Task<(Idea? Copy, string? Error)> DuplicateIdeaAsync(int ideaId, int userId)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();

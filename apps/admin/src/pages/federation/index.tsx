@@ -19,35 +19,35 @@ const statusColors: Record<string, string> = {
 
 export const FederationPage = () => {
   const { data, isLoading, refetch } = useCustom({
-    url: "/api/admin/federation/partners",
+    url: "/api/admin/system/federation/partners",
     method: "get",
   });
 
   const { data: statsData } = useCustom({
-    url: "/api/admin/federation/stats",
+    url: "/api/admin/system/federation/stats",
     method: "get",
   });
 
   const partners = (data?.data as any)?.items || (data?.data as any)?.data || [];
   const stats = (statsData?.data as any) || {};
 
-  const handleApprove = async (id: number) => {
+  const handleReactivate = async (id: number) => {
     try {
-      await axiosInstance.put(`/api/admin/federation/partners/${id}/approve`);
-      message.success("Partner approved");
+      await axiosInstance.put(`/api/admin/system/federation/partners/${id}/reactivate`);
+      message.success("Partner reactivated");
       refetch();
     } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to approve");
+      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to reactivate");
     }
   };
 
   const handleSuspend = async (id: number) => {
     try {
-      await axiosInstance.put(`/api/admin/federation/partners/${id}/suspend`);
+      await axiosInstance.put(`/api/admin/system/federation/partners/${id}/suspend`);
       message.success("Partner suspended");
       refetch();
     } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to suspend");
+      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to suspend");
     }
   };
 
@@ -91,8 +91,8 @@ export const FederationPage = () => {
               title="Actions"
               render={(_, r: any) => (
                 <Space>
-                  {r.status === "pending" && (
-                    <Button size="small" type="primary" onClick={() => handleApprove(r.id)}>Approve</Button>
+                  {(r.status === "suspended" || r.status === "inactive") && (
+                    <Button size="small" type="primary" onClick={() => handleReactivate(r.id)}>Reactivate</Button>
                   )}
                   {r.status === "active" && (
                     <Button size="small" danger onClick={() => handleSuspend(r.id)}>Suspend</Button>

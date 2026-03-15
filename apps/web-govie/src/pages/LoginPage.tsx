@@ -51,6 +51,7 @@ export function LoginPage() {
 
     setIsSubmitting(true)
     setErrors({})
+    setFieldErrors({})
 
     try {
       await login(email, password)

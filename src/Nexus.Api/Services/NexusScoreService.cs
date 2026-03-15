@@ -155,16 +155,30 @@ public class NexusScoreService
     /// </summary>
     public async Task<object> GetTierDistributionAsync()
     {
-        var scores = await _db.Set<NexusScore>().ToListAsync();
+        var query = _db.Set<NexusScore>().AsQueryable();
+
+        var total = await query.CountAsync();
+        var averageScore = total > 0 ? await query.AverageAsync(s => (double)s.Score) : 0;
+
+        var distribution = await query
+            .GroupBy(s => s.Score < 200 ? "newcomer" :
+                          s.Score < 400 ? "emerging" :
+                          s.Score < 600 ? "established" :
+                          s.Score < 800 ? "trusted" : "exemplary")
+            .Select(g => new { Tier = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var tierCounts = distribution.ToDictionary(d => d.Tier, d => d.Count);
+
         return new
         {
-            total = scores.Count,
-            newcomer = scores.Count(s => s.Tier == "newcomer"),
-            emerging = scores.Count(s => s.Tier == "emerging"),
-            established = scores.Count(s => s.Tier == "established"),
-            trusted = scores.Count(s => s.Tier == "trusted"),
-            exemplary = scores.Count(s => s.Tier == "exemplary"),
-            average_score = scores.Count > 0 ? scores.Average(s => s.Score) : 0
+            total,
+            newcomer = tierCounts.GetValueOrDefault("newcomer", 0),
+            emerging = tierCounts.GetValueOrDefault("emerging", 0),
+            established = tierCounts.GetValueOrDefault("established", 0),
+            trusted = tierCounts.GetValueOrDefault("trusted", 0),
+            exemplary = tierCounts.GetValueOrDefault("exemplary", 0),
+            average_score = averageScore
         };
     }
 }

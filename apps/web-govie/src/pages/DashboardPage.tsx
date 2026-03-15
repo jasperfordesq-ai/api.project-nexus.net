@@ -77,7 +77,7 @@ export function DashboardPage() {
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
   const exchangeStatusColor: Record<string, string> = {
-    requested: '#D97706', pending: '#D97706', accepted: '#059669', active: '#059669', inprogress: '#059669', in_progress: '#059669', completed: '#6B7280', cancelled: '#DC2626', declined: '#DC2626',
+    proposed: '#D97706', requested: '#D97706', pending: '#D97706', accepted: '#059669', active: '#059669', inprogress: '#059669', in_progress: '#059669', completed: '#6B7280', cancelled: '#DC2626', declined: '#DC2626', disputed: '#DC2626',
   }
 
   return (

@@ -76,19 +76,19 @@ export const HealthPage = () => {
       name: "API Server",
       status: "healthy",
       icon: <CloudServerOutlined />,
-      detail: health.server_time ? `Running since ${dayjs(health.server_time).format("HH:mm:ss")}` : "Online",
+      detail: health?.server_time ? `Running since ${dayjs(health.server_time).format("HH:mm:ss")}` : "Online",
     },
     {
       name: "Database (PostgreSQL)",
-      status: health.database_size ? "healthy" : "down",
+      status: health?.database_size ? "healthy" : "down",
       icon: <DatabaseOutlined />,
-      detail: health.database_size || "Unable to connect",
+      detail: health?.database_size || "Unable to connect",
     },
     {
       name: "Scheduled Tasks",
-      status: (health.failed_scheduled_tasks || 0) > 0 ? "degraded" : "healthy",
+      status: (health?.failed_scheduled_tasks ?? 0) > 0 ? "degraded" : "healthy",
       icon: <ScheduleOutlined />,
-      detail: `${health.pending_scheduled_tasks || 0} pending, ${health.failed_scheduled_tasks || 0} failed`,
+      detail: `${health?.pending_scheduled_tasks ?? 0} pending, ${health?.failed_scheduled_tasks ?? 0} failed`,
     },
   ] : [];
 
@@ -197,14 +197,14 @@ export const HealthPage = () => {
             </Descriptions.Item>
             <Descriptions.Item label="Active Users (24h)">
               <Badge
-                status={health.active_users_last_24h > 0 ? "success" : "default"}
-                text={health.active_users_last_24h ?? "--"}
+                status={(health?.active_users_last_24h ?? 0) > 0 ? "success" : "default"}
+                text={health?.active_users_last_24h ?? "--"}
               />
             </Descriptions.Item>
             <Descriptions.Item label="Active Users (7d)">
               <Badge
-                status={health.active_users_last_7d > 0 ? "success" : "default"}
-                text={health.active_users_last_7d ?? "--"}
+                status={(health?.active_users_last_7d ?? 0) > 0 ? "success" : "default"}
+                text={health?.active_users_last_7d ?? "--"}
               />
             </Descriptions.Item>
             <Descriptions.Item label="Total Tenants">

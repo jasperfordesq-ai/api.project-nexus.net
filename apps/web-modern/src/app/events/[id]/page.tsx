@@ -66,6 +66,7 @@ function EventDetailContent() {
   const [reminderMinutes, setReminderMinutes] = useState<number | null>(null);
   const [reminderId, setReminderId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [attendeesError, setAttendeesError] = useState(false);
 
   const {
     isOpen: isDeleteOpen,
@@ -76,11 +77,13 @@ function EventDetailContent() {
   const fetchEvent = useCallback(async () => {
     if (!isValidId) { setIsLoading(false); return; }
     setIsLoading(true);
+    setAttendeesError(false);
     try {
       const [eventData, attendeesData] = await Promise.all([
         api.getEvent(eventId),
         api.getEventAttendees(eventId).catch((err) => {
           logger.error("Failed to fetch attendees:", err);
+          setAttendeesError(true);
           return null;
         }),
       ]);
@@ -508,7 +511,20 @@ function EventDetailContent() {
                 </span>
               </h2>
 
-              {attendees.length > 0 ? (
+              {attendeesError ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-3">
+                    <Users className="w-6 h-6 text-red-400/50" />
+                  </div>
+                  <p className="text-red-400/70 text-sm">Failed to load attendees</p>
+                  <button
+                    onClick={() => fetchEvent()}
+                    className="text-sm text-indigo-400 hover:text-indigo-300 underline mt-2"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : attendees.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {attendees.map((attendee) => (
                     <div

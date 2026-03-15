@@ -15,18 +15,57 @@ export interface Connection {
   createdAt: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapConnection(raw: any): Connection {
+  const otherUser = raw?.other_user ?? raw?.otherUser ?? raw?.connectedUser
+  return {
+    id: raw.id,
+    userId: raw.user_id ?? raw.userId,
+    connectedUserId: otherUser?.id ?? raw.addressee_id ?? raw.connectedUserId ?? raw.connected_user_id,
+    connectedUser: otherUser ? {
+      id: otherUser.id,
+      email: otherUser.email ?? '',
+      firstName: otherUser.first_name ?? otherUser.firstName ?? '',
+      lastName: otherUser.last_name ?? otherUser.lastName ?? '',
+      role: otherUser.role ?? 'member',
+      tenantId: otherUser.tenant_id ?? otherUser.tenantId ?? 0,
+      avatarUrl: otherUser.avatar_url ?? otherUser.avatarUrl,
+      createdAt: otherUser.created_at ?? otherUser.createdAt ?? '',
+    } : raw.connectedUser,
+    status: raw.status,
+    createdAt: raw.created_at ?? raw.createdAt,
+  }
+}
+
 export const connectionsApi = {
   list: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<Connection>>('/api/connections', { params }).then((r) => r.data),
+    apiClient.get('/api/connections', { params }).then((r) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = r.data as any
+      const items = raw?.connections ?? raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+      const pagination = raw?.pagination
+      return {
+        items: items.map(mapConnection),
+        totalCount: pagination?.total ?? raw?.totalCount ?? items.length,
+        page: pagination?.page ?? raw?.page ?? 1,
+        pageSize: pagination?.limit ?? raw?.pageSize ?? items.length,
+        totalPages: pagination?.pages ?? raw?.totalPages ?? 1,
+      } as PaginatedResponse<Connection>
+    }),
 
   pending: () =>
-    apiClient.get<Connection[]>('/api/connections/pending').then((r) => r.data),
+    apiClient.get('/api/connections/pending').then((r) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = r.data as any
+      const items = raw?.connections ?? raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+      return items.map(mapConnection) as Connection[]
+    }),
 
   send: (userId: number) =>
-    apiClient.post<Connection>('/api/connections', { userId }).then((r) => r.data),
+    apiClient.post('/api/connections', { user_id: userId }).then((r) => mapConnection(r.data)),
 
   accept: (id: number) =>
-    apiClient.put<Connection>(`/api/connections/${id}/accept`).then((r) => r.data),
+    apiClient.put(`/api/connections/${id}/accept`).then((r) => mapConnection(r.data)),
 
   decline: (id: number) =>
     apiClient.put(`/api/connections/${id}/decline`).then((r) => r.data),

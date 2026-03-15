@@ -15,14 +15,16 @@ namespace Nexus.Api.Services;
 public class VoiceMessageService
 {
     private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
     private readonly ILogger<VoiceMessageService> _logger;
 
     private const int MaxDurationSeconds = 300; // 5 minutes
     private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10MB
 
-    public VoiceMessageService(NexusDbContext db, ILogger<VoiceMessageService> logger)
+    public VoiceMessageService(NexusDbContext db, TenantContext tenantContext, ILogger<VoiceMessageService> logger)
     {
         _db = db;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -59,6 +61,7 @@ public class VoiceMessageService
 
         var msg = new VoiceMessage
         {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
             SenderId = senderId,
             ConversationId = conversationId,
             AudioUrl = audioUrl,

@@ -548,10 +548,11 @@ public class JobService
         if (daysToFeature < 1 || daysToFeature > 365) return (null, default, "Days to feature must be between 1 and 365");
         var job = await _db.JobVacancies.Include(j => j.PostedBy).FirstOrDefaultAsync(j => j.Id == jobId);
         if (job == null) return (null, default, "Job not found");
+        var featuredUntil = DateTime.UtcNow.AddDays(daysToFeature);
         job.IsFeatured = true;
+        job.FeaturedUntil = featuredUntil;
         job.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        var featuredUntil = DateTime.UtcNow.AddDays(daysToFeature);
         _logger.LogInformation("Featured job {JobId} for {Days} days", jobId, daysToFeature);
         return (job, featuredUntil, null);
     }
@@ -561,6 +562,7 @@ public class JobService
         var job = await _db.JobVacancies.FirstOrDefaultAsync(j => j.Id == jobId);
         if (job == null) return (false, "Job not found");
         job.IsFeatured = false;
+        job.FeaturedUntil = null;
         job.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return (true, null);

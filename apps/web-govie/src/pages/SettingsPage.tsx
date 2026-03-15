@@ -34,11 +34,7 @@ export function SettingsPage() {
   const [editingPasskeyId, setEditingPasskeyId] = useState<string | null>(null)
   const [editPasskeyName, setEditPasskeyName] = useState('')
 
-  // Change password state
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmNewPassword, setConfirmNewPassword] = useState('')
-  const [pwLoading, setPwLoading] = useState(false)
+  // Change password - no dedicated endpoint exists; users must use "Forgot Password"
 
   const showSuccess = useCallback((msg: string) => {
     setSaveMsg(msg)
@@ -122,42 +118,6 @@ export function SettingsPage() {
       setSessions(s => s.filter(x => x.id !== sessionId))
     } catch (err) {
       showError(err, 'Failed to revoke session.')
-    }
-  }
-
-  // ── Change password ──
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
-    if (!currentPassword || !newPassword || !confirmNewPassword) {
-      setError('All password fields are required.')
-      return
-    }
-    if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters.')
-      return
-    }
-    if (newPassword !== confirmNewPassword) {
-      setError('New passwords do not match.')
-      return
-    }
-
-    setPwLoading(true)
-    try {
-      await apiClient.post('/api/auth/reset-password', {
-        current_password: currentPassword,
-        new_password: newPassword,
-        confirm_password: confirmNewPassword,
-      })
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmNewPassword('')
-      showSuccess('Password changed successfully.')
-    } catch (err) {
-      showError(err, 'Failed to change password.')
-    } finally {
-      setPwLoading(false)
     }
   }
 
@@ -319,50 +279,12 @@ export function SettingsPage() {
               {/* Change Password */}
               <section className="nexus-card">
                 <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 'var(--nexus-space-4)' }}>Change password</h2>
-                <form onSubmit={handleChangePassword} noValidate>
-                  <div className="nexus-form-group" style={{ marginBottom: 'var(--nexus-space-4)' }}>
-                    <label htmlFor="current-pw" className="nexus-label">Current password</label>
-                    <input
-                      id="current-pw"
-                      type="password"
-                      className="nexus-input"
-                      value={currentPassword}
-                      onChange={e => setCurrentPassword(e.target.value)}
-                      autoComplete="current-password"
-                      disabled={pwLoading}
-                    />
-                  </div>
-                  <div className="nexus-form-group" style={{ marginBottom: 'var(--nexus-space-4)' }}>
-                    <label htmlFor="new-pw" className="nexus-label">
-                      New password
-                      <span className="nexus-label__hint">At least 8 characters</span>
-                    </label>
-                    <input
-                      id="new-pw"
-                      type="password"
-                      className="nexus-input"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      autoComplete="new-password"
-                      disabled={pwLoading}
-                    />
-                  </div>
-                  <div className="nexus-form-group" style={{ marginBottom: 'var(--nexus-space-5)' }}>
-                    <label htmlFor="confirm-new-pw" className="nexus-label">Confirm new password</label>
-                    <input
-                      id="confirm-new-pw"
-                      type="password"
-                      className="nexus-input"
-                      value={confirmNewPassword}
-                      onChange={e => setConfirmNewPassword(e.target.value)}
-                      autoComplete="new-password"
-                      disabled={pwLoading}
-                    />
-                  </div>
-                  <button type="submit" className="nexus-btn nexus-btn--primary" disabled={pwLoading} aria-busy={pwLoading}>
-                    {pwLoading ? 'Changing...' : 'Change password'}
-                  </button>
-                </form>
+                <p style={{ margin: '0 0 var(--nexus-space-4)', fontSize: 14, color: 'var(--nexus-color-text-secondary)' }}>
+                  To change your password, use the &quot;Forgot Password&quot; flow. We will send a secure reset link to your email.
+                </p>
+                <Link to="/forgot-password" className="nexus-btn nexus-btn--primary">
+                  Reset password via email
+                </Link>
               </section>
 
               {/* Two-Factor Authentication */}

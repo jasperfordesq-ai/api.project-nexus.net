@@ -157,7 +157,13 @@ router.post('/:id', audit.messageSend(), asyncRoute(async (req, res) => {
   }
 
   try {
-    await sendMessage(req.token, conversationId, content.trim());
+    // Fetch the conversation to get the other participant's ID
+    const conversation = await getConversation(req.token, conversationId);
+    const recipientId = conversation.participant?.id || conversation.participantId;
+    if (!recipientId) {
+      throw new ApiError('Could not determine recipient', 400);
+    }
+    await sendMessage(req.token, recipientId, content.trim());
 
     if (req.flash) {
       req.flash('success', 'Message sent');

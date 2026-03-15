@@ -364,14 +364,14 @@ function FeedContent() {
       });
     const wasLiked = feedPosts.find((p) => p.id === id)?.is_liked ??
                      trending.find((p) => p.id === id)?.is_liked ?? false;
-    setFeedPosts(toggle); setTrending(toggle);
+    setFeedPosts(prev => toggle(prev)); setTrending(prev => toggle(prev));
     api[wasLiked ? "unlikePost" : "likePost"](id).catch(() => {
       const revert = (list: Post[]) =>
         list.map((p) => p.id !== id ? p : {
           ...p, is_liked: wasLiked,
           like_count: wasLiked ? p.like_count + 1 : p.like_count - 1,
         });
-      setFeedPosts(revert); setTrending(revert);
+      setFeedPosts(prev => revert(prev)); setTrending(prev => revert(prev));
     });
   }, [feedPosts, trending]);
 
@@ -404,7 +404,7 @@ function FeedContent() {
       setCommentMap((m) => ({ ...m, [postId]: [...(m[postId] ?? []), c] }));
       const bump = (list: Post[]) =>
         list.map((p) => p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p);
-      setFeedPosts(bump); setTrending(bump);
+      setFeedPosts(prev => bump(prev)); setTrending(prev => bump(prev));
     } catch { /* silent */ } finally {
       setSubmitting((s) => { const n = new Set(s); n.delete(postId); return n; });
     }

@@ -18,10 +18,21 @@ export const RoleEdit = () => {
         <Form.Item label="Name" name="name" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item label="Display Name" name="display_name">
+        <Form.Item label="Description" name="description">
           <Input />
         </Form.Item>
-        <Form.Item label="Permissions (JSON)" name="permissions">
+        <Form.Item label="Permissions (JSON)" name="permissions" rules={[{
+          validator: (_, value) => {
+            if (!value || value.trim() === "") return Promise.resolve();
+            try {
+              const parsed = JSON.parse(value);
+              if (!Array.isArray(parsed)) return Promise.reject(new Error("Permissions must be a JSON array"));
+              return Promise.resolve();
+            } catch {
+              return Promise.reject(new Error("Invalid JSON — must be a valid JSON array"));
+            }
+          },
+        }]}>
           <Input.TextArea rows={4} />
         </Form.Item>
       </Form>

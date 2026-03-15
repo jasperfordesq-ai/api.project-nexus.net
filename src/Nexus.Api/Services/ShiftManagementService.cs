@@ -132,7 +132,9 @@ public class ShiftManagementService
 
         var daysOfWeek = pattern.DaysOfWeek?
             .Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Select(d => Enum.Parse<DayOfWeek>(d.Trim(), true))
+            .Select(d => Enum.TryParse<DayOfWeek>(d.Trim(), true, out var day) ? day : (DayOfWeek?)null)
+            .Where(d => d.HasValue)
+            .Select(d => d!.Value)
             .ToHashSet() ?? new HashSet<DayOfWeek>();
 
         var current = pattern.StartDate > today ? pattern.StartDate : today;
@@ -276,43 +278,73 @@ public class ShiftManagementService
     public async Task<(ShiftWaitlistEntry? Entry, string? Error)> JoinWaitlistAsync(
         int shiftId, int userId)
     {
-        var alreadyOn = await _db.ShiftWaitlistEntries
-            .AnyAsync(w => w.ShiftId == shiftId && w.UserId == userId);
-        if (alreadyOn) return (null, "Already on waitlist");
-
-        var position = await _db.ShiftWaitlistEntries
-            .CountAsync(w => w.ShiftId == shiftId && w.Status == "waiting") + 1;
-
-        var entry = new ShiftWaitlistEntry
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable);
+        try
         {
-            TenantId = _tenant.GetTenantIdOrThrow(),
-            ShiftId = shiftId,
-            UserId = userId,
-            Position = position,
-            Status = "waiting"
-        };
+            var alreadyOn = await _db.ShiftWaitlistEntries
+                .AnyAsync(w => w.ShiftId == shiftId && w.UserId == userId);
+            if (alreadyOn)
+            {
+                await transaction.RollbackAsync();
+                return (null, "Already on waitlist");
+            }
 
-        _db.ShiftWaitlistEntries.Add(entry);
-        await _db.SaveChangesAsync();
-        return (entry, null);
+            var position = await _db.ShiftWaitlistEntries
+                .CountAsync(w => w.ShiftId == shiftId && w.Status == "waiting") + 1;
+
+            var entry = new ShiftWaitlistEntry
+            {
+                TenantId = _tenant.GetTenantIdOrThrow(),
+                ShiftId = shiftId,
+                UserId = userId,
+                Position = position,
+                Status = "waiting"
+            };
+
+            _db.ShiftWaitlistEntries.Add(entry);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return (entry, null);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<string?> LeaveWaitlistAsync(int shiftId, int userId)
     {
-        var entry = await _db.ShiftWaitlistEntries
-            .FirstOrDefaultAsync(w => w.ShiftId == shiftId && w.UserId == userId);
-        if (entry == null) return "Not on waitlist";
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable);
+        try
+        {
+            var entry = await _db.ShiftWaitlistEntries
+                .FirstOrDefaultAsync(w => w.ShiftId == shiftId && w.UserId == userId);
+            if (entry == null)
+            {
+                await transaction.RollbackAsync();
+                return "Not on waitlist";
+            }
 
-        var removedPos = entry.Position;
-        _db.ShiftWaitlistEntries.Remove(entry);
-        await _db.SaveChangesAsync();
+            var removedPos = entry.Position;
+            _db.ShiftWaitlistEntries.Remove(entry);
 
-        var remaining = await _db.ShiftWaitlistEntries
-            .Where(w => w.ShiftId == shiftId && w.Status == "waiting" && w.Position > removedPos)
-            .ToListAsync();
-        foreach (var e in remaining) e.Position--;
-        await _db.SaveChangesAsync();
-        return null;
+            var remaining = await _db.ShiftWaitlistEntries
+                .Where(w => w.ShiftId == shiftId && w.Status == "waiting" && w.Position > removedPos)
+                .ToListAsync();
+            foreach (var e in remaining) e.Position--;
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return null;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<(ShiftWaitlistEntry? Entry, string? Error)> PromoteFromWaitlistAsync(

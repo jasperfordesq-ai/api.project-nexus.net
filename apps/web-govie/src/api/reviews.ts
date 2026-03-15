@@ -12,8 +12,11 @@ export interface Review {
 
 export const reviewsApi = {
   user: (userId: number, params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<Review>>(`/api/reviews/user/${userId}`, { params }).then(r => r.data),
+    apiClient.get<PaginatedResponse<Review>>(`/api/users/${userId}/reviews`, { params }).then(r => r.data),
   create: (payload: { targetUserId: number; rating: number; comment: string; exchangeId?: number }) =>
-    apiClient.post<Review>('/api/reviews', payload).then(r => r.data),
-  my: () => apiClient.get<Review[]>('/api/reviews/my').then(r => r.data),
+    apiClient.post<Review>(`/api/users/${payload.targetUserId}/reviews`, {
+      rating: payload.rating,
+      comment: payload.comment,
+      exchangeId: payload.exchangeId,
+    }).then(r => r.data),
 }
