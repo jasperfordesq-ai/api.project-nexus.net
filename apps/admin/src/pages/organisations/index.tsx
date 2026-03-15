@@ -6,9 +6,11 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, message, Tag, Modal, Input, Select } from "antd";
 import { CheckOutlined, StopOutlined, TeamOutlined, SafetyOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
+import { useDebouncedSearch } from "../../utils/use-debounced-search";
 
 const { Title } = Typography;
 
@@ -24,7 +26,6 @@ export const OrganisationsPage = () => {
   const [pageSize, setPageSize] = useState(50);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const queryParams: Record<string, any> = { page, limit: pageSize };
   if (search) queryParams.search = search;
@@ -45,21 +46,11 @@ export const OrganisationsPage = () => {
   const raw = data?.data as any;
   const orgs = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
   const totalCount = raw?.total || raw?.totalCount || orgs.length;
-  const overview = statsData?.data as any;
-
-  const getErrorMessage = (err: any, fallback: string) => {
-    if (err?.response) return err.response.data?.message || err.response.data?.error || fallback;
-    if (err?.request) return "Network error — please check your connection and try again";
-    return fallback;
-  };
-
-  const debouncedSearch = useCallback((value: string) => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setSearch(value);
-      setPage(1);
-    }, 300);
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    setPage(1);
   }, []);
+  const { debounced: debouncedSearch, immediate: immediateSearch } = useDebouncedSearch(handleSearchChange);
 
   const handleVerify = (id: number, name: string) => {
     Modal.confirm({
@@ -72,7 +63,7 @@ export const OrganisationsPage = () => {
           await axiosInstance.put(`/api/admin/organisations/${id}/verify`);
           message.success("Organisation verified");
           refetch();
-        } catch (err: any) { message.error(getErrorMessage(err, "Failed to verify")); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to verify")); }
       },
     });
   };
@@ -89,7 +80,7 @@ export const OrganisationsPage = () => {
           await axiosInstance.put(`/api/admin/organisations/${id}/suspend`);
           message.success("Organisation suspended");
           refetch();
-        } catch (err: any) { message.error(getErrorMessage(err, "Failed to suspend")); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to suspend")); }
       },
     });
   };
@@ -132,11 +123,7 @@ export const OrganisationsPage = () => {
           allowClear
           style={{ width: 250 }}
           onChange={(e) => debouncedSearch(e.target.value)}
-          onSearch={(value) => {
-            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-            setSearch(value);
-            setPage(1);
-          }}
+          onSearch={immediateSearch}
         />
         <Select
           placeholder="Status"

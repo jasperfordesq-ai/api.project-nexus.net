@@ -9,6 +9,7 @@ import { PlusOutlined, CopyOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -34,8 +35,8 @@ export const PagesCmsPage = () => {
       setCreateOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to create page");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to create page"));
     } finally {
       setSaving(false);
     }
@@ -46,7 +47,7 @@ export const PagesCmsPage = () => {
       await axiosInstance.post(`/api/admin/pages/${id}/duplicate`);
       message.success("Page duplicated");
       refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+    } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to duplicate page")); }
   };
 
   const handleDelete = async (id: number) => {
@@ -59,8 +60,8 @@ export const PagesCmsPage = () => {
           await axiosInstance.delete(`/api/admin/pages/${id}`);
           message.success("Page deleted");
           refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.message || "Failed to delete page");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to delete page"));
         }
       },
     });
@@ -90,7 +91,7 @@ export const PagesCmsPage = () => {
         </Card>
       )}
 
-      <Modal title="New Page" open={createOpen} onOk={handleCreate} onCancel={() => setCreateOpen(false)} confirmLoading={saving}>
+      <Modal title="New Page" open={createOpen} onOk={handleCreate} onCancel={() => { setCreateOpen(false); form.resetFields(); }} confirmLoading={saving}>
         <Form form={form} layout="vertical">
           <Form.Item name="title" label="Title" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="slug" label="Slug" rules={[{ required: true }]}><Input /></Form.Item>

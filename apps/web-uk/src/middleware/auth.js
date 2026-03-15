@@ -7,8 +7,9 @@ const { refreshToken: refreshTokenApi, validateToken, ApiError, ApiOfflineError 
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Token refresh lock to prevent concurrent refresh attempts
-let refreshInProgress = null;
+// Token refresh locks keyed by refresh token to prevent concurrent refresh attempts
+// without leaking one user's result to another
+const refreshLocks = new Map();
 
 // Helper to set auth cookies
 function setAuthCookies(res, accessToken, refreshTokenValue) {
@@ -45,20 +46,21 @@ async function requireAuth(req, res, next) {
 
   // If no access token but have refresh token, try to refresh
   if (!token && refreshTokenValue) {
+    const tokenKey = refreshTokenValue.substring(0, 40);
     try {
-      // Use lock to prevent concurrent refresh attempts for the same token
-      if (!refreshInProgress) {
-        refreshInProgress = refreshTokenApi(refreshTokenValue).finally(() => {
-          refreshInProgress = null;
-        });
+      // Use per-token lock to prevent concurrent refresh attempts
+      if (!refreshLocks.has(tokenKey)) {
+        refreshLocks.set(tokenKey, refreshTokenApi(refreshTokenValue).finally(() => {
+          refreshLocks.delete(tokenKey);
+        }));
       }
-      const result = await refreshInProgress;
+      const result = await refreshLocks.get(tokenKey);
       if (result.access_token) {
         token = result.access_token;
         setAuthCookies(res, result.access_token, result.refresh_token);
       }
     } catch (error) {
-      refreshInProgress = null;
+      refreshLocks.delete(tokenKey);
       // Refresh failed - clear cookies and redirect to login
       clearAuthCookies(res);
       return res.redirect('/login');

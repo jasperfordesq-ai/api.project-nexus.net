@@ -8,7 +8,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isApiError, useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { login, verify2fa, cancel2fa } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -17,6 +17,8 @@ export function LoginPage() {
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [show2fa, setShow2fa] = useState(false)
+  const [totpCode, setTotpCode] = useState('')
 
   const from = (location.state as { from?: { pathname: string } } | undefined)?.from?.pathname ?? '/'
 
@@ -54,7 +56,11 @@ export function LoginPage() {
     setFieldErrors({})
 
     try {
-      await login(email, password)
+      const result = await login(email, password)
+      if (result.requires2fa) {
+        setShow2fa(true)
+        return
+      }
       navigate(from, { replace: true })
     } catch (err) {
       if (isApiError(err)) {
@@ -84,6 +90,49 @@ export function LoginPage() {
           </div>
         )}
 
+        {show2fa ? (
+          <form onSubmit={async (e) => {
+            e.preventDefault()
+            if (!totpCode.trim()) { setErrors({ form: 'Enter your verification code' }); return }
+            setIsSubmitting(true)
+            setErrors({})
+            try {
+              await verify2fa(totpCode.trim())
+              navigate(from, { replace: true })
+            } catch (err) {
+              setErrors({ form: isApiError(err) ? err.message : 'Invalid verification code. Please try again.' })
+            } finally {
+              setIsSubmitting(false)
+            }
+          }} className="nexus-form" noValidate>
+            <p style={{ color: 'var(--nexus-color-text-secondary)', marginBottom: 'var(--nexus-space-4)' }}>
+              Enter the 6-digit code from your authenticator app.
+            </p>
+            <div className="nexus-form-group">
+              <label htmlFor="totp-code" className="nexus-label">Verification code</label>
+              <input
+                id="totp-code"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                className="nexus-input"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                autoComplete="one-time-code"
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--nexus-space-3)' }}>
+              <button type="submit" className="nexus-btn nexus-btn--primary" disabled={isSubmitting} aria-busy={isSubmitting}>
+                {isSubmitting ? 'Verifying…' : 'Verify'}
+              </button>
+              <button type="button" className="nexus-btn nexus-btn--secondary" onClick={() => { cancel2fa(); setShow2fa(false); setTotpCode(''); setErrors({}) }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
         <form onSubmit={handleSubmit} className="nexus-form" noValidate>
           {/* Email */}
           <div className="nexus-form-group">
@@ -160,6 +209,7 @@ export function LoginPage() {
             </Link>
           </p>
         </form>
+        )}
       </div>
     </div>
   )

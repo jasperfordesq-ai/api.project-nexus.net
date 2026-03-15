@@ -8,6 +8,7 @@ import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, Moda
 import { PlusOutlined, TrophyOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -39,10 +40,8 @@ export const GamificationPage = () => {
       setCreateOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.message || "Failed to create badge");
-      else if (err?.request) message.error("Network error — please check your connection");
-      else message.error("Failed to create badge");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to create badge"));
     } finally { setSaving(false); }
   };
 
@@ -60,10 +59,8 @@ export const GamificationPage = () => {
       setAwardOpen(false);
       awardForm.resetFields();
       refetch();
-    } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.message || "Failed to award badge");
-      else if (err?.request) message.error("Network error — please check your connection");
-      else message.error("Failed to award badge");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to award badge"));
     } finally { setSaving(false); }
   };
 
@@ -77,8 +74,8 @@ export const GamificationPage = () => {
           await axiosInstance.delete(`/api/admin/gamification/badges/${id}`);
           message.success("Badge deleted");
           refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.message || "Failed to delete badge");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to delete badge"));
         }
       },
     });
@@ -112,7 +109,7 @@ export const GamificationPage = () => {
         )}
       </Card>
 
-      <Modal title="Create Badge" open={createOpen} onOk={handleCreate} onCancel={() => setCreateOpen(false)} confirmLoading={saving}>
+      <Modal title="Create Badge" open={createOpen} onOk={handleCreate} onCancel={() => { setCreateOpen(false); form.resetFields(); }} confirmLoading={saving}>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="description" label="Description"><Input.TextArea rows={2} /></Form.Item>
@@ -121,7 +118,7 @@ export const GamificationPage = () => {
         </Form>
       </Modal>
 
-      <Modal title="Award Badge" open={awardOpen} onOk={handleAward} onCancel={() => setAwardOpen(false)} confirmLoading={saving}>
+      <Modal title="Award Badge" open={awardOpen} onOk={handleAward} onCancel={() => { setAwardOpen(false); awardForm.resetFields(); }} confirmLoading={saving}>
         <Form form={awardForm} layout="vertical">
           <Form.Item name="user_id" label="User ID" rules={[{ required: true }]}><InputNumber min={1} style={{ width: "100%" }} /></Form.Item>
         </Form>

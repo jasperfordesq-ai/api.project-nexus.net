@@ -23,64 +23,6 @@ router.get('/', asyncRoute(async (req, res) => {
   });
 }));
 
-// Update profile (direct POST to /profile)
-router.post('/', asyncRoute(async (req, res) => {
-  const { first_name, last_name, phone, bio } = req.body;
-
-  const errors = [];
-  const fieldErrors = {};
-
-  if (!first_name || !first_name.trim()) {
-    errors.push({ text: 'Enter your first name', href: '#first_name' });
-    fieldErrors.first_name = 'Enter your first name';
-  }
-
-  if (!last_name || !last_name.trim()) {
-    errors.push({ text: 'Enter your last name', href: '#last_name' });
-    fieldErrors.last_name = 'Enter your last name';
-  }
-
-  if (errors.length > 0) {
-    const profile = await getProfile(req.token).catch(() => null);
-    return res.render('profile/edit', {
-      title: 'Edit your profile',
-      profile,
-      values: req.body,
-      errors,
-      fieldErrors,
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
-  }
-
-  try {
-    const updateData = {
-      first_name: first_name.trim(),
-      last_name: last_name.trim()
-    };
-    if (phone !== undefined) updateData.phone = phone;
-    if (bio !== undefined) updateData.bio = bio ? bio.trim() : null;
-
-    await updateProfile(req.token, updateData);
-
-    if (req.flash) {
-      req.flash('success', 'Profile updated successfully');
-    }
-    res.redirect('/profile');
-  } catch (error) {
-    if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
-      return res.render('profile/edit', {
-        title: 'Edit your profile',
-        profile: null,
-        values: req.body,
-        errors: [{ text: error.message }],
-        fieldErrors: error.data?.errors || {},
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-      });
-    }
-    throw error;
-  }
-}));
-
 // Edit profile form
 router.get('/edit', asyncRoute(async (req, res) => {
   const profile = await getProfile(req.token);

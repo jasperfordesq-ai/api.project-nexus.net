@@ -8,6 +8,7 @@ import { Card, Table, Typography, Spin, Button, Modal, Form, Input, Select, mess
 import { PlusOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -31,8 +32,8 @@ export const SystemSettingsPage = () => {
       setModalOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.message || "Failed to save");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to save setting"));
     } finally {
       setSaving(false);
     }
@@ -65,7 +66,7 @@ export const SystemSettingsPage = () => {
         title="Add / Update Setting"
         open={modalOpen}
         onOk={handleSave}
-        onCancel={() => setModalOpen(false)}
+        onCancel={() => { setModalOpen(false); form.resetFields(); }}
         confirmLoading={saving}
       >
         <Form form={form} layout="vertical">

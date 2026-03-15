@@ -7,6 +7,7 @@ import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, message, Tag } from "antd";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -36,8 +37,8 @@ export const FederationPage = () => {
       await axiosInstance.put(`/api/admin/system/federation/partners/${id}/reactivate`);
       message.success("Partner reactivated");
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to reactivate");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to reactivate partner"));
     }
   };
 
@@ -46,8 +47,8 @@ export const FederationPage = () => {
       await axiosInstance.put(`/api/admin/system/federation/partners/${id}/suspend`);
       message.success("Partner suspended");
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to suspend");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to suspend partner"));
     }
   };
 

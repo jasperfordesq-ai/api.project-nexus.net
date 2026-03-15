@@ -123,6 +123,14 @@ async function logout(token) {
   });
 }
 
+async function verify2fa(token, code) {
+  return request('/api/auth/2fa/verify', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ code })
+  });
+}
+
 async function forgotPassword(email, tenantSlug) {
   return request('/api/auth/forgot-password', {
     method: 'POST',
@@ -1090,6 +1098,7 @@ module.exports = {
   forgotPassword,
   resetPassword,
   validateToken,
+  verify2fa,
   // Users
   getProfile,
   updateProfile,

@@ -9,6 +9,7 @@ import { LockOutlined, UnlockOutlined, ExclamationCircleOutlined, WarningOutline
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -40,8 +41,8 @@ export const LockdownPage = () => {
       setActivateModalOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.error || err?.response?.data?.message || "Failed to activate lockdown");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to activate lockdown"));
     } finally {
       setSaving(false);
     }
@@ -59,8 +60,8 @@ export const LockdownPage = () => {
           await axiosInstance.delete("/api/admin/system/lockdown");
           message.success("Lockdown deactivated successfully");
           refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.error || err?.response?.data?.message || "Failed to deactivate lockdown");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to deactivate lockdown"));
         }
       },
     });

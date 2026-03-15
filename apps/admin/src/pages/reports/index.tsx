@@ -8,6 +8,7 @@ import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, message, Ta
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -43,8 +44,8 @@ export const ReportsPage = () => {
       await axiosInstance.put(`/api/admin/reports/${id}/review`);
       message.success("Report marked as reviewing");
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to update");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to update report"));
     }
   };
 

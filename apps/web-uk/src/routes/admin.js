@@ -128,7 +128,8 @@ router.get('/users/:id/edit', asyncRoute(async (req, res) => {
   res.render('admin/users/edit', {
     title: 'Edit User',
     userData,
-    user: req.user
+    user: req.user,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
@@ -152,7 +153,8 @@ router.post('/users/:id/edit', audit.userUpdate(), asyncRoute(async (req, res) =
       userData: { ...result.user, first_name, last_name, email, role },
       user: req.user,
       errors,
-      fieldErrors
+      fieldErrors,
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
 
@@ -173,7 +175,8 @@ router.post('/users/:id/edit', audit.userUpdate(), asyncRoute(async (req, res) =
         title: 'Edit User',
         userData: result.user,
         user: req.user,
-        error: error.message
+        error: error.message,
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     }
     throw error;
@@ -277,7 +280,8 @@ router.get('/categories/new', (req, res) => {
   res.render('admin/categories/form', {
     title: 'Add Category',
     category: null,
-    user: req.user
+    user: req.user,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 });
 
@@ -306,7 +310,8 @@ router.post('/categories/new', audit.categoryCreate(), asyncRoute(async (req, re
       category: req.body,
       user: req.user,
       errors,
-      fieldErrors
+      fieldErrors,
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
 
@@ -327,7 +332,8 @@ router.post('/categories/new', audit.categoryCreate(), asyncRoute(async (req, re
         title: 'Add Category',
         category: req.body,
         user: req.user,
-        errors: [{ text: error.message }]
+        errors: [{ text: error.message }],
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     }
     throw error;
@@ -345,7 +351,8 @@ router.get('/categories/:id/edit', asyncRoute(async (req, res) => {
   res.render('admin/categories/form', {
     title: 'Edit Category',
     category,
-    user: req.user
+    user: req.user,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
@@ -374,7 +381,8 @@ router.post('/categories/:id/edit', audit.categoryUpdate(), asyncRoute(async (re
       category: { ...req.body, id: req.params.id },
       user: req.user,
       errors,
-      fieldErrors
+      fieldErrors,
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
 
@@ -395,7 +403,8 @@ router.post('/categories/:id/edit', audit.categoryUpdate(), asyncRoute(async (re
         title: 'Edit Category',
         category: { ...req.body, id: req.params.id },
         user: req.user,
-        errors: [{ text: error.message }]
+        errors: [{ text: error.message }],
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     }
     throw error;
@@ -426,7 +435,8 @@ router.get('/config', asyncRoute(async (req, res) => {
     configItems: result.data || [],
     user: req.user,
     successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    errorMessage: req.flash ? req.flash('error')[0] : null,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
@@ -469,7 +479,8 @@ router.get('/roles/new', (req, res) => {
   res.render('admin/roles/form', {
     title: 'Add Role',
     role: null,
-    user: req.user
+    user: req.user,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 });
 
@@ -490,7 +501,8 @@ router.post('/roles/new', audit.roleCreate(), asyncRoute(async (req, res) => {
       role: req.body,
       user: req.user,
       errors,
-      fieldErrors
+      fieldErrors,
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
 
@@ -517,7 +529,8 @@ router.post('/roles/new', audit.roleCreate(), asyncRoute(async (req, res) => {
         title: 'Add Role',
         role: req.body,
         user: req.user,
-        errors: [{ text: error.message }]
+        errors: [{ text: error.message }],
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     }
     throw error;
@@ -549,7 +562,8 @@ router.get('/roles/:id/edit', asyncRoute(async (req, res) => {
   res.render('admin/roles/form', {
     title: 'Edit Role',
     role,
-    user: req.user
+    user: req.user,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
@@ -570,7 +584,8 @@ router.post('/roles/:id/edit', audit.roleUpdate(), asyncRoute(async (req, res) =
       role: { ...req.body, id: req.params.id },
       user: req.user,
       errors,
-      fieldErrors
+      fieldErrors,
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
 
@@ -596,7 +611,8 @@ router.post('/roles/:id/edit', audit.roleUpdate(), asyncRoute(async (req, res) =
         title: 'Edit Role',
         role: { ...req.body, id: req.params.id },
         user: req.user,
-        errors: [{ text: error.message }]
+        errors: [{ text: error.message }],
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     }
     throw error;

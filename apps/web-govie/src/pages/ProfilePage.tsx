@@ -9,6 +9,12 @@ import apiClient from '../api/client'
 import type { UserProfile, WalletBalance } from '../api/types'
 import { isApiError, useAuth } from '../context/AuthContext'
 
+const QUICK_ACTIONS = [
+  { to: '/services/submit', label: 'Post a new service', icon: '+', iconLabel: 'Add' },
+  { to: '/services', label: 'Browse services', icon: '?', iconLabel: 'Search' },
+  { to: '/profile/edit', label: 'Edit profile', icon: 'E', iconLabel: 'Edit' },
+] as const
+
 export function ProfilePage() {
   const { user, logout } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -86,7 +92,7 @@ export function ProfilePage() {
         <section aria-labelledby="actions-heading" style={{ border: '1px solid var(--nexus-color-border)', borderRadius: 8, padding: 'var(--nexus-space-5)' }}>
           <h2 id="actions-heading" style={{ margin: '0 0 var(--nexus-space-4)', fontSize: 18 }}>Quick actions</h2>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--nexus-space-3)' }}>
-            {[{ to: '/services/submit', label: 'Post a new service', icon: '➕', iconLabel: 'Add' }, { to: '/services', label: 'Browse services', icon: '🔍', iconLabel: 'Search' }, { to: '/profile/edit', label: 'Edit profile', icon: '✏️', iconLabel: 'Edit' }].map((a) => (
+            {QUICK_ACTIONS.map((a) => (
               <li key={a.to}>
                 <Link to={a.to} aria-label={a.label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--nexus-space-3)', padding: 'var(--nexus-space-3)', borderRadius: 4, textDecoration: 'none', color: 'var(--nexus-color-text)', border: '1px solid var(--nexus-color-border)' }}>
                   <span aria-hidden="true" role="img" aria-label={a.iconLabel} style={{ fontSize: 20 }}>{a.icon}</span>

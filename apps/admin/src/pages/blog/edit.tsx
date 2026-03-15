@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, Form, Input, Button, Typography, message, Spin, Space } from "antd";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -24,8 +25,8 @@ export const BlogEditPage = () => {
       axiosInstance.get(`/api/admin/blog/${id}`).then(({ data }) => {
         const post = data?.data || data;
         form.setFieldsValue(post);
-      }).catch((err: any) => {
-        message.error(err?.response?.data?.message || "Failed to load blog post");
+      }).catch((err: unknown) => {
+        message.error(getErrorMessage(err, "Failed to load blog post"));
       }).finally(() => setLoading(false));
     }
   }, [id, isNew, form]);
@@ -42,8 +43,8 @@ export const BlogEditPage = () => {
         message.success("Post updated");
       }
       navigate("/blog");
-    } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.message || "Failed to save");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to save blog post"));
     } finally {
       setSaving(false);
     }

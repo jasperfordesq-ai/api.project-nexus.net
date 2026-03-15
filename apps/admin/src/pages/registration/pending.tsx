@@ -9,6 +9,7 @@ import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -34,8 +35,8 @@ export const RegistrationPendingPage = () => {
           await axiosInstance.put(`/api/registration/admin/users/${userId}/approve`);
           message.success("User approved");
           refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.message || "Failed to approve");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to approve registration"));
         }
       },
     });
@@ -52,8 +53,8 @@ export const RegistrationPendingPage = () => {
           await axiosInstance.put(`/api/registration/admin/users/${userId}/reject`);
           message.success("User rejected");
           refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.message || "Failed to reject");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to reject registration"));
         }
       },
     });

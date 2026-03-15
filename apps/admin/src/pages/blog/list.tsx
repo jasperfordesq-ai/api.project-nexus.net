@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -31,7 +32,7 @@ export const BlogListPage = () => {
           await axiosInstance.post(`/api/admin/blog/${id}/toggle-status`);
           message.success("Status toggled");
           refetch();
-        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to toggle status")); }
       },
     });
   };
@@ -44,7 +45,7 @@ export const BlogListPage = () => {
           await axiosInstance.post(`/api/admin/blog/${id}/toggle-featured`);
           message.success("Featured toggled");
           refetch();
-        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to toggle featured")); }
       },
     });
   };

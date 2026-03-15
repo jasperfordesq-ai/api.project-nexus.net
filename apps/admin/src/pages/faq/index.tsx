@@ -8,6 +8,7 @@ import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Spin, Button, Space, message, Switch, Modal, Input, Form } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -38,10 +39,8 @@ export const FaqPage = () => {
       setEditingId(null);
       form.resetFields();
       refetch();
-    } catch (err: any) {
-      if (err?.response) {
-        message.error(err?.response?.data?.message || "Failed to save");
-      }
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to save FAQ"));
     }
   };
 
@@ -61,8 +60,8 @@ export const FaqPage = () => {
           await axiosInstance.delete(`/api/faqs/${id}`);
           message.success("FAQ deleted");
           refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.message || "Failed to delete");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to delete FAQ"));
         }
       },
     });
@@ -73,8 +72,8 @@ export const FaqPage = () => {
       await axiosInstance.put(`/api/faqs/${id}`, { is_published: checked });
       message.success(checked ? "Published" : "Unpublished");
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to update");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to update FAQ"));
     }
   };
 

@@ -26,7 +26,12 @@ function mapTransaction(raw: any, currentUserId?: number): Transaction {
   // Determine type: explicit type from backend takes priority, then infer from direction
   let txType: string = raw.type ?? ''
   if (!txType) {
-    txType = isSender ? 'debit' : 'credit'
+    if (senderId === 0 || receiverId === 0) {
+      // System transaction (grant, reward, etc.)
+      txType = senderId === 0 ? 'credit' : 'debit'
+    } else {
+      txType = isSender ? 'debit' : 'credit'
+    }
   }
 
   return {

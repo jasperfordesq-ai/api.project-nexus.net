@@ -10,6 +10,7 @@ import { FlagOutlined, PlusOutlined } from "@ant-design/icons";
 import { StatusTag } from "../../components/common/status-tag";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -62,14 +63,8 @@ export const CrmPage = () => {
       setNoteModalOpen(false);
       setNoteUserId(null);
       form.resetFields();
-    } catch (err: any) {
-      if (err?.response) {
-        message.error(err.response.data?.message || err.response.data?.error || "Failed to add note");
-      } else if (err?.request) {
-        message.error("Network error — please check your connection and try again");
-      } else {
-        message.error("Failed to add note");
-      }
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to add note"));
     } finally {
       setSaving(false);
     }

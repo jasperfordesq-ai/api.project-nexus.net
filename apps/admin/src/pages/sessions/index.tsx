@@ -10,6 +10,7 @@ import { useState } from "react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 dayjs.extend(relativeTime);
 const { Title } = Typography;
@@ -35,8 +36,8 @@ export const SessionsPage = () => {
       await axiosInstance.delete(`/api/admin/sessions/${id}`);
       message.success("Session terminated");
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to terminate session");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to terminate session"));
     }
   };
 
@@ -45,8 +46,8 @@ export const SessionsPage = () => {
       await axiosInstance.delete(`/api/admin/sessions/user/${userId}`);
       message.success(`All sessions terminated for ${userName}`);
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || err?.response?.data?.error || "Failed to terminate sessions");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to terminate sessions"));
     }
   };
 

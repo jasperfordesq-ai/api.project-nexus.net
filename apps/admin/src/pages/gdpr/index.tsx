@@ -9,6 +9,7 @@ import { ExclamationCircleOutlined, DownloadOutlined, DeleteOutlined, SafetyOutl
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -72,12 +73,6 @@ export const GdprPage = () => {
   const requests = requestsRaw?.items || requestsRaw?.data || (Array.isArray(requestsData?.data) ? requestsData.data : []);
   const requestsTotalCount = requestsRaw?.pagination?.total || requestsRaw?.total || requestsRaw?.totalCount || requests.length;
 
-  const getErrorMessage = (err: any, fallback: string) => {
-    if (err?.response) return err.response.data?.message || err.response.data?.error || fallback;
-    if (err?.request) return "Network error — please check your connection and try again";
-    return fallback;
-  };
-
   const handleExportUser = () => {
     if (!exportUserId) {
       message.warning("Enter a user ID to export");
@@ -101,7 +96,7 @@ export const GdprPage = () => {
           });
           message.success(`Request ${action}d`);
           refetchRequests();
-        } catch (err: any) { message.error(getErrorMessage(err, `Failed to ${action}`)); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, `Failed to ${action}`)); }
       },
     });
   };

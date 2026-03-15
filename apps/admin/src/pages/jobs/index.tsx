@@ -9,6 +9,7 @@ import { StarOutlined, StarFilled } from "@ant-design/icons";
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -31,7 +32,7 @@ export const JobsAdminPage = () => {
           await axiosInstance.put("/api/admin/jobs/" + id + "/status", { status });
           message.success("Status updated");
           refetch();
-        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to update job status")); }
       },
     });
   };
@@ -44,7 +45,7 @@ export const JobsAdminPage = () => {
           await axiosInstance.post("/api/admin/jobs/" + id + "/feature");
           message.success("Featured toggled");
           refetch();
-        } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to toggle featured")); }
       },
     });
   };

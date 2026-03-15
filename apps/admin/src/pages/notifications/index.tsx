@@ -9,6 +9,7 @@ import { SendOutlined, DeleteOutlined, BellOutlined, CheckCircleOutlined, MailOu
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -41,12 +42,6 @@ export const NotificationsAdminPage = () => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
 
-  const getErrorMessage = (err: any, fallback: string) => {
-    if (err?.response) return err.response.data?.message || err.response.data?.error || fallback;
-    if (err?.request) return "Network error — please check your connection and try again";
-    return fallback;
-  };
-
   const handleBroadcast = async () => {
     try {
       const values = await form.validateFields();
@@ -56,8 +51,8 @@ export const NotificationsAdminPage = () => {
       setBroadcastOpen(false);
       form.resetFields();
       refetchRecent();
-    } catch (err: any) {
-      if (err?.response) message.error(getErrorMessage(err, "Failed to send broadcast"));
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to send broadcast"));
     } finally { setSaving(false); }
   };
 
@@ -73,7 +68,7 @@ export const NotificationsAdminPage = () => {
           const deleted = res?.data?.deleted_count || res?.data?.count || 0;
           message.success(`Cleanup complete${deleted ? ` — ${deleted} notifications removed` : ""}`);
           refetchRecent();
-        } catch (err: any) { message.error(getErrorMessage(err, "Failed to clean up")); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to clean up")); }
       },
     });
   };
@@ -174,7 +169,7 @@ export const NotificationsAdminPage = () => {
         )}
       </Card>
 
-      <Modal title="Broadcast Notification" open={broadcastOpen} onOk={handleBroadcast} onCancel={() => setBroadcastOpen(false)} confirmLoading={saving} okText="Send Broadcast">
+      <Modal title="Broadcast Notification" open={broadcastOpen} onOk={handleBroadcast} onCancel={() => { setBroadcastOpen(false); form.resetFields(); }} confirmLoading={saving} okText="Send Broadcast">
         <Form form={form} layout="vertical">
           <Form.Item name="title" label="Title" rules={[{ required: true, message: "Title is required" }]}>
             <Input />

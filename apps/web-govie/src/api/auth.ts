@@ -15,8 +15,11 @@ import type {
 
 const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'acme'
 
+/** Placeholder user when backend doesn't return user data (e.g., 2FA pending) */
+const EMPTY_USER: UserSummary = { id: 0, email: '', firstName: '', lastName: '', role: 'member', tenantId: 0, createdAt: '' }
+
 /** Map snake_case auth user to camelCase UserSummary */
-function mapUser(raw: RawAuthResponse['user']): UserSummary {
+function mapUser(raw: NonNullable<RawAuthResponse['user']>): UserSummary {
   return {
     id: raw.id,
     email: raw.email,
@@ -30,10 +33,21 @@ function mapUser(raw: RawAuthResponse['user']): UserSummary {
 
 /** Map raw auth response to normalized AuthResult */
 function mapAuthResponse(raw: RawAuthResponse): AuthResult {
+  // When 2FA is required, backend returns temp_token instead of access_token,
+  // and no user object is included
+  if (raw.requires_2fa) {
+    return {
+      accessToken: raw.temp_token ?? raw.access_token ?? '',
+      refreshToken: raw.refresh_token ?? '',
+      user: EMPTY_USER,
+      requires2fa: true,
+    }
+  }
   return {
-    accessToken: raw.access_token,
-    refreshToken: raw.refresh_token,
-    user: mapUser(raw.user),
+    accessToken: raw.access_token ?? '',
+    refreshToken: raw.refresh_token ?? '',
+    user: raw.user ? mapUser(raw.user) : EMPTY_USER,
+    requires2fa: false,
   }
 }
 

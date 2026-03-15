@@ -9,6 +9,7 @@ import { DeleteOutlined, BellOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 const TYPE_COLORS: Record<string, string> = {
@@ -39,8 +40,8 @@ export const SavedSearchesPage = () => {
       await axiosInstance.delete(`/api/admin/saved-searches/${id}`);
       message.success("Saved search deleted");
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.error || "Failed to delete");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to delete saved search"));
     }
   };
 

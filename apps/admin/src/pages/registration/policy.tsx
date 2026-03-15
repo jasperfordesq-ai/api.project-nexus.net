@@ -7,6 +7,7 @@ import { useCustom } from "@refinedev/core";
 import { Card, Typography, Form, Select, Switch, Button, Spin, message } from "antd";
 import { useState, useEffect } from "react";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -39,8 +40,8 @@ export const RegistrationPolicyPage = () => {
       await axiosInstance.put("/api/registration/admin/policy", values);
       message.success("Policy updated");
       refetch();
-    } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.message || "Failed to update");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to update policy"));
     } finally {
       setSaving(false);
     }

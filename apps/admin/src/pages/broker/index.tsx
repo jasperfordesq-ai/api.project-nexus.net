@@ -9,6 +9,7 @@ import { StatusTag } from "../../components/common/status-tag";
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -30,7 +31,7 @@ export const BrokerPage = () => {
       await axiosInstance.put(`/api/admin/broker/assignments/${id}/complete`);
       message.success("Assignment completed");
       refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+    } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to complete assignment")); }
   };
 
   return (

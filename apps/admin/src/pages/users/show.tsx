@@ -10,6 +10,7 @@ import { StatusTag } from "../../components/common/status-tag";
 import dayjs from "dayjs";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -29,8 +30,8 @@ export const UserShow = () => {
       setSuspendOpen(false);
       setSuspendReason("");
       queryResult.refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to suspend user");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to suspend user"));
     } finally {
       setLoading(false);
     }
@@ -43,8 +44,8 @@ export const UserShow = () => {
       await axiosInstance.put(`/api/admin/users/${record.id}/activate`);
       message.success("User activated");
       queryResult.refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to activate user");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to activate user"));
     } finally {
       setLoading(false);
     }

@@ -70,8 +70,8 @@ export const authProvider: AuthProvider = {
       }
 
       return { success: true, redirectTo: "/" };
-    } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || "Login failed";
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Login failed";
       return {
         success: false,
         error: { name: "Login Error", message },

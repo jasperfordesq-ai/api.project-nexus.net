@@ -9,6 +9,7 @@ import { Table, Button, Space, message, Tag, Modal, Input } from "antd";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 export const ModerationList = () => {
   const { tableProps, tableQueryResult } = useTable({
@@ -31,8 +32,8 @@ export const ModerationList = () => {
           await axiosInstance.put(`/api/admin/listings/${id}/approve`);
           message.success("Listing approved");
           tableQueryResult.refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.message || "Failed to approve");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to approve listing"));
         } finally {
           setApprovingId(null);
         }
@@ -49,8 +50,8 @@ export const ModerationList = () => {
       setRejectId(null);
       setRejectReason("");
       tableQueryResult.refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to reject");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to reject listing"));
     } finally {
       setRejecting(false);
     }

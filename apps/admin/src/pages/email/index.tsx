@@ -9,6 +9,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -37,8 +38,8 @@ export const EmailTemplatesPage = () => {
       setModalOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.message || "Failed");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to create template"));
     } finally { setSaving(false); }
   };
 
@@ -93,7 +94,7 @@ export const EmailTemplatesPage = () => {
         },
       ]} />
 
-      <Modal title="New Email Template" open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)} confirmLoading={saving}>
+      <Modal title="New Email Template" open={modalOpen} onOk={handleCreate} onCancel={() => { setModalOpen(false); form.resetFields(); }} confirmLoading={saving}>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="subject" label="Subject" rules={[{ required: true }]}><Input /></Form.Item>

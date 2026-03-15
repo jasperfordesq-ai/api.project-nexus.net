@@ -126,7 +126,7 @@ function withCache(fn, keyFn, ttl = 30000) {
 function invalidateUserCache(token) {
   if (!token) return;
   // Create a short hash of the token for the cache key prefix
-  const prefix = token.substring(0, 20);
+  const prefix = token.substring(0, 40);
   cache.deletePattern(prefix);
 }
 

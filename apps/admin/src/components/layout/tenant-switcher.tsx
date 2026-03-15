@@ -70,8 +70,8 @@ export const TenantSwitcher = () => {
       form.resetFields();
       // Reload to refresh all data with new tenant context
       window.location.href = "/";
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to switch tenant");
+    } catch (err: unknown) {
+      message.error(err instanceof Error ? err.message : "Failed to switch tenant");
     } finally {
       setLoading(false);
     }

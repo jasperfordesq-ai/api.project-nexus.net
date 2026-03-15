@@ -136,7 +136,7 @@ export function ServicesPage() {
             >
               <option value="">All categories</option>
               {categories.map((c) => (
-                <option key={c.id} value={c.name.toLowerCase().replace(/\s+/g, '-')}>
+                <option key={c.id} value={c.name}>
                   {c.name}
                 </option>
               ))}

@@ -31,11 +31,13 @@ export interface RegisterRequest {
 export interface RawAuthResponse {
   success: boolean
   requires_2fa: boolean
-  access_token: string
-  refresh_token: string
+  access_token?: string
+  temp_token?: string
+  refresh_token?: string
   token_type: string
-  expires_in: number
-  user: {
+  expires_in?: number
+  message?: string
+  user?: {
     id: number
     email: string
     first_name: string
@@ -61,6 +63,7 @@ export interface AuthResult {
   accessToken: string
   refreshToken: string
   user: UserSummary
+  requires2fa: boolean
 }
 
 // ─── User ────────────────────────────────────────────────────────────────────

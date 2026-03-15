@@ -8,6 +8,7 @@ import { Card, Table, Typography, Spin, Tabs, Button, Space, message, Modal, For
 import { PlusOutlined, UploadOutlined, SearchOutlined, EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import { useState, useEffect, useMemo } from "react";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -84,8 +85,8 @@ export const TranslationsPage = () => {
       message.success("Translation saved");
       setEditingRow(null);
       refetchTranslations();
-    } catch (err: any) {
-      message.error(err?.response?.data?.error || "Failed to save translation");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to save translation"));
     } finally {
       setSaving(false);
     }
@@ -105,8 +106,8 @@ export const TranslationsPage = () => {
       setLocaleModalOpen(false);
       form.resetFields();
       refetchStats();
-    } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.error || err.response.data?.message || "Failed to add locale");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to add locale"));
     } finally {
       setSaving(false);
     }
@@ -127,9 +128,9 @@ export const TranslationsPage = () => {
       refetchTranslations();
       refetchStats();
       refetchMissing();
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof SyntaxError) message.error("Invalid JSON format");
-      else if (err?.response) message.error(err.response.data?.error || err.response.data?.message || "Failed to import");
+      else message.error(getErrorMessage(err, "Failed to import translations"));
     } finally {
       setSaving(false);
     }
@@ -299,14 +300,14 @@ export const TranslationsPage = () => {
         },
       ]} />
 
-      <Modal title="Add Locale" open={localeModalOpen} onOk={handleAddLocale} onCancel={() => setLocaleModalOpen(false)} confirmLoading={saving}>
+      <Modal title="Add Locale" open={localeModalOpen} onOk={handleAddLocale} onCancel={() => { setLocaleModalOpen(false); form.resetFields(); }} confirmLoading={saving}>
         <Form form={form} layout="vertical">
           <Form.Item name="code" label="Locale Code" rules={[{ required: true, message: "Locale code is required" }]}><Input placeholder="e.g. fr, de, es" /></Form.Item>
           <Form.Item name="name" label="Display Name" rules={[{ required: true, message: "Display name is required" }]}><Input placeholder="e.g. French, German" /></Form.Item>
         </Form>
       </Modal>
 
-      <Modal title="Bulk Import Translations" open={bulkModalOpen} onOk={handleBulkImport} onCancel={() => setBulkModalOpen(false)} confirmLoading={saving} width={600}>
+      <Modal title="Bulk Import Translations" open={bulkModalOpen} onOk={handleBulkImport} onCancel={() => { setBulkModalOpen(false); bulkForm.resetFields(); }} confirmLoading={saving} width={600}>
         <Form form={bulkForm} layout="vertical">
           <Form.Item name="locale" label="Target Locale" rules={[{ required: true }]}>
             <Select options={LANGUAGES} placeholder="Select locale" />

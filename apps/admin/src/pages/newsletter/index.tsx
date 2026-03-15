@@ -9,6 +9,7 @@ import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, mess
 import { SendOutlined, PlusOutlined, MailOutlined, UserOutlined, StopOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -69,8 +70,8 @@ export const NewsletterPage = () => {
           await axiosInstance.post(`/api/admin/newsletter/${id}/send`);
           message.success("Newsletter sent successfully");
           refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.error || err?.response?.data?.message || "Failed to send newsletter");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to send newsletter"));
         }
       },
     });
@@ -87,8 +88,8 @@ export const NewsletterPage = () => {
           await axiosInstance.put(`/api/admin/newsletter/${id}/cancel`);
           message.success("Newsletter cancelled");
           refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.error || err?.response?.data?.message || "Failed to cancel");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to cancel newsletter"));
         }
       },
     });
@@ -108,10 +109,8 @@ export const NewsletterPage = () => {
       setCreateOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) {
-      if (err?.response) {
-        message.error(err?.response?.data?.error || err?.response?.data?.message || "Failed to create newsletter");
-      }
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to create newsletter"));
     } finally {
       setSaving(false);
     }

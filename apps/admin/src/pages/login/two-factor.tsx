@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, Form, Input, Button, Typography, Alert, Space } from "antd";
 import { LockOutlined } from "@ant-design/icons";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 import { setToken, setRefreshToken, setStoredUser, clearAuth, type StoredUser } from "../../utils/token";
 
 const { Title, Text } = Typography;
@@ -66,14 +67,15 @@ export const TwoFactorPage = () => {
 
       if (user.role !== "admin" && user.role !== "super_admin") {
         clearAuth();
+        sessionStorage.removeItem("nexus_2fa_temp");
         setError("Admin access required.");
         return;
       }
 
       sessionStorage.removeItem("nexus_2fa_temp");
       navigate("/");
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || "Verification failed");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Verification failed"));
     } finally {
       setLoading(false);
     }

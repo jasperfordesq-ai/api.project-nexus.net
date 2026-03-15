@@ -8,6 +8,7 @@ import { Card, Row, Col, Statistic, Typography, Spin, Button, Space, message, Se
 import { SyncOutlined, CheckCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title, Text } = Typography;
 
@@ -23,7 +24,7 @@ export const SearchAdminPage = () => {
       await axiosInstance.post("/api/admin/search/reindex");
       message.success("Full reindex started");
       refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+    } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to start reindex")); }
     finally { setReindexing(false); }
   };
 
@@ -33,7 +34,7 @@ export const SearchAdminPage = () => {
       await axiosInstance.post("/api/admin/search/reindex/" + type);
       message.success("Reindex started for: " + type);
       refetch();
-    } catch (err: any) { message.error(err?.response?.data?.message || "Failed"); }
+    } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to start reindex")); }
     finally { setReindexing(false); }
   };
 

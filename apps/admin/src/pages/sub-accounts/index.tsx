@@ -9,6 +9,7 @@ import { useState } from "react";
 import { StopOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -38,8 +39,8 @@ export const SubAccountsPage = () => {
       await axiosInstance.put(`/api/admin/sub-accounts/${id}/deactivate`);
       message.success("Sub-account deactivated");
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.error || "Failed");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to deactivate sub-account"));
     }
   };
 
@@ -48,8 +49,8 @@ export const SubAccountsPage = () => {
       await axiosInstance.delete(`/api/admin/sub-accounts/${id}`);
       message.success("Sub-account removed");
       refetch();
-    } catch (err: any) {
-      message.error(err?.response?.data?.error || "Failed");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to remove sub-account"));
     }
   };
 

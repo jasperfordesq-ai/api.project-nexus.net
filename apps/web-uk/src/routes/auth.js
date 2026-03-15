@@ -4,7 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { login, register, logout, forgotPassword, resetPassword, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
+const { login, register, logout, forgotPassword, resetPassword, verify2fa, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
 const { redirectIfAuthenticated, setAuthCookies, clearAuthCookies } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 
@@ -33,6 +33,19 @@ router.post('/login', asyncRoute(async (req, res) => {
   try {
     const result = await login(email.toLowerCase(), password, tenant_slug);
 
+    // Handle 2FA requirement — store pending token in session for verification
+    if (result.requires_2fa) {
+      if (req.session) {
+        req.session.pending2faToken = result.temp_token || result.access_token;
+      }
+      return res.render('login', {
+        title: 'Sign in',
+        show2fa: true,
+        values: { email, tenant_slug },
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
+      });
+    }
+
     if (!result.access_token) {
       throw new Error('No access token received');
     }
@@ -58,6 +71,48 @@ router.post('/login', asyncRoute(async (req, res) => {
       title: 'Sign in',
       error: errorMessage,
       values: { email, tenant_slug },
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
+    });
+  }
+}));
+
+// 2FA verification
+router.post('/verify-2fa', asyncRoute(async (req, res) => {
+  const { code } = req.body;
+  const pendingToken = req.session?.pending2faToken;
+
+  if (!pendingToken) {
+    return res.redirect('/login');
+  }
+
+  if (!code || !code.trim()) {
+    return res.render('login', {
+      title: 'Sign in',
+      show2fa: true,
+      error: 'Enter your authentication code',
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
+    });
+  }
+
+  try {
+    const result = await verify2fa(pendingToken, code.trim());
+
+    // Clear pending token from session
+    delete req.session.pending2faToken;
+
+    const accessToken = result.access_token || pendingToken;
+    setAuthCookies(res, accessToken, result.refresh_token);
+
+    res.redirect('/dashboard');
+  } catch (error) {
+    if (error instanceof ApiOfflineError) {
+      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+    }
+
+    res.render('login', {
+      title: 'Sign in',
+      show2fa: true,
+      error: 'Invalid code. Please try again.',
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
@@ -198,28 +253,10 @@ router.post('/logout', asyncRoute(async (req, res) => {
   res.redirect('/login');
 }));
 
-router.get('/logout', asyncRoute(async (req, res) => {
-  const token = req.signedCookies.token;
-
-  if (token) {
-    try {
-      await logout(token);
-    } catch (error) {
-      console.error('Logout API error:', error.message);
-    }
-
-    // Clear cached data for this user
-    invalidateUserCache(token);
-  }
-
-  // Destroy session to prevent session fixation
-  if (req.session) {
-    req.session.destroy((err) => { if (err) console.error('Session destroy error:', err); });
-  }
-
-  clearAuthCookies(res);
-  res.redirect('/login');
-}));
+// GET /logout redirects to POST to prevent CSRF via link/image tags
+router.get('/logout', (req, res) => {
+  res.redirect(307, '/login');
+});
 
 // Forgot password
 router.get('/forgot-password', redirectIfAuthenticated, (req, res) => {

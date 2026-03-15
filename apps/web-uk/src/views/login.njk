@@ -27,71 +27,105 @@
         }) }}
       {% endif %}
 
-      <h1 class="govuk-heading-xl">Sign in</h1>
+      {% if show2fa %}
+        <h1 class="govuk-heading-xl">Two-factor authentication</h1>
+        <p class="govuk-body">Enter the 6-digit code from your authenticator app.</p>
 
-      <form method="post" action="/login" novalidate data-validate-form data-loading="Signing in...">
-        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-        {{ govukInput({
-          label: {
-            text: "Email address",
-            classes: "govuk-label--m"
-          },
-          id: "email",
-          name: "email",
-          type: "email",
-          autocomplete: "email",
-          spellcheck: false,
-          value: values.email if values else "",
-          attributes: {
-            "data-validate": "required email",
-            "data-label": "Email address"
-          }
-        }) }}
+        <form method="post" action="/verify-2fa" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          {{ govukInput({
+            label: {
+              text: "Authentication code",
+              classes: "govuk-label--m"
+            },
+            id: "code",
+            name: "code",
+            inputmode: "numeric",
+            autocomplete: "one-time-code",
+            spellcheck: false,
+            classes: "govuk-input--width-10",
+            attributes: {
+              "pattern": "[0-9]*",
+              "maxlength": "6"
+            }
+          }) }}
 
-        {{ govukInput({
-          label: {
-            text: "Password",
-            classes: "govuk-label--m"
-          },
-          id: "password",
-          name: "password",
-          type: "password",
-          autocomplete: "current-password",
-          attributes: {
-            "data-validate": "required",
-            "data-label": "Password"
-          }
-        }) }}
+          {{ govukButton({
+            text: "Verify"
+          }) }}
+        </form>
 
-        <p class="govuk-body govuk-!-margin-bottom-6">
-          <a href="/forgot-password" class="govuk-link">Forgot your password?</a>
+        <p class="govuk-body govuk-!-margin-top-4">
+          <a href="/login" class="govuk-link">Cancel and return to sign in</a>
         </p>
 
-        {{ govukInput({
-          label: {
-            text: "Community code",
-            classes: "govuk-label--m"
-          },
-          hint: {
-            text: "Your community identifier (e.g. 'acme')"
-          },
-          id: "tenant_slug",
-          name: "tenant_slug",
-          value: values.tenant_slug if values else "",
-          attributes: {
-            "data-validate": "required",
-            "data-label": "Community code"
-          }
-        }) }}
+      {% else %}
+        <h1 class="govuk-heading-xl">Sign in</h1>
 
-        {{ govukButton({
-          text: "Sign in"
-        }) }}
-      </form>
+        <form method="post" action="/login" novalidate data-validate-form data-loading="Signing in...">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          {{ govukInput({
+            label: {
+              text: "Email address",
+              classes: "govuk-label--m"
+            },
+            id: "email",
+            name: "email",
+            type: "email",
+            autocomplete: "email",
+            spellcheck: false,
+            value: values.email if values else "",
+            attributes: {
+              "data-validate": "required email",
+              "data-label": "Email address"
+            }
+          }) }}
 
-      <p class="govuk-body govuk-!-margin-top-6">
-        Don't have an account? <a href="/register" class="govuk-link">Create one</a>
-      </p>
+          {{ govukInput({
+            label: {
+              text: "Password",
+              classes: "govuk-label--m"
+            },
+            id: "password",
+            name: "password",
+            type: "password",
+            autocomplete: "current-password",
+            attributes: {
+              "data-validate": "required",
+              "data-label": "Password"
+            }
+          }) }}
+
+          <p class="govuk-body govuk-!-margin-bottom-6">
+            <a href="/forgot-password" class="govuk-link">Forgot your password?</a>
+          </p>
+
+          {{ govukInput({
+            label: {
+              text: "Community code",
+              classes: "govuk-label--m"
+            },
+            hint: {
+              text: "Your community identifier (e.g. 'acme')"
+            },
+            id: "tenant_slug",
+            name: "tenant_slug",
+            value: values.tenant_slug if values else "",
+            attributes: {
+              "data-validate": "required",
+              "data-label": "Community code"
+            }
+          }) }}
+
+          {{ govukButton({
+            text: "Sign in"
+          }) }}
+        </form>
+
+        <p class="govuk-body govuk-!-margin-top-6">
+          Don't have an account? <a href="/register" class="govuk-link">Create one</a>
+        </p>
+      {% endif %}
 
     </div>
   </div>

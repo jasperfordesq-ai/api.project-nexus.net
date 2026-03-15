@@ -23,6 +23,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { TwoFactorRequiredError } from "@/lib/api";
 import {
   detectPasskeyCapabilities,
   authenticateWithPasskey,
@@ -34,6 +35,7 @@ export default function LoginPage() {
   const router = useRouter();
   const {
     login,
+    verify2FALogin,
     loginWithPasskey,
     isAuthenticated,
     isLoading: authLoading,
@@ -47,6 +49,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tenantSlug, setTenantSlug] = useState("");
+
+  // 2FA state
+  const [show2FA, setShow2FA] = useState(false);
+  const [pendingToken, setPendingToken] = useState("");
+  const [tfaCode, setTfaCode] = useState("");
 
   // Passkey capabilities
   const [passkeyCapabilities, setPasskeyCapabilities] =
@@ -103,8 +110,35 @@ export default function LoginPage() {
       setPassword("");
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-      setPassword("");
+      if (err instanceof TwoFactorRequiredError) {
+        setPendingToken(err.pendingToken);
+        setShow2FA(true);
+        setPassword("");
+      } else {
+        setError(err instanceof Error ? err.message : "Login failed");
+        setPassword("");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handle2FAVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      if (!tfaCode.trim()) {
+        throw new Error("Enter your authentication code");
+      }
+
+      await verify2FALogin(pendingToken, tfaCode.trim());
+      setTfaCode("");
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verification failed");
+      setTfaCode("");
     } finally {
       setIsLoading(false);
     }
@@ -172,9 +206,13 @@ export default function LoginPage() {
               <span className="text-2xl font-bold text-gradient">NEXUS</span>
             </Link>
             <h1 className="text-2xl font-bold text-white mb-2">
-              Welcome back
+              {show2FA ? "Two-factor authentication" : "Welcome back"}
             </h1>
-            <p className="text-white/50">Sign in to your account to continue</p>
+            <p className="text-white/50">
+              {show2FA
+                ? "Verify your identity to continue"
+                : "Sign in to your account to continue"}
+            </p>
           </div>
 
           {/* Error Alert */}
@@ -189,6 +227,60 @@ export default function LoginPage() {
             </motion.div>
           )}
 
+          {/* 2FA Verification Form */}
+          {show2FA ? (
+            <form onSubmit={handle2FAVerify} className="space-y-5">
+              <p className="text-white/60 text-sm text-center mb-4">
+                Enter the 6-digit code from your authenticator app.
+              </p>
+              <Input
+                type="text"
+                placeholder="Authentication code"
+                value={tfaCode}
+                onValueChange={setTfaCode}
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                maxLength={6}
+                startContent={
+                  <Smartphone className="w-4 h-4 text-white/40 flex-shrink-0" />
+                }
+                classNames={{
+                  input: "text-white placeholder:text-white/50 text-center text-lg tracking-widest",
+                  inputWrapper: [
+                    "bg-white/5",
+                    "border border-white/10",
+                    "hover:bg-white/10",
+                    "group-data-[focus=true]:bg-white/10",
+                    "group-data-[focus=true]:border-indigo-500/50",
+                    "h-12",
+                  ],
+                }}
+                autoFocus
+                isRequired
+              />
+              <Button
+                type="submit"
+                isLoading={isLoading}
+                className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 text-white font-semibold h-12 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-shadow"
+                endContent={!isLoading && <ArrowRight className="w-4 h-4" />}
+              >
+                {isLoading ? "Verifying..." : "Verify"}
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShow2FA(false);
+                  setPendingToken("");
+                  setTfaCode("");
+                  setError(null);
+                }}
+                className="w-full text-center text-sm text-white/40 hover:text-white/60 transition-colors"
+              >
+                Cancel and return to login
+              </button>
+            </form>
+          ) : (
+          <>
           {/* Passkey Sign-in Button */}
           {showPasskeyButton && (
             <>
@@ -357,6 +449,8 @@ export default function LoginPage() {
               About Project NEXUS
             </Link>
           </p>
+          </>
+          )}
         </div>
 
         {/* Bottom decoration */}

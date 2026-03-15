@@ -9,6 +9,7 @@ import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -23,12 +24,6 @@ export const EventsAdminPage = () => {
   const totalCount = raw?.total || raw?.totalCount || events.length;
   const stats = statsData?.data as any;
 
-  const getErrorMessage = (err: any, fallback: string) => {
-    if (err?.response) return err.response.data?.message || err.response.data?.error || fallback;
-    if (err?.request) return "Network error — please check your connection and try again";
-    return fallback;
-  };
-
   const handleCancel = (id: number) => {
     Modal.confirm({
       title: "Cancel Event",
@@ -41,7 +36,7 @@ export const EventsAdminPage = () => {
           await axiosInstance.put(`/api/admin/events/${id}/cancel`);
           message.success("Event cancelled");
           refetch();
-        } catch (err: any) { message.error(getErrorMessage(err, "Failed to cancel event")); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to cancel event")); }
       },
     });
   };
@@ -58,7 +53,7 @@ export const EventsAdminPage = () => {
           await axiosInstance.delete(`/api/admin/events/${id}`);
           message.success("Event deleted");
           refetch();
-        } catch (err: any) { message.error(getErrorMessage(err, "Failed to delete event")); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to delete event")); }
       },
     });
   };

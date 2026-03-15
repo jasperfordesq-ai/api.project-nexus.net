@@ -9,6 +9,7 @@ import { PlusOutlined, StopOutlined, ExclamationCircleOutlined, NotificationOutl
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title, Text } = Typography;
 
@@ -51,8 +52,8 @@ export const AnnouncementsPage = () => {
       setModalOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.error || err.response.data?.message || "Failed to create announcement");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to create announcement"));
     } finally {
       setSaving(false);
     }
@@ -70,8 +71,8 @@ export const AnnouncementsPage = () => {
           await axiosInstance.put(`/api/admin/system/announcements/${id}/deactivate`);
           message.success("Announcement deactivated");
           refetch();
-        } catch (err: any) {
-          message.error(err?.response?.data?.error || err?.response?.data?.message || "Failed to deactivate");
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to deactivate announcement"));
         }
       },
     });

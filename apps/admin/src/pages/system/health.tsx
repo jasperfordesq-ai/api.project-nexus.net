@@ -13,7 +13,6 @@ import {
   ClockCircleOutlined,
   ReloadOutlined,
   UserOutlined,
-  AppstoreOutlined,
   ScheduleOutlined,
   CloudServerOutlined,
 } from "@ant-design/icons";

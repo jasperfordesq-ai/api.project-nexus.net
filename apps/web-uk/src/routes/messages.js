@@ -74,7 +74,7 @@ router.post('/new', audit.conversationCreate(), asyncRoute(async (req, res, next
   if (errors.length > 0) {
     const connectionsResult = await getConnections(req.token, 'accepted');
     const rawConns = connectionsResult.items || connectionsResult.data || connectionsResult.connections || connectionsResult;
-  const connections = Array.isArray(rawConns) ? rawConns : [];
+    const connections = Array.isArray(rawConns) ? rawConns : [];
 
     return res.render('messages/new', {
       title: 'New message',
@@ -105,7 +105,7 @@ router.post('/new', audit.conversationCreate(), asyncRoute(async (req, res, next
     if (error instanceof ApiError && error.status !== 401) {
       const connectionsResult = await getConnections(req.token, 'accepted');
       const rawConns = connectionsResult.items || connectionsResult.data || connectionsResult.connections || connectionsResult;
-  const connections = Array.isArray(rawConns) ? rawConns : [];
+      const connections = Array.isArray(rawConns) ? rawConns : [];
 
       return res.render('messages/new', {
         title: 'New message',

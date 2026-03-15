@@ -6,9 +6,11 @@
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, message, Modal, Tag, Input, Select } from "antd";
 import { ExclamationCircleOutlined, DeleteOutlined, TeamOutlined, LockOutlined, UnlockOutlined } from "@ant-design/icons";
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
+import { useDebouncedSearch } from "../../utils/use-debounced-search";
 
 const { Title } = Typography;
 
@@ -23,7 +25,6 @@ export const GroupsAdminPage = () => {
   const [pageSize, setPageSize] = useState(50);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("");
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const queryParams: Record<string, any> = { page, limit: pageSize };
   if (search) queryParams.search = search;
@@ -42,19 +43,11 @@ export const GroupsAdminPage = () => {
   const totalCount = raw?.total || raw?.totalCount || groups.length;
   const stats = statsData?.data as any;
 
-  const getErrorMessage = (err: any, fallback: string) => {
-    if (err?.response) return err.response.data?.message || err.response.data?.error || fallback;
-    if (err?.request) return "Network error — please check your connection and try again";
-    return fallback;
-  };
-
-  const debouncedSearch = useCallback((value: string) => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setSearch(value);
-      setPage(1);
-    }, 300);
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    setPage(1);
   }, []);
+  const { debounced: debouncedSearch, immediate: immediateSearch } = useDebouncedSearch(handleSearchChange);
 
   const handleDelete = (id: number, name: string) => {
     Modal.confirm({
@@ -68,7 +61,7 @@ export const GroupsAdminPage = () => {
           await axiosInstance.delete(`/api/admin/groups/${id}`);
           message.success("Group deleted");
           refetch();
-        } catch (err: any) { message.error(getErrorMessage(err, "Failed to delete group")); }
+        } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to delete group")); }
       },
     });
   };
@@ -116,11 +109,7 @@ export const GroupsAdminPage = () => {
           allowClear
           style={{ width: 250 }}
           onChange={(e) => debouncedSearch(e.target.value)}
-          onSearch={(value) => {
-            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-            setSearch(value);
-            setPage(1);
-          }}
+          onSearch={immediateSearch}
         />
         <Select
           placeholder="Type"

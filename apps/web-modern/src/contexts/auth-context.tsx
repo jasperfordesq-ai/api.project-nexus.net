@@ -32,6 +32,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string, tenantSlug: string) => Promise<AuthResponse>;
+  verify2FALogin: (pendingToken: string, code: string) => Promise<AuthResponse>;
   loginWithPasskey: (passkeyResponse: PasskeyAuthResponse) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -75,7 +76,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string, tenantSlug: string) => {
+      // TwoFactorRequiredError will propagate to the caller (login page)
       const response = await api.login(email, password, tenantSlug);
+      setUser(response.user);
+      return response;
+    },
+    []
+  );
+
+  const verify2FALogin = useCallback(
+    async (pendingToken: string, code: string) => {
+      const response = await api.verify2FALogin(pendingToken, code);
       setUser(response.user);
       return response;
     },
@@ -132,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         login,
+        verify2FALogin,
         loginWithPasskey,
         logout,
         refreshUser,

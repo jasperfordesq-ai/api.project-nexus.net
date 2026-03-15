@@ -34,6 +34,16 @@ export interface AuthResponse {
   token_type: string;
   expires_in: number;
   user: User;
+  requires_2fa?: boolean;
+}
+
+export class TwoFactorRequiredError extends Error {
+  pendingToken: string;
+  constructor(pendingToken: string) {
+    super("Two-factor authentication required");
+    this.name = "TwoFactorRequiredError";
+    this.pendingToken = pendingToken;
+  }
 }
 
 export interface Listing {
@@ -854,7 +864,7 @@ function normalizePost(raw: any): Post {
     like_count: raw.likeCount ?? raw.like_count ?? 0,
     comment_count: raw.commentCount ?? raw.comment_count ?? 0,
     is_liked: raw.isLiked ?? raw.is_liked ?? false,
-    author: authorRaw ? normalizeUser(authorRaw) : undefined as any,
+    author: authorRaw ? normalizeUser(authorRaw) : undefined,
     group_id: raw.groupId ?? raw.group_id ?? raw.group?.id,
     group: raw.group ? normalizeGroup(raw.group) : undefined,
     created_at: raw.createdAt ?? raw.created_at ?? '',
@@ -869,7 +879,7 @@ function normalizeComment(raw: any): Comment {
     post_id: raw.postId ?? raw.post_id ?? 0,
     author_id: raw.user?.id ?? raw.author?.id ?? raw.authorId ?? raw.author_id ?? 0,
     content: raw.content ?? '',
-    author: authorRaw ? normalizeUser(authorRaw) : undefined as any,
+    author: authorRaw ? normalizeUser(authorRaw) : undefined,
     created_at: raw.createdAt ?? raw.created_at ?? '',
   };
 }
@@ -1183,6 +1193,12 @@ class ApiClient {
       }),
     });
 
+    // Check if 2FA is required before normalizing (no user object in 2FA response)
+    if (raw.requires_2fa || raw.requiresTwoFactor) {
+      const pendingToken = raw.temp_token ?? raw.tempToken ?? raw.access_token ?? raw.accessToken ?? raw.token ?? '';
+      throw new TwoFactorRequiredError(pendingToken);
+    }
+
     const response = normalizeAuthResponse(raw);
     setToken(response.access_token);
     if (response.refresh_token) {
@@ -1191,6 +1207,39 @@ class ApiClient {
     setStoredUser(response.user);
 
     return response;
+  }
+
+  async verify2FALogin(
+    pendingToken: string,
+    code: string
+  ): Promise<AuthResponse> {
+    const raw = await this.request<any>("/api/auth/2fa/verify", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${pendingToken}` },
+      body: JSON.stringify({ code }),
+    });
+
+    // The verify response may return new tokens or indicate success
+    // If it returns tokens, use them; otherwise use the pending token
+    const accessToken = raw.access_token ?? raw.accessToken ?? raw.token ?? pendingToken;
+    const refreshToken = raw.refresh_token ?? raw.refreshToken;
+
+    setToken(accessToken);
+    if (refreshToken) {
+      setRefreshToken(refreshToken);
+    }
+
+    // Fetch user profile since 2FA verify may not return user data
+    const user = await this.getCurrentUser();
+    setStoredUser(user);
+
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      token_type: 'Bearer',
+      expires_in: raw.expires_in ?? raw.expiresIn ?? 0,
+      user,
+    };
   }
 
   async validateToken(): Promise<User> {

@@ -8,6 +8,7 @@ import { Card, Table, Typography, Button, Modal, Form, Input, message, Spin } fr
 import { PlusOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
+import { getErrorMessage } from "../../utils/errors";
 
 const { Title } = Typography;
 
@@ -35,8 +36,8 @@ export const TenantConfigPage = () => {
       setModalOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) {
-      if (err?.response) message.error(err.response.data?.message || "Failed to save");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to save config"));
     } finally {
       setSaving(false);
     }
@@ -60,7 +61,7 @@ export const TenantConfigPage = () => {
         </Card>
       )}
 
-      <Modal title="Add / Update Config" open={modalOpen} onOk={handleSave} onCancel={() => setModalOpen(false)} confirmLoading={saving}>
+      <Modal title="Add / Update Config" open={modalOpen} onOk={handleSave} onCancel={() => { setModalOpen(false); form.resetFields(); }} confirmLoading={saving}>
         <Form form={form} layout="vertical">
           <Form.Item name="key" label="Key" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="value" label="Value" rules={[{ required: true }]}><Input.TextArea rows={3} /></Form.Item>
