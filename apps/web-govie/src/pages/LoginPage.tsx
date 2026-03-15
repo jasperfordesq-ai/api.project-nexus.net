@@ -27,7 +27,7 @@ export function LoginPage() {
         if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Please enter a valid email address'
         break
       case 'password':
-        if (value.length > 0 && value.length === 0) error = 'Enter your password'
+        if (value.length > 0 && !value.trim()) error = 'Enter your password'
         break
     }
     setFieldErrors(prev => ({ ...prev, [name]: error }))

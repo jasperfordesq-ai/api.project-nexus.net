@@ -34,8 +34,8 @@ export const DashboardPage = () => {
     config: { query: { days: 30 } },
   });
 
-  const overview = data?.data as any;
-  const growth = growthData?.data as any;
+  const overview = (data?.data || {}) as Record<string, any>;
+  const growth = (growthData?.data || {}) as Record<string, any>;
 
   if (isLoading) {
     return <Spin size="large" style={{ display: "flex", justifyContent: "center", marginTop: 100 }} />;

@@ -60,6 +60,7 @@ export const CrmPage = () => {
       await axiosInstance.post(`/api/admin/crm/users/${noteUserId}/notes`, values);
       message.success("Note added");
       setNoteModalOpen(false);
+      setNoteUserId(null);
       form.resetFields();
     } catch (err: any) {
       if (err?.response) {
@@ -139,7 +140,7 @@ export const CrmPage = () => {
         },
       ]} />
 
-      <Modal title={`Add Note for User #${noteUserId}`} open={noteModalOpen} onOk={handleAddNote} onCancel={() => setNoteModalOpen(false)} confirmLoading={saving}>
+      <Modal title={`Add Note for User #${noteUserId}`} open={noteModalOpen} onOk={handleAddNote} onCancel={() => { setNoteModalOpen(false); setNoteUserId(null); form.resetFields(); }} confirmLoading={saving}>
         <Form form={form} layout="vertical">
           <Form.Item name="content" label="Note" rules={[{ required: true }]}><Input.TextArea rows={3} /></Form.Item>
           <Form.Item name="category" label="Category"><Input placeholder="e.g. follow-up, complaint, feedback" /></Form.Item>

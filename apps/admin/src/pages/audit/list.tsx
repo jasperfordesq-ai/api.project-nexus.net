@@ -50,8 +50,6 @@ export const AuditLogList = () => {
 
   const handleDateRange = (dates: any) => {
     if (dates && dates[0] && dates[1]) {
-      updateFilter("from_date", dates[0].format("YYYY-MM-DD"));
-      // Also set to_date — need to handle separately since updateFilter only sets one key
       setFilters(prev => ({
         ...prev,
         from_date: dates[0].format("YYYY-MM-DD"),

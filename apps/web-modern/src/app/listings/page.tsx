@@ -180,7 +180,7 @@ function ListingsContent() {
           <Input
             placeholder="Search listings..."
             value={searchQuery}
-            onValueChange={setSearchQuery}
+            onValueChange={(v) => { setSearchQuery(v); setCurrentPage(1); }}
             startContent={<Search className="w-4 h-4 text-white/40" />}
             classNames={{
               input: "text-white placeholder:text-white/30",

@@ -26,28 +26,45 @@ export const GamificationPage = () => {
   const [saving, setSaving] = useState(false);
 
   const handleCreate = async () => {
+    let values;
     try {
-      const values = await form.validateFields();
+      values = await form.validateFields();
+    } catch {
+      return; // Validation failed — keep modal open
+    }
+    try {
       setSaving(true);
       await axiosInstance.post("/api/admin/gamification/badges", values);
       message.success("Badge created");
       setCreateOpen(false);
       form.resetFields();
       refetch();
-    } catch (err: any) { if (err?.response) message.error(err.response.data?.message || "Failed"); }
-    finally { setSaving(false); }
+    } catch (err: any) {
+      if (err?.response) message.error(err.response.data?.message || "Failed to create badge");
+      else if (err?.request) message.error("Network error — please check your connection");
+      else message.error("Failed to create badge");
+    } finally { setSaving(false); }
   };
 
   const handleAward = async () => {
+    let values;
     try {
-      const values = await awardForm.validateFields();
+      values = await awardForm.validateFields();
+    } catch {
+      return; // Validation failed — keep modal open
+    }
+    try {
       setSaving(true);
       await axiosInstance.post(`/api/admin/gamification/badges/${awardBadgeId}/award`, values);
       message.success("Badge awarded");
       setAwardOpen(false);
       awardForm.resetFields();
-    } catch (err: any) { if (err?.response) message.error(err.response.data?.message || "Failed"); }
-    finally { setSaving(false); }
+      refetch();
+    } catch (err: any) {
+      if (err?.response) message.error(err.response.data?.message || "Failed to award badge");
+      else if (err?.request) message.error("Network error — please check your connection");
+      else message.error("Failed to award badge");
+    } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
