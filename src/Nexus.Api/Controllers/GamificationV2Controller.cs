@@ -500,13 +500,13 @@ public class GamificationV2Controller : ControllerBase
         var alreadyPurchased = await _db.ShopPurchases.AnyAsync(p => p.UserId == userId.Value && p.ShopItemId == item.Id);
         if (alreadyPurchased) return BadRequest(new { error = "You have already purchased this item" });
 
+        // Deduct XP first — if this fails, no purchase is recorded
+        await _gamificationService.AwardXpAsync(userId.Value, -item.XpCost, "shop_purchase", description: $"XP shop purchase: {item.Name}");
+
         var purchase = new ShopPurchase { UserId = userId.Value, ShopItemId = item.Id, TenantId = tenantId };
         item.PurchasedCount++;
         _db.ShopPurchases.Add(purchase);
         await _db.SaveChangesAsync();
-
-        // Deduct XP
-        await _gamificationService.AwardXpAsync(userId.Value, -item.XpCost, "shop_purchase", description: $"XP shop purchase: {item.Name}");
 
         _logger.LogInformation("User {UserId} purchased shop item {ItemId} for {XpCost} XP", userId, item.Id, item.XpCost);
         return Ok(new { message = "Purchase successful", item_id = item.Id, item_key = item.ItemKey, xp_spent = item.XpCost });

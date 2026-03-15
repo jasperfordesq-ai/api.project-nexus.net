@@ -144,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Proceed with local logout even if the server call fails
     } finally {
       clearStoredTokens()
+      localStorage.removeItem('nexus:user')
       setState({ user: null, isAuthenticated: false, isLoading: false, requires2fa: false, pendingAccessToken: null })
     }
   }, [])
@@ -172,7 +173,7 @@ export function useRequireAuth() {
   return { ...auth, authorized: !auth.isLoading && auth.isAuthenticated }
 }
 
-// Type guard
+// Type guard — the API client interceptor normalizes errors to { message, statusCode, errors }
 export function isApiError(err: unknown): err is ApiError {
-  return typeof err === 'object' && err !== null && 'message' in err
+  return typeof err === 'object' && err !== null && 'message' in err && typeof (err as ApiError).message === 'string'
 }

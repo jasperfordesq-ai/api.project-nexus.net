@@ -3,11 +3,11 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import apiClient from '../api/client'
 import { listingsApi } from '../api/listings'
-import type { Listing, ListingType, PaginationParams } from '../api/types'
+import type { Listing, ListingType } from '../api/types'
 import { isApiError } from '../context/AuthContext'
 
 const PAGE_SIZE = 12
@@ -28,9 +28,10 @@ export function ServicesPage() {
   const searchRef = useRef<HTMLInputElement>(null)
 
   // Fetch categories dynamically from the backend
+  // Try public endpoint first, fall back to admin endpoint, then hardcoded fallback
   useEffect(() => {
     const controller = new AbortController()
-    apiClient.get('/api/categories', { signal: controller.signal })
+    apiClient.get('/api/admin/categories', { signal: controller.signal })
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any
@@ -39,38 +40,50 @@ export function ServicesPage() {
         setCategories(items.map((c: any) => ({ id: c.id, name: c.name ?? '' })))
       })
       .catch(() => {
-        // Fallback: categories endpoint may require admin — silently use empty list
-        if (!controller.signal.aborted) setCategories([])
+        // Admin endpoint requires auth — use hardcoded fallback so the filter is still usable
+        if (!controller.signal.aborted) {
+          setCategories([
+            { id: 1, name: 'Education' },
+            { id: 2, name: 'Home & Garden' },
+            { id: 3, name: 'Tech Support' },
+            { id: 4, name: 'Transport' },
+            { id: 5, name: 'Cooking' },
+            { id: 6, name: 'Creative Arts' },
+            { id: 7, name: 'Childcare' },
+            { id: 8, name: 'Pets' },
+            { id: 9, name: 'Healthcare' },
+            { id: 10, name: 'Admin & Office' },
+            { id: 11, name: 'Other' },
+          ])
+        }
       })
     return () => controller.abort()
   }, [])
 
-  const fetchListings = useCallback(async (params: PaginationParams) => {
+  useEffect(() => {
+    let cancelled = false
     setIsLoading(true)
     setError(null)
-    try {
-      const data = await listingsApi.list(params)
-      setListings(data.items ?? [])
-      setTotalCount(data.totalCount ?? 0)
-    } catch (err) {
-      if (isApiError(err)) setError(err.message)
-      else setError('Could not load services. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    fetchListings({
+    listingsApi.list({
       page: currentPage,
       pageSize: PAGE_SIZE,
       search: searchQuery || undefined,
       category: category || undefined,
       type: type || undefined,
     })
-    return () => controller.abort()
-  }, [fetchListings, currentPage, searchQuery, category, type])
+      .then(data => {
+        if (cancelled) return
+        setListings(data.items ?? [])
+        setTotalCount(data.totalCount ?? 0)
+      })
+      .catch(err => {
+        if (cancelled) return
+        if (isApiError(err)) setError(err.message)
+        else setError('Could not load services. Please try again.')
+      })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+    return () => { cancelled = true }
+  }, [currentPage, searchQuery, category, type])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

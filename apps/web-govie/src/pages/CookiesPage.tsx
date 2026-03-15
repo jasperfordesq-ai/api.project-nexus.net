@@ -6,8 +6,9 @@
 import { Link } from 'react-router-dom'
 
 const cookieRows = [
-  { name: 'nexus_access_token', purpose: 'Stores your authentication token to keep you signed in', duration: 'Session', type: 'Essential' },
-  { name: 'nexus_refresh_token', purpose: 'Allows your session to be extended without re-entering your password', duration: '30 days', type: 'Essential' },
+  { name: 'nexus:access_token (localStorage)', purpose: 'Stores your authentication token to keep you signed in', duration: 'Until logout', type: 'Essential' },
+  { name: 'nexus:refresh_token (localStorage)', purpose: 'Allows your session to be extended without re-entering your password', duration: 'Until logout', type: 'Essential' },
+  { name: 'nexus:user (localStorage)', purpose: 'Caches your profile data for faster page loads', duration: 'Until logout', type: 'Essential' },
 ]
 
 export function CookiesPage() {

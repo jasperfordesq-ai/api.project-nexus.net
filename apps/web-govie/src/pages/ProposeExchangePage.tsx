@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import apiClient from '../api/client'
+import { exchangesApi } from '../api/exchanges'
 import { isApiError } from '../context/AuthContext'
 
 interface Listing { id: number; title: string; creditRate: number; userName: string }
@@ -30,7 +31,7 @@ export function ProposeExchangePage() {
           setListing({
             id: raw.id,
             title: raw.title ?? '',
-            creditRate: raw.creditRate ?? raw.credit_rate ?? 0,
+            creditRate: raw.creditRate ?? raw.credit_rate ?? raw.estimated_hours ?? raw.estimatedHours ?? 1,
             userName: raw.userName ?? raw.user_name ?? (user.first_name || user.firstName ? `${user.first_name ?? user.firstName ?? ''} ${user.last_name ?? user.lastName ?? ''}`.trim() : 'Unknown'),
           })
         })
@@ -44,13 +45,14 @@ export function ProposeExchangePage() {
     if (!listingId) { setError('No service selected.'); return }
     setIsSubmitting(true)
     try {
-      const res = await apiClient.post<{ id: number }>('/api/exchanges', {
-        listing_id: Number(listingId),
-        message: message.trim() || null,
-        scheduled_at: scheduledAt || null,
-        agreed_hours: Number(hours),
+      const res = await exchangesApi.propose({
+        listingId: Number(listingId),
+        message: message.trim() || undefined,
+        scheduledAt: scheduledAt || undefined,
+        agreedHours: Number(hours),
       })
-      navigate(`/exchanges/${res.data.id}`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      navigate(`/exchanges/${(res as any).id}`)
     } catch (err) {
       setError(isApiError(err) ? err.message : 'Failed to propose exchange.')
       setIsSubmitting(false)

@@ -55,7 +55,7 @@ function mapListing(raw: RawListing): Listing {
 export const listingsApi = {
   list: (params?: PaginationParams): Promise<PaginatedResponse<Listing>> =>
     apiClient
-      .get('/api/listings', { params: { page: params?.page, limit: params?.pageSize, search: params?.search, category: params?.category, type: params?.type } })
+      .get('/api/listings', { params: { page: params?.page, pageSize: params?.pageSize, search: params?.search, category: params?.category, type: params?.type } })
       .then((r) => normalizePaginated(r.data, mapListing)),
 
   get: (id: number) =>
@@ -69,6 +69,8 @@ export const listingsApi = {
       location: payload.location,
       estimated_hours: payload.creditRate,
       category_id: payload.categoryId,
+      category: payload.category,
+      tags: payload.tags,
     }).then((r) => {
       const raw = r.data as RawListing // eslint-disable-line @typescript-eslint/no-explicit-any
       return mapListing(raw)
@@ -82,7 +84,9 @@ export const listingsApi = {
       ...(payload.location !== undefined && { location: payload.location }),
       ...(payload.creditRate !== undefined && { estimated_hours: payload.creditRate }),
       ...(payload.categoryId !== undefined && { category_id: payload.categoryId }),
+      ...(payload.category !== undefined && { category: payload.category }),
       ...(payload.status !== undefined && { status: payload.status }),
+      ...(payload.tags !== undefined && { tags: payload.tags }),
     }).then((r) => r.data as Listing),
 
   delete: (id: number) =>

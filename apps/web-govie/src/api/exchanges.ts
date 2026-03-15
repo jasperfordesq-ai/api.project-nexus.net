@@ -27,7 +27,7 @@ export interface Exchange {
 
 export const exchangesApi = {
   list: (params?: PaginationParams) =>
-    apiClient.get('/api/exchanges', { params: { page: params?.page, limit: params?.pageSize } }).then((r) => {
+    apiClient.get('/api/exchanges', { params: { page: params?.page, pageSize: params?.pageSize } }).then((r) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const raw = r.data as any
       const data = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])

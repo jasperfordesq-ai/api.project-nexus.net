@@ -129,6 +129,12 @@
 
         <!-- Pagination -->
         {% if pagination and (pagination.totalPages or pagination.total_pages) > 1 %}
+          {% set paginationConfig = {
+            baseUrl: "/admin/users",
+            page: pagination.page,
+            totalPages: pagination.totalPages or pagination.total_pages,
+            queryParams: { search: filters.search, role: filters.role, status: filters.status }
+          } %}
           {% include "partials/pagination.njk" %}
         {% endif %}
       {% else %}

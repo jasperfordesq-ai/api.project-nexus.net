@@ -5,7 +5,7 @@
 
 "use client";
 
-import { Suspense, useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
@@ -139,7 +139,7 @@ function SearchContent() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async () => {
     try {
       const data = await api.searchSuggestions(debouncedQuery, 5);
       setSuggestions(Array.isArray(data) ? data : []);
@@ -147,9 +147,9 @@ function SearchContent() {
       logger.error("Failed to fetch suggestions:", error);
       setSuggestions([]);
     }
-  };
+  }, [debouncedQuery]);
 
-  const performSearch = async () => {
+  const performSearch = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await api.search({
@@ -165,7 +165,7 @@ function SearchContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [debouncedQuery, searchType, currentPage]);
 
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
     setShowSuggestions(false);

@@ -244,18 +244,22 @@ public class GamificationController : ControllerBase
                 .CountAsync();
 
             leaderboard = periodLeaderboard
-                .Select((x, index) => new
+                .Select((x, index) =>
                 {
-                    rank = (page - 1) * limit + index + 1,
-                    user = new
+                    users.TryGetValue(x.UserId, out var u);
+                    return new
                     {
-                        id = x.UserId,
-                        first_name = users.TryGetValue(x.UserId, out var u) ? u.FirstName : "",
-                        last_name = users.TryGetValue(x.UserId, out var u2) ? u2.LastName : ""
-                    },
-                    period_xp = x.PeriodXp,
-                    total_xp = users.TryGetValue(x.UserId, out var u3) ? u3.TotalXp : 0,
-                    level = users.TryGetValue(x.UserId, out var u4) ? u4.Level : 1
+                        rank = (page - 1) * limit + index + 1,
+                        user = new
+                        {
+                            id = x.UserId,
+                            first_name = u?.FirstName ?? "",
+                            last_name = u?.LastName ?? ""
+                        },
+                        period_xp = x.PeriodXp,
+                        total_xp = u?.TotalXp ?? 0,
+                        level = u?.Level ?? 1
+                    };
                 })
                 .ToList();
         }

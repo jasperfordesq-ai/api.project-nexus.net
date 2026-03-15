@@ -6,6 +6,9 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
@@ -20,10 +23,12 @@ namespace Nexus.Api.Controllers;
 public class OrgWalletController : ControllerBase
 {
     private readonly OrgWalletService _walletService;
+    private readonly NexusDbContext _db;
 
-    public OrgWalletController(OrgWalletService walletService)
+    public OrgWalletController(OrgWalletService walletService, NexusDbContext db)
     {
         _walletService = walletService;
+        _db = db;
     }
 
     /// <summary>
@@ -34,6 +39,12 @@ public class OrgWalletController : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        // Verify user is a member of this organisation
+        var isMember = await _db.Set<OrganisationMember>()
+            .AnyAsync(m => m.OrganisationId == orgId && m.UserId == userId.Value);
+        if (!isMember && !User.IsAdmin())
+            return StatusCode(403, new { error = "You must be a member of this organisation" });
 
         var wallet = await _walletService.GetWalletAsync(orgId);
         if (wallet == null) return NotFound(new { error = "Wallet not found" });
@@ -63,6 +74,12 @@ public class OrgWalletController : ControllerBase
 
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        // Verify user is a member of this organisation
+        var isMember = await _db.Set<OrganisationMember>()
+            .AnyAsync(m => m.OrganisationId == orgId && m.UserId == userId.Value);
+        if (!isMember && !User.IsAdmin())
+            return StatusCode(403, new { error = "You must be a member of this organisation" });
 
         var txs = await _walletService.GetTransactionsAsync(orgId, page, limit);
         return Ok(new

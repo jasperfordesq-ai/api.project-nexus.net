@@ -197,7 +197,7 @@ public class PollService
         return (true, null);
     }
 
-    public async Task<object> GetPollResultsAsync(int pollId)
+    public async Task<(object Results, bool NotFound, bool Forbidden)> GetPollResultsAsync(int pollId, int? requestingUserId)
     {
         var poll = await _db.Set<Poll>()
             .Include(p => p.Options.OrderBy(o => o.SortOrder))
@@ -205,7 +205,15 @@ public class PollService
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == pollId);
 
-        if (poll == null) return new { error = "Poll not found" };
+        if (poll == null) return (new { error = "Poll not found" }, true, false);
+
+        // If results are hidden before close, only show if poll is closed or user has voted
+        if (!poll.ShowResultsBeforeClose && poll.Status != "closed")
+        {
+            var hasVoted = requestingUserId.HasValue && poll.Votes.Any(v => v.UserId == requestingUserId.Value);
+            if (!hasVoted)
+                return (new { error = "Results are not available until the poll closes" }, false, true);
+        }
 
         var totalVoters = poll.Votes.Select(v => v.UserId).Distinct().Count();
 
@@ -222,7 +230,7 @@ public class PollService
                 : (double?)null
         }).ToList();
 
-        return new
+        return (new
         {
             poll_id = poll.Id,
             title = poll.Title,
@@ -230,6 +238,6 @@ public class PollService
             status = poll.Status,
             total_voters = totalVoters,
             results
-        };
+        }, false, false);
     }
 }

@@ -154,11 +154,14 @@ export const AnalyticsPage = () => {
             xField="date"
             yField="count"
             seriesField="type"
-            smooth
+            shape="smooth"
             height={300}
-            xAxis={{ type: "cat", label: { autoRotate: true } }}
-            yAxis={{ min: 0 }}
-            legend={{ position: "top" }}
+            axis={{
+              x: { label: { autoRotate: true } },
+              y: { title: false },
+            }}
+            scale={{ y: { nice: true, domainMin: 0 } }}
+            legend={{ color: { position: "top" } }}
             point={{ size: 3 }}
           />
         </Card>

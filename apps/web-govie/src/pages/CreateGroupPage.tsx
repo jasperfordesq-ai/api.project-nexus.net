@@ -5,7 +5,7 @@
 
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import apiClient from '../api/client'
+import { groupsApi } from '../api/groups'
 import { isApiError } from '../context/AuthContext'
 
 export function CreateGroupPage() {
@@ -22,8 +22,8 @@ export function CreateGroupPage() {
     if (!name.trim()) { setError('Group name is required.'); return }
     setIsSubmitting(true)
     try {
-      const res = await apiClient.post<{ id: number }>('/api/groups', { name: name.trim(), description: description.trim(), is_private: groupType === 'private' })
-      navigate(`/groups/${res.data.id}`)
+      const res = await groupsApi.create({ name: name.trim(), description: description.trim(), type: groupType })
+      navigate(`/groups/${res.id}`)
     } catch (err) {
       setError(isApiError(err) ? err.message : 'Failed to create group. Please try again.')
       setIsSubmitting(false)

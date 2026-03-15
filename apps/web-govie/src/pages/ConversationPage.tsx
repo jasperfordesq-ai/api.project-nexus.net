@@ -3,7 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import apiClient from '../api/client'
 import { fullName } from '../api/normalize'
@@ -42,7 +42,7 @@ export function ConversationPage() {
   const [isSending, setIsSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const fetchMessages = () => {
+  const fetchMessages = useCallback(() => {
     return apiClient.get(`/api/messages/${id}`)
       .then(r => {
         const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -51,13 +51,13 @@ export function ConversationPage() {
         setMessages(items.map(mapMessage))
       })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load conversation.'))
-  }
+  }, [id])
 
   useEffect(() => {
     fetchMessages().finally(() => setIsLoading(false))
     // Mark as read
     apiClient.put(`/api/messages/${id}/read`).catch(() => {})
-  }, [id])
+  }, [id, fetchMessages])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

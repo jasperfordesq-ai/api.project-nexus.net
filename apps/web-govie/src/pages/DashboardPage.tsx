@@ -36,7 +36,7 @@ export function DashboardPage() {
       apiClient.get('/api/gamification/profile', { signal }).then(r => r.data).catch(() => ({ totalXp: 0, level: 1, streak: 0 })),
       apiClient.get('/api/notifications/unread-count', { signal }).then(r => r.data).catch(() => ({ count: 0 })),
       apiClient.get('/api/messages/unread-count', { signal }).then(r => r.data).catch(() => ({ count: 0 })),
-      apiClient.get('/api/exchanges?limit=5', { signal }).then(r => {
+      apiClient.get('/api/exchanges', { signal, params: { page: 1, pageSize: 5 } }).then(r => {
         const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
         const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
         return items.map((ex: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -46,7 +46,7 @@ export function DashboardPage() {
           createdAt: ex.created_at ?? ex.createdAt ?? '',
         }))
       }).catch(() => []),
-      apiClient.get('/api/events?upcoming_only=true&limit=3', { signal }).then(r => {
+      apiClient.get('/api/events', { signal, params: { page: 1, pageSize: 3 } }).then(r => {
         const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
         const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
         return items.map((ev: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -10,6 +10,19 @@ import { isApiError } from '../context/AuthContext'
 
 interface Organisation { id: number; name: string; type: string; description: string; memberCount: number; isVerified: boolean }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapOrganisation(raw: any): Organisation {
+  return {
+    id: raw.id,
+    name: raw.name ?? '',
+    type: raw.type ?? '',
+    description: raw.description ?? '',
+    memberCount: raw.member_count ?? raw.memberCount ?? 0,
+    isVerified: raw.is_verified ?? raw.isVerified ?? false,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 const ITEMS_PER_PAGE = 12
 
 export function OrganisationsPage() {
@@ -20,8 +33,13 @@ export function OrganisationsPage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    apiClient.get<{ items: Organisation[] }>('/api/organisations', { signal: controller.signal })
-      .then(r => setOrgs(r.data?.items ?? (r.data as unknown as Organisation[]) ?? []))
+    apiClient.get('/api/organisations', { signal: controller.signal })
+      .then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setOrgs(items.map(mapOrganisation))
+      })
       .catch(err => { if (!controller.signal.aborted) setError(isApiError(err) ? err.message : 'Could not load organisations.') })
       .finally(() => { if (!controller.signal.aborted) setIsLoading(false) })
     return () => controller.abort()

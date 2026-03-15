@@ -94,12 +94,18 @@ public class FeedRankingService
 
         var activeAuthorIdSet = new HashSet<int>(activeAuthorIds);
 
+        // Load recent posts with engagement data (limit to 14-day window to avoid
+        // loading the entire table into memory — older posts score near-zero anyway
+        // due to recency decay with a 6-hour half-life)
+        var feedCutoff = now.AddDays(-14);
+
         // Pre-fetch share counts per post (since PostShares may not be in DbContext yet,
         // we query them separately). We handle the case where the DbSet doesn't exist.
         var shareCountsByPost = new Dictionary<int, int>();
         try
         {
             shareCountsByPost = await _db.Set<PostShare>()
+                .Where(s => s.CreatedAt >= feedCutoff)
                 .GroupBy(s => s.PostId)
                 .ToDictionaryAsync(g => g.Key, g => g.Count());
         }
@@ -119,12 +125,12 @@ public class FeedRankingService
             _logger.LogWarning(ex, "PostShare table not available, share counts will be zero");
         }
 
-        // Load all posts with engagement data
         var allPosts = await _db.FeedPosts
             .Include(p => p.User)
             .Include(p => p.Group)
             .Include(p => p.Likes)
             .Include(p => p.Comments)
+            .Where(p => p.CreatedAt >= feedCutoff)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 

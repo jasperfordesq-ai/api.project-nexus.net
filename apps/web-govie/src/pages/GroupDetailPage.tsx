@@ -11,6 +11,37 @@ import { isApiError } from '../context/AuthContext'
 interface Group { id: number; name: string; description: string; memberCount: number; isPublic: boolean; createdAt: string; isMember: boolean }
 interface Member { id: number; userId: number; name: string; role: string; joinedAt: string }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapGroup(raw: any): Group {
+  return {
+    id: raw.id,
+    name: raw.name ?? '',
+    description: raw.description ?? '',
+    memberCount: raw.member_count ?? raw.memberCount ?? 0,
+    isPublic: !(raw.is_private ?? raw.isPrivate ?? false),
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+    isMember: raw.is_member ?? raw.isMember ?? false,
+  }
+}
+
+function mapMember(raw: any): Member {
+  const user = raw.user ?? {}
+  return {
+    id: raw.id ?? 0,
+    userId: user.id ?? raw.user_id ?? raw.userId ?? 0,
+    name: user.firstName ?? user.first_name
+      ? `${user.first_name ?? user.firstName ?? ''} ${user.last_name ?? user.lastName ?? ''}`.trim()
+      : (raw.name ?? raw.userName ?? raw.user_name ?? 'Unknown'),
+    role: raw.role ?? 'member',
+    joinedAt: raw.joined_at ?? raw.joinedAt ?? raw.created_at ?? raw.createdAt ?? '',
+  }
+}
+
+function extractItems(raw: any): any[] {
+  return raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export function GroupDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [group, setGroup] = useState<Group | null>(null)
@@ -22,8 +53,8 @@ export function GroupDetailPage() {
 
   useEffect(() => {
     Promise.all([
-      apiClient.get<Group>(`/api/groups/${id}`).then(r => r.data),
-      apiClient.get<Member[]>(`/api/groups/${id}/members`).then(r => r.data ?? []).catch(() => [] as Member[]),
+      apiClient.get(`/api/groups/${id}`).then(r => mapGroup(r.data)),
+      apiClient.get(`/api/groups/${id}/members`).then(r => extractItems(r.data).map(mapMember)).catch(() => [] as Member[]),
     ])
       .then(([g, m]) => { setGroup(g); setMembers(m) })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load group.'))

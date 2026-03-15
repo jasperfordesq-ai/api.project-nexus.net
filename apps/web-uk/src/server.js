@@ -364,12 +364,7 @@ app.use('/search', doubleCsrfProtection, searchRoutes);
 app.use('/reviews', doubleCsrfProtection, postOnly(formLimiter), reviewsRoutes);
 app.use('/admin', doubleCsrfProtection, adminRoutes);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).render('errors/404', { title: 'Page not found' });
-});
-
-// CSRF error handler
+// CSRF error handler (must be before 404 handler since 404 is a catch-all)
 app.use((err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN') {
     return res.status(403).render('errors/403', {
@@ -378,6 +373,11 @@ app.use((err, req, res, next) => {
     });
   }
   next(err);
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).render('errors/404', { title: 'Page not found' });
 });
 
 // Error logging middleware

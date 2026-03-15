@@ -5,7 +5,7 @@
 
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import apiClient from '../api/client'
+import { eventsApi, type Event as NexusEvent } from '../api/events'
 import { isApiError } from '../context/AuthContext'
 
 export function CreateEventPage() {
@@ -27,14 +27,14 @@ export function CreateEventPage() {
     if (new Date(endsAt) <= new Date(startsAt)) { setError('End time must be after start time.'); return }
     setIsSubmitting(true)
     try {
-      const res = await apiClient.post<{ id: number }>('/api/events', {
+      const res = await eventsApi.create({
         title: title.trim(),
         description: description.trim(),
-        location: location.trim() || null,
-        starts_at: startsAt,
-        ends_at: endsAt,
-      })
-      navigate(`/events/${res.data.id}`)
+        location: location.trim() || undefined,
+        startsAt,
+        endsAt,
+      } as Partial<NexusEvent>)
+      navigate(`/events/${res.id}`)
     } catch (err) {
       setError(isApiError(err) ? err.message : 'Failed to create event.')
       setIsSubmitting(false)

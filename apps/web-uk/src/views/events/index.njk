@@ -87,7 +87,7 @@
                     {{ event.title }}
                   </a>
                 </h2>
-                {% if event.status == 'cancelled' %}
+                {% if event.isCancelled or event.is_cancelled %}
                   {{ govukTag({ text: "Cancelled", classes: "govuk-tag--red" }) }}
                 {% elif event.isPast or event.is_past %}
                   {{ govukTag({ text: "Past", classes: "govuk-tag--grey" }) }}

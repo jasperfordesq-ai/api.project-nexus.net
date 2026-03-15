@@ -25,7 +25,7 @@
 
       <h2 class="govuk-heading-l">Requests received</h2>
 
-      {% if incoming.length > 0 %}
+      {% if incoming and incoming.length > 0 %}
         <table class="govuk-table">
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">
@@ -79,7 +79,7 @@
 
       <h2 class="govuk-heading-l govuk-!-margin-top-8">Requests sent</h2>
 
-      {% if outgoing.length > 0 %}
+      {% if outgoing and outgoing.length > 0 %}
         <table class="govuk-table">
           <thead class="govuk-table__head">
             <tr class="govuk-table__row">

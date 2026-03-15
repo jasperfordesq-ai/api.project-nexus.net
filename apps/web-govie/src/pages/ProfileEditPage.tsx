@@ -49,11 +49,19 @@ export function ProfileEditPage() {
       await apiClient.patch('/api/users/me', {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
         bio: bio.trim() || null,
         location: location.trim() || null,
       })
+      // Update cached user in localStorage so header/other pages reflect the change
+      try {
+        const stored = localStorage.getItem('nexus:user')
+        if (stored) {
+          const user = JSON.parse(stored)
+          user.firstName = firstName.trim()
+          user.lastName = lastName.trim()
+          localStorage.setItem('nexus:user', JSON.stringify(user))
+        }
+      } catch { /* non-critical */ }
       setSaveMsg('Profile updated successfully.')
       setTimeout(() => navigate('/profile'), 1500)
     } catch (err) {

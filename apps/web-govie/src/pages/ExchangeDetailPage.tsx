@@ -15,18 +15,25 @@ interface Exchange {
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+function formatName(obj: any): string {
+  if (!obj) return ''
+  return (`${obj.first_name ?? obj.firstName ?? ''} ${obj.last_name ?? obj.lastName ?? ''}`.trim()) || ''
+}
+
 function mapExchange(raw: any): Exchange {
+  const initiator = raw.initiator ?? {}
+  const listingOwner = raw.listing_owner ?? raw.listingOwner ?? {}
   return {
     id: raw.id,
-    listingTitle: raw.listing_title ?? raw.listingTitle ?? '',
-    listingId: raw.listing_id ?? raw.listingId ?? 0,
-    requesterName: raw.requester_name ?? raw.requesterName ?? '',
-    requesterId: raw.requester_id ?? raw.requesterId ?? 0,
-    providerName: raw.provider_name ?? raw.providerName ?? '',
-    providerId: raw.provider_id ?? raw.providerId ?? 0,
+    listingTitle: raw.listing?.title ?? raw.listing_title ?? raw.listingTitle ?? '',
+    listingId: raw.listing?.id ?? raw.listing_id ?? raw.listingId ?? 0,
+    requesterName: raw.requester_name ?? raw.requesterName ?? (formatName(initiator) || 'Unknown'),
+    requesterId: initiator.id ?? raw.requester_id ?? raw.requesterId ?? 0,
+    providerName: raw.provider_name ?? raw.providerName ?? (formatName(listingOwner) || 'Unknown'),
+    providerId: listingOwner.id ?? raw.provider_id ?? raw.providerId ?? 0,
     status: raw.status ?? 'pending',
-    creditAmount: raw.credit_amount ?? raw.creditAmount ?? 0,
-    message: raw.message ?? undefined,
+    creditAmount: raw.agreed_hours ?? raw.credit_amount ?? raw.creditAmount ?? 0,
+    message: raw.request_message ?? raw.message ?? undefined,
     scheduledAt: raw.scheduled_at ?? raw.scheduledAt ?? undefined,
     completedAt: raw.completed_at ?? raw.completedAt ?? undefined,
     createdAt: raw.created_at ?? raw.createdAt ?? '',

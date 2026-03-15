@@ -32,7 +32,7 @@
 
       <div class="app-page-header">
         <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ event.title }}</h1>
-        {% if event.status == 'cancelled' %}
+        {% if (event.isCancelled or event.is_cancelled) %}
           {{ govukTag({ text: "Cancelled", classes: "govuk-tag--red" }) }}
         {% elif event.isPast or event.is_past %}
           {{ govukTag({ text: "Past event", classes: "govuk-tag--grey" }) }}
@@ -41,7 +41,7 @@
         {% endif %}
       </div>
 
-      {% if event.status == 'cancelled' %}
+      {% if (event.isCancelled or event.is_cancelled) %}
         {{ govukWarningText({
           text: "This event has been cancelled.",
           iconFallbackText: "Warning"
@@ -101,7 +101,7 @@
       </p>
 
       {# RSVP section #}
-      {% if event.status != 'cancelled' and not (event.isPast or event.is_past) %}
+      {% if not (event.isCancelled or event.is_cancelled) and not (event.isPast or event.is_past) %}
         <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
         <h2 class="govuk-heading-m">Your RSVP</h2>
@@ -187,7 +187,7 @@
             classes: "govuk-button--secondary"
           }) }}
 
-          {% if event.status != 'cancelled' %}
+          {% if not (event.isCancelled or event.is_cancelled) %}
             <form action="/events/{{ event.id }}/cancel" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to cancel this event?');">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               {{ govukButton({

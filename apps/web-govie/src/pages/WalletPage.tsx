@@ -128,8 +128,8 @@ export function WalletPage() {
                     <td style={{ padding: '12px 16px', fontSize: 14 }}>{new Date(tx.createdAt).toLocaleDateString('en-IE')}</td>
                     <td style={{ padding: '12px 16px', fontSize: 14 }}>{tx.description}</td>
                     <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--nexus-color-text-secondary)' }}>{tx.counterpartName ?? '—'}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 700, color: tx.amount >= 0 ? 'var(--nexus-color-success)' : 'var(--nexus-color-warning)' }}>
-                      {tx.amount >= 0 ? '+' : ''}{tx.amount}
+                    <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 700, color: tx.type === 'credit' ? 'var(--nexus-color-success)' : 'var(--nexus-color-warning)' }}>
+                      {tx.type === 'credit' ? '+' : '-'}{Math.abs(tx.amount)}
                     </td>
                   </tr>
                 ))}

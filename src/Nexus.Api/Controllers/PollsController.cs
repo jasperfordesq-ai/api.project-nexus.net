@@ -151,7 +151,10 @@ public class PollsController : ControllerBase
     [HttpGet("api/polls/{id:int}/results")]
     public async Task<IActionResult> GetResults(int id)
     {
-        var results = await _pollService.GetPollResultsAsync(id);
+        var userId = User.GetUserId();
+        var (results, notFound, forbidden) = await _pollService.GetPollResultsAsync(id, userId);
+        if (notFound) return NotFound(results);
+        if (forbidden) return StatusCode(403, results);
         return Ok(results);
     }
 
