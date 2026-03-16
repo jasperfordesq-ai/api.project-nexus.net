@@ -9,9 +9,17 @@
  */
 
 class SimpleCache {
-  constructor() {
+  constructor(maxSize = 1000) {
     this.cache = new Map();
     this.defaultTTL = 30000; // 30 seconds default
+    this.maxSize = maxSize;
+
+    // Periodically remove expired entries to prevent unbounded growth
+    this._cleanupInterval = setInterval(() => this.cleanup(), 60000);
+    // Allow Node.js to exit without waiting for this timer
+    if (this._cleanupInterval.unref) {
+      this._cleanupInterval.unref();
+    }
   }
 
   /**
@@ -44,6 +52,24 @@ class SimpleCache {
       value,
       expiry: Date.now() + ttl
     });
+
+    // Evict oldest entries when the cache exceeds maxSize
+    if (this.cache.size > this.maxSize) {
+      const oldest = this.cache.keys().next().value;
+      this.cache.delete(oldest);
+    }
+  }
+
+  /**
+   * Remove all expired entries from the cache
+   */
+  cleanup() {
+    const now = Date.now();
+    for (const [key, item] of this.cache.entries()) {
+      if (now > item.expiry) {
+        this.cache.delete(key);
+      }
+    }
   }
 
   /**

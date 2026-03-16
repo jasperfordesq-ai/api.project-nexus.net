@@ -321,7 +321,7 @@ const audit = {
   walletTransfer: () => auditMiddleware(AUDIT_ACTIONS.WALLET_TRANSFER, (req) => ({
     type: 'wallet_transfer',
     details: {
-      recipientId: req.body.recipient_id,
+      recipientId: req.body.receiver_id,
       amount: req.body.amount
     }
   })),
@@ -335,9 +335,8 @@ const audit = {
   })),
 
   reviewDelete: () => auditMiddleware(AUDIT_ACTIONS.REVIEW_DELETE, (req) => ({
-    id: req.params.reviewId,
-    type: 'review',
-    details: { listingId: req.params.id }
+    id: req.params.id,
+    type: 'review'
   })),
 
   reportCreate: () => auditMiddleware(AUDIT_ACTIONS.REPORT_CREATE, (req) => ({

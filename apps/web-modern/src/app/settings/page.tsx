@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
@@ -46,6 +46,7 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const { user, logout, refreshUser } = useAuth();
+  const hasChangedNotifRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -54,11 +55,44 @@ function SettingsContent() {
   const [firstName, setFirstName] = useState(user?.first_name || "");
   const [lastName, setLastName] = useState(user?.last_name || "");
 
-  // Notification preferences (UI only - backend not implemented)
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [messageNotifications, setMessageNotifications] = useState(true);
-  const [connectionNotifications, setConnectionNotifications] = useState(true);
+  // Notification preferences — persisted in localStorage
+  const [emailNotifications, setEmailNotifications] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("notif_email");
+    return v === null ? true : v === "true";
+  });
+  const [pushNotifications, setPushNotifications] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("notif_push");
+    return v === null ? true : v === "true";
+  });
+  const [messageNotifications, setMessageNotifications] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("notif_messages");
+    return v === null ? true : v === "true";
+  });
+  const [connectionNotifications, setConnectionNotifications] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("notif_connections");
+    return v === null ? true : v === "true";
+  });
+
+  useEffect(() => { localStorage.setItem("notif_email", String(emailNotifications)); }, [emailNotifications]);
+  useEffect(() => { localStorage.setItem("notif_push", String(pushNotifications)); }, [pushNotifications]);
+  useEffect(() => { localStorage.setItem("notif_messages", String(messageNotifications)); }, [messageNotifications]);
+  useEffect(() => { localStorage.setItem("notif_connections", String(connectionNotifications)); }, [connectionNotifications]);
+
+  // Sync global notification channel toggles (email / push) to the backend.
+  // Message and connection toggles are per-category preferences managed separately.
+  // Only fires when the user actually toggles a switch (not on mount).
+  useEffect(() => {
+    if (!hasChangedNotifRef.current) return;
+    api.updateNotificationGlobal({
+      email_notifications: emailNotifications,
+      push_notifications: pushNotifications,
+    }).catch((err) => logger.error("Failed to sync notification prefs:", err));
+  }, [emailNotifications, pushNotifications]);
+
   useEffect(() => {
     if (user) {
       setFirstName(user.first_name);
@@ -259,7 +293,7 @@ function SettingsContent() {
                 </div>
                 <Switch
                   isSelected={emailNotifications}
-                  onValueChange={setEmailNotifications}
+                  onValueChange={(v) => { hasChangedNotifRef.current = true; setEmailNotifications(v); }}
                   classNames={{
                     wrapper: "bg-white/10 group-data-[selected=true]:bg-indigo-500",
                   }}
@@ -277,7 +311,7 @@ function SettingsContent() {
                 </div>
                 <Switch
                   isSelected={pushNotifications}
-                  onValueChange={setPushNotifications}
+                  onValueChange={(v) => { hasChangedNotifRef.current = true; setPushNotifications(v); }}
                   classNames={{
                     wrapper: "bg-white/10 group-data-[selected=true]:bg-indigo-500",
                   }}
@@ -322,8 +356,7 @@ function SettingsContent() {
             </div>
 
             <p className="text-xs text-white/40 mt-4">
-              Note: Notification preferences are stored locally. Full
-              notification settings will be available in a future update.
+              These preferences are saved in your browser. For per-category notification settings, visit the <a href="/notifications" className="underline hover:text-white/60">Notifications</a> page.
             </p>
           </MotionGlassCard>
 

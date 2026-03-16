@@ -59,6 +59,7 @@ function PushContent() {
   }, []);
   const handleSave = async () => {
     if (!settings) return;
+    setSaveError(null);
     setIsSaving(true);
     try {
       await api.updatePushSettings(settings);
@@ -106,6 +107,12 @@ function PushContent() {
             {saved ? "Saved!" : "Save"}
           </Button>
         </div>
+
+        {saveError && (
+          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            {saveError}
+          </div>
+        )}
 
         {isLoading || !settings ? (
           <div className="p-6 rounded-xl bg-white/5 border border-white/10">

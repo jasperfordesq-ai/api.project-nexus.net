@@ -30,8 +30,13 @@ export function SearchPage() {
     if (!query.trim()) return
     setIsLoading(true)
     setError(null)
-    apiClient.get<SearchResult[]>('/api/search', { params: { q: query } })
-      .then(r => setResults(r.data ?? []))
+    apiClient.get('/api/search', { params: { q: query } })
+      .then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const data: SearchResult[] = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setResults(data)
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Search failed.'))
       .finally(() => setIsLoading(false))
   }, [query])

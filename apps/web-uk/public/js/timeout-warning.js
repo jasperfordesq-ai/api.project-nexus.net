@@ -95,8 +95,10 @@
       }
     }, 1000);
 
-    // Add event listeners
+    // Add event listeners (remove first to prevent duplicates on repeated show/hide)
+    extendButton.removeEventListener('click', extendSession);
     extendButton.addEventListener('click', extendSession);
+    modal.removeEventListener('keydown', handleModalKeydown);
     modal.addEventListener('keydown', handleModalKeydown);
 
     // Trap focus within modal
@@ -151,13 +153,25 @@
 
   // Extend the session
   function extendSession() {
-    // Make a request to keep the session alive
-    fetch('/health', {
-      method: 'GET',
-      credentials: 'same-origin'
-    }).then(function() {
-      hideModal();
-      resetTimers();
+    // Read CSRF token from the authenticated marker element
+    var authEl = document.querySelector('[data-authenticated="true"]');
+    var csrfToken = authEl ? authEl.getAttribute('data-csrf-token') : '';
+
+    // Make a request to keep the session alive by touching an authenticated endpoint
+    fetch('/session/touch', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-csrf-token': csrfToken
+      }
+    }).then(function(response) {
+      if (response.ok) {
+        hideModal();
+        resetTimers();
+      } else {
+        window.location.href = '/login';
+      }
     }).catch(function() {
       // If request fails, redirect to login
       window.location.href = '/login';
@@ -186,6 +200,8 @@
   }
 
   // Trap focus within modal
+  var _trapFocusHandler = null;
+
   function trapFocus(modal) {
     var focusableElements = modal.querySelectorAll(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -193,7 +209,12 @@
     var firstElement = focusableElements[0];
     var lastElement = focusableElements[focusableElements.length - 1];
 
-    modal.addEventListener('keydown', function(event) {
+    // Remove any previously registered trap-focus handler to avoid duplicates
+    if (_trapFocusHandler) {
+      modal.removeEventListener('keydown', _trapFocusHandler);
+    }
+
+    _trapFocusHandler = function(event) {
       if (event.key !== 'Tab') return;
 
       if (event.shiftKey) {
@@ -207,7 +228,9 @@
           firstElement.focus();
         }
       }
-    });
+    };
+
+    modal.addEventListener('keydown', _trapFocusHandler);
   }
 
   // Announce to screen readers

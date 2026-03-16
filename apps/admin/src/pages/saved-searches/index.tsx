@@ -69,7 +69,7 @@ export const SavedSearchesPage = () => {
     },
     { dataIndex: "last_result_count", title: "Last Results", render: (n: number | null) => n != null ? n : "—" },
     { dataIndex: "last_run_at", title: "Last Run", render: (d: string) => d ? dayjs(d).format("DD MMM YYYY") : "Never" },
-    { dataIndex: "created_at", title: "Created", render: (d: string) => dayjs(d).format("DD MMM YYYY") },
+    { dataIndex: "created_at", title: "Created", render: (d: string) => d ? dayjs(d).format("DD MMM YYYY") : "—" },
     {
       title: "Actions",
       render: (_: any, r: any) => (
@@ -89,7 +89,7 @@ export const SavedSearchesPage = () => {
             placeholder="Filter by type"
             allowClear
             style={{ width: 160 }}
-            onChange={setSearchType}
+            onChange={(v) => { setSearchType(v); setPage(1); }}
             value={searchType}
             options={[
               { label: "Listings", value: "listings" },

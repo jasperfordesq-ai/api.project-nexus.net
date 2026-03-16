@@ -72,8 +72,8 @@ public class ConnectionsController : ControllerBase
                 c.UpdatedAt,
                 // Determine the "other" user (not the current user)
                 other_user = c.RequesterId == userId
-                    ? new { c.Addressee.Id, c.Addressee.FirstName, c.Addressee.LastName, c.Addressee.Email }
-                    : new { c.Requester.Id, c.Requester.FirstName, c.Requester.LastName, c.Requester.Email },
+                    ? new { Id = c.Addressee != null ? c.Addressee.Id : 0, FirstName = c.Addressee != null ? c.Addressee.FirstName : null, LastName = c.Addressee != null ? c.Addressee.LastName : null, Email = c.Addressee != null ? c.Addressee.Email : null }
+                    : new { Id = c.Requester != null ? c.Requester.Id : 0, FirstName = c.Requester != null ? c.Requester.FirstName : null, LastName = c.Requester != null ? c.Requester.LastName : null, Email = c.Requester != null ? c.Requester.Email : null },
                 // Is current user the requester or addressee?
                 is_requester = c.RequesterId == userId,
                 requester_id = c.RequesterId,
@@ -140,7 +140,9 @@ public class ConnectionsController : ControllerBase
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var tenantId = User.GetTenantId() ?? 0;
+        var tenantIdRaw = User.GetTenantId();
+        if (tenantIdRaw == null) return BadRequest(new { error = "Tenant context not resolved" });
+        var tenantId = tenantIdRaw.Value;
 
         // Validate: cannot connect to yourself
         if (request.UserId == userId)
@@ -270,6 +272,7 @@ public class ConnectionsController : ControllerBase
         // Create new connection request
         var connection = new Connection
         {
+            TenantId = tenantId,
             RequesterId = userId.Value,
             AddresseeId = request.UserId,
             Status = Connection.Statuses.Pending
@@ -294,7 +297,7 @@ public class ConnectionsController : ControllerBase
         _logger.LogInformation("Connection request sent from user {UserId} to {TargetUserId}",
             userId, request.UserId);
 
-        return CreatedAtAction(nameof(GetConnections), new
+        return CreatedAtAction(nameof(GetConnections), null, new
         {
             success = true,
             message = "Connection request sent",
@@ -315,7 +318,9 @@ public class ConnectionsController : ControllerBase
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var tenantId = User.GetTenantId() ?? 0;
+        var tenantIdRaw = User.GetTenantId();
+        if (tenantIdRaw == null) return BadRequest(new { error = "Tenant context not resolved" });
+        var tenantId = tenantIdRaw.Value;
 
         var connection = await _db.Connections.FirstOrDefaultAsync(x => x.Id == id);
         if (connection == null)

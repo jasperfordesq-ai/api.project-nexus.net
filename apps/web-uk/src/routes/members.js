@@ -11,6 +11,7 @@ const {
   sendConnectionRequest,
   getGamificationProfileByUserId,
   getUserReviews,
+  getProfile,
   ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
@@ -94,11 +95,12 @@ router.get('/', asyncRoute(async (req, res) => {
 router.get('/:id', asyncRoute(async (req, res) => {
   const { id } = req.params;
 
-  const [user, connectionsResult, gamificationResult, reviewsResult] = await Promise.all([
+  const [user, connectionsResult, gamificationResult, reviewsResult, currentProfile] = await Promise.all([
     getUser(req.token, id),
     getConnections(req.token).catch(() => ({ data: [] })),
     getGamificationProfileByUserId(req.token, id).catch(() => ({ profile: null })),
-    getUserReviews(req.token, id).catch(() => ({ data: [], summary: null }))
+    getUserReviews(req.token, id).catch(() => ({ data: [], summary: null })),
+    getProfile(req.token).catch(() => null)
   ]);
 
   if (!user) {
@@ -114,10 +116,18 @@ router.get('/:id', asyncRoute(async (req, res) => {
     return otherUser && otherUser.id === parseInt(id);
   });
 
+  const isOwnProfile = currentProfile && (currentProfile.id == id || currentProfile.id === parseInt(id, 10));
+
+  // Normalize is_requester to handle both snake_case and camelCase API responses
+  if (connection) {
+    connection.is_requester = connection.is_requester ?? connection.isRequester ?? false;
+  }
+
   res.render('members/profile', {
     title: `${user.first_name || user.firstName} ${user.last_name || user.lastName}`,
     user,
     connection,
+    isOwnProfile,
     gamification: gamificationResult.profile || null,
     reviews: reviewsResult.data || [],
     reviewSummary: reviewsResult.summary || null,

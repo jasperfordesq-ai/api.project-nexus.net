@@ -131,10 +131,24 @@
    */
   function enhanceForms() {
     document.querySelectorAll('form[data-loading]').forEach(function(form) {
-      form.addEventListener('submit', function() {
+      form.addEventListener('submit', function(event) {
+        // Don't disable if the browser prevented submission (e.g. validation failure)
+        if (event.defaultPrevented) return;
+
         const submitButton = form.querySelector('button[type="submit"], input[type="submit"]');
         if (submitButton && submitButton.tagName === 'BUTTON') {
           setButtonLoading(submitButton, form.dataset.loading);
+
+          // Re-enable the button after 10 seconds as a fallback (in case navigation
+          // is prevented by a same-page error or the user stays on the page)
+          var fallbackTimer = setTimeout(function() {
+            clearButtonLoading(submitButton);
+          }, 10000);
+
+          // Clear the fallback timer if the page navigates away
+          window.addEventListener('pagehide', function() {
+            clearTimeout(fallbackTimer);
+          }, { once: true });
         }
       });
     });

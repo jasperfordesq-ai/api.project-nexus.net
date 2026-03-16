@@ -80,20 +80,20 @@ public class PushNotificationController : ControllerBase
     }
 
     /// <summary>
-    /// DELETE /api/notifications/push/register - Unregister a device.
+    /// DELETE /api/notifications/push/register?device_token=... - Unregister a device.
     /// </summary>
     [HttpDelete("register")]
-    public async Task<IActionResult> UnregisterDevice([FromBody] UnregisterDeviceRequest request)
+    public async Task<IActionResult> UnregisterDevice([FromQuery(Name = "device_token")] string? deviceToken)
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        if (string.IsNullOrWhiteSpace(request.DeviceToken))
+        if (string.IsNullOrWhiteSpace(deviceToken))
         {
             return BadRequest(new { error = "device_token is required" });
         }
 
-        var result = await _pushService.UnregisterDeviceAsync(userId.Value, request.DeviceToken);
+        var result = await _pushService.UnregisterDeviceAsync(userId.Value, deviceToken);
 
         if (!result)
         {

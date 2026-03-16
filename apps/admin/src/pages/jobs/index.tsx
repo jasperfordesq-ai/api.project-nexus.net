@@ -24,7 +24,9 @@ export const JobsAdminPage = () => {
   const totalCount = raw?.total || raw?.totalCount || jobs.length;
   const stats = statsData?.data as any;
 
-  const handleStatusChange = (id: number, status: string) => {
+  const handleStatusChange = (id: number, newStatus: string, currentStatus: string) => {
+    if (newStatus === currentStatus) return;
+    const status = newStatus;
     Modal.confirm({
       title: `Change job status to "${status}"?`,
       onOk: async () => {
@@ -57,7 +59,7 @@ export const JobsAdminPage = () => {
       {stats && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           {Object.entries(stats).map(([key, value]) => (
-            <Col span={6} key={key}><Card><Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} /></Card></Col>
+            <Col xs={24} sm={12} lg={6} key={key}><Card><Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} /></Card></Col>
           ))}
         </Row>
       )}
@@ -81,7 +83,7 @@ export const JobsAdminPage = () => {
             <Table.Column dataIndex="created_at" title="Created" render={(d: string) => d ? dayjs(d).format("DD MMM YYYY") : "—"} />
             <Table.Column title="Actions" render={(_, r: any) => (
               <Space>
-                <Select size="small" value={r.status} style={{ width: 100 }} onChange={(v) => handleStatusChange(r.id, v)}
+                <Select size="small" value={r.status} style={{ width: 100 }} onChange={(v) => handleStatusChange(r.id, v, r.status)}
                   options={[
                     { label: "Active", value: "active" },
                     { label: "Closed", value: "closed" },

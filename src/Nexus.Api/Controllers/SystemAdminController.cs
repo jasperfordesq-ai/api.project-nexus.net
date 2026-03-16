@@ -389,6 +389,7 @@ public class SystemAdminController : ControllerBase
             return NotFound(new { error = "User not found" });
 
         var targetTenant = await _db.Tenants
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.Id == request.TargetTenantId);
 
         if (targetTenant == null)

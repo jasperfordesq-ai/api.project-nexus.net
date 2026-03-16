@@ -99,20 +99,24 @@ export const NewsletterPage = () => {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      await axiosInstance.post("/api/admin/newsletter", {
-        subject: values.subject,
-        content_html: values.content,
-        content_text: values.content_text || undefined,
-        scheduled_at: values.scheduled_at || undefined,
-      });
-      message.success("Newsletter created");
-      setCreateOpen(false);
-      form.resetFields();
-      refetch();
-    } catch (err: unknown) {
-      message.error(getErrorMessage(err, "Failed to create newsletter"));
-    } finally {
-      setSaving(false);
+      try {
+        await axiosInstance.post("/api/admin/newsletter", {
+          subject: values.subject,
+          content_html: values.content,
+          content_text: values.content_text || undefined,
+          scheduled_at: values.scheduled_at || undefined,
+        });
+        message.success("Newsletter created");
+        setCreateOpen(false);
+        form.resetFields();
+        refetch();
+      } catch (err: unknown) {
+        message.error(getErrorMessage(err, "Failed to create newsletter"));
+      } finally {
+        setSaving(false);
+      }
+    } catch {
+      // Form validation failed, Ant Design highlights the fields automatically
     }
   };
 

@@ -31,7 +31,7 @@ export const CrmPage = () => {
     queryOptions: { queryKey: ["admin-crm-search", page, pageSize, filters] },
   });
 
-  const { data: flaggedData, isLoading: flaggedLoading } = useCustom({
+  const { data: flaggedData, isLoading: flaggedLoading, refetch: refetchFlagged } = useCustom({
     url: "/api/admin/crm/flagged-notes",
     method: "get",
   });
@@ -63,6 +63,8 @@ export const CrmPage = () => {
       setNoteModalOpen(false);
       setNoteUserId(null);
       form.resetFields();
+      refetch();
+      refetchFlagged();
     } catch (err: unknown) {
       message.error(getErrorMessage(err, "Failed to add note"));
     } finally {

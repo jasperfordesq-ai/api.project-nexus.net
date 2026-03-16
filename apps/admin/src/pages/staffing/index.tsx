@@ -28,17 +28,17 @@ export const StaffingPage = () => {
       ) : (
         <>
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-            <Col span={8}>
+            <Col xs={24} sm={12} lg={8}>
               <Card>
                 <Statistic title="Upcoming Shifts" value={dashboard.upcoming_shifts ?? 0} />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={12} lg={8}>
               <Card>
                 <Statistic title="Available Volunteers Today" value={dashboard.available_volunteers_today ?? 0} valueStyle={{ color: "#3f8600" }} />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={12} lg={8}>
               <Card>
                 <Statistic title="Shifts Needing Volunteers" value={dashboard.shifts_needing_volunteers ?? 0} valueStyle={{ color: dashboard.shifts_needing_volunteers > 0 ? "#cf1322" : undefined }} />
               </Card>

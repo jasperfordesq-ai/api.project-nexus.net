@@ -71,7 +71,7 @@ public class ReviewsController : ControllerBase
                 comment = r.Comment,
                 created_at = r.CreatedAt,
                 updated_at = r.UpdatedAt,
-                reviewer = new
+                reviewer = r.Reviewer == null ? null : new
                 {
                     id = r.Reviewer.Id,
                     first_name = r.Reviewer.FirstName,
@@ -194,7 +194,7 @@ public class ReviewsController : ControllerBase
             comment = review.Comment,
             target_user_id = review.TargetUserId,
             created_at = review.CreatedAt,
-            reviewer = new
+            reviewer = review.Reviewer == null ? null : new
             {
                 id = review.Reviewer.Id,
                 first_name = review.Reviewer.FirstName,
@@ -239,7 +239,7 @@ public class ReviewsController : ControllerBase
                 comment = r.Comment,
                 created_at = r.CreatedAt,
                 updated_at = r.UpdatedAt,
-                reviewer = new
+                reviewer = r.Reviewer == null ? null : new
                 {
                     id = r.Reviewer.Id,
                     first_name = r.Reviewer.FirstName,
@@ -296,6 +296,16 @@ public class ReviewsController : ControllerBase
         if (listing.UserId == currentUserId.Value)
         {
             return BadRequest(new { error = "You cannot review your own listing" });
+        }
+
+        // Require a completed exchange for this listing involving the reviewer
+        var hasCompletedExchange = await _db.Exchanges.AnyAsync(e =>
+            e.ListingId == listingId &&
+            e.Status == Nexus.Api.Entities.ExchangeStatus.Completed &&
+            (e.InitiatorId == currentUserId.Value || e.ListingOwnerId == currentUserId.Value));
+        if (!hasCompletedExchange)
+        {
+            return BadRequest(new { error = "You must have completed an exchange for this listing before leaving a review" });
         }
 
         // Check for existing review
@@ -364,7 +374,7 @@ public class ReviewsController : ControllerBase
             comment = review.Comment,
             target_listing_id = review.TargetListingId,
             created_at = review.CreatedAt,
-            reviewer = new
+            reviewer = review.Reviewer == null ? null : new
             {
                 id = review.Reviewer.Id,
                 first_name = review.Reviewer.FirstName,
@@ -397,7 +407,7 @@ public class ReviewsController : ControllerBase
             comment = review.Comment,
             created_at = review.CreatedAt,
             updated_at = review.UpdatedAt,
-            reviewer = new
+            reviewer = review.Reviewer == null ? null : new
             {
                 id = review.Reviewer.Id,
                 first_name = review.Reviewer.FirstName,
@@ -479,7 +489,7 @@ public class ReviewsController : ControllerBase
             comment = review.Comment,
             created_at = review.CreatedAt,
             updated_at = review.UpdatedAt,
-            reviewer = new
+            reviewer = review.Reviewer == null ? null : new
             {
                 id = review.Reviewer.Id,
                 first_name = review.Reviewer.FirstName,

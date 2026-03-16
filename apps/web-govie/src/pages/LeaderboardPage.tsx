@@ -16,8 +16,13 @@ export function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get<LeaderboardEntry[]>('/api/gamification/leaderboard')
-      .then(r => setEntries(r.data ?? []))
+    apiClient.get('/api/gamification/leaderboard')
+      .then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        const data: LeaderboardEntry[] = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+        setEntries(data)
+      })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load leaderboard.'))
       .finally(() => setIsLoading(false))
   }, [])

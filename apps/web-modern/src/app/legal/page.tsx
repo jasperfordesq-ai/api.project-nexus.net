@@ -40,6 +40,7 @@ function LegalContent() {
   const { user, logout } = useAuth();
   const [docs, setDocs] = useState<LegalDoc[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchDocs = useCallback(async () => {
     setIsLoading(true);
@@ -55,11 +56,13 @@ function LegalContent() {
 
   useEffect(() => { fetchDocs(); }, [fetchDocs]);
   const handleAccept = async (id: number) => {
+    setActionError(null);
     try {
       await api.acceptLegalDocument(id);
       setDocs((prev) => prev.map((d) => d.id === id ? { ...d, accepted: true } : d));
     } catch (error) {
       logger.error("Failed to accept document:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to accept document.");
     }
   };
 
@@ -74,6 +77,12 @@ function LegalContent() {
           </h1>
           <p className="text-white/50 mt-1">Terms of service, privacy policy, and other agreements</p>
         </div>
+
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-4">

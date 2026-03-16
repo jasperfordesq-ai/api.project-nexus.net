@@ -24,11 +24,12 @@ export function normalizePaginated<T, U>(
   mapItem: (item: T) => U,
 ): PaginatedResponse<U> {
   const p = raw.pagination
+  const data = raw.data ?? (raw as unknown as { items?: T[] }).items ?? []
   return {
-    items: (raw.data ?? []).map(mapItem),
-    totalCount: p?.total ?? raw.data?.length ?? 0,
+    items: data.map(mapItem),
+    totalCount: p?.total ?? data.length ?? 0,
     page: p?.page ?? 1,
-    pageSize: p?.limit ?? raw.data?.length ?? 20,
+    pageSize: p?.limit ?? data.length ?? 20,
     totalPages: p?.pages ?? 1,
   }
 }

@@ -29,7 +29,7 @@ function mapOrg(raw: any): Organisation {
 function mapOrgMember(raw: any): OrgMember {
   return {
     id: raw.id,
-    userId: raw.user_id ?? raw.userId ?? 0,
+    userId: raw.user_id ?? raw.userId ?? raw.id ?? 0,
     userName: raw.user_name ?? raw.userName ?? '',
     role: raw.role ?? 'member',
   }
@@ -47,12 +47,14 @@ export function OrganisationDetailPage() {
     apiClient.get(`/api/organisations/${id}`)
       .then(r => {
         setOrg(mapOrg(r.data))
-        return apiClient.get(`/api/organisations/${id}/members`)
-      })
-      .then(r => {
-        const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
-        const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
-        setMembers(items.map(mapOrgMember))
+        // Fetch members separately — failure here should not hide the org
+        apiClient.get(`/api/organisations/${id}/members`)
+          .then(mr => {
+            const raw = mr.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+            const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
+            setMembers(items.map(mapOrgMember))
+          })
+          .catch(() => { /* members unavailable — org still displayed */ })
       })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load organisation.'))
       .finally(() => setIsLoading(false))
@@ -93,7 +95,13 @@ export function OrganisationDetailPage() {
             <dd style={{ margin: 0 }}>{new Date(org.createdAt).toLocaleDateString('en-IE', { year: 'numeric', month: 'long' })}</dd>
             {org.website && <>
               <dt style={{ fontWeight: 600, color: 'var(--nexus-color-text-secondary)', fontSize: 14 }}>Website</dt>
-              <dd style={{ margin: 0 }}><a href={org.website} target="_blank" rel="noopener noreferrer">{org.website}</a></dd>
+              <dd style={{ margin: 0 }}>
+                {(() => {
+                  const hasProtocol = /^https?:\/\//i.test(org.website!)
+                  const safeUrl = hasProtocol ? org.website! : `https://${org.website}`
+                  return <a href={safeUrl} target="_blank" rel="noopener noreferrer">{org.website}</a>
+                })()}
+              </dd>
             </>}
           </dl>
         </div>

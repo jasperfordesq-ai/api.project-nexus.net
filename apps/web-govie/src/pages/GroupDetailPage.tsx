@@ -28,10 +28,12 @@ function mapMember(raw: any): Member {
   const user = raw.user ?? {}
   return {
     id: raw.id ?? 0,
-    userId: user.id ?? raw.user_id ?? raw.userId ?? 0,
-    name: user.firstName ?? user.first_name
-      ? `${user.first_name ?? user.firstName ?? ''} ${user.last_name ?? user.lastName ?? ''}`.trim()
-      : (raw.name ?? raw.userName ?? raw.user_name ?? 'Unknown'),
+    userId: user.id ?? raw.user_id ?? raw.userId ?? raw.id ?? 0,
+    name: raw.first_name
+      ? `${raw.first_name} ${raw.last_name || ''}`.trim()
+      : (user.first_name
+        ? `${user.first_name} ${user.last_name || ''}`.trim()
+        : (raw.name ?? raw.userName ?? raw.user_name ?? 'Unknown')),
     role: raw.role ?? 'member',
     joinedAt: raw.joined_at ?? raw.joinedAt ?? raw.created_at ?? raw.createdAt ?? '',
   }
@@ -49,11 +51,17 @@ export function GroupDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionMsg, setActionMsg] = useState<string | null>(null)
+  const [actionIsError, setActionIsError] = useState(false)
   const [joining, setJoining] = useState(false)
 
   useEffect(() => {
     Promise.all([
-      apiClient.get(`/api/groups/${id}`).then(r => mapGroup(r.data)),
+      apiClient.get(`/api/groups/${id}`).then(r => {
+        const data = r.data.group ?? r.data
+        const isMember = r.data.my_membership !== null && r.data.my_membership !== undefined
+        const group = mapGroup(data)
+        return { ...group, isMember: isMember || group.isMember }
+      }),
       apiClient.get(`/api/groups/${id}/members`).then(r => extractItems(r.data).map(mapMember)).catch(() => [] as Member[]),
     ])
       .then(([g, m]) => { setGroup(g); setMembers(m) })
@@ -68,13 +76,16 @@ export function GroupDetailPage() {
       if (group.isMember) {
         await apiClient.delete(`/api/groups/${id}/leave`)
         setGroup(g => g ? { ...g, isMember: false, memberCount: g.memberCount - 1 } : g)
+        setActionIsError(false)
         setActionMsg('You have left the group.')
       } else {
         await apiClient.post(`/api/groups/${id}/join`)
         setGroup(g => g ? { ...g, isMember: true, memberCount: g.memberCount + 1 } : g)
+        setActionIsError(false)
         setActionMsg('You have joined the group.')
       }
     } catch (err) {
+      setActionIsError(true)
       setActionMsg(isApiError(err) ? err.message : 'Action failed.')
     } finally {
       setJoining(false)
@@ -95,7 +106,7 @@ export function GroupDetailPage() {
         </ol>
       </nav>
 
-      {actionMsg && <div className="nexus-notification nexus-notification--success" role="status" style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionMsg}</div>}
+      {actionMsg && <div className={`nexus-notification nexus-notification--${actionIsError ? 'error' : 'success'}`} role={actionIsError ? 'alert' : 'status'} style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionMsg}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--nexus-space-5)', marginBottom: 'var(--nexus-space-6)' }}>
         <div>

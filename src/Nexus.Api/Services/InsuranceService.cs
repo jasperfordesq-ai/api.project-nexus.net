@@ -15,11 +15,13 @@ namespace Nexus.Api.Services;
 public class InsuranceService
 {
     private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
     private readonly ILogger<InsuranceService> _logger;
 
-    public InsuranceService(NexusDbContext db, ILogger<InsuranceService> logger)
+    public InsuranceService(NexusDbContext db, TenantContext tenantContext, ILogger<InsuranceService> logger)
     {
         _db = db;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -47,6 +49,7 @@ public class InsuranceService
 
         var cert = new InsuranceCertificate
         {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
             UserId = userId,
             Type = type,
             Provider = provider,

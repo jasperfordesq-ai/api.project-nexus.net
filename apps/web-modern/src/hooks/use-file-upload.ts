@@ -31,7 +31,7 @@ const DEFAULT_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const DEFAULT_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 export function useFileUpload({
-  endpoint = "/api/uploads",
+  endpoint = "/api/files/upload",
   maxFileSize = DEFAULT_MAX_SIZE,
   allowedTypes = DEFAULT_ALLOWED_TYPES,
   onUploadStart,

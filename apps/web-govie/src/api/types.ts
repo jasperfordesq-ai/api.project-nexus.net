@@ -74,7 +74,7 @@ export interface UserSummary {
   email: string
   firstName: string
   lastName: string
-  role: 'member' | 'admin' | 'moderator'
+  role: 'member' | 'admin' | 'moderator' | 'super_admin'
   tenantId: number
   avatarUrl?: string
   createdAt: string

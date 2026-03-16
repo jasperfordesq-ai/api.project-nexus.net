@@ -62,15 +62,16 @@ function NotificationsContent() {
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response: PaginatedResponse<Notification> = await api.getNotifications({
-        unread_only: showUnreadOnly,
-        page: currentPage,
-        limit: 20,
-      });
+      const [response, countRes] = await Promise.all([
+        api.getNotifications({
+          unread_only: showUnreadOnly,
+          page: currentPage,
+          limit: 20,
+        }) as Promise<PaginatedResponse<Notification>>,
+        api.getUnreadNotificationCount(),
+      ]);
       setNotifications(response?.data || []);
       setTotalPages(response?.pagination?.total_pages || 1);
-
-      const countRes = await api.getUnreadNotificationCount();
       setUnreadCount(countRes?.count || 0);
     } catch (error) {
       logger.error("Failed to fetch notifications:", error);
@@ -122,6 +123,7 @@ function NotificationsContent() {
   }, [activeTab, notifConfig, fetchNotificationConfig]);
 
   const handleConfigChange = async (category: string, channel: string, value: boolean) => {
+    setActionError(null);
     try {
       const updated = {
         ...notifConfig,
@@ -153,6 +155,7 @@ function NotificationsContent() {
   };
 
   const handleMarkAsRead = async (id: number) => {
+    setActionError(null);
     try {
       await api.markNotificationAsRead(id);
       setNotifications((prev) =>
@@ -166,6 +169,7 @@ function NotificationsContent() {
   };
 
   const handleMarkAllAsRead = async () => {
+    setActionError(null);
     try {
       await api.markAllNotificationsAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));

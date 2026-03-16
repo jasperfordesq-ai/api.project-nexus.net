@@ -21,6 +21,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { validatePassword } from "@/lib/validation";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -54,8 +55,9 @@ function ResetPasswordContent() {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+    const pwValidation = validatePassword(password);
+    if (!pwValidation.isValid) {
+      setError(`Password requires: ${pwValidation.errors.join(", ")}`);
       return;
     }
 

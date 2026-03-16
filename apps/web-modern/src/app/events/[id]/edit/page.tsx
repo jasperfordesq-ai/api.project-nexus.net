@@ -22,6 +22,11 @@ import { MotionGlassCard } from "@/components/glass-card";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 
+function toLocalDatetimeString(date: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function EditEventPage() {
   return (
     <ProtectedRoute>
@@ -61,10 +66,10 @@ function EditEventContent() {
           description: event.description || "",
           location: event.location || "",
           start_time: event.start_time
-            ? new Date(event.start_time).toISOString().slice(0, 16)
+            ? toLocalDatetimeString(new Date(event.start_time))
             : "",
           end_time: event.end_time
-            ? new Date(event.end_time).toISOString().slice(0, 16)
+            ? toLocalDatetimeString(new Date(event.end_time))
             : "",
           max_attendees: event.max_attendees ? String(event.max_attendees) : "",
         });

@@ -83,10 +83,11 @@ function IdeasContent() {
   const fetchIdeas = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params: { page: number; limit: number; sort?: string } = {
+      const params: { page: number; limit: number; sort?: string; search?: string } = {
         page: currentPage,
         limit: 12,
       };
+      if (searchQuery.trim()) params.search = searchQuery.trim();
       const response = await api.getIdeas(params);
       setIdeas(response?.data || []);
       setTotalPages(response?.pagination?.total_pages || 1);
@@ -96,33 +97,41 @@ function IdeasContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage]);
+  }, [currentPage, searchQuery]);
 
   useEffect(() => { fetchIdeas(); }, [fetchIdeas]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
   const handleVote = async (id: number, vote: "up" | "down") => {
+    setActionError(null);
+    const previousIdeas = ideas;
+    setIdeas((prev) =>
+      prev.map((idea) => {
+        if (idea.id !== id) return idea;
+        const wasUp = idea.user_vote === "up";
+        const wasDown = idea.user_vote === "down";
+        return {
+          ...idea,
+          user_vote: vote,
+          upvotes: idea.upvotes + (vote === "up" ? 1 : 0) - (wasUp ? 1 : 0),
+          downvotes: idea.downvotes + (vote === "down" ? 1 : 0) - (wasDown ? 1 : 0),
+        };
+      })
+    );
     try {
       await api.voteIdea(id, vote);
-      setIdeas((prev) =>
-        prev.map((idea) => {
-          if (idea.id !== id) return idea;
-          const wasUp = idea.user_vote === "up";
-          const wasDown = idea.user_vote === "down";
-          return {
-            ...idea,
-            user_vote: vote,
-            upvotes: idea.upvotes + (vote === "up" ? 1 : 0) - (wasUp ? 1 : 0),
-            downvotes: idea.downvotes + (vote === "down" ? 1 : 0) - (wasDown ? 1 : 0),
-          };
-        })
-      );
     } catch (error) {
       logger.error("Failed to vote:", error);
+      setIdeas(previousIdeas);
       setActionError(error instanceof Error ? error.message : "Failed to vote.");
     }
   };
 
   const handleSubmit = async () => {
     if (!newTitle.trim()) return;
+    setActionError(null);
     setIsSubmitting(true);
     try {
       const result = await api.submitIdea({
@@ -143,11 +152,7 @@ function IdeasContent() {
     }
   };
 
-  const filteredIdeas = ideas.filter(
-    (idea) =>
-      idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      idea.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredIdeas = ideas;
 
   return (
     <div className="min-h-screen">

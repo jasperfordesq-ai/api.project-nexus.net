@@ -34,8 +34,8 @@ function setAuthCookies(res, accessToken, refreshTokenValue) {
 
 // Helper to clear auth cookies
 function clearAuthCookies(res) {
-  res.clearCookie('token');
-  res.clearCookie('refresh_token');
+  res.clearCookie('token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
+  res.clearCookie('refresh_token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
 }
 
 // Middleware to require authentication

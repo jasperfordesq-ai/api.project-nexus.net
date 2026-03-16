@@ -43,7 +43,8 @@ router.get('/', asyncRoute(async (req, res) => {
 
   const groups = groupsResult.data || [];
   const myGroups = myGroupsResult.data || [];
-  const myGroupIds = new Set(myGroups.map(g => g.id));
+  const myGroupIds = {};
+  myGroups.forEach(g => { myGroupIds[g.id] = true; });
 
   res.render('groups/index', {
     title: 'Groups',

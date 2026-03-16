@@ -4,7 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Avatar, Button, Textarea, Spinner, Chip, Skeleton,
@@ -319,6 +319,7 @@ function FeedContent() {
 
   const [savedIds, setSavedIds]         = useState<Set<number>>(new Set());
   const [copiedId, setCopiedId]         = useState<number | null>(null);
+  const mountedRef                      = useRef(true);
 
   // ── Loaders ──────────────────────────────────────────────────────
   const loadFeed = useCallback(async () => {
@@ -350,9 +351,11 @@ function FeedContent() {
 
   // Pre-load saved IDs for bookmark icons while on Feed tab
   useEffect(() => {
+    mountedRef.current = true;
     api.getBookmarkedPosts(1, 100)
-      .then((ps: Post[]) => setSavedIds(new Set(ps.map((p: Post) => p.id))))
+      .then((ps: Post[]) => { if (mountedRef.current) setSavedIds(new Set(ps.map((p: Post) => p.id))); })
       .catch(() => {});
+    return () => { mountedRef.current = false; };
   }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────

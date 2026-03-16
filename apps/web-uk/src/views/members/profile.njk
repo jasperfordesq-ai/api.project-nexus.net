@@ -188,6 +188,7 @@
       {% endif %}
 
       {# Leave a Review Form #}
+      {% if not isOwnProfile %}
       <h3 class="govuk-heading-m govuk-!-margin-top-6">Leave a review</h3>
       <form method="post" action="/reviews/user/{{ user.id }}" class="govuk-!-margin-bottom-6">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -232,6 +233,7 @@
           text: "Submit review"
         }) }}
       </form>
+      {% endif %}
 
     </div>
   </div>

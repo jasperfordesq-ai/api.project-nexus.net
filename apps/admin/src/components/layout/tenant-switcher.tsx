@@ -6,7 +6,6 @@
 import { useState } from "react";
 import { Modal, Form, Input, Button, Tooltip, message } from "antd";
 import { SwapOutlined } from "@ant-design/icons";
-import { useLogout } from "@refinedev/core";
 import axiosInstance from "../../utils/axios";
 import { setToken, setRefreshToken, setStoredUser, getStoredUser, clearAuth, type StoredUser } from "../../utils/token";
 
@@ -71,7 +70,7 @@ export const TenantSwitcher = () => {
       // Reload to refresh all data with new tenant context
       window.location.href = "/";
     } catch (err: unknown) {
-      message.error(err instanceof Error ? err.message : "Failed to switch tenant");
+      message.error((err as any)?.response?.data?.message || (err instanceof Error ? err.message : "Failed to switch tenant"));
     } finally {
       setLoading(false);
     }
@@ -94,7 +93,7 @@ export const TenantSwitcher = () => {
         title="Switch Tenant"
         open={open}
         onOk={handleSwitch}
-        onCancel={() => setOpen(false)}
+        onCancel={() => { setOpen(false); form.resetFields(); }}
         confirmLoading={loading}
         okText="Switch"
       >

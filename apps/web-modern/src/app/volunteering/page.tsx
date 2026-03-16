@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
@@ -58,8 +58,17 @@ function VolunteeringContent() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, []);
 
   const fetchOpportunities = useCallback(async () => {
     setIsLoading(true);
@@ -68,7 +77,7 @@ function VolunteeringContent() {
         page: currentPage,
         limit: 12,
       };
-      if (searchQuery) params.search = searchQuery;
+      if (debouncedSearch) params.search = debouncedSearch;
       const response = await api.getVolunteeringOpportunities(params);
       setOpportunities(response?.data || []);
       setTotalPages(response?.pagination?.total_pages || 1);
@@ -78,7 +87,7 @@ function VolunteeringContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, searchQuery]);
+  }, [currentPage, debouncedSearch]);
 
   useEffect(() => {
     fetchOpportunities();
@@ -103,7 +112,11 @@ function VolunteeringContent() {
             value={searchQuery}
             onValueChange={(v) => {
               setSearchQuery(v);
-              setCurrentPage(1);
+              if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+              searchTimeoutRef.current = setTimeout(() => {
+                setDebouncedSearch(v);
+                setCurrentPage(1);
+              }, 300);
             }}
             startContent={<Search className="w-4 h-4 text-white/40" />}
             classNames={{

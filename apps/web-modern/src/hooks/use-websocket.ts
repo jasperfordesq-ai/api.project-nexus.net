@@ -42,6 +42,16 @@ export function useWebSocket({
   const reconnectCountRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Store callbacks in refs so they don't cause connect to re-run on every render
+  const onMessageRef = useRef(onMessage);
+  const onConnectRef = useRef(onConnect);
+  const onDisconnectRef = useRef(onDisconnect);
+  const onErrorRef = useRef(onError);
+  onMessageRef.current = onMessage;
+  onConnectRef.current = onConnect;
+  onDisconnectRef.current = onDisconnect;
+  onErrorRef.current = onError;
+
   const [status, setStatus] = useState<WebSocketStatus>("disconnected");
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
 
@@ -73,14 +83,14 @@ export function useWebSocket({
         logger.debug("WebSocket connected");
         setStatus("connected");
         reconnectCountRef.current = 0; // Reset retry count on successful connection
-        onConnect?.();
+        onConnectRef.current?.();
       };
 
       ws.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
           setLastMessage(message);
-          onMessage?.(message);
+          onMessageRef.current?.(message);
         } catch (e) {
           logger.error("WebSocket: Failed to parse message", e);
         }
@@ -91,14 +101,14 @@ export function useWebSocket({
         // The actual error (e.g., connection refused) will trigger onclose
         logger.error("WebSocket error: Connection failed to", wsUrl.origin);
         setStatus("error");
-        onError?.(event);
+        onErrorRef.current?.(event);
       };
 
       ws.onclose = () => {
         logger.debug("WebSocket disconnected");
         setStatus("disconnected");
         wsRef.current = null;
-        onDisconnect?.();
+        onDisconnectRef.current?.();
 
         // Attempt to reconnect with exponential backoff
         if (
@@ -125,10 +135,6 @@ export function useWebSocket({
   }, [
     url,
     enabled,
-    onMessage,
-    onConnect,
-    onDisconnect,
-    onError,
     reconnectAttempts,
     reconnectInterval,
     maxReconnectInterval,

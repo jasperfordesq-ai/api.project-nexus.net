@@ -103,8 +103,10 @@
                 </td>
                 <td class="govuk-table__cell">{{ (listing.createdAt or listing.created_at) | formatDate if listing.createdAt or listing.created_at else "N/A" }}</td>
                 <td class="govuk-table__cell">
-                  <a href="/listings/{{ listing.id }}/edit" class="govuk-link govuk-!-margin-right-2">Edit</a>
-                  <a href="/listings/{{ listing.id }}/delete" class="govuk-link app-link--destructive">Delete</a>
+                  {% if listing.can_edit or (currentUser and ((listing.user and (listing.user.id | string) == (currentUser.id | string)) or (listing.user_id | string) == (currentUser.id | string))) %}
+                    <a href="/listings/{{ listing.id }}/edit" class="govuk-link govuk-!-margin-right-2">Edit</a>
+                    <a href="/listings/{{ listing.id }}/delete" class="govuk-link app-link--destructive">Delete</a>
+                  {% endif %}
                 </td>
               </tr>
             {% endfor %}
@@ -122,8 +124,8 @@
           {% endfor %}
 
           {{ govukPagination({
-            previous: { href: "/listings?page=" + (pagination.currentPage - 1) } if pagination.currentPage > 1 else undefined,
-            next: { href: "/listings?page=" + (pagination.currentPage + 1) } if pagination.currentPage < pagination.totalPages else undefined,
+            previous: { href: "/listings?page=" + (pagination.currentPage - 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "") } if pagination.currentPage > 1 else undefined,
+            next: { href: "/listings?page=" + (pagination.currentPage + 1) + ("&search=" + filters.search if filters.search else "") + ("&status=" + filters.status if filters.status else "") } if pagination.currentPage < pagination.totalPages else undefined,
             items: paginationItems
           }) }}
         {% endif %}

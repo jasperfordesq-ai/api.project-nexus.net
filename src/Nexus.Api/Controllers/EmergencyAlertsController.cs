@@ -93,7 +93,7 @@ public class EmergencyAlertsController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogWarning("Emergency alert created: {Title} [{Urgency}] by user {UserId}", alert.Title, alert.Urgency, userId);
-        return StatusCode(201, new { success = true, id = alert.Id, message = "Emergency alert created and broadcast" });
+        return Ok(new { success = true, id = alert.Id, message = "Emergency alert created and broadcast" });
     }
 
     /// <summary>PUT /api/volunteer/emergency-alerts/{id}/resolve - Resolve an alert (admin).</summary>

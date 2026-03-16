@@ -139,6 +139,11 @@ function ExchangeDetailContent() {
     try {
       const data = await api.getExchange(exchangeId);
       setExchange(data);
+      // Initialize hasRated from server response to avoid showing the rating
+      // form if the user has already submitted a rating for this exchange.
+      if (data.has_rated || data.my_rating != null) {
+        setHasRated(true);
+      }
     } catch (error) {
       logger.error("Failed to fetch exchange:", error);
     } finally {
@@ -240,7 +245,7 @@ function ExchangeDetailContent() {
         }
       );
     }
-    if (exchange.status === "accepted") {
+    if (exchange.status === "accepted" && isRequester) {
       actions.push({
         label: "Start",
         action: "start",

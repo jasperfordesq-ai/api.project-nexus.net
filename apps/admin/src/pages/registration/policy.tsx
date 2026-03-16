@@ -4,8 +4,10 @@
 // See NOTICE file for attribution and acknowledgements.
 
 import { useCustom } from "@refinedev/core";
-import { Card, Typography, Form, Select, Switch, Button, Spin, message } from "antd";
+import { Card, Typography, Form, Select, Switch, Button, Spin, message, Space } from "antd";
+import { TeamOutlined } from "@ant-design/icons";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axios";
 import { getErrorMessage } from "../../utils/errors";
 
@@ -23,6 +25,7 @@ export const RegistrationPolicyPage = () => {
 
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
 
   const policy = data?.data as any;
   const options = optionsData?.data as any;
@@ -37,13 +40,17 @@ export const RegistrationPolicyPage = () => {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      await axiosInstance.put("/api/registration/admin/policy", values);
-      message.success("Policy updated");
-      refetch();
-    } catch (err: unknown) {
-      message.error(getErrorMessage(err, "Failed to update policy"));
-    } finally {
-      setSaving(false);
+      try {
+        await axiosInstance.put("/api/registration/admin/policy", values);
+        message.success("Policy updated");
+        refetch();
+      } catch (err: unknown) {
+        message.error(getErrorMessage(err, "Failed to update policy"));
+      } finally {
+        setSaving(false);
+      }
+    } catch {
+      // Form validation failed, Ant Design highlights the fields automatically
     }
   };
 
@@ -59,7 +66,14 @@ export const RegistrationPolicyPage = () => {
 
   return (
     <div>
-      <Title level={4}>Registration Policy</Title>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <Title level={4} style={{ margin: 0 }}>Registration Policy</Title>
+        <Space>
+          <Button icon={<TeamOutlined />} onClick={() => navigate("/registration/pending")}>
+            View Pending Approvals
+          </Button>
+        </Space>
+      </div>
       <Card>
         <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item name="mode" label="Registration Mode">

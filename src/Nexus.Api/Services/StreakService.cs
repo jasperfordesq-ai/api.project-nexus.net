@@ -33,60 +33,77 @@ public class StreakService
     {
         var today = DateTime.UtcNow.Date;
 
-        var streak = await _db.Set<Streak>()
-            .FirstOrDefaultAsync(s => s.UserId == userId && s.StreakType == streakType);
-
-        if (streak == null)
+        // Wrap in SERIALIZABLE transaction with advisory lock to prevent double-counting
+        // when concurrent requests record activity for the same user/streak type.
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable);
+        try
         {
-            // First activity of this type
-            streak = new Streak
-            {
-                TenantId = _tenantContext.GetTenantIdOrThrow(),
-                UserId = userId,
-                StreakType = streakType,
-                CurrentStreak = 1,
-                LongestStreak = 1,
-                LastActivityDate = today
-            };
-            _db.Set<Streak>().Add(streak);
-        }
-        else
-        {
-            var lastDate = streak.LastActivityDate.Date;
+            await _db.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock({0})", userId);
 
-            if (lastDate == today)
-            {
-                // Already recorded today, no change
-                return streak;
-            }
+            var streak = await _db.Set<Streak>()
+                .FirstOrDefaultAsync(s => s.UserId == userId && s.StreakType == streakType);
 
-            if (lastDate == today.AddDays(-1))
+            if (streak == null)
             {
-                // Consecutive day - extend streak
-                streak.CurrentStreak++;
+                // First activity of this type
+                streak = new Streak
+                {
+                    TenantId = _tenantContext.GetTenantIdOrThrow(),
+                    UserId = userId,
+                    StreakType = streakType,
+                    CurrentStreak = 1,
+                    LongestStreak = 1,
+                    LastActivityDate = today
+                };
+                _db.Set<Streak>().Add(streak);
             }
             else
             {
-                // Streak broken - restart
-                streak.CurrentStreak = 1;
+                var lastDate = streak.LastActivityDate.Date;
+
+                if (lastDate == today)
+                {
+                    // Already recorded today, no change
+                    await transaction.CommitAsync();
+                    return streak;
+                }
+
+                if (lastDate == today.AddDays(-1))
+                {
+                    // Consecutive day - extend streak
+                    streak.CurrentStreak++;
+                }
+                else
+                {
+                    // Streak broken - restart
+                    streak.CurrentStreak = 1;
+                }
+
+                if (streak.CurrentStreak > streak.LongestStreak)
+                {
+                    streak.LongestStreak = streak.CurrentStreak;
+                }
+
+                streak.LastActivityDate = today;
+                streak.UpdatedAt = DateTime.UtcNow;
             }
 
-            if (streak.CurrentStreak > streak.LongestStreak)
-            {
-                streak.LongestStreak = streak.CurrentStreak;
-            }
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
 
-            streak.LastActivityDate = today;
-            streak.UpdatedAt = DateTime.UtcNow;
+            _logger.LogInformation(
+                "User {UserId} streak '{StreakType}': current={Current}, longest={Longest}",
+                userId, streakType, streak.CurrentStreak, streak.LongestStreak);
+
+            return streak;
         }
-
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation(
-            "User {UserId} streak '{StreakType}': current={Current}, longest={Longest}",
-            userId, streakType, streak.CurrentStreak, streak.LongestStreak);
-
-        return streak;
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     /// <summary>

@@ -206,12 +206,15 @@ public class SavedSearchService
         return (error == null, error);
     }
 
-    /// <summary>Mark search run (original name).</summary>
-    public async Task<(SavedSearch? Search, string? Error)> MarkSearchRunAsync(int id, int resultCount)
+    /// <summary>Mark search run (original name). Verifies ownership before updating.</summary>
+    public async Task<(SavedSearch? Search, string? Error)> MarkSearchRunAsync(int id, int userId, int resultCount)
     {
         var search = await _db.Set<SavedSearch>().FirstOrDefaultAsync(x => x.Id == id);
         if (search == null)
             return (null, "Saved search not found.");
+
+        if (search.UserId != userId)
+            return (null, "You do not own this saved search.");
 
         search.LastRunAt = DateTime.UtcNow;
         search.LastResultCount = resultCount;

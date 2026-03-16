@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
@@ -38,17 +38,38 @@ function GroupsContent() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce search input — wait 300ms before updating the API query param
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setCurrentPage(1);
+    }, 300);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, []);
 
   const fetchGroups = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response: PaginatedResponse<Group> = await api.getGroups({
+      const params: { page: number; limit: number; search?: string } = {
         page: currentPage,
         limit: 12,
-      });
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      const response: PaginatedResponse<Group> = await api.getGroups(params);
       setGroups(response?.data || []);
       setTotalPages(response?.pagination?.total_pages || 1);
     } catch (error) {
@@ -57,16 +78,23 @@ function GroupsContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage]);
+  }, [currentPage, debouncedSearch]);
 
   useEffect(() => {
     fetchGroups();
   }, [fetchGroups]);
-  const filteredGroups = (groups || []).filter(
-    (group) =>
-      (group.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (group.description || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredGroups = groups || [];
+
+  const handleLeaveGroup = async (groupId: number) => {
+    setActionError(null);
+    try {
+      await api.leaveGroup(groupId);
+      fetchGroups();
+    } catch (error) {
+      logger.error("Failed to leave group:", error);
+      setActionError(error instanceof Error ? error.message : "Failed to leave group. Please try again.");
+    }
+  };
 
   const handleJoinGroup = async (groupId: number) => {
     setActionError(null);
@@ -117,7 +145,7 @@ function GroupsContent() {
           <Input
             placeholder="Search groups..."
             value={searchQuery}
-            onValueChange={setSearchQuery}
+            onValueChange={handleSearchChange}
             startContent={<Search className="w-4 h-4 text-white/40" />}
             classNames={{
               input: "text-white placeholder:text-white/30",
@@ -204,14 +232,24 @@ function GroupsContent() {
                       </span>
                     </div>
 
-                    <Button
-                      size="sm"
-                      className="bg-white/10 text-white hover:bg-white/20"
-                      startContent={<UserPlus className="w-4 h-4" />}
-                      onPress={() => handleJoinGroup(group.id)}
-                    >
-                      Join
-                    </Button>
+                    {group.is_member ? (
+                      <Button
+                        size="sm"
+                        className="bg-white/10 text-white hover:bg-white/20"
+                        onPress={() => handleLeaveGroup(group.id)}
+                      >
+                        Leave
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="bg-white/10 text-white hover:bg-white/20"
+                        startContent={<UserPlus className="w-4 h-4" />}
+                        onPress={() => handleJoinGroup(group.id)}
+                      >
+                        Join
+                      </Button>
+                    )}
                   </div>
                 </MotionGlassCard>
               ))}

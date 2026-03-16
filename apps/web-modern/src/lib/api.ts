@@ -131,6 +131,7 @@ export interface Group {
   creator?: User;
   created_at: string;
   updated_at: string;
+  is_member?: boolean;
 }
 
 export interface GroupMember {
@@ -518,6 +519,8 @@ export interface Exchange {
   completed_at?: string;
   created_at: string;
   updated_at: string;
+  has_rated?: boolean;
+  my_rating?: number;
 }
 
 export interface ExchangeRating {
@@ -636,7 +639,7 @@ function normalizeConversation(raw: any): Conversation {
     : (raw.participants ?? []).map((p: any) => normalizeUser(p)).filter(Boolean) as User[];
   const participant_ids: number[] = raw.participantIds ?? raw.participant_ids ??
     (raw.participant ? [raw.participant.id] : participants.map((p) => p.id));
-  const lastMsg = raw.lastMessage ?? raw.last_message ?? raw.last_message;
+  const lastMsg = raw.lastMessage ?? raw.last_message;
   return {
     id: raw.id,
     participant_ids,
@@ -689,6 +692,7 @@ function normalizeGroup(raw: any): Group {
     creator: normalizeUser(raw.creator),
     created_at: raw.createdAt ?? raw.created_at ?? '',
     updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+    is_member: raw.isMember ?? raw.is_member,
   };
 }
 
@@ -722,7 +726,7 @@ function normalizeEvent(raw: any): Event {
     organizer: normalizeUser(raw.organizer ?? createdBy),
     group: raw.group ? normalizeGroup(raw.group) : undefined,
     is_cancelled: raw.isCancelled ?? raw.is_cancelled ?? false,
-    my_rsvp: raw._my_rsvp ?? undefined,
+    my_rsvp: raw.myRsvp ?? raw.my_rsvp ?? undefined,
     rsvp_counts: raw.rsvp_counts ?? raw.rsvpCounts ?? undefined,
     created_at: raw.createdAt ?? raw.created_at ?? '',
     updated_at: raw.updatedAt ?? raw.updated_at ?? '',
@@ -1039,7 +1043,7 @@ class ApiClient {
   ): Promise<T> {
     const token = getToken();
     const headers: HeadersInit = {
-      "Content-Type": "application/json",
+      ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...options.headers,
     };
 
@@ -1084,7 +1088,7 @@ class ApiClient {
           const retryToken = getToken();
           const retryHeaders: HeadersInit = {
             ...options.headers,
-            "Content-Type": "application/json",
+            ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
           };
           if (retryToken) {
             (retryHeaders as Record<string, string>)["Authorization"] = `Bearer ${retryToken}`;
@@ -1486,6 +1490,12 @@ class ApiClient {
     return normalizePaginated(raw, normalizeConnection);
   }
 
+  async getPendingConnections(): Promise<Connection[]> {
+    const raw = await this.request<any>("/api/connections/pending");
+    const items: unknown[] = Array.isArray(raw) ? raw : (raw?.data ?? []);
+    return items.map(normalizeConnection);
+  }
+
   async getConnection(id: number): Promise<Connection> {
     const raw = await this.request<any>(`/api/connections/${id}`);
     return normalizeConnection(raw);
@@ -1554,6 +1564,7 @@ class ApiClient {
   async getGroups(params?: {
     page?: number;
     limit?: number;
+    search?: string;
   }): Promise<PaginatedResponse<Group>> {
     const query = this.buildQueryString(params || {});
     const raw = await this.request<any>(`/api/groups${query}`);
@@ -2292,11 +2303,11 @@ class ApiClient {
     created_at: string;
     acknowledged: boolean;
   }[]> {
-    return this.request("/api/gdpr/breach-notifications");
+    return this.request("/api/privacy/breach-notifications");
   }
 
   async acknowledgeBreachNotification(breachId: number): Promise<void> {
-    return this.request<void>(`/api/gdpr/breach-notifications/${breachId}/acknowledge`, {
+    return this.request<void>(`/api/privacy/breach-notifications/${breachId}/acknowledge`, {
       method: "POST",
     });
   }
@@ -2310,7 +2321,7 @@ class ApiClient {
     marketing: boolean;
     functional: boolean;
   }> {
-    return this.request("/api/gdpr/cookie-consent");
+    return this.request("/api/privacy/cookie-consent");
   }
 
   async updateCookieConsent(data: {
@@ -2318,7 +2329,7 @@ class ApiClient {
     marketing?: boolean;
     functional?: boolean;
   }): Promise<void> {
-    return this.request<void>("/api/gdpr/cookie-consent", {
+    return this.request<void>("/api/privacy/cookie-consent", {
       method: "PUT",
       body: JSON.stringify(data),
     });
@@ -2333,11 +2344,22 @@ class ApiClient {
   }
 
   async getNotificationConfig(): Promise<Record<string, { email: boolean; push: boolean; in_app: boolean }>> {
-    return this.request("/api/notifications/config");
+    return this.request("/api/notifications/preferences");
   }
 
   async updateNotificationConfig(data: Record<string, { email?: boolean; push?: boolean; in_app?: boolean }>): Promise<void> {
-    return this.request<void>("/api/notifications/config", {
+    return this.request<void>("/api/notifications/preferences", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateNotificationGlobal(data: {
+    email_notifications?: boolean;
+    push_notifications?: boolean;
+    sms_notifications?: boolean;
+  }): Promise<void> {
+    return this.request<void>("/api/preferences/notifications-global", {
       method: "PUT",
       body: JSON.stringify(data),
     });
@@ -2529,10 +2551,9 @@ class ApiClient {
   async sendVoiceMessage(conversationId: number, audioBlob: Blob): Promise<{ id: number }> {
     const formData = new FormData();
     formData.append("audio", audioBlob, "voice.webm");
-    return this.request(`/api/messages/conversations/${conversationId}/voice`, {
+    return this.request(`/api/voice-messages`, {
       method: "POST",
       body: formData,
-      headers: {},
     });
   }
 
@@ -2542,7 +2563,7 @@ class ApiClient {
     duration_seconds: number;
     transcript?: string;
   }> {
-    return this.request(`/api/messages/voice/${messageId}`);
+    return this.request(`/api/voice-messages/${messageId}`);
   }
 
   // ==========================================================================
@@ -2553,15 +2574,15 @@ class ApiClient {
     endpoint: string;
     keys: { p256dh: string; auth: string };
   }): Promise<void> {
-    return this.request<void>("/api/push/subscribe", {
+    return this.request<void>("/api/notifications/push/register", {
       method: "POST",
       body: JSON.stringify(subscription),
     });
   }
 
   async unregisterPushSubscription(endpoint: string): Promise<void> {
-    return this.request<void>("/api/push/unsubscribe", {
-      method: "POST",
+    return this.request<void>("/api/notifications/push/register", {
+      method: "DELETE",
       body: JSON.stringify({ endpoint }),
     });
   }
@@ -2576,11 +2597,11 @@ class ApiClient {
       events: boolean;
     };
   }> {
-    return this.request("/api/push/settings");
+    return this.request("/api/notifications/push/devices");
   }
 
   async updatePushSettings(data: unknown): Promise<void> {
-    return this.request<void>("/api/push/settings", {
+    return this.request<void>("/api/notifications/preferences", {
       method: "PUT",
       body: JSON.stringify(data),
     });
@@ -2632,7 +2653,6 @@ class ApiClient {
     return this.request("/api/insurance/certificates", {
       method: "POST",
       body: data,
-      headers: {},
     });
   }
 
@@ -2652,15 +2672,15 @@ class ApiClient {
     completed_at?: string;
     download_url?: string;
   }[]> {
-    return this.request("/api/gdpr/exports");
+    return this.request("/api/privacy/export");
   }
 
   async requestDataExport(): Promise<{ id: number }> {
-    return this.request("/api/gdpr/exports", { method: "POST" });
+    return this.request("/api/privacy/export", { method: "POST" });
   }
 
   async requestAccountDeletion(data: { reason?: string }): Promise<void> {
-    return this.request<void>("/api/gdpr/delete-account", {
+    return this.request<void>("/api/privacy/delete", {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -2672,7 +2692,7 @@ class ApiClient {
     third_party_sharing: boolean;
     updated_at: string;
   }> {
-    return this.request("/api/gdpr/consent");
+    return this.request("/api/privacy/consents");
   }
 
   async updateConsentSettings(data: {
@@ -2680,7 +2700,7 @@ class ApiClient {
     analytics?: boolean;
     third_party_sharing?: boolean;
   }): Promise<void> {
-    return this.request<void>("/api/gdpr/consent", {
+    return this.request<void>("/api/privacy/consents", {
       method: "PUT",
       body: JSON.stringify(data),
     });
@@ -3003,7 +3023,7 @@ class ApiClient {
     description?: string;
     article_count: number;
   }[]> {
-    return this.request("/api/kb/categories");
+    return this.request("/api/knowledge/categories");
   }
 
   async getKBArticles(params?: {
@@ -3020,7 +3040,7 @@ class ApiClient {
     created_at: string;
   }>> {
     const query = this.buildQueryString(params || {});
-    return this.request(`/api/kb/articles${query}`);
+    return this.request(`/api/knowledge/articles${query}`);
   }
 
   async getKBArticle(id: number): Promise<{
@@ -3033,11 +3053,11 @@ class ApiClient {
     created_at: string;
     updated_at: string;
   }> {
-    return this.request(`/api/kb/articles/${id}`);
+    return this.request(`/api/knowledge/articles/${id}`);
   }
 
   async markKBArticleHelpful(id: number): Promise<void> {
-    return this.request<void>(`/api/kb/articles/${id}/helpful`, { method: "POST" });
+    return this.request<void>(`/api/knowledge/articles/${id}/helpful`, { method: "POST" });
   }
 
 
@@ -3768,7 +3788,7 @@ class ApiClient {
   }
 
   async updateWalletAlert(alertId: number, data: any): Promise<void> {
-    return this.request<void>(`/api/wallet/alerts/${alertId}`, { method: "PUT", body: JSON.stringify(data) });
+    return this.request<void>(`/api/wallet/features/alerts/${alertId}`, { method: "PUT", body: JSON.stringify(data) });
   }
 
   async exportWalletHistory(format: string): Promise<Blob> {
@@ -3859,11 +3879,11 @@ class ApiClient {
   // ==========================================================================
 
   async getCmsPages(): Promise<any[]> {
-    return this.request<any[]>("/api/cms/pages");
+    return this.request<any[]>("/api/pages");
   }
 
   async getCmsPage(slug: string): Promise<any> {
-    return this.request<any>(`/api/cms/pages/${slug}`);
+    return this.request<any>(`/api/pages/${slug}`);
   }
 
 
@@ -3879,8 +3899,10 @@ class ApiClient {
     return this.request<any[]>("/api/members/me/activity");
   }
 
-  async getActivityFeed(page: number = 1): Promise<any> {
-    return this.request<any>(`/api/activity/feed?page=${page}`);
+  async getActivityFeed(page: number = 1, type?: string): Promise<any> {
+    const params = new URLSearchParams({ page: String(page) });
+    if (type && type !== "all") params.set("type", type);
+    return this.request<any>(`/api/activity/feed?${params.toString()}`);
   }
 
 
@@ -3889,7 +3911,7 @@ class ApiClient {
   // ==========================================================================
 
   async getVerificationStatus(): Promise<any> {
-    return this.request<any>("/api/verification/status");
+    return this.request<any>("/api/registration/verify/status");
   }
 
   async requestVerification(type: string, data: FormData): Promise<any> {
@@ -3897,7 +3919,7 @@ class ApiClient {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
-    const response = await fetch(`${this.baseUrl}/api/verification/request?type=${type}`, { method: "POST", headers, body: data });
+    const response = await fetch(`${this.baseUrl}/api/registration/verify/start?type=${type}`, { method: "POST", headers, body: data });
     if (!response.ok) throw new Error("Verification request failed");
     return response.json();
   }
@@ -4036,15 +4058,15 @@ class ApiClient {
   // ==========================================================================
 
   async getFaqCategories(): Promise<any[]> {
-    return this.request<any[]>("/api/kb/faq/categories");
+    return this.request<any[]>("/api/faqs/categories");
   }
 
   async getFaqByCategory(categoryId: number): Promise<any[]> {
-    return this.request<any[]>(`/api/kb/faq/categories/${categoryId}`);
+    return this.request<any[]>(`/api/faqs?category_id=${categoryId}`);
   }
 
   async voteFaqHelpful(faqId: number, helpful: boolean): Promise<void> {
-    return this.request<void>(`/api/kb/faq/${faqId}/vote`, { method: "POST", body: JSON.stringify({ helpful }) });
+    return this.request<void>(`/api/faqs/${faqId}`, { method: "PUT", body: JSON.stringify({ helpful }) });
   }
 
 

@@ -57,16 +57,16 @@ export const FederationPage = () => {
       <Title level={4}>Federation</Title>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col span={6}>
+        <Col xs={24} sm={12} lg={6}>
           <Card><Statistic title="Total Partners" value={stats.total_partners ?? 0} /></Card>
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={12} lg={6}>
           <Card><Statistic title="Active Partners" value={stats.active_partners ?? 0} valueStyle={{ color: "#3f8600" }} /></Card>
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={12} lg={6}>
           <Card><Statistic title="Pending" value={stats.pending_partners ?? 0} valueStyle={{ color: "#faad14" }} /></Card>
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={12} lg={6}>
           <Card><Statistic title="Total Exchanges" value={stats.total_exchanges ?? 0} /></Card>
         </Col>
       </Row>

@@ -18,17 +18,17 @@ import { listingsApi } from '../api/listings'
 import { isApiError } from '../context/AuthContext'
 
 const CATEGORIES = [
-  'Education',
-  'Home & Garden',
-  'Tech Support',
-  'Transport',
-  'Cooking',
-  'Creative Arts',
-  'Childcare',
-  'Pets',
-  'Healthcare',
-  'Admin & Office',
-  'Other',
+  { id: 1, name: 'Education' },
+  { id: 2, name: 'Home & Garden' },
+  { id: 3, name: 'Tech Support' },
+  { id: 4, name: 'Transport' },
+  { id: 5, name: 'Cooking' },
+  { id: 6, name: 'Creative Arts' },
+  { id: 7, name: 'Childcare' },
+  { id: 8, name: 'Pets' },
+  { id: 9, name: 'Healthcare' },
+  { id: 10, name: 'Admin & Office' },
+  { id: 11, name: 'Other' },
 ]
 
 interface FormValues {
@@ -109,7 +109,7 @@ export function SubmitServicePage() {
         title: values.title.trim(),
         description: values.description.trim(),
         type: values.type,
-        category: values.category,
+        categoryId: values.category ? Number(values.category) : undefined,
         creditRate: Number(values.creditRate),
         location: values.location.trim() || undefined,
         tags: values.tags
@@ -275,7 +275,7 @@ export function SubmitServicePage() {
             >
               <option value="">Select a category…</option>
               {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c.id} value={String(c.id)}>{c.name}</option>
               ))}
             </select>
           </div>

@@ -67,14 +67,19 @@ apiClient.interceptors.request.use((config) => {
 
 // ─── Response interceptor: handle 401 + token refresh ────────────────────────
 let isRefreshing = false
-let refreshSubscribers: Array<(token: string) => void> = []
+let refreshSubscribers: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = []
 
-function subscribeRefresh(cb: (token: string) => void) {
-  refreshSubscribers.push(cb)
+function subscribeRefresh(resolve: (token: string) => void, reject: (err: unknown) => void) {
+  refreshSubscribers.push({ resolve, reject })
 }
 
 function notifyRefreshed(token: string) {
-  refreshSubscribers.forEach((cb) => cb(token))
+  refreshSubscribers.forEach(({ resolve }) => resolve(token))
+  refreshSubscribers = []
+}
+
+function rejectSubscribers(err: unknown) {
+  refreshSubscribers.forEach(({ reject }) => reject(err))
   refreshSubscribers = []
 }
 
@@ -93,11 +98,13 @@ apiClient.interceptors.response.use(
 
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          subscribeRefresh((newToken) => {
-            if (original.headers) original.headers.Authorization = `Bearer ${newToken}`
-            resolve(apiClient(original))
-          })
-          setTimeout(() => reject(error), 10_000)
+          subscribeRefresh(
+            (newToken) => {
+              if (original.headers) original.headers.Authorization = `Bearer ${newToken}`
+              resolve(apiClient(original))
+            },
+            (err) => reject(err),
+          )
         })
       }
 
@@ -117,7 +124,8 @@ apiClient.interceptors.response.use(
         notifyRefreshed(newAccessToken)
         if (original.headers) original.headers.Authorization = `Bearer ${newAccessToken}`
         return apiClient(original)
-      } catch {
+      } catch (refreshError) {
+        rejectSubscribers(refreshError)
         clearStoredTokens()
         window.dispatchEvent(new CustomEvent('nexus:session-expired'))
         return Promise.reject(error)

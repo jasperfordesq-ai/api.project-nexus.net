@@ -349,7 +349,7 @@ function WalletSendContent() {
                 placeholder="0"
                 value={amount}
                 onValueChange={setAmount}
-                min={0}
+                min={1}
                 max={balance?.balance}
                 startContent={
                   <Wallet className="w-4 h-4 text-white/40" />

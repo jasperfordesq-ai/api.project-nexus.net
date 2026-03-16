@@ -75,7 +75,7 @@
                   {% if group.isPrivate or group.is_private %}
                     {{ govukTag({ text: "Private", classes: "govuk-tag--grey" }) }}
                   {% endif %}
-                  {% if myGroupIds.has(group.id) %}
+                  {% if myGroupIds[group.id] %}
                     {{ govukTag({ text: "Joined", classes: "govuk-tag--green" }) }}
                   {% endif %}
                 </div>

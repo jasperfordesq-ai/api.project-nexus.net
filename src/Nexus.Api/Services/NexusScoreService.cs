@@ -16,11 +16,13 @@ namespace Nexus.Api.Services;
 public class NexusScoreService
 {
     private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
     private readonly ILogger<NexusScoreService> _logger;
 
-    public NexusScoreService(NexusDbContext db, ILogger<NexusScoreService> logger)
+    public NexusScoreService(NexusDbContext db, TenantContext tenantContext, ILogger<NexusScoreService> logger)
     {
         _db = db;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -52,7 +54,7 @@ public class NexusScoreService
     /// <summary>
     /// Recalculate NexusScore for a user from all signals.
     /// </summary>
-    public async Task<NexusScore> RecalculateAsync(int userId, string? reason = null)
+    public async Task<(NexusScore? Score, string? Error)> RecalculateAsync(int userId, string? reason = null)
     {
         var score = await _db.Set<NexusScore>()
             .FirstOrDefaultAsync(s => s.UserId == userId);
@@ -62,13 +64,19 @@ public class NexusScoreService
 
         if (score == null)
         {
-            score = new NexusScore { UserId = userId };
+            // Resolve TenantId from the user record so NexusScore is tenant-scoped correctly
+            var tenantUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            if (tenantUser == null)
+                return (null, "User not found");
+
+
+            score = new NexusScore { UserId = userId, TenantId = tenantUser.TenantId };
             _db.Set<NexusScore>().Add(score);
         }
 
         // 1. Exchange Score (0-200): based on completed exchanges
         var completedExchanges = await _db.Set<Exchange>()
-            .CountAsync(e => (e.ProviderId == userId || e.ReceiverId == userId) && e.Status == ExchangeStatus.Completed);
+            .CountAsync(e => (e.InitiatorId == userId || e.ListingOwnerId == userId) && e.Status == ExchangeStatus.Completed);
         score.ExchangeScore = Math.Min(200, completedExchanges * 10);
 
         // 2. Review Score (0-200): based on average rating received
@@ -93,7 +101,7 @@ public class NexusScoreService
 
         // 4. Reliability Score (0-200): exchange completion rate
         var totalExchanges = await _db.Set<Exchange>()
-            .CountAsync(e => e.ProviderId == userId || e.ReceiverId == userId);
+            .CountAsync(e => e.InitiatorId == userId || e.ListingOwnerId == userId);
         if (totalExchanges > 0)
         {
             var completionRate = (double)completedExchanges / totalExchanges;
@@ -133,6 +141,7 @@ public class NexusScoreService
         {
             _db.Set<NexusScoreHistory>().Add(new NexusScoreHistory
             {
+                TenantId = score.TenantId,
                 UserId = userId,
                 PreviousScore = previousScore,
                 NewScore = score.Score,
@@ -147,7 +156,7 @@ public class NexusScoreService
         _logger.LogInformation("NexusScore recalculated for user {UserId}: {Score} ({Tier})",
             userId, score.Score, score.Tier);
 
-        return score;
+        return (score, null);
     }
 
     /// <summary>

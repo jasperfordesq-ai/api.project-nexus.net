@@ -6,5 +6,5 @@ import apiClient from './client'
 
 export const reportsApi = {
   reportContent: (payload: { type: string; targetId: number; reason: string; details?: string }) =>
-    apiClient.post('/api/feed/report', payload).then(r => r.data),
+    apiClient.post(`/api/feed/${payload.targetId}/report`, payload).then(r => r.data),
 }

@@ -19,10 +19,14 @@ const statusColors: Record<string, string> = {
   info: "blue",
   warning: "orange",
   error: "red",
+  admin: "purple",
+  super_admin: "purple",
+  member: "blue",
+  moderator: "cyan",
 };
 
 export const StatusTag = ({ status }: { status?: string }) => {
   if (!status) return <Tag>Unknown</Tag>;
   const color = statusColors[status.toLowerCase()] || "default";
-  return <Tag color={color}>{status.charAt(0).toUpperCase() + status.slice(1)}</Tag>;
+  return <Tag color={color}>{status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</Tag>;
 };

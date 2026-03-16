@@ -157,7 +157,7 @@ export const LockdownPage = () => {
               size="large"
               icon={<LockOutlined />}
               onClick={() => setActivateModalOpen(true)}
-              style={{ width: "100%", height: 60, fontSize: 18, background: "#ff4d4f", color: "#fff", borderColor: "#ff4d4f" }}
+              style={{ width: "100%", height: 60, fontSize: 18 }}
             >
               Activate Emergency Lockdown
             </Button>

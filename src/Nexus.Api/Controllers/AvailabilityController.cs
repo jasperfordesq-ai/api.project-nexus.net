@@ -78,12 +78,15 @@ public class AvailabilityController : ControllerBase
         if (request.DayOfWeek < 0 || request.DayOfWeek > 6)
             return BadRequest(new { error = "DayOfWeek must be 0 (Sunday) through 6 (Saturday)" });
 
-        var slot = await _availabilityService.SetSlotAsync(
+        var (slot, error) = await _availabilityService.SetSlotAsync(
             userId.Value, request.DayOfWeek, request.StartTime, request.EndTime, request.Note);
+
+        if (error != null)
+            return BadRequest(new { error });
 
         return CreatedAtAction(nameof(GetMySchedule), null, new
         {
-            id = slot.Id, day_of_week = slot.DayOfWeek,
+            id = slot!.Id, day_of_week = slot.DayOfWeek,
             start_time = slot.StartTime, end_time = slot.EndTime, note = slot.Note
         });
     }
@@ -96,6 +99,21 @@ public class AvailabilityController : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var timePattern = new System.Text.RegularExpressions.Regex(@"^([01]\d|2[0-3]):[0-5]\d$");
+        var errors = new List<string>();
+        for (int i = 0; i < request.Slots.Count; i++)
+        {
+            var s = request.Slots[i];
+            if (s.DayOfWeek < 0 || s.DayOfWeek > 6)
+                errors.Add($"Slot {i}: DayOfWeek must be 0 (Sunday) through 6 (Saturday)");
+            if (!timePattern.IsMatch(s.StartTime))
+                errors.Add($"Slot {i}: StartTime must be in HH:mm format");
+            if (!timePattern.IsMatch(s.EndTime))
+                errors.Add($"Slot {i}: EndTime must be in HH:mm format");
+        }
+        if (errors.Count > 0)
+            return BadRequest(new { error = "One or more slots failed validation", details = errors });
 
         var slots = request.Slots.Select(s => (s.DayOfWeek, s.StartTime, s.EndTime, s.Note)).ToList();
         var result = await _availabilityService.BulkSetScheduleAsync(userId.Value, slots);
@@ -156,8 +174,15 @@ public class AvailabilityController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
+        var validTypes = new[] { "unavailable", "available", "holiday" };
+        if (!validTypes.Contains(request.Type?.ToLowerInvariant()))
+            return BadRequest(new { error = "Type must be one of: unavailable, available, holiday" });
+
+        if (request.Date.Date < DateTime.UtcNow.Date)
+            return BadRequest(new { error = "Exception date cannot be in the past" });
+
         var exception = await _availabilityService.AddExceptionAsync(
-            userId.Value, request.Date, request.Type, request.StartTime, request.EndTime, request.Reason);
+            userId.Value, request.Date, request.Type!, request.StartTime, request.EndTime, request.Reason);
 
         return CreatedAtAction(nameof(GetExceptions), null, new
         {

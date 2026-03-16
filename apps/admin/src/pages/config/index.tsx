@@ -23,23 +23,31 @@ export const TenantConfigPage = () => {
 
   const responseData = data?.data as any;
   const configItems = Array.isArray(responseData?.data) ? responseData.data :
+    Array.isArray(responseData?.config) ? responseData.config :
     Array.isArray(responseData) ? responseData :
-    responseData?.configs ? Object.entries(responseData.configs).map(([key, value]) => ({ key, value })) : [];
+    responseData?.configs ? Object.entries(responseData.configs).map(([key, value]) => ({ key, value })) :
+    (responseData && typeof responseData === "object" && !Array.isArray(responseData) && responseData.key !== undefined)
+      ? [responseData]
+      : [];
 
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      // Backend expects { config: { key: value } } dictionary format
-      await axiosInstance.put("/api/admin/config", { config: { [values.key]: values.value } });
-      message.success("Config saved");
-      setModalOpen(false);
-      form.resetFields();
-      refetch();
-    } catch (err: unknown) {
-      message.error(getErrorMessage(err, "Failed to save config"));
-    } finally {
-      setSaving(false);
+      try {
+        // Backend expects { config: { key: value } } dictionary format
+        await axiosInstance.put("/api/admin/config", { config: { [values.key]: values.value } });
+        message.success("Config saved");
+        setModalOpen(false);
+        form.resetFields();
+        refetch();
+      } catch (err: unknown) {
+        message.error(getErrorMessage(err, "Failed to save config"));
+      } finally {
+        setSaving(false);
+      }
+    } catch {
+      // Form validation failed, Ant Design highlights the fields automatically
     }
   };
 

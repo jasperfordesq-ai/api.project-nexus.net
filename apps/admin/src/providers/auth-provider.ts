@@ -4,7 +4,9 @@
 // See NOTICE file for attribution and acknowledgements.
 
 import type { AuthProvider } from "@refinedev/core";
+import axios from "axios";
 import axiosInstance from "../utils/axios";
+import { API_URL } from "../config/constants";
 import {
   getToken,
   getRefreshToken,
@@ -71,7 +73,7 @@ export const authProvider: AuthProvider = {
 
       return { success: true, redirectTo: "/" };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Login failed";
+      const message = (err as any)?.response?.data?.message || (err instanceof Error ? err.message : "Login failed");
       return {
         success: false,
         error: { name: "Login Error", message },
@@ -94,12 +96,17 @@ export const authProvider: AuthProvider = {
   check: async () => {
     const token = getToken();
     if (!token) {
+      // If a 2FA temp token exists, redirect to 2FA page instead of login
+      if (sessionStorage.getItem("nexus_2fa_temp")) {
+        return { authenticated: false, redirectTo: "/2fa" };
+      }
       return { authenticated: false, redirectTo: "/login" };
     }
 
     // Check if token is expired by decoding JWT payload
     try {
-      const base64 = token.split(".")[1].replace(/-/g, '+').replace(/_/g, '/');
+      let base64 = token.split(".")[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (base64.length % 4) base64 += '=';
       const payload = JSON.parse(atob(base64));
       const exp = payload.exp * 1000;
       if (Date.now() >= exp) {
@@ -110,7 +117,7 @@ export const authProvider: AuthProvider = {
           return { authenticated: false, redirectTo: "/login" };
         }
         try {
-          const { data } = await axiosInstance.post("/api/auth/refresh", {
+          const { data } = await axios.post(`${API_URL}/api/auth/refresh`, {
             refresh_token: refreshToken,
           });
           setToken(data.access_token);

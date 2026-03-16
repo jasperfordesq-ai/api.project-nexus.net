@@ -24,7 +24,9 @@ export const EnterprisePage = () => {
     method: "get",
   });
 
-  const configItems = Array.isArray((configData?.data as any)) ? (configData?.data as any) : [];
+  const configItems = Array.isArray((configData?.data as any)?.items) ? (configData?.data as any).items :
+    Array.isArray((configData?.data as any)?.data) ? (configData?.data as any).data :
+    Array.isArray((configData?.data as any)) ? (configData?.data as any) : [];
   const dashboard = (dashboardData?.data as any) || {};
   const compliance = (complianceData?.data as any) || {};
 
@@ -34,8 +36,8 @@ export const EnterprisePage = () => {
         <Spin />
       ) : (
         <Row gutter={[16, 16]}>
-          {Object.entries(dashboard).map(([key, value]) => (
-            <Col span={6} key={key}>
+          {Object.entries(dashboard).filter(([k]) => !['success', 'status_code', 'timestamp', 'message', 'data'].includes(k)).map(([key, value]) => (
+            <Col xs={24} sm={12} lg={6} key={key}>
               <Card>
                 <Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} />
               </Card>
@@ -53,7 +55,7 @@ export const EnterprisePage = () => {
       ) : (
         <Card>
           <Descriptions bordered column={1}>
-            {Object.entries(compliance).map(([key, value]) => (
+            {Object.entries(compliance).filter(([k]) => !['success', 'status_code', 'timestamp', 'message', 'data'].includes(k)).map(([key, value]) => (
               <Descriptions.Item key={key} label={key.replace(/_/g, " ")}>
                 {String(value ?? "--")}
               </Descriptions.Item>

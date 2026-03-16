@@ -46,7 +46,8 @@ router.get('/', asyncRoute(async (req, res) => {
       total,
       totalPages: totalPages
     },
-    successMessage: req.flash ? req.flash('success')[0] : null
+    successMessage: req.flash ? req.flash('success')[0] : null,
+    errorMessage: req.flash ? req.flash('error')[0] : null
   });
 }));
 
@@ -59,7 +60,8 @@ router.get('/pending', asyncRoute(async (req, res) => {
     title: 'Pending requests',
     incoming: pendingData.incoming || result.incoming || [],
     outgoing: pendingData.outgoing || result.outgoing || [],
-    successMessage: req.flash ? req.flash('success')[0] : null
+    successMessage: req.flash ? req.flash('success')[0] : null,
+    errorMessage: req.flash ? req.flash('error')[0] : null
   });
 }));
 

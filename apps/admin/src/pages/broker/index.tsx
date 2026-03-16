@@ -40,10 +40,10 @@ export const BrokerPage = () => {
 
       {stats && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col span={6}><Card><Statistic title="Total Assignments" value={stats.total_assignments ?? 0} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Active" value={stats.active_assignments ?? 0} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Completed" value={stats.completed_assignments ?? 0} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Active Brokers" value={stats.active_brokers ?? brokers.length} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card><Statistic title="Total Assignments" value={stats.total_assignments ?? 0} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card><Statistic title="Active" value={stats.active_assignments ?? 0} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card><Statistic title="Completed" value={stats.completed_assignments ?? 0} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card><Statistic title="Active Brokers" value={stats.active_brokers ?? brokers.length} /></Card></Col>
         </Row>
       )}
 

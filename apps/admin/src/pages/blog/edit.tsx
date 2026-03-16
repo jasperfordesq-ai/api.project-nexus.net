@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, Form, Input, Button, Typography, message, Spin, Space } from "antd";
+import { Card, Form, Input, Button, Typography, message, Spin, Space, Select } from "antd";
 import axiosInstance from "../../utils/axios";
 import { getErrorMessage } from "../../utils/errors";
 
@@ -17,7 +17,15 @@ export const BlogEditPage = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const isNew = id === "new";
+  const [categories, setCategories] = useState<{ label: string; value: number }[]>([]);
+  const isNew = !id || id === "new";
+
+  useEffect(() => {
+    axiosInstance.get("/api/admin/blog/categories").then(({ data }) => {
+      const items = data?.data || data?.items || data || [];
+      setCategories(Array.isArray(items) ? items.map((c: any) => ({ label: c.name, value: c.id })) : []);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isNew && id) {
@@ -32,8 +40,13 @@ export const BlogEditPage = () => {
   }, [id, isNew, form]);
 
   const handleSave = async () => {
+    let values: any;
     try {
-      const values = await form.validateFields();
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
+    try {
       setSaving(true);
       if (isNew) {
         await axiosInstance.post("/api/admin/blog", values);
@@ -61,7 +74,15 @@ export const BlogEditPage = () => {
           <Form.Item name="slug" label="Slug" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="excerpt" label="Excerpt"><Input.TextArea rows={2} /></Form.Item>
           <Form.Item name="content" label="Content" rules={[{ required: true }]}><Input.TextArea rows={12} /></Form.Item>
-          <Form.Item name="category_id" label="Category ID"><Input type="number" /></Form.Item>
+          <Form.Item name="category_id" label="Category">
+            <Select options={categories} allowClear placeholder="Select a category" />
+          </Form.Item>
+          <Form.Item name="status" label="Status">
+            <Select options={[
+              { label: "Draft", value: "draft" },
+              { label: "Published", value: "published" },
+            ]} />
+          </Form.Item>
           <Form.Item>
             <Space>
               <Button type="primary" loading={saving} onClick={handleSave}>Save</Button>

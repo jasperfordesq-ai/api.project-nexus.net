@@ -5,9 +5,24 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import apiClient from '../api/client'
 import { listingsApi } from '../api/listings'
 import type { Listing } from '../api/types'
 import { isApiError } from '../context/AuthContext'
+
+interface PlatformStats {
+  members: string
+  hoursExchanged: string
+  servicesListed: string
+  categories: string
+}
+
+const FALLBACK_STATS: PlatformStats = {
+  members: '1,240+',
+  hoursExchanged: '3,800+',
+  servicesListed: '420+',
+  categories: '32',
+}
 
 const FEATURE_CATEGORIES = [
   { icon: '🔧', label: 'Home & Garden', slug: 'home-garden' },
@@ -23,15 +38,26 @@ const FEATURE_CATEGORIES = [
 export function HomePage() {
   const [recentListings, setRecentListings] = useState<Listing[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState<PlatformStats>(FALLBACK_STATS)
 
   useEffect(() => {
     listingsApi
       .list({ page: 1, pageSize: 3 })
-      .then((data) => setRecentListings(data.items ?? []))
+      .then((data) => {
+        setRecentListings(data.items ?? [])
+        if (data.totalCount) {
+          setStats(s => ({ ...s, servicesListed: `${data.totalCount}+` }))
+        }
+      })
       .catch((err) => {
         if (isApiError(err)) console.warn('Could not load listings preview:', err.message)
       })
       .finally(() => setIsLoading(false))
+    apiClient.get('/api/users').then(r => {
+      const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
+      const total = raw?.pagination?.total ?? raw?.totalCount
+      if (total) setStats(s => ({ ...s, members: `${total}+` }))
+    }).catch(() => { /* non-critical */ })
   }, [])
 
   return (
@@ -63,19 +89,19 @@ export function HomePage() {
         <div className="nexus-container" style={{ paddingTop: 'var(--nexus-space-7)' }}>
           <div className="nexus-stats">
             <div className="nexus-stat">
-              <p className="nexus-stat__value">1,240+</p>
+              <p className="nexus-stat__value">{stats.members}</p>
               <p className="nexus-stat__label">Active members</p>
             </div>
             <div className="nexus-stat">
-              <p className="nexus-stat__value">3,800+</p>
+              <p className="nexus-stat__value">{stats.hoursExchanged}</p>
               <p className="nexus-stat__label">Hours exchanged</p>
             </div>
             <div className="nexus-stat">
-              <p className="nexus-stat__value">420+</p>
+              <p className="nexus-stat__value">{stats.servicesListed}</p>
               <p className="nexus-stat__label">Services listed</p>
             </div>
             <div className="nexus-stat">
-              <p className="nexus-stat__value">32</p>
+              <p className="nexus-stat__value">{stats.categories}</p>
               <p className="nexus-stat__label">Skill categories</p>
             </div>
           </div>

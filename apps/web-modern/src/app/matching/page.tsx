@@ -57,6 +57,7 @@ function MatchingContent() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
   const handleCompute = async () => {
+    setActionError(null);
     setIsComputing(true);
     try {
       await api.computeMatches();
@@ -70,6 +71,7 @@ function MatchingContent() {
   };
 
   const handleRespond = async (id: number, response: string) => {
+    setActionError(null);
     try {
       await api.respondToMatch(id, response);
       setMatches((prev) => prev.map((m) => m.id === id ? { ...m, status: response } : m));

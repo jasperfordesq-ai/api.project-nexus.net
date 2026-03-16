@@ -77,15 +77,16 @@ function SecurityContent() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [setupError, setSetupError] = useState("");
+  const [disableError, setDisableError] = useState("");
 
   const { isOpen: isSetupOpen, onOpen: onSetupOpenRaw, onClose: onSetupCloseRaw } = useDisclosure();
   const { isOpen: isDisableOpen, onOpen: onDisableOpenRaw, onClose: onDisableCloseRaw } = useDisclosure();
   const { isOpen: isBackupOpen, onOpen: onBackupOpen, onClose: onBackupClose } = useDisclosure();
 
-  const onSetupOpen = () => { setError(""); setVerifyCode(""); onSetupOpenRaw(); };
+  const onSetupOpen = () => { setSetupError(""); setVerifyCode(""); onSetupOpenRaw(); };
   const onSetupClose = () => { setVerifyCode(""); onSetupCloseRaw(); };
-  const onDisableOpen = () => { setError(""); setDisableCode(""); onDisableOpenRaw(); };
+  const onDisableOpen = () => { setDisableError(""); setDisableCode(""); onDisableOpenRaw(); };
   const onDisableClose = () => { setDisableCode(""); onDisableCloseRaw(); };
 
   const fetchData = useCallback(async () => {
@@ -117,14 +118,14 @@ function SecurityContent() {
   }, [fetchData]);
   const handleSetup2FA = async () => {
     setActionLoading("setup");
-    setError("");
+    setSetupError("");
     try {
       const data = await api.setup2FA();
       setQrCodeUrl(data.qr_code_url);
       setManualKey(data.manual_entry_key);
       onSetupOpen();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start 2FA setup");
+      setSetupError(err instanceof Error ? err.message : "Failed to start 2FA setup");
     } finally {
       setActionLoading(null);
     }
@@ -133,7 +134,7 @@ function SecurityContent() {
   const handleVerifySetup = async () => {
     if (!verifyCode) return;
     setActionLoading("verify");
-    setError("");
+    setSetupError("");
     try {
       const result = await api.verify2FASetup(verifyCode);
       if (result.success) {
@@ -146,7 +147,7 @@ function SecurityContent() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid code");
+      setSetupError(err instanceof Error ? err.message : "Invalid code");
     } finally {
       setActionLoading(null);
     }
@@ -155,14 +156,14 @@ function SecurityContent() {
   const handleDisable2FA = async () => {
     if (!disableCode) return;
     setActionLoading("disable");
-    setError("");
+    setDisableError("");
     try {
       await api.disable2FA(disableCode);
       setIs2FAEnabled(false);
       onDisableClose();
       setDisableCode("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid code");
+      setDisableError(err instanceof Error ? err.message : "Invalid code");
     } finally {
       setActionLoading(null);
     }
@@ -174,7 +175,7 @@ function SecurityContent() {
       setPasskeys((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       logger.error("Failed to delete passkey:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete passkey.");
+      setSetupError(err instanceof Error ? err.message : "Failed to delete passkey.");
     }
   };
 
@@ -184,7 +185,7 @@ function SecurityContent() {
       setSessions((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       logger.error("Failed to terminate session:", err);
-      setError(err instanceof Error ? err.message : "Failed to terminate session.");
+      setSetupError(err instanceof Error ? err.message : "Failed to terminate session.");
     }
   };
 
@@ -194,7 +195,7 @@ function SecurityContent() {
       setSessions((prev) => prev.filter((s) => s.is_current));
     } catch (err) {
       logger.error("Failed to terminate sessions:", err);
-      setError(err instanceof Error ? err.message : "Failed to terminate sessions.");
+      setSetupError(err instanceof Error ? err.message : "Failed to terminate sessions.");
     }
   };
 
@@ -422,9 +423,9 @@ function SecurityContent() {
                   label: "text-white/60",
                 }}
               />
-              {error && (
+              {setupError && (
                 <p className="text-sm text-red-400 flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4" /> {error}
+                  <AlertTriangle className="w-4 h-4" /> {setupError}
                 </p>
               )}
             </div>
@@ -474,9 +475,9 @@ function SecurityContent() {
                 label: "text-white/60",
               }}
             />
-            {error && (
+            {disableError && (
               <p className="text-sm text-red-400 mt-2 flex items-center gap-1">
-                <AlertTriangle className="w-4 h-4" /> {error}
+                <AlertTriangle className="w-4 h-4" /> {disableError}
               </p>
             )}
           </ModalBody>

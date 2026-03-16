@@ -88,6 +88,7 @@ function FilesContent() {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setActionError(null);
     setIsUploading(true);
     try {
       const formData = new FormData();
@@ -105,6 +106,7 @@ function FilesContent() {
   };
 
   const handleDelete = async (fileId: number) => {
+    setActionError(null);
     try {
       await api.deleteFile(fileId);
       setFiles((prev) => prev.filter((f) => f.id !== fileId));

@@ -209,6 +209,7 @@ public class CollaborativeFilterService
         _logger.LogInformation("Starting similarity recalculation for tenant {TenantId}", tenantId);
 
         var userIds = await _db.Set<UserInteraction>()
+            .Where(i => i.TenantId == tenantId)
             .Select(i => i.UserId)
             .Distinct()
             .OrderBy(id => id)
@@ -226,7 +227,7 @@ public class CollaborativeFilterService
             var batchUserIds = userIds.Skip(batchStart).Take(batchSize).ToList();
 
             var interactions = await _db.Set<UserInteraction>()
-                .Where(i => batchUserIds.Contains(i.UserId))
+                .Where(i => i.TenantId == tenantId && batchUserIds.Contains(i.UserId))
                 .Select(i => new { i.UserId, i.TargetType, i.TargetId, i.Score })
                 .ToListAsync();
 
@@ -244,6 +245,9 @@ public class CollaborativeFilterService
                     userVectors[interaction.UserId][key] = score;
             }
         }
+
+        // Wrap delete + rebuild in a transaction to ensure atomicity
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync();
 
         // Remove existing similarities for this tenant
         await _db.Set<UserSimilarity>()
@@ -310,6 +314,7 @@ public class CollaborativeFilterService
         }
 
         await _db.SaveChangesAsync();
+        await dbTransaction.CommitAsync();
 
         _logger.LogInformation(
             "Similarity recalculation complete for tenant {TenantId}: {PairsUpdated} pairs from {UserCount} users",
@@ -526,6 +531,7 @@ public class CollaborativeFilterService
         _logger.LogInformation("Starting multi-algorithm recalculation for tenant {TenantId}", tenantId);
 
         var userIds = await _db.Set<UserInteraction>()
+            .Where(i => i.TenantId == tenantId)
             .Select(i => i.UserId)
             .Distinct()
             .OrderBy(id => id)
@@ -541,7 +547,7 @@ public class CollaborativeFilterService
         {
             var batchUserIds = userIds.Skip(batchStart).Take(batchSize).ToList();
             var interactions = await _db.Set<UserInteraction>()
-                .Where(i => batchUserIds.Contains(i.UserId))
+                .Where(i => i.TenantId == tenantId && batchUserIds.Contains(i.UserId))
                 .Select(i => new { i.UserId, i.TargetType, i.TargetId, i.Score })
                 .ToListAsync();
 
@@ -559,6 +565,9 @@ public class CollaborativeFilterService
                     userVectors[interaction.UserId][key] = score;
             }
         }
+
+        // Wrap delete + rebuild in a transaction to ensure atomicity
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync();
 
         // Remove existing similarities
         await _db.Set<UserSimilarity>()
@@ -630,6 +639,7 @@ public class CollaborativeFilterService
         }
 
         await _db.SaveChangesAsync();
+        await dbTransaction.CommitAsync();
 
         var avgSimilarity = pairsComputed > 0 ? totalSimilarity / pairsComputed : 0m;
         _logger.LogInformation(

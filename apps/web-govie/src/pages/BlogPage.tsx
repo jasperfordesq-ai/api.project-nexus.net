@@ -38,7 +38,7 @@ export function BlogPage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    apiClient.get('/api/blog/posts', { signal: controller.signal })
+    apiClient.get('/api/blog', { signal: controller.signal })
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any

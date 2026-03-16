@@ -159,7 +159,7 @@ function OnboardingContent() {
             )}
 
             {/* Steps */}
-            {steps
+            {[...steps]
               .sort((a, b) => a.sort_order - b.sort_order)
               .map((step) => {
                 const isDone = completedKeys.has(step.key);

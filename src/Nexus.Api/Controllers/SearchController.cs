@@ -82,14 +82,14 @@ public class SearchController : ControllerBase
         if (type == "all" || type == "listings")
         {
             var listingsQuery = _db.Listings
-                .Where(l => EF.Functions.ILike(l.Title, $"%{searchTerm}%")
-                         || EF.Functions.ILike(l.Description ?? "", $"%{searchTerm}%"));
+                .Where(l => EF.Functions.ILike(l.Title, $"%{searchTerm}%", "\\")
+                         || EF.Functions.ILike(l.Description ?? "", $"%{searchTerm}%", "\\"));
 
             if (type == "listings")
             {
                 totalCount = await listingsQuery.CountAsync();
                 var listings = await listingsQuery
-                    .OrderBy(l => EF.Functions.ILike(l.Title, $"{searchTerm}%") ? 0 : 1)
+                    .OrderBy(l => EF.Functions.ILike(l.Title, $"{searchTerm}%", "\\") ? 0 : 1)
                     .ThenByDescending(l => l.CreatedAt)
                     .Skip(skip)
                     .Take(query.Limit)
@@ -109,7 +109,7 @@ public class SearchController : ControllerBase
             else
             {
                 result.Listings = await listingsQuery
-                    .OrderBy(l => EF.Functions.ILike(l.Title, $"{searchTerm}%") ? 0 : 1)
+                    .OrderBy(l => EF.Functions.ILike(l.Title, $"{searchTerm}%", "\\") ? 0 : 1)
                     .ThenByDescending(l => l.CreatedAt)
                     .Take(query.Limit)
                     .Select(l => new SearchListingDto
@@ -130,14 +130,14 @@ public class SearchController : ControllerBase
         {
             var usersQuery = _db.Users
                 .Where(u => u.IsActive)
-                .Where(u => EF.Functions.ILike(u.FirstName, $"%{searchTerm}%")
-                         || EF.Functions.ILike(u.LastName, $"%{searchTerm}%"));
+                .Where(u => EF.Functions.ILike(u.FirstName, $"%{searchTerm}%", "\\")
+                         || EF.Functions.ILike(u.LastName, $"%{searchTerm}%", "\\"));
 
             if (type == "users")
             {
                 totalCount = await usersQuery.CountAsync();
                 var users = await usersQuery
-                    .OrderBy(u => EF.Functions.ILike(u.FirstName, $"{searchTerm}%") ? 0 : 1)
+                    .OrderBy(u => EF.Functions.ILike(u.FirstName, $"{searchTerm}%", "\\") ? 0 : 1)
                     .ThenByDescending(u => u.CreatedAt)
                     .Skip(skip)
                     .Take(query.Limit)
@@ -156,7 +156,7 @@ public class SearchController : ControllerBase
             else
             {
                 result.Users = await usersQuery
-                    .OrderBy(u => EF.Functions.ILike(u.FirstName, $"{searchTerm}%") ? 0 : 1)
+                    .OrderBy(u => EF.Functions.ILike(u.FirstName, $"{searchTerm}%", "\\") ? 0 : 1)
                     .ThenByDescending(u => u.CreatedAt)
                     .Take(query.Limit)
                     .Select(u => new SearchUserDto
@@ -176,14 +176,14 @@ public class SearchController : ControllerBase
         {
             var groupsQuery = _db.Groups
                 .Include(g => g.Members)
-                .Where(g => EF.Functions.ILike(g.Name, $"%{searchTerm}%")
-                         || EF.Functions.ILike(g.Description ?? "", $"%{searchTerm}%"));
+                .Where(g => EF.Functions.ILike(g.Name, $"%{searchTerm}%", "\\")
+                         || EF.Functions.ILike(g.Description ?? "", $"%{searchTerm}%", "\\"));
 
             if (type == "groups")
             {
                 totalCount = await groupsQuery.CountAsync();
                 var groups = await groupsQuery
-                    .OrderBy(g => EF.Functions.ILike(g.Name, $"{searchTerm}%") ? 0 : 1)
+                    .OrderBy(g => EF.Functions.ILike(g.Name, $"{searchTerm}%", "\\") ? 0 : 1)
                     .ThenByDescending(g => g.CreatedAt)
                     .Skip(skip)
                     .Take(query.Limit)
@@ -202,7 +202,7 @@ public class SearchController : ControllerBase
             else
             {
                 result.Groups = await groupsQuery
-                    .OrderBy(g => EF.Functions.ILike(g.Name, $"{searchTerm}%") ? 0 : 1)
+                    .OrderBy(g => EF.Functions.ILike(g.Name, $"{searchTerm}%", "\\") ? 0 : 1)
                     .ThenByDescending(g => g.CreatedAt)
                     .Take(query.Limit)
                     .Select(g => new SearchGroupDto
@@ -222,15 +222,15 @@ public class SearchController : ControllerBase
         {
             var eventsQuery = _db.Events
                 .Where(e => !e.IsCancelled)
-                .Where(e => EF.Functions.ILike(e.Title, $"%{searchTerm}%")
-                         || EF.Functions.ILike(e.Description ?? "", $"%{searchTerm}%")
-                         || EF.Functions.ILike(e.Location ?? "", $"%{searchTerm}%"));
+                .Where(e => EF.Functions.ILike(e.Title, $"%{searchTerm}%", "\\")
+                         || EF.Functions.ILike(e.Description ?? "", $"%{searchTerm}%", "\\")
+                         || EF.Functions.ILike(e.Location ?? "", $"%{searchTerm}%", "\\"));
 
             if (type == "events")
             {
                 totalCount = await eventsQuery.CountAsync();
                 var events = await eventsQuery
-                    .OrderBy(e => EF.Functions.ILike(e.Title, $"{searchTerm}%") ? 0 : 1)
+                    .OrderBy(e => EF.Functions.ILike(e.Title, $"{searchTerm}%", "\\") ? 0 : 1)
                     .ThenByDescending(e => e.CreatedAt)
                     .Skip(skip)
                     .Take(query.Limit)
@@ -250,7 +250,7 @@ public class SearchController : ControllerBase
             else
             {
                 result.Events = await eventsQuery
-                    .OrderBy(e => EF.Functions.ILike(e.Title, $"{searchTerm}%") ? 0 : 1)
+                    .OrderBy(e => EF.Functions.ILike(e.Title, $"{searchTerm}%", "\\") ? 0 : 1)
                     .ThenByDescending(e => e.CreatedAt)
                     .Take(query.Limit)
                     .Select(e => new SearchEventDto
@@ -319,8 +319,8 @@ public class SearchController : ControllerBase
         if (remaining > 0)
         {
             var listingSuggestions = await _db.Listings
-                .Where(l => EF.Functions.ILike(l.Title, $"%{searchTerm}%"))
-                .OrderBy(l => EF.Functions.ILike(l.Title, $"{searchTerm}%") ? 0 : 1)
+                .Where(l => EF.Functions.ILike(l.Title, $"%{searchTerm}%", "\\"))
+                .OrderBy(l => EF.Functions.ILike(l.Title, $"{searchTerm}%", "\\") ? 0 : 1)
                 .ThenByDescending(l => l.CreatedAt)
                 .Take(remaining)
                 .Select(l => new SearchSuggestionDto
@@ -340,9 +340,9 @@ public class SearchController : ControllerBase
         {
             var userSuggestions = await _db.Users
                 .Where(u => u.IsActive)
-                .Where(u => EF.Functions.ILike(u.FirstName, $"%{searchTerm}%")
-                         || EF.Functions.ILike(u.LastName, $"%{searchTerm}%"))
-                .OrderBy(u => EF.Functions.ILike(u.FirstName, $"{searchTerm}%") ? 0 : 1)
+                .Where(u => EF.Functions.ILike(u.FirstName, $"%{searchTerm}%", "\\")
+                         || EF.Functions.ILike(u.LastName, $"%{searchTerm}%", "\\"))
+                .OrderBy(u => EF.Functions.ILike(u.FirstName, $"{searchTerm}%", "\\") ? 0 : 1)
                 .ThenByDescending(u => u.CreatedAt)
                 .Take(remaining)
                 .Select(u => new SearchSuggestionDto
@@ -361,8 +361,8 @@ public class SearchController : ControllerBase
         if (remaining > 0)
         {
             var groupSuggestions = await _db.Groups
-                .Where(g => EF.Functions.ILike(g.Name, $"%{searchTerm}%"))
-                .OrderBy(g => EF.Functions.ILike(g.Name, $"{searchTerm}%") ? 0 : 1)
+                .Where(g => EF.Functions.ILike(g.Name, $"%{searchTerm}%", "\\"))
+                .OrderBy(g => EF.Functions.ILike(g.Name, $"{searchTerm}%", "\\") ? 0 : 1)
                 .ThenByDescending(g => g.CreatedAt)
                 .Take(remaining)
                 .Select(g => new SearchSuggestionDto
@@ -382,8 +382,8 @@ public class SearchController : ControllerBase
         {
             var eventSuggestions = await _db.Events
                 .Where(e => !e.IsCancelled)
-                .Where(e => EF.Functions.ILike(e.Title, $"%{searchTerm}%"))
-                .OrderBy(e => EF.Functions.ILike(e.Title, $"{searchTerm}%") ? 0 : 1)
+                .Where(e => EF.Functions.ILike(e.Title, $"%{searchTerm}%", "\\"))
+                .OrderBy(e => EF.Functions.ILike(e.Title, $"{searchTerm}%", "\\") ? 0 : 1)
                 .ThenByDescending(e => e.CreatedAt)
                 .Take(remaining)
                 .Select(e => new SearchSuggestionDto

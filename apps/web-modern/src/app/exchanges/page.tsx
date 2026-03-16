@@ -34,7 +34,7 @@ import { api, type Exchange, type PaginatedResponse } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { containerVariantsFast, itemVariants } from "@/lib/animations";
 
-type StatusFilter = "all" | "requested" | "accepted" | "in_progress" | "completed" | "cancelled" | "disputed";
+type StatusFilter = "all" | "requested" | "accepted" | "declined" | "in_progress" | "completed" | "cancelled" | "disputed";
 
 const statusColors: Record<string, string> = {
   requested: "bg-amber-500/20 text-amber-400",
@@ -147,6 +147,7 @@ function ExchangesContent() {
               <DropdownItem key="all" className="text-white">All Status</DropdownItem>
               <DropdownItem key="requested" className="text-white">Requested</DropdownItem>
               <DropdownItem key="accepted" className="text-white">Accepted</DropdownItem>
+              <DropdownItem key="declined" className="text-white">Declined</DropdownItem>
               <DropdownItem key="in_progress" className="text-white">In Progress</DropdownItem>
               <DropdownItem key="completed" className="text-white">Completed</DropdownItem>
               <DropdownItem key="cancelled" className="text-white">Cancelled</DropdownItem>

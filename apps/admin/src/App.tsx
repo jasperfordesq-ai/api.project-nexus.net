@@ -30,7 +30,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
           </pre>
           <button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }}
             style={{ marginTop: 16, padding: '8px 16px', cursor: 'pointer' }}>
-            Clear storage &amp; reload
+            Clear storage & reload
           </button>
         </div>
       );
@@ -168,6 +168,7 @@ function AppInner() {
               <Route path="/categories/create" element={<CategoryCreate />} />
               <Route path="/categories/:id/edit" element={<CategoryEdit />} />
               <Route path="/blog" element={<BlogListPage />} />
+              <Route path="/blog/create" element={<BlogEditPage />} />
               <Route path="/blog/:id/edit" element={<BlogEditPage />} />
               <Route path="/pages-cms" element={<PagesCmsPage />} />
               <Route path="/faq" element={<FaqPage />} />

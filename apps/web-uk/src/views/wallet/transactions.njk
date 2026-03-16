@@ -61,9 +61,9 @@
           </thead>
           <tbody class="govuk-table__body">
             {% for tx in transactions %}
-              {% if tx.type == "sent" %}
+              {% if tx.relative_type == "sent" %}
                 {% set typeColour = "red" %}
-              {% elif tx.type == "received" %}
+              {% elif tx.relative_type == "received" %}
                 {% set typeColour = "green" %}
               {% else %}
                 {% set typeColour = "grey" %}
@@ -72,7 +72,7 @@
                 <td class="govuk-table__cell">{{ (tx.created_at or tx.createdAt) | formatDate if tx.created_at or tx.createdAt else "N/A" }}</td>
                 <td class="govuk-table__cell">
                   <strong class="govuk-tag govuk-tag--{{ typeColour }}">
-                    {{ tx.type or "transfer" }}
+                    {{ tx.relative_type or "transfer" }}
                   </strong>
                 </td>
                 <td class="govuk-table__cell">
@@ -80,12 +80,20 @@
                     {{ tx.description or "Transaction" }}
                   </a>
                 </td>
-                <td class="govuk-table__cell">{{ tx.other_user_name or tx.otherUserName or "N/A" }}</td>
-                <td class="govuk-table__cell govuk-table__cell--numeric">
-                  {% if tx.type == "received" %}
-                    <span class="app-text--positive">+{{ tx.amount }}</span>
+                <td class="govuk-table__cell">
+                  {% if currentUser and tx.sender and tx.sender.id == currentUser.id and tx.receiver %}
+                    {{ tx.receiver.first_name or tx.receiver.firstName }} {{ tx.receiver.last_name or tx.receiver.lastName }}
+                  {% elif currentUser and tx.receiver and tx.receiver.id == currentUser.id and tx.sender %}
+                    {{ tx.sender.first_name or tx.sender.firstName }} {{ tx.sender.last_name or tx.sender.lastName }}
                   {% else %}
-                    <span class="app-text--negative">-{{ tx.amount }}</span>
+                    {{ tx.other_user_name or tx.otherUserName or "N/A" }}
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell govuk-table__cell--numeric">
+                  {% if tx.relative_type == "received" %}
+                    <span class="app-text--positive">+{{ tx.amount | abs }}</span>
+                  {% else %}
+                    <span class="app-text--negative">-{{ tx.amount | abs }}</span>
                   {% endif %}
                 </td>
               </tr>

@@ -72,7 +72,7 @@ public class ExchangesController : ControllerBase
 
         var total = await query.CountAsync();
 
-        var exchanges = await query
+        var exchanges = (await query
             .OrderByDescending(e => e.CreatedAt)
             .Skip((page - 1) * limit)
             .Take(limit)
@@ -80,8 +80,9 @@ public class ExchangesController : ControllerBase
             .Include(e => e.Initiator)
             .Include(e => e.ListingOwner)
             .Include(e => e.Ratings)
+            .ToListAsync())
             .Select(e => MapExchangeResponse(e, userId.Value))
-            .ToListAsync();
+            .ToList();
 
         return Ok(new
         {
@@ -299,13 +300,14 @@ public class ExchangesController : ControllerBase
             .Where(e => e.ListingId == listingId
                 && (e.InitiatorId == userId.Value || e.ListingOwnerId == userId.Value));
 
-        var exchanges = await query
+        var exchanges = (await query
             .OrderByDescending(e => e.CreatedAt)
             .Include(e => e.Initiator)
             .Include(e => e.ListingOwner)
             .Include(e => e.Ratings)
+            .ToListAsync())
             .Select(e => MapExchangeResponse(e, userId.Value))
-            .ToListAsync();
+            .ToList();
 
         return Ok(new { data = exchanges });
     }

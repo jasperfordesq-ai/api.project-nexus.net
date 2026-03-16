@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Input, Divider } from "@heroui/react";
@@ -28,7 +28,8 @@ import { validatePassword, validateEmail } from "@/lib/validation";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -49,6 +50,15 @@ export default function RegisterPage() {
       router.push("/dashboard");
     }
   }, [authLoading, isAuthenticated, router]);
+
+  // Clear redirect timer on unmount
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current !== null) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
 
   // Password validation state for real-time feedback
   const passwordValidation = validatePassword(password);
@@ -97,13 +107,10 @@ export default function RegisterPage() {
       setPassword("");
       setConfirmPassword("");
 
-      // Update auth context so ProtectedRoute sees the user
-      await refreshUser();
-
       setSuccess(true);
 
       // Redirect to dashboard after short delay
-      setTimeout(() => {
+      redirectTimerRef.current = setTimeout(() => {
         router.push("/dashboard");
       }, 1500);
     } catch (err) {

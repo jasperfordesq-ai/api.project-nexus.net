@@ -64,8 +64,10 @@ function ProfileContent() {
   const [xpHistory, setXpHistory] = useState<XpTransaction[]>([]);
   const [activeTab, setActiveTab] = useState<ProfileTab>("badges");
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [leaderboardPage, setLeaderboardPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [leaderboardTotalPages, setLeaderboardTotalPages] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -113,28 +115,28 @@ function ProfileContent() {
     try {
       const res = await api.getLeaderboard({
         period: leaderboardPeriod,
-        page: currentPage,
+        page: leaderboardPage,
         limit: 20,
       });
       setLeaderboard(res?.data || []);
       setCurrentUserRank(res?.current_user_rank || 0);
-      setTotalPages(res?.pagination?.total_pages || 1);
+      setLeaderboardTotalPages(res?.pagination?.total_pages || 1);
     } catch (error) {
       logger.error("Failed to fetch leaderboard:", error);
       setLeaderboard([]);
     }
-  }, [leaderboardPeriod, currentPage]);
+  }, [leaderboardPeriod, leaderboardPage]);
 
   const fetchXpHistory = useCallback(async () => {
     try {
-      const res = await api.getXpHistory({ page: currentPage, limit: 20 });
+      const res = await api.getXpHistory({ page: historyPage, limit: 20 });
       setXpHistory(res?.data || []);
-      setTotalPages(res?.pagination?.total_pages || 1);
+      setHistoryTotalPages(res?.pagination?.total_pages || 1);
     } catch (error) {
       logger.error("Failed to fetch XP history:", error);
       setXpHistory([]);
     }
-  }, [currentPage]);
+  }, [historyPage]);
 
   useEffect(() => {
     if (activeTab === "leaderboard") {
@@ -266,6 +268,7 @@ function ProfileContent() {
                             setIsEditing(false);
                             setFirstName(user?.first_name || "");
                             setLastName(user?.last_name || "");
+                            setSaveError(null);
                           }}
                         >
                           <X className="w-4 h-4" />
@@ -339,8 +342,10 @@ function ProfileContent() {
           <Tabs
             selectedKey={activeTab}
             onSelectionChange={(key) => {
-              setActiveTab(key as ProfileTab);
-              setCurrentPage(1);
+              const tab = key as ProfileTab;
+              setActiveTab(tab);
+              if (tab === "leaderboard") setLeaderboardPage(1);
+              if (tab === "history") setHistoryPage(1);
             }}
             classNames={{
               tabList: "bg-white/5 border border-white/10",
@@ -416,7 +421,7 @@ function ProfileContent() {
                       }
                       onPress={() => {
                         setLeaderboardPeriod(period);
-                        setCurrentPage(1);
+                        setLeaderboardPage(1);
                       }}
                     >
                       {period === "all"
@@ -494,12 +499,12 @@ function ProfileContent() {
               ))}
             </div>
 
-            {totalPages > 1 && (
+            {leaderboardTotalPages > 1 && (
               <div className="flex justify-center mt-8">
                 <Pagination
-                  total={totalPages}
-                  page={currentPage}
-                  onChange={setCurrentPage}
+                  total={leaderboardTotalPages}
+                  page={leaderboardPage}
+                  onChange={setLeaderboardPage}
                   classNames={{
                     wrapper: "gap-2",
                     item: "bg-white/5 text-white border-white/10 hover:bg-white/10",
@@ -549,12 +554,12 @@ function ProfileContent() {
               )}
             </div>
 
-            {totalPages > 1 && (
+            {historyTotalPages > 1 && (
               <div className="flex justify-center mt-8">
                 <Pagination
-                  total={totalPages}
-                  page={currentPage}
-                  onChange={setCurrentPage}
+                  total={historyTotalPages}
+                  page={historyPage}
+                  onChange={setHistoryPage}
                   classNames={{
                     wrapper: "gap-2",
                     item: "bg-white/5 text-white border-white/10 hover:bg-white/10",

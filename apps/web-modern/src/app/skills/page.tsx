@@ -98,12 +98,14 @@ function SkillsContent() {
   useEffect(() => { fetchData(); }, [fetchData]);
   const handleAddSkill = async () => {
     if (!selectedSkill) return;
+    setError(null);
     try {
       await api.addMySkill({ skill_id: Number(selectedSkill) });
       setSelectedSkill("");
       fetchData();
     } catch (error) {
       logger.error("Failed to add skill:", error);
+      setError(error instanceof Error ? error.message : "Failed to add skill.");
     }
   };
 

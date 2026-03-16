@@ -190,7 +190,6 @@ export const NotificationsAdminPage = () => {
               placeholder="All users"
               allowClear
               options={[
-                { label: "All Users", value: "" },
                 { label: "Admins Only", value: "admin" },
                 { label: "Members Only", value: "member" },
               ]}

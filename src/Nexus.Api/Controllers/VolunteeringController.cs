@@ -58,7 +58,11 @@ public class VolunteeringController : ControllerBase
         // By default, only show published opportunities (unless filtering by status)
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<OpportunityStatus>(status, true, out var parsedStatus))
         {
-            query = query.Where(o => o.Status == parsedStatus);
+            // Draft opportunities are only visible to the organizer
+            if (parsedStatus == OpportunityStatus.Draft)
+                query = query.Where(o => o.Status == parsedStatus && o.OrganizerId == userId.Value);
+            else
+                query = query.Where(o => o.Status == parsedStatus);
         }
         else
         {
@@ -133,7 +137,7 @@ public class VolunteeringController : ControllerBase
             .Include(o => o.Category)
             .Include(o => o.Group)
             .Include(o => o.Applications)
-            .Include(o => o.Shifts)
+            .Include(o => o.Shifts).ThenInclude(s => s.CheckIns)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (opportunity == null)

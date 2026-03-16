@@ -130,7 +130,7 @@ public class ListingFeaturesController : ControllerBase
             return Ok(new { message = "Already favorited." });
         }
 
-        return CreatedAtAction(nameof(GetFavorites), new { message = "Listing favorited." });
+        return CreatedAtAction(nameof(GetFavorites), null, new { message = "Listing favorited." });
     }
 
     /// <summary>
@@ -243,7 +243,7 @@ public class ListingFeaturesController : ControllerBase
             return Ok(new { message = "Tag already exists on this listing." });
         }
 
-        return CreatedAtAction(nameof(GetFavorites), new
+        return CreatedAtAction(nameof(GetFavorites), null, new
         {
             id = tag.Id,
             listing_id = tag.ListingId,

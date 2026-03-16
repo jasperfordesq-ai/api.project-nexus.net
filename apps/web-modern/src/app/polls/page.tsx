@@ -74,21 +74,10 @@ function PollsContent() {
 
   useEffect(() => { fetchPolls(); }, [fetchPolls]);
   const handleVote = async (pollId: number, optionId: number) => {
+    setActionError(null);
     try {
       await api.votePoll(pollId, optionId);
-      setPolls((prev) =>
-        prev.map((p) => {
-          if (p.id !== pollId) return p;
-          return {
-            ...p,
-            user_voted_option_id: optionId,
-            total_votes: p.total_votes + 1,
-            options: p.options.map((o) =>
-              o.id === optionId ? { ...o, votes: o.votes + 1 } : o
-            ),
-          };
-        })
-      );
+      await fetchPolls();
     } catch (error) {
       logger.error("Failed to vote:", error);
       setActionError(error instanceof Error ? error.message : "Failed to vote.");
@@ -106,6 +95,12 @@ function PollsContent() {
           </h1>
           <p className="text-white/50 mt-1">Vote on community decisions</p>
         </div>
+
+        {actionError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            {actionError}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-6">

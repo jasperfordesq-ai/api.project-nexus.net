@@ -110,7 +110,7 @@ router.get('/', asyncRoute(async (req, res) => {
   const safeUnreadCount = unreadData != null ? (unreadData.unread_count ?? unreadData.unreadCount ?? unreadData.count ?? 0) : 0;
   const safeTransactions = (transactionsData && (transactionsData.items || transactionsData.data)) || (Array.isArray(transactionsData) ? transactionsData : []);
   const safeGroups = (groupsData && (groupsData.items || groupsData.data)) || [];
-  const safeGamification = (gamificationData && gamificationData.profile) || { level: 1, total_xp: 0, totalXp: 0 };
+  const safeGamification = (gamificationData && gamificationData.profile) || { level: 1, total_xp: 0, totalXp: 0, xp_to_next_level: 0, xpToNextLevel: 0, streak_days: 0 };
 
   res.render('dashboard/index', {
     title: 'Dashboard',

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Button, Skeleton, Input } from "@heroui/react";
 import { AvatarWithFallback } from "@/components/avatar-with-fallback";
@@ -19,6 +19,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { GlassCard } from "@/components/glass-card";
@@ -30,13 +31,16 @@ import { useRealtimeMessages } from "@/hooks";
 export default function MessagesPage() {
   return (
     <ProtectedRoute>
-      <MessagesContent />
+      <Suspense>
+        <MessagesContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }
 
 function MessagesContent() {
   const { user, logout } = useAuth();
+  const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<
     (Conversation & { messages: MessageType[] }) | null
@@ -45,6 +49,7 @@ function MessagesContent() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -179,6 +184,28 @@ function MessagesContent() {
     }
   };
 
+  // When ?user=<id> is present in the URL, open or start a conversation with
+  // that user automatically once the conversations list has loaded.
+  useEffect(() => {
+    const targetUserId = searchParams.get("user");
+    if (!targetUserId || isLoading) return;
+    const userId = Number(targetUserId);
+    if (isNaN(userId) || userId <= 0) return;
+
+    // Find an existing conversation with this user
+    const existing = conversations.find((c) =>
+      c.participants?.some((p) => p.id === userId)
+    );
+    if (existing) {
+      handleSelectConversation(existing);
+    } else if (user) {
+      // No existing conversation — initiate one by sending an opening message.
+      // Silently fail if empty content is rejected; the user can type manually.
+      api.sendMessage({ receiver_id: userId, content: "" }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isLoading]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedConversation) return;
@@ -192,10 +219,11 @@ function MessagesContent() {
     // Stop typing indicator
     sendTypingStop(selectedConversation.id);
 
+    setSendError(null);
     setIsSending(true);
     try {
       const message = await api.sendMessage({
-        receiver_id: recipient.id,
+        conversation_id: selectedConversation.id,
         content: newMessage.trim(),
       });
 
@@ -210,6 +238,7 @@ function MessagesContent() {
       setNewMessage("");
     } catch (error) {
       logger.error("Failed to send message:", error);
+      setSendError(error instanceof Error ? error.message : "Failed to send message.");
     } finally {
       setIsSending(false);
     }
@@ -537,6 +566,9 @@ function MessagesContent() {
                   onSubmit={handleSendMessage}
                   className="p-4 border-t border-white/10"
                 >
+                  {sendError && (
+                    <p className="text-xs text-red-400 mb-2">{sendError}</p>
+                  )}
                   <div className="flex gap-3">
                     <Input
                       placeholder="Type a message..."

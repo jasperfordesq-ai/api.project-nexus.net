@@ -11,19 +11,31 @@
 const path = require('path');
 const fs = require('fs');
 
-/**
- * Load contributors from contributors.json
- * @returns {Array} Array of contributor objects
- */
-function getContributors() {
+// Load and cache contributors at module load time — avoids synchronous disk reads on every request
+let _contributorsCache = null;
+
+function _loadContributors() {
+  if (_contributorsCache !== null) return _contributorsCache;
   const contributorsPath = path.join(__dirname, '..', '..', 'contributors.json');
   try {
     const data = fs.readFileSync(contributorsPath, 'utf8');
-    return JSON.parse(data);
+    _contributorsCache = JSON.parse(data);
   } catch (error) {
     console.error('Failed to load contributors.json:', error.message);
-    return [];
+    _contributorsCache = [];
   }
+  return _contributorsCache;
+}
+
+// Prime the cache immediately on require
+_loadContributors();
+
+/**
+ * Load contributors from contributors.json (cached after first load)
+ * @returns {Array} Array of contributor objects
+ */
+function getContributors() {
+  return _loadContributors();
 }
 
 /**

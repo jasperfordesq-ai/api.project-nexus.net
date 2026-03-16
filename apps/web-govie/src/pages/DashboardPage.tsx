@@ -33,7 +33,11 @@ export function DashboardPage() {
     const signal = controller.signal
     Promise.all([
       apiClient.get('/api/wallet/balance', { signal }).then(r => r.data).catch(() => ({ balance: 0 })),
-      apiClient.get('/api/gamification/profile', { signal }).then(r => r.data).catch(() => ({ totalXp: 0, level: 1, streak: 0 })),
+      apiClient.get('/api/gamification/profile', { signal }).then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = r.data as any
+        return { totalXp: g.total_xp ?? g.totalXp ?? 0, level: g.level ?? 1, streak: g.streak_days ?? g.streak ?? 0, rank: g.rank ?? undefined }
+      }).catch(() => ({ totalXp: 0, level: 1, streak: 0 })),
       apiClient.get('/api/notifications/unread-count', { signal }).then(r => r.data).catch(() => ({ count: 0 })),
       apiClient.get('/api/messages/unread-count', { signal }).then(r => r.data).catch(() => ({ count: 0 })),
       apiClient.get('/api/exchanges', { signal, params: { page: 1, pageSize: 5 } }).then(r => {

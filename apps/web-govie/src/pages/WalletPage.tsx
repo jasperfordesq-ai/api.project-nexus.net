@@ -4,13 +4,13 @@
 // See NOTICE file for attribution and acknowledgements.
 
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import apiClient from '../api/client'
 import { fullName } from '../api/normalize'
 import { isApiError, useAuth } from '../context/AuthContext'
 
 interface WalletBalance { balance: number }
-interface Transaction { id: number; amount: number; description: string; createdAt: string; type: string; counterpartName?: string }
+interface Transaction { id: number; amount: number; description: string; createdAt: string; type: string; counterpartName?: string; isSender?: boolean }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function mapTransaction(raw: any, currentUserId?: number): Transaction {
@@ -41,12 +41,14 @@ function mapTransaction(raw: any, currentUserId?: number): Transaction {
     createdAt: raw.created_at ?? raw.createdAt ?? '',
     type: txType,
     counterpartName: counterpartId ? fullName(counterpart) : (raw.counterpartName ?? raw.counterpart_name ?? undefined),
+    isSender,
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export function WalletPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [balance, setBalance] = useState<WalletBalance | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -124,12 +126,16 @@ export function WalletPage() {
               </thead>
               <tbody>
                 {transactions.map((tx, i) => (
-                  <tr key={tx.id} style={{ background: i % 2 === 0 ? 'white' : 'var(--nexus-color-surface)' }}>
+                  <tr
+                    key={tx.id}
+                    onClick={() => navigate(`/wallet/transactions/${tx.id}`)}
+                    style={{ background: i % 2 === 0 ? 'white' : 'var(--nexus-color-surface)', cursor: 'pointer' }}
+                  >
                     <td style={{ padding: '12px 16px', fontSize: 14 }}>{new Date(tx.createdAt).toLocaleDateString('en-IE')}</td>
                     <td style={{ padding: '12px 16px', fontSize: 14 }}>{tx.description}</td>
                     <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--nexus-color-text-secondary)' }}>{tx.counterpartName ?? '—'}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 700, color: tx.type === 'credit' ? 'var(--nexus-color-success)' : 'var(--nexus-color-warning)' }}>
-                      {tx.type === 'credit' ? '+' : '-'}{Math.abs(tx.amount)}
+                    <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 700, color: (tx.type === 'credit' || (tx.type === 'transfer' && !tx.isSender)) ? 'var(--nexus-color-success)' : 'var(--nexus-color-warning)' }}>
+                      {(tx.type === 'credit' || (tx.type === 'transfer' && !tx.isSender)) ? '+' : '-'}{Math.abs(tx.amount)}
                     </td>
                   </tr>
                 ))}

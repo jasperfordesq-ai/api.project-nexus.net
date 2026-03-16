@@ -353,6 +353,7 @@ public class PredictiveStaffingService
             .Where(c => c.CheckedInAt >= since)
             .Select(c => new
             {
+                c.UserId,
                 c.CheckedInAt,
                 c.CheckedOutAt,
                 c.HoursLogged,
@@ -385,7 +386,7 @@ public class PredictiveStaffingService
                 Month = g.Key.Month,
                 TotalCheckIns = g.Count(),
                 TotalHoursLogged = g.Where(c => c.HoursLogged.HasValue).Sum(c => (double?)c.HoursLogged) ?? 0,
-                UniqueVolunteers = g.Select(c => c.CheckedInAt).Distinct().Count()
+                UniqueVolunteers = g.Select(c => c.UserId).Distinct().Count()
             })
             .ToList();
 

@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      await api.requestPasswordReset(email.trim(), tenantSlug.trim());
+      await api.requestPasswordReset(email.trim().toLowerCase(), tenantSlug.trim());
       setSuccess(true);
     } catch (err) {
       // Don't reveal if email exists or not for security

@@ -25,7 +25,7 @@ export const UserList = () => {
     },
   });
 
-  const applyFilters = (search?: string, role?: string, status?: string) => {
+  const applyFilters = useCallback((search?: string, role?: string, status?: string) => {
     const filters: CrudFilters = [];
     const s = search ?? searchText;
     const r = role ?? roleFilter;
@@ -34,7 +34,7 @@ export const UserList = () => {
     if (r) filters.push({ field: "role", operator: "eq", value: r });
     if (st) filters.push({ field: "status", operator: "eq", value: st });
     setFilters(filters);
-  };
+  }, [searchText, roleFilter, statusFilter, setFilters]);
 
   const debouncedSearch = useCallback((value: string) => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -42,7 +42,7 @@ export const UserList = () => {
       setSearchText(value);
       applyFilters(value);
     }, 300);
-  }, [roleFilter, statusFilter]);
+  }, [applyFilters]);
 
   return (
     <List>
@@ -68,6 +68,7 @@ export const UserList = () => {
           }}
           options={[
             { label: "Admin", value: "admin" },
+            { label: "Super Admin", value: "super_admin" },
             { label: "Member", value: "member" },
           ]}
         />

@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { getConversations, getConversation, getUnreadCount, sendMessage, startConversation, getUser, getConnections, markConversationRead, getProfile, ApiError } = require('../lib/api');
+const { getConversations, getConversation, getUnreadCount, sendMessage, replyToConversation, startConversation, getUser, getConnections, markConversationRead, getProfile, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
@@ -157,13 +157,7 @@ router.post('/:id', audit.messageSend(), asyncRoute(async (req, res) => {
   }
 
   try {
-    // Fetch the conversation to get the other participant's ID
-    const conversation = await getConversation(req.token, conversationId);
-    const recipientId = conversation.participant?.id || conversation.participantId;
-    if (!recipientId) {
-      throw new ApiError('Could not determine recipient', 400);
-    }
-    await sendMessage(req.token, recipientId, content.trim());
+    await replyToConversation(req.token, conversationId, content.trim());
 
     if (req.flash) {
       req.flash('success', 'Message sent');

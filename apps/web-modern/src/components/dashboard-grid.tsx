@@ -1,10 +1,9 @@
 "use client";
 
-import { Button, Progress, Avatar, Chip } from "@heroui/react";
+import { Button, Avatar, Chip } from "@heroui/react";
 import { motion, type Variants } from "framer-motion";
 import {
   Wallet,
-  TrendingUp,
   Clock,
   MessageSquare,
   ArrowUpRight,
@@ -15,7 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { MotionGlassCard, StructuredGlassCard } from "./glass-card";
+import { MotionGlassCard } from "./glass-card";
 
 interface DashboardGridProps {
   balance?: number;
@@ -114,29 +113,6 @@ export function DashboardGrid({
                 <p className="text-3xl font-bold text-white">{balance}</p>
               </div>
             </div>
-            <Chip
-              startContent={<TrendingUp className="w-3 h-3" />}
-              size="sm"
-              className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-              variant="bordered"
-            >
-              +12% this month
-            </Chip>
-          </div>
-
-          <div className="space-y-3 flex-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-white/50">Monthly Goal</span>
-              <span className="text-white">30 credits</span>
-            </div>
-            <Progress
-              value={(balance! / 30) * 100}
-              className="h-2"
-              classNames={{
-                indicator: "bg-gradient-to-r from-indigo-500 to-purple-500",
-                track: "bg-white/10",
-              }}
-            />
           </div>
 
           <div className="flex gap-3 mt-6">

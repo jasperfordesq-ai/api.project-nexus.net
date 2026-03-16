@@ -89,6 +89,7 @@ public class ShiftManagementService
         var pattern = await _db.RecurringShiftPatterns
             .FirstOrDefaultAsync(p => p.Id == patternId);
         if (pattern == null) return (null, "Pattern not found");
+        if (pattern.CreatedBy != userId) return (null, "Not authorized");
 
         pattern.Title = req.Title;
         pattern.Frequency = req.Frequency;
@@ -109,6 +110,7 @@ public class ShiftManagementService
         var pattern = await _db.RecurringShiftPatterns
             .FirstOrDefaultAsync(p => p.Id == patternId);
         if (pattern == null) return "Pattern not found";
+        if (pattern.CreatedBy != userId) return "Not authorized";
 
         pattern.IsActive = false;
         pattern.UpdatedAt = DateTime.UtcNow;
@@ -199,6 +201,10 @@ public class ShiftManagementService
     {
         var exists = await _db.VolunteerShifts.AnyAsync(s => s.Id == req.FromShiftId);
         if (!exists) return (null, "Shift not found");
+
+        var ownsShift = await _db.VolunteerCheckIns
+            .AnyAsync(c => c.ShiftId == req.FromShiftId && c.UserId == userId);
+        if (!ownsShift) return (null, "You are not assigned to this shift");
 
         var swap = new ShiftSwapRequest
         {
@@ -350,20 +356,35 @@ public class ShiftManagementService
     public async Task<(ShiftWaitlistEntry? Entry, string? Error)> PromoteFromWaitlistAsync(
         int shiftId)
     {
-        var next = await _db.ShiftWaitlistEntries
-            .FirstOrDefaultAsync(w => w.ShiftId == shiftId && w.Status == "waiting" && w.Position == 1);
-        if (next == null) return (null, "Waitlist is empty");
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable);
+        try
+        {
+            var next = await _db.ShiftWaitlistEntries
+                .FirstOrDefaultAsync(w => w.ShiftId == shiftId && w.Status == "waiting" && w.Position == 1);
+            if (next == null)
+            {
+                await transaction.RollbackAsync();
+                return (null, "Waitlist is empty");
+            }
 
-        next.Status = "promoted";
-        next.PromotedAt = DateTime.UtcNow;
+            next.Status = "promoted";
+            next.PromotedAt = DateTime.UtcNow;
 
-        var remaining = await _db.ShiftWaitlistEntries
-            .Where(w => w.ShiftId == shiftId && w.Status == "waiting" && w.Position > 1)
-            .ToListAsync();
-        foreach (var e in remaining) e.Position--;
+            var remaining = await _db.ShiftWaitlistEntries
+                .Where(w => w.ShiftId == shiftId && w.Status == "waiting" && w.Position > 1)
+                .ToListAsync();
+            foreach (var e in remaining) e.Position--;
 
-        await _db.SaveChangesAsync();
-        return (next, null);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return (next, null);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     // ── Group Reservations ────────────────────────────────────────────────────

@@ -49,6 +49,7 @@ export function ExchangeDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionMsg, setActionMsg] = useState<string | null>(null)
+  const [actionIsError, setActionIsError] = useState(false)
   const [acting, setActing] = useState(false)
 
   useEffect(() => {
@@ -63,8 +64,10 @@ export function ExchangeDetailPage() {
     try {
       await apiClient.put(`/api/exchanges/${id}/${action}`)
       setExchange(e => e ? { ...e, status: action === 'accept' ? 'accepted' : action === 'complete' ? 'completed' : action === 'decline' ? 'declined' : 'cancelled' } : e)
+      setActionIsError(false)
       setActionMsg('Action completed successfully.')
     } catch (err) {
+      setActionIsError(true)
       setActionMsg(isApiError(err) ? err.message : 'Action failed.')
     } finally {
       setActing(false)
@@ -87,7 +90,7 @@ export function ExchangeDetailPage() {
         </ol>
       </nav>
 
-      {actionMsg && <div className="nexus-notification nexus-notification--success" role="status" style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionMsg}</div>}
+      {actionMsg && <div className={`nexus-notification nexus-notification--${actionIsError ? 'error' : 'success'}`} role={actionIsError ? 'alert' : 'status'} style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionMsg}</div>}
 
       <div style={{ display: 'flex', gap: 'var(--nexus-space-3)', alignItems: 'center', marginBottom: 'var(--nexus-space-4)' }}>
         <h1 style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 900, margin: 0 }}>Exchange #{exchange.id}</h1>

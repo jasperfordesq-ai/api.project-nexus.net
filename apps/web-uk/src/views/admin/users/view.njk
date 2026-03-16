@@ -61,7 +61,7 @@
           },
           {
             key: { text: "Role" },
-            value: { html: '<strong class="govuk-tag govuk-tag--' + ('purple' if userData.role == 'admin' else 'grey') + '">' + userData.role + '</strong>' }
+            value: { html: '<strong class="govuk-tag govuk-tag--' + ('purple' if userData.role == 'admin' else ('blue' if userData.role == 'moderator' else 'grey')) + '">' + userData.role + '</strong>' }
           },
           {
             key: { text: "Status" },

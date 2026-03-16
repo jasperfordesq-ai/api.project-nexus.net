@@ -35,6 +35,7 @@ interface AuthContextValue extends AuthState {
   logout: () => Promise<void>
   verify2fa: (code: string) => Promise<void>
   cancel2fa: () => void
+  updateUser: (partial: Partial<UserSummary>) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -119,7 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     const raw = res.data as { access_token?: string; refresh_token?: string; user?: any } // eslint-disable-line @typescript-eslint/no-explicit-any
     const accessToken = raw.access_token ?? token
-    const refreshToken = raw.refresh_token ?? ''
+    const { refresh: existingRefresh } = getStoredTokens()
+    const refreshToken = raw.refresh_token ?? existingRefresh ?? ''
     setStoredTokens(accessToken, refreshToken)
     // Re-fetch user profile after 2FA
     const userRes = await apiClient.get('/api/users/me', { headers: { Authorization: `Bearer ${accessToken}` } })
@@ -137,6 +139,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(s => ({ ...s, requires2fa: false, pendingAccessToken: null }))
   }, [])
 
+  const updateUser = useCallback((partial: Partial<UserSummary>) => {
+    setState(s => {
+      if (!s.user) return s
+      const updated = { ...s.user, ...partial }
+      localStorage.setItem('nexus:user', JSON.stringify(updated))
+      return { ...s, user: updated }
+    })
+  }, [])
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout()
@@ -150,8 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ ...state, login, register, logout, verify2fa, cancel2fa }),
-    [state, login, register, logout, verify2fa, cancel2fa],
+    () => ({ ...state, login, register, logout, verify2fa, cancel2fa, updateUser }),
+    [state, login, register, logout, verify2fa, cancel2fa, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

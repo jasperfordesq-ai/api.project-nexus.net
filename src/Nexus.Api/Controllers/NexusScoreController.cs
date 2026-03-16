@@ -64,8 +64,9 @@ public class NexusScoreController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var score = await _nexusScore.RecalculateAsync(userId.Value, "user_request");
-        return Ok(new { data = MapScore(score) });
+        var (score, error) = await _nexusScore.RecalculateAsync(userId.Value, "user_request");
+        if (error != null) return NotFound(new { error });
+        return Ok(new { data = MapScore(score!) });
     }
 
     /// <summary>
@@ -133,8 +134,9 @@ public class NexusScoreController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminRecalculate(int userId)
     {
-        var score = await _nexusScore.RecalculateAsync(userId, "admin_recalculation");
-        return Ok(new { data = MapScore(score) });
+        var (score, error) = await _nexusScore.RecalculateAsync(userId, "admin_recalculation");
+        if (error != null) return NotFound(new { error });
+        return Ok(new { data = MapScore(score!) });
     }
 
     private static object MapScore(Entities.NexusScore s) => new

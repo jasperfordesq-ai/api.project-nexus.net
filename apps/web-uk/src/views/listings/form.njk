@@ -3,6 +3,7 @@
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/textarea/macro.njk" import govukTextarea %}
 {% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% from "govuk/components/back-link/macro.njk" import govukBackLink %}
@@ -24,14 +25,17 @@
     {% set currentStatus = values.status %}
     {% set currentTitle = values.title %}
     {% set currentDescription = values.description %}
+    {% set currentType = values.type %}
   {% elif listing %}
     {% set currentStatus = listing.status %}
     {% set currentTitle = listing.title %}
     {% set currentDescription = listing.description %}
+    {% set currentType = listing.type %}
   {% else %}
     {% set currentStatus = "" %}
     {% set currentTitle = "" %}
     {% set currentDescription = "" %}
+    {% set currentType = "" %}
   {% endif %}
 
   <div class="govuk-grid-row">
@@ -70,6 +74,22 @@
           rows: 5,
           value: currentDescription,
           errorMessage: { text: fieldErrors.description } if fieldErrors.description else undefined
+        }) }}
+
+        {{ govukRadios({
+          idPrefix: "type",
+          name: "type",
+          fieldset: {
+            legend: {
+              text: "Type",
+              classes: "govuk-fieldset__legend--m"
+            }
+          },
+          items: [
+            { value: "offer", text: "Offer", checked: currentType == "offer" },
+            { value: "request", text: "Request", checked: currentType == "request" }
+          ],
+          errorMessage: { text: fieldErrors.type } if fieldErrors.type else undefined
         }) }}
 
         {{ govukSelect({

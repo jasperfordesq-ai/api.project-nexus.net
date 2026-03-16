@@ -135,8 +135,12 @@ public class FilesController : ControllerBase
     [HttpGet("by-entity/{entityType}/{entityId:int}")]
     public async Task<IActionResult> GetByEntity(string entityType, int entityId)
     {
+        var tenantId = User.GetTenantId();
+        if (tenantId == null) return Unauthorized(new { error = "Invalid token" });
+
         var files = await _fileService.GetByEntityAsync(entityType, entityId);
-        return Ok(new { data = files.Select(MapFileResponse) });
+        var tenantFiles = files.Where(f => f.TenantId == tenantId.Value);
+        return Ok(new { data = tenantFiles.Select(MapFileResponse) });
     }
 
     /// <summary>

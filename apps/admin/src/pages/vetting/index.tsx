@@ -31,6 +31,7 @@ export const VettingPage = () => {
 
   const [rejectId, setRejectId] = useState<number | null>(null);
   const [rejectNotes, setRejectNotes] = useState("");
+  const [rejectLoading, setRejectLoading] = useState(false);
 
   const handleVerify = (id: number) => {
     Modal.confirm({
@@ -48,12 +49,14 @@ export const VettingPage = () => {
   const submitReject = async () => {
     if (!rejectId) return;
     try {
+      setRejectLoading(true);
       await axiosInstance.put("/api/admin/vetting/records/" + rejectId + "/reject", { notes: rejectNotes || "Did not meet requirements" });
       message.success("Record rejected");
       setRejectId(null);
       setRejectNotes("");
       refetch();
     } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to reject record")); }
+    finally { setRejectLoading(false); }
   };
 
   const vettingColumns = [
@@ -71,7 +74,7 @@ export const VettingPage = () => {
       {stats && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           {Object.entries(stats).map(([key, value]) => (
-            <Col span={6} key={key}><Card><Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} /></Card></Col>
+            <Col xs={24} sm={12} lg={6} key={key}><Card><Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} /></Card></Col>
           ))}
         </Row>
       )}
@@ -144,6 +147,7 @@ export const VettingPage = () => {
         onCancel={() => setRejectId(null)}
         okText="Reject"
         okButtonProps={{ danger: true }}
+        confirmLoading={rejectLoading}
       >
         <Input.TextArea
           rows={3}

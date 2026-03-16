@@ -18,6 +18,7 @@ export function ServiceDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [requestSent, setRequestSent] = useState(false)
   const [isRequesting, setIsRequesting] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -145,6 +146,11 @@ export function ServiceDetailPage() {
             </p>
           </div>
 
+          {actionError && (
+            <div className="nexus-notification nexus-notification--error" role="alert" style={{ marginBottom: 'var(--nexus-space-3)' }}>
+              {actionError}
+            </div>
+          )}
           {requestSent ? (
             <div className="nexus-notification nexus-notification--success" role="status">
               ✓ Request sent! The member will be notified.
@@ -156,12 +162,12 @@ export function ServiceDetailPage() {
               disabled={isRequesting}
               onClick={async () => {
                 setIsRequesting(true)
-                setError(null)
+                setActionError(null)
                 try {
                   await exchangesApi.propose({ listingId: listing.id })
                   setRequestSent(true)
                 } catch (err) {
-                  setError(isApiError(err) ? err.message : 'Could not send request. Please try again.')
+                  setActionError(isApiError(err) ? err.message : 'Could not send request. Please try again.')
                 } finally {
                   setIsRequesting(false)
                 }

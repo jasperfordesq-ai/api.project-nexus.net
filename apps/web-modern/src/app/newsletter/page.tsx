@@ -61,6 +61,7 @@ function NewsletterContent() {
   };
 
   const handleSave = async () => {
+    setSaveError(null);
     setIsSaving(true);
     try {
       await api.updateNewsletterSubscription({ subscribed, preferences });

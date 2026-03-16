@@ -256,55 +256,65 @@ public class AdminCrmService
             query = query.Where(u => u.SuspendedAt != null);
         }
 
-        var total = await query.CountAsync();
-
-        var users = await query
-            .OrderByDescending(u => u.CreatedAt)
-            .Skip((page - 1) * limit)
-            .Take(limit)
-            .ToListAsync();
-
-        // For exchange count filters, we need a secondary query
-        List<CrmUserDto> userDtos;
-
+        // For exchange count filters, we must apply them before pagination.
+        // Load all matching user IDs, compute exchange counts, filter, then paginate.
         if (filters.MinExchangeCount.HasValue || filters.MaxExchangeCount.HasValue)
         {
-            var userIds = users.Select(u => u.Id).ToList();
+            var allMatchingUsers = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .ToListAsync();
 
-            // Get exchange counts per user
-            var exchangeCounts = await GetExchangeCountsForUsersAsync(userIds);
+            var allUserIds = allMatchingUsers.Select(u => u.Id).ToList();
+            var exchangeCounts = await GetExchangeCountsForUsersAsync(allUserIds);
 
-            userDtos = users.Select(u =>
-            {
-                var count = exchangeCounts.GetValueOrDefault(u.Id, 0);
-                return MapUserToDto(u, count);
-            }).ToList();
+            var filtered = allMatchingUsers
+                .Select(u => MapUserToDto(u, exchangeCounts.GetValueOrDefault(u.Id, 0)))
+                .AsEnumerable();
 
-            // Apply exchange count filters
             if (filters.MinExchangeCount.HasValue)
-            {
-                userDtos = userDtos.Where(u => u.ExchangeCount >= filters.MinExchangeCount.Value).ToList();
-            }
+                filtered = filtered.Where(u => u.ExchangeCount >= filters.MinExchangeCount.Value);
             if (filters.MaxExchangeCount.HasValue)
+                filtered = filtered.Where(u => u.ExchangeCount <= filters.MaxExchangeCount.Value);
+
+            var filteredList = filtered.ToList();
+            var total = filteredList.Count;
+
+            var userDtos = filteredList
+                .Skip((page - 1) * limit)
+                .Take(limit)
+                .ToList();
+
+            return new AdvancedSearchResultDto
             {
-                userDtos = userDtos.Where(u => u.ExchangeCount <= filters.MaxExchangeCount.Value).ToList();
-            }
+                Users = userDtos,
+                Total = total,
+                Page = page,
+                Limit = limit
+            };
         }
         else
         {
+            var total = await query.CountAsync();
+
+            var users = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * limit)
+                .Take(limit)
+                .ToListAsync();
+
             var userIds = users.Select(u => u.Id).ToList();
             var exchangeCounts = await GetExchangeCountsForUsersAsync(userIds);
 
-            userDtos = users.Select(u => MapUserToDto(u, exchangeCounts.GetValueOrDefault(u.Id, 0))).ToList();
-        }
+            var userDtos = users.Select(u => MapUserToDto(u, exchangeCounts.GetValueOrDefault(u.Id, 0))).ToList();
 
-        return new AdvancedSearchResultDto
-        {
-            Users = userDtos,
-            Total = total,
-            Page = page,
-            Limit = limit
-        };
+            return new AdvancedSearchResultDto
+            {
+                Users = userDtos,
+                Total = total,
+                Page = page,
+                Limit = limit
+            };
+        }
     }
 
     /// <summary>Create a CRM task for a user.</summary>

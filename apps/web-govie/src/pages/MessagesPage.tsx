@@ -89,7 +89,7 @@ export function MessagesPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ fontWeight: conv.unreadCount > 0 ? 700 : 500, fontSize: 16 }}>{conv.otherUserName}</span>
                     <span style={{ fontSize: 12, color: 'var(--nexus-color-text-secondary)', whiteSpace: 'nowrap' }}>
-                      {new Date(conv.lastMessageAt).toLocaleDateString('en-IE')}
+                      {conv.lastMessageAt ? new Date(conv.lastMessageAt).toLocaleDateString('en-IE') : ''}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

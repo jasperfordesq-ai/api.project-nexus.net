@@ -35,6 +35,17 @@ export interface EventRsvp {
   rsvpAt: string
 }
 
+function toEventPayload(payload: Partial<Event>): Record<string, unknown> {
+  return {
+    ...(payload.title !== undefined && { title: payload.title }),
+    ...(payload.description !== undefined && { description: payload.description }),
+    ...(payload.location !== undefined && { location: payload.location }),
+    ...(payload.startsAt !== undefined && { starts_at: payload.startsAt }),
+    ...(payload.endsAt !== undefined && { ends_at: payload.endsAt }),
+    ...(payload.maxAttendees !== undefined && { max_attendees: payload.maxAttendees }),
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapEvent(raw: any): Event {
   const createdBy = raw?.created_by ?? raw?.createdBy
@@ -46,10 +57,10 @@ function mapEvent(raw: any): Event {
       : raw.organizerName ?? raw.organizer_name ?? '',
     startsAt: raw.starts_at ?? raw.startsAt,
     endsAt: raw.ends_at ?? raw.endsAt,
-    rsvpCount: raw.rsvp_count ?? raw.rsvpCount ?? 0,
+    rsvpCount: raw.rsvp_count ?? raw.rsvpCount ?? (raw.rsvp_counts ? (raw.rsvp_counts.going ?? 0) + (raw.rsvp_counts.maybe ?? 0) : 0),
     isCancelled: raw.is_cancelled ?? raw.isCancelled ?? false,
     maxAttendees: raw.max_attendees ?? raw.maxAttendees,
-    myRsvpStatus: raw.my_rsvp_status ?? raw.myRsvpStatus,
+    myRsvpStatus: raw.my_rsvp_status ?? raw.my_rsvp ?? raw.myRsvpStatus,
     tenantId: raw.tenant_id ?? raw.tenantId,
   }
 }
@@ -77,10 +88,10 @@ export const eventsApi = {
     apiClient.get(`/api/events/${id}`).then((r) => mapEvent(r.data)),
 
   create: (payload: Partial<Event>) =>
-    apiClient.post<Event>('/api/events', payload).then((r) => mapEvent(r.data)),
+    apiClient.post<Event>('/api/events', toEventPayload(payload)).then((r) => mapEvent(r.data)),
 
   update: (id: number, payload: Partial<Event>) =>
-    apiClient.put<Event>(`/api/events/${id}`, payload).then((r) => mapEvent(r.data)),
+    apiClient.put<Event>(`/api/events/${id}`, toEventPayload(payload)).then((r) => mapEvent(r.data)),
 
   cancel: (id: number) =>
     apiClient.put(`/api/events/${id}/cancel`).then((r) => r.data),

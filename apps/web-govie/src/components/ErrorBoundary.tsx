@@ -4,7 +4,6 @@
 // See NOTICE file for attribution and acknowledgements.
 
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 
 interface Props {
   children: ReactNode
@@ -46,9 +45,13 @@ export class ErrorBoundary extends Component<Props, State> {
               </pre>
             </details>
           )}
-          <Link to="/" className="nexus-btn nexus-btn--primary">
+          <a
+            href="/"
+            className="nexus-btn nexus-btn--primary"
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
             Return to homepage
-          </Link>
+          </a>
         </div>
       )
     }

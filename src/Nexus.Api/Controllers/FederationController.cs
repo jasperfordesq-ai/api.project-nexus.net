@@ -147,7 +147,14 @@ public class FederationController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
         var (partner, error) = await _federationService.ApprovePartnershipAsync(id, userId.Value);
+
+        if (partner == null && error == "Partnership not found")
+            return Forbid();
 
         if (error != null)
             return BadRequest(new { error });
@@ -172,7 +179,14 @@ public class FederationController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
         var (partner, error) = await _federationService.SuspendPartnershipAsync(id, userId.Value, request?.Reason);
+
+        if (partner == null && error == "Partnership not found")
+            return Forbid();
 
         if (error != null)
             return BadRequest(new { error });
@@ -192,7 +206,14 @@ public class FederationController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> SyncListings(int id)
     {
+        var tenantId = _tenantContext.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
         var (syncedCount, error) = await _federationService.SyncListingsToPartnerAsync(id);
+
+        if (syncedCount == 0 && error == "Partnership not found")
+            return Forbid();
 
         if (error != null)
             return BadRequest(new { error });

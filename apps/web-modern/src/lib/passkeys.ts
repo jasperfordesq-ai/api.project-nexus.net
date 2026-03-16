@@ -238,6 +238,7 @@ export async function authenticateWithPasskey(params?: {
  */
 export async function startConditionalAuthentication(params?: {
   tenantSlug?: string;
+  abortController?: AbortController;
 }): Promise<PasskeyAuthResponse | null> {
   try {
     // Check if conditional mediation is supported
@@ -253,6 +254,7 @@ export async function startConditionalAuthentication(params?: {
     const assertionResponse = await startAuthentication({
       optionsJSON: options,
       useBrowserAutofill: true,
+      ...(params?.abortController ? { signal: params.abortController.signal } : {}),
     });
 
     // User selected a passkey from autofill - verify it

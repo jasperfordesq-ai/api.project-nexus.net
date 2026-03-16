@@ -21,6 +21,12 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
       <h1 class="govuk-heading-xl">Pending requests</h1>
 
       <h2 class="govuk-heading-l">Requests received</h2>

@@ -27,15 +27,19 @@ export const SystemSettingsPage = () => {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      await axiosInstance.put("/api/admin/system/settings", values);
-      message.success("Setting saved");
-      setModalOpen(false);
-      form.resetFields();
-      refetch();
-    } catch (err: unknown) {
-      message.error(getErrorMessage(err, "Failed to save setting"));
-    } finally {
-      setSaving(false);
+      try {
+        await axiosInstance.put("/api/admin/system/settings", values);
+        message.success("Setting saved");
+        setModalOpen(false);
+        form.resetFields();
+        refetch();
+      } catch (err: unknown) {
+        message.error(getErrorMessage(err, "Failed to save setting"));
+      } finally {
+        setSaving(false);
+      }
+    } catch {
+      // Form validation failed, Ant Design highlights the fields automatically
     }
   };
 
@@ -52,7 +56,7 @@ export const SystemSettingsPage = () => {
         <Spin />
       ) : (
         <Card>
-          <Table dataSource={settings} rowKey="id" size="middle" pagination={false}>
+          <Table dataSource={settings} rowKey={(r: any) => r.id || r.key || r.name} size="middle" pagination={false}>
             <Table.Column dataIndex="key" title="Key" />
             <Table.Column dataIndex="value" title="Value" render={(v: string, record: any) =>
               record.is_secret ? "••••••••" : v

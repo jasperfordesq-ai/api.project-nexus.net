@@ -174,7 +174,11 @@ export const DashboardPage = () => {
         </Col>
       </Row>
 
-      {chartData.length > 0 && (
+      {growthLoading ? (
+        <Card style={{ marginTop: 16 }} title="Growth (Last 30 Days)">
+          <Spin style={{ display: "flex", justifyContent: "center", padding: 40 }} />
+        </Card>
+      ) : chartData.length > 0 && (
         <Card style={{ marginTop: 16 }} title="Growth (Last 30 Days)">
           <Line
             data={chartData}

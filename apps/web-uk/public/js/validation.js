@@ -181,8 +181,14 @@
     // Add error class to form group
     formGroup.classList.add('govuk-form-group--error');
 
-    // Add error class to input
-    field.classList.add('govuk-input--error');
+    // Add error class to input - use correct class for element type
+    if (field.tagName === 'TEXTAREA') {
+      field.classList.add('govuk-textarea--error');
+    } else if (field.tagName === 'SELECT') {
+      field.classList.add('govuk-select--error');
+    } else {
+      field.classList.add('govuk-input--error');
+    }
 
     // Create error message element
     const errorSpan = document.createElement('p');
@@ -194,8 +200,13 @@
     const inputWrapper = field.closest('.govuk-input__wrapper') || field;
     inputWrapper.parentNode.insertBefore(errorSpan, inputWrapper);
 
-    // Update aria-describedby
-    field.setAttribute('aria-describedby', errorSpan.id);
+    // Append to existing aria-describedby rather than replacing it
+    const existing = field.getAttribute('aria-describedby');
+    if (existing) {
+      field.setAttribute('aria-describedby', existing + ' ' + errorSpan.id);
+    } else {
+      field.setAttribute('aria-describedby', errorSpan.id);
+    }
   }
 
   /**
@@ -208,13 +219,24 @@
 
     formGroup.classList.remove('govuk-form-group--error');
     field.classList.remove('govuk-input--error');
+    field.classList.remove('govuk-textarea--error');
+    field.classList.remove('govuk-select--error');
 
     const errorSpan = formGroup.querySelector('.govuk-error-message');
     if (errorSpan) {
+      // Remove only the error ID from aria-describedby, not the whole attribute
+      const errorId = errorSpan.id;
+      const described = field.getAttribute('aria-describedby');
+      if (described) {
+        const updated = described.split(' ').filter(id => id !== errorId).join(' ');
+        if (updated) {
+          field.setAttribute('aria-describedby', updated);
+        } else {
+          field.removeAttribute('aria-describedby');
+        }
+      }
       errorSpan.remove();
     }
-
-    field.removeAttribute('aria-describedby');
   }
 
   /**
@@ -241,7 +263,7 @@
     ).join('');
 
     summary.innerHTML = `
-      <div role="alert">
+      <div>
         <h2 class="govuk-error-summary__title">There is a problem</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">

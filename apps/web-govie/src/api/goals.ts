@@ -13,8 +13,12 @@ export const goalsApi = {
   list: () => apiClient.get<Goal[]>('/api/goals').then(r => r.data),
   create: (payload: { title: string; description?: string; targetDate?: string }) =>
     apiClient.post<Goal>('/api/goals', payload).then(r => r.data),
-  update: (id: number, payload: Partial<Goal>) =>
-    apiClient.put<Goal>(`/api/goals/${id}`, payload).then(r => r.data),
-  complete: (id: number) => apiClient.put(`/api/goals/${id}/complete`).then(r => r.data),
-  delete: (id: number) => apiClient.delete(`/api/goals/${id}`).then(r => r.data),
+  /** Update progress value toward the goal target. */
+  updateProgress: (id: number, value: number) =>
+    apiClient.put(`/api/goals/${id}/progress`, { value }).then(r => r.data),
+  /** Complete a specific milestone on the goal. */
+  completeMilestone: (id: number, milestoneId: number) =>
+    apiClient.put(`/api/goals/${id}/milestones/${milestoneId}/complete`).then(r => r.data),
+  /** Abandon (soft-delete) a goal. */
+  abandon: (id: number) => apiClient.put(`/api/goals/${id}/abandon`).then(r => r.data),
 }

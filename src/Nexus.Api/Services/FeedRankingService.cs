@@ -132,6 +132,7 @@ public class FeedRankingService
             .Include(p => p.Comments)
             .Where(p => p.CreatedAt >= feedCutoff)
             .OrderByDescending(p => p.CreatedAt)
+            .Take(500)
             .ToListAsync();
 
         // Score each post

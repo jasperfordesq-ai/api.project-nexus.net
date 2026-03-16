@@ -92,32 +92,32 @@ export const AuditLogList = () => {
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title="Critical" value={criticalCount} valueStyle={{ color: "#cf1322" }} prefix={<ExclamationCircleOutlined />} />
+            <Statistic title="Critical (this page)" value={criticalCount} valueStyle={{ color: "#cf1322" }} prefix={<ExclamationCircleOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title="Warnings" value={warningCount} valueStyle={{ color: "#faad14" }} prefix={<WarningOutlined />} />
+            <Statistic title="Warnings (this page)" value={warningCount} valueStyle={{ color: "#faad14" }} prefix={<WarningOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title="Info" value={infoCount} prefix={<InfoCircleOutlined style={{ color: "#1890ff" }} />} />
+            <Statistic title="Info (this page)" value={infoCount} prefix={<InfoCircleOutlined style={{ color: "#1890ff" }} />} />
           </Card>
         </Col>
       </Row>
 
       <Space style={{ marginBottom: 16 }} wrap>
-        <Input.Search placeholder="User ID" style={{ width: 140 }} onSearch={(v) => updateFilter("user_id", v)} allowClear />
-        <Input.Search placeholder="Action" style={{ width: 160 }} onSearch={(v) => updateFilter("action", v)} allowClear />
-        <Input.Search placeholder="Entity type" style={{ width: 150 }} onSearch={(v) => updateFilter("entity_type", v)} allowClear />
-        <Select placeholder="Severity" allowClear style={{ width: 130 }} onChange={(v) => updateFilter("severity", v)}
+        <Input.Search placeholder="User ID" style={{ width: 140 }} onSearch={(v) => updateFilter("user_id", v)} onChange={(e) => !e.target.value && updateFilter("user_id", undefined)} allowClear />
+        <Input.Search placeholder="Action" style={{ width: 160 }} onSearch={(v) => updateFilter("action", v)} onChange={(e) => !e.target.value && updateFilter("action", undefined)} allowClear />
+        <Input.Search placeholder="Entity type" style={{ width: 150 }} onSearch={(v) => updateFilter("entity_type", v)} onChange={(e) => !e.target.value && updateFilter("entity_type", undefined)} allowClear />
+        <Select placeholder="Severity" allowClear style={{ width: 130 }} value={filters.severity || undefined} onChange={(v) => updateFilter("severity", v)}
           options={[
             { label: "Info", value: "info" },
             { label: "Warning", value: "warning" },
             { label: "Critical", value: "critical" },
           ]} />
-        <RangePicker onChange={handleDateRange} format="YYYY-MM-DD" />
+        <RangePicker onChange={handleDateRange} format="YYYY-MM-DD" value={filters.from_date && filters.to_date ? [dayjs(filters.from_date), dayjs(filters.to_date)] : null} />
         {Object.keys(filters).length > 0 && (
           <Button onClick={clearFilters}>Clear Filters</Button>
         )}

@@ -103,9 +103,15 @@ public class HashtagService
                     CreatedById = userId,
                     CreatedAt = DateTime.UtcNow
                 });
+                await _db.SaveChangesAsync();
 
-                hashtag.UsageCount++;
-                hashtag.LastUsedAt = DateTime.UtcNow;
+                // Use atomic SQL increment to prevent race conditions on UsageCount
+                await _db.Database.ExecuteSqlRawAsync(
+                    "UPDATE \"Hashtags\" SET \"UsageCount\" = \"UsageCount\" + 1, \"LastUsedAt\" = {0} WHERE \"Id\" = {1}",
+                    DateTime.UtcNow, hashtag.Id);
+
+                // Detach to prevent EF from overwriting the atomically-updated values on the next SaveChanges
+                _db.Entry(hashtag).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
             }
 
             result.Add(hashtag);

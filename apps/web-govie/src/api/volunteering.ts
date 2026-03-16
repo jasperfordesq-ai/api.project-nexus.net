@@ -12,8 +12,8 @@ export interface VolunteerOpportunity {
 
 export const volunteeringApi = {
   opportunities: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<VolunteerOpportunity>>('/api/volunteer/opportunities', { params }).then(r => r.data),
+    apiClient.get<PaginatedResponse<VolunteerOpportunity>>('/api/volunteering/opportunities', { params }).then(r => r.data),
   logHours: (payload: { hours: number; description: string; date: string }) =>
-    apiClient.post('/api/volunteer/hours', payload).then(r => r.data),
-  myHours: () => apiClient.get('/api/volunteer/hours').then(r => r.data),
+    apiClient.post('/api/volunteering/hours', payload).then(r => r.data),
+  myHours: () => apiClient.get('/api/volunteering/hours').then(r => r.data),
 }
