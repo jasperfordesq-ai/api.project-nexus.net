@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build
 # -----------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:8.0.404-bookworm-slim AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0.312-bookworm-slim AS build
 WORKDIR /src
 
 # Copy solution and project files first (better layer caching)
