@@ -16,7 +16,7 @@ import {
   ScheduleOutlined,
   CloudServerOutlined,
 } from "@ant-design/icons";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import dayjs from "dayjs";
 
 const { Title } = Typography;
@@ -147,7 +147,7 @@ export const HealthPage = () => {
           <Card>
             <Statistic
               title="Overall Status"
-              value={services.some(s => s.status === "down") ? "Degraded" : "Healthy"}
+              value={services.some(s => s.status === "down") ? "Down" : services.some(s => s.status === "degraded") ? "Degraded" : "Healthy"}
               prefix={
                 services.some(s => s.status === "down")
                   ? <CloseCircleOutlined style={{ color: "#ff4d4f" }} />

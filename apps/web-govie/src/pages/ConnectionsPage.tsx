@@ -26,13 +26,14 @@ function mapPending(raw: any): PendingRequest {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export function ConnectionsPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>('connections')
   const [connections, setConnections] = useState<Connection[]>([])
   const [pending, setPending] = useState<PendingRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionMsg, setActionMsg] = useState<string | null>(null)
+  const [actionIsError, setActionIsError] = useState(false)
   const inviteSent = useRef(false)
 
   // Auto-send connection request if ?invite=<userId> is present
@@ -41,8 +42,8 @@ export function ConnectionsPage() {
     if (inviteUserId && !inviteSent.current) {
       inviteSent.current = true
       apiClient.post('/api/connections', { user_id: Number(inviteUserId) })
-        .then(() => setActionMsg('Connection request sent.'))
-        .catch(err => setActionMsg(isApiError(err) ? err.message : 'Could not send connection request.'))
+        .then(() => { setActionIsError(false); setActionMsg('Connection request sent.'); setSearchParams({}) })
+        .catch(err => { setActionIsError(true); setActionMsg(isApiError(err) ? err.message : 'Could not send connection request.') })
     }
   }, [inviteUserId])
 
@@ -66,10 +67,21 @@ export function ConnectionsPage() {
 
   const acceptRequest = async (id: number) => {
     try {
-      await apiClient.put(`/api/connections/${id}/accept`)
+      const res = await apiClient.put(`/api/connections/${id}/accept`)
+      setActionIsError(false)
       setActionMsg('Connection accepted.')
+      const accepted = pending.find(r => r.id === id)
       setPending(p => p.filter(r => r.id !== id))
+      if (accepted) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = res.data as any
+        const newConn: Connection = raw?.id
+          ? mapConnection(raw)
+          : { id, userId: accepted.senderId, name: accepted.senderName, role: 'member', createdAt: new Date().toISOString() }
+        setConnections(c => [...c, newConn])
+      }
     } catch (err) {
+      setActionIsError(true)
       setActionMsg(isApiError(err) ? err.message : 'Action failed.')
     }
   }
@@ -77,9 +89,11 @@ export function ConnectionsPage() {
   const declineRequest = async (id: number) => {
     try {
       await apiClient.put(`/api/connections/${id}/decline`)
+      setActionIsError(false)
       setActionMsg('Request declined.')
       setPending(p => p.filter(r => r.id !== id))
     } catch (err) {
+      setActionIsError(true)
       setActionMsg(isApiError(err) ? err.message : 'Action failed.')
     }
   }
@@ -88,9 +102,11 @@ export function ConnectionsPage() {
     if (!confirm('Remove this connection?')) return
     try {
       await apiClient.delete(`/api/connections/${id}`)
+      setActionIsError(false)
       setActionMsg('Connection removed.')
       setConnections(c => c.filter(conn => conn.id !== id))
     } catch (err) {
+      setActionIsError(true)
       setActionMsg(isApiError(err) ? err.message : 'Action failed.')
     }
   }
@@ -108,7 +124,7 @@ export function ConnectionsPage() {
       </nav>
       <h1 style={{ fontSize: 'clamp(26px, 4vw, 38px)', fontWeight: 900, marginBottom: 'var(--nexus-space-5)' }}>Connections</h1>
 
-      {actionMsg && <div className="nexus-notification nexus-notification--success" role="status" style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionMsg}</div>}
+      {actionMsg && <div className={`nexus-notification nexus-notification--${actionIsError ? 'error' : 'success'}`} role={actionIsError ? 'alert' : 'status'} style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionMsg}</div>}
 
       {/* Tabs */}
       <div role="tablist" style={{ display: 'flex', gap: 0, marginBottom: 'var(--nexus-space-5)', borderBottom: '2px solid var(--nexus-color-border)' }}>
@@ -142,7 +158,7 @@ export function ConnectionsPage() {
                   <p style={{ margin: 0, fontSize: 13, color: 'var(--nexus-color-text-secondary)' }}>{conn.role}</p>
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--nexus-space-2)' }}>
-                  <Link to={`/messages`} className="nexus-btn nexus-btn--secondary nexus-btn--sm">Message</Link>
+                  <Link to={`/messages?user=${conn.userId}`} className="nexus-btn nexus-btn--secondary nexus-btn--sm">Message</Link>
                   <button className="nexus-btn nexus-btn--secondary nexus-btn--sm" onClick={() => removeConnection(conn.id)} style={{ color: 'var(--nexus-color-warning)' }}>Remove</button>
                 </div>
               </div>

@@ -37,7 +37,7 @@ export const ReportsPage = () => {
   const raw = data?.data as any;
   const reports = raw?.items || raw?.data || [];
   const totalCount = raw?.total || raw?.totalCount || reports.length;
-  const stats = (statsData?.data as any)?.items || (statsData?.data as any)?.data || {};
+  const stats = statsData?.data || {};
 
   const handleReview = async (id: number) => {
     try {
@@ -56,7 +56,7 @@ export const ReportsPage = () => {
       {Object.keys(stats).length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           {Object.entries(stats).map(([key, value]) => (
-            <Col span={6} key={key}>
+            <Col xs={24} sm={12} lg={6} key={key}>
               <Card>
                 <Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} />
               </Card>

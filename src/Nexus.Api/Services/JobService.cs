@@ -96,8 +96,8 @@ public class JobService
 
         if (job != null)
         {
-            job.ViewCount++;
-            await _db.SaveChangesAsync();
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE \"job_vacancies\" SET \"ViewCount\" = \"ViewCount\" + 1 WHERE \"Id\" = {job.Id}");
         }
 
         return job;

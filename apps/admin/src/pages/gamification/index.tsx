@@ -57,6 +57,7 @@ export const GamificationPage = () => {
       await axiosInstance.post(`/api/admin/gamification/badges/${awardBadgeId}/award`, values);
       message.success("Badge awarded");
       setAwardOpen(false);
+      setAwardBadgeId(null);
       awardForm.resetFields();
       refetch();
     } catch (err: unknown) {
@@ -87,7 +88,7 @@ export const GamificationPage = () => {
       {stats && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           {Object.entries(stats).map(([key, value]) => (
-            <Col span={6} key={key}><Card><Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} /></Card></Col>
+            <Col xs={24} sm={12} lg={6} key={key}><Card><Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} /></Card></Col>
           ))}
         </Row>
       )}

@@ -74,7 +74,9 @@ export default function LoginPage() {
     if (!passkeyCapabilities?.conditionalMediation) return;
     if (authLoading || isAuthenticated) return;
 
-    startConditionalAuthentication()
+    const abortController = new AbortController();
+    conditionalAbortRef.current = abortController;
+    startConditionalAuthentication({ abortController })
       .then((result) => {
         if (result) {
           loginWithPasskey(result);

@@ -71,6 +71,7 @@ function InsuranceContent() {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setActionError(null);
     setIsUploading(true);
     try {
       const formData = new FormData();
@@ -87,6 +88,7 @@ function InsuranceContent() {
   };
 
   const handleDelete = async (id: number) => {
+    setActionError(null);
     try {
       await api.deleteCertificate(id);
       setCerts((prev) => prev.filter((c) => c.id !== id));

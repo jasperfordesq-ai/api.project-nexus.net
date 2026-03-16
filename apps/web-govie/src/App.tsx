@@ -80,21 +80,23 @@ export default function App() {
               <Route path="/legal/terms" element={<TermsPage />} />
               <Route path="/legal/cookies" element={<CookiesPage />} />
 
-              {/* Public community routes */}
-              <Route path="/members" element={<MembersPage />} />
-              <Route path="/members/:id" element={<MemberProfilePage />} />
-              <Route path="/groups" element={<GroupsPage />} />
-              <Route path="/groups/:id" element={<GroupDetailPage />} />
-              <Route path="/events" element={<EventsPage />} />
-              <Route path="/events/:id" element={<EventDetailPage />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/organisations" element={<OrganisationsPage />} />
-              <Route path="/organisations/:id" element={<OrganisationDetailPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/jobs" element={<JobsPage />} />
-              <Route path="/jobs/:id" element={<JobDetailPage />} />
-              <Route path="/blog" element={<BlogPage />} />
-              <Route path="/blog/:slug" element={<BlogPostPage />} />
+              {/* Authenticated community routes */}
+              <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+              <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+              <Route path="/blog" element={<ProtectedRoute><BlogPage /></ProtectedRoute>} />
+              <Route path="/blog/:slug" element={<ProtectedRoute><BlogPostPage /></ProtectedRoute>} />
+
+              {/* Protected community routes */}
+              <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
+              <Route path="/members/:id" element={<ProtectedRoute><MemberProfilePage /></ProtectedRoute>} />
+              <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
+              <Route path="/groups/:id" element={<ProtectedRoute><GroupDetailPage /></ProtectedRoute>} />
+              <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
+              <Route path="/events/:id" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
+              <Route path="/organisations" element={<ProtectedRoute><OrganisationsPage /></ProtectedRoute>} />
+              <Route path="/organisations/:id" element={<ProtectedRoute><OrganisationDetailPage /></ProtectedRoute>} />
+              <Route path="/jobs" element={<ProtectedRoute><JobsPage /></ProtectedRoute>} />
+              <Route path="/jobs/:id" element={<ProtectedRoute><JobDetailPage /></ProtectedRoute>} />
 
               {/* Protected routes */}
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

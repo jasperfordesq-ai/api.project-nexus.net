@@ -173,7 +173,7 @@ router.post('/users/:id/edit', audit.userUpdate(), asyncRoute(async (req, res) =
       const result = await adminGetUser(req.token, req.params.id);
       return res.render('admin/users/edit', {
         title: 'Edit User',
-        userData: result.user,
+        userData: { ...(result.user || result.data || result), first_name, last_name, email, role },
         user: req.user,
         error: error.message,
         csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -342,7 +342,7 @@ router.post('/categories/new', audit.categoryCreate(), asyncRoute(async (req, re
 
 router.get('/categories/:id/edit', asyncRoute(async (req, res) => {
   const result = await adminGetCategories(req.token);
-  const category = (result.items || result.data || []).find(c => c.id === parseInt(req.params.id));
+  const category = (result.items || result.data || []).find(c => c.id == req.params.id);
 
   if (!category) {
     return res.status(404).render('errors/404', { title: 'Category not found' });
@@ -431,8 +431,8 @@ router.get('/config', asyncRoute(async (req, res) => {
 
   res.render('admin/config/index', {
     title: 'Tenant Configuration',
-    config: result.config || {},
-    configItems: result.data || [],
+    config: result.config || result.data || {},
+    configItems: Array.isArray(result.data) ? result.data : [],
     user: req.user,
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null,
@@ -539,7 +539,7 @@ router.post('/roles/new', audit.roleCreate(), asyncRoute(async (req, res) => {
 
 router.get('/roles/:id/edit', asyncRoute(async (req, res) => {
   const result = await adminGetRoles(req.token);
-  const role = (result.items || result.data || []).find(r => r.id === parseInt(req.params.id));
+  const role = (result.items || result.data || []).find(r => r.id == req.params.id);
 
   if (!role) {
     return res.status(404).render('errors/404', { title: 'Role not found' });

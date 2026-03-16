@@ -63,7 +63,7 @@
         rows: [
           {
             key: { text: "Notifications" },
-            value: { text: "Email notifications enabled" },
+            value: { text: "Email notifications " + ("enabled" if notificationPrefs.anyEmailEnabled else "disabled") },
             actions: {
               items: [
                 {
@@ -76,7 +76,7 @@
           },
           {
             key: { text: "Privacy" },
-            value: { text: "Profile visible to members" },
+            value: { text: "Profile: " + (privacyPrefs.visibility or "public") },
             actions: {
               items: [
                 {
@@ -100,7 +100,7 @@
             actions: {
               items: [
                 {
-                  href: "#",
+                  href: "/settings/password",
                   text: "Change",
                   visuallyHiddenText: "password"
                 }

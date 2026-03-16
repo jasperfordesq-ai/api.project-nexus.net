@@ -33,6 +33,7 @@ export const AnalyticsPage = () => {
     url: "/api/admin/analytics/growth",
     method: "get",
     config: { query: { days } },
+    queryOptions: { queryKey: ["admin-analytics-growth", days] },
   });
 
   const { data: topUsersData } = useCustom({

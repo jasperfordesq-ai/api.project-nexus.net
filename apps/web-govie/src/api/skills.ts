@@ -12,7 +12,7 @@ export const skillsApi = {
   list: (params?: { q?: string; category?: string }) =>
     apiClient.get<Skill[]>('/api/skills', { params }).then(r => r.data),
   addToProfile: (skillId: number) =>
-    apiClient.post(`/api/skills/${skillId}/add`).then(r => r.data),
+    apiClient.post('/api/skills/my', { skillId }).then(r => r.data),
   removeFromProfile: (skillId: number) =>
-    apiClient.delete(`/api/skills/${skillId}/remove`).then(r => r.data),
+    apiClient.delete(`/api/skills/my/${skillId}`).then(r => r.data),
 }

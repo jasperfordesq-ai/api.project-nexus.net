@@ -67,7 +67,7 @@ export const GdprPage = () => {
   const breachTotalCount = breachRaw?.total || breachRaw?.totalCount || breaches.length;
 
   const consentTypes = (consentTypesData?.data as any)?.items || (consentTypesData?.data as any)?.data || [];
-  const consentStats = (consentStatsData?.data as any)?.items || (consentStatsData?.data as any)?.data || {};
+  const consentStats = (consentStatsData?.data as any)?.items || (consentStatsData?.data as any)?.data || consentStatsData?.data || {};
 
   const requestsRaw = requestsData?.data as any;
   const requests = requestsRaw?.items || requestsRaw?.data || (Array.isArray(requestsData?.data) ? requestsData.data : []);
@@ -78,7 +78,7 @@ export const GdprPage = () => {
       message.warning("Enter a user ID to export");
       return;
     }
-    message.info("Data exports are self-service via the user's privacy settings (POST /api/privacy/export). Admin review is available through deletion requests.");
+    message.info(`Data export is self-service: users request their data via POST /api/privacy/export. To trigger on behalf of user #${exportUserId}, use the API directly.`);
   };
 
   const handleProcessRequest = async (id: number, action: "approve" | "reject") => {
@@ -99,10 +99,6 @@ export const GdprPage = () => {
         } catch (err: unknown) { message.error(getErrorMessage(err, `Failed to ${action}`)); }
       },
     });
-  };
-
-  const handleDeleteUser = (userId: number) => {
-    message.info(`Data deletion for user #${userId} is handled by approving the deletion request via the review endpoint.`);
   };
 
   const breachesTab = (
@@ -225,7 +221,7 @@ export const GdprPage = () => {
       {Object.keys(consentStats).length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           {Object.entries(consentStats).map(([key, value]) => (
-            <Col span={6} key={key}>
+            <Col xs={24} sm={12} lg={6} key={key}>
               <Card>
                 <Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} />
               </Card>

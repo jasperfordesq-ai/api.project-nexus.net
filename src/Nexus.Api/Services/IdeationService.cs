@@ -42,13 +42,19 @@ public class IdeationService
 
     public async Task<(bool Success, string? Error)> VoteIdeaAsync(int ideaId, int userId)
     {
-        if (await _db.Set<IdeaVote>().AnyAsync(v => v.IdeaId == ideaId && v.UserId == userId)) return (false, "Already upvoted");
-        var idea = await _db.Set<Idea>().FirstOrDefaultAsync(i => i.Id == ideaId);
-        if (idea == null) return (false, "Idea not found");
-        _db.Set<IdeaVote>().Add(new IdeaVote { TenantId = _tenantContext.GetTenantIdOrThrow(), IdeaId = ideaId, UserId = userId });
-        idea.UpvoteCount++;
-        await _db.SaveChangesAsync();
-        return (true, null);
+        try
+        {
+            var idea = await _db.Set<Idea>().FirstOrDefaultAsync(i => i.Id == ideaId);
+            if (idea == null) return (false, "Idea not found");
+            _db.Set<IdeaVote>().Add(new IdeaVote { TenantId = _tenantContext.GetTenantIdOrThrow(), IdeaId = ideaId, UserId = userId });
+            idea.UpvoteCount++;
+            await _db.SaveChangesAsync();
+            return (true, null);
+        }
+        catch (DbUpdateException)
+        {
+            return (false, "Already upvoted");
+        }
     }
 
     public async Task<(bool Success, string? Error)> UnvoteIdeaAsync(int ideaId, int userId)
@@ -189,6 +195,7 @@ public class IdeationService
         var tenantId = _tenantContext.GetTenantIdOrThrow();
         var idea = await _db.Set<Idea>().FirstOrDefaultAsync(i => i.Id == ideaId);
         if (idea == null) return (null, "Idea not found");
+        if (idea.AuthorId != userId) return (null, "Only the idea author can convert to a group");
         if (idea.Status == "converted") return (null, "Idea has already been converted to a group");
 
         var group = new Group

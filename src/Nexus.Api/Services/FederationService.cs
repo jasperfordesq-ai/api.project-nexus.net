@@ -105,9 +105,11 @@ public class FederationService
     /// </summary>
     public async Task<(FederationPartner? Partner, string? Error)> ApprovePartnershipAsync(int partnerId, int adminId)
     {
+        var tenantId = _tenantContext.TenantId;
+        // Only the partner tenant (the one who received the request) may approve it
         var partner = await _db.Set<FederationPartner>()
             .Include(fp => fp.PartnerTenant)
-            .FirstOrDefaultAsync(fp => fp.Id == partnerId);
+            .FirstOrDefaultAsync(fp => fp.Id == partnerId && (tenantId == null || fp.PartnerTenantId == tenantId));
 
         if (partner == null)
             return (null, "Partnership not found");
@@ -146,9 +148,10 @@ public class FederationService
     /// </summary>
     public async Task<(FederationPartner? Partner, string? Error)> SuspendPartnershipAsync(int partnerId, int adminId, string? reason)
     {
+        var tenantId = _tenantContext.TenantId;
         var partner = await _db.Set<FederationPartner>()
             .Include(fp => fp.PartnerTenant)
-            .FirstOrDefaultAsync(fp => fp.Id == partnerId);
+            .FirstOrDefaultAsync(fp => fp.Id == partnerId && (tenantId == null || fp.TenantId == tenantId || fp.PartnerTenantId == tenantId));
 
         if (partner == null)
             return (null, "Partnership not found");
@@ -159,9 +162,11 @@ public class FederationService
         partner.Status = PartnerStatus.Suspended;
         partner.UpdatedAt = DateTime.UtcNow;
 
-        // Mark all federated listings from this partner as withdrawn
+        // Mark all federated listings from this partner as withdrawn (in both directions)
         var federatedListings = await _db.Set<FederatedListing>()
-            .Where(fl => fl.SourceTenantId == partner.PartnerTenantId && fl.Status == FederatedListingStatus.Active)
+            .Where(fl =>
+                (fl.SourceTenantId == partner.PartnerTenantId || fl.SourceTenantId == partner.TenantId) &&
+                fl.Status == FederatedListingStatus.Active)
             .ToListAsync();
 
         foreach (var fl in federatedListings)
@@ -196,7 +201,7 @@ public class FederationService
     public async Task<List<FederationPartner>> GetPartnersAsync(int tenantId)
     {
         return await _db.Set<FederationPartner>()
-            .Where(fp => fp.TenantId == tenantId)
+            .Where(fp => fp.TenantId == tenantId || fp.PartnerTenantId == tenantId)
             .Include(fp => fp.PartnerTenant)
             .Include(fp => fp.RequestedBy)
             .Include(fp => fp.ApprovedBy)
@@ -211,8 +216,9 @@ public class FederationService
     /// </summary>
     public async Task<(int SyncedCount, string? Error)> SyncListingsToPartnerAsync(int partnerId)
     {
+        var tenantId = _tenantContext.TenantId;
         var partner = await _db.Set<FederationPartner>()
-            .FirstOrDefaultAsync(fp => fp.Id == partnerId);
+            .FirstOrDefaultAsync(fp => fp.Id == partnerId && (tenantId == null || fp.TenantId == tenantId));
 
         if (partner == null)
             return (0, "Partnership not found");
@@ -455,13 +461,14 @@ public class FederationService
                 "SELECT pg_advisory_xact_lock({0})",
                 userId);
 
-            // Create a local credit transaction
+            // Create a local credit transaction.
             // The local user receives credits for providing a service to the remote user.
-            // SenderId 0 represents the federation/system account (credits come from the federated network).
+            // SenderId is set to the receiver (self-referential) to represent credits
+            // originating from the federated network — the same pattern used in DonateAsync.
             var transaction = new Transaction
             {
                 TenantId = exchange.TenantId,
-                SenderId = 0, // System/federation account — credits originate from the federated partner tenant
+                SenderId = userId, // Self-referential: federation credits originate externally
                 ReceiverId = userId,
                 Amount = adjustedHours,
                 Description = $"Federated exchange with {exchange.RemoteUserDisplayName} (Tenant {exchange.PartnerTenantId})",

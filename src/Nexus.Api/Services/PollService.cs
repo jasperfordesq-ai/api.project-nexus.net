@@ -75,20 +75,26 @@ public class PollService
         return (poll, null);
     }
 
-    public async Task<(List<Poll> Data, int Total)> ListPollsAsync(int page, int limit, string? status = null)
+    /// <summary>
+    /// Closes all polls whose ClosesAt has passed. Should be called from a background job,
+    /// not from read endpoints. TODO: wire into a hosted IHostedService/Hangfire job.
+    /// </summary>
+    public async Task CloseExpiredPollsAsync()
     {
-        var query = _db.Set<Poll>().AsNoTracking();
-
-        if (!string.IsNullOrEmpty(status))
-            query = query.Where(p => p.Status == status);
-
-        // Auto-close expired polls
         var now = DateTime.UtcNow;
         var expired = await _db.Set<Poll>()
             .Where(p => p.Status == "active" && p.ClosesAt != null && p.ClosesAt <= now)
             .ToListAsync();
         foreach (var p in expired) p.Status = "closed";
         if (expired.Count > 0) await _db.SaveChangesAsync();
+    }
+
+    public async Task<(List<Poll> Data, int Total)> ListPollsAsync(int page, int limit, string? status = null)
+    {
+        var query = _db.Set<Poll>().AsNoTracking();
+
+        if (!string.IsNullOrEmpty(status))
+            query = query.Where(p => p.Status == status);
 
         var total = await query.CountAsync();
         var data = await query
@@ -130,12 +136,6 @@ public class PollService
             return (false, "Poll has closed");
         }
 
-        // Check if user already voted
-        var existingVotes = await _db.Set<PollVote>()
-            .AnyAsync(v => v.PollId == pollId && v.UserId == userId);
-        if (existingVotes)
-            return (false, "You have already voted on this poll");
-
         // Validate options belong to this poll
         var validOptionIds = poll.Options.Select(o => o.Id).ToHashSet();
         if (optionIds.Any(id => !validOptionIds.Contains(id)))
@@ -151,21 +151,56 @@ public class PollService
         if (poll.PollType == "ranked" && optionIds.Count != poll.Options.Count)
             return (false, "Ranked voting requires ranking all options");
 
-        var tenantId = _tenantContext.GetTenantIdOrThrow();
-
-        for (int i = 0; i < optionIds.Count; i++)
+        // Validate ranked ranks: must be 1..N without duplicates
+        if (poll.PollType == "ranked")
         {
-            _db.Set<PollVote>().Add(new PollVote
+            var n = poll.Options.Count;
+            if (ranks == null || ranks.Count != n)
+                return (false, $"Ranked voting requires exactly {n} rank values");
+            var sortedRanks = ranks.OrderBy(r => r).ToList();
+            for (int r = 0; r < n; r++)
             {
-                TenantId = tenantId,
-                PollId = pollId,
-                OptionId = optionIds[i],
-                UserId = userId,
-                Rank = poll.PollType == "ranked" ? (ranks != null && i < ranks.Count ? ranks[i] : i + 1) : null
-            });
+                if (sortedRanks[r] != r + 1)
+                    return (false, $"Ranks must be 1 through {n} without duplicates");
+            }
         }
 
-        await _db.SaveChangesAsync();
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
+        // Wrap the double-vote check + insert in a serializable transaction to prevent race conditions
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
+        {
+            // Re-check inside the transaction under serializable isolation
+            var existingVotes = await _db.Set<PollVote>()
+                .AnyAsync(v => v.PollId == pollId && v.UserId == userId);
+            if (existingVotes)
+            {
+                await dbTransaction.RollbackAsync();
+                return (false, "You have already voted on this poll");
+            }
+
+            for (int i = 0; i < optionIds.Count; i++)
+            {
+                _db.Set<PollVote>().Add(new PollVote
+                {
+                    TenantId = tenantId,
+                    PollId = pollId,
+                    OptionId = optionIds[i],
+                    UserId = userId,
+                    Rank = poll.PollType == "ranked" ? ranks![i] : null
+                });
+            }
+
+            await _db.SaveChangesAsync();
+            await dbTransaction.CommitAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            await dbTransaction.RollbackAsync();
+            _logger.LogWarning(ex, "Duplicate vote attempt or DB error for user {UserId} on poll {PollId}", userId, pollId);
+            return (false, "Your vote could not be recorded. Please try again.");
+        }
 
         // Award XP for voting
         try

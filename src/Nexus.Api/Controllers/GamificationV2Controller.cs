@@ -485,31 +485,67 @@ public class GamificationV2Controller : ControllerBase
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
         var tenantId = _tenantContext.GetTenantIdOrThrow();
 
-        var item = await _db.ShopItems.FirstOrDefaultAsync(i => i.Id == request.ItemId && i.TenantId == tenantId && i.IsActive);
-        if (item == null) return NotFound(new { error = "Shop item not found" });
-        if (item.StockLimit.HasValue && item.PurchasedCount >= item.StockLimit.Value)
-            return BadRequest(new { error = "Item out of stock" });
+        // Wrap the entire purchase flow in a SERIALIZABLE transaction with advisory lock
+        // to prevent double-purchases and race conditions on stock/XP balance.
+        await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
+        {
+            // Advisory lock scoped to this user to serialize concurrent purchases
+            await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", userId.Value);
 
-        // Check user has enough XP
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
-        if (user == null) return BadRequest(new { error = "User not found" });
-        if (user.TotalXp < item.XpCost)
-            return BadRequest(new { error = "Insufficient XP", required = item.XpCost, current = user.TotalXp });
+            var item = await _db.ShopItems.FirstOrDefaultAsync(i => i.Id == request.ItemId && i.TenantId == tenantId && i.IsActive);
+            if (item == null)
+            {
+                await dbTransaction.RollbackAsync();
+                return NotFound(new { error = "Shop item not found" });
+            }
 
-        // Check not already purchased (for unique items)
-        var alreadyPurchased = await _db.ShopPurchases.AnyAsync(p => p.UserId == userId.Value && p.ShopItemId == item.Id);
-        if (alreadyPurchased) return BadRequest(new { error = "You have already purchased this item" });
+            // Check not already purchased (for unique items) — inside the lock
+            var alreadyPurchased = await _db.ShopPurchases.AnyAsync(p => p.UserId == userId.Value && p.ShopItemId == item.Id);
+            if (alreadyPurchased)
+            {
+                await dbTransaction.RollbackAsync();
+                return BadRequest(new { error = "You have already purchased this item" });
+            }
 
-        // Deduct XP first — if this fails, no purchase is recorded
-        await _gamificationService.AwardXpAsync(userId.Value, -item.XpCost, "shop_purchase", description: $"XP shop purchase: {item.Name}");
+            // Check stock — inside the lock
+            if (item.StockLimit.HasValue && item.PurchasedCount >= item.StockLimit.Value)
+            {
+                await dbTransaction.RollbackAsync();
+                return BadRequest(new { error = "Item out of stock" });
+            }
 
-        var purchase = new ShopPurchase { UserId = userId.Value, ShopItemId = item.Id, TenantId = tenantId };
-        item.PurchasedCount++;
-        _db.ShopPurchases.Add(purchase);
-        await _db.SaveChangesAsync();
+            // Check user has enough XP — inside the lock
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+            if (user == null)
+            {
+                await dbTransaction.RollbackAsync();
+                return BadRequest(new { error = "User not found" });
+            }
+            if (user.TotalXp < item.XpCost)
+            {
+                await dbTransaction.RollbackAsync();
+                return BadRequest(new { error = "Insufficient XP", required = item.XpCost, current = user.TotalXp });
+            }
 
-        _logger.LogInformation("User {UserId} purchased shop item {ItemId} for {XpCost} XP", userId, item.Id, item.XpCost);
-        return Ok(new { message = "Purchase successful", item_id = item.Id, item_key = item.ItemKey, xp_spent = item.XpCost });
+            // Deduct XP
+            await _gamificationService.AwardXpAsync(userId.Value, -item.XpCost, "shop_purchase", description: $"XP shop purchase: {item.Name}");
+
+            // Decrement stock and record purchase
+            item.PurchasedCount++;
+            var purchase = new ShopPurchase { UserId = userId.Value, ShopItemId = item.Id, TenantId = tenantId };
+            _db.ShopPurchases.Add(purchase);
+            await _db.SaveChangesAsync();
+            await dbTransaction.CommitAsync();
+
+            _logger.LogInformation("User {UserId} purchased shop item {ItemId} for {XpCost} XP", userId, item.Id, item.XpCost);
+            return Ok(new { message = "Purchase successful", item_id = item.Id, item_key = item.ItemKey, xp_spent = item.XpCost });
+        }
+        catch (Exception)
+        {
+            await dbTransaction.RollbackAsync();
+            throw;
+        }
     }
 
     // ==================== Summary ====================

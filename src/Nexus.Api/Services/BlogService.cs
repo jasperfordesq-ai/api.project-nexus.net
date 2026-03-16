@@ -74,8 +74,8 @@ public class BlogService
 
         if (post != null)
         {
-            post.ViewCount++;
-            await _db.SaveChangesAsync();
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE \"blog_posts\" SET \"ViewCount\" = \"ViewCount\" + 1 WHERE \"Id\" = {post.Id}");
         }
 
         return post;
@@ -102,6 +102,7 @@ public class BlogService
 
         var post = new BlogPost
         {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
             AuthorId = authorId,
             Title = title,
             Slug = slug,
@@ -209,6 +210,7 @@ public class BlogService
 
         var cat = new BlogCategory
         {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
             Name = name,
             Slug = slug,
             Description = description,

@@ -64,7 +64,7 @@
             {% elif notification.type == 'message_received' %}
               {% set notificationLink = '/messages/' + (notificationData.conversationId or notificationData.conversation_id or '') if notificationData.conversationId or notificationData.conversation_id else '/messages' %}
             {% elif notification.type == 'transfer_received' %}
-              {% set notificationLink = '/wallet' %}
+              {% set notificationLink = '/wallet/transactions/' + (notificationData.transactionId or notificationData.transaction_id) if (notificationData.transactionId or notificationData.transaction_id) else '/wallet' %}
             {% endif %}
 
             <li class="app-notification-item{% if not (notification.isRead or notification.is_read) %} app-notification-item--unread{% endif %}">

@@ -147,6 +147,9 @@ public class SkillsController : ControllerBase
         var endorserId = User.GetUserId();
         if (endorserId == null) return Unauthorized(new { error = "Invalid token" });
 
+        if (endorserId.Value == userId)
+            return BadRequest(new { error = "Cannot endorse your own skill" });
+
         var (success, error, data) = await _skillService.EndorseSkillAsync(
             endorserId.Value, userId, skillId, request?.Comment);
 

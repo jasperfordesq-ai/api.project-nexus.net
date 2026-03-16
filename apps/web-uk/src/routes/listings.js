@@ -12,6 +12,7 @@ const {
   updateListing,
   deleteListing,
   getListingReviews,
+  getProfile,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -26,7 +27,10 @@ router.get('/', asyncRoute(async (req, res) => {
   const { search, status, page = 1 } = req.query;
   const params = { search, status, page, limit: 20 };
 
-  const data = await getListings(req.token, params);
+  const [data, currentUser] = await Promise.all([
+    getListings(req.token, params),
+    getProfile(req.token)
+  ]);
 
   // Handle both array and paginated response formats
   let listings, pagination;
@@ -37,8 +41,8 @@ router.get('/', asyncRoute(async (req, res) => {
     listings = data.data || data.items || [];
     pagination = {
       currentPage: parseInt(page, 10),
-      totalPages: data.totalPages || Math.ceil((data.total || listings.length) / 20),
-      total: data.total || listings.length
+      totalPages: data.pagination?.pages || data.totalPages || Math.ceil((data.pagination?.total || data.total || listings.length) / 20),
+      total: data.pagination?.total || data.total || listings.length
     };
   }
 
@@ -47,6 +51,7 @@ router.get('/', asyncRoute(async (req, res) => {
     listings,
     pagination,
     filters: { search, status },
+    currentUser,
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
@@ -65,7 +70,7 @@ router.get('/new', (req, res) => {
 
 // Create listing
 router.post('/new', audit.listingCreate(), asyncRoute(async (req, res) => {
-  const { title, description, status } = req.body;
+  const { title, description, status, type } = req.body;
 
   // Basic validation
   const errors = [];
@@ -74,6 +79,11 @@ router.post('/new', audit.listingCreate(), asyncRoute(async (req, res) => {
   if (!title || !title.trim()) {
     errors.push({ text: 'Enter a title', href: '#title' });
     fieldErrors.title = 'Enter a title';
+  }
+
+  if (!type || !['offer', 'request'].includes(type)) {
+    errors.push({ text: 'Select a type', href: '#type' });
+    fieldErrors.type = 'Select a type';
   }
 
   if (!status) {
@@ -85,7 +95,7 @@ router.post('/new', audit.listingCreate(), asyncRoute(async (req, res) => {
     return res.render('listings/form', {
       title: 'Create listing',
       listing: null,
-      values: { title, description, status },
+      values: { title, description, status, type },
       errors,
       fieldErrors,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -93,7 +103,7 @@ router.post('/new', audit.listingCreate(), asyncRoute(async (req, res) => {
   }
 
   try {
-    await createListing(req.token, { title: title.trim(), description, status });
+    await createListing(req.token, { title: title.trim(), description, status, type });
 
     if (req.flash) {
       req.flash('success', 'Listing created successfully');
@@ -117,14 +127,18 @@ router.post('/new', audit.listingCreate(), asyncRoute(async (req, res) => {
 
 // View listing detail
 router.get('/:id', asyncRoute(async (req, res) => {
-  const [listing, reviewsResult] = await Promise.all([
+  const [listing, reviewsResult, currentUser] = await Promise.all([
     getListing(req.token, req.params.id),
-    getListingReviews(req.token, req.params.id).catch(() => ({ data: [], summary: null }))
+    getListingReviews(req.token, req.params.id).catch(() => ({ data: [], summary: null })),
+    getProfile(req.token)
   ]);
+
+  const listingOwnerId = listing.user?.id || listing.userId || listing.user_id;
+  const can_edit = !!(listingOwnerId && currentUser && String(listingOwnerId) === String(currentUser.id));
 
   res.render('listings/detail', {
     title: listing.title || listing.name || 'Listing details',
-    listing,
+    listing: { ...listing, can_edit },
     reviews: reviewsResult.data || [],
     reviewSummary: reviewsResult.summary || null,
     successMessage: req.flash ? req.flash('success')[0] : null,
@@ -135,7 +149,15 @@ router.get('/:id', asyncRoute(async (req, res) => {
 
 // Edit listing form
 router.get('/:id/edit', asyncRoute(async (req, res) => {
-  const listing = await getListing(req.token, req.params.id);
+  const [listing, currentUser] = await Promise.all([
+    getListing(req.token, req.params.id),
+    getProfile(req.token)
+  ]);
+
+  // Only the owner may access the edit form
+  if (String(listing.user_id || listing.userId || listing.user?.id) !== String(currentUser.id)) {
+    return res.redirect('/listings/' + req.params.id);
+  }
 
   res.render('listings/form', {
     title: 'Edit listing',
@@ -150,7 +172,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
 // Update listing
 router.post('/:id/edit', audit.listingUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
-  const { title, description, status } = req.body;
+  const { title, description, status, type } = req.body;
 
   // Basic validation
   const errors = [];
@@ -159,6 +181,11 @@ router.post('/:id/edit', audit.listingUpdate(), asyncRoute(async (req, res) => {
   if (!title || !title.trim()) {
     errors.push({ text: 'Enter a title', href: '#title' });
     fieldErrors.title = 'Enter a title';
+  }
+
+  if (!type || !['offer', 'request'].includes(type)) {
+    errors.push({ text: 'Select a type', href: '#type' });
+    fieldErrors.type = 'Select a type';
   }
 
   if (!status) {
@@ -170,7 +197,7 @@ router.post('/:id/edit', audit.listingUpdate(), asyncRoute(async (req, res) => {
     return res.render('listings/form', {
       title: 'Edit listing',
       listing: { id },
-      values: { title, description, status },
+      values: { title, description, status, type },
       errors,
       fieldErrors,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -178,7 +205,7 @@ router.post('/:id/edit', audit.listingUpdate(), asyncRoute(async (req, res) => {
   }
 
   try {
-    await updateListing(req.token, id, { title: title.trim(), description, status });
+    await updateListing(req.token, id, { title: title.trim(), description, status, type });
 
     if (req.flash) {
       req.flash('success', 'Listing updated successfully');
@@ -202,7 +229,15 @@ router.post('/:id/edit', audit.listingUpdate(), asyncRoute(async (req, res) => {
 
 // Delete confirmation page
 router.get('/:id/delete', asyncRoute(async (req, res) => {
-  const listing = await getListing(req.token, req.params.id);
+  const [listing, currentUser] = await Promise.all([
+    getListing(req.token, req.params.id),
+    getProfile(req.token)
+  ]);
+
+  // Only the owner may access the delete confirmation page
+  if (String(listing.user_id || listing.userId || listing.user?.id) !== String(currentUser.id)) {
+    return res.redirect('/listings/' + req.params.id);
+  }
 
   res.render('listings/delete', {
     title: 'Delete listing',

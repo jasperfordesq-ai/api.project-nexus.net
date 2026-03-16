@@ -117,7 +117,8 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
     title: 'Edit review',
     review,
     isEdit: true,
-    returnUrl: safeReturnUrl
+    returnUrl: safeReturnUrl,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Review not found' }));
 

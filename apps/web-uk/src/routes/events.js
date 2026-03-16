@@ -81,7 +81,7 @@ router.get('/new', asyncRoute(async (req, res) => {
   const groupId = req.query.group_id || null;
 
   const myGroupsResult = await getMyGroups(req.token);
-  const myGroups = myGroupsResult.data || [];
+  const myGroups = myGroupsResult.items || myGroupsResult.data || [];
 
   res.render('events/new', {
     title: 'Create an event',
@@ -112,11 +112,11 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
   let endsAt = null;
 
   if (starts_at_date && starts_at_time) {
-    startsAt = `${starts_at_date}T${starts_at_time}:00Z`;
+    startsAt = `${starts_at_date}T${starts_at_time}:00`;
   }
 
   if (ends_at_date && ends_at_time) {
-    endsAt = `${ends_at_date}T${ends_at_time}:00Z`;
+    endsAt = `${ends_at_date}T${ends_at_time}:00`;
   }
 
   // Helper to render form with errors
@@ -211,7 +211,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
   ]);
 
   const event = eventResult.event || eventResult;
-  const myGroups = myGroupsResult.data || [];
+  const myGroups = myGroupsResult.items || myGroupsResult.data || [];
 
   // Parse dates for form (backend returns camelCase: startsAt, endsAt)
   const startsAt = (event.startsAt || event.starts_at) ? new Date(event.startsAt || event.starts_at) : null;
@@ -249,11 +249,11 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
   let endsAt = null;
 
   if (starts_at_date && starts_at_time) {
-    startsAt = `${starts_at_date}T${starts_at_time}:00Z`;
+    startsAt = `${starts_at_date}T${starts_at_time}:00`;
   }
 
   if (ends_at_date && ends_at_time) {
-    endsAt = `${ends_at_date}T${ends_at_time}:00Z`;
+    endsAt = `${ends_at_date}T${ends_at_time}:00`;
   }
 
   // Helper to render form with errors

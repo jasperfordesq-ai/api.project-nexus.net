@@ -12,9 +12,9 @@ export interface KbArticle {
 
 export const knowledgeBaseApi = {
   articles: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<KbArticle>>('/api/knowledge-base', { params }).then(r => r.data),
+    apiClient.get<PaginatedResponse<KbArticle>>('/api/knowledge', { params }).then(r => r.data),
   article: (slug: string) =>
-    apiClient.get<KbArticle>(`/api/knowledge-base/${slug}`).then(r => r.data),
+    apiClient.get<KbArticle>(`/api/knowledge/${slug}`).then(r => r.data),
   categories: () =>
-    apiClient.get<{ id: number; name: string; articleCount: number }[]>('/api/knowledge-base/categories').then(r => r.data),
+    apiClient.get<{ id: number; name: string; articleCount: number }[]>('/api/knowledge/categories').then(r => r.data),
 }

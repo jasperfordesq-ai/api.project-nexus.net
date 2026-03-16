@@ -30,8 +30,13 @@ export const EmailTemplatesPage = () => {
   const [saving, setSaving] = useState(false);
 
   const handleCreate = async () => {
+    let values: any;
     try {
-      const values = await form.validateFields();
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
+    try {
       setSaving(true);
       await axiosInstance.post("/api/admin/emails/templates", values);
       message.success("Template created");
@@ -49,10 +54,10 @@ export const EmailTemplatesPage = () => {
 
       {stats && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col span={6}><Card><Statistic title="Total Sent" value={stats.total ?? 0} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Sent Today" value={stats.today ?? 0} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Successful" value={stats.sent ?? 0} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Failed" value={stats.failed ?? 0} valueStyle={{ color: stats.failed > 0 ? "#ff4d4f" : undefined }} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card><Statistic title="Total Sent" value={stats.total ?? 0} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card><Statistic title="Sent Today" value={stats.today ?? 0} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card><Statistic title="Successful" value={stats.sent ?? 0} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card><Statistic title="Failed" value={stats.failed ?? 0} valueStyle={{ color: stats.failed > 0 ? "#ff4d4f" : undefined }} /></Card></Col>
         </Row>
       )}
 

@@ -104,6 +104,7 @@ function VerificationContent() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const fetchVerifications = useCallback(async () => {
@@ -131,6 +132,7 @@ function VerificationContent() {
 
   const handleSubmit = async () => {
     if (!selectedType) return;
+    setSubmitError(null);
     setIsSubmitting(true);
     try {
       const formData = new FormData();
@@ -143,6 +145,7 @@ function VerificationContent() {
       await fetchVerifications();
     } catch (error) {
       logger.error("Failed to request verification:", error);
+      setSubmitError(error instanceof Error ? error.message : "Failed to submit verification request.");
     } finally {
       setIsSubmitting(false);
     }
@@ -327,6 +330,11 @@ function VerificationContent() {
             <p className="text-sm text-white/60 mb-4">
               {selectedType ? typeConfig[selectedType]?.description : ""}
             </p>
+            {submitError && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                {submitError}
+              </div>
+            )}
             <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center">
               <input
                 type="file"

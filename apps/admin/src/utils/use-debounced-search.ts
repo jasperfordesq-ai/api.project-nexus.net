@@ -3,7 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
  * Returns a debounced search callback and an immediate-search handler.
@@ -15,6 +15,13 @@ export function useDebouncedSearch(
   delay = 300,
 ) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear any pending timer on unmount to avoid calling setState on an unmounted component
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const debounced = useCallback(
     (value: string) => {

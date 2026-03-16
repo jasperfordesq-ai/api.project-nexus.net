@@ -4,7 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 import { Create, useForm } from "@refinedev/antd";
-import { Form, Input } from "antd";
+import { Form, Input, message } from "antd";
 
 export const RoleCreate = () => {
   const { formProps, saveButtonProps } = useForm({
@@ -12,9 +12,29 @@ export const RoleCreate = () => {
     meta: { apiPath: "/api/admin/roles" },
   });
 
+  const handleFinish = (values: any) => {
+    const raw = values.permissions;
+    if (raw && raw.trim() !== "") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+          message.error("Permissions must be a JSON array");
+          return;
+        }
+        values.permissions = parsed;
+      } catch {
+        message.error("Invalid JSON — permissions must be a valid JSON array");
+        return;
+      }
+    } else {
+      values.permissions = [];
+    }
+    formProps.onFinish?.(values);
+  };
+
   return (
     <Create saveButtonProps={saveButtonProps}>
-      <Form {...formProps} layout="vertical">
+      <Form {...formProps} onFinish={handleFinish} layout="vertical">
         <Form.Item label="Name" name="name" rules={[{ required: true }]}>
           <Input />
         </Form.Item>

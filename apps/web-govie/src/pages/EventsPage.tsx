@@ -45,8 +45,8 @@ export function EventsPage() {
 
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
-  const upcoming = events.filter(e => !e.isCancelled && new Date(e.startsAt) >= new Date())
-  const past = events.filter(e => !e.isCancelled && new Date(e.startsAt) < new Date())
+  const upcoming = events.filter(e => !e.isCancelled && new Date(e.endsAt || e.startsAt) >= new Date())
+  const past = events.filter(e => !e.isCancelled && new Date(e.endsAt || e.startsAt) < new Date())
 
   return (
     <div className="nexus-container">

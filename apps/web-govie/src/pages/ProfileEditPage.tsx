@@ -6,10 +6,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import apiClient from '../api/client'
-import { isApiError } from '../context/AuthContext'
+import { isApiError, useAuth } from '../context/AuthContext'
 
 export function ProfileEditPage() {
   const navigate = useNavigate()
+  const { updateUser } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
@@ -47,21 +48,12 @@ export function ProfileEditPage() {
     setIsSubmitting(true)
     try {
       await apiClient.patch('/api/users/me', {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         bio: bio.trim() || null,
         location: location.trim() || null,
       })
-      // Update cached user in localStorage so header/other pages reflect the change
-      try {
-        const stored = localStorage.getItem('nexus:user')
-        if (stored) {
-          const user = JSON.parse(stored)
-          user.firstName = firstName.trim()
-          user.lastName = lastName.trim()
-          localStorage.setItem('nexus:user', JSON.stringify(user))
-        }
-      } catch { /* non-critical */ }
+      updateUser({ firstName: firstName.trim(), lastName: lastName.trim() })
       setSaveMsg('Profile updated successfully.')
       setTimeout(() => navigate('/profile'), 1500)
     } catch (err) {

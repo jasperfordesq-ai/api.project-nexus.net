@@ -41,10 +41,11 @@ export const SessionsPage = () => {
     }
   };
 
-  const terminateAll = async (userId: number, userName: string) => {
+  const terminateAll = async (userId: number, userName: string | undefined) => {
+    const displayName = userName || `User #${userId}`;
     try {
       await axiosInstance.delete(`/api/admin/sessions/user/${userId}`);
-      message.success(`All sessions terminated for ${userName}`);
+      message.success(`All sessions terminated for ${displayName}`);
       refetch();
     } catch (err: unknown) {
       message.error(getErrorMessage(err, "Failed to terminate sessions"));
@@ -87,8 +88,8 @@ export const SessionsPage = () => {
             <Popconfirm title="Terminate this session?" onConfirm={() => terminate(r.id)} okText="Yes" cancelText="No">
               <Button size="small" danger icon={<DeleteOutlined />}>Terminate</Button>
             </Popconfirm>
-            <Tooltip title={`Terminate all sessions for ${r.user_name}`}>
-              <Popconfirm title={`Terminate all sessions for ${r.user_name}?`} onConfirm={() => terminateAll(r.user_id, r.user_name)} okText="Yes" cancelText="No">
+            <Tooltip title={`Terminate all sessions for ${r.user_name || r.user_email || 'User #' + r.user_id}`}>
+              <Popconfirm title={`Terminate all sessions for ${r.user_name || r.user_email || 'User #' + r.user_id}?`} onConfirm={() => terminateAll(r.user_id, r.user_name || r.user_email)} okText="Yes" cancelText="No">
                 <Button size="small" icon={<StopOutlined />}>All for User</Button>
               </Popconfirm>
             </Tooltip>
@@ -103,7 +104,7 @@ export const SessionsPage = () => {
         <Title level={4} style={{ margin: 0 }}>Session Management</Title>
         <Space>
           <span>Active only:</span>
-          <Switch checked={activeOnly} onChange={setActiveOnly} />
+          <Switch checked={activeOnly} onChange={(v) => { setActiveOnly(v); setPage(1); }} />
           <span style={{ color: "#999" }}>{total} sessions</span>
         </Space>
       </div>

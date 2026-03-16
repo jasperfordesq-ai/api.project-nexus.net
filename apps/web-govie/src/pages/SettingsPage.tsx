@@ -222,8 +222,8 @@ export function SettingsPage() {
       <h1 style={{ fontSize: 'clamp(26px, 4vw, 38px)', fontWeight: 900, marginBottom: 'var(--nexus-space-5)' }}>Settings</h1>
       {error && <div className="nexus-notification nexus-notification--error" role="alert" style={{ marginBottom: 'var(--nexus-space-4)' }}>{error}</div>}
       {saveMsg && <div className="nexus-notification nexus-notification--success" role="status" style={{ marginBottom: 'var(--nexus-space-4)' }}>{saveMsg}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 'var(--nexus-space-6)' }}>
-        <nav aria-label="Settings tabs">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--nexus-space-6)' }}>
+        <nav aria-label="Settings tabs" style={{ flexShrink: 0, width: '100%', maxWidth: 180 }}>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {TABS.map(t => (
               <li key={t.key}>
@@ -234,7 +234,7 @@ export function SettingsPage() {
             ))}
           </ul>
         </nav>
-        <div>
+        <div style={{ flex: '1 1 300px', minWidth: 0 }}>
           {/* ── Account Tab ── */}
           {tab === 'account' && prefs && (
             <section className="nexus-card">
@@ -403,7 +403,7 @@ export function SettingsPage() {
                               <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: 14 }}>{pk.name}</p>
                               {pk.createdAt && (
                                 <p style={{ margin: 0, fontSize: 12, color: 'var(--nexus-color-text-secondary)' }}>
-                                  Added {new Date(pk.createdAt).toLocaleDateString()}
+                                  Added {new Date(pk.createdAt).toLocaleDateString('en-IE')}
                                 </p>
                               )}
                             </>
@@ -436,11 +436,16 @@ export function SettingsPage() {
                   </p>
                 )}
 
+                {/* TODO: Implement passkey registration using WebAuthn API:
+                    1. POST /api/passkeys/register/begin to get PublicKeyCredentialCreationOptions
+                    2. Call navigator.credentials.create() with the options
+                    3. POST /api/passkeys/register/finish with the credential response */}
                 <button
                   className="nexus-btn nexus-btn--secondary nexus-btn--sm"
-                  onClick={() => window.alert('Passkey registration requires a secure context (HTTPS). This feature will be available in the production environment.')}
+                  disabled
+                  title="Passkey registration requires HTTPS and is not yet available in this client"
                 >
-                  Add passkey
+                  Add passkey (coming soon)
                 </button>
               </section>
             </div>

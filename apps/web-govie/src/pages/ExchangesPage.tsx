@@ -5,13 +5,13 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { exchangesApi, type Exchange } from '../api/exchanges'
+import { exchangesApi, formatExchangeStatus, type Exchange } from '../api/exchanges'
 import { isApiError } from '../context/AuthContext'
 
 const statusColour: Record<string, string> = {
-  proposed: '#b45309',
+  requested: '#b45309',
   accepted: '#1d4ed8',
-  in_progress: '#0369a1',
+  inprogress: '#0369a1',
   completed: '#15803d',
   cancelled: '#6b7280',
   disputed: '#b91c1c',
@@ -64,8 +64,8 @@ export function ExchangesPage() {
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--nexus-color-text-secondary)' }}>{new Date(ex.createdAt).toLocaleDateString('en-IE')}</p>
               </div>
-              <span className="nexus-badge" style={{ background: statusColour[ex.status] ?? '#6b7280', color: 'white', textTransform: 'capitalize' }}>
-                {ex.status.replace('_', ' ')}
+              <span className="nexus-badge" style={{ background: statusColour[ex.status] ?? '#6b7280', color: 'white' }}>
+                {formatExchangeStatus(ex.status)}
               </span>
             </div>
           ))}

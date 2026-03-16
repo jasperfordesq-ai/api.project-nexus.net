@@ -81,6 +81,7 @@ public enum NewsletterStatus
 {
     Draft,
     Scheduled,
+    Queued,     // Enqueued for dispatch; actual email sending not yet complete
     Sending,
     Sent,
     Cancelled

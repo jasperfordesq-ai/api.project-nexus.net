@@ -110,31 +110,39 @@ public class LeaderboardSeasonService
 
         if (season == null) return; // No active season
 
-        var entry = await _db.Set<LeaderboardEntry>()
-            .FirstOrDefaultAsync(e => e.SeasonId == season.Id && e.UserId == userId);
+        // Use an atomic upsert to avoid read-modify-write race conditions.
+        // Try the atomic UPDATE first; if no rows affected, INSERT the entry.
+        var updated = await _db.Database.ExecuteSqlRawAsync(
+            "UPDATE \"leaderboard_entries\" SET \"Score\" = \"Score\" + {0}, \"UpdatedAt\" = {1} WHERE \"SeasonId\" = {2} AND \"UserId\" = {3}",
+            amount, DateTime.UtcNow, season.Id, userId);
 
-        if (entry == null)
+        if (updated == 0)
         {
-            entry = new LeaderboardEntry
+            // No existing entry — insert a new one (EF handles conflicts via exception if duplicate)
+            try
             {
-                TenantId = tenantId,
-                SeasonId = season.Id,
-                UserId = userId,
-                Score = amount
-            };
-            _db.Set<LeaderboardEntry>().Add(entry);
+                var entry = new LeaderboardEntry
+                {
+                    TenantId = tenantId,
+                    SeasonId = season.Id,
+                    UserId = userId,
+                    Score = amount
+                };
+                _db.Set<LeaderboardEntry>().Add(entry);
+                await _db.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+            {
+                // Concurrent insert won the race — retry the atomic update
+                await _db.Database.ExecuteSqlRawAsync(
+                    "UPDATE \"leaderboard_entries\" SET \"Score\" = \"Score\" + {0}, \"UpdatedAt\" = {1} WHERE \"SeasonId\" = {2} AND \"UserId\" = {3}",
+                    amount, DateTime.UtcNow, season.Id, userId);
+            }
         }
-        else
-        {
-            entry.Score += amount;
-            entry.UpdatedAt = DateTime.UtcNow;
-        }
-
-        await _db.SaveChangesAsync();
 
         _logger.LogDebug(
-            "User {UserId} earned {Amount} season XP in season {SeasonId}. Total: {Score}",
-            userId, amount, season.Id, entry.Score);
+            "User {UserId} earned {Amount} season XP in season {SeasonId}",
+            userId, amount, season.Id);
     }
 
     /// <summary>

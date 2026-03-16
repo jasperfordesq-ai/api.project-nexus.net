@@ -32,7 +32,11 @@ export function GamificationPage() {
           rank: raw.rank ?? undefined,
         } as GamProfile
       }),
-      apiClient.get<Badge[]>('/api/gamification/badges/my', { signal }).then(r => r.data ?? []),
+      apiClient.get('/api/gamification/badges/my', { signal }).then(r => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = r.data as any
+        return (raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])) as Badge[]
+      }),
     ])
       .then(([p, b]) => { if (!signal.aborted) { setProfile(p); setBadges(b) } })
       .catch(err => { if (!signal.aborted) setError(isApiError(err) ? err.message : 'Could not load gamification data.') })

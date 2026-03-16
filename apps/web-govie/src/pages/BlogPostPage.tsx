@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+import DOMPurify from 'dompurify'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import apiClient from '../api/client'
@@ -76,10 +77,9 @@ export function BlogPostPage() {
         </div>
 
         <div
-          style={{ fontSize: 16, lineHeight: 1.8, color: 'var(--nexus-color-text)', marginBottom: 'var(--nexus-space-6)', whiteSpace: 'pre-wrap' }}
-        >
-          {post.content}
-        </div>
+          style={{ fontSize: 16, lineHeight: 1.8, color: 'var(--nexus-color-text)', marginBottom: 'var(--nexus-space-6)' }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
+        />
 
         {post.tags && post.tags.length > 0 && (
           <div style={{ borderTop: '1px solid var(--nexus-color-border)', paddingTop: 'var(--nexus-space-4)', marginBottom: 'var(--nexus-space-6)' }}>

@@ -40,8 +40,8 @@ function apiErrorHandler(options = {}) {
     if (err instanceof ApiError) {
       // Unauthorized - clear token and redirect to login
       if (err.status === 401) {
-        res.clearCookie('token');
-        res.clearCookie('refresh_token');
+        res.clearCookie('token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
+        res.clearCookie('refresh_token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
         return res.redirect('/login');
       }
 
@@ -134,8 +134,8 @@ function finalErrorHandler(err, req, res, next) {
 
   // Handle specific statuses
   if (status === 401) {
-    res.clearCookie('token');
-    res.clearCookie('refresh_token');
+    res.clearCookie('token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
+    res.clearCookie('refresh_token', { path: '/', httpOnly: true, signed: true, sameSite: 'lax' });
     return res.redirect('/login');
   }
 

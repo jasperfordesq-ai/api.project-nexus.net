@@ -43,6 +43,8 @@ export function ProposeExchangePage() {
     e.preventDefault()
     setError(null)
     if (!listingId) { setError('No service selected.'); return }
+    const parsedHours = Number(hours)
+    if (!parsedHours || parsedHours <= 0) { setError('Please enter a valid duration greater than 0.'); return }
     setIsSubmitting(true)
     try {
       const res = await exchangesApi.propose({

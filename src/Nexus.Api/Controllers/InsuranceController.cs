@@ -50,6 +50,7 @@ public class InsuranceController : ControllerBase
 
         var cert = await _insurance.GetByIdAsync(id);
         if (cert == null) return NotFound(new { error = "Certificate not found" });
+        if (cert.UserId != userId) return NotFound(new { error = "Certificate not found" });
         return Ok(new { data = MapCert(cert) });
     }
 

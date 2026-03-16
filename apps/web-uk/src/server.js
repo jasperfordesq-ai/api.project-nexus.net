@@ -126,6 +126,8 @@ nunjucksEnv.addFilter('date', (dateStr) => {
   }
 });
 
+nunjucksEnv.addFilter('abs', (num) => Math.abs(num || 0));
+
 nunjucksEnv.addFilter('take', (arr, count) => {
   if (!arr || !Array.isArray(arr)) return [];
   return arr.slice(0, count);
@@ -173,6 +175,26 @@ if (NODE_ENV === 'production') {
 } else {
   app.use(morgan('dev'));
 }
+
+// Static assets (before rate limiter so static file requests don't count against limits)
+// Add cache headers for better performance
+const staticOptions = {
+  maxAge: NODE_ENV === 'production' ? '1d' : 0,
+  etag: true,
+  lastModified: true
+};
+
+app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css'), staticOptions));
+app.use('/assets', express.static(
+  path.join(__dirname, '..', 'node_modules', 'govuk-frontend', 'dist', 'govuk', 'assets'),
+  staticOptions
+));
+// Serve custom JS from public/js first, then fallback to govuk-frontend
+app.use('/js', express.static(path.join(__dirname, '..', 'public', 'js'), staticOptions));
+app.use('/js', express.static(
+  path.join(__dirname, '..', 'node_modules', 'govuk-frontend', 'dist', 'govuk'),
+  staticOptions
+));
 
 // General rate limiting (see lib/rateLimiter.js for route-specific limits)
 app.use(generalLimiter);
@@ -223,26 +245,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static assets (before CSRF for public resources)
-// Add cache headers for better performance
-const staticOptions = {
-  maxAge: NODE_ENV === 'production' ? '1d' : 0,
-  etag: true,
-  lastModified: true
-};
-
-app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css'), staticOptions));
-app.use('/assets', express.static(
-  path.join(__dirname, '..', 'node_modules', 'govuk-frontend', 'dist', 'govuk', 'assets'),
-  staticOptions
-));
-// Serve custom JS from public/js first, then fallback to govuk-frontend
-app.use('/js', express.static(path.join(__dirname, '..', 'public', 'js'), staticOptions));
-app.use('/js', express.static(
-  path.join(__dirname, '..', 'node_modules', 'govuk-frontend', 'dist', 'govuk'),
-  staticOptions
-));
-
 // Add common variables to all views
 app.use(async (req, res, next) => {
   // Check if user is authenticated
@@ -285,6 +287,16 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.type('text/plain').send('OK');
+});
+
+// Session touch endpoint - called by timeout-warning.js to extend the session
+// Touching this endpoint is enough to reset the express-session rolling window
+app.post('/session/touch', doubleCsrfProtection, (req, res) => {
+  // express-session resave:false means we must mark it dirty to reset maxAge
+  if (req.session) {
+    req.session.touch = Date.now();
+  }
+  res.json({ ok: true });
 });
 
 app.get('/components', (req, res) => {
@@ -366,7 +378,7 @@ app.use('/admin', doubleCsrfProtection, adminRoutes);
 
 // CSRF error handler (must be before 404 handler since 404 is a catch-all)
 app.use((err, req, res, next) => {
-  if (err.code === 'EBADCSRFTOKEN') {
+  if (err.code === 'EBADCSRFTOKEN' || err.code === 'ERR_BAD_CSRF_TOKEN' || (err.message && err.message.includes('csrf'))) {
     return res.status(403).render('errors/403', {
       title: 'Forbidden',
       message: 'Your session has expired. Please try again.'

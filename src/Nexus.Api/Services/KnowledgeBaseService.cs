@@ -70,8 +70,8 @@ public class KnowledgeBaseService
 
         if (article != null)
         {
-            article.ViewCount++;
-            await _db.SaveChangesAsync();
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE \"knowledge_articles\" SET \"ViewCount\" = \"ViewCount\" + 1 WHERE \"Id\" = {article.Id}");
         }
 
         return article;

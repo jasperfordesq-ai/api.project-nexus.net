@@ -43,8 +43,11 @@ public class TranslationService
             query = query.Where(t => t.Namespace == ns);
         }
 
-        return await query
-            .ToDictionaryAsync(t => t.Key, t => t.Value);
+        var rows = await query.ToListAsync();
+        // Group by key to handle any duplicate keys gracefully (first value wins)
+        return rows
+            .GroupBy(t => t.Key)
+            .ToDictionary(g => g.Key, g => g.First().Value);
     }
 
     /// <summary>
@@ -321,7 +324,7 @@ public class TranslationService
                 TranslatedKeys = translatedKeys,
                 ApprovedKeys = approvedKeys,
                 CompletionPercent = totalKeys > 0
-                    ? (int)Math.Round(translatedKeys * 100.0 / totalKeys)
+                    ? (int)Math.Min(100, Math.Round(translatedKeys * 100.0 / totalKeys))
                     : 0
             });
         }
@@ -380,7 +383,7 @@ public class TranslationService
             .CountAsync();
 
         supportedLocale.CompletionPercent = totalKeys > 0
-            ? (int)Math.Round(translatedKeys * 100.0 / totalKeys)
+            ? (int)Math.Min(100, Math.Round(translatedKeys * 100.0 / totalKeys))
             : 0;
 
         await _db.SaveChangesAsync();

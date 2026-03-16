@@ -12,6 +12,7 @@ const {
   getPrivacyPreferences,
   updatePrivacyPreferences,
   getPreferences,
+  changePassword,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -24,9 +25,32 @@ router.use(requireAuth);
 router.get('/', asyncRoute(async (req, res) => {
   const profile = await getProfile(req.token);
 
+  let notificationPrefs = {};
+  let privacyPrefs = {};
+  try {
+    const notifData = await getNotificationPreferences(req.token);
+    if (Array.isArray(notifData) && notifData.length > 0) {
+      // Any enabled email notification counts as "enabled"
+      notificationPrefs.anyEmailEnabled = notifData.some(p => p.enable_email !== false);
+    } else {
+      notificationPrefs.anyEmailEnabled = true;
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    notificationPrefs.anyEmailEnabled = true;
+  }
+
+  try {
+    privacyPrefs = await getPrivacyPreferences(req.token);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+  }
+
   res.render('settings/index', {
     title: 'Settings',
     profile,
+    notificationPrefs,
+    privacyPrefs,
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
@@ -114,6 +138,11 @@ router.get('/privacy', asyncRoute(async (req, res) => {
     if (!(error instanceof ApiError) || error.status === 401) throw error;
   }
 
+  // Use privacyPrefs.visibility as the authoritative source for profile_visibility
+  if (privacyPrefs.visibility) {
+    generalPrefs.profile_visibility = privacyPrefs.visibility;
+  }
+
   res.render('settings/privacy', {
     title: 'Privacy settings',
     profile,
@@ -137,7 +166,7 @@ router.post('/privacy', asyncRoute(async (req, res) => {
   try {
     await updatePrivacyPreferences(req.token, {
       visibility,
-      show_email: showBalance,
+      show_balance: showBalance,
       searchable: visibility !== 'private'
     });
 
@@ -148,6 +177,69 @@ router.post('/privacy', asyncRoute(async (req, res) => {
   }
 
   res.redirect('/settings/privacy');
+}));
+
+// Change password
+router.get('/password', asyncRoute(async (req, res) => {
+  res.render('settings/password', {
+    title: 'Change password',
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
+    errors: null,
+    fieldErrors: {}
+  });
+}));
+
+router.post('/password', asyncRoute(async (req, res) => {
+  const { current_password, new_password, confirm_password } = req.body;
+
+  const errors = [];
+  const fieldErrors = {};
+
+  if (!current_password) {
+    errors.push({ text: 'Enter your current password', href: '#current_password' });
+    fieldErrors.current_password = 'Enter your current password';
+  }
+
+  if (!new_password) {
+    errors.push({ text: 'Enter a new password', href: '#new_password' });
+    fieldErrors.new_password = 'Enter a new password';
+  } else if (new_password.length < 8) {
+    errors.push({ text: 'New password must be at least 8 characters', href: '#new_password' });
+    fieldErrors.new_password = 'New password must be at least 8 characters';
+  }
+
+  if (new_password !== confirm_password) {
+    errors.push({ text: 'Passwords do not match', href: '#confirm_password' });
+    fieldErrors.confirm_password = 'Passwords do not match';
+  }
+
+  if (errors.length > 0) {
+    return res.render('settings/password', {
+      title: 'Change password',
+      errors,
+      fieldErrors,
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
+    });
+  }
+
+  try {
+    await changePassword(req.token, current_password, new_password);
+
+    if (req.flash) {
+      req.flash('success', 'Password changed successfully');
+    }
+    res.redirect('/settings');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+
+    const errorMessage = (error instanceof ApiError && error.message) ? error.message : 'Unable to change password. Check your current password and try again.';
+    return res.render('settings/password', {
+      title: 'Change password',
+      errors: [{ text: errorMessage }],
+      fieldErrors: {},
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
+    });
+  }
 }));
 
 module.exports = router;

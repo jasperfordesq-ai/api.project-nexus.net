@@ -93,6 +93,26 @@ public class GdprService
             {
                 _logger.LogError(ex, "Failed to process data export {RequestId}", requestId);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process data export {RequestId}", requestId);
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+                    var req = await db.Set<DataExportRequest>().FindAsync(requestId);
+                    if (req != null)
+                    {
+                        req.Status = ExportStatus.Failed;
+                        req.ErrorMessage = ex.Message;
+                        await db.SaveChangesAsync();
+                    }
+                }
+                catch (Exception inner)
+                {
+                    _logger.LogError(inner, "Failed to update export request {RequestId} status to failed", requestId);
+                }
+            }
         });
 
         return request;

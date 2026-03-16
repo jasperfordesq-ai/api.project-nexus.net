@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { getBalance, getTransactions, getTransaction, transferCredits, getUsers, ApiError } = require('../lib/api');
+const { getBalance, getTransactions, getTransaction, transferCredits, getUsers, getProfile, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
@@ -15,15 +15,22 @@ router.use(requireAuth);
 
 // Wallet overview
 router.get('/', asyncRoute(async (req, res) => {
-  const [balanceData, transactionsData] = await Promise.all([
+  const [balanceData, transactionsData, currentUser] = await Promise.all([
     getBalance(req.token),
-    getTransactions(req.token, { limit: 5 })
+    getTransactions(req.token, { limit: 5 }),
+    getProfile(req.token)
   ]);
+
+  const transactions = transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []);
+  // Compute relative_type (sent/received) from sender_id relative to the current user
+  transactions.forEach(tx => {
+    tx.relative_type = String(tx.sender_id || tx.senderId) === String(currentUser.id) ? 'sent' : 'received';
+  });
 
   res.render('wallet/index', {
     title: 'Wallet',
     balance: balanceData.balance || balanceData,
-    transactions: transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []),
+    transactions,
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
@@ -33,9 +40,16 @@ router.get('/transactions', asyncRoute(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const type = req.query.type || '';
 
-  const transactionsData = await getTransactions(req.token, { page, limit: 20, type });
+  const [transactionsData, currentUser] = await Promise.all([
+    getTransactions(req.token, { page, limit: 20, type }),
+    getProfile(req.token)
+  ]);
 
   const transactions = transactionsData.items || transactionsData.data || (Array.isArray(transactionsData) ? transactionsData : []);
+  // Compute relative_type (sent/received) from sender_id relative to the current user
+  transactions.forEach(tx => {
+    tx.relative_type = String(tx.sender_id || tx.senderId) === String(currentUser.id) ? 'sent' : 'received';
+  });
   const pagination = transactionsData.pagination || {
     page,
     totalPages: 1,
@@ -47,16 +61,22 @@ router.get('/transactions', asyncRoute(async (req, res) => {
     transactions,
     pagination: {
       currentPage: pagination.page || pagination.currentPage,
-      totalPages: pagination.totalPages || pagination.total_pages || 1,
+      totalPages: pagination.pages || pagination.totalPages || pagination.total_pages || 1,
       total: pagination.total || pagination.totalCount
     },
-    filters: { type }
+    filters: { type },
+    currentUser
   });
 }));
 
 // View single transaction
 router.get('/transactions/:id', asyncRoute(async (req, res) => {
-  const transaction = await getTransaction(req.token, req.params.id);
+  const [transaction, currentUser] = await Promise.all([
+    getTransaction(req.token, req.params.id),
+    getProfile(req.token)
+  ]);
+  // Compute relative_type (sent/received) from sender_id relative to the current user
+  transaction.relative_type = String(transaction.sender_id || transaction.senderId) === String(currentUser.id) ? 'sent' : 'received';
 
   res.render('wallet/transaction-detail', {
     title: 'Transaction details',
@@ -101,15 +121,29 @@ router.post('/transfer', audit.walletTransfer(), asyncRoute(async (req, res) => 
     fieldErrors.amount = 'Enter a valid amount greater than 0';
   }
 
+  // Fetch profile and balance for self-transfer and insufficient balance checks
+  const [currentProfile, balanceData] = await Promise.all([
+    getProfile(req.token),
+    getBalance(req.token)
+  ]);
+  const balance = balanceData.balance !== undefined ? balanceData.balance : balanceData;
+
+  if (receiver_id && String(receiver_id) === String(currentProfile.id)) {
+    errors.push({ text: 'You cannot transfer credits to yourself', href: '#receiver_id' });
+    fieldErrors.receiver_id = 'You cannot transfer credits to yourself';
+  }
+
+  if (!isNaN(amountNum) && amountNum > 0 && amountNum > balance) {
+    errors.push({ text: 'Insufficient balance', href: '#amount' });
+    fieldErrors.amount = 'Insufficient balance';
+  }
+
   if (errors.length > 0) {
-    const [balanceData, usersData] = await Promise.all([
-      getBalance(req.token),
-      getUsers(req.token)
-    ]);
+    const usersData = await getUsers(req.token);
 
     return res.render('wallet/transfer', {
       title: 'Transfer credits',
-      balance: balanceData.balance || balanceData,
+      balance,
       users: usersData.items || usersData.data || (Array.isArray(usersData) ? usersData : []),
       values: { receiver_id, amount, description },
       errors,

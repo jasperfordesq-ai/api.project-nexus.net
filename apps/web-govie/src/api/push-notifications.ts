@@ -6,6 +6,6 @@ import apiClient from './client'
 
 export const pushNotificationsApi = {
   subscribe: (subscription: PushSubscription) =>
-    apiClient.post('/api/push/subscribe', { subscription: JSON.stringify(subscription) }).then(r => r.data),
-  unsubscribe: () => apiClient.post('/api/push/unsubscribe').then(r => r.data),
+    apiClient.post('/api/notifications/push/register', { subscription: JSON.stringify(subscription) }).then(r => r.data),
+  unsubscribe: () => apiClient.post('/api/notifications/push/unregister').then(r => r.data),
 }

@@ -53,7 +53,9 @@ public class AdminToolsController : ControllerBase
     [HttpGet("redirects")]
     public async Task<IActionResult> GetRedirects()
     {
-        var setting = await _db.SystemSettings.FirstOrDefaultAsync(s => s.Key == "url_redirects");
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var key = $"url_redirects_{tenantId}";
+        var setting = await _db.SystemSettings.FirstOrDefaultAsync(s => s.Key == key);
         var redirects = setting == null ? new List<UrlRedirect>() : JsonSerializer.Deserialize<List<UrlRedirect>>(setting.Value ?? "[]") ?? new();
         return Ok(new { data = redirects });
     }
@@ -61,12 +63,14 @@ public class AdminToolsController : ControllerBase
     [HttpPost("redirects")]
     public async Task<IActionResult> CreateRedirect([FromBody] CreateRedirectRequest req)
     {
-        var setting = await _db.SystemSettings.FirstOrDefaultAsync(s => s.Key == "url_redirects");
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var key = $"url_redirects_{tenantId}";
+        var setting = await _db.SystemSettings.FirstOrDefaultAsync(s => s.Key == key);
         List<UrlRedirect> redirects;
         if (setting == null)
         {
             redirects = new();
-            setting = new SystemSetting { Key = "url_redirects", Value = "[]" };
+            setting = new SystemSetting { Key = key, Value = "[]" };
             _db.SystemSettings.Add(setting);
         }
         else
@@ -77,13 +81,15 @@ public class AdminToolsController : ControllerBase
         redirects.Add(new UrlRedirect { From = req.From, To = req.To, IsPermanent = req.IsPermanent, CreatedAt = DateTime.UtcNow });
         setting.Value = JsonSerializer.Serialize(redirects);
         await _db.SaveChangesAsync();
-        return StatusCode(201, new { message = "Redirect created", from = req.From, to = req.To });
+        return Ok(new { message = "Redirect created", from = req.From, to = req.To });
     }
 
     [HttpDelete("redirects")]
     public async Task<IActionResult> DeleteRedirect([FromBody] DeleteRedirectRequest req)
     {
-        var setting = await _db.SystemSettings.FirstOrDefaultAsync(s => s.Key == "url_redirects");
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var key = $"url_redirects_{tenantId}";
+        var setting = await _db.SystemSettings.FirstOrDefaultAsync(s => s.Key == key);
         if (setting == null) return NotFound(new { error = "No redirects configured" });
         var redirects = JsonSerializer.Deserialize<List<UrlRedirect>>(setting.Value ?? "[]") ?? new();
         redirects.RemoveAll(r => r.From == req.From);

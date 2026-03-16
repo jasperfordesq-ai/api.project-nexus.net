@@ -5,7 +5,7 @@
 
 import { useCustom } from "@refinedev/core";
 import { Card, Table, Typography, Button, Modal, Form, Input, Select, message, Tag, Space, Spin, DatePicker, Switch, Row, Col, Alert } from "antd";
-import { PlusOutlined, StopOutlined, ExclamationCircleOutlined, NotificationOutlined, InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import { PlusOutlined, StopOutlined, ExclamationCircleOutlined, NotificationOutlined, InfoCircleOutlined, WarningOutlined, CheckOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import dayjs from "dayjs";
 import axiosInstance from "../../utils/axios";
@@ -16,7 +16,7 @@ const { Title, Text } = Typography;
 const ANNOUNCEMENT_TYPES = [
   { label: "Info", value: "info", color: "blue", icon: <InfoCircleOutlined /> },
   { label: "Warning", value: "warning", color: "orange", icon: <WarningOutlined /> },
-  { label: "Critical", value: "error", color: "red", icon: <ExclamationCircleOutlined /> },
+  { label: "Critical", value: "critical", color: "red", icon: <ExclamationCircleOutlined /> },
 ];
 
 export const AnnouncementsPage = () => {
@@ -41,22 +41,63 @@ export const AnnouncementsPage = () => {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      await axiosInstance.post("/api/admin/system/announcements", {
-        title: values.title,
-        content: values.content,
-        type: values.type || "info",
-        starts_at: values.starts_at ? values.starts_at.toISOString() : undefined,
-        ends_at: values.ends_at ? values.ends_at.toISOString() : undefined,
-      });
-      message.success("Announcement created");
-      setModalOpen(false);
-      form.resetFields();
-      refetch();
-    } catch (err: unknown) {
-      message.error(getErrorMessage(err, "Failed to create announcement"));
-    } finally {
-      setSaving(false);
+      try {
+        await axiosInstance.post("/api/admin/system/announcements", {
+          title: values.title,
+          content: values.content,
+          type: values.type || "info",
+          starts_at: values.starts_at ? values.starts_at.toISOString() : undefined,
+          ends_at: values.ends_at ? values.ends_at.toISOString() : undefined,
+        });
+        message.success("Announcement created");
+        setModalOpen(false);
+        form.resetFields();
+        refetch();
+      } catch (err: unknown) {
+        message.error(getErrorMessage(err, "Failed to create announcement"));
+      } finally {
+        setSaving(false);
+      }
+    } catch {
+      // Form validation failed, Ant Design highlights the fields automatically
     }
+  };
+
+  const handleReactivate = (id: number, title: string) => {
+    Modal.confirm({
+      title: "Reactivate Announcement",
+      icon: <CheckOutlined />,
+      content: `Reactivate "${title}"? Users will see this announcement again.`,
+      okText: "Reactivate",
+      onOk: async () => {
+        try {
+          await axiosInstance.put(`/api/admin/system/announcements/${id}`, { is_active: true });
+          message.success("Announcement reactivated");
+          refetch();
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to reactivate announcement"));
+        }
+      },
+    });
+  };
+
+  const handleDelete = (id: number, title: string) => {
+    Modal.confirm({
+      title: "Delete Announcement",
+      icon: <ExclamationCircleOutlined />,
+      content: `Permanently delete "${title}"? This cannot be undone.`,
+      okText: "Delete",
+      okType: "danger",
+      onOk: async () => {
+        try {
+          await axiosInstance.delete(`/api/admin/system/announcements/${id}`);
+          message.success("Announcement deleted");
+          refetch();
+        } catch (err: unknown) {
+          message.error(getErrorMessage(err, "Failed to delete announcement"));
+        }
+      },
+    });
   };
 
   const handleDeactivate = (id: number, title: string) => {
@@ -176,7 +217,7 @@ export const AnnouncementsPage = () => {
               />
               <Table.Column
                 title="Actions"
-                width={120}
+                width={200}
                 render={(_: any, record: any) => (
                   <Space>
                     {record.is_active && (
@@ -189,6 +230,21 @@ export const AnnouncementsPage = () => {
                         Deactivate
                       </Button>
                     )}
+                    {!record.is_active && (
+                      <Button
+                        size="small"
+                        icon={<CheckOutlined />}
+                        onClick={() => handleReactivate(record.id, record.title)}
+                      >
+                        Reactivate
+                      </Button>
+                    )}
+                    <Button
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDelete(record.id, record.title)}
+                    />
                   </Space>
                 )}
               />

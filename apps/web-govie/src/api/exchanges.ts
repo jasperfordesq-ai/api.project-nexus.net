@@ -6,7 +6,7 @@
 import apiClient from './client'
 import type { PaginatedResponse, PaginationParams } from './types'
 
-export type ExchangeStatus = 'proposed' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' | 'disputed'
+export type ExchangeStatus = 'requested' | 'accepted' | 'inprogress' | 'completed' | 'cancelled' | 'disputed'
 
 export interface Exchange {
   id: number
@@ -42,7 +42,7 @@ export const exchangesApi = {
           providerId: e.listing_owner?.id ?? e.providerId ?? 0,
           providerName: e.listing_owner ? `${e.listing_owner.first_name ?? ''} ${e.listing_owner.last_name ?? ''}`.trim() : (e.providerName ?? ''),
           creditAmount: e.agreed_hours ?? e.creditAmount ?? 0,
-          status: e.status ?? 'proposed',
+          status: e.status ?? 'requested',
           message: e.request_message ?? e.message ?? undefined,
           scheduledAt: e.scheduled_at ?? e.scheduledAt ?? undefined,
           completedAt: e.completed_at ?? e.completedAt ?? undefined,
@@ -99,5 +99,19 @@ export const exchangesApi = {
     apiClient.put(`/api/exchanges/${id}/cancel`, { reason }).then((r) => r.data),
 
   dispute: (id: number, reason: string) =>
-    apiClient.post(`/api/exchanges/${id}/dispute`, { reason }).then((r) => r.data),
+    apiClient.put(`/api/exchanges/${id}/dispute`, { reason }).then((r) => r.data),
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  requested: 'Requested',
+  accepted: 'Accepted',
+  inprogress: 'In Progress',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  disputed: 'Disputed',
+}
+
+/** Return a human-readable label for an exchange status value. */
+export function formatExchangeStatus(status: string): string {
+  return STATUS_LABELS[status.toLowerCase()] ?? status.replace(/_/g, ' ')
 }

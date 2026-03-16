@@ -138,9 +138,11 @@ router.post('/new', audit.feedPostCreate(), asyncRoute(async (req, res) => {
 router.get('/:id', asyncRoute(async (req, res) => {
   const { id } = req.params;
 
+  const commentsPage = parseInt(req.query.comments_page, 10) || 1;
+
   const [postResult, commentsResult] = await Promise.all([
     getFeedPost(req.token, id),
-    getFeedComments(req.token, id, { limit: 50 }).catch(() => ({ data: [] }))
+    getFeedComments(req.token, id, { page: commentsPage, limit: 50 }).catch(() => ({ data: [] }))
   ]);
 
   const post = postResult.post || postResult;

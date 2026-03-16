@@ -9,7 +9,8 @@ const {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-  deleteNotification
+  deleteNotification,
+  ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { validateReturnUrl } = require('../lib/urlValidator');
@@ -47,7 +48,13 @@ router.post('/:id/read', asyncRoute(async (req, res) => {
   const { id } = req.params;
   const { redirect } = req.body;
 
-  await markNotificationRead(req.token, id);
+  try {
+    await markNotificationRead(req.token, id);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    if (req.flash) req.flash('error', error.message || 'Unable to mark notification as read');
+    return res.redirect('/notifications');
+  }
 
   // If redirect URL provided, validate it to prevent open redirect attacks
   if (redirect) {
@@ -60,11 +67,16 @@ router.post('/:id/read', asyncRoute(async (req, res) => {
 
 // Mark all notifications as read
 router.post('/read-all', asyncRoute(async (req, res) => {
-  const result = await markAllNotificationsRead(req.token);
+  try {
+    const result = await markAllNotificationsRead(req.token);
 
-  if (req.flash) {
-    const count = result.markedCount || result.marked_count || 0;
-    req.flash('success', `Marked ${count} notification${count !== 1 ? 's' : ''} as read`);
+    if (req.flash) {
+      const count = result.markedCount || result.marked_count || 0;
+      req.flash('success', `Marked ${count} notification${count !== 1 ? 's' : ''} as read`);
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    if (req.flash) req.flash('error', error.message || 'Unable to mark notifications as read');
   }
 
   res.redirect('/notifications');
@@ -74,10 +86,15 @@ router.post('/read-all', asyncRoute(async (req, res) => {
 router.post('/:id/delete', asyncRoute(async (req, res) => {
   const { id } = req.params;
 
-  await deleteNotification(req.token, id);
+  try {
+    await deleteNotification(req.token, id);
 
-  if (req.flash) {
-    req.flash('success', 'Notification deleted');
+    if (req.flash) {
+      req.flash('success', 'Notification deleted');
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    if (req.flash) req.flash('error', error.message || 'Unable to delete notification');
   }
 
   res.redirect('/notifications');

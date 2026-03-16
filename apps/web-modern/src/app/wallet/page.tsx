@@ -74,7 +74,7 @@ function WalletContent() {
           return null;
         }),
         api.getTransactions({
-          type: txFilter,
+          ...(txFilter !== "all" ? { type: txFilter } : {}),
           page: currentPage,
           limit: 10,
         }).catch((err) => {

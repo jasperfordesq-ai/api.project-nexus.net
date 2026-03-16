@@ -60,6 +60,21 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .nexus-spinner {
+    animation: none;
+  }
+
+  .nexus-skeleton-line {
+    animation: none;
+    background: #e5e7eb;
+  }
+}
+
 body {
   margin: 0;
   color: var(--nexus-color-text);
@@ -162,6 +177,9 @@ body {
 .nexus-header__nav-link:focus {
   color: var(--nexus-color-white);
   border-bottom-color: var(--nexus-color-accent);
+}
+
+.nexus-header__nav-link:focus:not(:focus-visible) {
   outline: none;
 }
 

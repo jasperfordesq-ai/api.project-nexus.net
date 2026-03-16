@@ -54,7 +54,7 @@
           {% set userItems = (userItems.push({
             value: user.id,
             text: (user.firstName or user.first_name or "") + " " + (user.lastName or user.last_name or "") + " (" + user.email + ")",
-            selected: currentReceiver == user.id | string
+            selected: currentReceiver == (user.id | string)
           }), userItems) %}
         {% endfor %}
 

@@ -38,11 +38,6 @@ export const OrganisationsPage = () => {
     queryOptions: { queryKey: ["admin-orgs", page, pageSize, search, statusFilter] },
   });
 
-  const { data: statsData } = useCustom({
-    url: "/api/admin/analytics/overview",
-    method: "get",
-  });
-
   const raw = data?.data as any;
   const orgs = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
   const totalCount = raw?.total || raw?.totalCount || orgs.length;
@@ -85,7 +80,7 @@ export const OrganisationsPage = () => {
     });
   };
 
-  // Count by status from current data (approximation for stats)
+  // Count by status from current page only (not global totals)
   const verifiedCount = orgs.filter((o: any) => o.status === "verified").length;
   const pendingCount = orgs.filter((o: any) => o.status === "pending").length;
   const suspendedCount = orgs.filter((o: any) => o.status === "suspended").length;
@@ -102,17 +97,17 @@ export const OrganisationsPage = () => {
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title="Verified" value={verifiedCount} valueStyle={{ color: "#3f8600" }} />
+            <Statistic title="Verified (this page)" value={verifiedCount} valueStyle={{ color: "#3f8600" }} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title="Pending Verification" value={pendingCount} valueStyle={{ color: "#faad14" }} />
+            <Statistic title="Pending Verification (this page)" value={pendingCount} valueStyle={{ color: "#faad14" }} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic title="Suspended" value={suspendedCount} valueStyle={{ color: "#cf1322" }} />
+            <Statistic title="Suspended (this page)" value={suspendedCount} valueStyle={{ color: "#cf1322" }} />
           </Card>
         </Col>
       </Row>

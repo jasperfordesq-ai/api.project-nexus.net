@@ -59,6 +59,11 @@
         ]
       }) }}
 
+      {% if profile.bio %}
+        <h2 class="govuk-heading-m govuk-!-margin-top-8">About you</h2>
+        <p class="govuk-body">{{ profile.bio }}</p>
+      {% endif %}
+
       <h2 class="govuk-heading-m govuk-!-margin-top-8">Account</h2>
       <ul class="govuk-list">
         <li>

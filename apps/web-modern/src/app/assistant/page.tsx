@@ -79,13 +79,14 @@ function AssistantContent() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
     setError(null);
 
     try {
-      // Build context from recent messages (last 5 exchanges)
+      // Build context from recent messages (last 5 exchanges), excluding the new user message (sent as prompt)
       const recentMessages = messages.slice(-10);
       const context = recentMessages
         .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)

@@ -37,4 +37,5 @@ export const clearAuth = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem("nexus_2fa_temp");
 };

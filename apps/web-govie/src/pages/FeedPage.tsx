@@ -3,7 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
 import { fullName } from '../api/normalize'
@@ -34,21 +34,22 @@ export function FeedPage() {
   const [newPost, setNewPost] = useState('')
   const [isPosting, setIsPosting] = useState(false)
 
-  const fetchFeed = () => apiClient.get('/api/feed').then(r => {
+  const fetchFeed = useCallback(() => apiClient.get('/api/feed').then(r => {
     const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
     const items = raw?.data ?? raw?.items ?? (Array.isArray(raw) ? raw : [])
     setPosts(items.map(mapPost))
-  })
+  }), [])
 
   useEffect(() => {
     fetchFeed()
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load feed.'))
       .finally(() => setIsLoading(false))
-  }, [])
+  }, [fetchFeed])
 
   const submitPost = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newPost.trim()) return
+    setError(null)
     setIsPosting(true)
     try {
       await apiClient.post('/api/feed', { content: newPost.trim() })

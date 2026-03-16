@@ -44,11 +44,17 @@ export function EventDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionMsg, setActionMsg] = useState<string | null>(null)
+  const [actionIsError, setActionIsError] = useState(false)
   const [rsvping, setRsvping] = useState(false)
 
   useEffect(() => {
     Promise.all([
-      apiClient.get(`/api/events/${id}`).then(r => mapEvent(r.data)),
+      apiClient.get(`/api/events/${id}`).then(r => {
+        const data = r.data.event ?? r.data
+        const event = mapEvent(data)
+        const myRsvp = r.data.my_rsvp?.status
+        return myRsvp !== undefined ? { ...event, myRsvp: myRsvp !== 'not_attending' } : event
+      }),
       apiClient.get(`/api/events/${id}/rsvps`).then(r => {
         const raw = r.data as any // eslint-disable-line @typescript-eslint/no-explicit-any
         const items = raw?.items ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
@@ -67,13 +73,16 @@ export function EventDetailPage() {
       if (event.myRsvp) {
         await apiClient.delete(`/api/events/${id}/rsvp`)
         setEvent(e => e ? { ...e, myRsvp: false, rsvpCount: e.rsvpCount - 1 } : e)
+        setActionIsError(false)
         setActionMsg('Your RSVP has been removed.')
       } else {
         await apiClient.post(`/api/events/${id}/rsvp`)
         setEvent(e => e ? { ...e, myRsvp: true, rsvpCount: e.rsvpCount + 1 } : e)
+        setActionIsError(false)
         setActionMsg('You are attending this event.')
       }
     } catch (err) {
+      setActionIsError(true)
       setActionMsg(isApiError(err) ? err.message : 'Action failed.')
     } finally {
       setRsvping(false)
@@ -84,7 +93,7 @@ export function EventDetailPage() {
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
   if (!event) return null
 
-  const isPast = new Date(event.startsAt) < new Date()
+  const isPast = new Date(event.endsAt || event.startsAt) < new Date()
 
   return (
     <div className="nexus-container">
@@ -96,7 +105,7 @@ export function EventDetailPage() {
         </ol>
       </nav>
 
-      {actionMsg && <div className="nexus-notification nexus-notification--success" role="status" style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionMsg}</div>}
+      {actionMsg && <div className={`nexus-notification nexus-notification--${actionIsError ? 'error' : 'success'}`} role={actionIsError ? 'alert' : 'status'} style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionMsg}</div>}
       {event.isCancelled && <div className="nexus-notification nexus-notification--error" role="status" style={{ marginBottom: 'var(--nexus-space-4)' }}>This event has been cancelled.</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--nexus-space-6)' }}>

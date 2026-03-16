@@ -14,8 +14,17 @@ import { getErrorMessage } from "../../utils/errors";
 const { Title } = Typography;
 
 export const PagesCmsPage = () => {
-  const { data, isLoading, refetch } = useCustom({ url: "/api/admin/pages", method: "get" });
-  const pages = (data?.data as any)?.items || (data?.data as any)?.data || (Array.isArray(data?.data) ? data.data : []);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const { data, isLoading, refetch } = useCustom({
+    url: "/api/admin/pages",
+    method: "get",
+    config: { query: { page, limit: pageSize } },
+    queryOptions: { queryKey: ["admin-pages", page, pageSize] },
+  });
+  const raw = data?.data as any;
+  const pages = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
+  const total = raw?.total || raw?.totalCount || pages.length;
   const [createOpen, setCreateOpen] = useState(false);
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
@@ -75,7 +84,7 @@ export const PagesCmsPage = () => {
       </div>
       {isLoading ? <Spin /> : (
         <Card>
-          <Table dataSource={pages} rowKey="id" size="small" loading={isLoading} locale={{ emptyText: "No pages found" }} pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t: number) => `${t} total` }}>
+          <Table dataSource={pages} rowKey="id" size="small" loading={isLoading} locale={{ emptyText: "No pages found" }} pagination={{ current: page, pageSize, total, showSizeChanger: true, showTotal: (t: number) => `${t} total`, onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); } }}>
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
             <Table.Column dataIndex="slug" title="Slug" />

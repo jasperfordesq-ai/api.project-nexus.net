@@ -33,8 +33,24 @@ public class AvailabilityService
             .ToListAsync();
     }
 
-    public async Task<MemberAvailability> SetSlotAsync(int userId, int dayOfWeek, string startTime, string endTime, string? note)
+    public async Task<(MemberAvailability? Slot, string? Error)> SetSlotAsync(int userId, int dayOfWeek, string startTime, string endTime, string? note)
     {
+        // Validate dayOfWeek
+        if (dayOfWeek < 0 || dayOfWeek > 6)
+            return (null, "dayOfWeek must be between 0 (Sunday) and 6 (Saturday).");
+
+        // Validate time format and ordering
+        if (!TimeSpan.TryParseExact(startTime, @"hh\:mm", null, out var startTs) &&
+            !TimeSpan.TryParseExact(startTime, @"h\:mm", null, out startTs))
+            return (null, "startTime must be in HH:mm format.");
+
+        if (!TimeSpan.TryParseExact(endTime, @"hh\:mm", null, out var endTs) &&
+            !TimeSpan.TryParseExact(endTime, @"h\:mm", null, out endTs))
+            return (null, "endTime must be in HH:mm format.");
+
+        if (endTs <= startTs)
+            return (null, "endTime must be after startTime.");
+
         var tenantId = _tenantContext.GetTenantIdOrThrow();
 
         var existing = await _db.Set<MemberAvailability>()
@@ -62,7 +78,7 @@ public class AvailabilityService
         }
 
         await _db.SaveChangesAsync();
-        return existing;
+        return (existing, null);
     }
 
     public async Task<(bool Success, string? Error)> RemoveSlotAsync(int slotId, int userId)

@@ -21,6 +21,7 @@ export function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -45,11 +46,12 @@ export function NotificationsPage() {
   }, [])
 
   const markAllRead = async () => {
+    setActionError(null)
     try {
       await apiClient.put('/api/notifications/read-all')
       setNotifications(n => n.map(x => ({ ...x, isRead: true })))
     } catch (err) {
-      setError(isApiError(err) ? err.message : 'Failed to mark as read.')
+      setActionError(isApiError(err) ? err.message : 'Failed to mark as read.')
     }
   }
 
@@ -87,6 +89,7 @@ export function NotificationsPage() {
           <button className="nexus-btn nexus-btn--secondary" onClick={markAllRead}>Mark all as read</button>
         )}
       </div>
+      {actionError && <div className="nexus-notification nexus-notification--error" role="alert" style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionError}</div>}
 
       {notifications.length === 0 ? (
         <div className="nexus-card" style={{ textAlign: 'center', padding: 'var(--nexus-space-7)', color: 'var(--nexus-color-text-secondary)' }}>

@@ -39,7 +39,7 @@ public class OrgWalletService
 
         if (wallet == null)
         {
-            wallet = new OrgWallet { OrganisationId = organisationId };
+            wallet = new OrgWallet { TenantId = _tenantContext.GetTenantIdOrThrow(), OrganisationId = organisationId };
             _db.Set<OrgWallet>().Add(wallet);
             await _db.SaveChangesAsync();
         }
@@ -94,8 +94,6 @@ public class OrgWalletService
 
             var wallet = await EnsureWalletAsync(organisationId);
 
-            // Look up org owner to use as receiver in the personal Transaction
-            // (personal balance is computed from Transactions: received - sent)
             var org = await _db.Set<Organisation>()
                 .FirstOrDefaultAsync(o => o.Id == organisationId);
             if (org == null)
@@ -104,13 +102,14 @@ public class OrgWalletService
                 return (null, "Organisation not found");
             }
 
-            // Debit donor's personal wallet by creating a Transaction
-            // The org owner receives the credits on behalf of the org
+            // Debit donor's personal wallet. ReceiverId is set to the sender so the
+            // org owner's personal balance is not inflated — the OrgWallet.Balance is
+            // the authoritative tracking mechanism for org funds.
             var debitTx = new Transaction
             {
                 TenantId = _tenantContext.GetTenantIdOrThrow(),
                 SenderId = fromUserId,
-                ReceiverId = org.OwnerId,
+                ReceiverId = fromUserId,
                 Amount = amount,
                 Description = description ?? $"Donation to organisation #{organisationId}",
                 Status = TransactionStatus.Completed,
@@ -189,21 +188,14 @@ public class OrgWalletService
             wallet.TotalSpent += amount;
             wallet.UpdatedAt = DateTime.UtcNow;
 
-            // Look up org owner to use as sender in the personal Transaction
-            var org = await _db.Set<Organisation>()
-                .FirstOrDefaultAsync(o => o.Id == organisationId);
-            if (org == null)
-            {
-                await dbTransaction.RollbackAsync();
-                return (null, "Organisation not found");
-            }
-
-            // Credit target user's personal wallet by creating a Transaction
-            // The org owner sends credits on behalf of the org
+            // Credit target user's personal wallet by creating a Transaction.
+            // SenderId is set to the receiver (self-referential) so the org owner's
+            // personal balance is not debited — the OrgWallet.Balance is the authoritative
+            // tracking mechanism for org funds, same pattern as DonateAsync.
             var creditTx = new Transaction
             {
                 TenantId = _tenantContext.GetTenantIdOrThrow(),
-                SenderId = org.OwnerId,
+                SenderId = toUserId,
                 ReceiverId = toUserId,
                 Amount = amount,
                 Description = description ?? $"Transfer from organisation #{organisationId}",

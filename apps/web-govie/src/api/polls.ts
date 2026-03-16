@@ -13,5 +13,5 @@ export const pollsApi = {
   list: () => apiClient.get<Poll[]>('/api/polls').then(r => r.data),
   get: (id: number) => apiClient.get<Poll>(`/api/polls/${id}`).then(r => r.data),
   vote: (pollId: number, optionId: number) =>
-    apiClient.post(`/api/polls/${pollId}/vote`, { optionId }).then(r => r.data),
+    apiClient.post(`/api/polls/${pollId}/vote`, { option_ids: [optionId] }).then(r => r.data),
 }

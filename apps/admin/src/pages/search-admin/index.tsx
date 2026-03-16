@@ -45,15 +45,15 @@ export const SearchAdminPage = () => {
       <Title level={4}>Search Administration</Title>
       {stats && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col span={8}>
+          <Col xs={24} sm={12} lg={8}>
             <Card><Statistic title="Status" value={stats.enabled ? "Enabled" : "Disabled"}
               prefix={stats.enabled ? <CheckCircleOutlined style={{ color: "#52c41a" }} /> : <WarningOutlined style={{ color: "#faad14" }} />} /></Card>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={12} lg={8}>
             <Card><Statistic title="Health" value={stats.healthy ? "Healthy" : "Unhealthy"}
               prefix={stats.healthy ? <CheckCircleOutlined style={{ color: "#52c41a" }} /> : <WarningOutlined style={{ color: "#ff4d4f" }} />} /></Card>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={12} lg={8}>
             <Card><Statistic title="Total Documents" value={stats.total_documents ?? 0} /></Card>
           </Col>
         </Row>

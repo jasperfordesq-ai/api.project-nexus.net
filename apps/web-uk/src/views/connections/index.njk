@@ -14,6 +14,12 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
       <h1 class="govuk-heading-xl">Connections</h1>
 
       <nav class="govuk-tabs" data-module="govuk-tabs">

@@ -39,6 +39,7 @@ export function JobDetailPage() {
   const [coverLetter, setCoverLetter] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [actionMsg, setActionMsg] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     apiClient.get(`/api/jobs/${id}`)
@@ -50,13 +51,14 @@ export function JobDetailPage() {
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault()
     setApplying(true)
+    setActionError(null)
     try {
       await apiClient.post(`/api/jobs/${id}/apply`, { cover_letter: coverLetter.trim() })
       setJob(j => j ? { ...j, hasApplied: true, applicationCount: j.applicationCount + 1 } : j)
       setActionMsg('Application submitted successfully.')
       setShowForm(false)
     } catch (err) {
-      setActionMsg(isApiError(err) ? err.message : 'Failed to submit application.')
+      setActionError(isApiError(err) ? err.message : 'Failed to submit application.')
     } finally {
       setApplying(false)
     }
@@ -77,6 +79,7 @@ export function JobDetailPage() {
       </nav>
 
       {actionMsg && <div className="nexus-notification nexus-notification--success" role="status" style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionMsg}</div>}
+      {actionError && <div className="nexus-notification nexus-notification--error" role="alert" style={{ marginBottom: 'var(--nexus-space-4)' }}>{actionError}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--nexus-space-6)' }}>
         <div>

@@ -92,10 +92,12 @@ function EventsContent() {
     try {
       await api.rsvpToEvent(eventId, "going");
       setRsvpSuccess("RSVP confirmed!");
+      setTimeout(() => setRsvpSuccess(null), 3000);
       fetchEvents();
     } catch (error) {
       logger.error("Failed to RSVP:", error);
       setRsvpError(error instanceof Error ? error.message : "Failed to RSVP. Please try again.");
+      setTimeout(() => setRsvpError(null), 3000);
     } finally {
       setRsvpLoadingId(null);
     }

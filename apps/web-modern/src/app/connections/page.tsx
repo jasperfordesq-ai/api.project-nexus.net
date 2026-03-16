@@ -53,13 +53,19 @@ function ConnectionsContent() {
   const fetchConnections = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response: PaginatedResponse<Connection> = await api.getConnections({
-        status: filter,
-        page: currentPage,
-        limit: 20,
-      });
-      setConnections(response?.data || []);
-      setTotalPages(response?.pagination?.total_pages || 1);
+      if (filter === "pending") {
+        const items = await api.getPendingConnections();
+        setConnections(items);
+        setTotalPages(1);
+      } else {
+        const response: PaginatedResponse<Connection> = await api.getConnections({
+          status: filter,
+          page: currentPage,
+          limit: 20,
+        });
+        setConnections(response?.data || []);
+        setTotalPages(response?.pagination?.total_pages || 1);
+      }
     } catch (error) {
       logger.error("Failed to fetch connections:", error);
       setConnections([]);
@@ -84,22 +90,26 @@ function ConnectionsContent() {
 
   const handleReject = async (connectionId: number) => {
     setActionError(null);
+    const previousConnections = connections;
+    setConnections((prev) => prev.filter((c) => c.id !== connectionId));
     try {
       await api.respondToConnection(connectionId, "rejected");
-      setConnections((prev) => prev.filter((c) => c.id !== connectionId));
     } catch (error) {
       logger.error("Failed to reject connection:", error);
+      setConnections(previousConnections);
       setActionError(error instanceof Error ? error.message : "Failed to decline connection.");
     }
   };
 
   const handleRemove = async (connectionId: number) => {
     setActionError(null);
+    const previousConnections = connections;
+    setConnections((prev) => prev.filter((c) => c.id !== connectionId));
     try {
       await api.removeConnection(connectionId);
-      setConnections((prev) => prev.filter((c) => c.id !== connectionId));
     } catch (error) {
       logger.error("Failed to remove connection:", error);
+      setConnections(previousConnections);
       setActionError(error instanceof Error ? error.message : "Failed to remove connection.");
     }
   };
@@ -116,9 +126,6 @@ function ConnectionsContent() {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
   };
-
-  // Get the count of pending requests
-  const pendingCount = filter === "pending" ? connections.length : 0;
 
   return (
     <div className="min-h-screen">

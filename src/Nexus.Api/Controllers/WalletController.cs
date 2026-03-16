@@ -127,15 +127,15 @@ public class WalletController : ControllerBase
                 description = t.Description,
                 status = t.Status.ToString().ToLowerInvariant(),
                 type = t.SenderId == userId.Value ? "sent" : "received",
-                sender = new
+                sender = t.Sender == null ? null : new
                 {
-                    id = t.Sender!.Id,
+                    id = t.Sender.Id,
                     first_name = t.Sender.FirstName,
                     last_name = t.Sender.LastName
                 },
-                receiver = new
+                receiver = t.Receiver == null ? null : new
                 {
-                    id = t.Receiver!.Id,
+                    id = t.Receiver.Id,
                     first_name = t.Receiver.FirstName,
                     last_name = t.Receiver.LastName
                 },
@@ -201,15 +201,15 @@ public class WalletController : ControllerBase
             description = transaction.Description,
             status = transaction.Status.ToString().ToLowerInvariant(),
             type = transaction.SenderId == userId.Value ? "sent" : "received",
-            sender = new
+            sender = transaction.Sender == null ? null : new
             {
-                id = transaction.Sender!.Id,
+                id = transaction.Sender.Id,
                 first_name = transaction.Sender.FirstName,
                 last_name = transaction.Sender.LastName
             },
-            receiver = new
+            receiver = transaction.Receiver == null ? null : new
             {
-                id = transaction.Receiver!.Id,
+                id = transaction.Receiver.Id,
                 first_name = transaction.Receiver.FirstName,
                 last_name = transaction.Receiver.LastName
             },
@@ -429,7 +429,7 @@ public class WalletController : ControllerBase
             await dbTransaction.RollbackAsync();
             _logger.LogWarning(ex, "Serialization conflict during transfer from user {SenderId} to user {ReceiverId}. Retry recommended.",
                 senderId, request.ReceiverId);
-            return StatusCode(500, new { error = "Transfer failed due to a concurrent operation. Please try again." });
+            return StatusCode(409, new { error = "Transaction conflict. Please retry." });
         }
     }
 

@@ -70,10 +70,10 @@
                   </a>
                 </td>
                 <td class="govuk-table__cell govuk-table__cell--numeric">
-                  {% if tx.type == "received" or tx.amount > 0 %}
-                    <span class="app-text--positive">+{{ tx.amount }}</span>
+                  {% if tx.relative_type == "received" %}
+                    <span class="app-text--positive">+{{ tx.amount | abs }}</span>
                   {% else %}
-                    <span class="app-text--negative">{{ tx.amount }}</span>
+                    <span class="app-text--negative">-{{ tx.amount | abs }}</span>
                   {% endif %}
                 </td>
               </tr>

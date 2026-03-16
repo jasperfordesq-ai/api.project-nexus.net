@@ -91,7 +91,7 @@ export const SubAccountsPage = () => {
       title: "Status",
       render: (v: boolean) => <Tag color={v ? "green" : "default"}>{v ? "Active" : "Inactive"}</Tag>,
     },
-    { dataIndex: "created_at", title: "Created", render: (d: string) => dayjs(d).format("DD MMM YYYY") },
+    { dataIndex: "created_at", title: "Created", render: (d: string) => d ? dayjs(d).format("DD MMM YYYY") : "—" },
     {
       title: "Actions",
       render: (_: any, r: any) => (

@@ -28,7 +28,11 @@ export function TransactionDetailPage() {
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading…" /></div>
   if (error || !tx) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error ?? 'Transaction not found.'}</div></div>
 
-  const isCredit = tx.amount >= 0
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = tx as any
+  const createdAt: string = raw.created_at ?? raw.createdAt ?? ''
+  const relatedUserName: string | undefined = raw.related_user_name ?? raw.relatedUserName ?? undefined
+  const isCredit = tx.type === 'credit' || (tx.type !== 'debit' && tx.amount >= 0)
 
   return (
     <div className="nexus-container" style={{ maxWidth: 560 }}>
@@ -43,7 +47,7 @@ export function TransactionDetailPage() {
       <div className="nexus-card">
         <div style={{ textAlign: 'center', padding: 'var(--nexus-space-5)', marginBottom: 'var(--nexus-space-4)', background: isCredit ? '#d1fae5' : '#fef3c7', borderRadius: 8 }}>
           <p style={{ margin: '0 0 var(--nexus-space-1)', fontSize: 48, fontWeight: 900, color: isCredit ? '#15803d' : '#b45309' }}>
-            {isCredit ? '+' : ''}{tx.amount}
+            {isCredit ? '+' : '-'}{Math.abs(tx.amount)}
           </p>
           <p style={{ margin: 0, fontSize: 14, color: isCredit ? '#15803d' : '#b45309', fontWeight: 600 }}>
             time credits {isCredit ? 'received' : 'sent'}
@@ -53,9 +57,9 @@ export function TransactionDetailPage() {
           <dt style={{ fontWeight: 600, color: 'var(--nexus-color-text-secondary)' }}>Description</dt>
           <dd style={{ margin: 0 }}>{tx.description}</dd>
           <dt style={{ fontWeight: 600, color: 'var(--nexus-color-text-secondary)' }}>Date</dt>
-          <dd style={{ margin: 0 }}>{new Date(tx.createdAt).toLocaleString('en-IE', { dateStyle: 'full', timeStyle: 'short' })}</dd>
+          <dd style={{ margin: 0 }}>{new Date(createdAt).toLocaleString('en-IE', { dateStyle: 'full', timeStyle: 'short' })}</dd>
           {tx.type && <><dt style={{ fontWeight: 600, color: 'var(--nexus-color-text-secondary)' }}>Type</dt><dd style={{ margin: 0, textTransform: 'capitalize' }}>{tx.type}</dd></>}
-          {tx.relatedUserName && <><dt style={{ fontWeight: 600, color: 'var(--nexus-color-text-secondary)' }}>{isCredit ? 'From' : 'To'}</dt><dd style={{ margin: 0 }}>{tx.relatedUserName}</dd></>}
+          {relatedUserName && <><dt style={{ fontWeight: 600, color: 'var(--nexus-color-text-secondary)' }}>{isCredit ? 'From' : 'To'}</dt><dd style={{ margin: 0 }}>{relatedUserName}</dd></>}
         </dl>
       </div>
       <div style={{ marginTop: 'var(--nexus-space-5)' }}>

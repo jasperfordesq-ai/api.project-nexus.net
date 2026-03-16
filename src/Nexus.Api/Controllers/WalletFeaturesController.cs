@@ -161,7 +161,7 @@ public class WalletFeaturesController : ControllerBase
                 request.Message,
                 request.IsAnonymous);
 
-            return CreatedAtAction(nameof(GetDonations), new
+            return CreatedAtAction(nameof(GetDonations), null, new
             {
                 id = donation.Id,
                 amount = donation.Amount,
@@ -243,7 +243,7 @@ public class WalletFeaturesController : ControllerBase
 
         var alert = await _walletFeatures.CreateBalanceAlertAsync(userId.Value, request.ThresholdAmount);
 
-        return CreatedAtAction(nameof(GetAlerts), new
+        return CreatedAtAction(nameof(GetAlerts), null, new
         {
             id = alert.Id,
             threshold_amount = alert.ThresholdAmount,

@@ -11,10 +11,12 @@
  */
 
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.1.0'
 
 export function SiteFooter() {
+  const { isAuthenticated } = useAuth()
   return (
     <footer className="nexus-footer" aria-label="Site footer">
       <div className="nexus-footer__inner">
@@ -40,9 +42,9 @@ export function SiteFooter() {
           <div>
             <p className="nexus-footer__heading">Account</p>
             <ul className="nexus-footer__links">
-              <li><Link className="nexus-footer__link" to="/login">Sign in</Link></li>
+              {!isAuthenticated && <li><Link className="nexus-footer__link" to="/login">Sign in</Link></li>}
               <li><Link className="nexus-footer__link" to="/register">Join the community</Link></li>
-              <li><Link className="nexus-footer__link" to="/profile">My profile</Link></li>
+              {isAuthenticated && <li><Link className="nexus-footer__link" to="/profile">My profile</Link></li>}
             </ul>
           </div>
 

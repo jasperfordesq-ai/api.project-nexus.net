@@ -82,8 +82,8 @@ export const feedApi = {
     apiClient.delete(`/api/feed/${postId}/comments/${commentId}`).then((r) => r.data),
 
   react: (id: number, emoji: string) =>
-    apiClient.post(`/api/feed/${id}/react`, { emoji }).then((r) => r.data),
+    apiClient.post(`/api/feed/${id}/react`, { reaction_type: emoji }).then((r) => r.data),
 
   report: (id: number, reason: string, details?: string) =>
-    apiClient.post('/api/feed/report', { postId: id, reason, details }).then((r) => r.data),
+    apiClient.post(`/api/feed/${id}/report`, { reason, details }).then((r) => r.data),
 }

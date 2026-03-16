@@ -99,6 +99,7 @@ interface GamificationStats {
   total_xp: number;
   level: number;
   xp_to_next_level: number;
+  xp_for_current_level?: number;
   challenges_completed: number;
   achievements_earned: number;
   current_streak: number;
@@ -217,8 +218,9 @@ function GamificationContent() {
 
   const renderStats = () => {
     if (!stats) return null;
-    const xpProgress = stats.xp_to_next_level > 0
-      ? ((stats.total_xp % stats.xp_to_next_level) / stats.xp_to_next_level) * 100
+    const xpRange = (stats.xp_to_next_level ?? 0) - (stats.xp_for_current_level ?? 0);
+    const xpProgress = xpRange > 0
+      ? (((stats.total_xp ?? 0) - (stats.xp_for_current_level ?? 0)) / xpRange) * 100
       : 0;
 
     return (

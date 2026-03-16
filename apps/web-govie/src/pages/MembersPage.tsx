@@ -143,7 +143,7 @@ export function MembersPage() {
                   <Link to={`/connections?invite=${member.id}`} className="nexus-btn nexus-btn--primary nexus-btn--sm">Connect</Link>
                 )}
                 {member.isConnected && (
-                  <span className="nexus-badge" style={{ background: 'var(--nexus-color-success-light)', color: 'var(--nexus-color-success)', padding: '4px 10px', borderRadius: 12, fontSize: 13, display: 'flex', alignItems: 'center' }}>Connected</span>
+                  <span className="nexus-badge" style={{ background: '#e6f7e6', color: 'var(--nexus-color-success)', padding: '4px 10px', borderRadius: 12, fontSize: 13, display: 'flex', alignItems: 'center' }}>Connected</span>
                 )}
               </div>
             </div>

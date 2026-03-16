@@ -109,6 +109,7 @@ public class OrganisationService
 
         var org = new Organisation
         {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
             Name = name,
             Slug = slug,
             Description = description,
@@ -131,6 +132,7 @@ public class OrganisationService
         // Auto-add owner as member
         _db.Set<OrganisationMember>().Add(new OrganisationMember
         {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
             OrganisationId = org.Id,
             UserId = ownerId,
             Role = "owner"
@@ -222,6 +224,7 @@ public class OrganisationService
 
         var member = new OrganisationMember
         {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
             OrganisationId = orgId,
             UserId = userId,
             Role = role,

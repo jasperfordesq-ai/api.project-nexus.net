@@ -40,8 +40,9 @@ export const TranslationsPage = () => {
   });
 
   const { data: translationsData, isLoading: translationsLoading, refetch: refetchTranslations } = useCustom({
-    url: `/api/i18n/translations/${selectedLocale}`,
+    url: "/api/admin/translations",
     method: "get",
+    config: { query: { locale: selectedLocale } },
     queryOptions: { queryKey: ["admin-translations-list", selectedLocale] },
   });
 
@@ -77,7 +78,7 @@ export const TranslationsPage = () => {
   const handleInlineSave = async (key: string) => {
     try {
       setSaving(true);
-      await axiosInstance.post("/api/admin/i18n/translations", {
+      await axiosInstance.post("/api/admin/translations", {
         locale: selectedLocale,
         key,
         value: editingValue,
@@ -149,16 +150,16 @@ export const TranslationsPage = () => {
       {/* Coverage stats */}
       {!statsLoading && supportedLocales.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col span={6}>
+          <Col xs={24} sm={12} lg={6}>
             <Card><Statistic title="Supported Locales" value={supportedLocales.length} /></Card>
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={12} lg={6}>
             <Card><Statistic title="Total Translations" value={statsInfo.total_translations ?? 0} /></Card>
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={12} lg={6}>
             <Card><Statistic title={`Keys in ${selectedLocale}`} value={translationsList.length} /></Card>
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={12} lg={6}>
             <Card>
               <Statistic
                 title={`Missing in ${selectedLocale}`}
@@ -264,9 +265,9 @@ export const TranslationsPage = () => {
           label: "Coverage",
           children: statsLoading ? <Spin /> : (
             <Card>
-              <Table dataSource={coverage} rowKey={(r: any) => r.Locale || r.locale} size="small" pagination={false}>
-                <Table.Column dataIndex="Locale" title="Locale" render={(v: string, r: any) => v || r.locale} />
-                <Table.Column dataIndex="Count" title="Keys" render={(v: number, r: any) => v ?? r.count ?? 0} />
+              <Table dataSource={coverage} rowKey={(r: any) => r.locale} size="small" pagination={false}>
+                <Table.Column dataIndex="locale" title="Locale" />
+                <Table.Column dataIndex="count" title="Keys" render={(v: number) => v ?? 0} />
               </Table>
             </Card>
           ),

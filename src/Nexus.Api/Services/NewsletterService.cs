@@ -160,19 +160,16 @@ public class NewsletterService
         var recipientCount = await _db.Set<NewsletterSubscription>()
             .CountAsync(s => s.TenantId == tenantId && s.IsSubscribed);
 
-        newsletter.Status = NewsletterStatus.Sending;
+        // TODO: Actual email dispatch must be implemented (e.g. via a background service / email provider).
+        // For now we mark as Queued so callers know dispatch has not yet occurred.
+        newsletter.Status = NewsletterStatus.Queued;
         newsletter.RecipientCount = recipientCount;
-        newsletter.SentAt = DateTime.UtcNow;
         newsletter.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
 
-        // Mark as Sent (actual email dispatch would be handled by a background service)
-        newsletter.Status = NewsletterStatus.Sent;
-        await _db.SaveChangesAsync();
-
         _logger.LogInformation(
-            "Newsletter {NewsletterId} sent to {RecipientCount} recipients in tenant {TenantId}",
+            "Newsletter {NewsletterId} queued for {RecipientCount} recipients in tenant {TenantId}",
             id, recipientCount, tenantId);
 
         return newsletter;

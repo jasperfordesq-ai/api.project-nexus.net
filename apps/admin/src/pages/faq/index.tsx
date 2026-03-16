@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { useCustom } from "@refinedev/core";
-import { Card, Table, Typography, Spin, Button, Space, message, Switch, Modal, Input, Form } from "antd";
+import { Card, Table, Typography, Spin, Button, Space, message, Switch, Modal, Input, Form, InputNumber } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import axiosInstance from "../../utils/axios";
 import { getErrorMessage } from "../../utils/errors";
@@ -26,8 +26,13 @@ export const FaqPage = () => {
   const faqs = (data?.data as any)?.items || (data?.data as any)?.data || [];
 
   const handleSave = async () => {
+    let values: any;
     try {
-      const values = await form.validateFields();
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
+    try {
       if (editingId) {
         await axiosInstance.put(`/api/faqs/${editingId}`, values);
         message.success("FAQ updated");
@@ -69,7 +74,7 @@ export const FaqPage = () => {
 
   const handlePublishToggle = async (id: number, checked: boolean) => {
     try {
-      await axiosInstance.put(`/api/faqs/${id}`, { is_published: checked });
+      await axiosInstance.patch(`/api/faqs/${id}`, { is_published: checked });
       message.success(checked ? "Published" : "Unpublished");
       refetch();
     } catch (err: unknown) {
@@ -135,7 +140,7 @@ export const FaqPage = () => {
             <Input />
           </Form.Item>
           <Form.Item name="sort_order" label="Sort Order">
-            <Input type="number" />
+            <InputNumber style={{ width: "100%" }} />
           </Form.Item>
         </Form>
       </Modal>

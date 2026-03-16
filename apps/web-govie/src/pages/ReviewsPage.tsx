@@ -34,7 +34,7 @@ export function ReviewsPage() {
 
   useEffect(() => {
     if (!user?.id) return
-    apiClient.get(`/api/users/${user.id}/reviews`)
+    apiClient.get('/api/reviews', { params: { user_id: user.id } })
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any

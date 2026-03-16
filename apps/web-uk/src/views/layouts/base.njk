@@ -128,7 +128,7 @@
 
 {% block content %}
   {% if isAuthenticated %}
-    <div data-authenticated="true" hidden></div>
+    <div data-authenticated="true" data-csrf-token="{{ csrfToken }}" hidden></div>
   {% endif %}
   <main id="main-content" class="govuk-main-wrapper" role="main">
     {% block mainContent %}{% endblock %}

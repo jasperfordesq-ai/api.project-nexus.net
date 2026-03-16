@@ -26,9 +26,9 @@ router.get('/badges', asyncRoute(async (req, res) => {
 
   res.render('gamification/badges', {
     title: 'Badges',
-    badges: badgesResult.data || [],
+    badges: badgesResult.badges || badgesResult.data || badgesResult || [],
     summary: badgesResult.summary || { total: 0, earned: 0, progressPercent: 0 },
-    profile: profileResult.profile || {},
+    profile: profileResult.data || profileResult || {},
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
@@ -65,7 +65,7 @@ router.get('/xp-history', asyncRoute(async (req, res) => {
   res.render('gamification/xp-history', {
     title: 'XP History',
     xpHistory: historyResult.data || [],
-    profile: profileResult.profile || {},
+    profile: profileResult.data || profileResult || {},
     pagination: historyResult.pagination || { page: 1, totalPages: 1 }
   });
 }));
@@ -79,7 +79,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
   res.render('gamification/index', {
     title: 'My Progress',
-    profile: profileResult.profile || {},
+    profile: profileResult.data || profileResult || {},
     recentXp: profileResult.recentXp || profileResult.recent_xp || [],
     badges: badgesResult.data || [],
     successMessage: req.flash ? req.flash('success')[0] : null

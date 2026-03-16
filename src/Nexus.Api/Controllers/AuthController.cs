@@ -417,6 +417,10 @@ public class AuthController : ControllerBase
                 {
                     _logger.LogError(ex, "Failed to send welcome email for user {UserId}", user.Id);
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error sending welcome email for user {UserId}", user.Id);
+                }
             });
         }
         else if (registrationResult.Status == RegistrationStatus.PendingVerification)
@@ -443,6 +447,10 @@ public class AuthController : ControllerBase
                 catch (InvalidOperationException ex)
                 {
                     _logger.LogError(ex, "Failed to send verification email for user {UserId}", user.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error sending verification email for user {UserId}", user.Id);
                 }
             });
         }
@@ -605,6 +613,10 @@ public class AuthController : ControllerBase
             catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Failed to send password reset email for user {UserId}", user.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error sending password reset email for user {UserId}", user.Id);
             }
         });
 
@@ -823,6 +835,10 @@ public class AuthController : ControllerBase
             catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Failed to send verification email for user {UserId}", userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error sending verification email for user {UserId}", userId);
             }
         });
 

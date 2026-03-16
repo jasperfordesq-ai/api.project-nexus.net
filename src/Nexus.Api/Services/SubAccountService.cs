@@ -287,11 +287,15 @@ public class SubAccountService
 
         // The non-primary account must be an active sub-account of the primary user
         var otherUserId = isPrimaryFrom ? toUserId : fromUserId;
-        var isSubAccount = await _db.Set<SubAccount>()
-            .AnyAsync(s => s.PrimaryUserId == primaryUserId && s.SubUserId == otherUserId && s.IsActive);
+        var subAccount = await _db.Set<SubAccount>()
+            .FirstOrDefaultAsync(s => s.PrimaryUserId == primaryUserId && s.SubUserId == otherUserId && s.IsActive);
 
-        if (!isSubAccount)
+        if (subAccount == null)
             return (false, "The target account is not an active sub-account of this primary user.");
+
+        // Enforce the CanTransact permission on the sub-account
+        if (!subAccount.CanTransact)
+            return (false, "This sub-account does not have permission to transfer credits.");
 
         // Use serializable transaction with advisory lock to prevent race conditions
         await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);

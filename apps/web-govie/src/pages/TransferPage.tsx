@@ -3,19 +3,29 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import apiClient from '../api/client'
 import { isApiError } from '../context/AuthContext'
 
 export function TransferPage() {
   const navigate = useNavigate()
+  const [balance, setBalance] = useState<number | null>(null)
   const [recipientId, setRecipientId] = useState('')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    apiClient.get('/api/wallet/balance')
+      .then(r => {
+        const raw = r.data as { balance?: number }
+        setBalance(raw?.balance ?? 0)
+      })
+      .catch(() => { /* non-critical */ })
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,6 +61,12 @@ export function TransferPage() {
       </nav>
 
       <h1 style={{ fontSize: 'clamp(26px, 4vw, 38px)', fontWeight: 900, marginBottom: 'var(--nexus-space-5)' }}>Transfer credits</h1>
+
+      {balance !== null && (
+        <div style={{ marginBottom: 'var(--nexus-space-4)', padding: 'var(--nexus-space-3) var(--nexus-space-4)', background: 'var(--nexus-color-primary)', color: 'white', borderRadius: 6, display: 'inline-block', fontSize: 15 }}>
+          Your balance: <strong>{balance} credit{balance !== 1 ? 's' : ''}</strong>
+        </div>
+      )}
 
       <div style={{ maxWidth: 540 }}>
         {success && (

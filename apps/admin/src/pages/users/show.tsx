@@ -88,29 +88,29 @@ export const UserShow = () => {
               {record.last_login_at ? dayjs(record.last_login_at).format("DD MMM YYYY HH:mm") : "Never"}
             </Descriptions.Item>
             {isSuspended && (
-              <>
-                <Descriptions.Item label="Suspended At">
-                  {dayjs(record.suspended_at).format("DD MMM YYYY HH:mm")}
-                </Descriptions.Item>
-                <Descriptions.Item label="Suspension Reason">
-                  {record.suspension_reason || "—"}
-                </Descriptions.Item>
-              </>
+              <Descriptions.Item label="Suspended At">
+                {dayjs(record.suspended_at).format("DD MMM YYYY HH:mm")}
+              </Descriptions.Item>
+            )}
+            {isSuspended && (
+              <Descriptions.Item label="Suspension Reason">
+                {record.suspension_reason || "—"}
+              </Descriptions.Item>
             )}
           </Descriptions>
 
           {record.stats && (
             <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-              <Col span={6}>
+              <Col xs={24} sm={12} lg={6}>
                 <Card><Statistic title="Listings" value={record.stats.listings ?? 0} /></Card>
               </Col>
-              <Col span={6}>
+              <Col xs={24} sm={12} lg={6}>
                 <Card><Statistic title="Transactions" value={record.stats.transactions ?? 0} /></Card>
               </Col>
-              <Col span={6}>
+              <Col xs={24} sm={12} lg={6}>
                 <Card><Statistic title="XP" value={record.total_xp ?? 0} /></Card>
               </Col>
-              <Col span={6}>
+              <Col xs={24} sm={12} lg={6}>
                 <Card><Statistic title="Connections" value={record.stats.connections ?? 0} /></Card>
               </Col>
             </Row>

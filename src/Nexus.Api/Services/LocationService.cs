@@ -119,6 +119,7 @@ public class LocationService
         var locations = await _db.Set<UserLocation>()
             .AsNoTracking()
             .Include(l => l.User)
+            .Where(l => l.IsPublic)
             .Where(l => l.User != null && l.User.IsActive)
             .Where(l => l.Latitude >= minLat && l.Latitude <= maxLat)
             .Where(l => l.Longitude >= minLon && l.Longitude <= maxLon)
@@ -295,7 +296,9 @@ public class LocationService
         double lat, double lon, double radiusKm)
     {
         var latDelta = radiusKm / 111.32; // ~111.32 km per degree of latitude
-        var lonDelta = radiusKm / (111.32 * Math.Cos(DegreesToRadians(lat)));
+        // Clamp denominator to a minimum of 0.001 to prevent division by zero at the poles
+        var cosDenominator = Math.Max(0.001, Math.Cos(DegreesToRadians(lat)));
+        var lonDelta = radiusKm / (111.32 * cosDenominator);
 
         return (lat - latDelta, lat + latDelta, lon - lonDelta, lon + lonDelta);
     }

@@ -151,6 +151,33 @@ async function resetPassword(token, newPassword) {
   });
 }
 
+// TODO: The backend has no /api/auth/change-password endpoint.
+// A dedicated change-password endpoint needs to be added to AuthController or UsersController
+// (e.g. POST /api/users/me/password accepting { current_password, new_password }).
+// Until then this function will always return a 404 error — callers should surface
+// a meaningful error message rather than crashing.
+async function changePassword(token, currentPassword, newPassword) {
+  try {
+    return await request('/api/users/me/password', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword
+      })
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      throw new ApiError(
+        'Password change is not available at this time. Please use the "Forgot password" link on the login page to reset your password.',
+        404,
+        error.data
+      );
+    }
+    throw error;
+  }
+}
+
 // Users / Profile
 async function getProfile(token) {
   return request('/api/users/me', {
@@ -186,6 +213,7 @@ async function getListings(token, params = {}) {
   if (params.user_id) query.set('user_id', params.user_id);
   if (params.page) query.set('page', params.page);
   if (params.limit) query.set('limit', params.limit);
+  if (params.search) query.set('search', params.search);
 
   const queryString = query.toString();
   const endpoint = `/api/listings${queryString ? `?${queryString}` : ''}`;
@@ -300,16 +328,16 @@ async function sendMessage(token, recipientId, content) {
   });
 }
 
-async function startConversation(token, recipientId, content) {
-  return request('/api/messages', {
+async function replyToConversation(token, conversationId, content) {
+  return request(`/api/messages/${encodeURIComponent(conversationId)}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({
-      recipient_id: recipientId,
-      content
-    })
+    body: JSON.stringify({ content })
   });
 }
+
+// Alias for sendMessage — kept for backward compatibility with callers
+const startConversation = sendMessage;
 
 async function markConversationRead(token, conversationId) {
   const result = await request(`/api/messages/${encodeURIComponent(conversationId)}/read`, {
@@ -341,7 +369,7 @@ async function sendConnectionRequest(token, userId) {
   return request('/api/connections', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ user_id: userId })
+    body: JSON.stringify({ user_id: parseInt(userId, 10) })
   });
 }
 
@@ -1097,6 +1125,7 @@ module.exports = {
   logout,
   forgotPassword,
   resetPassword,
+  changePassword,
   validateToken,
   verify2fa,
   // Users
@@ -1120,6 +1149,7 @@ module.exports = {
   getConversation,
   getUnreadCount,
   sendMessage,
+  replyToConversation,
   startConversation,
   markConversationRead,
   // Connections

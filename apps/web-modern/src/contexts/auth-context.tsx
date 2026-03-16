@@ -34,7 +34,7 @@ interface AuthContextType {
   login: (email: string, password: string, tenantSlug: string) => Promise<AuthResponse>;
   verify2FALogin: (pendingToken: string, code: string) => Promise<AuthResponse>;
   loginWithPasskey: (passkeyResponse: PasskeyAuthResponse) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 

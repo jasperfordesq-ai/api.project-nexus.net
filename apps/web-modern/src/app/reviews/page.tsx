@@ -206,14 +206,14 @@ function ReviewsContent() {
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <Avatar
-                            name={`${review.reviewer.first_name} ${review.reviewer.last_name}`}
+                            name={`${review.reviewer?.first_name ?? 'Unknown'} ${review.reviewer?.last_name ?? ''}`}
                             size="sm"
                             className="ring-2 ring-white/10"
                           />
                           <div>
-                            <Link href={`/members/${review.reviewer.id}`}>
+                            <Link href={`/members/${review.reviewer?.id}`}>
                               <p className="font-medium text-white hover:text-indigo-400 transition-colors">
-                                {review.reviewer.first_name} {review.reviewer.last_name}
+                                {review.reviewer?.first_name ?? 'Unknown'} {review.reviewer?.last_name ?? ''}
                               </p>
                             </Link>
                             <p className="text-xs text-white/40">

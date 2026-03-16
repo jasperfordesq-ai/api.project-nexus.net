@@ -71,12 +71,12 @@ export const resources: ResourceProps[] = [
   {
     name: "saved-searches",
     list: "/saved-searches",
-    meta: { label: "Saved Searches", parent: "people" },
+    meta: { label: "Saved Searches", icon: e(SearchOutlined), parent: "people" },
   },
   {
     name: "sub-accounts",
     list: "/sub-accounts",
-    meta: { label: "Sub-Accounts", parent: "people" },
+    meta: { label: "Sub-Accounts", icon: e(UserOutlined), parent: "people" },
   },
 
   // ─── Content ───────────────────────────────────
@@ -95,6 +95,8 @@ export const resources: ResourceProps[] = [
   {
     name: "blog",
     list: "/blog",
+    create: "/blog/create",
+    edit: "/blog/:id/edit",
     meta: { label: "Blog", icon: e(ReadOutlined), parent: "content", apiPath: "/api/admin/blog" },
   },
   {
@@ -235,7 +237,7 @@ export const resources: ResourceProps[] = [
   {
     name: "federation",
     list: "/federation",
-    meta: { label: "Federation", icon: e(GlobalOutlined), parent: "system", apiPath: "/api/admin/federation" },
+    meta: { label: "Federation", icon: e(GlobalOutlined), parent: "system", apiPath: "/api/admin/system/federation" },
   },
   {
     name: "staffing",

@@ -65,6 +65,7 @@ function AvailabilityContent() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [exceptions, setExceptions] = useState<Exception[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // New slot form
@@ -97,21 +98,27 @@ function AvailabilityContent() {
     fetchData();
   }, [fetchData]);
   const handleAddSlot = async () => {
+    setActionError(null);
+    setActionLoading(true);
     try {
       await api.addAvailabilitySlot({
         day_of_week: Number(newDay),
         start_time: newStart,
         end_time: newEnd,
       });
-      fetchData();
+      await fetchData();
     } catch (error) {
       logger.error("Failed to add slot:", error);
       setActionError(error instanceof Error ? error.message : "Failed to add time slot.");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleAddException = async () => {
     if (!excDate) return;
+    setActionError(null);
+    setActionLoading(true);
     try {
       await api.addException({
         date: excDate,
@@ -120,10 +127,12 @@ function AvailabilityContent() {
       });
       setExcDate("");
       setExcNote("");
-      fetchData();
+      await fetchData();
     } catch (error) {
       logger.error("Failed to add exception:", error);
       setActionError(error instanceof Error ? error.message : "Failed to add exception.");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -223,6 +232,8 @@ function AvailabilityContent() {
                   className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
                   startContent={<Plus className="w-4 h-4" />}
                   onPress={handleAddSlot}
+                  isLoading={actionLoading}
+                  isDisabled={actionLoading}
                 >
                   Add
                 </Button>
@@ -326,7 +337,8 @@ function AvailabilityContent() {
                   className="bg-amber-500/20 text-amber-400"
                   startContent={<Plus className="w-4 h-4" />}
                   onPress={handleAddException}
-                  isDisabled={!excDate}
+                  isLoading={actionLoading}
+                  isDisabled={!excDate || actionLoading}
                 >
                   Add
                 </Button>

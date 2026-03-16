@@ -79,21 +79,19 @@ function ActivityContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [filter, setFilter] = useState<ActivityType>("all");
 
+  const filterMap: Record<string, string> = {
+    exchanges: "exchange",
+    listings: "listing",
+    events: "event",
+    social: "social",
+  };
+
   const fetchActivity = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.getActivityFeed(currentPage);
-      let items: ActivityItem[] = response?.data || [];
-
-      if (filter !== "all") {
-        const filterMap: Record<string, string> = {
-          exchanges: "exchange",
-          listings: "listing",
-          events: "event",
-          social: "social",
-        };
-        items = items.filter((a) => a.type === filterMap[filter]);
-      }
+      const apiType = filter !== "all" ? filterMap[filter] : undefined;
+      const response = await api.getActivityFeed(currentPage, apiType);
+      const items: ActivityItem[] = response?.data || [];
 
       setActivities(items);
       setTotalPages(response?.pagination?.total_pages || 1);
@@ -102,6 +100,7 @@ function ActivityContent() {
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, filter]);
 
   useEffect(() => {

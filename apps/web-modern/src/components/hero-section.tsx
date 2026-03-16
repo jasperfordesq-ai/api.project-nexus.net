@@ -36,7 +36,20 @@ const features = [
   },
 ];
 
-export function HeroSection() {
+interface Stat {
+  value: string;
+  label: string;
+}
+
+const defaultStats: Stat[] = [
+  { value: "Growing", label: "Community" },
+  { value: "Active", label: "Hours Exchanged" },
+  { value: "Diverse", label: "Skills Listed" },
+  { value: "High", label: "Satisfaction" },
+];
+
+export function HeroSection({ stats }: { stats?: Stat[] }) {
+  const displayStats = stats ?? defaultStats;
   return (
     <section className="relative overflow-hidden py-20 sm:py-32">
       {/* Decorative elements */}
@@ -136,12 +149,7 @@ export function HeroSection() {
           transition={{ delay: 0.8 }}
           className="mt-24 grid grid-cols-2 sm:grid-cols-4 gap-8"
         >
-          {[
-            { value: "10K+", label: "Active Users" },
-            { value: "50K+", label: "Hours Exchanged" },
-            { value: "500+", label: "Skills Listed" },
-            { value: "98%", label: "Satisfaction Rate" },
-          ].map((stat, index) => (
+          {displayStats.map((stat, index) => (
             <div key={stat.label} className="text-center">
               <motion.p
                 initial={{ opacity: 0, scale: 0.5 }}

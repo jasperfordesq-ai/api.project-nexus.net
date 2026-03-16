@@ -31,7 +31,7 @@ export function ServicesPage() {
   // Try public endpoint first, fall back to admin endpoint, then hardcoded fallback
   useEffect(() => {
     const controller = new AbortController()
-    apiClient.get('/api/admin/categories', { signal: controller.signal })
+    apiClient.get('/api/categories', { signal: controller.signal })
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any
@@ -149,7 +149,7 @@ export function ServicesPage() {
             >
               <option value="">All categories</option>
               {categories.map((c) => (
-                <option key={c.id} value={c.name}>
+                <option key={c.id} value={String(c.id)}>
                   {c.name}
                 </option>
               ))}

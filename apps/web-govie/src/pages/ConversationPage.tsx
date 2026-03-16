@@ -36,10 +36,13 @@ export function ConversationPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
+  const [participantId, setParticipantId] = useState<number>(0)
+  const [participantName, setParticipantName] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const fetchMessages = useCallback(() => {
@@ -49,6 +52,11 @@ export function ConversationPage() {
         // Backend returns { messages: [...], participant: {...}, ... }
         const items = raw?.messages ?? raw?.data ?? (Array.isArray(raw) ? raw : [])
         setMessages(items.map(mapMessage))
+        const p = raw?.participant ?? raw?.other_user ?? raw?.otherUser
+        if (p?.id) {
+          setParticipantId(p.id)
+          setParticipantName(fullName(p))
+        }
       })
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load conversation.'))
   }, [id])
@@ -64,23 +72,24 @@ export function ConversationPage() {
   }, [messages])
 
   // Determine the other participant's user ID for sending replies.
-  // Fall back to parsing the conversation ID if all messages are from the current user.
-  const otherUserId = messages.find(m => m.senderId !== user?.id)?.senderId
-    ?? messages.find(m => m.senderId !== 0)?.senderId
-    ?? 0
+  // Prefer participant info from the API response; fall back to scanning message senders.
+  const otherUserId = participantId > 0
+    ? participantId
+    : (messages.find(m => m.senderId !== user?.id && m.senderId !== 0)?.senderId ?? 0)
   const canSend = otherUserId > 0 && otherUserId !== user?.id
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim() || !canSend) return
     setIsSending(true)
+    setSendError(null)
     try {
       // Backend POST /api/messages expects { recipient_id, content }
       await apiClient.post('/api/messages', { recipient_id: otherUserId, content: newMessage.trim() })
       setNewMessage('')
       await fetchMessages()
     } catch (err) {
-      setError(isApiError(err) ? err.message : 'Failed to send message.')
+      setSendError(isApiError(err) ? err.message : 'Failed to send message.')
     } finally {
       setIsSending(false)
     }
@@ -89,7 +98,7 @@ export function ConversationPage() {
   if (isLoading) return <div className="nexus-loading"><span className="nexus-spinner" aria-label="Loading conversation…" /></div>
   if (error) return <div className="nexus-container"><div className="nexus-notification nexus-notification--error" role="alert">{error}</div></div>
 
-  const otherName = messages.find(m => m.senderId !== user?.id)?.senderName ?? 'Conversation'
+  const otherName = participantName || messages.find(m => m.senderId !== user?.id)?.senderName || 'Conversation'
 
   return (
     <div className="nexus-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, height: '100%', maxHeight: 'calc(100dvh - 160px)' }}>
@@ -146,23 +155,30 @@ export function ConversationPage() {
           Unable to determine the other participant. You cannot reply to this conversation.
         </div>
       ) : (
-        <form onSubmit={handleSend} style={{ display: 'flex', gap: 'var(--nexus-space-3)', paddingTop: 'var(--nexus-space-3)', borderTop: '1px solid var(--nexus-color-border)' }}>
-          <label htmlFor="message-input" className="nexus-sr-only">Type a message</label>
-          <input
-            id="message-input"
-            type="text"
-            className="nexus-input"
-            value={newMessage}
-            onChange={e => setNewMessage(e.target.value)}
-            placeholder="Type a message…"
-            disabled={isSending}
-            style={{ flex: 1 }}
-            maxLength={2000}
-          />
-          <button type="submit" className="nexus-btn nexus-btn--primary" disabled={isSending || !newMessage.trim()}>
-            {isSending ? '…' : 'Send'}
-          </button>
-        </form>
+        <div style={{ paddingTop: 'var(--nexus-space-3)', borderTop: '1px solid var(--nexus-color-border)' }}>
+          {sendError && (
+            <div className="nexus-notification nexus-notification--error" role="alert" style={{ marginBottom: 'var(--nexus-space-2)' }}>
+              {sendError}
+            </div>
+          )}
+          <form onSubmit={handleSend} style={{ display: 'flex', gap: 'var(--nexus-space-3)' }}>
+            <label htmlFor="message-input" className="nexus-sr-only">Type a message</label>
+            <input
+              id="message-input"
+              type="text"
+              className="nexus-input"
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              placeholder="Type a message…"
+              disabled={isSending}
+              style={{ flex: 1 }}
+              maxLength={2000}
+            />
+            <button type="submit" className="nexus-btn nexus-btn--primary" disabled={isSending || !newMessage.trim()}>
+              {isSending ? '…' : 'Send'}
+            </button>
+          </form>
+        </div>
       )}
     </div>
   )
