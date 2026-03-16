@@ -1,0 +1,23 @@
+{
+  "generic": "Si è verificato un errore. La preghiamo di riprovare.",
+  "not_found": "Pagina non trovata",
+  "unauthorized": "Non dispone dei permessi per visualizzare questa pagina",
+  "network": "Errore di rete. Verifichi la Sua connessione.",
+  "loading_failed": "Impossibile caricare il contenuto. Aggiorni la pagina.",
+  "session_expired": "Sessione scaduta",
+  "session_expired_message": "La Sua sessione è scaduta per inattività. Effettui nuovamente l'accesso per continuare.",
+  "dismiss": "Chiudi",
+  "offline_message": "Si è offline. Alcune funzionalità potrebbero non essere disponibili.",
+  "update_available": "Aggiornamento disponibile",
+  "version_info": "La versione {{currentVersion}} è ora disponibile (hai la {{clientVersion}})",
+  "whats_new": "Novità:",
+  "later": "Più tardi",
+  "download_update": "Scarica aggiornamento",
+  "validation": {
+    "required": "Questo campo è obbligatorio",
+    "email": "Inserisca un indirizzo email valido",
+    "phone": "Inserisca un numero di telefono valido",
+    "min_length": "Deve contenere almeno {{min}} caratteri",
+    "max_length": "Non deve superare {{max}} caratteri"
+  }
+}

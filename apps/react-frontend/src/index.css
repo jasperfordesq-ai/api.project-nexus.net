@@ -1,0 +1,358 @@
+/* =============================================
+   NEXUS REACT FRONTEND - MAIN STYLESHEET
+   ============================================= */
+
+/* Tailwind v4 */
+@import "tailwindcss";
+
+/* Hero UI Tailwind plugin */
+@plugin "./hero.ts";
+
+/* Content sources for Tailwind */
+@source "../index.html";
+@source "./**/*.{js,ts,jsx,tsx}";
+@source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+
+/* Hero UI dark mode variant */
+@custom-variant dark (&:is(.dark *));
+
+/* ─────────────────────────────────────────────
+   DESIGN SYSTEM IMPORTS
+   ───────────────────────────────────────────── */
+@import "./styles/tokens.css";
+@import "./styles/glass.css";
+@import "./styles/background.css";
+
+/* ─────────────────────────────────────────────
+   THEME-AWARE UTILITY CLASSES
+   Use these instead of hardcoded text-white, etc.
+   ───────────────────────────────────────────── */
+
+/* Text colors */
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.text-theme-muted { color: var(--text-muted); }
+.text-theme-subtle { color: var(--text-subtle); }
+.text-theme-inverse { color: var(--text-inverse); }
+
+/* Surface/background colors */
+.bg-theme-base { background-color: var(--surface-base); }
+.bg-theme-elevated { background-color: var(--surface-elevated); }
+.bg-theme-overlay { background-color: var(--surface-overlay); }
+.bg-theme-hover { background-color: var(--surface-hover); }
+.bg-theme-active { background-color: var(--surface-active); }
+.bg-theme-card { background-color: var(--card-bg); }
+
+/* Border colors */
+.border-theme-default { border-color: var(--border-default); }
+.border-theme-hover { border-color: var(--border-hover); }
+.border-theme-focus { border-color: var(--border-focus); }
+
+/* Hover states */
+.hover\:bg-theme-hover:hover { background-color: var(--surface-hover); }
+.hover\:bg-theme-active:hover { background-color: var(--surface-active); }
+.hover\:text-theme-primary:hover { color: var(--text-primary); }
+.hover\:border-theme-hover:hover { border-color: var(--border-hover); }
+
+/* ─────────────────────────────────────────────
+   LEGAL DOCUMENT CONTENT
+   Styles for HTML rendered via dangerouslySetInnerHTML
+   in custom legal documents (Terms, Privacy, etc.)
+   ───────────────────────────────────────────── */
+
+.legal-content {
+  color: var(--text-muted);
+  line-height: 1.75;
+  font-size: 0.9375rem;
+}
+
+/* Headings */
+.legal-content h2 {
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.legal-content h2:first-child {
+  margin-top: 0;
+}
+
+.legal-content h3 {
+  color: var(--text-primary);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.legal-content h4 {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.375rem;
+}
+
+/* Paragraphs */
+.legal-content p {
+  margin-bottom: 0.75rem;
+}
+
+/* Strong emphasis */
+.legal-content strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Links */
+.legal-content a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity var(--transition-fast);
+}
+
+.legal-content a:hover {
+  opacity: 0.8;
+}
+
+/* Unordered lists */
+.legal-content ul {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0.75rem;
+}
+
+.legal-content ul li {
+  position: relative;
+  padding-left: 1.25rem;
+  margin-bottom: 0.375rem;
+}
+
+.legal-content ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.625rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  opacity: 0.6;
+}
+
+/* Ordered lists */
+.legal-content ol {
+  list-style: none;
+  padding-left: 0;
+  counter-reset: legal-counter;
+  margin-bottom: 0.75rem;
+}
+
+.legal-content ol li {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 0.375rem;
+  counter-increment: legal-counter;
+}
+
+.legal-content ol li::before {
+  content: counter(legal-counter);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 50%;
+}
+
+/* Legal notices (callouts) */
+.legal-content .legal-notice {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+}
+
+.legal-content .legal-notice h4 {
+  color: #d97706;
+  margin-top: 0;
+  margin-bottom: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.dark .legal-content .legal-notice {
+  background: rgba(245, 158, 11, 0.06);
+  border-color: rgba(245, 158, 11, 0.15);
+}
+
+.dark .legal-content .legal-notice h4 {
+  color: #fbbf24;
+}
+
+/* Lists inside legal notices need tighter spacing */
+.legal-content .legal-notice ul,
+.legal-content .legal-notice ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Nested lists */
+.legal-content ul ul,
+.legal-content ol ul,
+.legal-content ul ol,
+.legal-content ol ol {
+  margin-top: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+/* Sub-section headings (h3) inside sections should not have
+   excessive top margin when immediately following the section header */
+.legal-content > h3:first-child {
+  margin-top: 0;
+}
+
+/* ─────────────────────────────────────────────
+   VERSION DIFF CONTENT
+   Styles for the unified diff HTML returned by
+   GET /api/v2/legal/versions/compare
+   ───────────────────────────────────────────── */
+
+.version-diff-content .diff-unified {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.version-diff-content .diff-line {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.version-diff-content .diff-indicator {
+  display: inline-block;
+  width: 1rem;
+  font-weight: 700;
+  text-align: center;
+  margin-right: 0.5rem;
+  user-select: none;
+}
+
+.version-diff-content .diff-removed {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--text-primary);
+}
+
+.version-diff-content .diff-removed del {
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.version-diff-content .diff-removed .diff-indicator {
+  color: #ef4444;
+}
+
+.version-diff-content .diff-added {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--text-primary);
+}
+
+.version-diff-content .diff-added ins {
+  text-decoration: none;
+}
+
+.version-diff-content .diff-added .diff-indicator {
+  color: #10b981;
+}
+
+.version-diff-content .diff-unchanged {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.version-diff-content .diff-unchanged .diff-indicator {
+  opacity: 0.3;
+}
+
+/* Dark mode adjustments */
+.dark .version-diff-content .diff-removed {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.dark .version-diff-content .diff-added {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+/* ─────────────────────────────────────────────
+   FEED RICH TEXT CONTENT
+   Styles for HTML rendered in feed posts
+   (output from Lexical compose editor)
+   ───────────────────────────────────────────── */
+
+.feed-content {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.625;
+}
+
+.feed-content p {
+  margin-bottom: 0.375rem;
+}
+
+.feed-content p:last-child {
+  margin-bottom: 0;
+}
+
+.feed-content strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.feed-content em {
+  font-style: italic;
+}
+
+.feed-content u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.feed-content a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.feed-content a:hover {
+  opacity: 0.8;
+}
+
+.feed-content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.feed-content ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.feed-content li {
+  margin-bottom: 0.125rem;
+}

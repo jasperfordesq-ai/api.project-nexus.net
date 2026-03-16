@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+*.local
+react-frontend/tsconfig.tsbuildinfo
+playwright-report
+test-results

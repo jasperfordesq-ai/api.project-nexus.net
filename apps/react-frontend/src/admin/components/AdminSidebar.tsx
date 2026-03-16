@@ -1,0 +1,552 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
+/**
+ * Admin Sidebar Navigation
+ * Collapsible sidebar matching the PHP admin navigation structure.
+ * Uses Lucide icons (consistent with React frontend).
+ */
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@heroui/react';
+import { useAuth, useTenant } from '@/contexts';
+import { adminBroker } from '../api/adminApi';
+import {
+  LayoutDashboard,
+  Users,
+  ListChecks,
+  Newspaper,
+  Trophy,
+  Megaphone,
+  Sparkles,
+  Coins,
+  Building2,
+  Globe,
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeft,
+  UserCheck,
+  FileText,
+  Menu,
+  FolderTree,
+  Tags,
+  Tag,
+  Gamepad2,
+  Medal,
+  BarChart3,
+  Zap,
+  Target,
+  Brain,
+  Search,
+  ArrowLeftRight,
+  AlertTriangle,
+  Clock,
+  Wallet,
+  CreditCard,
+  Shield,
+  Key,
+  ShieldCheck,
+  Heart,
+  Cog,
+  Timer,
+  Contact,
+  StickyNote,
+  ClipboardList,
+  Filter,
+  Activity,
+  Crown,
+  Network,
+  ScrollText,
+  Mail,
+  Wrench,
+  Stethoscope,
+  MessageSquare,
+  MessageSquareWarning,
+  MessageCircle,
+  Star,
+  Flag,
+  Eye,
+  Archive,
+  FileCheck,
+  UserX,
+  DollarSign,
+  Calendar,
+  BarChart2,
+  Lightbulb,
+  Briefcase,
+  BookOpen,
+  Cpu,
+  type LucideIcon,
+} from 'lucide-react';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Navigation config — mirrors PHP admin-navigation-config.php
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  badge?: string;
+}
+
+interface NavSection {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+  href?: string;
+  items?: NavItem[];
+  condition?: string;
+}
+
+function useAdminNav(): NavSection[] {
+  const { hasFeature } = useTenant();
+  const { user } = useAuth();
+
+  const userRecord = user as Record<string, unknown> | null;
+  const isSuperAdmin =
+    (user?.role as string) === 'super_admin' ||
+    userRecord?.is_super_admin === true ||
+    userRecord?.is_tenant_super_admin === true;
+
+  return useMemo(() => {
+    const sections: NavSection[] = [
+      {
+        key: 'dashboard',
+        label: 'Dashboard',
+        icon: LayoutDashboard,
+        href: '/admin',
+      },
+      {
+        key: 'users',
+        label: 'Users',
+        icon: Users,
+        items: [
+          { label: 'All Users', href: '/admin/users', icon: Users },
+          { label: 'Pending Approvals', href: '/admin/users?filter=pending', icon: UserCheck },
+        ],
+      },
+      {
+        key: 'crm',
+        label: 'Member CRM',
+        icon: Contact,
+        items: [
+          { label: 'CRM Dashboard', href: '/admin/crm', icon: Contact },
+          { label: 'Member Notes', href: '/admin/crm/notes', icon: StickyNote },
+          { label: 'Coordinator Tasks', href: '/admin/crm/tasks', icon: ClipboardList },
+          { label: 'Member Tags', href: '/admin/crm/tags', icon: Tag },
+          { label: 'Activity Timeline', href: '/admin/crm/timeline', icon: Activity },
+          { label: 'Onboarding Funnel', href: '/admin/crm/funnel', icon: Filter },
+        ],
+      },
+      {
+        key: 'listings',
+        label: 'Listings',
+        icon: ListChecks,
+        items: [
+          { label: 'All Content', href: '/admin/listings', icon: ListChecks },
+        ],
+      },
+      {
+        key: 'content',
+        label: 'Content',
+        icon: Newspaper,
+        items: [
+          { label: 'Blog Posts', href: '/admin/blog', icon: FileText },
+          { label: 'Resources', href: '/admin/resources', icon: BookOpen },
+          { label: 'Pages', href: '/admin/pages', icon: FileText },
+          { label: 'Menus', href: '/admin/menus', icon: Menu },
+          { label: 'Categories', href: '/admin/categories', icon: FolderTree },
+          { label: 'Attributes', href: '/admin/attributes', icon: Tags },
+        ],
+      },
+      {
+        key: 'engagement',
+        label: 'Engagement',
+        icon: Trophy,
+        items: [
+          { label: 'Gamification Hub', href: '/admin/gamification', icon: Gamepad2 },
+          { label: 'Campaigns', href: '/admin/gamification/campaigns', icon: Target },
+          { label: 'Custom Badges', href: '/admin/custom-badges', icon: Medal },
+          { label: 'Analytics', href: '/admin/gamification/analytics', icon: BarChart3 },
+        ],
+      },
+      {
+        key: 'matching',
+        label: 'Matching',
+        icon: Zap,
+        items: [
+          { label: 'Smart Matching', href: '/admin/smart-matching', icon: Brain },
+          { label: 'Match Approvals', href: '/admin/match-approvals', icon: UserCheck, badge: 'NEW' },
+          { label: 'Broker Controls', href: '/admin/broker-controls', icon: Shield },
+          { label: 'Message Review', href: '/admin/broker-controls/messages', icon: MessageSquareWarning },
+          { label: 'User Monitoring', href: '/admin/broker-controls/monitoring', icon: Eye },
+          { label: 'Vetting Records', href: '/admin/broker-controls/vetting', icon: ShieldCheck },
+          { label: 'Insurance Certificates', href: '/admin/broker-controls/insurance', icon: FileCheck },
+          { label: 'Review Archive', href: '/admin/broker-controls/archives', icon: Archive },
+          { label: 'Safeguarding', href: '/admin/safeguarding', icon: ShieldCheck },
+        ],
+      },
+      {
+        key: 'moderation',
+        label: 'Moderation',
+        icon: Shield,
+        items: [
+          { label: 'Content Queue', href: '/admin/moderation/queue', icon: Shield, badge: 'NEW' },
+          { label: 'Feed Posts', href: '/admin/moderation/feed', icon: MessageSquare },
+          { label: 'Comments', href: '/admin/moderation/comments', icon: MessageCircle },
+          { label: 'Reviews', href: '/admin/moderation/reviews', icon: Star },
+          { label: 'Reports', href: '/admin/moderation/reports', icon: Flag },
+        ],
+      },
+      {
+        key: 'community',
+        label: 'Community',
+        icon: Users,
+        items: [
+          { label: 'Groups', href: '/admin/groups', icon: Users },
+          { label: 'Group Types', href: '/admin/groups/types', icon: FolderTree },
+          { label: 'Group Recommendations', href: '/admin/groups/recommendations', icon: Brain },
+          { label: 'Group Ranking', href: '/admin/groups/ranking', icon: Trophy },
+          { label: 'Events', href: '/admin/events', icon: Calendar },
+          { label: 'Polls', href: '/admin/polls', icon: BarChart2 },
+          { label: 'Goals', href: '/admin/goals', icon: Target },
+          { label: 'Ideation Challenges', href: '/admin/ideation', icon: Lightbulb },
+          { label: 'Jobs', href: '/admin/jobs', icon: Briefcase },
+          { label: 'Volunteering', href: '/admin/volunteering', icon: Heart },
+        ],
+      },
+      {
+        key: 'marketing',
+        label: 'Marketing',
+        icon: Megaphone,
+        items: [
+          { label: 'Newsletters', href: '/admin/newsletters', icon: Megaphone },
+          { label: 'Subscribers', href: '/admin/newsletters/subscribers', icon: Users },
+          { label: 'Templates', href: '/admin/newsletters/templates', icon: FileText },
+          { label: 'Bounces', href: '/admin/newsletters/bounces', icon: AlertTriangle },
+          { label: 'Send-Time Optimizer', href: '/admin/newsletters/send-time-optimizer', icon: Clock },
+          { label: 'Diagnostics', href: '/admin/newsletters/diagnostics', icon: Stethoscope },
+          { label: 'Deliverability', href: '/admin/deliverability', icon: Mail },
+        ],
+      },
+      {
+        key: 'analytics',
+        label: 'Analytics & Reporting',
+        icon: BarChart3,
+        items: [
+          { label: 'Community Analytics', href: '/admin/community-analytics', icon: BarChart3 },
+          { label: 'Impact Report', href: '/admin/impact-report', icon: FileText },
+          { label: 'Social Value / SROI', href: '/admin/reports/social-value', icon: DollarSign },
+          { label: 'Member Reports', href: '/admin/reports/members', icon: Users },
+          { label: 'Hours Reports', href: '/admin/reports/hours', icon: Clock },
+          { label: 'Inactive Members', href: '/admin/reports/inactive-members', icon: UserX },
+        ],
+      },
+      {
+        key: 'advanced',
+        label: 'Advanced',
+        icon: Sparkles,
+        items: [
+          { label: 'AI Settings', href: '/admin/ai-settings', icon: Brain },
+          { label: 'Email Settings', href: '/admin/email-settings', icon: Mail },
+          { label: 'Algorithm Settings', href: '/admin/algorithm-settings', icon: Cpu },
+          { label: 'SEO Overview', href: '/admin/seo', icon: Search },
+          { label: '404 Tracking', href: '/admin/404-errors', icon: AlertTriangle },
+          { label: 'Diagnostics', href: '/admin/matching-diagnostic', icon: Stethoscope },
+          { label: 'Match Debug Panel', href: '/admin/match-debug', icon: Target },
+        ],
+      },
+      {
+        key: 'financial',
+        label: 'Financial',
+        icon: Coins,
+        items: [
+          { label: 'Timebanking', href: '/admin/timebanking', icon: Clock },
+          { label: 'Fraud Alerts', href: '/admin/timebanking/alerts', icon: AlertTriangle },
+          { label: 'Org Wallets', href: '/admin/timebanking/org-wallets', icon: Wallet },
+          { label: 'Starting Balances', href: '/admin/timebanking/starting-balances', icon: Wallet },
+          { label: 'Plans & Pricing', href: '/admin/plans', icon: CreditCard },
+        ],
+      },
+      {
+        key: 'enterprise',
+        label: 'Enterprise',
+        icon: Building2,
+        items: [
+          { label: 'Enterprise Dashboard', href: '/admin/enterprise', icon: Building2 },
+          { label: 'Roles & Permissions', href: '/admin/enterprise/roles', icon: Key },
+          { label: 'GDPR Dashboard', href: '/admin/enterprise/gdpr', icon: ShieldCheck },
+          { label: 'Legal Documents', href: '/admin/legal-documents', icon: FileText },
+          { label: 'Compliance Dashboard', href: '/admin/legal-documents/compliance', icon: ShieldCheck },
+          { label: 'Monitoring', href: '/admin/enterprise/monitoring', icon: Heart },
+          { label: 'System Config', href: '/admin/enterprise/config', icon: Cog },
+        ],
+      },
+      {
+        key: 'system',
+        label: 'System',
+        icon: Settings,
+        items: [
+          { label: 'Settings', href: '/admin/settings', icon: Settings },
+          { label: 'Tenant Features', href: '/admin/tenant-features', icon: Cog },
+          { label: 'Cron Jobs', href: '/admin/cron-jobs', icon: Timer },
+          { label: 'Cron Logs', href: '/admin/cron-jobs/logs', icon: FileText },
+          { label: 'Cron Settings', href: '/admin/cron-jobs/settings', icon: Settings },
+          { label: 'Cron Setup', href: '/admin/cron-jobs/setup', icon: Wrench },
+          { label: 'Activity Log', href: '/admin/activity-log', icon: Activity },
+          { label: 'Tools', href: '/admin/seed-generator', icon: Wrench },
+        ],
+      },
+    ];
+
+    // Conditionally add federation
+    if (hasFeature('federation')) {
+      sections.splice(sections.length - 1, 0, {
+        key: 'federation',
+        label: 'Partner Timebanks',
+        icon: Globe,
+        items: [
+          { label: 'Settings', href: '/admin/federation', icon: Settings },
+          { label: 'Partnerships', href: '/admin/federation/partnerships', icon: ArrowLeftRight },
+          { label: 'Directory', href: '/admin/federation/directory', icon: Globe },
+          { label: 'Analytics', href: '/admin/federation/analytics', icon: BarChart3 },
+          { label: 'API Keys', href: '/admin/federation/api-keys', icon: Key },
+        ],
+      });
+    }
+
+    // Super Admin section — only visible to super admins
+    if (isSuperAdmin) {
+      sections.push({
+        key: 'super-admin',
+        label: 'Super Admin',
+        icon: Crown,
+        items: [
+          { label: 'Dashboard', href: '/admin/super', icon: Crown },
+          { label: 'Tenants', href: '/admin/super/tenants', icon: Building2 },
+          { label: 'Hierarchy', href: '/admin/super/tenants/hierarchy', icon: Network },
+          { label: 'Cross-Tenant Users', href: '/admin/super/users', icon: Users },
+          { label: 'Bulk Operations', href: '/admin/super/bulk', icon: ListChecks },
+          { label: 'Audit Log', href: '/admin/super/audit', icon: ScrollText },
+          { label: 'Federation Controls', href: '/admin/super/federation', icon: Globe },
+        ],
+      });
+    }
+
+    return sections;
+  }, [hasFeature, isSuperAdmin]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sidebar Component
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface AdminSidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
+  const sections = useAdminNav();
+  const location = useLocation();
+  const { tenantPath } = useTenant();
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    () => {
+      // Auto-expand the active section
+      const active = new Set<string>();
+      for (const section of sections) {
+        if (section.href && location.pathname === tenantPath(section.href)) {
+          active.add(section.key);
+        }
+        if (section.items) {
+          for (const item of section.items) {
+            if (location.pathname.startsWith(tenantPath(item.href.split('?')[0]))) {
+              active.add(section.key);
+            }
+          }
+        }
+      }
+      return active;
+    }
+  );
+
+  // Dynamic unreviewed message count for sidebar badge
+  const [unreviewedCount, setUnreviewedCount] = useState(0);
+
+  const fetchUnreviewedCount = useCallback(async () => {
+    try {
+      const res = await adminBroker.getUnreviewedCount();
+      if (res.success && res.data) {
+        setUnreviewedCount(res.data.count);
+      }
+    } catch {
+      // Silently fail — sidebar badge is non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreviewedCount();
+    const interval = setInterval(fetchUnreviewedCount, 60000);
+    return () => clearInterval(interval);
+  }, [fetchUnreviewedCount]);
+
+  const toggleSection = (key: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const isActive = (href: string) => {
+    const cleanHref = href.split('?')[0];
+    const fullPath = tenantPath(cleanHref);
+    if (cleanHref === '/admin') {
+      return location.pathname === fullPath;
+    }
+    return location.pathname.startsWith(fullPath);
+  };
+
+  return (
+    <aside
+      className={`fixed left-0 top-0 z-40 h-screen border-r border-divider bg-content1 transition-all duration-300 ${
+        collapsed ? 'w-16' : 'w-64'
+      }`}
+    >
+      {/* Header */}
+      <div className="flex h-16 items-center justify-between border-b border-divider px-4">
+        {!collapsed && (
+          <Link to={tenantPath('/admin')} className="text-lg font-bold text-foreground">
+            Admin
+          </Link>
+        )}
+        <Button
+          variant="light"
+          isIconOnly
+          onPress={onToggle}
+          className="rounded-lg p-2 text-default-500 hover:bg-default-100 hover:text-foreground min-w-0 h-auto"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
+        </Button>
+      </div>
+
+      {/* Navigation */}
+      <nav className="h-[calc(100vh-4rem)] overflow-y-auto px-2 py-3">
+        <ul className="space-y-1">
+          {sections.map((section) => {
+            const Icon = section.icon;
+            const isExpanded = expandedSections.has(section.key);
+            const sectionActive = section.href
+              ? isActive(section.href)
+              : section.items?.some((item) => isActive(item.href));
+            const isSuperSection = section.key === 'super-admin';
+
+            // Single-link section (like Dashboard)
+            if (section.href && !section.items) {
+              return (
+                <li key={section.key}>
+                  <Link
+                    to={tenantPath(section.href)}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      sectionActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-default-600 hover:bg-default-100 hover:text-foreground'
+                    }`}
+                    title={collapsed ? section.label : undefined}
+                  >
+                    <Icon size={20} className="shrink-0" />
+                    {!collapsed && <span>{section.label}</span>}
+                  </Link>
+                </li>
+              );
+            }
+
+            // Collapsible section (with super-admin visual distinction)
+            return (
+              <li key={section.key}>
+                {isSuperSection && !collapsed && (
+                  <div className="my-2 border-t border-warning/30" />
+                )}
+                <div className={isSuperSection ? 'rounded-lg bg-primary/5 py-1 px-1' : ''}>
+                  <Button
+                    variant="light"
+                    onPress={() => toggleSection(section.key)}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors h-auto min-w-0 justify-start ${
+                      sectionActive
+                        ? 'text-primary'
+                        : 'text-default-600 hover:bg-default-100 hover:text-foreground'
+                    }`}
+                    title={collapsed ? section.label : undefined}
+                  >
+                    <Icon size={20} className="shrink-0" />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 text-left">{section.label}</span>
+                        {isExpanded ? (
+                          <ChevronDown size={16} className="shrink-0" />
+                        ) : (
+                          <ChevronRight size={16} className="shrink-0" />
+                        )}
+                      </>
+                    )}
+                  </Button>
+                  {!collapsed && isExpanded && section.items && (
+                    <ul className="ml-4 mt-1 space-y-0.5 border-l border-divider pl-3">
+                      {section.items.map((item) => {
+                        const ItemIcon = item.icon;
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              to={tenantPath(item.href)}
+                              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                                isActive(item.href)
+                                  ? 'bg-primary/10 text-primary font-medium'
+                                  : 'text-default-500 hover:bg-default-100 hover:text-foreground'
+                              }`}
+                            >
+                              <ItemIcon size={16} className="shrink-0" />
+                              <span>{item.label}</span>
+                              {(() => {
+                                const isMessageReview = item.href === '/admin/broker-controls/messages';
+                                const dynamicBadge = isMessageReview && unreviewedCount > 0
+                                  ? String(unreviewedCount)
+                                  : item.badge;
+                                if (!dynamicBadge) return null;
+                                return (
+                                  <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                                    isMessageReview && unreviewedCount > 0
+                                      ? 'bg-danger text-danger-foreground'
+                                      : 'bg-primary text-primary-foreground'
+                                  }`}>
+                                    {dynamicBadge}
+                                  </span>
+                                );
+                              })()}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </aside>
+  );
+}
+
+export default AdminSidebar;

@@ -1,0 +1,45 @@
+{
+  "page_title": "Notificações",
+  "title": "Notificações",
+  "subtitle": "Mantenha-se atualizado com a sua atividade",
+  "unread_badge": "{{count}} novas",
+  "mark_all_read": "Marcar todas como lidas",
+  "settings_aria": "Definições de notificação",
+  "filter_all": "Todas",
+  "filter_unread": "Não lidas ({{count}})",
+  "empty_title": "Sem notificações",
+  "empty_desc": "Verá novas notificações aqui",
+  "empty_caught_up": "Tudo em dia!",
+  "empty_caught_up_desc": "Leu todas as suas notificações",
+  "mark_read_aria": "Marcar como lida",
+  "delete_aria": "Eliminar notificação",
+  "toast": {
+    "mark_read_failed": "Falha ao marcar notificação como lida",
+    "all_read": "Todas as notificações marcadas como lidas",
+    "mark_all_failed": "Falha ao marcar todas como lidas",
+    "delete_failed": "Falha ao eliminar notificação"
+  },
+  "loading_aria": "Loading notifications",
+  "error_title": "Unable to load",
+  "error_load": "Something went wrong loading your notifications",
+  "try_again": "Try Again",
+  "flyout": {
+    "bell_aria": "Notifications",
+    "bell_unread_aria": "Notifications, {{count}} unread",
+    "unread_count": "unread",
+    "empty": "No notifications yet",
+    "view_all": "View all notifications",
+    "unread_dot_aria": "Unread"
+  },
+  "type": {
+    "message": "Message",
+    "listing": "Listing",
+    "transaction": "Transaction",
+    "connection": "Connection",
+    "event": "Event",
+    "group": "Group",
+    "achievement": "Achievement",
+    "system": "System",
+    "default": "Notification"
+  }
+}
