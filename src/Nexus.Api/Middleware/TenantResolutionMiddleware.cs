@@ -52,7 +52,8 @@ public class TenantResolutionMiddleware
         "/api/registration/webhook",           // Provider webhook callback
         "/api/announcements",                  // Handles optional tenant context itself
         "/api/realtime/config",                // Static config, no tenant-scoped data
-        "/api/tenants"                         // Public tenant list for login page dropdown
+        "/api/tenants",                         // Public tenant list for login page dropdown
+        "/api/webhooks/volunteering"             // HMAC-authenticated webhook; sets tenant from payload
     };
 
     public TenantResolutionMiddleware(
