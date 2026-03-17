@@ -19,7 +19,7 @@
 import { test, expect } from '@playwright/test';
 
 const TENANT_SLUG = process.env.E2E_TENANT ?? 'hour-timebank';
-const E2E_EMAIL = process.env.E2E_EMAIL ?? 'e2e-test@project-nexus.ie';
+const E2E_EMAIL = process.env.E2E_EMAIL ?? 'e2e-test@project-nexus.net';
 const E2E_PASSWORD = process.env.E2E_PASSWORD ?? 'E2eTestPass123!';
 
 /** Full login path for the test tenant */

@@ -41,7 +41,7 @@ export default async function globalSetup(_config: FullConfig) {
     }
   }
 
-  const email = process.env.E2E_EMAIL ?? 'e2e-test@project-nexus.ie';
+  const email = process.env.E2E_EMAIL ?? 'e2e-test@project-nexus.net';
   const password = process.env.E2E_PASSWORD ?? 'E2eTestPass123!';
 
   const browser = await chromium.launch();

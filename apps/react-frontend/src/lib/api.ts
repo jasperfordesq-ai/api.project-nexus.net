@@ -188,6 +188,57 @@ export const tokenManager = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Response Normalization (ASP.NET Core backend compatibility)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Normalize pagination metadata from the ASP.NET Core backend into the
+ * format the React frontend expects.
+ *
+ * The backend returns pagination in two shapes:
+ *   - `{ pagination: { page, limit, total, pages } }` (most controllers)
+ *   - `{ meta: { page, limit, total } }` (some admin controllers)
+ *
+ * The frontend expects:
+ *   `{ per_page, has_more, current_page, total_items, total_pages, total, from, to, last_page }`
+ */
+function normalizePaginationMeta(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: Record<string, any>
+): PaginationMeta | undefined {
+  // If the backend already returns `meta` in the expected shape, use it
+  const raw = data.meta || data.pagination;
+  if (!raw) return undefined;
+
+  const page = raw.current_page ?? raw.page ?? 1;
+  const perPage = raw.per_page ?? raw.limit ?? raw.pageSize ?? 20;
+  const total = raw.total_items ?? raw.total ?? raw.totalCount ?? 0;
+  const totalPages = raw.total_pages ?? raw.pages ?? raw.totalPages
+    ?? (perPage > 0 ? Math.ceil(total / perPage) : 1);
+  const hasMore = raw.has_more ?? raw.hasMore ?? (page < totalPages);
+
+  return {
+    per_page: perPage,
+    has_more: hasMore,
+    current_page: page,
+    total_items: total,
+    total_pages: totalPages,
+    total,
+    from: (page - 1) * perPage + 1,
+    to: Math.min(page * perPage, total),
+    last_page: totalPages,
+    has_next_page: page < totalPages,
+    has_previous_page: page > 1,
+    // Pass through any extra fields the backend includes
+    ...(raw.cursor && { cursor: raw.cursor }),
+    ...(raw.next_cursor && { next_cursor: raw.next_cursor }),
+    ...(raw.previous_cursor && { previous_cursor: raw.previous_cursor }),
+    ...(raw.available_types && { available_types: raw.available_types }),
+    ...(raw.conversation && { conversation: raw.conversation }),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // API Client Class
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -449,7 +500,7 @@ class ApiClient {
           success: true,
           data: 'data' in data ? data.data : data,
           message: data.message,
-          meta: data.meta,
+          meta: normalizePaginationMeta(data),
         };
 
         // Dev-only: validate the response envelope structure
@@ -637,7 +688,7 @@ class ApiClient {
       const data = await response.json();
 
       if (response.ok) {
-        return { success: true, data: 'data' in data ? data.data : data, meta: data.meta };
+        return { success: true, data: 'data' in data ? data.data : data, meta: normalizePaginationMeta(data) };
       }
 
       // Handle error response (v2 API uses {errors: [{code, message}]}, v1 uses {error, code})
