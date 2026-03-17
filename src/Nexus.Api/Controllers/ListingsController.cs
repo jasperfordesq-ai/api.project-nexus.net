@@ -94,7 +94,9 @@ public class ListingsController : ControllerBase
                     {
                         id = l.User.Id,
                         first_name = l.User.FirstName,
-                        last_name = l.User.LastName
+                        last_name = l.User.LastName,
+                        name = (l.User.FirstName + " " + l.User.LastName).Trim(),
+                        avatar_url = l.User.AvatarUrl
                     }
                     : null
             })
@@ -145,7 +147,9 @@ public class ListingsController : ControllerBase
                     {
                         id = l.User.Id,
                         first_name = l.User.FirstName,
-                        last_name = l.User.LastName
+                        last_name = l.User.LastName,
+                        name = (l.User.FirstName + " " + l.User.LastName).Trim(),
+                        avatar_url = l.User.AvatarUrl
                     }
                     : null
             })
@@ -302,7 +306,9 @@ public class ListingsController : ControllerBase
             {
                 id = listing.User!.Id,
                 first_name = listing.User.FirstName,
-                last_name = listing.User.LastName
+                last_name = listing.User.LastName,
+                name = (listing.User.FirstName + " " + listing.User.LastName).Trim(),
+                avatar_url = listing.User.AvatarUrl
             }
         });
     }
@@ -428,7 +434,9 @@ public class ListingsController : ControllerBase
             {
                 id = listing.User!.Id,
                 first_name = listing.User.FirstName,
-                last_name = listing.User.LastName
+                last_name = listing.User.LastName,
+                name = (listing.User.FirstName + " " + listing.User.LastName).Trim(),
+                avatar_url = listing.User.AvatarUrl
             }
         });
     }

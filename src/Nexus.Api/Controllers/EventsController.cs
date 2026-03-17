@@ -94,7 +94,7 @@ public class EventsController : ControllerBase
                 e.ImageUrl,
                 e.CreatedAt,
                 created_by = e.CreatedBy != null
-                    ? new { e.CreatedBy.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName }
+                    ? new { e.CreatedBy.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName, name = (e.CreatedBy.FirstName + " " + e.CreatedBy.LastName).Trim(), avatar_url = e.CreatedBy.AvatarUrl }
                     : null,
                 group = e.GroupId != null && e.Group != null
                     ? new { e.Group.Id, e.Group.Name }
@@ -198,7 +198,7 @@ public class EventsController : ControllerBase
                 e.CreatedAt,
                 e.UpdatedAt,
                 created_by = e.CreatedBy != null
-                    ? new { e.CreatedBy.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName }
+                    ? new { e.CreatedBy.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName, name = (e.CreatedBy.FirstName + " " + e.CreatedBy.LastName).Trim(), avatar_url = e.CreatedBy.AvatarUrl }
                     : null,
                 group = e.GroupId != null && e.Group != null
                     ? new { e.Group.Id, e.Group.Name }

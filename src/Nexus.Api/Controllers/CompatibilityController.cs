@@ -1348,11 +1348,481 @@ public class CompatibilityController : ControllerBase
             pagination = new { page, limit, total, pages = totalPages }
         });
     }
+
+    // ──────────────────────────────────────────────
+    // TENANT BOOTSTRAP (P0 — required for all pages)
+    // Frontend calls GET /api/tenant/bootstrap?slug=xxx
+    // Returns tenant config, features, branding, categories
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/tenant/bootstrap — Tenant bootstrap endpoint for React frontend.
+    /// Returns tenant config including features, modules, branding, categories,
+    /// and compliance settings. Called on every page load (no auth required).
+    /// </summary>
+    [HttpGet("api/tenant/bootstrap")]
+    [AllowAnonymous]
+    public async Task<IActionResult> TenantBootstrap([FromQuery] string? slug = null)
+    {
+        // Find tenant by slug, domain, or X-Tenant-ID header
+        Tenant? tenant = null;
+
+        if (!string.IsNullOrWhiteSpace(slug))
+        {
+            tenant = await _db.Tenants
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(t => t.Slug == slug && t.IsActive);
+        }
+
+        if (tenant == null)
+        {
+            // Try X-Tenant-ID header
+            var headerTenantId = Request.Headers["X-Tenant-ID"].FirstOrDefault();
+            if (int.TryParse(headerTenantId, out var tid))
+            {
+                tenant = await _db.Tenants
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(t => t.Id == tid && t.IsActive);
+            }
+        }
+
+        if (tenant == null)
+        {
+            // Fall back to first active non-master tenant
+            tenant = await _db.Tenants
+                .IgnoreQueryFilters()
+                .Where(t => t.IsActive && t.Id != 1)
+                .OrderBy(t => t.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        if (tenant == null)
+        {
+            return NotFound(new { error = "No active tenant found" });
+        }
+
+        // Load tenant config key-value pairs
+        var configEntries = await _db.Set<TenantConfig>()
+            .IgnoreQueryFilters()
+            .Where(c => c.TenantId == tenant.Id)
+            .ToDictionaryAsync(c => c.Key, c => c.Value);
+
+        // Load categories for this tenant
+        var categories = await _db.Categories
+            .IgnoreQueryFilters()
+            .Where(c => c.TenantId == tenant.Id)
+            .OrderBy(c => c.Name)
+            .Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+                slug = c.Slug,
+                icon = (string?)null,
+                color = (string?)null
+            })
+            .ToListAsync();
+
+        // Build features object from config entries (feature.xxx keys)
+        var features = new Dictionary<string, bool>
+        {
+            ["events"] = GetConfigBool(configEntries, "feature.events", true),
+            ["groups"] = GetConfigBool(configEntries, "feature.groups", true),
+            ["gamification"] = GetConfigBool(configEntries, "feature.gamification", true),
+            ["goals"] = GetConfigBool(configEntries, "feature.goals", true),
+            ["blog"] = GetConfigBool(configEntries, "feature.blog", true),
+            ["resources"] = GetConfigBool(configEntries, "feature.resources", true),
+            ["volunteering"] = GetConfigBool(configEntries, "feature.volunteering", true),
+            ["exchange_workflow"] = GetConfigBool(configEntries, "feature.exchange_workflow", true),
+            ["organisations"] = GetConfigBool(configEntries, "feature.organisations", true),
+            ["federation"] = GetConfigBool(configEntries, "feature.federation", true),
+            ["connections"] = GetConfigBool(configEntries, "feature.connections", true),
+            ["reviews"] = GetConfigBool(configEntries, "feature.reviews", true),
+            ["polls"] = GetConfigBool(configEntries, "feature.polls", true),
+            ["job_vacancies"] = GetConfigBool(configEntries, "feature.job_vacancies", true),
+            ["ideation_challenges"] = GetConfigBool(configEntries, "feature.ideation_challenges", true),
+            ["direct_messaging"] = GetConfigBool(configEntries, "feature.direct_messaging", true),
+            ["group_exchanges"] = GetConfigBool(configEntries, "feature.group_exchanges", true),
+            ["search"] = GetConfigBool(configEntries, "feature.search", true),
+            ["ai_chat"] = GetConfigBool(configEntries, "feature.ai_chat", true),
+        };
+
+        // Build modules object
+        var modules = new Dictionary<string, bool>
+        {
+            ["feed"] = GetConfigBool(configEntries, "module.feed", true),
+            ["listings"] = GetConfigBool(configEntries, "module.listings", true),
+            ["messages"] = GetConfigBool(configEntries, "module.messages", true),
+            ["wallet"] = GetConfigBool(configEntries, "module.wallet", true),
+            ["notifications"] = GetConfigBool(configEntries, "module.notifications", true),
+            ["profile"] = GetConfigBool(configEntries, "module.profile", true),
+            ["settings"] = GetConfigBool(configEntries, "module.settings", true),
+            ["dashboard"] = GetConfigBool(configEntries, "module.dashboard", true),
+        };
+
+        // Build branding object
+        var branding = new
+        {
+            name = tenant.Name,
+            tagline = tenant.Tagline ?? GetConfigString(configEntries, "branding.tagline", "Time Banking Platform"),
+            logo = tenant.LogoUrl,
+            logo_url = tenant.LogoUrl,
+            favicon = GetConfigString(configEntries, "branding.favicon_url"),
+            favicon_url = GetConfigString(configEntries, "branding.favicon_url"),
+            primary_color = GetConfigString(configEntries, "branding.primary_color", "#6366f1"),
+            primaryColor = GetConfigString(configEntries, "branding.primary_color", "#6366f1"),
+            secondary_color = GetConfigString(configEntries, "branding.secondary_color", "#a855f7"),
+            secondaryColor = GetConfigString(configEntries, "branding.secondary_color", "#a855f7"),
+            og_image_url = GetConfigString(configEntries, "branding.og_image_url"),
+        };
+
+        // Build contact info
+        var contact = new
+        {
+            email = GetConfigString(configEntries, "contact.email"),
+            phone = GetConfigString(configEntries, "contact.phone"),
+            address = GetConfigString(configEntries, "contact.address"),
+            location = GetConfigString(configEntries, "contact.location"),
+        };
+
+        // Build compliance flags
+        var compliance = new
+        {
+            vetting_enabled = GetConfigBool(configEntries, "compliance.vetting_enabled", false),
+            insurance_enabled = GetConfigBool(configEntries, "compliance.insurance_enabled", false),
+        };
+
+        // Build SEO
+        var seo = new
+        {
+            meta_title = GetConfigString(configEntries, "seo.meta_title", tenant.Name),
+            meta_description = GetConfigString(configEntries, "seo.meta_description", tenant.Tagline),
+        };
+
+        return Ok(new
+        {
+            id = tenant.Id,
+            name = tenant.Name,
+            slug = tenant.Slug,
+            tagline = tenant.Tagline,
+            features,
+            modules,
+            branding,
+            contact,
+            compliance,
+            seo,
+            categories,
+            config = new
+            {
+                footer_text = GetConfigString(configEntries, "config.footer_text"),
+            },
+            settings = configEntries
+                .Where(kv => kv.Key.StartsWith("settings."))
+                .ToDictionary(kv => kv.Key.Replace("settings.", ""), kv => (object)kv.Value),
+        });
+    }
+
+    // ──────────────────────────────────────────────
+    // CONNECTION STATUS (P1 — ProfilePage needs this)
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/connections/status/{userId} — Check connection status with another user.
+    /// Returns the connection object if one exists, or { status: "none" }.
+    /// </summary>
+    [HttpGet("api/connections/status/{userId}")]
+    public async Task<IActionResult> GetConnectionStatus(int userId)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var connection = await _db.Connections
+            .Include(c => c.Requester)
+            .Include(c => c.Addressee)
+            .FirstOrDefaultAsync(c =>
+                (c.RequesterId == currentUserId && c.AddresseeId == userId) ||
+                (c.RequesterId == userId && c.AddresseeId == currentUserId));
+
+        if (connection == null)
+        {
+            return Ok(new { status = "none", connection_id = (int?)null });
+        }
+
+        return Ok(new
+        {
+            status = connection.Status.ToLowerInvariant(),
+            connection_id = connection.Id,
+            is_requester = connection.RequesterId == currentUserId,
+            created_at = connection.CreatedAt
+        });
+    }
+
+    // ──────────────────────────────────────────────
+    // USER LISTINGS (P1 — ProfilePage needs this)
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/users/{userId}/listings — Get listings for a specific user.
+    /// </summary>
+    [HttpGet("api/users/{userId}/listings")]
+    public async Task<IActionResult> GetUserListings(
+        int userId,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20)
+    {
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 1;
+        if (limit > 100) limit = 100;
+
+        var query = _db.Listings
+            .Include(l => l.User)
+            .Include(l => l.Category)
+            .Where(l => l.UserId == userId && l.Status == ListingStatus.Active);
+
+        var total = await query.CountAsync();
+        var listings = await query
+            .OrderByDescending(l => l.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(l => new
+            {
+                id = l.Id,
+                title = l.Title,
+                description = l.Description,
+                type = l.Type,
+                status = l.Status,
+                category_id = l.CategoryId,
+                category = l.Category == null ? null : new { id = l.Category.Id, name = l.Category.Name },
+                location = l.Location,
+                estimated_hours = l.EstimatedHours,
+                is_featured = l.IsFeatured,
+                user = l.User == null ? null : new
+                {
+                    id = l.User.Id,
+                    first_name = l.User.FirstName,
+                    last_name = l.User.LastName,
+                    name = (l.User.FirstName + " " + l.User.LastName).Trim(),
+                    avatar_url = l.User.AvatarUrl
+                },
+                created_at = l.CreatedAt,
+                updated_at = l.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = listings,
+            pagination = new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) }
+        });
+    }
+
+    // ──────────────────────────────────────────────
+    // SEARCH SAVED (P2 — SearchPage)
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/search/saved — List saved searches for the current user.
+    /// </summary>
+    [HttpGet("api/search/saved")]
+    public async Task<IActionResult> ListSavedSearches()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var searches = await _db.Set<SavedSearch>()
+            .Where(s => s.UserId == userId.Value)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => new
+            {
+                id = s.Id,
+                name = s.Name,
+                query_params = s.QueryJson,
+                created_at = s.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = searches });
+    }
+
+    /// <summary>
+    /// POST /api/search/saved — Save a search.
+    /// </summary>
+    [HttpPost("api/search/saved")]
+    public async Task<IActionResult> SaveSearch([FromBody] SaveSearchRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return BadRequest(new { error = "Name is required" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
+        var saved = new SavedSearch
+        {
+            UserId = userId.Value,
+            TenantId = tenantId,
+            Name = request.Name.Trim(),
+            QueryJson = request.QueryParams ?? "{}",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Set<SavedSearch>().Add(saved);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new { id = saved.Id, name = saved.Name, query_params = saved.QueryJson, created_at = saved.CreatedAt }
+        });
+    }
+
+    /// <summary>
+    /// DELETE /api/search/saved/{id} — Delete a saved search.
+    /// </summary>
+    [HttpDelete("api/search/saved/{id}")]
+    public async Task<IActionResult> DeleteSavedSearch(int id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var search = await _db.Set<SavedSearch>()
+            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId.Value);
+
+        if (search == null) return NotFound(new { error = "Saved search not found" });
+
+        _db.Set<SavedSearch>().Remove(search);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "Search deleted" });
+    }
+
+    // ──────────────────────────────────────────────
+    // FEED HASHTAGS (P2 — HashtagPage)
+    // Trending hashtags already defined above (line ~437)
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/hashtags/{tag} — Get posts for a specific hashtag.
+    /// </summary>
+    [HttpGet("api/hashtags/{tag}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetHashtagPosts(
+        string tag,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20)
+    {
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 1;
+        if (limit > 100) limit = 100;
+
+        // Find posts containing this hashtag in their content
+        var normalizedTag = tag.TrimStart('#').ToLower();
+
+        var query = _db.FeedPosts
+            .Include(p => p.User)
+            .Where(p => p.Content.ToLower().Contains("#" + normalizedTag));
+
+        var total = await query.CountAsync();
+        var posts = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(p => new
+            {
+                id = p.Id,
+                type = "post",
+                content = p.Content,
+                image_url = p.ImageUrl,
+                created_at = p.CreatedAt,
+                user = p.User == null ? null : new
+                {
+                    id = p.User.Id,
+                    first_name = p.User.FirstName,
+                    last_name = p.User.LastName,
+                    name = (p.User.FirstName + " " + p.User.LastName).Trim(),
+                    avatar_url = p.User.AvatarUrl
+                },
+                like_count = p.Likes.Count,
+                comment_count = p.Comments.Count
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = posts,
+            hashtag = new { tag = normalizedTag },
+            pagination = new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) }
+        });
+    }
+
+    // ──────────────────────────────────────────────
+    // ENDORSEMENTS (P2 — DashboardPage, ProfilePage)
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/members/{userId}/endorsements — Get endorsements for a user.
+    /// </summary>
+    [HttpGet("api/members/{userId}/endorsements")]
+    public async Task<IActionResult> GetUserEndorsements(int userId)
+    {
+        var endorsements = await _db.Set<Endorsement>()
+            .Include(e => e.Endorser)
+            .Include(e => e.UserSkill)
+            .ThenInclude(us => us!.Skill)
+            .Where(e => e.UserSkill != null && e.UserSkill.UserId == userId)
+            .OrderByDescending(e => e.CreatedAt)
+            .Take(50)
+            .Select(e => new
+            {
+                id = e.Id,
+                skill_name = e.UserSkill!.Skill != null ? e.UserSkill.Skill.Name : null,
+                endorser = e.Endorser == null ? null : new
+                {
+                    id = e.Endorser.Id,
+                    first_name = e.Endorser.FirstName,
+                    last_name = e.Endorser.LastName,
+                    name = (e.Endorser.FirstName + " " + e.Endorser.LastName).Trim(),
+                    avatar_url = e.Endorser.AvatarUrl
+                },
+                created_at = e.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = endorsements, total = endorsements.Count });
+    }
+
+    // ──────────────────────────────────────────────
+    // Config helpers
+    // ──────────────────────────────────────────────
+
+    private static bool GetConfigBool(Dictionary<string, string> config, string key, bool defaultValue = false)
+    {
+        if (config.TryGetValue(key, out var value))
+        {
+            return value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || value == "1";
+        }
+        return defaultValue;
+    }
+
+    private static string? GetConfigString(Dictionary<string, string> config, string key, string? defaultValue = null)
+    {
+        return config.TryGetValue(key, out var value) ? value : defaultValue;
+    }
 }
 
 // ──────────────────────────────────────────────
 // DTOs specific to CompatibilityController
 // ──────────────────────────────────────────────
+
+public class SaveSearchRequest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("query_params")]
+    public string? QueryParams { get; set; }
+}
 
 public class ChangePasswordRequest
 {

@@ -83,6 +83,7 @@ public class ConnectionsController : ControllerBase
 
         return Ok(new
         {
+            data = connections,
             connections,
             pagination = new
             {
