@@ -51,7 +51,8 @@ public class TenantResolutionMiddleware
         "/api/registration/config",            // Public registration config
         "/api/registration/webhook",           // Provider webhook callback
         "/api/announcements",                  // Handles optional tenant context itself
-        "/api/realtime/config"                 // Static config, no tenant-scoped data
+        "/api/realtime/config",                // Static config, no tenant-scoped data
+        "/api/tenants"                         // Public tenant list for login page dropdown
     };
 
     public TenantResolutionMiddleware(
