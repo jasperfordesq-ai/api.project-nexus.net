@@ -96,7 +96,7 @@ public class EventRemindersController : ControllerBase
     /// <summary>
     /// DELETE /api/events/{eventId}/reminders/{id} - Remove a reminder.
     /// </summary>
-    [HttpDelete("api/events/{eventId}/reminders/{id}")]
+    [HttpDelete("api/events/{eventId}/reminders/{id:int}")]
     public async Task<IActionResult> DeleteReminder(int eventId, int id)
     {
         var userId = GetCurrentUserId();

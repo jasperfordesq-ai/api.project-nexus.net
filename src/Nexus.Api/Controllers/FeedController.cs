@@ -103,7 +103,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// GET /api/feed/{id} - Get a single post by ID.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetPost(int id)
     {
         var userId = GetCurrentUserId();
@@ -224,7 +224,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// PUT /api/feed/{id} - Update a post (owner only).
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdatePost(int id, [FromBody] UpdatePostRequest request)
     {
         var userId = GetCurrentUserId();
@@ -284,7 +284,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// DELETE /api/feed/{id} - Delete a post (owner only).
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeletePost(int id)
     {
         var userId = GetCurrentUserId();
@@ -327,7 +327,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// POST /api/feed/{id}/like - Like a post.
     /// </summary>
-    [HttpPost("{id}/like")]
+    [HttpPost("{id:int}/like")]
     public async Task<IActionResult> LikePost(int id)
     {
         var userId = GetCurrentUserId();
@@ -386,7 +386,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// DELETE /api/feed/{id}/like - Unlike a post.
     /// </summary>
-    [HttpDelete("{id}/like")]
+    [HttpDelete("{id:int}/like")]
     public async Task<IActionResult> UnlikePost(int id)
     {
         var userId = GetCurrentUserId();
@@ -418,7 +418,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// GET /api/feed/{id}/comments - List comments on a post.
     /// </summary>
-    [HttpGet("{id}/comments")]
+    [HttpGet("{id:int}/comments")]
     public async Task<IActionResult> GetComments(int id, [FromQuery] int page = 1, [FromQuery] int limit = 50)
     {
         var userId = GetCurrentUserId();
@@ -470,7 +470,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// POST /api/feed/{id}/comments - Add a comment to a post.
     /// </summary>
-    [HttpPost("{id}/comments")]
+    [HttpPost("{id:int}/comments")]
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentRequest request)
     {
         var userId = GetCurrentUserId();
@@ -552,7 +552,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// GET /api/feed/{id}/comments/{commentId}/replies - List replies to a comment.
     /// </summary>
-    [HttpGet("{id}/comments/{commentId}/replies")]
+    [HttpGet("{id:int}/comments/{commentId}/replies")]
     public async Task<IActionResult> GetReplies(int id, int commentId, [FromQuery] int page = 1, [FromQuery] int limit = 50)
     {
         var userId = GetCurrentUserId();
@@ -596,7 +596,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// PUT /api/feed/{id}/comments/{commentId} - Edit a comment (owner only).
     /// </summary>
-    [HttpPut("{id}/comments/{commentId}")]
+    [HttpPut("{id:int}/comments/{commentId}")]
     public async Task<IActionResult> UpdateComment(int id, int commentId, [FromBody] AddCommentRequest request)
     {
         var userId = GetCurrentUserId();
@@ -639,7 +639,7 @@ public class FeedController : ControllerBase
     /// <summary>
     /// DELETE /api/feed/{id}/comments/{commentId} - Delete a comment.
     /// </summary>
-    [HttpDelete("{id}/comments/{commentId}")]
+    [HttpDelete("{id:int}/comments/{commentId}")]
     public async Task<IActionResult> DeleteComment(int id, int commentId)
     {
         var userId = GetCurrentUserId();
@@ -683,7 +683,7 @@ public class FeedController : ControllerBase
     }
 
 
-    [HttpPost("{id}/react")]
+    [HttpPost("{id:int}/react")]
     public async Task<IActionResult> AddReaction(int id, [FromBody] AddReactionRequest request)
     {
         var userId = GetCurrentUserId();
@@ -696,7 +696,7 @@ public class FeedController : ControllerBase
         return Ok(new { message = "Reaction added", reaction_type = request.ReactionType, post_id = id });
     }
 
-    [HttpDelete("{id}/react")]
+    [HttpDelete("{id:int}/react")]
     public async Task<IActionResult> RemoveReaction(int id)
     {
         var userId = GetCurrentUserId();
@@ -708,7 +708,7 @@ public class FeedController : ControllerBase
         return Ok(new { message = "Reaction removed" });
     }
 
-    [HttpGet("{id}/reactions")]
+    [HttpGet("{id:int}/reactions")]
     public async Task<IActionResult> GetReactions(int id)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
@@ -726,7 +726,7 @@ public class FeedController : ControllerBase
         return Ok(new { data = users });
     }
 
-    [HttpPost("{id}/share")]
+    [HttpPost("{id:int}/share")]
     public async Task<IActionResult> SharePost(int id, [FromBody] SharePostRequest request)
     {
         var userId = GetCurrentUserId();
@@ -740,7 +740,7 @@ public class FeedController : ControllerBase
     }
 
     /// <summary>GET /api/feed/{id}/likers — users who liked a post</summary>
-    [HttpGet("{id}/likers")]
+    [HttpGet("{id:int}/likers")]
     public async Task<IActionResult> GetLikers(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         page = Math.Max(page, 1);
@@ -766,7 +766,7 @@ public class FeedController : ControllerBase
     }
 
     /// <summary>GET /api/feed/{id}/shares — list shares/reposts of a post</summary>
-    [HttpGet("{id}/shares")]
+    [HttpGet("{id:int}/shares")]
     public async Task<IActionResult> GetShares(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         page = Math.Max(page, 1);
@@ -792,7 +792,7 @@ public class FeedController : ControllerBase
     }
 
     /// <summary>POST /api/feed/{id}/comments/{commentId}/reply — reply to a comment (nested)</summary>
-    [HttpPost("{id}/comments/{commentId}/reply")]
+    [HttpPost("{id:int}/comments/{commentId}/reply")]
     public async Task<IActionResult> ReplyToComment(int id, int commentId, [FromBody] AddCommentRequest request)
     {
         var userId = GetCurrentUserId();
@@ -820,7 +820,7 @@ public class FeedController : ControllerBase
     }
 
     /// <summary>POST /api/feed/{id}/hide — hide a post from the current user's feed</summary>
-    [HttpPost("{id}/hide")]
+    [HttpPost("{id:int}/hide")]
     public async Task<IActionResult> HidePost(int id)
     {
         var userId = GetCurrentUserId();
@@ -840,7 +840,7 @@ public class FeedController : ControllerBase
     }
 
     /// <summary>POST /api/feed/{id}/mute — mute the author of a post</summary>
-    [HttpPost("{id}/mute")]
+    [HttpPost("{id:int}/mute")]
     public async Task<IActionResult> MutePostAuthor(int id)
     {
         var userId = GetCurrentUserId();

@@ -102,7 +102,7 @@ public class GdprController : ControllerBase
     /// <summary>
     /// GET /api/privacy/export/{id}/download - Download an export.
     /// </summary>
-    [HttpGet("export/{id}/download")]
+    [HttpGet("export/{id:int}/download")]
     public async Task<IActionResult> DownloadExport(int id)
     {
         var userId = GetCurrentUserId();
@@ -342,7 +342,7 @@ public class AdminGdprController : ControllerBase
     /// <summary>
     /// PUT /api/admin/privacy/deletions/{id}/review - Review a deletion request.
     /// </summary>
-    [HttpPut("deletions/{id}/review")]
+    [HttpPut("deletions/{id:int}/review")]
     public async Task<IActionResult> ReviewDeletion(int id, [FromBody] DeletionReviewRequest request)
     {
         var adminId = GetCurrentUserId();

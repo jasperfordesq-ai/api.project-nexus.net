@@ -60,7 +60,7 @@ public class XpShopController : ControllerBase
     }
 
     /// <summary>GET /api/gamification/shop/items/{id} - Single item detail.</summary>
-    [HttpGet("items/{id}")]
+    [HttpGet("items/{id:int}")]
     public async Task<IActionResult> GetItem(string id)
     {
         var userId = User.GetUserId();

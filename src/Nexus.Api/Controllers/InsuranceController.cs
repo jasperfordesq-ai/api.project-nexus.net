@@ -42,7 +42,7 @@ public class InsuranceController : ControllerBase
     /// <summary>
     /// GET /api/insurance/{id} - Get certificate details.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetCertificate(int id)
     {
         var userId = User.GetUserId();
@@ -74,7 +74,7 @@ public class InsuranceController : ControllerBase
     /// <summary>
     /// PUT /api/insurance/{id} - Update a certificate.
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateInsuranceRequest request)
     {
         var userId = User.GetUserId();
@@ -91,7 +91,7 @@ public class InsuranceController : ControllerBase
     /// <summary>
     /// DELETE /api/insurance/{id} - Delete a certificate.
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
         var userId = User.GetUserId();
@@ -128,7 +128,7 @@ public class InsuranceController : ControllerBase
     /// <summary>
     /// PUT /api/insurance/admin/{id}/verify - Verify a certificate.
     /// </summary>
-    [HttpPut("admin/{id}/verify")]
+    [HttpPut("admin/{id:int}/verify")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminVerify(int id)
     {
@@ -143,7 +143,7 @@ public class InsuranceController : ControllerBase
     /// <summary>
     /// PUT /api/insurance/admin/{id}/reject - Reject a certificate.
     /// </summary>
-    [HttpPut("admin/{id}/reject")]
+    [HttpPut("admin/{id:int}/reject")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminReject(int id)
     {

@@ -90,7 +90,7 @@ public class AdminGamificationController : ControllerBase
         return Created("/api/admin/gamification/badges", new { data = new { badge.Id, badge.Name } });
     }
 
-    [HttpPut("badges/{id}")]
+    [HttpPut("badges/{id:int}")]
     public async Task<IActionResult> UpdateBadge(int id, [FromBody] AdminUpdateBadgeRequest request)
     {
         var badge = await _db.Badges.FirstOrDefaultAsync(x => x.Id == id);
@@ -106,7 +106,7 @@ public class AdminGamificationController : ControllerBase
         return Ok(new { data = new { badge.Id, badge.Name } });
     }
 
-    [HttpDelete("badges/{id}")]
+    [HttpDelete("badges/{id:int}")]
     public async Task<IActionResult> DeleteBadge(int id)
     {
         var badge = await _db.Badges.FirstOrDefaultAsync(x => x.Id == id);
@@ -119,7 +119,7 @@ public class AdminGamificationController : ControllerBase
         return Ok(new { message = "Badge deleted" });
     }
 
-    [HttpPost("badges/{id}/award")]
+    [HttpPost("badges/{id:int}/award")]
     public async Task<IActionResult> AwardBadge(int id, [FromBody] AwardBadgeRequest request)
     {
         var badge = await _db.Badges.FirstOrDefaultAsync(x => x.Id == id);

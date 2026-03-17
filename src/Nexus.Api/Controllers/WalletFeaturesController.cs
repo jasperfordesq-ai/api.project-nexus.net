@@ -282,7 +282,7 @@ public class WalletFeaturesController : ControllerBase
     /// <summary>
     /// DELETE /api/wallet/features/alerts/{id} - Remove alert.
     /// </summary>
-    [HttpDelete("alerts/{id}")]
+    [HttpDelete("alerts/{id:int}")]
     public async Task<IActionResult> DeleteAlert(int id)
     {
         var userId = User.GetUserId();

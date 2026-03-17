@@ -101,7 +101,7 @@ public class OnboardingController : ControllerBase
     /// <summary>
     /// PUT /api/onboarding/admin/steps/{id} - Update step.
     /// </summary>
-    [HttpPut("admin/steps/{id}")]
+    [HttpPut("admin/steps/{id:int}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> UpdateStep(int id, [FromBody] UpdateOnboardingStepRequest request)
     {
@@ -114,7 +114,7 @@ public class OnboardingController : ControllerBase
     /// <summary>
     /// DELETE /api/onboarding/admin/steps/{id} - Delete step.
     /// </summary>
-    [HttpDelete("admin/steps/{id}")]
+    [HttpDelete("admin/steps/{id:int}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> DeleteStep(int id)
     {

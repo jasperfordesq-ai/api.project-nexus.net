@@ -50,10 +50,12 @@ public static class ServiceExtensions
         // Skills, audit, email
         services.AddScoped<SkillService>();
         services.AddScoped<AuditLogService>();
+        services.Configure<GmailOptions>(
+            configuration.GetSection(GmailOptions.SectionName));
         if (configuration.GetValue("SendGrid:Enabled", false))
             services.AddScoped<IEmailService, SendGridEmailService>();
         else
-            services.AddScoped<IEmailService, GmailEmailService>();
+            services.AddHttpClient<IEmailService, GmailEmailService>();
         services.AddScoped<EmailNotificationService>();
 
         // Phase 26-37

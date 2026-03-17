@@ -56,7 +56,7 @@ public class AdminPagesController : ControllerBase
     /// <summary>
     /// GET /api/admin/pages/{id} - Get page details (including unpublished).
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetPage(int id)
     {
         var page = await _pages.GetPageByIdAsync(id);
@@ -107,7 +107,7 @@ public class AdminPagesController : ControllerBase
     /// <summary>
     /// PUT /api/admin/pages/{id} - Update a page.
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdatePage(int id, [FromBody] UpdatePageRequest request)
     {
         var userId = User.GetUserId();
@@ -125,7 +125,7 @@ public class AdminPagesController : ControllerBase
     /// <summary>
     /// DELETE /api/admin/pages/{id} - Delete a page.
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeletePage(int id)
     {
         var error = await _pages.DeletePageAsync(id);
@@ -136,7 +136,7 @@ public class AdminPagesController : ControllerBase
     /// <summary>
     /// GET /api/admin/pages/{id}/versions - Get version history.
     /// </summary>
-    [HttpGet("{id}/versions")]
+    [HttpGet("{id:int}/versions")]
     public async Task<IActionResult> GetVersions(int id)
     {
         var versions = await _pages.GetVersionsAsync(id);
@@ -157,7 +157,7 @@ public class AdminPagesController : ControllerBase
     /// <summary>
     /// POST /api/admin/pages/{id}/revert - Revert to a specific version.
     /// </summary>
-    [HttpPost("{id}/revert")]
+    [HttpPost("{id:int}/revert")]
     public async Task<IActionResult> RevertToVersion(int id, [FromBody] RevertRequest request)
     {
         var userId = User.GetUserId();
@@ -171,7 +171,7 @@ public class AdminPagesController : ControllerBase
     /// <summary>
     /// POST /api/admin/pages/{id}/duplicate - Duplicate a page.
     /// </summary>
-    [HttpPost("{id}/duplicate")]
+    [HttpPost("{id:int}/duplicate")]
     public async Task<IActionResult> DuplicatePage(int id)
     {
         var userId = User.GetUserId();

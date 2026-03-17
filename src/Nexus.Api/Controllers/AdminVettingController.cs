@@ -58,7 +58,7 @@ public class AdminVettingController : ControllerBase
     /// <summary>
     /// GET /api/admin/vetting/records/{id} - Get record details.
     /// </summary>
-    [HttpGet("records/{id}")]
+    [HttpGet("records/{id:int}")]
     public async Task<IActionResult> GetRecord(int id)
     {
         var record = await _vetting.GetRecordAsync(id);
@@ -85,7 +85,7 @@ public class AdminVettingController : ControllerBase
     /// <summary>
     /// PUT /api/admin/vetting/records/{id} - Update a vetting record.
     /// </summary>
-    [HttpPut("records/{id}")]
+    [HttpPut("records/{id:int}")]
     public async Task<IActionResult> UpdateRecord(int id, [FromBody] UpdateVettingRecordRequest request)
     {
         var (record, error) = await _vetting.UpdateRecordAsync(
@@ -99,7 +99,7 @@ public class AdminVettingController : ControllerBase
     /// <summary>
     /// DELETE /api/admin/vetting/records/{id} - Delete a vetting record.
     /// </summary>
-    [HttpDelete("records/{id}")]
+    [HttpDelete("records/{id:int}")]
     public async Task<IActionResult> DeleteRecord(int id)
     {
         var error = await _vetting.DeleteRecordAsync(id);
@@ -110,7 +110,7 @@ public class AdminVettingController : ControllerBase
     /// <summary>
     /// PUT /api/admin/vetting/records/{id}/verify - Verify a vetting record.
     /// </summary>
-    [HttpPut("records/{id}/verify")]
+    [HttpPut("records/{id:int}/verify")]
     public async Task<IActionResult> VerifyRecord(int id)
     {
         var userId = User.GetUserId();
@@ -124,7 +124,7 @@ public class AdminVettingController : ControllerBase
     /// <summary>
     /// PUT /api/admin/vetting/records/{id}/reject - Reject a vetting record.
     /// </summary>
-    [HttpPut("records/{id}/reject")]
+    [HttpPut("records/{id:int}/reject")]
     public async Task<IActionResult> RejectRecord(int id, [FromBody] RejectRequest request)
     {
         var userId = User.GetUserId();
@@ -218,7 +218,7 @@ public class AdminVettingController : ControllerBase
     /// <summary>
     /// PUT /api/admin/vetting/records/{id}/renew - Renew a record (extend expiry).
     /// </summary>
-    [HttpPut("records/{id}/renew")]
+    [HttpPut("records/{id:int}/renew")]
     public async Task<IActionResult> RenewRecord(int id)
     {
         var (record, error) = await _vetting.RenewRecordAsync(id);

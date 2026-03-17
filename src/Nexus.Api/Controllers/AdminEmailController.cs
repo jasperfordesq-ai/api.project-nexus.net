@@ -43,7 +43,7 @@ public class AdminEmailController : ControllerBase
         });
     }
 
-    [HttpGet("templates/{id}")]
+    [HttpGet("templates/{id:int}")]
     public async Task<IActionResult> GetTemplate(int id)
     {
         var template = await _db.EmailTemplates.FirstOrDefaultAsync(x => x.Id == id);
@@ -83,7 +83,7 @@ public class AdminEmailController : ControllerBase
         return Created($"/api/admin/emails/templates/{template.Id}", new { data = new { template.Id, template.Key } });
     }
 
-    [HttpPut("templates/{id}")]
+    [HttpPut("templates/{id:int}")]
     public async Task<IActionResult> UpdateTemplate(int id, [FromBody] UpdateEmailTemplateRequest request)
     {
         var template = await _db.EmailTemplates.FirstOrDefaultAsync(x => x.Id == id);
@@ -100,7 +100,7 @@ public class AdminEmailController : ControllerBase
         return Ok(new { data = new { template.Id, template.Key } });
     }
 
-    [HttpDelete("templates/{id}")]
+    [HttpDelete("templates/{id:int}")]
     public async Task<IActionResult> DeleteTemplate(int id)
     {
         var template = await _db.EmailTemplates.FirstOrDefaultAsync(x => x.Id == id);

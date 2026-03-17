@@ -104,7 +104,7 @@ public class LegalDocumentsController : ControllerBase
     /// <summary>
     /// POST /api/legal/documents/{id}/accept — Accept a legal document.
     /// </summary>
-    [HttpPost("documents/{id}/accept")]
+    [HttpPost("documents/{id:int}/accept")]
     [Authorize]
     public async Task<IActionResult> AcceptDocument(int id)
     {

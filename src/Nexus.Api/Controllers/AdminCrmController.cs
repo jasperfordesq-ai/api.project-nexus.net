@@ -119,7 +119,7 @@ public class AdminCrmController : ControllerBase
     /// <summary>
     /// Update an admin note. Only the admin who created it can update it.
     /// </summary>
-    [HttpPut("notes/{id}")]
+    [HttpPut("notes/{id:int}")]
     public async Task<IActionResult> UpdateNote(int id, [FromBody] UpdateNoteRequest request)
     {
         var adminId = GetCurrentUserId();
@@ -145,7 +145,7 @@ public class AdminCrmController : ControllerBase
     /// <summary>
     /// Delete an admin note. Only the admin who created it can delete it.
     /// </summary>
-    [HttpDelete("notes/{id}")]
+    [HttpDelete("notes/{id:int}")]
     public async Task<IActionResult> DeleteNote(int id)
     {
         var adminId = GetCurrentUserId();
@@ -238,7 +238,7 @@ public class AdminCrmController : ControllerBase
     }
 
     /// <summary>PUT /api/admin/crm/tasks/{id}/complete - Mark task done.</summary>
-    [HttpPut("tasks/{id}/complete")]
+    [HttpPut("tasks/{id:int}/complete")]
     public async Task<IActionResult> CompleteCrmTask(int id)
     {
         var tenantId = GetCurrentTenantId();
@@ -251,7 +251,7 @@ public class AdminCrmController : ControllerBase
     }
 
     /// <summary>DELETE /api/admin/crm/tasks/{id} - Delete CRM task.</summary>
-    [HttpDelete("tasks/{id}")]
+    [HttpDelete("tasks/{id:int}")]
     public async Task<IActionResult> DeleteCrmTask(int id)
     {
         var tenantId = GetCurrentTenantId();

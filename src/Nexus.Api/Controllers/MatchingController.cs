@@ -83,7 +83,7 @@ public class MatchingController : ControllerBase
     /// GET /api/matching/{id} - Get specific match detail.
     /// Marks the match as viewed if it was pending.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetMatch(int id)
     {
         var userId = User.GetUserId();
@@ -99,7 +99,7 @@ public class MatchingController : ControllerBase
     /// <summary>
     /// PUT /api/matching/{id}/respond - Accept or decline a match.
     /// </summary>
-    [HttpPut("{id}/respond")]
+    [HttpPut("{id:int}/respond")]
     public async Task<IActionResult> RespondToMatch(int id, [FromBody] RespondToMatchRequest request)
     {
         var userId = User.GetUserId();

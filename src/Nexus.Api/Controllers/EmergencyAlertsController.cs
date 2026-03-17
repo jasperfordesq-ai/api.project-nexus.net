@@ -53,7 +53,7 @@ public class EmergencyAlertsController : ControllerBase
     }
 
     /// <summary>GET /api/volunteer/emergency-alerts/{id} - Get alert details.</summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> Get(int id)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
@@ -97,7 +97,7 @@ public class EmergencyAlertsController : ControllerBase
     }
 
     /// <summary>PUT /api/volunteer/emergency-alerts/{id}/resolve - Resolve an alert (admin).</summary>
-    [HttpPut("{id}/resolve")]
+    [HttpPut("{id:int}/resolve")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Resolve(int id)
     {
@@ -118,7 +118,7 @@ public class EmergencyAlertsController : ControllerBase
     }
 
     /// <summary>DELETE /api/volunteer/emergency-alerts/{id} - Delete alert (admin).</summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(int id)
     {

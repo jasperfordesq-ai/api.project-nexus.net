@@ -146,7 +146,7 @@ public class NewsletterController : ControllerBase
     /// <summary>
     /// GET /api/admin/newsletter/{id} - Get a specific newsletter.
     /// </summary>
-    [HttpGet("api/admin/newsletter/{id}")]
+    [HttpGet("api/admin/newsletter/{id:int}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> GetNewsletter(int id)
     {
@@ -204,7 +204,7 @@ public class NewsletterController : ControllerBase
     /// <summary>
     /// PUT /api/admin/newsletter/{id} - Update a newsletter.
     /// </summary>
-    [HttpPut("api/admin/newsletter/{id}")]
+    [HttpPut("api/admin/newsletter/{id:int}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> UpdateNewsletter(int id, [FromBody] UpdateNewsletterRequest request)
     {
@@ -238,7 +238,7 @@ public class NewsletterController : ControllerBase
     /// <summary>
     /// POST /api/admin/newsletter/{id}/send - Send a newsletter.
     /// </summary>
-    [HttpPost("api/admin/newsletter/{id}/send")]
+    [HttpPost("api/admin/newsletter/{id:int}/send")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> SendNewsletter(int id)
     {
@@ -270,7 +270,7 @@ public class NewsletterController : ControllerBase
     /// <summary>
     /// PUT /api/admin/newsletter/{id}/cancel - Cancel a newsletter.
     /// </summary>
-    [HttpPut("api/admin/newsletter/{id}/cancel")]
+    [HttpPut("api/admin/newsletter/{id:int}/cancel")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> CancelNewsletter(int id)
     {

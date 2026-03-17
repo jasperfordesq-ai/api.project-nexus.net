@@ -175,7 +175,7 @@ public class EventsController : ControllerBase
     /// <summary>
     /// GET /api/events/{id} - Get a single event by ID.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetEvent(int id)
     {
         var userId = GetCurrentUserId();
@@ -344,7 +344,7 @@ public class EventsController : ControllerBase
     /// <summary>
     /// PUT /api/events/{id} - Update an event (creator only).
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateEvent(int id, [FromBody] UpdateEventRequest request)
     {
         var userId = GetCurrentUserId();
@@ -457,7 +457,7 @@ public class EventsController : ControllerBase
     /// <summary>
     /// PUT /api/events/{id}/cancel - Cancel an event (creator only).
     /// </summary>
-    [HttpPut("{id}/cancel")]
+    [HttpPut("{id:int}/cancel")]
     public async Task<IActionResult> CancelEvent(int id)
     {
         var userId = GetCurrentUserId();
@@ -501,7 +501,7 @@ public class EventsController : ControllerBase
     /// <summary>
     /// DELETE /api/events/{id} - Delete an event (creator only).
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteEvent(int id)
     {
         var userId = GetCurrentUserId();
@@ -544,7 +544,7 @@ public class EventsController : ControllerBase
     /// <summary>
     /// GET /api/events/{id}/rsvps - Get all RSVPs for an event.
     /// </summary>
-    [HttpGet("{id}/rsvps")]
+    [HttpGet("{id:int}/rsvps")]
     public async Task<IActionResult> GetEventRsvps(int id, [FromQuery] string? status = null)
     {
         var userId = GetCurrentUserId();
@@ -581,7 +581,7 @@ public class EventsController : ControllerBase
     /// <summary>
     /// POST /api/events/{id}/rsvp - RSVP to an event.
     /// </summary>
-    [HttpPost("{id}/rsvp")]
+    [HttpPost("{id:int}/rsvp")]
     public async Task<IActionResult> Rsvp(int id, [FromBody] RsvpRequest request)
     {
         var userId = GetCurrentUserId();
@@ -685,7 +685,7 @@ public class EventsController : ControllerBase
     /// <summary>
     /// DELETE /api/events/{id}/rsvp - Remove RSVP from an event.
     /// </summary>
-    [HttpDelete("{id}/rsvp")]
+    [HttpDelete("{id:int}/rsvp")]
     public async Task<IActionResult> RemoveRsvp(int id)
     {
         var userId = GetCurrentUserId();

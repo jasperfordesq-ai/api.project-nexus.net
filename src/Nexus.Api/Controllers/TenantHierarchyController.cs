@@ -99,7 +99,7 @@ public class TenantHierarchyController : ControllerBase
     /// <summary>
     /// PUT /api/system/tenant-hierarchy/{id} - Update relationship.
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateHierarchyRequest request)
     {
         var (h, error) = await _hierarchy.UpdateRelationshipAsync(id, request.InheritanceMode, request.IsActive);
@@ -110,7 +110,7 @@ public class TenantHierarchyController : ControllerBase
     /// <summary>
     /// DELETE /api/system/tenant-hierarchy/{id} - Delete relationship.
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
         var error = await _hierarchy.DeleteRelationshipAsync(id);

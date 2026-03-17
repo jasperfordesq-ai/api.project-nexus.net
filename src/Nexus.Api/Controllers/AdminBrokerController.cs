@@ -57,7 +57,7 @@ public class AdminBrokerController : ControllerBase
     /// <summary>
     /// GET /api/admin/broker/assignments/{id} - Get assignment details.
     /// </summary>
-    [HttpGet("assignments/{id}")]
+    [HttpGet("assignments/{id:int}")]
     public async Task<IActionResult> GetAssignment(int id)
     {
         var assignment = await _broker.GetAssignmentAsync(id);
@@ -83,7 +83,7 @@ public class AdminBrokerController : ControllerBase
     /// <summary>
     /// PUT /api/admin/broker/assignments/{id} - Update an assignment.
     /// </summary>
-    [HttpPut("assignments/{id}")]
+    [HttpPut("assignments/{id:int}")]
     public async Task<IActionResult> UpdateAssignment(int id, [FromBody] UpdateAssignmentRequest request)
     {
         var (assignment, error) = await _broker.UpdateAssignmentAsync(id, request.Status, request.Notes);
@@ -94,7 +94,7 @@ public class AdminBrokerController : ControllerBase
     /// <summary>
     /// PUT /api/admin/broker/assignments/{id}/complete - Mark assignment as completed.
     /// </summary>
-    [HttpPut("assignments/{id}/complete")]
+    [HttpPut("assignments/{id:int}/complete")]
     public async Task<IActionResult> CompleteAssignment(int id)
     {
         var (assignment, error) = await _broker.CompleteAssignmentAsync(id);
@@ -105,7 +105,7 @@ public class AdminBrokerController : ControllerBase
     /// <summary>
     /// DELETE /api/admin/broker/assignments/{id} - Remove an assignment.
     /// </summary>
-    [HttpDelete("assignments/{id}")]
+    [HttpDelete("assignments/{id:int}")]
     public async Task<IActionResult> DeleteAssignment(int id)
     {
         var error = await _broker.DeleteAssignmentAsync(id);
@@ -116,7 +116,7 @@ public class AdminBrokerController : ControllerBase
     /// <summary>
     /// PUT /api/admin/broker/assignments/{id}/reassign - Reassign to a different broker.
     /// </summary>
-    [HttpPut("assignments/{id}/reassign")]
+    [HttpPut("assignments/{id:int}/reassign")]
     public async Task<IActionResult> ReassignAssignment(int id, [FromBody] ReassignRequest request)
     {
         var (assignment, error) = await _broker.ReassignAsync(id, request.BrokerId);

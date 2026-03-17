@@ -115,7 +115,7 @@ public class NotificationsController : ControllerBase
     /// <summary>
     /// GET /api/notifications/{id} - Get a single notification by ID.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetNotification(int id)
     {
         var userId = GetCurrentUserId();
@@ -147,7 +147,7 @@ public class NotificationsController : ControllerBase
     /// <summary>
     /// PUT /api/notifications/{id}/read - Mark a notification as read.
     /// </summary>
-    [HttpPut("{id}/read")]
+    [HttpPut("{id:int}/read")]
     public async Task<IActionResult> MarkAsRead(int id)
     {
         var userId = GetCurrentUserId();
@@ -247,7 +247,7 @@ public class NotificationsController : ControllerBase
     /// <summary>
     /// POST /api/notifications/{id}/read - Mark a notification as read (alias for PUT).
     /// </summary>
-    [HttpPost("{id}/read")]
+    [HttpPost("{id:int}/read")]
     public async Task<IActionResult> MarkAsReadPost(int id)
     {
         return await MarkAsRead(id);
@@ -265,7 +265,7 @@ public class NotificationsController : ControllerBase
     /// <summary>
     /// DELETE /api/notifications/{id} - Delete a notification.
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteNotification(int id)
     {
         var userId = GetCurrentUserId();

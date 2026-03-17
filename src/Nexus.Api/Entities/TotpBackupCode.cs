@@ -9,7 +9,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Nexus.Api.Entities;
 
 [Table("totp_backup_codes")]
-public class TotpBackupCode
+public class TotpBackupCode : ITenantEntity
 {
     [Key]
     public int Id { get; set; }

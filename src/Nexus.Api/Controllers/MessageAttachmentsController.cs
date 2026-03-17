@@ -103,7 +103,7 @@ public class MessageAttachmentsController : ControllerBase
     }
 
     /// <summary>DELETE /api/messages/{messageId}/attachments/{id} - Remove attachment from message.</summary>
-    [HttpDelete("{messageId}/attachments/{id}")]
+    [HttpDelete("{messageId}/attachments/{id:int}")]
     public async Task<IActionResult> RemoveAttachment(int messageId, int id)
     {
         var userId = User.GetUserId();

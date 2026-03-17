@@ -129,7 +129,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// GET /api/groups/{id} - Get a single group by ID.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetGroup(int id)
     {
         var userId = GetCurrentUserId();
@@ -256,7 +256,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// PUT /api/groups/{id} - Update a group (admin/owner only).
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateGroup(int id, [FromBody] UpdateGroupRequest request)
     {
         var userId = GetCurrentUserId();
@@ -330,7 +330,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// DELETE /api/groups/{id} - Delete a group (owner only).
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteGroup(int id)
     {
         var userId = GetCurrentUserId();
@@ -366,7 +366,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// GET /api/groups/{id}/members - List group members.
     /// </summary>
-    [HttpGet("{id}/members")]
+    [HttpGet("{id:int}/members")]
     public async Task<IActionResult> GetGroupMembers(int id)
     {
         var userId = GetCurrentUserId();
@@ -400,7 +400,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// POST /api/groups/{id}/join - Join a group.
     /// </summary>
-    [HttpPost("{id}/join")]
+    [HttpPost("{id:int}/join")]
     public async Task<IActionResult> JoinGroup(int id)
     {
         var userId = GetCurrentUserId();
@@ -456,7 +456,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// DELETE /api/groups/{id}/leave - Leave a group.
     /// </summary>
-    [HttpDelete("{id}/leave")]
+    [HttpDelete("{id:int}/leave")]
     public async Task<IActionResult> LeaveGroup(int id)
     {
         var userId = GetCurrentUserId();
@@ -491,7 +491,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// POST /api/groups/{id}/members - Add a member (admin/owner only).
     /// </summary>
-    [HttpPost("{id}/members")]
+    [HttpPost("{id:int}/members")]
     public async Task<IActionResult> AddMember(int id, [FromBody] AddMemberRequest request)
     {
         var userId = GetCurrentUserId();
@@ -558,7 +558,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// DELETE /api/groups/{id}/members/{memberId} - Remove a member (admin/owner only).
     /// </summary>
-    [HttpDelete("{id}/members/{memberId}")]
+    [HttpDelete("{id:int}/members/{memberId}")]
     public async Task<IActionResult> RemoveMember(int id, int memberId)
     {
         var userId = GetCurrentUserId();
@@ -608,7 +608,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// PUT /api/groups/{id}/members/{memberId}/role - Update member role (owner only).
     /// </summary>
-    [HttpPut("{id}/members/{memberId}/role")]
+    [HttpPut("{id:int}/members/{memberId}/role")]
     public async Task<IActionResult> UpdateMemberRole(int id, int memberId, [FromBody] UpdateRoleRequest request)
     {
         var userId = GetCurrentUserId();
@@ -665,7 +665,7 @@ public class GroupsController : ControllerBase
     /// <summary>
     /// PUT /api/groups/{id}/transfer-ownership - Transfer group ownership (owner only).
     /// </summary>
-    [HttpPut("{id}/transfer-ownership")]
+    [HttpPut("{id:int}/transfer-ownership")]
     public async Task<IActionResult> TransferOwnership(int id, [FromBody] TransferOwnershipRequest request)
     {
         var userId = GetCurrentUserId();

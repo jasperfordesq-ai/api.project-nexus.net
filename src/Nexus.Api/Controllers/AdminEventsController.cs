@@ -66,7 +66,7 @@ public class AdminEventsController : ControllerBase
         return Ok(new { data = new { total, upcoming, cancelled, total_rsvps = totalRsvps } });
     }
 
-    [HttpPut("{id}/cancel")]
+    [HttpPut("{id:int}/cancel")]
     public async Task<IActionResult> CancelEvent(int id)
     {
         var evt = await _db.Events.FirstOrDefaultAsync(x => x.Id == id);
@@ -78,7 +78,7 @@ public class AdminEventsController : ControllerBase
         return Ok(new { data = new { evt.Id, is_cancelled = evt.IsCancelled } });
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteEvent(int id)
     {
         var evt = await _db.Events.FirstOrDefaultAsync(x => x.Id == id);

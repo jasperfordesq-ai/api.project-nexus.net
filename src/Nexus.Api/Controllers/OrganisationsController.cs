@@ -131,7 +131,7 @@ public class OrganisationsController : ControllerBase
     /// <summary>
     /// PUT /api/organisations/{id} - Update organisation.
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateOrgRequest request)
     {
         var userId = User.GetUserId();
@@ -153,7 +153,7 @@ public class OrganisationsController : ControllerBase
     /// <summary>
     /// DELETE /api/organisations/{id} - Delete organisation (owner only).
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
         var userId = User.GetUserId();
@@ -167,7 +167,7 @@ public class OrganisationsController : ControllerBase
     /// <summary>
     /// GET /api/organisations/{id}/members - List members.
     /// </summary>
-    [HttpGet("{id}/members")]
+    [HttpGet("{id:int}/members")]
     public async Task<IActionResult> GetMembers(int id)
     {
         var userId = User.GetUserId();
@@ -187,7 +187,7 @@ public class OrganisationsController : ControllerBase
     /// <summary>
     /// POST /api/organisations/{id}/members - Add member.
     /// </summary>
-    [HttpPost("{id}/members")]
+    [HttpPost("{id:int}/members")]
     public async Task<IActionResult> AddMember(int id, [FromBody] AddOrgMemberRequest request)
     {
         var userId = User.GetUserId();
@@ -203,7 +203,7 @@ public class OrganisationsController : ControllerBase
     /// <summary>
     /// DELETE /api/organisations/{id}/members/{userId} - Remove member.
     /// </summary>
-    [HttpDelete("{id}/members/{memberId}")]
+    [HttpDelete("{id:int}/members/{memberId}")]
     public async Task<IActionResult> RemoveMember(int id, int memberId)
     {
         var userId = User.GetUserId();
@@ -217,7 +217,7 @@ public class OrganisationsController : ControllerBase
     /// <summary>
     /// PUT /api/organisations/{id}/members/{userId}/role - Update member role.
     /// </summary>
-    [HttpPut("{id}/members/{memberId}/role")]
+    [HttpPut("{id:int}/members/{memberId}/role")]
     public async Task<IActionResult> UpdateMemberRole(int id, int memberId, [FromBody] UpdateOrgMemberRoleRequest request)
     {
         var userId = User.GetUserId();

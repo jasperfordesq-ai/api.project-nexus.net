@@ -125,44 +125,48 @@ public class FeedRankingService
             _logger.LogWarning(ex, "PostShare table not available, share counts will be zero");
         }
 
-        var allPosts = await _db.FeedPosts
+        // Project counts server-side instead of loading full Like/Comment collections
+        var allPostData = await _db.FeedPosts
             .Include(p => p.User)
             .Include(p => p.Group)
-            .Include(p => p.Likes)
-            .Include(p => p.Comments)
             .Where(p => p.CreatedAt >= feedCutoff)
             .OrderByDescending(p => p.CreatedAt)
             .Take(500)
+            .Select(p => new
+            {
+                Post = p,
+                LikeCount = p.Likes.Count,
+                CommentCount = p.Comments.Count,
+                IsLiked = p.Likes.Any(l => l.UserId == userId)
+            })
             .ToListAsync();
 
         // Score each post
         var scoredPosts = new List<ScoredPost>();
 
-        foreach (var post in allPosts)
+        foreach (var item in allPostData)
         {
-            var likeCount = post.Likes.Count;
-            var commentCount = post.Comments.Count;
-            shareCountsByPost.TryGetValue(post.Id, out var shareCount);
+            shareCountsByPost.TryGetValue(item.Post.Id, out var shareCount);
 
             // 1. Recency score (exponential decay)
-            var ageHours = (now - post.CreatedAt).TotalHours;
+            var ageHours = (now - item.Post.CreatedAt).TotalHours;
             var recencyScore = Math.Pow(0.5, ageHours / RecencyHalfLifeHours);
 
             // 2. Engagement score
-            var engagementScore = (likeCount * LikeWeight)
-                                + (commentCount * CommentWeight)
+            var engagementScore = (item.LikeCount * LikeWeight)
+                                + (item.CommentCount * CommentWeight)
                                 + (shareCount * ShareWeight);
 
             // 3. Connection proximity multiplier
-            var connectionMultiplier = connectionIdSet.Contains(post.UserId) ? ConnectionBonus : 1.0;
+            var connectionMultiplier = connectionIdSet.Contains(item.Post.UserId) ? ConnectionBonus : 1.0;
 
             // 4. Group relevance multiplier
-            var groupMultiplier = post.GroupId.HasValue && groupIdSet.Contains(post.GroupId.Value)
+            var groupMultiplier = item.Post.GroupId.HasValue && groupIdSet.Contains(item.Post.GroupId.Value)
                 ? GroupBonus
                 : 1.0;
 
             // 5. Author activity multiplier
-            var authorMultiplier = activeAuthorIdSet.Contains(post.UserId) ? ActiveAuthorBonus : 1.0;
+            var authorMultiplier = activeAuthorIdSet.Contains(item.Post.UserId) ? ActiveAuthorBonus : 1.0;
 
             // Combined score
             var totalScore = (recencyScore * 10.0 + engagementScore)
@@ -172,12 +176,12 @@ public class FeedRankingService
 
             scoredPosts.Add(new ScoredPost
             {
-                Post = post,
+                Post = item.Post,
                 Score = totalScore,
-                LikeCount = likeCount,
-                CommentCount = commentCount,
+                LikeCount = item.LikeCount,
+                CommentCount = item.CommentCount,
                 ShareCount = shareCount,
-                IsLiked = post.Likes.Any(l => l.UserId == userId)
+                IsLiked = item.IsLiked
             });
         }
 
@@ -217,17 +221,21 @@ public class FeedRankingService
 
         var cutoff = DateTime.UtcNow.AddHours(-hours);
 
-        // Get posts created within the time window
-        var recentPosts = await _db.FeedPosts
+        // Project counts server-side instead of loading full Like/Comment collections
+        var recentPostData = await _db.FeedPosts
             .Where(p => p.CreatedAt >= cutoff)
             .Include(p => p.User)
             .Include(p => p.Group)
-            .Include(p => p.Likes)
-            .Include(p => p.Comments)
+            .Select(p => new
+            {
+                Post = p,
+                LikeCount = p.Likes.Count,
+                CommentCount = p.Comments.Count
+            })
             .ToListAsync();
 
         // Get share counts for these posts
-        var postIds = recentPosts.Select(p => p.Id).ToList();
+        var postIds = recentPostData.Select(d => d.Post.Id).ToList();
         var shareCountsByPost = new Dictionary<int, int>();
         try
         {
@@ -249,13 +257,13 @@ public class FeedRankingService
             _logger.LogWarning(ex, "PostShare table not available for trending calculation");
         }
 
-        var trending = recentPosts
-            .Select(p =>
+        var trending = recentPostData
+            .Select(item =>
             {
-                shareCountsByPost.TryGetValue(p.Id, out var shareCount);
-                var ageHours = Math.Max((DateTime.UtcNow - p.CreatedAt).TotalHours, 0.1);
-                var engagement = (p.Likes.Count * LikeWeight)
-                               + (p.Comments.Count * CommentWeight)
+                shareCountsByPost.TryGetValue(item.Post.Id, out var shareCount);
+                var ageHours = Math.Max((DateTime.UtcNow - item.Post.CreatedAt).TotalHours, 0.1);
+                var engagement = (item.LikeCount * LikeWeight)
+                               + (item.CommentCount * CommentWeight)
                                + (shareCount * ShareWeight);
 
                 // Velocity = engagement per hour
@@ -263,10 +271,10 @@ public class FeedRankingService
 
                 return new TrendingPostResult
                 {
-                    Post = p,
+                    Post = item.Post,
                     Velocity = velocity,
-                    LikeCount = p.Likes.Count,
-                    CommentCount = p.Comments.Count,
+                    LikeCount = item.LikeCount,
+                    CommentCount = item.CommentCount,
                     ShareCount = shareCount
                 };
             })

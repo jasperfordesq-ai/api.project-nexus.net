@@ -97,7 +97,7 @@ public class AdminBlogController : ControllerBase
     /// <summary>
     /// GET /api/admin/blog/{id} - Get a single blog post by ID (including drafts).
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetPost(int id)
     {
         var post = await _blog.GetPostByIdAsync(id);
@@ -150,7 +150,7 @@ public class AdminBlogController : ControllerBase
     /// <summary>
     /// PUT /api/admin/blog/{id} - Update a blog post.
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdatePost(int id, [FromBody] UpdateBlogPostRequest request)
     {
         var (post, error) = await _blog.UpdatePostAsync(
@@ -164,7 +164,7 @@ public class AdminBlogController : ControllerBase
     /// <summary>
     /// DELETE /api/admin/blog/{id} - Delete a blog post.
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeletePost(int id)
     {
         var error = await _blog.DeletePostAsync(id);
@@ -175,7 +175,7 @@ public class AdminBlogController : ControllerBase
     /// <summary>
     /// POST /api/admin/blog/{id}/toggle-status - Toggle draft/published.
     /// </summary>
-    [HttpPost("{id}/toggle-status")]
+    [HttpPost("{id:int}/toggle-status")]
     public async Task<IActionResult> ToggleStatus(int id)
     {
         var (post, error) = await _blog.ToggleStatusAsync(id);
@@ -186,7 +186,7 @@ public class AdminBlogController : ControllerBase
     /// <summary>
     /// POST /api/admin/blog/{id}/toggle-featured - Toggle featured flag.
     /// </summary>
-    [HttpPost("{id}/toggle-featured")]
+    [HttpPost("{id:int}/toggle-featured")]
     public async Task<IActionResult> ToggleFeatured(int id)
     {
         var (post, error) = await _blog.ToggleFeaturedAsync(id);
@@ -208,7 +208,7 @@ public class AdminBlogController : ControllerBase
     /// <summary>
     /// PUT /api/admin/blog/categories/{id} - Update a category.
     /// </summary>
-    [HttpPut("categories/{id}")]
+    [HttpPut("categories/{id:int}")]
     public async Task<IActionResult> UpdateCategory(int id, [FromBody] UpdateBlogCategoryRequest request)
     {
         var (cat, error) = await _blog.UpdateCategoryAsync(id, request.Name, request.Description, request.Color);
@@ -219,7 +219,7 @@ public class AdminBlogController : ControllerBase
     /// <summary>
     /// DELETE /api/admin/blog/categories/{id} - Delete a category.
     /// </summary>
-    [HttpDelete("categories/{id}")]
+    [HttpDelete("categories/{id:int}")]
     public async Task<IActionResult> DeleteCategory(int id)
     {
         var error = await _blog.DeleteCategoryAsync(id);

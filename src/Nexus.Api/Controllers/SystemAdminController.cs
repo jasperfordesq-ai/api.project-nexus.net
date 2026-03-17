@@ -190,7 +190,7 @@ public class SystemAdminController : ControllerBase
     /// <summary>
     /// PUT /api/admin/system/announcements/{id}/deactivate - Deactivate an announcement.
     /// </summary>
-    [HttpPut("announcements/{id}/deactivate")]
+    [HttpPut("announcements/{id:int}/deactivate")]
     public async Task<IActionResult> DeactivateAnnouncement(int id)
     {
         var success = await _systemAdmin.DeactivateAnnouncementAsync(id);

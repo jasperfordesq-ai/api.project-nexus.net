@@ -207,7 +207,7 @@ public class KnowledgeBaseAdminController : ControllerBase
     /// <summary>
     /// PUT /api/admin/knowledge/articles/{id} - Update an article.
     /// </summary>
-    [HttpPut("articles/{id}")]
+    [HttpPut("articles/{id:int}")]
     public async Task<IActionResult> UpdateArticle(int id, [FromBody] UpdateKnowledgeArticleRequest request)
     {
         var userId = User.GetUserId();
@@ -253,7 +253,7 @@ public class KnowledgeBaseAdminController : ControllerBase
     /// <summary>
     /// DELETE /api/admin/knowledge/articles/{id} - Delete an article.
     /// </summary>
-    [HttpDelete("articles/{id}")]
+    [HttpDelete("articles/{id:int}")]
     public async Task<IActionResult> DeleteArticle(int id)
     {
         var userId = User.GetUserId();

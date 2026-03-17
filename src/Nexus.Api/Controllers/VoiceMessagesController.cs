@@ -48,7 +48,7 @@ public class VoiceMessagesController : ControllerBase
     /// <summary>
     /// GET /api/voice-messages/{id} - Get voice message details.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetMessage(int id)
     {
         var userId = User.GetUserId();
@@ -79,7 +79,7 @@ public class VoiceMessagesController : ControllerBase
     /// <summary>
     /// PUT /api/voice-messages/{id}/read - Mark as read.
     /// </summary>
-    [HttpPut("{id}/read")]
+    [HttpPut("{id:int}/read")]
     public async Task<IActionResult> MarkAsRead(int id)
     {
         var userId = User.GetUserId();
@@ -93,7 +93,7 @@ public class VoiceMessagesController : ControllerBase
     /// <summary>
     /// DELETE /api/voice-messages/{id} - Delete voice message.
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
         var userId = User.GetUserId();

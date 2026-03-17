@@ -43,7 +43,7 @@ public class ListingFeaturesController : ControllerBase
     /// <summary>
     /// POST /api/listings/{id}/view - Track a view on a listing.
     /// </summary>
-    [HttpPost("{id}/view")]
+    [HttpPost("{id:int}/view")]
     public async Task<IActionResult> TrackView(int id)
     {
         var userId = User.GetUserId();
@@ -63,7 +63,7 @@ public class ListingFeaturesController : ControllerBase
     /// <summary>
     /// GET /api/listings/{id}/analytics - Get analytics for a listing (owner only).
     /// </summary>
-    [HttpGet("{id}/analytics")]
+    [HttpGet("{id:int}/analytics")]
     public async Task<IActionResult> GetAnalytics(int id)
     {
         var userId = User.GetUserId();
@@ -111,7 +111,7 @@ public class ListingFeaturesController : ControllerBase
     /// <summary>
     /// POST /api/listings/{id}/favorite - Favorite a listing.
     /// </summary>
-    [HttpPost("{id}/favorite")]
+    [HttpPost("{id:int}/favorite")]
     public async Task<IActionResult> Favorite(int id)
     {
         var userId = User.GetUserId();
@@ -136,7 +136,7 @@ public class ListingFeaturesController : ControllerBase
     /// <summary>
     /// DELETE /api/listings/{id}/favorite - Unfavorite a listing.
     /// </summary>
-    [HttpDelete("{id}/favorite")]
+    [HttpDelete("{id:int}/favorite")]
     public async Task<IActionResult> Unfavorite(int id)
     {
         var userId = User.GetUserId();
@@ -208,7 +208,7 @@ public class ListingFeaturesController : ControllerBase
     /// <summary>
     /// POST /api/listings/{id}/tags - Add a tag to a listing.
     /// </summary>
-    [HttpPost("{id}/tags")]
+    [HttpPost("{id:int}/tags")]
     public async Task<IActionResult> AddTag(int id, [FromBody] AddTagRequest request)
     {
         var userId = User.GetUserId();
@@ -256,7 +256,7 @@ public class ListingFeaturesController : ControllerBase
     /// <summary>
     /// DELETE /api/listings/{id}/tags/{tag} - Remove a tag from a listing.
     /// </summary>
-    [HttpDelete("{id}/tags/{tag}")]
+    [HttpDelete("{id:int}/tags/{tag}")]
     public async Task<IActionResult> RemoveTag(int id, string tag)
     {
         var userId = User.GetUserId();
@@ -367,7 +367,7 @@ public class ListingFeaturesController : ControllerBase
     /// <summary>
     /// PUT /api/listings/{id}/renew - Renew a listing.
     /// </summary>
-    [HttpPut("{id}/renew")]
+    [HttpPut("{id:int}/renew")]
     public async Task<IActionResult> Renew(int id, [FromBody] RenewListingRequest? request = null)
     {
         var userId = User.GetUserId();

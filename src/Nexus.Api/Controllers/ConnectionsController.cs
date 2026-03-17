@@ -314,7 +314,7 @@ public class ConnectionsController : ControllerBase
     /// <summary>
     /// PUT /api/connections/{id}/accept - Accept a pending connection request
     /// </summary>
-    [HttpPut("{id}/accept")]
+    [HttpPut("{id:int}/accept")]
     public async Task<IActionResult> AcceptConnection(int id)
     {
         var userId = GetCurrentUserId();
@@ -395,7 +395,7 @@ public class ConnectionsController : ControllerBase
     /// <summary>
     /// PUT /api/connections/{id}/decline - Decline a pending connection request
     /// </summary>
-    [HttpPut("{id}/decline")]
+    [HttpPut("{id:int}/decline")]
     public async Task<IActionResult> DeclineConnection(int id)
     {
         var userId = GetCurrentUserId();
@@ -434,7 +434,7 @@ public class ConnectionsController : ControllerBase
     /// <summary>
     /// DELETE /api/connections/{id} - Remove a connection or cancel a pending request
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> RemoveConnection(int id)
     {
         var userId = GetCurrentUserId();

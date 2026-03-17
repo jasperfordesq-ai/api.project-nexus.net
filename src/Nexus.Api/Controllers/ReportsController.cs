@@ -121,7 +121,7 @@ public class ReportsController : ControllerBase
     /// <summary>
     /// PUT /api/reports/warnings/{id}/acknowledge - Acknowledge a warning.
     /// </summary>
-    [HttpPut("api/reports/warnings/{id}/acknowledge")]
+    [HttpPut("api/reports/warnings/{id:int}/acknowledge")]
     public async Task<IActionResult> AcknowledgeWarning(int id)
     {
         var userId = GetCurrentUserId();
@@ -185,7 +185,7 @@ public class ReportsController : ControllerBase
     /// <summary>
     /// GET /api/admin/reports/{id} - Get report detail (admin).
     /// </summary>
-    [HttpGet("api/admin/reports/{id}")]
+    [HttpGet("api/admin/reports/{id:int}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> GetReportDetail(int id)
     {
@@ -224,7 +224,7 @@ public class ReportsController : ControllerBase
     /// <summary>
     /// PUT /api/admin/reports/{id}/review - Review a report (admin).
     /// </summary>
-    [HttpPut("api/admin/reports/{id}/review")]
+    [HttpPut("api/admin/reports/{id:int}/review")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> ReviewReport(int id, [FromBody] ReviewReportRequest request)
     {

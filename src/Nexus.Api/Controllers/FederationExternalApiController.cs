@@ -213,8 +213,11 @@ public class FederationExternalApiController : ControllerBase
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(l => EF.Functions.ILike(l.Title, $"%{search}%") ||
-                                     (l.Description != null && EF.Functions.ILike(l.Description, $"%{search}%")));
+        {
+            var escapedSearch = EscapeLikePattern(search);
+            query = query.Where(l => EF.Functions.ILike(l.Title, $"%{escapedSearch}%") ||
+                                     (l.Description != null && EF.Functions.ILike(l.Description, $"%{escapedSearch}%")));
+        }
 
         if (!string.IsNullOrWhiteSpace(type))
         {
@@ -342,8 +345,11 @@ public class FederationExternalApiController : ControllerBase
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(u => EF.Functions.ILike(u.FirstName, $"%{search}%") ||
-                                     EF.Functions.ILike(u.LastName, $"%{search}%"));
+        {
+            var escapedSearch = EscapeLikePattern(search);
+            query = query.Where(u => EF.Functions.ILike(u.FirstName, $"%{escapedSearch}%") ||
+                                     EF.Functions.ILike(u.LastName, $"%{escapedSearch}%"));
+        }
 
         var total = await query.CountAsync();
         var members = await query
@@ -545,6 +551,17 @@ public class FederationExternalApiController : ControllerBase
             tenant_id = tenantId.Value,
             timestamp = DateTime.UtcNow
         });
+    }
+
+    /// <summary>
+    /// Escapes LIKE/ILIKE wildcard characters in user input to prevent wildcard injection.
+    /// </summary>
+    private static string EscapeLikePattern(string input)
+    {
+        return input
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
     }
 }
 

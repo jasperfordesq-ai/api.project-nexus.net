@@ -85,7 +85,7 @@ public class AdminFeedController : ControllerBase
     }
 
     /// <summary>GET /api/admin/feed/posts/{id} — post details with reports for moderation.</summary>
-    [HttpGet("posts/{id}")]
+    [HttpGet("posts/{id:int}")]
     public async Task<IActionResult> GetPostForModeration(int id)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
@@ -124,7 +124,7 @@ public class AdminFeedController : ControllerBase
     }
 
     /// <summary>POST /api/admin/feed/posts/{id}/hide — admin hide post.</summary>
-    [HttpPost("posts/{id}/hide")]
+    [HttpPost("posts/{id:int}/hide")]
     public async Task<IActionResult> AdminHidePost(int id, [FromBody] AdminModerateRequest? request)
     {
         var adminId = User.GetUserId();
@@ -156,7 +156,7 @@ public class AdminFeedController : ControllerBase
     }
 
     /// <summary>DELETE /api/admin/feed/posts/{id} — admin delete post.</summary>
-    [HttpDelete("posts/{id}")]
+    [HttpDelete("posts/{id:int}")]
     public async Task<IActionResult> AdminDeletePost(int id)
     {
         var adminId = User.GetUserId();

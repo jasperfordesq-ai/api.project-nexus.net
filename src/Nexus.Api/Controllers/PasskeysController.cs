@@ -302,7 +302,7 @@ public class PasskeysController : ControllerBase
     /// <summary>
     /// Delete a passkey.
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -329,7 +329,7 @@ public class PasskeysController : ControllerBase
     /// <summary>
     /// Rename a passkey.
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

@@ -38,7 +38,7 @@ public class GdprBreachController : ControllerBase
         return Ok(new { data = breaches, pagination = new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) } });
     }
 
-    [HttpGet("breaches/{id}")]
+    [HttpGet("breaches/{id:int}")]
     public async Task<IActionResult> GetBreach(int id)
     {
         var breach = await _db.GdprBreaches.AsNoTracking().Where(b => b.Id == id)
@@ -65,7 +65,7 @@ public class GdprBreachController : ControllerBase
         return CreatedAtAction(nameof(GetBreach), new { id = breach.Id }, new { success = true, message = "Breach reported", breach = new { breach.Id, breach.Title, breach.Severity, breach.Status, detected_at = breach.DetectedAt, created_at = breach.CreatedAt } });
     }
 
-    [HttpPut("breaches/{id}")]
+    [HttpPut("breaches/{id:int}")]
     public async Task<IActionResult> UpdateBreach(int id, [FromBody] UpdateBreachRequest request)
     {
         var breach = await _db.GdprBreaches.FirstOrDefaultAsync(b => b.Id == id);
@@ -91,7 +91,7 @@ public class GdprBreachController : ControllerBase
         return Ok(new { success = true, message = "Breach updated", breach = new { breach.Id, breach.Title, breach.Severity, breach.Status, remediation_steps = breach.RemediationSteps, contained_at = breach.ContainedAt, resolved_at = breach.ResolvedAt, updated_at = breach.UpdatedAt } });
     }
 
-    [HttpPut("breaches/{id}/report-authority")]
+    [HttpPut("breaches/{id:int}/report-authority")]
     public async Task<IActionResult> ReportToAuthority(int id, [FromBody] ReportAuthorityRequest? request = null)
     {
         var breach = await _db.GdprBreaches.FirstOrDefaultAsync(b => b.Id == id);

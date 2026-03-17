@@ -68,7 +68,7 @@ public class AdminUserFeaturesController : ControllerBase
         return Ok(new { data = sessions, total, page, limit });
     }
 
-    [HttpDelete("sessions/{id}")]
+    [HttpDelete("sessions/{id:int}")]
     public async Task<IActionResult> TerminateSession(int id)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
@@ -144,7 +144,7 @@ public class AdminUserFeaturesController : ControllerBase
         return Ok(new { data = searches, total, page, limit });
     }
 
-    [HttpDelete("saved-searches/{id}")]
+    [HttpDelete("saved-searches/{id:int}")]
     public async Task<IActionResult> DeleteSavedSearch(int id)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
@@ -197,7 +197,7 @@ public class AdminUserFeaturesController : ControllerBase
         return Ok(new { data = subAccounts, total, page, limit });
     }
 
-    [HttpPut("sub-accounts/{id}/deactivate")]
+    [HttpPut("sub-accounts/{id:int}/deactivate")]
     public async Task<IActionResult> DeactivateSubAccount(int id)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
@@ -211,7 +211,7 @@ public class AdminUserFeaturesController : ControllerBase
         return Ok(new { success = true, message = "Sub-account deactivated" });
     }
 
-    [HttpDelete("sub-accounts/{id}")]
+    [HttpDelete("sub-accounts/{id:int}")]
     public async Task<IActionResult> DeleteSubAccount(int id)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();

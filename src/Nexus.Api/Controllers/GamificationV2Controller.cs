@@ -89,7 +89,7 @@ public class GamificationV2Controller : ControllerBase
     /// <summary>
     /// GET /api/gamification/v2/challenges/{id} - Get challenge detail.
     /// </summary>
-    [HttpGet("challenges/{id}")]
+    [HttpGet("challenges/{id:int}")]
     public async Task<IActionResult> GetChallenge(int id)
     {
         var userId = User.GetUserId();
@@ -104,7 +104,7 @@ public class GamificationV2Controller : ControllerBase
     /// <summary>
     /// POST /api/gamification/v2/challenges/{id}/join - Join a challenge.
     /// </summary>
-    [HttpPost("challenges/{id}/join")]
+    [HttpPost("challenges/{id:int}/join")]
     public async Task<IActionResult> JoinChallenge(int id)
     {
         var userId = User.GetUserId();
@@ -201,7 +201,7 @@ public class GamificationV2Controller : ControllerBase
     /// <summary>
     /// GET /api/gamification/v2/seasons/{id}/leaderboard - Season leaderboard.
     /// </summary>
-    [HttpGet("seasons/{id}/leaderboard")]
+    [HttpGet("seasons/{id:int}/leaderboard")]
     public async Task<IActionResult> GetSeasonLeaderboard(
         int id,
         [FromQuery] int page = 1,
@@ -359,7 +359,7 @@ public class GamificationV2Controller : ControllerBase
         return Ok(new { data = seasons, total = seasons.Count });
     }
 
-    [HttpGet("seasons/{id}")]
+    [HttpGet("seasons/{id:int}")]
     public async Task<IActionResult> GetSeason(int id)
     {
         var userId = User.GetUserId();
@@ -433,7 +433,7 @@ public class GamificationV2Controller : ControllerBase
         });
     }
 
-    [HttpPut("/api/admin/gamification/seasons/{id}/end")]
+    [HttpPut("/api/admin/gamification/seasons/{id:int}/end")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminEndSeason(int id)
     {

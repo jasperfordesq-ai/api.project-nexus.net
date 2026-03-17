@@ -102,7 +102,7 @@ public class ContactController : ControllerBase
     }
 
     /// <summary>GET /api/admin/contact/{id} - Get full contact submission (admin).</summary>
-    [HttpGet("admin/contact/{id}")]
+    [HttpGet("admin/contact/{id:int}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Get(int id)
     {
@@ -114,7 +114,7 @@ public class ContactController : ControllerBase
     }
 
     /// <summary>PUT /api/admin/contact/{id}/resolve - Mark as resolved (admin).</summary>
-    [HttpPut("admin/contact/{id}/resolve")]
+    [HttpPut("admin/contact/{id:int}/resolve")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Resolve(int id, [FromBody] ResolveContactRequest request)
     {
@@ -135,7 +135,7 @@ public class ContactController : ControllerBase
     }
 
     /// <summary>DELETE /api/admin/contact/{id} - Delete submission (admin).</summary>
-    [HttpDelete("admin/contact/{id}")]
+    [HttpDelete("admin/contact/{id:int}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(int id)
     {

@@ -85,7 +85,7 @@ public class AdminGroupsController : ControllerBase
     /// <summary>
     /// DELETE /api/admin/groups/{id} - Admin delete a group.
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteGroup(int id)
     {
         var group = await _db.Groups.FirstOrDefaultAsync(g => g.Id == id);

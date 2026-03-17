@@ -50,7 +50,7 @@ public class AdminOrganisationsController : ControllerBase
     /// <summary>
     /// PUT /api/admin/organisations/{id}/verify - Verify an organisation.
     /// </summary>
-    [HttpPut("{id}/verify")]
+    [HttpPut("{id:int}/verify")]
     public async Task<IActionResult> Verify(int id)
     {
         var (org, error) = await _orgs.AdminVerifyAsync(id);
@@ -61,7 +61,7 @@ public class AdminOrganisationsController : ControllerBase
     /// <summary>
     /// PUT /api/admin/organisations/{id}/suspend - Suspend an organisation.
     /// </summary>
-    [HttpPut("{id}/suspend")]
+    [HttpPut("{id:int}/suspend")]
     public async Task<IActionResult> Suspend(int id)
     {
         var (org, error) = await _orgs.AdminSuspendAsync(id);

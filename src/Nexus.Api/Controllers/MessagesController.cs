@@ -146,7 +146,7 @@ public class MessagesController : ControllerBase
     /// Get messages in a specific conversation.
     /// Only accessible if user is a participant.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetConversation(
         int id,
         [FromQuery] int page = 1,
@@ -418,7 +418,7 @@ public class MessagesController : ControllerBase
     /// Mark all messages in a conversation as read.
     /// Only marks messages from the other participant as read.
     /// </summary>
-    [HttpPut("{id}/read")]
+    [HttpPut("{id:int}/read")]
     public async Task<IActionResult> MarkConversationRead(int id)
     {
         var userId = GetCurrentUserId();
