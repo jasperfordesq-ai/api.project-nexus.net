@@ -355,6 +355,9 @@ public class NexusDbContext : DbContext
     public DbSet<ShopItem> ShopItems => Set<ShopItem>();
     public DbSet<ShopPurchase> ShopPurchases => Set<ShopPurchase>();
 
+    // Webhook Events
+    public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -400,6 +403,7 @@ public class NexusDbContext : DbContext
             new DiscoveryConfiguration(_tenantContext),
             new ContactEmergencyConfiguration(_tenantContext),
             new FeedModerationGamificationConfiguration(_tenantContext),
+            new WebhookConfiguration(_tenantContext),
         };
 
         foreach (var config in configurations)

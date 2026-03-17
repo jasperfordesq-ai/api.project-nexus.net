@@ -63,6 +63,7 @@ public static class ServiceExtensions
         services.AddScoped<FeedRankingService>();
         services.AddScoped<AdminAnalyticsService>();
         services.AddScoped<AdminCrmService>();
+        services.AddScoped<VolunteerWebhookService>();
         services.AddScoped<NewsletterService>();
         services.AddScoped<CookieConsentService>();
         services.AddScoped<LegalDocumentService>();
