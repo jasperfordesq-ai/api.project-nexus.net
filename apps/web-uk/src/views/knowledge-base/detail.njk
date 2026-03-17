@@ -1,0 +1,46 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {% set breadcrumbs = [
+    { text: "Knowledge Base", href: "/knowledge-base" },
+    { text: article.title }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ article.title }}</h1>
+
+      <p class="govuk-body-s govuk-!-margin-bottom-6" style="color: #505a5f;">
+        {% if article.category or article.category_name %}
+          {{ govukTag({ text: article.category or article.category_name, classes: "govuk-tag--grey" }) }}
+        {% endif %}
+        {% if article.updated_at or article.updatedAt %}
+          Last updated {{ (article.updated_at or article.updatedAt) | formatDate }}
+        {% endif %}
+      </p>
+
+      {% if article.content %}
+        <div class="govuk-body app-formatted-text">
+          {{ article.content | nl2br }}
+        </div>
+      {% endif %}
+
+      <p class="govuk-body govuk-!-margin-top-8">
+        <a href="/knowledge-base" class="govuk-link">Back to Knowledge Base</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

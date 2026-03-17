@@ -1,0 +1,87 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Community Goals</h1>
+      <p class="govuk-body-l">Track progress towards community milestones and shared objectives.</p>
+
+      {% if goals and goals.length > 0 %}
+        {% for goal in goals %}
+          <div class="govuk-!-margin-bottom-6">
+            <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
+              <a href="/goals/{{ goal.id }}" class="govuk-link govuk-link--no-visited-state">
+                {{ goal.title }}
+              </a>
+            </h2>
+            <p class="govuk-body-s govuk-!-margin-bottom-2" style="color: #505a5f;">
+              {% if goal.status == 'completed' or goal.is_completed or goal.isCompleted %}
+                {{ govukTag({ text: "Completed", classes: "govuk-tag--green" }) }}
+              {% elif goal.status == 'in_progress' or goal.status == 'active' %}
+                {{ govukTag({ text: "In progress", classes: "govuk-tag--blue" }) }}
+              {% else %}
+                {{ govukTag({ text: goal.status or "Active", classes: "govuk-tag--grey" }) }}
+              {% endif %}
+            </p>
+
+            {% if goal.description %}
+              <p class="govuk-body">{{ goal.description | truncate(150) }}</p>
+            {% endif %}
+
+            {# Progress bar #}
+            {% set progress = goal.progress or goal.progress_percent or 0 %}
+            <div class="govuk-!-margin-top-2">
+              <p class="govuk-body-s govuk-!-margin-bottom-1">Progress: {{ progress }}%</p>
+              <div style="background: #f3f2f1; height: 12px; border-radius: 4px; overflow: hidden;">
+                <div style="background: {% if progress >= 100 %}#00703c{% else %}#1d70b8{% endif %}; height: 100%; width: {{ progress }}%; min-width: {% if progress > 0 %}2px{% else %}0{% endif %};"></div>
+              </div>
+            </div>
+
+            <hr class="govuk-section-break govuk-section-break--visible govuk-!-margin-top-4">
+          </div>
+        {% endfor %}
+
+        {# Pagination #}
+        {% set totalPages = pagination.totalPages or pagination.total_pages or 1 %}
+        {% if totalPages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, totalPages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/goals?page=" + i,
+              current: i == pagination.page
+            }), paginationItems) %}
+          {% endfor %}
+          {{ govukPagination({
+            previous: { href: "/goals?page=" + (pagination.page - 1) } if pagination.page > 1 else undefined,
+            next: { href: "/goals?page=" + (pagination.page + 1) } if pagination.page < totalPages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+      {% else %}
+        {% set emptyState = {
+          icon: "🎯",
+          heading: "No goals set yet",
+          message: "Community goals will appear here once they are created."
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

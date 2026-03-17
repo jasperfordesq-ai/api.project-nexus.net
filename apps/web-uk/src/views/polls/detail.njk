@@ -1,0 +1,125 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {% set breadcrumbs = [
+    { text: "Polls", href: "/polls" },
+    { text: poll.title or poll.question }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <div class="app-page-header">
+        <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ poll.title or poll.question }}</h1>
+        {% if poll.is_active or poll.isActive %}
+          {{ govukTag({ text: "Active", classes: "govuk-tag--green" }) }}
+        {% else %}
+          {{ govukTag({ text: "Closed", classes: "govuk-tag--grey" }) }}
+        {% endif %}
+      </div>
+
+      {% if poll.description %}
+        <p class="govuk-body-l">{{ poll.description }}</p>
+      {% endif %}
+
+      <p class="govuk-body-s" style="color: #505a5f;">
+        {{ poll.total_votes or poll.totalVotes or 0 }} total vote{{ 's' if (poll.total_votes or poll.totalVotes or 0) != 1 else '' }}
+        - Created {{ (poll.created_at or poll.createdAt) | formatDate }}
+      </p>
+
+      {# Show voting form if poll is active and user has not voted #}
+      {% if (poll.is_active or poll.isActive) and not (poll.has_voted or poll.hasVoted) %}
+        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+        <h2 class="govuk-heading-m">Cast your vote</h2>
+
+        <form action="/polls/{{ poll.id }}/vote" method="post">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+          {% set options = poll.options or [] %}
+          {% if options.length > 0 %}
+            {% set radioItems = [] %}
+            {% for option in options %}
+              {% set radioItems = (radioItems.push({
+                value: option.id | string,
+                text: option.text or option.title or option.label
+              }), radioItems) %}
+            {% endfor %}
+
+            {{ govukRadios({
+              name: "option_id",
+              fieldset: {
+                legend: {
+                  text: "Select an option",
+                  classes: "govuk-fieldset__legend--s"
+                }
+              },
+              items: radioItems
+            }) }}
+          {% endif %}
+
+          {{ govukButton({
+            text: "Submit vote"
+          }) }}
+        </form>
+
+      {# Show results if user has voted or poll is closed #}
+      {% elif poll.options and poll.options.length > 0 %}
+        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+        <h2 class="govuk-heading-m">Results</h2>
+
+        {% set totalVotes = poll.total_votes or poll.totalVotes or 0 %}
+        {% for option in poll.options %}
+          {% set optionVotes = option.vote_count or option.voteCount or 0 %}
+          {% set percentage = (optionVotes / totalVotes * 100) | round(1) if totalVotes > 0 else 0 %}
+          <div class="govuk-!-margin-bottom-4">
+            <p class="govuk-body govuk-!-margin-bottom-1">
+              <strong>{{ option.text or option.title or option.label }}</strong>
+              <span class="govuk-body-s govuk-!-margin-left-2">{{ optionVotes }} vote{{ 's' if optionVotes != 1 else '' }} ({{ percentage }}%)</span>
+            </p>
+            <div style="background: #f3f2f1; height: 20px; border-radius: 4px; overflow: hidden;">
+              <div style="background: #1d70b8; height: 100%; width: {{ percentage }}%; min-width: {% if optionVotes > 0 %}2px{% else %}0{% endif %};"></div>
+            </div>
+          </div>
+        {% endfor %}
+
+        {% if poll.has_voted or poll.hasVoted %}
+          <div class="govuk-inset-text">
+            You have already voted in this poll.
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/polls" class="govuk-link">Back to polls</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

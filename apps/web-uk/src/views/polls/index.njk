@@ -1,0 +1,78 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Polls</h1>
+      <p class="govuk-body-l">Have your say on community decisions.</p>
+
+      {% if polls and polls.length > 0 %}
+        {% for poll in polls %}
+          <div class="govuk-!-margin-bottom-6">
+            <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
+              <a href="/polls/{{ poll.id }}" class="govuk-link govuk-link--no-visited-state">
+                {{ poll.title or poll.question }}
+              </a>
+            </h2>
+            <p class="govuk-body-s govuk-!-margin-bottom-2" style="color: #505a5f;">
+              {% if poll.is_active or poll.isActive %}
+                {{ govukTag({ text: "Active", classes: "govuk-tag--green" }) }}
+              {% else %}
+                {{ govukTag({ text: "Closed", classes: "govuk-tag--grey" }) }}
+              {% endif %}
+              {% if poll.total_votes or poll.totalVotes %}
+                - {{ poll.total_votes or poll.totalVotes }} vote{{ 's' if (poll.total_votes or poll.totalVotes) != 1 else '' }}
+              {% endif %}
+              - Created {{ (poll.created_at or poll.createdAt) | formatDate }}
+            </p>
+            {% if poll.description %}
+              <p class="govuk-body">{{ poll.description | truncate(150) }}</p>
+            {% endif %}
+            <hr class="govuk-section-break govuk-section-break--visible">
+          </div>
+        {% endfor %}
+
+        {# Pagination #}
+        {% set totalPages = pagination.totalPages or pagination.total_pages or 1 %}
+        {% if totalPages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, totalPages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/polls?page=" + i,
+              current: i == pagination.page
+            }), paginationItems) %}
+          {% endfor %}
+          {{ govukPagination({
+            previous: { href: "/polls?page=" + (pagination.page - 1) } if pagination.page > 1 else undefined,
+            next: { href: "/polls?page=" + (pagination.page + 1) } if pagination.page < totalPages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+      {% else %}
+        {% set emptyState = {
+          icon: "🗳️",
+          heading: "No polls yet",
+          message: "There are no community polls at the moment. Check back later."
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

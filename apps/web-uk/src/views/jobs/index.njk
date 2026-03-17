@@ -1,0 +1,137 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Jobs</h1>
+      <p class="govuk-body-l">Find volunteering and job opportunities in the community.</p>
+
+      {# Search form #}
+      <form action="/jobs" method="get" class="govuk-!-margin-bottom-6">
+        <div class="app-search-bar">
+          {{ govukInput({
+            id: "search",
+            name: "search",
+            value: searchQuery,
+            label: {
+              text: "Search jobs",
+              classes: "govuk-visually-hidden"
+            },
+            classes: "app-search-bar__input",
+            attributes: {
+              placeholder: "Search by title or description..."
+            }
+          }) }}
+          {{ govukButton({
+            text: "Search",
+            classes: "app-search-bar__button govuk-!-margin-bottom-0"
+          }) }}
+        </div>
+      </form>
+
+      {% if jobs and jobs.length > 0 %}
+        <div class="app-card-grid">
+          {% for job in jobs %}
+            <div class="app-card">
+              <div class="app-card__header">
+                <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
+                  <a href="/jobs/{{ job.id }}" class="govuk-link govuk-link--no-visited-state">
+                    {{ job.title }}
+                  </a>
+                </h2>
+                {% if job.status == 'open' %}
+                  {{ govukTag({ text: "Open", classes: "govuk-tag--green" }) }}
+                {% elif job.status == 'closed' %}
+                  {{ govukTag({ text: "Closed", classes: "govuk-tag--red" }) }}
+                {% else %}
+                  {{ govukTag({ text: job.status or "Active", classes: "govuk-tag--blue" }) }}
+                {% endif %}
+              </div>
+
+              <div class="app-card__body">
+                {% if job.organisation or job.organization %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-1">
+                    <strong>Organisation:</strong> {{ job.organisation or job.organization }}
+                  </p>
+                {% endif %}
+
+                {% if job.location %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-1">
+                    <strong>Location:</strong> {{ job.location }}
+                  </p>
+                {% endif %}
+
+                {% if job.description %}
+                  <p class="govuk-body-s govuk-!-margin-bottom-0 app-card__description">
+                    {{ job.description | truncate(120) }}
+                  </p>
+                {% endif %}
+              </div>
+
+              <div class="app-card__footer">
+                <span class="govuk-body-s">
+                  Posted {{ (job.created_at or job.createdAt) | formatDate }}
+                </span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        {# Pagination #}
+        {% set totalPages = pagination.totalPages or pagination.total_pages or 1 %}
+        {% if totalPages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, totalPages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/jobs?page=" + i + ("&search=" + searchQuery if searchQuery else ""),
+              current: i == pagination.page
+            }), paginationItems) %}
+          {% endfor %}
+          {{ govukPagination({
+            previous: { href: "/jobs?page=" + (pagination.page - 1) } if pagination.page > 1 else undefined,
+            next: { href: "/jobs?page=" + (pagination.page + 1) } if pagination.page < totalPages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+      {% else %}
+        {% if searchQuery %}
+          {% set emptyState = {
+            icon: "🔍",
+            heading: "No results found",
+            message: "No jobs match \"" + searchQuery + "\". Try a different search term.",
+            action: {
+              text: "Clear search",
+              href: "/jobs"
+            }
+          } %}
+        {% else %}
+          {% set emptyState = {
+            icon: "💼",
+            heading: "No jobs posted yet",
+            message: "Check back soon for new opportunities."
+          } %}
+        {% endif %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h1 class="govuk-heading-xl">Knowledge Base</h1>
+      <p class="govuk-body-l">Guides, tips, and resources to help you get the most from the community.</p>
+
+      {% if articles and articles.length > 0 %}
+        {% for article in articles %}
+          <div class="govuk-!-margin-bottom-6">
+            <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
+              <a href="/knowledge-base/{{ article.id }}" class="govuk-link govuk-link--no-visited-state">
+                {{ article.title }}
+              </a>
+            </h2>
+            <p class="govuk-body-s govuk-!-margin-bottom-2" style="color: #505a5f;">
+              {% if article.category or article.category_name %}
+                {{ govukTag({ text: article.category or article.category_name, classes: "govuk-tag--grey" }) }}
+              {% endif %}
+              {% if article.updated_at or article.updatedAt %}
+                Updated {{ (article.updated_at or article.updatedAt) | formatDate }}
+              {% endif %}
+            </p>
+            {% if article.summary or article.excerpt %}
+              <p class="govuk-body">{{ article.summary or article.excerpt }}</p>
+            {% elif article.content %}
+              <p class="govuk-body">{{ article.content | truncate(200) }}</p>
+            {% endif %}
+            <hr class="govuk-section-break govuk-section-break--visible">
+          </div>
+        {% endfor %}
+
+        {# Pagination #}
+        {% set totalPages = pagination.totalPages or pagination.total_pages or 1 %}
+        {% if totalPages > 1 %}
+          {% set paginationItems = [] %}
+          {% for i in range(1, totalPages + 1) %}
+            {% set paginationItems = (paginationItems.push({
+              number: i,
+              href: "/knowledge-base?page=" + i + ("&category=" + category if category else ""),
+              current: i == pagination.page
+            }), paginationItems) %}
+          {% endfor %}
+          {{ govukPagination({
+            previous: { href: "/knowledge-base?page=" + (pagination.page - 1) } if pagination.page > 1 else undefined,
+            next: { href: "/knowledge-base?page=" + (pagination.page + 1) } if pagination.page < totalPages else undefined,
+            items: paginationItems
+          }) }}
+        {% endif %}
+      {% else %}
+        {% set emptyState = {
+          icon: "📚",
+          heading: "No articles yet",
+          message: "The knowledge base is being built. Check back soon for helpful guides and resources."
+        } %}
+        {% include "partials/empty-state.njk" %}
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

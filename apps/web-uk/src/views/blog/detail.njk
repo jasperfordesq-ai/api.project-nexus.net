@@ -1,0 +1,47 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {% set breadcrumbs = [
+    { text: "Blog", href: "/blog" },
+    { text: post.title }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ post.title }}</h1>
+
+      <p class="govuk-body-s govuk-!-margin-bottom-6" style="color: #505a5f;">
+        Published {{ (post.created_at or post.createdAt) | formatDate }}
+        {% if post.author %}
+          by {{ post.author.first_name or post.author.firstName }} {{ post.author.last_name or post.author.lastName }}
+        {% endif %}
+        {% if post.category or post.category_name %}
+          - {{ govukTag({ text: post.category or post.category_name, classes: "govuk-tag--blue" }) }}
+        {% endif %}
+      </p>
+
+      {% if post.content %}
+        <div class="govuk-body app-formatted-text">
+          {{ post.content | nl2br }}
+        </div>
+      {% endif %}
+
+      <p class="govuk-body govuk-!-margin-top-8">
+        <a href="/blog" class="govuk-link">Back to blog</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

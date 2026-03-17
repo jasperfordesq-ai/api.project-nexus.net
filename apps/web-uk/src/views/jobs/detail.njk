@@ -1,0 +1,122 @@
+{# Copyright © 2024–2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+
+{% block beforeContent %}
+  {{ super() }}
+  {% set breadcrumbs = [
+    { text: "Jobs", href: "/jobs" },
+    { text: job.title }
+  ] %}
+  {% include "partials/breadcrumbs.njk" %}
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if successMessage %}
+        {% set notificationMessage = successMessage %}
+        {% set notificationType = "success" %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      {% if errorMessage %}
+        {% set notificationMessage = errorMessage %}
+        {% set notificationType = null %}
+        {% include "partials/notification-banner.njk" %}
+      {% endif %}
+
+      <div class="app-page-header">
+        <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ job.title }}</h1>
+        {% if job.status == 'open' %}
+          {{ govukTag({ text: "Open", classes: "govuk-tag--green" }) }}
+        {% elif job.status == 'closed' %}
+          {{ govukTag({ text: "Closed", classes: "govuk-tag--red" }) }}
+        {% else %}
+          {{ govukTag({ text: job.status or "Active", classes: "govuk-tag--blue" }) }}
+        {% endif %}
+      </div>
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Organisation" },
+            value: { text: job.organisation or job.organization or "Not specified" }
+          },
+          {
+            key: { text: "Location" },
+            value: { text: job.location or "Not specified" }
+          },
+          {
+            key: { text: "Posted" },
+            value: { text: (job.created_at or job.createdAt) | formatDate if job.created_at or job.createdAt else "Unknown" }
+          },
+          {
+            key: { text: "Closing date" },
+            value: { text: (job.closes_at or job.closesAt) | date if job.closes_at or job.closesAt else "Not specified" }
+          }
+        ] | selectattr("key") | list
+      }) }}
+
+      {% if job.description %}
+        <h2 class="govuk-heading-m govuk-!-margin-top-6">Description</h2>
+        <div class="govuk-body app-formatted-text">
+          {{ job.description | nl2br }}
+        </div>
+      {% endif %}
+
+      {% if job.requirements %}
+        <h2 class="govuk-heading-m govuk-!-margin-top-6">Requirements</h2>
+        <div class="govuk-body app-formatted-text">
+          {{ job.requirements | nl2br }}
+        </div>
+      {% endif %}
+
+      {# Apply form #}
+      {% if job.status != 'closed' and not job.has_applied %}
+        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+        <h2 class="govuk-heading-m">Apply for this role</h2>
+
+        <form action="/jobs/{{ job.id }}/apply" method="post">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+          {{ govukTextarea({
+            id: "cover_letter",
+            name: "cover_letter",
+            label: {
+              text: "Cover letter (optional)",
+              classes: "govuk-label--s"
+            },
+            hint: {
+              text: "Tell the organisation why you are interested and what you can offer"
+            },
+            rows: 5
+          }) }}
+
+          {{ govukButton({
+            text: "Submit application"
+          }) }}
+        </form>
+      {% elif job.has_applied %}
+        <div class="govuk-inset-text">
+          You have already applied for this role.
+        </div>
+      {% endif %}
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/jobs" class="govuk-link">Back to jobs</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}
