@@ -27,6 +27,16 @@ public class User : ITenantEntity
     public DateTime? LastLoginAt { get; set; }
 
     /// <summary>
+    /// Profile photo URL — set when user uploads an avatar via /api/files/avatar.
+    /// </summary>
+    public string? AvatarUrl { get; set; }
+
+    /// <summary>
+    /// User bio/about text.
+    /// </summary>
+    public string? Bio { get; set; }
+
+    /// <summary>
     /// Registration lifecycle state. Defaults to Active for backward compatibility.
     /// </summary>
     public RegistrationStatus RegistrationStatus { get; set; } = RegistrationStatus.Active;

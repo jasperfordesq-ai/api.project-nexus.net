@@ -8,7 +8,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
@@ -23,12 +25,14 @@ public class UsersController : ControllerBase
 {
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
+    private readonly FileUploadService _fileService;
     private readonly ILogger<UsersController> _logger;
 
-    public UsersController(NexusDbContext db, TenantContext tenantContext, ILogger<UsersController> logger)
+    public UsersController(NexusDbContext db, TenantContext tenantContext, FileUploadService fileService, ILogger<UsersController> logger)
     {
         _db = db;
         _tenantContext = tenantContext;
+        _fileService = fileService;
         _logger = logger;
     }
 
@@ -62,6 +66,8 @@ public class UsersController : ControllerBase
             last_name = user.LastName,
             role = user.Role,
             tenant_id = user.TenantId,
+            avatar_url = user.AvatarUrl,
+            bio = user.Bio,
             created_at = user.CreatedAt,
             last_login_at = user.LastLoginAt
         });
@@ -207,6 +213,12 @@ public class UsersController : ControllerBase
             updated = true;
         }
 
+        if (request.Bio != null)
+        {
+            user.Bio = request.Bio.Trim();
+            updated = true;
+        }
+
         if (updated)
         {
             await _db.SaveChangesAsync();
@@ -222,9 +234,49 @@ public class UsersController : ControllerBase
             last_name = user.LastName,
             role = user.Role,
             tenant_id = user.TenantId,
+            avatar_url = user.AvatarUrl,
+            bio = user.Bio,
             created_at = user.CreatedAt,
             last_login_at = user.LastLoginAt
         });
+    }
+
+    /// <summary>
+    /// Upload/update profile photo for the current user.
+    /// POST /api/users/me/avatar
+    /// Accepts multipart form with field "avatar" or "file".
+    /// </summary>
+    [HttpPost("me/avatar")]
+    [RequestSizeLimit(2 * 1024 * 1024)] // 2 MB
+    public async Task<IActionResult> UploadAvatar(IFormFile? avatar, IFormFile? file)
+    {
+        var uploadedFile = avatar ?? file;
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+        if (userId == null || tenantId == null) return Unauthorized(new { error = "Invalid token" });
+
+        if (uploadedFile == null || uploadedFile.Length == 0)
+            return BadRequest(new { error = "No file provided" });
+
+        await using var stream = uploadedFile.OpenReadStream();
+        var (upload, error) = await _fileService.UploadAsync(
+            stream, uploadedFile.FileName, uploadedFile.ContentType, uploadedFile.Length,
+            userId.Value, tenantId.Value, FileCategory.Avatar, userId.Value, "user");
+
+        if (error != null)
+            return BadRequest(new { error });
+
+        // Update user's avatar URL
+        var avatarUrl = $"/api/files/{upload!.Id}/download";
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+        if (user != null)
+        {
+            user.AvatarUrl = avatarUrl;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        return Ok(new { avatar_url = avatarUrl, url = avatarUrl, id = upload.Id });
     }
 }
 
@@ -238,4 +290,7 @@ public class UpdateProfileRequest
 
     [JsonPropertyName("last_name")]
     public string? LastName { get; set; }
+
+    [JsonPropertyName("bio")]
+    public string? Bio { get; set; }
 }
