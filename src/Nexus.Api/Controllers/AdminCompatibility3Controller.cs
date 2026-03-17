@@ -747,14 +747,7 @@ public class AdminCompatibility3Controller : ControllerBase
     {
         return Ok(new { success = true, message = "Note created", id = 0 });
     }
-    public IActionResult UpdateCrmNote(int id)
-    {
-        return Ok(new { success = true, message = "Note updated", id });
-    }
-    public IActionResult DeleteCrmNote(int id)
-    {
-        return Ok(new { success = true, message = "Note deleted", id });
-    }
+    // UpdateCrmNote and DeleteCrmNote removed — served by AdminCrmController
 
     /// <summary>GET /api/admin/crm/tags - List CRM tags.</summary>
     [HttpGet("crm/tags")]

@@ -962,11 +962,7 @@ public class AdminCompatibilityController : ControllerBase
         _logger.LogInformation("Admin {AdminId} deleted gamification campaign {Id} (stub)", GetCurrentUserId(), id);
         return Ok(new { success = true });
     }
-    public IActionResult DeleteBadge(int id)
-    {
-        _logger.LogInformation("Admin {AdminId} deleted badge {Id} (stub)", GetCurrentUserId(), id);
-        return Ok(new { success = true });
-    }
+    // DeleteBadge removed — served by AdminGamificationController
 
     // ──────────────────────────────────────────────
     // Matching - Extended (8 endpoints)

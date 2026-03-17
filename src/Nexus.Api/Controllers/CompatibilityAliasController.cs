@@ -1243,29 +1243,7 @@ public class CompatibilityAliasController : ControllerBase
     [HttpPost("api/group-exchanges/{id:int}/confirm")]
     public IActionResult ConfirmGroupExchange(int id) => Ok(new { success = true, message = "Group exchange confirmed" });
 
-    public IActionResult CreateGroupAnnouncement(int groupId, [FromBody] object? request = null)
-    {
-        return Ok(new { success = true, message = "Announcement created" });
-    }
-
-    /// <summary>
-    /// PUT /api/groups/{groupId}/announcements/{id} — Update group announcement.
-    /// </summary>
-    [HttpPut("api/groups/{groupId:int}/announcements/{id:int}")]
-    public IActionResult UpdateGroupAnnouncement(int groupId, int id, [FromBody] object? request = null)
-    {
-        return Ok(new { success = true, message = "Announcement updated" });
-    }
-
-    public IActionResult ListGroupAnnouncements(int groupId, [FromQuery] bool pinned = false)
-    {
-        return Ok(new { data = new object[] { }, pagination = new { page = 1, limit = 20, total = 0, pages = 0 } });
-    }
-
-    public IActionResult DeleteGroupAnnouncement(int groupId, int id)
-    {
-        return Ok(new { success = true, message = "Announcement deleted" });
-    }
+    // Group announcements routes removed — served by GroupFeaturesController
 
     /// <summary>
     /// POST /api/groups/{id}/requests/{userId} — Handle group membership request.
@@ -1505,10 +1483,7 @@ public class CompatibilityAliasController : ControllerBase
         return Ok(new { success = true, message = "Application updated" });
     }
 
-    public IActionResult WithdrawVolunteeringApplication(int id)
-    {
-        return Ok(new { success = true, message = "Application withdrawn" });
-    }
+    // Withdraw application route removed — served by VolunteeringController
 
     /// <summary>
     /// PUT /api/volunteering/emergency-alerts/{id} — Update emergency alert.
