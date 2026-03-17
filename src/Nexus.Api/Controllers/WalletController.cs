@@ -62,6 +62,15 @@ public class WalletController : ControllerBase
 
         var balance = received - sent;
 
+        // Compute pending amounts from Pending transactions
+        var pendingIn = await _db.Transactions
+            .Where(t => t.ReceiverId == userId.Value && t.Status == TransactionStatus.Pending)
+            .SumAsync(t => t.Amount);
+
+        var pendingOut = await _db.Transactions
+            .Where(t => t.SenderId == userId.Value && t.Status == TransactionStatus.Pending)
+            .SumAsync(t => t.Amount);
+
         _logger.LogDebug("User {UserId} balance: {Balance} (received: {Received}, sent: {Sent})",
             userId, balance, received, sent);
 
@@ -70,7 +79,11 @@ public class WalletController : ControllerBase
             balance,
             currency = "hours",
             received_total = received,
-            sent_total = sent
+            sent_total = sent,
+            total_earned = received,
+            total_spent = sent,
+            pending_in = pendingIn,
+            pending_out = pendingOut
         });
     }
 
@@ -98,13 +111,13 @@ public class WalletController : ControllerBase
         var query = _db.Transactions
             .Where(t => t.SenderId == userId.Value || t.ReceiverId == userId.Value);
 
-        // Filter by type if specified
+        // Filter by type if specified (accept both old and new naming)
         if (!string.IsNullOrEmpty(type))
         {
             query = type.ToLowerInvariant() switch
             {
-                "sent" => query.Where(t => t.SenderId == userId.Value),
-                "received" => query.Where(t => t.ReceiverId == userId.Value),
+                "sent" or "debit" => query.Where(t => t.SenderId == userId.Value),
+                "received" or "credit" => query.Where(t => t.ReceiverId == userId.Value),
                 _ => query
             };
         }
@@ -126,7 +139,7 @@ public class WalletController : ControllerBase
                 amount = t.Amount,
                 description = t.Description,
                 status = t.Status.ToString().ToLowerInvariant(),
-                type = t.SenderId == userId.Value ? "sent" : "received",
+                type = t.SenderId == userId.Value ? "debit" : "credit",
                 sender = t.Sender == null ? null : new
                 {
                     id = t.Sender.Id,
@@ -139,11 +152,25 @@ public class WalletController : ControllerBase
                     first_name = t.Receiver.FirstName,
                     last_name = t.Receiver.LastName
                 },
+                other_user = t.SenderId == userId.Value
+                    ? (t.Receiver == null ? null : new
+                    {
+                        id = t.Receiver.Id,
+                        name = t.Receiver.FirstName + " " + t.Receiver.LastName,
+                        avatar_url = (string?)null
+                    })
+                    : (t.Sender == null ? null : new
+                    {
+                        id = t.Sender.Id,
+                        name = t.Sender.FirstName + " " + t.Sender.LastName,
+                        avatar_url = (string?)null
+                    }),
                 listing = t.Listing == null ? null : new
                 {
                     id = t.Listing.Id,
                     title = t.Listing.Title
                 },
+                listing_title = t.Listing == null ? null : t.Listing.Title,
                 created_at = t.CreatedAt,
                 updated_at = t.UpdatedAt
             })
@@ -194,13 +221,16 @@ public class WalletController : ControllerBase
             return NotFound(new { error = "Transaction not found" });
         }
 
+        var isSender = transaction.SenderId == userId.Value;
+        var otherParty = isSender ? transaction.Receiver : transaction.Sender;
+
         return Ok(new
         {
             id = transaction.Id,
             amount = transaction.Amount,
             description = transaction.Description,
             status = transaction.Status.ToString().ToLowerInvariant(),
-            type = transaction.SenderId == userId.Value ? "sent" : "received",
+            type = isSender ? "debit" : "credit",
             sender = transaction.Sender == null ? null : new
             {
                 id = transaction.Sender.Id,
@@ -213,14 +243,41 @@ public class WalletController : ControllerBase
                 first_name = transaction.Receiver.FirstName,
                 last_name = transaction.Receiver.LastName
             },
+            other_user = otherParty == null ? null : new
+            {
+                id = otherParty.Id,
+                name = otherParty.FirstName + " " + otherParty.LastName,
+                avatar_url = (string?)null
+            },
             listing = transaction.Listing == null ? null : new
             {
                 id = transaction.Listing.Id,
                 title = transaction.Listing.Title
             },
+            listing_title = transaction.Listing?.Title,
             created_at = transaction.CreatedAt,
             updated_at = transaction.UpdatedAt
         });
+    }
+
+    /// <summary>
+    /// Get count of pending transactions for the current user.
+    /// </summary>
+    [HttpGet("pending-count")]
+    public async Task<IActionResult> GetPendingCount()
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized(new { error = "Invalid token" });
+        }
+
+        var count = await _db.Transactions
+            .Where(t => (t.SenderId == userId.Value || t.ReceiverId == userId.Value)
+                && t.Status == TransactionStatus.Pending)
+            .CountAsync();
+
+        return Ok(new { count });
     }
 
     /// <summary>

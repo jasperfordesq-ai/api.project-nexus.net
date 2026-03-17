@@ -58,19 +58,7 @@ public class UsersController : ControllerBase
             return NotFound(new { error = "User not found" });
         }
 
-        return Ok(new
-        {
-            id = user.Id,
-            email = user.Email,
-            first_name = user.FirstName,
-            last_name = user.LastName,
-            role = user.Role,
-            tenant_id = user.TenantId,
-            avatar_url = user.AvatarUrl,
-            bio = user.Bio,
-            created_at = user.CreatedAt,
-            last_login_at = user.LastLoginAt
-        });
+        return Ok(await BuildEnrichedUserResponse(user));
     }
 
     /// <summary>
@@ -144,6 +132,13 @@ public class UsersController : ControllerBase
             created_at = user.CreatedAt
         });
     }
+
+    /// <summary>
+    /// Update current user's profile (PUT variant — delegates to PATCH logic).
+    /// </summary>
+    [HttpPut("me")]
+    public Task<IActionResult> UpdateMePut([FromBody] UpdateProfileRequest request)
+        => UpdateMe(request);
 
     /// <summary>
     /// Update current user's profile.
@@ -226,19 +221,7 @@ public class UsersController : ControllerBase
         }
 
         // Return same shape as GET /api/users/me
-        return Ok(new
-        {
-            id = user.Id,
-            email = user.Email,
-            first_name = user.FirstName,
-            last_name = user.LastName,
-            role = user.Role,
-            tenant_id = user.TenantId,
-            avatar_url = user.AvatarUrl,
-            bio = user.Bio,
-            created_at = user.CreatedAt,
-            last_login_at = user.LastLoginAt
-        });
+        return Ok(await BuildEnrichedUserResponse(user));
     }
 
     /// <summary>
@@ -277,6 +260,67 @@ public class UsersController : ControllerBase
         }
 
         return Ok(new { avatar_url = avatarUrl, url = avatarUrl, id = upload.Id });
+    }
+
+    /// <summary>
+    /// Build the enriched user response expected by frontends.
+    /// Includes onboarding status, preferred language, XP, level, etc.
+    /// </summary>
+    private async Task<object> BuildEnrichedUserResponse(User user)
+    {
+        // Check onboarding completion: user has completed all required steps
+        var totalRequired = await _db.Set<OnboardingStep>()
+            .Where(s => s.TenantId == user.TenantId && s.IsRequired)
+            .CountAsync();
+        var completedRequired = totalRequired > 0
+            ? await _db.Set<OnboardingProgress>()
+                .Where(p => p.UserId == user.Id && p.IsCompleted)
+                .Join(_db.Set<OnboardingStep>().Where(s => s.IsRequired),
+                    p => p.StepId, s => s.Id, (p, s) => p)
+                .CountAsync()
+            : 0;
+        var onboardingCompleted = totalRequired > 0 && completedRequired >= totalRequired;
+
+        // Get preferred language from user preferences
+        var preferredLanguage = await _db.Set<UserPreference>()
+            .Where(p => p.UserId == user.Id)
+            .Select(p => p.Language)
+            .FirstOrDefaultAsync() ?? "en";
+
+        // Map registration status to frontend-friendly string
+        var status = user.RegistrationStatus == RegistrationStatus.Active
+            ? "active"
+            : user.RegistrationStatus.ToString().ToLower();
+
+        return new
+        {
+            id = user.Id,
+            email = user.Email,
+            first_name = user.FirstName,
+            last_name = user.LastName,
+            name = $"{user.FirstName} {user.LastName}".Trim(),
+            role = user.Role,
+            tenant_id = user.TenantId,
+            avatar_url = user.AvatarUrl,
+            bio = user.Bio,
+            is_active = user.IsActive,
+            status,
+            created_at = user.CreatedAt,
+            updated_at = user.UpdatedAt,
+            last_login_at = user.LastLoginAt,
+            email_verified_at = user.EmailVerifiedAt,
+            has_2fa_enabled = user.TwoFactorEnabled,
+            xp = user.TotalXp,
+            level = user.Level,
+            onboarding_completed = onboardingCompleted,
+            preferred_language = preferredLanguage,
+            balance = 0,
+            total_earned = 0,
+            total_spent = 0,
+            groups_count = 0,
+            rating = (double?)null,
+            skills = Array.Empty<string>()
+        };
     }
 }
 

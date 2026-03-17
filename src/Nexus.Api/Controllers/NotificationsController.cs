@@ -210,6 +210,59 @@ public class NotificationsController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/notifications/counts - Get notification and message counts.
+    /// </summary>
+    [HttpGet("counts")]
+    public async Task<IActionResult> GetCounts()
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var unreadCount = await _db.Notifications
+            .Where(n => n.UserId == userId && !n.IsRead)
+            .CountAsync();
+
+        // Count unread messages (messages in user's conversations sent by others, not yet read)
+        var conversationIds = await _db.Conversations
+            .Where(c => c.Participant1Id == userId.Value || c.Participant2Id == userId.Value)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        var unreadMessages = conversationIds.Count > 0
+            ? await _db.Messages
+                .Where(m => conversationIds.Contains(m.ConversationId)
+                    && m.SenderId != userId.Value
+                    && !m.IsRead)
+                .CountAsync()
+            : 0;
+
+        return Ok(new
+        {
+            total = unreadCount,
+            unread = unreadCount,
+            messages = unreadMessages
+        });
+    }
+
+    /// <summary>
+    /// POST /api/notifications/{id}/read - Mark a notification as read (alias for PUT).
+    /// </summary>
+    [HttpPost("{id}/read")]
+    public async Task<IActionResult> MarkAsReadPost(int id)
+    {
+        return await MarkAsRead(id);
+    }
+
+    /// <summary>
+    /// POST /api/notifications/read-all - Mark all notifications as read (alias for PUT).
+    /// </summary>
+    [HttpPost("read-all")]
+    public async Task<IActionResult> MarkAllAsReadPost()
+    {
+        return await MarkAllAsRead();
+    }
+
+    /// <summary>
     /// DELETE /api/notifications/{id} - Delete a notification.
     /// </summary>
     [HttpDelete("{id}")]

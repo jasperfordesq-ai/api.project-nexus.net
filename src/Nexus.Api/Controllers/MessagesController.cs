@@ -91,6 +91,19 @@ public class MessagesController : ControllerBase
             var lastMessage = c.Messages.FirstOrDefault();
             unreadCounts.TryGetValue(c.Id, out var unreadCount);
 
+            var otherUser = new
+            {
+                id = otherParticipant?.Id,
+                name = $"{otherParticipant?.FirstName} {otherParticipant?.LastName}".Trim(),
+                first_name = otherParticipant?.FirstName,
+                last_name = otherParticipant?.LastName,
+                avatar_url = otherParticipant?.AvatarUrl
+            };
+
+            var preview = lastMessage == null ? null : lastMessage.Content.Length > 100
+                ? lastMessage.Content[..100] + "..."
+                : lastMessage.Content;
+
             return new
             {
                 id = c.Id,
@@ -100,12 +113,12 @@ public class MessagesController : ControllerBase
                     first_name = otherParticipant?.FirstName,
                     last_name = otherParticipant?.LastName
                 },
+                other_user = otherUser,
                 last_message = lastMessage == null ? null : new
                 {
                     id = lastMessage.Id,
-                    content = lastMessage.Content.Length > 100
-                        ? lastMessage.Content[..100] + "..."
-                        : lastMessage.Content,
+                    content = preview,
+                    body = preview,
                     sender_id = lastMessage.SenderId,
                     is_read = lastMessage.IsRead,
                     created_at = lastMessage.CreatedAt
@@ -193,10 +206,19 @@ public class MessagesController : ControllerBase
                 first_name = otherParticipant?.FirstName,
                 last_name = otherParticipant?.LastName
             },
+            other_user = new
+            {
+                id = otherParticipant?.Id,
+                name = $"{otherParticipant?.FirstName} {otherParticipant?.LastName}".Trim(),
+                first_name = otherParticipant?.FirstName,
+                last_name = otherParticipant?.LastName,
+                avatar_url = otherParticipant?.AvatarUrl
+            },
             messages = messages.Select(m => new
             {
                 id = m.Id,
                 content = m.Content,
+                body = m.Content,
                 sender = new
                 {
                     id = m.Sender?.Id,

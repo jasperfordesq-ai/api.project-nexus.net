@@ -146,6 +146,14 @@ public class AuthController : ControllerBase
 
             var tempToken = _tokenService.GenerateJwt(user);
 
+            // Build masked email (e.g. "ja***@example.com")
+            var emailParts = user.Email.Split('@');
+            var localPart = emailParts[0];
+            var maskedLocal = localPart.Length <= 2
+                ? localPart + "***"
+                : localPart[..2] + "***";
+            var emailMasked = maskedLocal + "@" + emailParts[1];
+
             _logger.LogInformation("User {UserId} requires 2FA for tenant {TenantId}", user.Id, tenant.Id);
 
             return Ok(new
@@ -153,7 +161,15 @@ public class AuthController : ControllerBase
                 success = true,
                 requires_2fa = true,
                 temp_token = tempToken,
+                two_factor_token = tempToken,
                 token_type = "Bearer",
+                methods = new[] { "totp" },
+                user = new
+                {
+                    id = user.Id,
+                    first_name = user.FirstName,
+                    email_masked = emailMasked
+                },
                 message = "Two-factor authentication required. Submit code to /api/auth/2fa/verify."
             });
         }
@@ -178,6 +194,28 @@ public class AuthController : ControllerBase
         _db.RefreshTokens.Add(refreshTokenEntity);
         await _db.SaveChangesAsync();
 
+        // Fetch preferred language from UserPreferences (default "en")
+        var userPrefs = await _db.Set<UserPreference>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == user.Id && p.TenantId == user.TenantId);
+        var preferredLanguage = userPrefs?.Language ?? "en";
+
+        // Check onboarding completion: true if any progress exists and all required steps are done
+        var hasOnboardingSteps = await _db.Set<OnboardingStep>()
+            .AsNoTracking()
+            .AnyAsync(s => s.TenantId == user.TenantId && s.IsRequired);
+        var onboardingCompleted = !hasOnboardingSteps || await _db.Set<OnboardingProgress>()
+            .AsNoTracking()
+            .Where(p => p.UserId == user.Id && p.TenantId == user.TenantId && p.IsCompleted)
+            .Join(
+                _db.Set<OnboardingStep>().Where(s => s.TenantId == user.TenantId && s.IsRequired),
+                p => p.StepId,
+                s => s.Id,
+                (p, s) => s.Id)
+            .CountAsync() >= await _db.Set<OnboardingStep>()
+                .AsNoTracking()
+                .CountAsync(s => s.TenantId == user.TenantId && s.IsRequired);
+
         _logger.LogInformation("User {UserId} logged in to tenant {TenantId}", user.Id, tenant.Id);
 
         return Ok(new
@@ -196,7 +234,9 @@ public class AuthController : ControllerBase
                 last_name = user.LastName,
                 role = user.Role,
                 tenant_id = user.TenantId,
-                tenant_slug = tenant.Slug
+                tenant_slug = tenant.Slug,
+                preferred_language = preferredLanguage,
+                onboarding_completed = onboardingCompleted
             }
         });
     }
