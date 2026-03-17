@@ -1500,10 +1500,7 @@ public class CompatibilityAliasController : ControllerBase
     [HttpPut("api/volunteering/hours/{id:int}/verify")]
     public IActionResult VerifyHours(int id) => Ok(new { success = true, message = "Hours verified" });
 
-    public IActionResult ProcessShiftSwap(int id, [FromBody] object? request = null)
-    {
-        return Ok(new { success = true, message = "Swap processed" });
-    }
+    // ProcessShiftSwap removed — served by ShiftManagementController
 
     // ──────────────────────────────────────────────
     // Jobs extras
