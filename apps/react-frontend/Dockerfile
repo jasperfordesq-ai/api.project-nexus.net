@@ -33,8 +33,11 @@ ENV BUILD_COMMIT=$BUILD_COMMIT
 COPY . .
 RUN npm run build
 
-# ─── Stage 4: Production (nginx serves static files) ─────────────────────────
+# ─── Stage 4: Production (nginx serves static files + API proxy) ──────────────
 FROM nginx:1.27-alpine AS production
+
+# Default API upstream — override at runtime with -e API_UPSTREAM=host:port
+ENV API_UPSTREAM=api:8080
 
 # Remove default nginx content
 RUN rm -rf /usr/share/nginx/html/*
@@ -42,12 +45,13 @@ RUN rm -rf /usr/share/nginx/html/*
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx config template (uses ${API_UPSTREAM} variable)
+COPY nginx.conf /etc/nginx/nginx.conf.template
 
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD wget -qO- http://127.0.0.1/health || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+# Resolve ONLY ${API_UPSTREAM} (not $host, $uri etc.) then start nginx
+CMD ["/bin/sh", "-c", "envsubst '${API_UPSTREAM}' < /etc/nginx/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
