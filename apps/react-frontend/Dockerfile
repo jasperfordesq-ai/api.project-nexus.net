@@ -1,26 +1,53 @@
 # =============================================================================
 # Project NEXUS - React Frontend Dockerfile
 # =============================================================================
-# Node 20 with Vite dev server for development
+# Multi-stage: dev (Vite HMR) | production (npm build → nginx)
 # =============================================================================
 
-FROM node:20-alpine
-
-# Build arguments
-ARG NODE_ENV=development
-
-# Set working directory
+# ─── Stage 1: Base (shared deps) ─────────────────────────────────────────────
+FROM node:20-alpine AS base
 WORKDIR /app
-
-# Install dependencies first (better layer caching)
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Copy source code
+# ─── Stage 2: Development (Vite dev server with HMR) ─────────────────────────
+FROM base AS dev
 COPY . .
-
-# Expose Vite dev server port
 EXPOSE 5173
-
-# Default command - run Vite dev server with host flag for Docker
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+# ─── Stage 3: Build (production bundle) ──────────────────────────────────────
+FROM base AS builder
+
+# Build-time env vars (baked into the JS bundle by Vite)
+ARG VITE_API_BASE=/api
+ARG VITE_API_URL=https://api.project-nexus.net
+ARG VITE_DEFAULT_TENANT_ID=1
+ARG BUILD_COMMIT=unknown
+
+ENV VITE_API_BASE=$VITE_API_BASE
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_DEFAULT_TENANT_ID=$VITE_DEFAULT_TENANT_ID
+ENV BUILD_COMMIT=$BUILD_COMMIT
+
+COPY . .
+RUN npm run build
+
+# ─── Stage 4: Production (nginx serves static files) ─────────────────────────
+FROM nginx:1.27-alpine AS production
+
+# Remove default nginx content
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy built assets from builder
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://127.0.0.1/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -8,14 +8,14 @@
 
 A **full-stack monorepo** containing:
 - One **ASP.NET Core 8 backend API** (the canonical backend)
-- Four **frontend apps** (admin, modern, UK, GOV.IE)
+- Five **frontend apps** (admin, modern, UK, GOV.IE, React/V1)
 - One **Docker Compose file** that runs all of them together
 
 All development is **Docker-only**. No dotnet run. No npm run dev on the host.
 
 ---
 
-## Service Map (All 7 Docker Services)
+## Service Map (All 8 Docker Services)
 
 | Service Name | Container | Host Port | Internal Port | Stack | Location |
 |---|---|---|---|---|---|
@@ -27,6 +27,7 @@ All development is **Docker-only**. No dotnet run. No npm run dev on the host.
 | web-modern | nexus-frontend-dev | **5170** | 3002 | Next.js + HeroUI | apps/web-modern/ |
 | web-uk | nexus-uk-frontend-dev | **5180** | 3001 | GOV.UK DS (Express) | apps/web-uk/ |
 | web-govie | nexus-web-govie | **5200** | 80 | React + Vite + nginx | apps/web-govie/ |
+| react-frontend | nexus-react-frontend-dev | **5173** | 5173 | React 18 + Vite + HeroUI | apps/react-frontend/ |
 
 **Bold ports** = open in browser during local dev.
 
@@ -93,6 +94,25 @@ All development is **Docker-only**. No dotnet run. No npm run dev on the host.
 > GOV.IE IMPORTANT: Unlike the other frontends, web-govie has no hot-reload.
 > To see code changes: docker compose build web-govie && docker compose up -d web-govie
 
+### React Frontend (apps/react-frontend/)
+
+| Property | Value |
+|---|---|
+| Stack | React 18 + TypeScript + Vite + Tailwind CSS + HeroUI + i18next |
+| Dev URL | http://localhost:5173 |
+| Production domain | platform.project-nexus.net |
+| Package manager | npm |
+| Dev mode | Hot reload via volume mount (Vite HMR) |
+| Pages | ~200 pages/components (largest frontend) |
+| Tests | Vitest suite |
+| Dockerfile dev target | dev |
+| Dockerfile prod target | production (nginx static) |
+| Real-time | SignalR (@microsoft/signalr 8.0.7) |
+| Auth | JWT via POST /api/auth/login |
+| Passkeys | WebAuthn via /passkeys/* endpoints |
+| Origin | V1 PHP React frontend, converted for ASP.NET Core 8 backend |
+| API adapter | `normalizeEndpoint()` strips /v2/ prefix; `camelToSnake`/`snakeToCamel` transforms |
+
 ---
 
 ## Deployment Commands
@@ -110,12 +130,14 @@ All development is **Docker-only**. No dotnet run. No npm run dev on the host.
     docker compose up -d api db rabbitmq web-modern
     docker compose up -d api db rabbitmq web-uk
     docker compose up -d api db rabbitmq web-govie
+    docker compose up -d api db rabbitmq react-frontend
 
     # Add a frontend to an already-running backend
     docker compose up -d admin
     docker compose up -d web-modern
     docker compose up -d web-uk
     docker compose up -d web-govie
+    docker compose up -d react-frontend
 
 ### Rebuild After Code Changes
 
@@ -124,6 +146,7 @@ All development is **Docker-only**. No dotnet run. No npm run dev on the host.
     docker compose build web-modern && docker compose up -d web-modern
     docker compose build web-uk && docker compose up -d web-uk
     docker compose build web-govie && docker compose up -d web-govie
+    docker compose build react-frontend && docker compose up -d react-frontend
 
     # Rebuild everything
     docker compose build && docker compose up -d
@@ -131,6 +154,7 @@ All development is **Docker-only**. No dotnet run. No npm run dev on the host.
     # Force rebuild (ignore layer cache)
     docker compose build --no-cache api
     docker compose build --no-cache web-govie
+    docker compose build --no-cache react-frontend
 
 ### Logs
 
@@ -140,6 +164,7 @@ All development is **Docker-only**. No dotnet run. No npm run dev on the host.
     docker compose logs -f web-modern   # Modern frontend
     docker compose logs -f web-uk       # UK frontend
     docker compose logs -f web-govie    # GOV.IE frontend
+    docker compose logs -f react-frontend # React frontend (V1)
 
 ### Stop / Clean
 
