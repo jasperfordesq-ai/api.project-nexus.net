@@ -1,4 +1,4 @@
-// Copyright © 2024–2026 Jasper Ford
+﻿// Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
@@ -212,49 +212,7 @@ public class CompatibilityAliasController : ControllerBase
         return Ok(new { success = true, message = "Match preferences updated" });
     }
 
-    /// <summary>
-    /// PUT /api/users/me/consent — Alias for updating consent preferences.
-    /// </summary>
-    [HttpPut("api/users/me/consent")]
-    public async Task<IActionResult> UpdateConsentAlias([FromBody] object request)
-    {
-        var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-
-        return Ok(new { success = true, message = "Consent preferences updated" });
-    }
-
-    /// <summary>
-    /// PUT /api/users/me/preferences — Alias for updating user preferences.
-    /// </summary>
-    [HttpPut("api/users/me/preferences")]
-    public async Task<IActionResult> UpdatePreferencesAlias([FromBody] object request)
-    {
-        var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-
-        return Ok(new { success = true, message = "Preferences updated" });
-    }
-
-    /// <summary>
-    /// POST /api/users/me/gdpr-request — Alias for GDPR data request.
-    /// </summary>
-    [HttpPost("api/users/me/gdpr-request")]
-    public async Task<IActionResult> GdprRequestAlias([FromBody] GdprRequestAliasDto request)
-    {
-        var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-
-        _logger.LogInformation("GDPR {Type} request from user {UserId}", request.Type, userId);
-
-        return Ok(new
-        {
-            success = true,
-            message = $"Your {request.Type} request has been submitted and will be processed within 30 days.",
-            request_id = Guid.NewGuid().ToString("N")[..12],
-            estimated_completion = DateTime.UtcNow.AddDays(30)
-        });
-    }
+    // Consent, preferences, GDPR routes removed — served by CompatibilityController
 
     // ──────────────────────────────────────────────
     // Connection accept alias (POST vs PUT)
@@ -1285,10 +1243,6 @@ public class CompatibilityAliasController : ControllerBase
     [HttpPost("api/group-exchanges/{id:int}/confirm")]
     public IActionResult ConfirmGroupExchange(int id) => Ok(new { success = true, message = "Group exchange confirmed" });
 
-    /// <summary>
-    /// POST /api/groups/{groupId}/announcements — Create group announcement.
-    /// </summary>
-    [HttpPost("api/groups/{groupId:int}/announcements")]
     public IActionResult CreateGroupAnnouncement(int groupId, [FromBody] object? request = null)
     {
         return Ok(new { success = true, message = "Announcement created" });
@@ -1303,19 +1257,11 @@ public class CompatibilityAliasController : ControllerBase
         return Ok(new { success = true, message = "Announcement updated" });
     }
 
-    /// <summary>
-    /// GET /api/groups/{groupId}/announcements — List group announcements.
-    /// </summary>
-    [HttpGet("api/groups/{groupId:int}/announcements")]
     public IActionResult ListGroupAnnouncements(int groupId, [FromQuery] bool pinned = false)
     {
         return Ok(new { data = new object[] { }, pagination = new { page = 1, limit = 20, total = 0, pages = 0 } });
     }
 
-    /// <summary>
-    /// DELETE /api/groups/{groupId}/announcements/{id} — Delete group announcement.
-    /// </summary>
-    [HttpDelete("api/groups/{groupId:int}/announcements/{id:int}")]
     public IActionResult DeleteGroupAnnouncement(int groupId, int id)
     {
         return Ok(new { success = true, message = "Announcement deleted" });
@@ -1427,14 +1373,6 @@ public class CompatibilityAliasController : ControllerBase
     [HttpPost("api/federation/messages/{id:int}/mark-read")]
     public IActionResult MarkFederationMessageRead(int id) => Ok(new { success = true });
 
-    /// <summary>
-    /// PUT /api/federation/settings — Update federation settings.
-    /// </summary>
-    [HttpPut("api/federation/settings")]
-    public IActionResult UpdateFederationSettings([FromBody] object? request = null)
-    {
-        return Ok(new { success = true, message = "Settings updated" });
-    }
 
     // ──────────────────────────────────────────────
     // Gamification showcase & challenges
@@ -1567,10 +1505,6 @@ public class CompatibilityAliasController : ControllerBase
         return Ok(new { success = true, message = "Application updated" });
     }
 
-    /// <summary>
-    /// DELETE /api/volunteering/applications/{id} — Withdraw volunteering application.
-    /// </summary>
-    [HttpDelete("api/volunteering/applications/{id:int}")]
     public IActionResult WithdrawVolunteeringApplication(int id)
     {
         return Ok(new { success = true, message = "Application withdrawn" });
@@ -1591,10 +1525,6 @@ public class CompatibilityAliasController : ControllerBase
     [HttpPut("api/volunteering/hours/{id:int}/verify")]
     public IActionResult VerifyHours(int id) => Ok(new { success = true, message = "Hours verified" });
 
-    /// <summary>
-    /// PUT /api/volunteering/swaps/{id} — Process shift swap.
-    /// </summary>
-    [HttpPut("api/volunteering/swaps/{id:int}")]
     public IActionResult ProcessShiftSwap(int id, [FromBody] object? request = null)
     {
         return Ok(new { success = true, message = "Swap processed" });

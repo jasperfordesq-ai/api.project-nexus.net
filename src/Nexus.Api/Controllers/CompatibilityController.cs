@@ -1,4 +1,4 @@
-// Copyright © 2024–2026 Jasper Ford
+﻿// Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
@@ -299,7 +299,7 @@ public class CompatibilityController : ControllerBase
     /// <summary>
     /// POST /api/matches/{id}/dismiss - Dismiss (decline) a match (alias).
     /// </summary>
-    [HttpPost("api/matches/{id}/dismiss")]
+    [HttpPost("api/matches/{id:int}/dismiss")]
     public async Task<IActionResult> DismissMatch(int id)
     {
         var userId = User.GetUserId();
@@ -731,7 +731,7 @@ public class CompatibilityController : ControllerBase
     /// <summary>
     /// POST /api/ideation-ideas/{id}/vote - Vote on an idea (alias).
     /// </summary>
-    [HttpPost("api/ideation-ideas/{id}/vote")]
+    [HttpPost("api/ideation-ideas/{id:int}/vote")]
     public async Task<IActionResult> VoteOnIdea(int id)
     {
         var userId = User.GetUserId();
@@ -920,7 +920,7 @@ public class CompatibilityController : ControllerBase
     /// <summary>
     /// GET /api/volunteering/organisations/{id} - Get organisation by ID (alias).
     /// </summary>
-    [HttpGet("api/volunteering/organisations/{id}")]
+    [HttpGet("api/volunteering/organisations/{id:int}")]
     public async Task<IActionResult> GetVolunteeringOrganisation(int id)
     {
         var org = await _db.Organisations
@@ -1256,7 +1256,7 @@ public class CompatibilityController : ControllerBase
     /// <summary>
     /// GET /api/skills/categories/{id} - Get skills in a specific category (alias).
     /// </summary>
-    [HttpGet("api/skills/categories/{id}")]
+    [HttpGet("api/skills/categories/{id:int}")]
     public async Task<IActionResult> GetSkillsInCategory(int id)
     {
         var userId = User.GetUserId();
@@ -1679,7 +1679,7 @@ public class CompatibilityController : ControllerBase
     /// <summary>
     /// DELETE /api/search/saved/{id} — Delete a saved search.
     /// </summary>
-    [HttpDelete("api/search/saved/{id}")]
+    [HttpDelete("api/search/saved/{id:int}")]
     public async Task<IActionResult> DeleteSavedSearch(int id)
     {
         var userId = User.GetUserId();
@@ -1697,63 +1697,7 @@ public class CompatibilityController : ControllerBase
     }
 
     // ──────────────────────────────────────────────
-    // FEED HASHTAGS (P2 — HashtagPage)
-    // Trending hashtags already defined above (line ~437)
-    // ──────────────────────────────────────────────
-
-    /// <summary>
-    /// GET /api/hashtags/{tag} — Get posts for a specific hashtag.
-    /// </summary>
-    [HttpGet("api/hashtags/{tag}")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetHashtagPosts(
-        string tag,
-        [FromQuery] int page = 1,
-        [FromQuery] int limit = 20)
-    {
-        if (page < 1) page = 1;
-        if (limit < 1) limit = 1;
-        if (limit > 100) limit = 100;
-
-        // Find posts containing this hashtag in their content
-        var normalizedTag = tag.TrimStart('#').ToLower();
-
-        var query = _db.FeedPosts
-            .Include(p => p.User)
-            .Where(p => p.Content.ToLower().Contains("#" + normalizedTag));
-
-        var total = await query.CountAsync();
-        var posts = await query
-            .OrderByDescending(p => p.CreatedAt)
-            .Skip((page - 1) * limit)
-            .Take(limit)
-            .Select(p => new
-            {
-                id = p.Id,
-                type = "post",
-                content = p.Content,
-                image_url = p.ImageUrl,
-                created_at = p.CreatedAt,
-                user = p.User == null ? null : new
-                {
-                    id = p.User.Id,
-                    first_name = p.User.FirstName,
-                    last_name = p.User.LastName,
-                    name = (p.User.FirstName + " " + p.User.LastName).Trim(),
-                    avatar_url = p.User.AvatarUrl
-                },
-                like_count = p.Likes.Count,
-                comment_count = p.Comments.Count
-            })
-            .ToListAsync();
-
-        return Ok(new
-        {
-            data = posts,
-            hashtag = new { tag = normalizedTag },
-            pagination = new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) }
-        });
-    }
+    // Hashtag route removed — served by HashtagsController
 
     // ──────────────────────────────────────────────
     // ENDORSEMENTS (P2 — DashboardPage, ProfilePage)

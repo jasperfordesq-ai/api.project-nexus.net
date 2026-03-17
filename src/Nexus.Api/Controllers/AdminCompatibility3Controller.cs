@@ -1,4 +1,4 @@
-// Copyright © 2024–2026 Jasper Ford
+﻿// Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
@@ -68,7 +68,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>GET /api/admin/enterprise/roles/{id} - Get enterprise role.</summary>
-    [HttpGet("enterprise/roles/{id}")]
+    [HttpGet("enterprise/roles/{id:int}")]
     public IActionResult GetEnterpriseRole(int id)
     {
         return Ok(new { id, name = "admin", description = "Full administrative access", permissions = new[] { "users.read", "users.write", "config.manage" }, created_at = DateTime.UtcNow });
@@ -82,14 +82,14 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>PUT /api/admin/enterprise/roles/{id} - Update enterprise role.</summary>
-    [HttpPut("enterprise/roles/{id}")]
+    [HttpPut("enterprise/roles/{id:int}")]
     public IActionResult UpdateEnterpriseRole(int id)
     {
         return Ok(new { success = true, message = "Enterprise role updated", id });
     }
 
     /// <summary>DELETE /api/admin/enterprise/roles/{id} - Delete enterprise role.</summary>
-    [HttpDelete("enterprise/roles/{id}")]
+    [HttpDelete("enterprise/roles/{id:int}")]
     public IActionResult DeleteEnterpriseRole(int id)
     {
         return Ok(new { success = true, message = "Enterprise role deleted", id });
@@ -137,7 +137,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>PUT /api/admin/enterprise/gdpr/requests/{id} - Update GDPR request.</summary>
-    [HttpPut("enterprise/gdpr/requests/{id}")]
+    [HttpPut("enterprise/gdpr/requests/{id:int}")]
     public IActionResult UpdateGdprRequest(int id)
     {
         return Ok(new { success = true, message = "GDPR request updated", id });
@@ -228,7 +228,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>GET /api/admin/legal-documents/{id} - Get legal document.</summary>
-    [HttpGet("legal-documents/{id}")]
+    [HttpGet("legal-documents/{id:int}")]
     public IActionResult GetLegalDocument(int id)
     {
         return Ok(new { id, title = "", slug = "", content = "", version = "1.0", is_active = true, requires_acceptance = true, created_at = DateTime.UtcNow });
@@ -242,14 +242,14 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>PUT /api/admin/legal-documents/{id} - Update legal document.</summary>
-    [HttpPut("legal-documents/{id}")]
+    [HttpPut("legal-documents/{id:int}")]
     public IActionResult UpdateLegalDocument(int id)
     {
         return Ok(new { success = true, message = "Legal document updated", id });
     }
 
     /// <summary>DELETE /api/admin/legal-documents/{id} - Delete legal document.</summary>
-    [HttpDelete("legal-documents/{id}")]
+    [HttpDelete("legal-documents/{id:int}")]
     public IActionResult DeleteLegalDocument(int id)
     {
         return Ok(new { success = true, message = "Legal document deleted", id });
@@ -361,7 +361,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>GET /api/admin/super/tenants/{id} - Get tenant.</summary>
-    [HttpGet("super/tenants/{id}")]
+    [HttpGet("super/tenants/{id:int}")]
     public IActionResult GetSuperTenant(int id)
     {
         return Ok(new { id, name = "", slug = "", is_active = true, created_at = DateTime.UtcNow });
@@ -382,35 +382,35 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>PUT /api/admin/super/tenants/{id} - Update tenant.</summary>
-    [HttpPut("super/tenants/{id}")]
+    [HttpPut("super/tenants/{id:int}")]
     public IActionResult UpdateSuperTenant(int id)
     {
         return Ok(new { success = true, message = "Tenant updated", id });
     }
 
     /// <summary>DELETE /api/admin/super/tenants/{id} - Delete tenant.</summary>
-    [HttpDelete("super/tenants/{id}")]
+    [HttpDelete("super/tenants/{id:int}")]
     public IActionResult DeleteSuperTenant(int id)
     {
         return Ok(new { success = true, message = "Tenant deleted", id });
     }
 
     /// <summary>POST /api/admin/super/tenants/{id}/reactivate - Reactivate tenant.</summary>
-    [HttpPost("super/tenants/{id}/reactivate")]
+    [HttpPost("super/tenants/{id:int}/reactivate")]
     public IActionResult ReactivateSuperTenant(int id)
     {
         return Ok(new { success = true, message = "Tenant reactivated", id });
     }
 
     /// <summary>POST /api/admin/super/tenants/{id}/toggle-hub - Toggle hub status.</summary>
-    [HttpPost("super/tenants/{id}/toggle-hub")]
+    [HttpPost("super/tenants/{id:int}/toggle-hub")]
     public IActionResult ToggleSuperTenantHub(int id)
     {
         return Ok(new { success = true, message = "Hub status toggled", id });
     }
 
     /// <summary>POST /api/admin/super/tenants/{id}/move - Move tenant.</summary>
-    [HttpPost("super/tenants/{id}/move")]
+    [HttpPost("super/tenants/{id:int}/move")]
     public IActionResult MoveSuperTenant(int id)
     {
         return Ok(new { success = true, message = "Tenant moved", id });
@@ -424,7 +424,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>GET /api/admin/super/users/{id} - Get user cross-tenant.</summary>
-    [HttpGet("super/users/{id}")]
+    [HttpGet("super/users/{id:int}")]
     public IActionResult GetSuperUser(int id)
     {
         return Ok(new { id, email = "", first_name = "", last_name = "", role = "", tenant_id = 0, is_active = true });
@@ -438,7 +438,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>PUT /api/admin/super/users/{id} - Update user cross-tenant.</summary>
-    [HttpPut("super/users/{id}")]
+    [HttpPut("super/users/{id:int}")]
     public IActionResult UpdateSuperUser(int id)
     {
         return Ok(new { success = true, message = "User updated", id });
@@ -571,14 +571,14 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>POST /api/admin/super/federation/partnerships/{id}/suspend - Suspend partnership.</summary>
-    [HttpPost("super/federation/partnerships/{id}/suspend")]
+    [HttpPost("super/federation/partnerships/{id:int}/suspend")]
     public IActionResult SuspendSuperFederationPartnership(int id)
     {
         return Ok(new { success = true, message = "Partnership suspended", id });
     }
 
     /// <summary>POST /api/admin/super/federation/partnerships/{id}/terminate - Terminate partnership.</summary>
-    [HttpPost("super/federation/partnerships/{id}/terminate")]
+    [HttpPost("super/federation/partnerships/{id:int}/terminate")]
     public IActionResult TerminateSuperFederationPartnership(int id)
     {
         return Ok(new { success = true, message = "Partnership terminated", id });
@@ -614,21 +614,21 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>GET /api/admin/comments/{id} - Get comment.</summary>
-    [HttpGet("comments/{id}")]
+    [HttpGet("comments/{id:int}")]
     public IActionResult GetAdminComment(int id)
     {
         return Ok(new { id, content = "", author_id = 0, post_id = 0, is_hidden = false, created_at = DateTime.UtcNow });
     }
 
     /// <summary>POST /api/admin/comments/{id}/hide - Hide comment.</summary>
-    [HttpPost("comments/{id}/hide")]
+    [HttpPost("comments/{id:int}/hide")]
     public IActionResult HideAdminComment(int id)
     {
         return Ok(new { success = true, message = "Comment hidden", id });
     }
 
     /// <summary>DELETE /api/admin/comments/{id} - Delete comment.</summary>
-    [HttpDelete("comments/{id}")]
+    [HttpDelete("comments/{id:int}")]
     public IActionResult DeleteAdminComment(int id)
     {
         return Ok(new { success = true, message = "Comment deleted", id });
@@ -642,66 +642,47 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>GET /api/admin/reviews/{id} - Get review.</summary>
-    [HttpGet("reviews/{id}")]
+    [HttpGet("reviews/{id:int}")]
     public IActionResult GetAdminReview(int id)
     {
         return Ok(new { id, rating = 0, content = "", reviewer_id = 0, target_user_id = 0, is_hidden = false, is_flagged = false, created_at = DateTime.UtcNow });
     }
 
     /// <summary>POST /api/admin/reviews/{id}/flag - Flag review.</summary>
-    [HttpPost("reviews/{id}/flag")]
+    [HttpPost("reviews/{id:int}/flag")]
     public IActionResult FlagAdminReview(int id)
     {
         return Ok(new { success = true, message = "Review flagged", id });
     }
 
     /// <summary>POST /api/admin/reviews/{id}/hide - Hide review.</summary>
-    [HttpPost("reviews/{id}/hide")]
+    [HttpPost("reviews/{id:int}/hide")]
     public IActionResult HideAdminReview(int id)
     {
         return Ok(new { success = true, message = "Review hidden", id });
     }
 
     /// <summary>DELETE /api/admin/reviews/{id} - Delete review.</summary>
-    [HttpDelete("reviews/{id}")]
+    [HttpDelete("reviews/{id:int}")]
     public IActionResult DeleteAdminReview(int id)
     {
         return Ok(new { success = true, message = "Review deleted", id });
     }
 
-    /// <summary>GET /api/admin/reports - List reports.</summary>
-    [HttpGet("reports")]
-    public IActionResult ListAdminReports([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? status = null)
-    {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
-    }
-
-    /// <summary>GET /api/admin/reports/{id} - Get report.</summary>
-    [HttpGet("reports/{id}")]
-    public IActionResult GetAdminReport(int id)
-    {
-        return Ok(new { id, reason = "", details = "", reporter_id = 0, target_type = "", target_id = 0, status = "pending", created_at = DateTime.UtcNow });
-    }
+    // Reports routes removed — served by ReportsController
 
     /// <summary>POST /api/admin/reports/{id}/resolve - Resolve report.</summary>
-    [HttpPost("reports/{id}/resolve")]
+    [HttpPost("reports/{id:int}/resolve")]
     public IActionResult ResolveAdminReport(int id)
     {
         return Ok(new { success = true, message = "Report resolved", id });
     }
 
     /// <summary>POST /api/admin/reports/{id}/dismiss - Dismiss report.</summary>
-    [HttpPost("reports/{id}/dismiss")]
+    [HttpPost("reports/{id:int}/dismiss")]
     public IActionResult DismissAdminReport(int id)
     {
         return Ok(new { success = true, message = "Report dismissed", id });
-    }
-
-    /// <summary>GET /api/admin/reports/stats - Report stats.</summary>
-    [HttpGet("reports/stats")]
-    public IActionResult GetAdminReportStats()
-    {
-        return Ok(new { total = 0, pending = 0, resolved = 0, dismissed = 0, generated_at = DateTime.UtcNow });
     }
 
     // ───────────────────────────────────────────────────────────────
@@ -766,16 +747,10 @@ public class AdminCompatibility3Controller : ControllerBase
     {
         return Ok(new { success = true, message = "Note created", id = 0 });
     }
-
-    /// <summary>PUT /api/admin/crm/notes/{id} - Update a note.</summary>
-    [HttpPut("crm/notes/{id}")]
     public IActionResult UpdateCrmNote(int id)
     {
         return Ok(new { success = true, message = "Note updated", id });
     }
-
-    /// <summary>DELETE /api/admin/crm/notes/{id} - Delete a note.</summary>
-    [HttpDelete("crm/notes/{id}")]
     public IActionResult DeleteCrmNote(int id)
     {
         return Ok(new { success = true, message = "Note deleted", id });
@@ -796,7 +771,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>DELETE /api/admin/crm/tags/{id} - Remove CRM tag.</summary>
-    [HttpDelete("crm/tags/{id}")]
+    [HttpDelete("crm/tags/{id:int}")]
     public IActionResult DeleteCrmTag(int id)
     {
         return Ok(new { success = true, message = "Tag deleted", id });
@@ -859,14 +834,14 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>PUT /api/admin/vetting/{id} - Update vetting record (alias).</summary>
-    [HttpPut("vetting/{id}")]
+    [HttpPut("vetting/{id:int}")]
     public IActionResult UpdateVettingRecord(int id)
     {
         return Ok(new { success = true, message = "Vetting record updated", id });
     }
 
     /// <summary>DELETE /api/admin/vetting/{id} - Delete vetting record (alias).</summary>
-    [HttpDelete("vetting/{id}")]
+    [HttpDelete("vetting/{id:int}")]
     public IActionResult DeleteVettingRecord(int id)
     {
         return Ok(new { success = true, message = "Vetting record deleted", id });
@@ -880,7 +855,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>POST /api/admin/vetting/{id}/upload - Upload vetting document.</summary>
-    [HttpPost("vetting/{id}/upload")]
+    [HttpPost("vetting/{id:int}/upload")]
     public IActionResult UploadVettingDocument(int id)
     {
         return Ok(new { success = true, message = "Document uploaded", id });
@@ -894,14 +869,14 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>POST /api/admin/vetting/{id}/verify - Verify vetting record (POST).</summary>
-    [HttpPost("vetting/{id}/verify")]
+    [HttpPost("vetting/{id:int}/verify")]
     public IActionResult PostVerifyVettingRecord(int id)
     {
         return Ok(new { success = true, message = "Vetting record verified", id });
     }
 
     /// <summary>POST /api/admin/vetting/{id}/reject - Reject vetting record (POST).</summary>
-    [HttpPost("vetting/{id}/reject")]
+    [HttpPost("vetting/{id:int}/reject")]
     public IActionResult PostRejectVettingRecord(int id)
     {
         return Ok(new { success = true, message = "Vetting record rejected", id });
@@ -943,7 +918,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>GET /api/admin/insurance/{id} - Get certificate.</summary>
-    [HttpGet("insurance/{id}")]
+    [HttpGet("insurance/{id:int}")]
     public async Task<IActionResult> GetInsuranceCertificate(int id)
     {
         var cert = await _insurance.GetByIdAsync(id);
@@ -959,14 +934,14 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>PUT /api/admin/insurance/{id} - Update certificate.</summary>
-    [HttpPut("insurance/{id}")]
+    [HttpPut("insurance/{id:int}")]
     public IActionResult UpdateInsuranceCertificate(int id)
     {
         return Ok(new { success = true, message = "Insurance certificate updated", id });
     }
 
     /// <summary>POST /api/admin/insurance/{id}/verify - Verify certificate.</summary>
-    [HttpPost("insurance/{id}/verify")]
+    [HttpPost("insurance/{id:int}/verify")]
     public async Task<IActionResult> VerifyInsuranceCertificate(int id)
     {
         var adminId = GetCurrentUserId();
@@ -978,7 +953,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>POST /api/admin/insurance/{id}/reject - Reject certificate.</summary>
-    [HttpPost("insurance/{id}/reject")]
+    [HttpPost("insurance/{id:int}/reject")]
     public async Task<IActionResult> RejectInsuranceCertificate(int id)
     {
         var adminId = GetCurrentUserId();
@@ -990,7 +965,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>DELETE /api/admin/insurance/{id} - Delete certificate.</summary>
-    [HttpDelete("insurance/{id}")]
+    [HttpDelete("insurance/{id:int}")]
     public async Task<IActionResult> DeleteInsuranceCertificate(int id)
     {
         var cert = await _insurance.GetByIdAsync(id);
@@ -1133,7 +1108,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>GET /api/admin/deliverability/{id} - Get deliverable.</summary>
-    [HttpGet("deliverability/{id}")]
+    [HttpGet("deliverability/{id:int}")]
     public IActionResult GetDeliverability(int id)
     {
         return Ok(new { id, subject = "", status = "delivered", sent_at = DateTime.UtcNow, opened = false, clicked = false });
@@ -1147,14 +1122,14 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>PUT /api/admin/deliverability/{id} - Update deliverable.</summary>
-    [HttpPut("deliverability/{id}")]
+    [HttpPut("deliverability/{id:int}")]
     public IActionResult UpdateDeliverability(int id)
     {
         return Ok(new { success = true, message = "Deliverable updated", id });
     }
 
     /// <summary>DELETE /api/admin/deliverability/{id} - Delete deliverable.</summary>
-    [HttpDelete("deliverability/{id}")]
+    [HttpDelete("deliverability/{id:int}")]
     public IActionResult DeleteDeliverability(int id)
     {
         return Ok(new { success = true, message = "Deliverable deleted", id });
@@ -1174,7 +1149,7 @@ public class AdminCompatibility3Controller : ControllerBase
     }
 
     /// <summary>POST /api/admin/deliverability/{id}/comments - Add comment.</summary>
-    [HttpPost("deliverability/{id}/comments")]
+    [HttpPost("deliverability/{id:int}/comments")]
     public IActionResult AddDeliverabilityComment(int id)
     {
         return Ok(new { success = true, message = "Comment added", deliverable_id = id, comment_id = 0 });

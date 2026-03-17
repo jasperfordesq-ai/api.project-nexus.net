@@ -1,4 +1,4 @@
-// Copyright © 2024–2026 Jasper Ford
+﻿// Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
@@ -66,7 +66,7 @@ public class AdminCompatibility2Controller : ControllerBase
     }
 
     /// <summary>GET /api/admin/newsletters/{id} - Get newsletter.</summary>
-    [HttpGet("newsletters/{id}")]
+    [HttpGet("newsletters/{id:int}")]
     public async Task<IActionResult> GetNewsletter(int id)
     {
         var n = await _newsletter.GetNewsletterAsync(id);
@@ -87,7 +87,7 @@ public class AdminCompatibility2Controller : ControllerBase
     }
 
     /// <summary>PUT /api/admin/newsletters/{id} - Update newsletter.</summary>
-    [HttpPut("newsletters/{id}")]
+    [HttpPut("newsletters/{id:int}")]
     public async Task<IActionResult> UpdateNewsletter(int id, [FromBody] UpdateNewsletterRequest request)
     {
         try
@@ -103,7 +103,7 @@ public class AdminCompatibility2Controller : ControllerBase
     }
 
     /// <summary>DELETE /api/admin/newsletters/{id} - Delete newsletter.</summary>
-    [HttpDelete("newsletters/{id}")]
+    [HttpDelete("newsletters/{id:int}")]
     public async Task<IActionResult> DeleteNewsletter(int id)
     {
         var n = await _db.Set<Newsletter>().FirstOrDefaultAsync(x => x.Id == id);
@@ -115,7 +115,7 @@ public class AdminCompatibility2Controller : ControllerBase
     }
 
     /// <summary>POST /api/admin/newsletters/{id}/send - Send newsletter.</summary>
-    [HttpPost("newsletters/{id}/send")]
+    [HttpPost("newsletters/{id:int}/send")]
     public async Task<IActionResult> SendNewsletter(int id)
     {
         try
@@ -159,7 +159,7 @@ public class AdminCompatibility2Controller : ControllerBase
     }
 
     /// <summary>DELETE /api/admin/newsletters/subscribers/{id} - Remove subscriber.</summary>
-    [HttpDelete("newsletters/subscribers/{id}")]
+    [HttpDelete("newsletters/subscribers/{id:int}")]
     public async Task<IActionResult> RemoveSubscriber(int id)
     {
         var sub = await _db.Set<NewsletterSubscription>().FirstOrDefaultAsync(s => s.Id == id);
@@ -196,7 +196,7 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
 
     /// <summary>GET /api/admin/newsletters/segments/{id} - Get segment.</summary>
-    [HttpGet("newsletters/segments/{id}")]
+    [HttpGet("newsletters/segments/{id:int}")]
     public IActionResult GetSegment(int id)
         => Ok(new { data = new { id, name = $"Segment {id}", conditions = Array.Empty<object>(), subscriber_count = 0 } });
 
@@ -206,12 +206,12 @@ public class AdminCompatibility2Controller : ControllerBase
         => Created("/api/admin/newsletters/segments/0", new { data = new { id = 0, name = "New Segment", conditions = Array.Empty<object>(), subscriber_count = 0 } });
 
     /// <summary>PUT /api/admin/newsletters/segments/{id} - Update segment.</summary>
-    [HttpPut("newsletters/segments/{id}")]
+    [HttpPut("newsletters/segments/{id:int}")]
     public IActionResult UpdateSegment(int id, [FromBody] object body)
         => Ok(new { data = new { id, name = "Updated Segment", conditions = Array.Empty<object>(), subscriber_count = 0 } });
 
     /// <summary>DELETE /api/admin/newsletters/segments/{id} - Delete segment.</summary>
-    [HttpDelete("newsletters/segments/{id}")]
+    [HttpDelete("newsletters/segments/{id:int}")]
     public IActionResult DeleteSegment(int id)
         => Ok(new { message = "Segment deleted" });
 
@@ -235,7 +235,7 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
 
     /// <summary>GET /api/admin/newsletters/templates/{id} - Get template.</summary>
-    [HttpGet("newsletters/templates/{id}")]
+    [HttpGet("newsletters/templates/{id:int}")]
     public IActionResult GetTemplate(int id)
         => Ok(new { data = new { id, name = $"Template {id}", content_html = "", content_text = "", created_at = DateTime.UtcNow } });
 
@@ -245,22 +245,22 @@ public class AdminCompatibility2Controller : ControllerBase
         => Created("/api/admin/newsletters/templates/0", new { data = new { id = 0, name = "New Template", content_html = "", created_at = DateTime.UtcNow } });
 
     /// <summary>PUT /api/admin/newsletters/templates/{id} - Update template.</summary>
-    [HttpPut("newsletters/templates/{id}")]
+    [HttpPut("newsletters/templates/{id:int}")]
     public IActionResult UpdateTemplate(int id, [FromBody] object body)
         => Ok(new { data = new { id, name = "Updated Template", content_html = "", updated_at = DateTime.UtcNow } });
 
     /// <summary>DELETE /api/admin/newsletters/templates/{id} - Delete template.</summary>
-    [HttpDelete("newsletters/templates/{id}")]
+    [HttpDelete("newsletters/templates/{id:int}")]
     public IActionResult DeleteTemplate(int id)
         => Ok(new { message = "Template deleted" });
 
     /// <summary>POST /api/admin/newsletters/templates/{id}/duplicate - Duplicate template.</summary>
-    [HttpPost("newsletters/templates/{id}/duplicate")]
+    [HttpPost("newsletters/templates/{id:int}/duplicate")]
     public IActionResult DuplicateTemplate(int id)
         => Created($"/api/admin/newsletters/templates/{id}", new { data = new { id = 0, name = $"Copy of Template {id}", created_at = DateTime.UtcNow } });
 
     /// <summary>GET /api/admin/newsletters/templates/{id}/preview - Preview template.</summary>
-    [HttpGet("newsletters/templates/{id}/preview")]
+    [HttpGet("newsletters/templates/{id:int}/preview")]
     public IActionResult PreviewTemplate(int id)
         => Ok(new { data = new { id, rendered_html = $"<p>Preview of template {id}</p>" } });
 
@@ -294,12 +294,12 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { message = $"{email} suppressed" });
 
     /// <summary>GET /api/admin/newsletters/{id}/resend-info - Resend info.</summary>
-    [HttpGet("newsletters/{id}/resend-info")]
+    [HttpGet("newsletters/{id:int}/resend-info")]
     public IActionResult ResendInfo(int id)
         => Ok(new { data = new { newsletter_id = id, can_resend = false, reason = "Not yet implemented" } });
 
     /// <summary>POST /api/admin/newsletters/{id}/resend - Resend newsletter.</summary>
-    [HttpPost("newsletters/{id}/resend")]
+    [HttpPost("newsletters/{id:int}/resend")]
     public IActionResult Resend(int id)
         => Ok(new { message = "Resend not yet implemented", newsletter_id = id });
 
@@ -319,17 +319,17 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>() });
 
     /// <summary>GET /api/admin/newsletters/{id}/stats - Per-newsletter stats.</summary>
-    [HttpGet("newsletters/{id}/stats")]
+    [HttpGet("newsletters/{id:int}/stats")]
     public IActionResult NewsletterStats(int id)
         => Ok(new { data = new { newsletter_id = id, sent = 0, opens = 0, clicks = 0, bounces = 0, unsubscribes = 0, open_rate = 0.0, click_rate = 0.0 } });
 
     /// <summary>POST /api/admin/newsletters/{id}/ab-winner - Select A/B winner.</summary>
-    [HttpPost("newsletters/{id}/ab-winner")]
+    [HttpPost("newsletters/{id:int}/ab-winner")]
     public IActionResult SelectAbWinner(int id, [FromBody] object body)
         => Ok(new { message = "A/B winner selection not yet implemented", newsletter_id = id });
 
     /// <summary>POST /api/admin/newsletters/{id}/send-test - Send test email.</summary>
-    [HttpPost("newsletters/{id}/send-test")]
+    [HttpPost("newsletters/{id:int}/send-test")]
     public IActionResult SendTestEmail(int id, [FromBody] object body)
         => Ok(new { message = "Test email not yet implemented", newsletter_id = id });
 
@@ -339,37 +339,37 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { count = 0 });
 
     /// <summary>POST /api/admin/newsletters/{id}/duplicate - Duplicate newsletter.</summary>
-    [HttpPost("newsletters/{id}/duplicate")]
+    [HttpPost("newsletters/{id:int}/duplicate")]
     public IActionResult DuplicateNewsletter(int id)
         => Created($"/api/admin/newsletters/{id}", new { data = new { id = 0, subject = $"Copy of newsletter {id}", status = "Draft", created_at = DateTime.UtcNow } });
 
     /// <summary>GET /api/admin/newsletters/{id}/activity - Newsletter activity log.</summary>
-    [HttpGet("newsletters/{id}/activity")]
+    [HttpGet("newsletters/{id:int}/activity")]
     public IActionResult NewsletterActivity(int id)
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0, newsletter_id = id } });
 
     /// <summary>GET /api/admin/newsletters/{id}/openers - List openers.</summary>
-    [HttpGet("newsletters/{id}/openers")]
+    [HttpGet("newsletters/{id:int}/openers")]
     public IActionResult NewsletterOpeners(int id)
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0, newsletter_id = id } });
 
     /// <summary>GET /api/admin/newsletters/{id}/clickers - List clickers.</summary>
-    [HttpGet("newsletters/{id}/clickers")]
+    [HttpGet("newsletters/{id:int}/clickers")]
     public IActionResult NewsletterClickers(int id)
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0, newsletter_id = id } });
 
     /// <summary>GET /api/admin/newsletters/{id}/non-openers - List non-openers.</summary>
-    [HttpGet("newsletters/{id}/non-openers")]
+    [HttpGet("newsletters/{id:int}/non-openers")]
     public IActionResult NewsletterNonOpeners(int id)
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0, newsletter_id = id } });
 
     /// <summary>GET /api/admin/newsletters/{id}/openers-no-click - Openers who did not click.</summary>
-    [HttpGet("newsletters/{id}/openers-no-click")]
+    [HttpGet("newsletters/{id:int}/openers-no-click")]
     public IActionResult NewsletterOpenersNoClick(int id)
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0, newsletter_id = id } });
 
     /// <summary>GET /api/admin/newsletters/{id}/email-clients - Email client stats.</summary>
-    [HttpGet("newsletters/{id}/email-clients")]
+    [HttpGet("newsletters/{id:int}/email-clients")]
     public IActionResult NewsletterEmailClients(int id)
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0, newsletter_id = id } });
 
@@ -397,17 +397,17 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
 
     /// <summary>GET /api/admin/broker/exchanges/{id} - Exchange detail for broker.</summary>
-    [HttpGet("broker/exchanges/{id}")]
+    [HttpGet("broker/exchanges/{id:int}")]
     public IActionResult BrokerExchangeDetail(int id)
         => Ok(new { data = new { id, status = "pending", provider_id = 0, receiver_id = 0, hours = 0, created_at = DateTime.UtcNow } });
 
     /// <summary>POST /api/admin/broker/exchanges/{id}/approve - Approve exchange.</summary>
-    [HttpPost("broker/exchanges/{id}/approve")]
+    [HttpPost("broker/exchanges/{id:int}/approve")]
     public IActionResult ApproveBrokerExchange(int id)
         => Ok(new { message = "Exchange approved", exchange_id = id });
 
     /// <summary>POST /api/admin/broker/exchanges/{id}/reject - Reject exchange.</summary>
-    [HttpPost("broker/exchanges/{id}/reject")]
+    [HttpPost("broker/exchanges/{id:int}/reject")]
     public IActionResult RejectBrokerExchange(int id)
         => Ok(new { message = "Exchange rejected", exchange_id = id });
 
@@ -437,22 +437,22 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { count = 0 });
 
     /// <summary>GET /api/admin/broker/messages/{id} - Message detail.</summary>
-    [HttpGet("broker/messages/{id}")]
+    [HttpGet("broker/messages/{id:int}")]
     public IActionResult BrokerMessageDetail(int id)
         => Ok(new { data = new { id, content = "", sender_id = 0, receiver_id = 0, reviewed = false, created_at = DateTime.UtcNow } });
 
     /// <summary>POST /api/admin/broker/messages/{id}/review - Review message.</summary>
-    [HttpPost("broker/messages/{id}/review")]
+    [HttpPost("broker/messages/{id:int}/review")]
     public IActionResult ReviewMessage(int id, [FromBody] object body)
         => Ok(new { message = "Message reviewed", message_id = id });
 
     /// <summary>POST /api/admin/broker/messages/{id}/flag - Flag message.</summary>
-    [HttpPost("broker/messages/{id}/flag")]
+    [HttpPost("broker/messages/{id:int}/flag")]
     public IActionResult FlagMessage(int id, [FromBody] object body)
         => Ok(new { message = "Message flagged", message_id = id });
 
     /// <summary>POST /api/admin/broker/messages/{id}/approve - Approve message.</summary>
-    [HttpPost("broker/messages/{id}/approve")]
+    [HttpPost("broker/messages/{id:int}/approve")]
     public IActionResult ApproveMessage(int id)
         => Ok(new { message = "Message approved", message_id = id });
 
@@ -482,7 +482,7 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
 
     /// <summary>GET /api/admin/broker/archives/{id} - Archive detail.</summary>
-    [HttpGet("broker/archives/{id}")]
+    [HttpGet("broker/archives/{id:int}")]
     public IActionResult BrokerArchiveDetail(int id)
         => Ok(new { data = new { id, status = "archived", archived_at = DateTime.UtcNow } });
 
@@ -503,12 +503,12 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
 
     /// <summary>POST /api/admin/groups/approvals/{id}/approve - Approve group.</summary>
-    [HttpPost("groups/approvals/{id}/approve")]
+    [HttpPost("groups/approvals/{id:int}/approve")]
     public IActionResult ApproveGroup(int id)
         => Ok(new { message = "Group approved", group_id = id });
 
     /// <summary>POST /api/admin/groups/approvals/{id}/reject - Reject group.</summary>
-    [HttpPost("groups/approvals/{id}/reject")]
+    [HttpPost("groups/approvals/{id:int}/reject")]
     public IActionResult RejectGroup(int id)
         => Ok(new { message = "Group rejected", group_id = id });
 
@@ -518,7 +518,7 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
 
     /// <summary>PUT /api/admin/groups/{id}/status - Update group status.</summary>
-    [HttpPut("groups/{id}/status")]
+    [HttpPut("groups/{id:int}/status")]
     public IActionResult UpdateGroupStatus(int id, [FromBody] object body)
         => Ok(new { message = "Group status updated", group_id = id });
 
@@ -533,12 +533,12 @@ public class AdminCompatibility2Controller : ControllerBase
         => Created("/api/admin/groups/types/0", new { data = new { id = 0, name = "New Type" } });
 
     /// <summary>PUT /api/admin/groups/types/{id} - Update group type.</summary>
-    [HttpPut("groups/types/{id}")]
+    [HttpPut("groups/types/{id:int}")]
     public IActionResult UpdateGroupType(int id, [FromBody] object body)
         => Ok(new { data = new { id, name = "Updated Type" } });
 
     /// <summary>DELETE /api/admin/groups/types/{id} - Delete group type.</summary>
-    [HttpDelete("groups/types/{id}")]
+    [HttpDelete("groups/types/{id:int}")]
     public IActionResult DeleteGroupType(int id)
         => Ok(new { message = "Group type deleted" });
 
@@ -553,7 +553,7 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { message = "Policies updated", type_id = typeId });
 
     /// <summary>PUT /api/admin/groups/{id} - Update group (admin).</summary>
-    [HttpPut("groups/{id}")]
+    [HttpPut("groups/{id:int}")]
     public IActionResult UpdateGroup(int id, [FromBody] object body)
         => Ok(new { message = "Group updated", group_id = id });
 
@@ -622,12 +622,12 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
 
     /// <summary>POST /api/admin/volunteering/approvals/{id}/approve - Approve volunteering.</summary>
-    [HttpPost("volunteering/approvals/{id}/approve")]
+    [HttpPost("volunteering/approvals/{id:int}/approve")]
     public IActionResult ApproveVolunteering(int id)
         => Ok(new { message = "Volunteering approved", id });
 
     /// <summary>POST /api/admin/volunteering/approvals/{id}/decline - Decline volunteering.</summary>
-    [HttpPost("volunteering/approvals/{id}/decline")]
+    [HttpPost("volunteering/approvals/{id:int}/decline")]
     public IActionResult DeclineVolunteering(int id)
         => Ok(new { message = "Volunteering declined", id });
 
@@ -656,17 +656,17 @@ public class AdminCompatibility2Controller : ControllerBase
         => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
 
     /// <summary>POST /api/admin/federation/partnerships/{id}/approve - Approve partnership.</summary>
-    [HttpPost("federation/partnerships/{id}/approve")]
+    [HttpPost("federation/partnerships/{id:int}/approve")]
     public IActionResult ApprovePartnership(int id)
         => Ok(new { message = "Partnership approved", partnership_id = id });
 
     /// <summary>POST /api/admin/federation/partnerships/{id}/reject - Reject partnership.</summary>
-    [HttpPost("federation/partnerships/{id}/reject")]
+    [HttpPost("federation/partnerships/{id:int}/reject")]
     public IActionResult RejectPartnership(int id)
         => Ok(new { message = "Partnership rejected", partnership_id = id });
 
     /// <summary>POST /api/admin/federation/partnerships/{id}/terminate - Terminate partnership.</summary>
-    [HttpPost("federation/partnerships/{id}/terminate")]
+    [HttpPost("federation/partnerships/{id:int}/terminate")]
     public IActionResult TerminatePartnership(int id)
         => Ok(new { message = "Partnership terminated", partnership_id = id });
 
@@ -694,16 +694,6 @@ public class AdminCompatibility2Controller : ControllerBase
     [HttpGet("federation/analytics")]
     public IActionResult FederationAnalytics()
         => Ok(new { data = new { total_partners = 0, shared_listings = 0, shared_events = 0, cross_tenant_exchanges = 0 } });
-
-    /// <summary>GET /api/admin/federation/api-keys - List federation API keys.</summary>
-    [HttpGet("federation/api-keys")]
-    public IActionResult ListFederationApiKeys()
-        => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
-
-    /// <summary>POST /api/admin/federation/api-keys - Create federation API key.</summary>
-    [HttpPost("federation/api-keys")]
-    public IActionResult CreateFederationApiKey([FromBody] object body)
-        => Created("/api/admin/federation/api-keys/0", new { data = new { id = 0, key_prefix = "fed_", created_at = DateTime.UtcNow } });
 
     /// <summary>GET /api/admin/federation/data - Federation data management.</summary>
     [HttpGet("federation/data")]

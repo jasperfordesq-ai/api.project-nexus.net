@@ -1,4 +1,4 @@
-// Copyright © 2024–2026 Jasper Ford
+﻿// Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
@@ -353,7 +353,7 @@ public class AdminCompatibilityController : ControllerBase
         return Ok(new { data = Array.Empty<object>(), total = 0 });
     }
 
-    [HttpPost("background-jobs/{id}/run")]
+    [HttpPost("background-jobs/{id:int}/run")]
     public IActionResult RunBackgroundJob(string id)
     {
         _logger.LogInformation("Admin {AdminId} triggered background job {JobId} (stub)", GetCurrentUserId(), id);
@@ -763,34 +763,11 @@ public class AdminCompatibilityController : ControllerBase
         return Ok(new { success = true, message = "Test email sent", delivered = true });
     }
 
-    // ──────────────────────────────────────────────
-    // Tools - Extended (12 endpoints)
-    // ──────────────────────────────────────────────
-
-    [HttpGet("tools/redirects")]
-    public IActionResult ListRedirects()
-    {
-        return Ok(new { data = Array.Empty<object>(), total = 0, page = 1, per_page = 20 });
-    }
-
-    [HttpPost("tools/redirects")]
-    public IActionResult CreateRedirect([FromBody] object? request)
-    {
-        _logger.LogInformation("Admin {AdminId} created redirect (stub)", GetCurrentUserId());
-        return Ok(new { success = true, id = 1 });
-    }
-
     [HttpDelete("tools/redirects/{id:int}")]
     public IActionResult DeleteRedirect(int id)
     {
         _logger.LogInformation("Admin {AdminId} deleted redirect {Id} (stub)", GetCurrentUserId(), id);
         return Ok(new { success = true });
-    }
-
-    [HttpGet("tools/404-errors")]
-    public IActionResult Get404Errors()
-    {
-        return Ok(new { data = Array.Empty<object>(), total = 0, page = 1, per_page = 20 });
     }
 
     [HttpDelete("tools/404-errors/{id:int}")]
@@ -846,12 +823,6 @@ public class AdminCompatibilityController : ControllerBase
         return Ok(new { success = true, message = "SEO audit queued", queued_at = DateTime.UtcNow });
     }
 
-    [HttpGet("tools/seo-audit")]
-    public IActionResult GetSeoAuditResults()
-    {
-        return Ok(new { data = Array.Empty<object>(), score = 0, last_run = (DateTime?)null });
-    }
-
     // ──────────────────────────────────────────────
     // System (3 endpoints)
     // ──────────────────────────────────────────────
@@ -871,7 +842,7 @@ public class AdminCompatibilityController : ControllerBase
         });
     }
 
-    [HttpPost("system/cron-jobs/{id}/run")]
+    [HttpPost("system/cron-jobs/{id:int}/run")]
     public IActionResult RunCronJob(string id)
     {
         _logger.LogInformation("Admin {AdminId} triggered cron job {JobId} (stub)", GetCurrentUserId(), id);
@@ -991,15 +962,6 @@ public class AdminCompatibilityController : ControllerBase
         _logger.LogInformation("Admin {AdminId} deleted gamification campaign {Id} (stub)", GetCurrentUserId(), id);
         return Ok(new { success = true });
     }
-
-    [HttpPost("gamification/badges")]
-    public IActionResult CreateBadge([FromBody] object? request)
-    {
-        _logger.LogInformation("Admin {AdminId} created badge (stub)", GetCurrentUserId());
-        return Ok(new { success = true, id = 1 });
-    }
-
-    [HttpDelete("gamification/badges/{id:int}")]
     public IActionResult DeleteBadge(int id)
     {
         _logger.LogInformation("Admin {AdminId} deleted badge {Id} (stub)", GetCurrentUserId(), id);
@@ -1104,12 +1066,6 @@ public class AdminCompatibilityController : ControllerBase
     {
         _logger.LogInformation("Admin {AdminId} deleted plan {Id} (stub)", GetCurrentUserId(), id);
         return Ok(new { success = true });
-    }
-
-    [HttpGet("subscriptions")]
-    public IActionResult ListSubscriptions([FromQuery] int page = 1, [FromQuery] int limit = 20)
-    {
-        return Ok(new { data = Array.Empty<object>(), total = 0, page, per_page = limit });
     }
 
     // ──────────────────────────────────────────────

@@ -125,7 +125,7 @@ public class FeedRankingController : ControllerBase
     /// <summary>
     /// POST /api/feed/{id}/bookmark - Bookmark a post.
     /// </summary>
-    [HttpPost("{id}/bookmark")]
+    [HttpPost("{id:int}/bookmark")]
     public async Task<IActionResult> BookmarkPost(int id)
     {
         var userId = User.GetUserId();
@@ -151,7 +151,7 @@ public class FeedRankingController : ControllerBase
     /// <summary>
     /// DELETE /api/feed/{id}/bookmark - Remove bookmark from a post.
     /// </summary>
-    [HttpDelete("{id}/bookmark")]
+    [HttpDelete("{id:int}/bookmark")]
     public async Task<IActionResult> UnbookmarkPost(int id)
     {
         var userId = User.GetUserId();
@@ -223,36 +223,12 @@ public class FeedRankingController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// POST /api/feed/{id}/share - Share a post.
-    /// </summary>
-    [HttpPost("{id}/share")]
-    public async Task<IActionResult> SharePost(int id, [FromBody] SharePostRequest? request = null)
-    {
-        var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-
-        var (success, error) = await _feedRanking.SharePostAsync(userId.Value, id, request?.SharedTo);
-
-        if (!success)
-        {
-            if (error == "Post not found")
-                return NotFound(new { error });
-
-            return BadRequest(new { error });
-        }
-
-        return Ok(new
-        {
-            success = true,
-            message = "Post shared"
-        });
-    }
+    // Share route removed — served by FeedController.SharePost
 
     /// <summary>
     /// GET /api/feed/{id}/engagement - Get detailed engagement stats for a post.
     /// </summary>
-    [HttpGet("{id}/engagement")]
+    [HttpGet("{id:int}/engagement")]
     public async Task<IActionResult> GetPostEngagement(int id)
     {
         var userId = User.GetUserId();
