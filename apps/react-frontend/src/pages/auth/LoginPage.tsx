@@ -214,7 +214,17 @@ export function LoginPage() {
     tokenManager.clearTokens();
     tokenManager.setTenantId(selectedTenantId);
 
-    const result = await login({ email, password });
+    // Find the selected tenant's slug (preferred) or fall back to numeric ID
+    const selectedTenant = tenants.find((t) => String(t.id) === selectedTenantId);
+    const tenantSlug = selectedTenant?.slug || tenant?.slug;
+
+    const result = await login({
+      email,
+      password,
+      ...(tenantSlug
+        ? { tenant_slug: tenantSlug }
+        : { tenant_id: parseInt(selectedTenantId, 10) }),
+    });
     if (!result.success && result.errorCode) {
       setLoginErrorCode(result.errorCode);
     }
