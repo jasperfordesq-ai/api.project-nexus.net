@@ -19,7 +19,7 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
 
     <!-- Health Checks -->
-    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="8.0.2" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
 
     <!-- Password Hashing (BCrypt - same as PHP) -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
