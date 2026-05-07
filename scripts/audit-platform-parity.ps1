@@ -55,6 +55,41 @@ function Normalize-RoutePath {
     return $normalized.ToLowerInvariant()
 }
 
+function Convert-ToRouteShape {
+    param([string]$Path)
+    return (Normalize-RoutePath $Path) -replace '\{[^/]+\}', '{}'
+}
+
+function Normalize-FrontendApiPath {
+    param([string]$Path)
+
+    $normalized = $Path -replace '^/v2/', '/api/'
+    $normalized = $normalized -replace '\$\{?buildQuery.*$', ''
+    $normalized = $normalized -replace '(?<!/)\$\{.*$', ''
+    $normalized = $normalized -replace '\$\{[^}/]+}', '{id}'
+    $normalized = $normalized -replace '\$\{[^/]+$', '{id}'
+    $normalized = $normalized -replace '\$\([^)]+\)', '{id}'
+    $normalized = $normalized -replace '\$\w+', '{id}'
+    return Normalize-RoutePath $normalized
+}
+
+function Get-FrontendMethodHint {
+    param([string]$Line, [int]$MatchIndex)
+
+    $prefix = if ($MatchIndex -gt 0) { $Line.Substring(0, $MatchIndex) } else { '' }
+    $methodMatches = [regex]::Matches($prefix, '(?i)(?:\.|\b)(get|post|put|patch|delete)\s*(?:<[^>]+>)?\s*\(\s*[''"]?`?$')
+    if ($methodMatches.Count -gt 0) {
+        return $methodMatches[$methodMatches.Count - 1].Groups[1].Value.ToUpperInvariant()
+    }
+
+    $methodMatches = [regex]::Matches($prefix, '(?i)(?:method\s*:\s*[''"]|method\s*=\s*[''"])(get|post|put|patch|delete)')
+    if ($methodMatches.Count -gt 0) {
+        return $methodMatches[$methodMatches.Count - 1].Groups[1].Value.ToUpperInvariant()
+    }
+
+    return ''
+}
+
 function Join-RoutePath {
     param([string]$Prefix, [string]$Child)
 
@@ -259,8 +294,12 @@ function Export-FrontendApiStrings {
                     $lineNo++
                     $trimmed = $_.TrimStart()
                     if (-not ($trimmed.StartsWith('//') -or $trimmed.StartsWith('*') -or $trimmed.StartsWith('{/*'))) {
+                        $commentIndex = $_.IndexOf('//')
                         foreach ($match in [regex]::Matches($_, $pattern)) {
                             $skip = $false
+                            if ($commentIndex -ge 0 -and $match.Index -gt $commentIndex) {
+                                $skip = $true
+                            }
                             if ($match.Index -gt 0) {
                                 $previous = $_[$match.Index - 1]
                                 if ($previous -match '[A-Za-z0-9_.@-]') {
@@ -268,12 +307,19 @@ function Export-FrontendApiStrings {
                                 }
                             }
                             if (-not $skip) {
-                                $raw = $match.Value.TrimEnd("'", '"', '`', ',', '.', ')', '}', ']')
+                                $raw = $match.Value.TrimEnd("'", '"', '`', ',', '.', ')')
+                                $normalizedPath = Normalize-FrontendApiPath $raw
+                                $suffix = $_.Substring($match.Index + $match.Length)
+                                if ($normalizedPath.EndsWith('/') -or $raw.EndsWith('/')) {
+                                    if ($suffix -match '^\s*[''"]?\s*\+\s*[A-Za-z_][A-Za-z0-9_]*') {
+                                        $normalizedPath = Normalize-RoutePath "$normalizedPath/{id}"
+                                    }
+                                }
                                 $rows.Add([pscustomobject]@{
                                     app = $app
-                                    method_hint = ''
+                                    method_hint = Get-FrontendMethodHint $_ $match.Index
                                     raw = $raw
-                                    normalized = Normalize-RoutePath ($raw -replace '^/v2/', '/api/')
+                                    normalized = $normalizedPath
                                     file = $file.FullName
                                     line = $lineNo
                                 })
@@ -293,25 +339,41 @@ function New-RouteIndex {
 
     $byPath = @{}
     $byMethodPath = @{}
+    $byShape = @{}
+    $byMethodShape = @{}
 
     foreach ($route in $Routes) {
         $path = Normalize-RoutePath $route.path
+        $shape = Convert-ToRouteShape $path
         $method = ([string]$route.method).ToUpperInvariant()
         if (-not $byPath.ContainsKey($path)) {
             $byPath[$path] = New-Object System.Collections.Generic.List[object]
         }
         $byPath[$path].Add($route)
 
+        if (-not $byShape.ContainsKey($shape)) {
+            $byShape[$shape] = New-Object System.Collections.Generic.List[object]
+        }
+        $byShape[$shape].Add($route)
+
         $key = "$method $path"
         if (-not $byMethodPath.ContainsKey($key)) {
             $byMethodPath[$key] = New-Object System.Collections.Generic.List[object]
         }
         $byMethodPath[$key].Add($route)
+
+        $shapeKey = "$method $shape"
+        if (-not $byMethodShape.ContainsKey($shapeKey)) {
+            $byMethodShape[$shapeKey] = New-Object System.Collections.Generic.List[object]
+        }
+        $byMethodShape[$shapeKey].Add($route)
     }
 
     return @{
         ByPath = $byPath
+        ByShape = $byShape
         ByMethodPath = $byMethodPath
+        ByMethodShape = $byMethodShape
     }
 }
 
@@ -341,18 +403,45 @@ function Export-FrontendApiMatrix {
 
     foreach ($apiString in $ApiStrings) {
         $path = Normalize-RoutePath $apiString.normalized
+        $methodHint = ([string]$apiString.method_hint).ToUpperInvariant()
         $matches = @()
         $status = 'missing'
+        $methodKey = "$methodHint $path"
+        $methodShapeKey = "$methodHint $(Convert-ToRouteShape $path)"
 
         if (Test-UnresolvedTemplate $path) {
             $status = 'dynamic-unresolved'
+        } elseif ($methodHint -and $AspNetIndex.ByMethodPath.ContainsKey($methodKey)) {
+            $matches = Get-RouteIndexMatches $AspNetIndex 'ByMethodPath' $methodKey
+            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            if ($controllers -match 'Compatibility') {
+                $status = 'exists-compatibility'
+            } else {
+                $status = 'exists'
+            }
+        } elseif ($methodHint -and $AspNetIndex.ByMethodShape.ContainsKey($methodShapeKey)) {
+            $matches = Get-RouteIndexMatches $AspNetIndex 'ByMethodShape' $methodShapeKey
+            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            if ($controllers -match 'Compatibility') {
+                $status = 'exists-compatibility'
+            } else {
+                $status = 'exists'
+            }
         } elseif ($AspNetIndex.ByPath.ContainsKey($path)) {
             $matches = Get-RouteIndexMatches $AspNetIndex 'ByPath' $path
             $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
             if ($controllers -match 'Compatibility') {
                 $status = 'exists-compatibility'
             } else {
-                $status = 'exists-any-method'
+                $status = if ($methodHint) { 'method-mismatch' } else { 'exists-any-method' }
+            }
+        } elseif ($AspNetIndex.ByShape.ContainsKey((Convert-ToRouteShape $path))) {
+            $matches = Get-RouteIndexMatches $AspNetIndex 'ByShape' (Convert-ToRouteShape $path)
+            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            if ($controllers -match 'Compatibility') {
+                $status = 'exists-compatibility'
+            } else {
+                $status = if ($methodHint) { 'method-mismatch' } else { 'exists-any-method' }
             }
         }
 

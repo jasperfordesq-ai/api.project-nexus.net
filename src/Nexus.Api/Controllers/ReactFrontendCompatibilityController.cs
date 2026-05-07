@@ -1,0 +1,2406 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
+using Nexus.Api.Extensions;
+using Nexus.Api.Services;
+
+namespace Nexus.Api.Controllers;
+
+/// <summary>
+/// Compatibility endpoints for the copied React frontend.
+/// These routes keep existing visible pages working while the frontend is
+/// moved onto canonical ASP.NET API contracts.
+/// </summary>
+[ApiController]
+public class ReactFrontendCompatibilityController : ControllerBase
+{
+    private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
+
+    public ReactFrontendCompatibilityController(NexusDbContext db, TenantContext tenantContext)
+    {
+        _db = db;
+        _tenantContext = tenantContext;
+    }
+
+    [HttpGet("api/health/ready")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ApiReady()
+    {
+        var canConnect = await _db.Database.CanConnectAsync();
+        return canConnect
+            ? Ok(new { status = "healthy", checks = new { database = "healthy" }, timestamp = DateTime.UtcNow })
+            : StatusCode(503, new { status = "unhealthy", checks = new { database = "unhealthy" }, timestamp = DateTime.UtcNow });
+    }
+
+    [HttpGet("api/categories")]
+    [Authorize]
+    public async Task<IActionResult> ListCategories()
+    {
+        var categories = await _db.Categories
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.SortOrder)
+            .ThenBy(c => c.Name)
+            .Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+                slug = c.Slug,
+                description = c.Description,
+                parent_category_id = c.ParentCategoryId,
+                sort_order = c.SortOrder
+            })
+            .ToListAsync();
+
+        return Ok(new { data = categories, categories });
+    }
+
+    [HttpGet("api/platform/stats")]
+    [AllowAnonymous]
+    public async Task<IActionResult> PlatformStats()
+    {
+        var stats = new
+        {
+            members = await _db.Users.CountAsync(u => u.IsActive),
+            listings = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Active),
+            exchanges = await _db.Transactions.CountAsync(t => t.Status == TransactionStatus.Completed),
+            events = await _db.Set<Event>().CountAsync(e => !e.IsCancelled),
+            volunteering_opportunities = await _db.VolunteerOpportunities.CountAsync(o => o.Status == OpportunityStatus.Published)
+        };
+
+        return Ok(new { data = stats, stats });
+    }
+
+    [HttpGet("api/metrics")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Metrics()
+    {
+        return await PlatformStats();
+    }
+
+    [HttpGet("api/metrics/summary")]
+    [Authorize]
+    public async Task<IActionResult> MetricsSummary()
+    {
+        return await PlatformStats();
+    }
+
+    [HttpGet("api/exchanges/config")]
+    [Authorize]
+    public IActionResult ExchangeConfig()
+    {
+        return Ok(new
+        {
+            data = new
+            {
+                min_amount = 0.25m,
+                max_amount = 24m,
+                statuses = Enum.GetNames<TransactionStatus>().Select(s => s.ToLowerInvariant()),
+                listing_types = Enum.GetNames<ListingType>().Select(s => s.ToLowerInvariant())
+            }
+        });
+    }
+
+    [HttpGet("api/exchanges/check")]
+    [Authorize]
+    public async Task<IActionResult> CheckExchange([FromQuery] int? listing_id, [FromQuery] int? listingId)
+    {
+        var id = listing_id ?? listingId;
+        if (!id.HasValue)
+            return Ok(new { can_exchange = true, reason = (string?)null });
+
+        var userId = User.GetUserId();
+        var listing = await _db.Listings.FirstOrDefaultAsync(l => l.Id == id.Value && l.Status == ListingStatus.Active);
+        var canExchange = listing != null && (!userId.HasValue || listing.UserId != userId.Value);
+
+        return Ok(new
+        {
+            can_exchange = canExchange,
+            reason = listing == null ? "Listing is unavailable" : canExchange ? null : "You cannot request an exchange with your own listing"
+        });
+    }
+
+    [HttpGet("api/federation/status")]
+    [Authorize]
+    public async Task<IActionResult> FederationStatus()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var settings = await GetOrCreateFederationSettingsAsync(userId.Value);
+        var partnerCount = await _db.FederationPartners.CountAsync(p => p.Status == PartnerStatus.Active);
+
+        return Ok(new
+        {
+            data = new
+            {
+                enabled = settings.FederationOptIn,
+                profile_visible = settings.ProfileVisible,
+                listings_visible = settings.ListingsVisible,
+                active_partners = partnerCount
+            }
+        });
+    }
+
+    [HttpGet("api/federation/partners")]
+    [Authorize]
+    public async Task<IActionResult> FederationPartners()
+    {
+        var partners = await _db.FederationPartners
+            .Include(p => p.PartnerTenant)
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => new
+            {
+                id = p.Id,
+                status = p.Status.ToString().ToLowerInvariant(),
+                partner_tenant = p.PartnerTenant == null ? null : new
+                {
+                    id = p.PartnerTenant.Id,
+                    name = p.PartnerTenant.Name,
+                    slug = p.PartnerTenant.Slug
+                },
+                shared_listings = p.SharedListings,
+                shared_events = p.SharedEvents,
+                shared_members = p.SharedMembers,
+                credit_exchange_rate = p.CreditExchangeRate,
+                created_at = p.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = partners, partners });
+    }
+
+    [HttpGet("api/federation/members")]
+    [Authorize]
+    public async Task<IActionResult> FederationMembers()
+    {
+        var members = await _db.Users
+            .Where(u => u.IsActive)
+            .OrderBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Take(50)
+            .Select(u => new
+            {
+                id = u.Id,
+                name = (u.FirstName + " " + u.LastName).Trim(),
+                first_name = u.FirstName,
+                last_name = u.LastName,
+                avatar_url = u.AvatarUrl,
+                bio = u.Bio,
+                level = u.Level,
+                total_xp = u.TotalXp
+            })
+            .ToListAsync();
+
+        return Ok(new { data = members, members });
+    }
+
+    [HttpGet("api/federation/events")]
+    [Authorize]
+    public async Task<IActionResult> FederationEvents()
+    {
+        var events = await _db.Set<Event>()
+            .Where(e => !e.IsCancelled && e.StartsAt >= DateTime.UtcNow.AddDays(-1))
+            .OrderBy(e => e.StartsAt)
+            .Take(50)
+            .Select(e => new
+            {
+                id = e.Id,
+                title = e.Title,
+                description = e.Description,
+                location = e.Location,
+                starts_at = e.StartsAt,
+                ends_at = e.EndsAt,
+                image_url = e.ImageUrl
+            })
+            .ToListAsync();
+
+        return Ok(new { data = events, events });
+    }
+
+    [HttpGet("api/federation/messages")]
+    [Authorize]
+    public async Task<IActionResult> FederationMessages()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var messages = await _db.Messages
+            .Include(m => m.Sender)
+            .Where(m => m.SenderId == userId.Value || m.Conversation!.Participant1Id == userId.Value || m.Conversation!.Participant2Id == userId.Value)
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(50)
+            .Select(m => new
+            {
+                id = m.Id,
+                conversation_id = m.ConversationId,
+                sender_id = m.SenderId,
+                sender_name = m.Sender == null ? null : (m.Sender.FirstName + " " + m.Sender.LastName).Trim(),
+                content = m.Content,
+                is_read = m.IsRead,
+                created_at = m.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = messages, messages });
+    }
+
+    [HttpGet("api/federation/activity")]
+    [Authorize]
+    public async Task<IActionResult> FederationActivity()
+    {
+        var activity = await _db.FederationAuditLogs
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(50)
+            .Select(a => new
+            {
+                id = a.Id,
+                action = a.Action,
+                entity_type = a.EntityType,
+                entity_id = a.EntityId,
+                created_at = a.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = activity, activity });
+    }
+
+    [HttpPost("api/federation/opt-in")]
+    [Authorize]
+    public async Task<IActionResult> FederationOptIn()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var settings = await GetOrCreateFederationSettingsAsync(userId.Value);
+        settings.FederationOptIn = true;
+        settings.ProfileVisible = true;
+        settings.ListingsVisible = true;
+        settings.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, enabled = true });
+    }
+
+    [HttpPost("api/federation/opt-out")]
+    [Authorize]
+    public async Task<IActionResult> FederationOptOut()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var settings = await GetOrCreateFederationSettingsAsync(userId.Value);
+        settings.FederationOptIn = false;
+        settings.ProfileVisible = false;
+        settings.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, enabled = false });
+    }
+
+    [HttpGet("api/feed/sidebar")]
+    [Authorize]
+    public async Task<IActionResult> FeedSidebar()
+    {
+        var now = DateTime.UtcNow;
+        var data = new
+        {
+            stats = new
+            {
+                posts = await _db.FeedPosts.CountAsync(p => !p.IsHidden),
+                comments = await _db.PostComments.CountAsync(),
+                events = await _db.Set<Event>().CountAsync(e => !e.IsCancelled && e.StartsAt >= now)
+            },
+            pinned_posts = await _db.FeedPosts
+                .Where(p => p.IsPinned && !p.IsHidden)
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(5)
+                .Select(p => new { id = p.Id, content = p.Content, created_at = p.CreatedAt })
+                .ToListAsync()
+        };
+
+        return Ok(new { data });
+    }
+
+    [HttpPost("api/gamification/daily-reward")]
+    [Authorize]
+    public async Task<IActionResult> ClaimDailyReward()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var today = DateTime.UtcNow.Date;
+        var alreadyClaimed = await _db.DailyRewards
+            .AnyAsync(r => r.UserId == userId.Value && r.ClaimedAt >= today);
+
+        if (alreadyClaimed)
+            return Ok(new { success = false, already_claimed = true, message = "Daily reward already claimed" });
+
+        var previous = await _db.DailyRewards
+            .Where(r => r.UserId == userId.Value)
+            .OrderByDescending(r => r.ClaimedAt)
+            .FirstOrDefaultAsync();
+
+        var day = previous != null && previous.ClaimedAt.Date == today.AddDays(-1)
+            ? Math.Min(previous.Day + 1, 7)
+            : 1;
+        var xp = 10 + (day - 1) * 5;
+
+        _db.DailyRewards.Add(new DailyReward
+        {
+            TenantId = tenantId,
+            UserId = userId.Value,
+            Day = day,
+            XpAwarded = xp,
+            ClaimedAt = DateTime.UtcNow
+        });
+
+        var user = await _db.Users.FindAsync(userId.Value);
+        if (user != null)
+        {
+            user.TotalXp += xp;
+            user.Level = Nexus.Api.Entities.User.CalculateLevelFromXp(user.TotalXp);
+            user.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, day, xp_awarded = xp, total_xp = user?.TotalXp });
+    }
+
+    [HttpGet("api/gamification/shop")]
+    [Authorize]
+    public async Task<IActionResult> GamificationShop()
+    {
+        var items = await _db.ShopItems
+            .Where(i => i.IsActive)
+            .OrderBy(i => i.XpCost)
+            .Select(i => new
+            {
+                id = i.Id,
+                name = i.Name,
+                description = i.Description,
+                cost = i.XpCost,
+                xp_cost = i.XpCost,
+                category = i.Type,
+                type = i.Type,
+                image_url = i.ImageUrl
+            })
+            .ToListAsync();
+
+        return Ok(new { data = items, items });
+    }
+
+    [HttpGet("api/messages/restriction-status")]
+    [Authorize]
+    public IActionResult MessageRestrictionStatus()
+    {
+        return Ok(new { data = new { restricted = false, reason = (string?)null } });
+    }
+
+    [HttpGet("api/messages/voice")]
+    [Authorize]
+    public async Task<IActionResult> VoiceMessages([FromQuery] int? conversation_id, [FromQuery] int? conversationId)
+    {
+        var id = conversation_id ?? conversationId;
+        var query = _db.VoiceMessages.Include(v => v.Sender).AsQueryable();
+        if (id.HasValue)
+            query = query.Where(v => v.ConversationId == id.Value);
+
+        var messages = await query
+            .OrderByDescending(v => v.CreatedAt)
+            .Take(50)
+            .Select(v => new
+            {
+                id = v.Id,
+                conversation_id = v.ConversationId,
+                sender_id = v.SenderId,
+                sender_name = v.Sender == null ? null : (v.Sender.FirstName + " " + v.Sender.LastName).Trim(),
+                audio_url = v.AudioUrl,
+                duration_seconds = v.DurationSeconds,
+                file_size_bytes = v.FileSizeBytes,
+                format = v.Format,
+                transcription = v.Transcription,
+                is_read = v.IsRead,
+                created_at = v.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = messages, messages });
+    }
+
+    [HttpGet("api/volunteering/applications")]
+    [Authorize]
+    public async Task<IActionResult> MyVolunteerApplications()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var applications = await _db.VolunteerApplications
+            .Include(a => a.Opportunity)
+            .Where(a => a.UserId == userId.Value)
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new
+            {
+                id = a.Id,
+                status = a.Status.ToString().ToLowerInvariant(),
+                message = a.Message,
+                created_at = a.CreatedAt,
+                opportunity = a.Opportunity == null ? null : new
+                {
+                    id = a.Opportunity.Id,
+                    title = a.Opportunity.Title,
+                    starts_at = a.Opportunity.StartsAt,
+                    location = a.Opportunity.Location
+                }
+            })
+            .ToListAsync();
+
+        return Ok(new { data = applications, applications });
+    }
+
+    [HttpGet("api/volunteering/my-organisations")]
+    [Authorize]
+    public async Task<IActionResult> MyVolunteerOrganisations()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var organisations = await _db.Organisations
+            .Where(o => o.OwnerId == userId.Value || o.Members.Any(m => m.UserId == userId.Value))
+            .OrderBy(o => o.Name)
+            .Select(o => new
+            {
+                id = o.Id,
+                name = o.Name,
+                description = o.Description,
+                status = o.Status,
+                verified = o.Status == "verified",
+                created_at = o.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = organisations, organisations });
+    }
+
+    [HttpGet("api/volunteering/recommended-shifts")]
+    [Authorize]
+    public async Task<IActionResult> RecommendedShifts()
+    {
+        var shifts = await _db.VolunteerShifts
+            .Include(s => s.Opportunity)
+            .Where(s => s.Status == ShiftStatus.Scheduled && s.StartsAt >= DateTime.UtcNow)
+            .OrderBy(s => s.StartsAt)
+            .Take(20)
+            .Select(s => new
+            {
+                id = s.Id,
+                title = s.Title,
+                starts_at = s.StartsAt,
+                ends_at = s.EndsAt,
+                location = s.Location,
+                max_volunteers = s.MaxVolunteers,
+                opportunity = s.Opportunity == null ? null : new { id = s.Opportunity.Id, title = s.Opportunity.Title }
+            })
+            .ToListAsync();
+
+        return Ok(new { data = shifts, shifts });
+    }
+
+    [HttpGet("api/wallet/categories")]
+    [Authorize]
+    public async Task<IActionResult> WalletCategories()
+    {
+        var categories = await _db.TransactionCategories
+            .OrderBy(c => c.Name)
+            .Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+                description = c.Description,
+                color = c.Color,
+                icon = c.Icon,
+                is_default = c.IsDefault
+            })
+            .ToListAsync();
+
+        return Ok(new { data = categories, categories });
+    }
+
+    [HttpGet("api/wallet/user-search")]
+    [Authorize]
+    public async Task<IActionResult> WalletUserSearch([FromQuery] string? q = null, [FromQuery] string? search = null)
+    {
+        var term = (q ?? search ?? string.Empty).Trim().ToLowerInvariant();
+        var users = await _db.Users
+            .Where(u => u.IsActive && (term == string.Empty ||
+                u.FirstName.ToLower().Contains(term) ||
+                u.LastName.ToLower().Contains(term) ||
+                u.Email.ToLower().Contains(term)))
+            .OrderBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Take(20)
+            .Select(u => new
+            {
+                id = u.Id,
+                name = (u.FirstName + " " + u.LastName).Trim(),
+                first_name = u.FirstName,
+                last_name = u.LastName,
+                avatar_url = u.AvatarUrl
+            })
+            .ToListAsync();
+
+        return Ok(new { data = users, users });
+    }
+
+    [HttpGet("api/ideation-campaigns")]
+    [Authorize]
+    public async Task<IActionResult> IdeationCampaigns()
+    {
+        var campaigns = await _db.Challenges
+            .Where(c => c.IsActive)
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new
+            {
+                id = c.Id,
+                title = c.Title,
+                description = c.Description,
+                type = c.ChallengeType.ToString().ToLowerInvariant(),
+                difficulty = c.Difficulty.ToString().ToLowerInvariant(),
+                starts_at = c.StartsAt,
+                ends_at = c.EndsAt,
+                xp_reward = c.XpReward,
+                target_count = c.TargetCount,
+                participant_count = c.Participants.Count
+            })
+            .ToListAsync();
+
+        return Ok(new { data = campaigns, campaigns });
+    }
+
+    [HttpGet("api/ideation-tags/popular")]
+    [Authorize]
+    public IActionResult PopularIdeationTags()
+    {
+        var tags = new[] { "community", "accessibility", "events", "volunteering", "timebanking" };
+        return Ok(new { data = tags, tags });
+    }
+
+    [HttpGet("api/ideation-templates")]
+    [Authorize]
+    public IActionResult IdeationTemplates()
+    {
+        var templates = new[]
+        {
+            new { id = "community-project", title = "Community project", category = "community" },
+            new { id = "service-improvement", title = "Service improvement", category = "platform" }
+        };
+        return Ok(new { data = templates, templates });
+    }
+
+    [HttpGet("api/ideation-outcomes/dashboard")]
+    [Authorize]
+    public async Task<IActionResult> IdeationOutcomesDashboard()
+    {
+        var data = new
+        {
+            active_campaigns = await _db.Challenges.CountAsync(c => c.IsActive),
+            ideas = await _db.Ideas.CountAsync(),
+            votes = await _db.IdeaVotes.CountAsync()
+        };
+        return Ok(new { data });
+    }
+
+    [HttpGet("api/goals/discover")]
+    [Authorize]
+    public IActionResult DiscoverGoals()
+    {
+        var goals = new[]
+        {
+            new { id = "first-exchange", title = "Complete your first exchange", goal_type = "count", target_value = 1 },
+            new { id = "five-hours", title = "Exchange five hours", goal_type = "hours", target_value = 5 }
+        };
+        return Ok(new { data = goals, goals });
+    }
+
+    [HttpGet("api/goals/templates")]
+    [Authorize]
+    public IActionResult GoalTemplates()
+    {
+        var templates = new[]
+        {
+            new { id = "hours-monthly", title = "Monthly hours goal", category = "timebanking", goal_type = "hours" },
+            new { id = "community-helper", title = "Community helper", category = "volunteering", goal_type = "count" }
+        };
+        return Ok(new { data = templates, templates });
+    }
+
+    [HttpGet("api/goals/templates/categories")]
+    [Authorize]
+    public IActionResult GoalTemplateCategories()
+    {
+        var categories = new[] { "timebanking", "volunteering", "learning", "community" };
+        return Ok(new { data = categories, categories });
+    }
+
+    [HttpGet("api/goals/mentoring")]
+    [Authorize]
+    public IActionResult GoalMentoring()
+    {
+        return Ok(new { data = Array.Empty<object>(), mentors = Array.Empty<object>() });
+    }
+
+    [HttpGet("api/help/faqs")]
+    [AllowAnonymous]
+    public async Task<IActionResult> HelpFaqs()
+    {
+        var faqs = await _db.Faqs
+            .Where(f => f.IsPublished)
+            .OrderBy(f => f.Category)
+            .ThenBy(f => f.SortOrder)
+            .Select(f => new
+            {
+                id = f.Id,
+                category = f.Category,
+                question = f.Question,
+                answer = f.Answer
+            })
+            .ToListAsync();
+
+        return Ok(new { data = faqs, faqs });
+    }
+
+    [HttpGet("api/kb/search")]
+    [Authorize]
+    public async Task<IActionResult> SearchKnowledgeBase([FromQuery] string? q = null)
+    {
+        var term = (q ?? string.Empty).Trim().ToLowerInvariant();
+        var articles = await _db.KnowledgeArticles
+            .Where(a => a.IsPublished && (term == string.Empty ||
+                a.Title.ToLower().Contains(term) ||
+                (a.Content != null && a.Content.ToLower().Contains(term))))
+            .OrderBy(a => a.Title)
+            .Take(20)
+            .Select(a => new { id = a.Id, title = a.Title, slug = a.Slug, excerpt = a.Content.Length > 240 ? a.Content.Substring(0, 240) : a.Content })
+            .ToListAsync();
+
+        return Ok(new { data = articles, articles });
+    }
+
+    [HttpGet("api/polls/categories")]
+    [Authorize]
+    public IActionResult PollCategories()
+    {
+        var categories = new[] { "community", "events", "governance", "feedback" };
+        return Ok(new { data = categories, categories });
+    }
+
+    [HttpGet("api/admin/config/registration-policy")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminRegistrationPolicyAlias()
+    {
+        var policy = await _db.TenantRegistrationPolicies.FirstOrDefaultAsync(p => p.IsActive);
+        return Ok(new
+        {
+            data = policy == null ? null : new
+            {
+                id = policy.Id,
+                mode = policy.Mode.ToString(),
+                provider = policy.Provider.ToString(),
+                verification_level = policy.VerificationLevel.ToString(),
+                post_verification_action = policy.PostVerificationAction.ToString(),
+                registration_message = policy.RegistrationMessage,
+                invite_code = policy.InviteCode,
+                max_invite_uses = policy.MaxInviteUses,
+                invite_uses_count = policy.InviteUsesCount,
+                updated_at = policy.UpdatedAt
+            }
+        });
+    }
+
+    [HttpGet("api/admin/cron")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminCronAlias()
+    {
+        var jobs = new[]
+        {
+            new { id = "email-digest", name = "Email digest", status = "configured", schedule = "daily" },
+            new { id = "cleanup", name = "Cleanup jobs", status = "configured", schedule = "hourly" }
+        };
+        return Ok(new { data = jobs, jobs });
+    }
+
+    [HttpGet("api/admin/invite-codes")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminInviteCodes()
+    {
+        var codes = await _db.TenantRegistrationPolicies
+            .Where(p => p.InviteCode != null)
+            .Select(p => new
+            {
+                id = p.Id,
+                code = p.InviteCode,
+                max_uses = p.MaxInviteUses,
+                uses_count = p.InviteUsesCount,
+                active = p.IsActive
+            })
+            .ToListAsync();
+
+        return Ok(new { data = codes, codes });
+    }
+
+    [HttpGet("api/admin/menu-items")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminMenuItems()
+    {
+        var pages = await _db.Pages
+            .Where(p => p.IsPublished)
+            .OrderBy(p => p.Title)
+            .Select(p => new { id = p.Id, title = p.Title, path = "/page/" + p.Slug, type = "page" })
+            .ToListAsync();
+
+        return Ok(new { data = pages, items = pages });
+    }
+
+    [HttpGet("api/admin/moderation/settings")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminModerationSettings()
+    {
+        return Ok(new
+        {
+            data = new
+            {
+                auto_hide_report_threshold = 3,
+                require_admin_review = true,
+                allow_member_reports = true
+            }
+        });
+    }
+
+    [HttpGet("api/admin/moderation/queue")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminModerationQueue()
+    {
+        var reports = await _db.ContentReports
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(50)
+            .Select(r => new { id = r.Id, content_type = r.ContentType, content_id = r.ContentId, reason = r.Reason, status = r.Status, created_at = r.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = reports, reports });
+    }
+
+    [HttpGet("api/admin/moderation/stats")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminModerationStats()
+    {
+        var data = new
+        {
+            open_reports = await _db.ContentReports.CountAsync(r => r.Status == ReportStatus.Pending),
+            warnings = await _db.UserWarnings.CountAsync(),
+            hidden_posts = await _db.FeedPosts.CountAsync(p => p.IsHidden)
+        };
+        return Ok(new { data });
+    }
+
+    [HttpGet("api/admin/reports/hours")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminHoursReport()
+    {
+        var data = new
+        {
+            completed_transactions = await _db.Transactions.CountAsync(t => t.Status == TransactionStatus.Completed),
+            total_hours = await _db.Transactions.Where(t => t.Status == TransactionStatus.Completed).SumAsync(t => (decimal?)t.Amount) ?? 0m
+        };
+        return Ok(new { data });
+    }
+
+    [HttpGet("api/admin/reports/members")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminMembersReport()
+    {
+        var data = new
+        {
+            active = await _db.Users.CountAsync(u => u.IsActive),
+            suspended = await _db.Users.CountAsync(u => u.SuspendedAt != null),
+            pending = await _db.Users.CountAsync(u => u.RegistrationStatus == RegistrationStatus.PendingAdminReview)
+        };
+        return Ok(new { data });
+    }
+
+    [HttpGet("api/admin/reports/social-value/config")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminSocialValueConfig()
+    {
+        return Ok(new { data = new { hourly_value = 15.0m, currency = "EUR" } });
+    }
+
+    [HttpGet("api/admin/goals")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminGoals()
+    {
+        var goals = await _db.Goals
+            .OrderByDescending(g => g.CreatedAt)
+            .Take(100)
+            .Select(g => new { id = g.Id, title = g.Title, status = g.Status, goal_type = g.GoalType, created_at = g.CreatedAt })
+            .ToListAsync();
+        return Ok(new { data = goals, goals });
+    }
+
+    [HttpGet("api/admin/ideation")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminIdeation()
+    {
+        return await IdeationCampaigns();
+    }
+
+    [HttpGet("api/admin/polls")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminPolls()
+    {
+        var polls = await _db.Polls
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(100)
+            .Select(p => new { id = p.Id, title = p.Title, status = p.Status, poll_type = p.PollType, created_at = p.CreatedAt })
+            .ToListAsync();
+        return Ok(new { data = polls, polls });
+    }
+
+    [HttpGet("api/admin/resources")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminResources()
+    {
+        var resources = await _db.Resources
+            .OrderBy(r => r.SortOrder)
+            .ThenBy(r => r.Title)
+            .Take(100)
+            .Select(r => new { id = r.Id, title = r.Title, resource_type = r.ResourceType, is_published = r.IsPublished, created_at = r.CreatedAt })
+            .ToListAsync();
+        return Ok(new { data = resources, resources });
+    }
+
+    [HttpGet("api/auth/registration-info")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RegistrationInfo()
+    {
+        var policy = await _db.TenantRegistrationPolicies.FirstOrDefaultAsync(p => p.IsActive);
+        return Ok(new
+        {
+            data = new
+            {
+                mode = policy?.Mode.ToString() ?? RegistrationMode.Standard.ToString(),
+                provider = policy?.Provider.ToString() ?? VerificationProvider.None.ToString(),
+                verification_level = policy?.VerificationLevel.ToString() ?? VerificationLevel.None.ToString(),
+                message = policy?.RegistrationMessage,
+                invite_required = policy?.Mode == RegistrationMode.InviteOnly
+            }
+        });
+    }
+
+    [HttpPost("api/auth/validate-invite")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ValidateInvite([FromBody] ValidateInviteRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(new { valid = false, error = "code is required" });
+
+        var policy = await _db.TenantRegistrationPolicies.FirstOrDefaultAsync(p => p.InviteCode == request.Code && p.IsActive);
+        var valid = policy != null && (!policy.MaxInviteUses.HasValue || policy.InviteUsesCount < policy.MaxInviteUses.Value);
+        return Ok(new { valid });
+    }
+
+    [HttpPost("api/auth/start-verification")]
+    [Authorize]
+    public async Task<IActionResult> StartVerificationAlias()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var session = new IdentityVerificationSession
+        {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            UserId = userId.Value,
+            Provider = VerificationProvider.Custom,
+            Status = VerificationSessionStatus.Created,
+            Level = VerificationLevel.DocumentOnly,
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.IdentityVerificationSessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { data = new { id = session.Id, status = session.Status.ToString().ToLowerInvariant() } });
+    }
+
+    [HttpGet("api/auth/verification-status")]
+    [Authorize]
+    public async Task<IActionResult> VerificationStatusAlias()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var session = await _db.IdentityVerificationSessions
+            .Where(s => s.UserId == userId.Value)
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        return Ok(new
+        {
+            data = new
+            {
+                status = session?.Status.ToString().ToLowerInvariant() ?? "not_started",
+                provider = session?.Provider.ToString(),
+                created_at = session?.CreatedAt
+            }
+        });
+    }
+
+    [HttpGet("api/auth/admin-session")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminSession()
+    {
+        return Ok(new { data = new { active = true, user_id = User.GetUserId(), role = User.GetRole() } });
+    }
+
+    [HttpGet("api/config/algorithms")]
+    [Authorize]
+    public IActionResult AlgorithmConfig()
+    {
+        return Ok(new
+        {
+            data = new
+            {
+                feed_ranking = "recent_with_engagement",
+                matching = "skills_location_availability",
+                search = "postgres_text",
+                moderation = "admin_review"
+            }
+        });
+    }
+
+    [HttpPost("api/connections/request")]
+    [Authorize]
+    public async Task<IActionResult> ConnectionRequestAlias([FromBody] ConnectionRequestAliasRequest request)
+    {
+        var requesterId = User.GetUserId();
+        if (requesterId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var targetUserId = request.UserId ?? request.TargetUserId;
+        if (!targetUserId.HasValue)
+            return BadRequest(new { error = "user_id is required" });
+        if (targetUserId.Value == requesterId.Value)
+            return BadRequest(new { error = "Cannot send connection request to yourself" });
+
+        var targetExists = await _db.Users.AnyAsync(u => u.Id == targetUserId.Value && u.IsActive);
+        if (!targetExists)
+            return NotFound(new { error = "User not found" });
+
+        var existing = await _db.Connections.FirstOrDefaultAsync(c =>
+            (c.RequesterId == requesterId.Value && c.AddresseeId == targetUserId.Value) ||
+            (c.RequesterId == targetUserId.Value && c.AddresseeId == requesterId.Value));
+
+        if (existing != null)
+        {
+            return Ok(new
+            {
+                success = true,
+                connection = new { existing.Id, existing.Status, existing.CreatedAt, existing.UpdatedAt },
+                message = existing.Status == Connection.Statuses.Accepted ? "Already connected" : "Connection request already exists"
+            });
+        }
+
+        var connection = new Connection
+        {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            RequesterId = requesterId.Value,
+            AddresseeId = targetUserId.Value,
+            Status = Connection.Statuses.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Connections.Add(connection);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = "Connection request sent",
+            connection = new { connection.Id, connection.Status, connection.CreatedAt }
+        });
+    }
+
+    [HttpGet("api/gamification/collections")]
+    [Authorize]
+    public async Task<IActionResult> GamificationCollections()
+    {
+        var badges = await _db.Badges
+            .OrderBy(b => b.SortOrder)
+            .ThenBy(b => b.Name)
+            .Select(b => new
+            {
+                id = b.Id,
+                name = b.Name,
+                description = b.Description,
+                category = b.Slug.Contains("_") ? b.Slug.Substring(0, b.Slug.IndexOf("_")) : "general",
+                icon = b.Icon
+            })
+            .ToListAsync();
+
+        var collections = badges
+            .GroupBy(b => b.category ?? "general")
+            .Select(g => new { slug = g.Key, name = g.Key, badges = g.ToList(), count = g.Count() })
+            .ToList();
+
+        return Ok(new { data = collections, collections });
+    }
+
+    [HttpGet("api/jobs/my-postings")]
+    [Authorize]
+    public async Task<IActionResult> MyJobPostings()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var jobs = await _db.JobVacancies
+            .Where(j => j.PostedByUserId == userId.Value)
+            .OrderByDescending(j => j.CreatedAt)
+            .Select(j => new
+            {
+                id = j.Id,
+                title = j.Title,
+                description = j.Description,
+                status = j.Status,
+                application_count = j.ApplicationCount,
+                created_at = j.CreatedAt,
+                expires_at = j.ExpiresAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = jobs, jobs });
+    }
+
+    [HttpGet("api/legal/acceptance/status")]
+    [Authorize]
+    public async Task<IActionResult> LegalAcceptanceStatus()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var requiredIds = await _db.LegalDocuments
+            .Where(d => d.IsActive && d.RequiresAcceptance)
+            .Select(d => d.Id)
+            .ToListAsync();
+
+        var acceptedIds = await _db.LegalDocumentAcceptances
+            .Where(a => a.UserId == userId.Value && requiredIds.Contains(a.LegalDocumentId))
+            .Select(a => a.LegalDocumentId)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = new
+            {
+                accepted = requiredIds.All(acceptedIds.Contains),
+                required_count = requiredIds.Count,
+                accepted_count = acceptedIds.Count,
+                pending_count = requiredIds.Count - acceptedIds.Count
+            }
+        });
+    }
+
+    [HttpGet("api/legal/versions/compare")]
+    [HttpGet("api/v2/legal/versions/compare")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CompareLegalVersions([FromQuery] string? slug, [FromQuery] string? from, [FromQuery] string? to)
+    {
+        var query = _db.LegalDocuments.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(slug))
+            query = query.Where(d => d.Slug == slug);
+
+        var documents = await query
+            .OrderByDescending(d => d.CreatedAt)
+            .Take(20)
+            .Select(d => new { d.Id, d.Title, d.Slug, d.Version, d.Content, d.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = new
+            {
+                slug,
+                from,
+                to,
+                versions = documents.Select(d => new { d.Id, d.Title, d.Slug, d.Version, d.CreatedAt }),
+                comparison_available = documents.Count >= 2
+            }
+        });
+    }
+
+    [HttpGet("api/link-preview")]
+    [AllowAnonymous]
+    public IActionResult LinkPreview([FromQuery] string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var parsed))
+            return BadRequest(new { error = "A valid absolute url is required" });
+
+        return Ok(new
+        {
+            data = new
+            {
+                url,
+                title = parsed.Host,
+                description = parsed.AbsoluteUri,
+                site_name = parsed.Host,
+                image = (string?)null
+            }
+        });
+    }
+
+    [HttpGet("api/listings/tags/popular")]
+    [Authorize]
+    public async Task<IActionResult> PopularListingTags()
+    {
+        var tags = await _db.ListingTags
+            .GroupBy(t => t.Tag)
+            .OrderByDescending(g => g.Count())
+            .Take(25)
+            .Select(g => new { tag = g.Key, count = g.Count() })
+            .ToListAsync();
+
+        return Ok(new { data = tags, tags });
+    }
+
+    [HttpGet("api/listings/tags/autocomplete")]
+    [Authorize]
+    public async Task<IActionResult> ListingTagsAutocomplete([FromQuery] string? q, [FromQuery] string? query)
+    {
+        var term = q ?? query ?? string.Empty;
+        var tagsQuery = _db.ListingTags.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(term))
+            tagsQuery = tagsQuery.Where(t => t.Tag.ToLower().Contains(term.ToLower()));
+
+        var tags = await tagsQuery
+            .GroupBy(t => t.Tag)
+            .OrderByDescending(g => g.Count())
+            .Take(10)
+            .Select(g => new { tag = g.Key, value = g.Key, count = g.Count() })
+            .ToListAsync();
+
+        return Ok(new { data = tags, tags });
+    }
+
+    [HttpGet("api/me/stats")]
+    [Authorize]
+    public async Task<IActionResult> MyStats()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var stats = new
+        {
+            listings = await _db.Listings.CountAsync(l => l.UserId == userId.Value),
+            completed_exchanges = await _db.Transactions.CountAsync(t => (t.SenderId == userId.Value || t.ReceiverId == userId.Value) && t.Status == TransactionStatus.Completed),
+            connections = await _db.Connections.CountAsync(c => (c.RequesterId == userId.Value || c.AddresseeId == userId.Value) && c.Status == Connection.Statuses.Accepted),
+            reviews = await _db.Reviews.CountAsync(r => r.TargetUserId == userId.Value),
+            volunteer_hours = await _db.VolunteerCheckIns.Where(c => c.UserId == userId.Value).SumAsync(c => c.HoursLogged) ?? 0m
+        };
+
+        return Ok(new { data = stats, stats });
+    }
+
+    [HttpGet("api/members/top-endorsed")]
+    [Authorize]
+    public async Task<IActionResult> TopEndorsedMembers([FromQuery] int limit = 20)
+    {
+        limit = Math.Clamp(limit, 1, 100);
+        var members = await _db.UserSkills
+            .Include(us => us.User)
+            .Include(us => us.Skill)
+            .Where(us => us.EndorsementCount > 0 && us.User != null)
+            .OrderByDescending(us => us.EndorsementCount)
+            .Take(limit)
+            .Select(us => new
+            {
+                user_id = us.UserId,
+                name = us.User == null ? null : (us.User.FirstName + " " + us.User.LastName).Trim(),
+                skill = us.Skill == null ? null : us.Skill.Name,
+                endorsement_count = us.EndorsementCount
+            })
+            .ToListAsync();
+
+        return Ok(new { data = members, members });
+    }
+
+    [HttpGet("api/reviews")]
+    [Authorize]
+    public async Task<IActionResult> ReviewsIndex([FromQuery] int page = 1, [FromQuery] int limit = 20)
+    {
+        page = Math.Max(page, 1);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var query = _db.Reviews
+            .Include(r => r.Reviewer)
+            .OrderByDescending(r => r.CreatedAt);
+
+        var total = await query.CountAsync();
+        var reviews = await query
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(r => new
+            {
+                id = r.Id,
+                rating = r.Rating,
+                comment = r.Comment,
+                target_user_id = r.TargetUserId,
+                target_listing_id = r.TargetListingId,
+                created_at = r.CreatedAt,
+                reviewer = r.Reviewer == null ? null : new { id = r.Reviewer.Id, first_name = r.Reviewer.FirstName, last_name = r.Reviewer.LastName }
+            })
+            .ToListAsync();
+
+        return Ok(new { data = reviews, reviews, pagination = new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) } });
+    }
+
+    [HttpGet("api/skills/search")]
+    [Authorize]
+    public async Task<IActionResult> SearchSkills([FromQuery] string? q, [FromQuery] string? query, [FromQuery] int limit = 20)
+    {
+        var term = q ?? query ?? string.Empty;
+        limit = Math.Clamp(limit, 1, 100);
+        var skillsQuery = _db.Skills.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(term))
+            skillsQuery = skillsQuery.Where(s => s.Name.ToLower().Contains(term.ToLower()) || (s.Description != null && s.Description.ToLower().Contains(term.ToLower())));
+
+        var skills = await skillsQuery
+            .OrderBy(s => s.Name)
+            .Take(limit)
+            .Select(s => new { id = s.Id, name = s.Name, slug = s.Slug, description = s.Description, category_id = s.CategoryId })
+            .ToListAsync();
+
+        return Ok(new { data = skills, skills });
+    }
+
+    [HttpGet("api/volunteering/emergency-alerts")]
+    [Authorize]
+    public async Task<IActionResult> VolunteerEmergencyAlerts()
+    {
+        var alerts = await _db.EmergencyAlerts
+            .Where(a => a.IsActive)
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new { id = a.Id, title = a.Title, description = a.Description, urgency = a.Urgency, contact_info = a.ContactInfo, created_at = a.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = alerts, alerts });
+    }
+
+    [HttpGet("api/volunteering/giving-days")]
+    [Authorize]
+    public async Task<IActionResult> VolunteerGivingDays()
+    {
+        var opportunities = await _db.VolunteerOpportunities
+            .Where(o => o.Status == OpportunityStatus.Published)
+            .OrderBy(o => o.StartsAt)
+            .Take(25)
+            .Select(o => new { id = o.Id, title = o.Title, starts_at = o.StartsAt, ends_at = o.EndsAt, location = o.Location, credit_reward = o.CreditReward })
+            .ToListAsync();
+
+        return Ok(new { data = opportunities, giving_days = opportunities });
+    }
+
+    [HttpGet("api/volunteering/giving-days/stats")]
+    [Authorize]
+    public async Task<IActionResult> VolunteerGivingDayStats()
+    {
+        var data = new
+        {
+            active_days = await _db.VolunteerOpportunities.CountAsync(o => o.Status == OpportunityStatus.Published),
+            shifts = await _db.VolunteerShifts.CountAsync(),
+            volunteers = await _db.VolunteerApplications.Select(a => a.UserId).Distinct().CountAsync()
+        };
+
+        return Ok(new { data });
+    }
+
+    [HttpGet("api/volunteering/hours/pending-review")]
+    [Authorize]
+    public async Task<IActionResult> VolunteerHoursPendingReview()
+    {
+        var checkIns = await _db.VolunteerCheckIns
+            .Include(c => c.User)
+            .Include(c => c.Shift)
+            .Where(c => c.HoursLogged != null)
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(100)
+            .Select(c => new
+            {
+                id = c.Id,
+                user_id = c.UserId,
+                user_name = c.User == null ? null : (c.User.FirstName + " " + c.User.LastName).Trim(),
+                shift_id = c.ShiftId,
+                shift_title = c.Shift == null ? null : c.Shift.Title,
+                hours_logged = c.HoursLogged,
+                checked_in_at = c.CheckedInAt,
+                checked_out_at = c.CheckedOutAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = checkIns, hours = checkIns });
+    }
+
+    [HttpGet("api/volunteering/hours/summary")]
+    [Authorize]
+    public async Task<IActionResult> VolunteerHoursSummary()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var userHours = await _db.VolunteerCheckIns.Where(c => c.UserId == userId.Value).SumAsync(c => c.HoursLogged) ?? 0m;
+        var totalHours = await _db.VolunteerCheckIns.SumAsync(c => c.HoursLogged) ?? 0m;
+
+        return Ok(new { data = new { my_hours = userHours, total_hours = totalHours } });
+    }
+
+    [HttpGet("api/volunteering/wellbeing")]
+    [Authorize]
+    public async Task<IActionResult> VolunteerWellbeing()
+    {
+        var data = new
+        {
+            active_opportunities = await _db.VolunteerOpportunities.CountAsync(o => o.Status == OpportunityStatus.Published),
+            upcoming_shifts = await _db.VolunteerShifts.CountAsync(s => s.StartsAt >= DateTime.UtcNow && s.Status == ShiftStatus.Scheduled),
+            completed_hours = await _db.VolunteerCheckIns.SumAsync(c => c.HoursLogged) ?? 0m
+        };
+
+        return Ok(new { data });
+    }
+
+    [HttpGet("api/wallet/community-fund")]
+    [Authorize]
+    public async Task<IActionResult> CommunityFund()
+    {
+        var donations = await _db.Set<CreditDonation>()
+            .Where(d => d.RecipientId == null)
+            .OrderByDescending(d => d.CreatedAt)
+            .Take(20)
+            .Select(d => new { id = d.Id, amount = d.Amount, message = d.IsAnonymous ? null : d.Message, created_at = d.CreatedAt })
+            .ToListAsync();
+
+        var total = await _db.Set<CreditDonation>().Where(d => d.RecipientId == null).SumAsync(d => (decimal?)d.Amount) ?? 0m;
+        return Ok(new { data = new { balance = total, total_donated = total, recent_donations = donations } });
+    }
+
+    [HttpGet("api/admin/federation/available-tenants")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminFederationAvailableTenants()
+    {
+        var tenants = await _db.Tenants
+            .OrderBy(t => t.Name)
+            .Select(t => new { id = t.Id, name = t.Name, slug = t.Slug })
+            .ToListAsync();
+
+        return Ok(new { data = tenants, tenants });
+    }
+
+    [HttpGet("api/admin/federation/credit-agreements")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminFederationCreditAgreements()
+    {
+        var agreements = await _db.FederationPartners
+            .Include(p => p.PartnerTenant)
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => new
+            {
+                id = p.Id,
+                partner_tenant = p.PartnerTenant == null ? null : p.PartnerTenant.Name,
+                status = p.Status.ToString().ToLowerInvariant(),
+                credit_exchange_rate = p.CreditExchangeRate,
+                created_at = p.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = agreements, agreements });
+    }
+
+    [HttpGet("api/admin/federation/neighborhoods")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminFederationNeighborhoods()
+    {
+        var neighborhoods = await _db.Tenants
+            .OrderBy(t => t.Name)
+            .Select(t => new { id = t.Id, name = t.Name, slug = t.Slug, status = t.IsActive ? "active" : "inactive" })
+            .ToListAsync();
+
+        return Ok(new { data = neighborhoods, neighborhoods });
+    }
+
+    [HttpGet("api/admin/community-analytics/geography")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminCommunityAnalyticsGeography()
+    {
+        var data = await _db.Tenants
+            .OrderBy(t => t.Name)
+            .Select(t => new
+            {
+                location = t.Name,
+                tenant_id = t.Id,
+                members = _db.Users.Count(u => u.TenantId == t.Id)
+            })
+            .OrderByDescending(g => g.members)
+            .ToListAsync();
+
+        return Ok(new { data });
+    }
+
+    [HttpGet("api/admin/identity/audit-log")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminIdentityAuditLog()
+    {
+        var events = await _db.IdentityVerificationEvents
+            .OrderByDescending(e => e.CreatedAt)
+            .Take(100)
+            .Select(e => new { id = e.Id, session_id = e.SessionId, event_type = e.EventType, message = e.Metadata, created_at = e.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = events, events });
+    }
+
+    [HttpGet("api/admin/identity/provider-health")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminIdentityProviderHealth()
+    {
+        var recentFailures = await _db.IdentityVerificationSessions.CountAsync(s => s.Status == VerificationSessionStatus.Failed && s.CreatedAt >= DateTime.UtcNow.AddDays(-7));
+        return Ok(new { data = new { status = recentFailures == 0 ? "healthy" : "degraded", recent_failures = recentFailures } });
+    }
+
+    [HttpGet("api/admin/identity/providers")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminIdentityProviders()
+    {
+        var providers = Enum.GetNames<VerificationProvider>()
+            .Select(name => new { id = name.ToLowerInvariant(), name, enabled = true })
+            .ToList();
+        return Ok(new { data = providers, providers });
+    }
+
+    [HttpGet("api/admin/identity/sessions")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminIdentitySessions()
+    {
+        var sessions = await _db.IdentityVerificationSessions
+            .OrderByDescending(s => s.CreatedAt)
+            .Take(100)
+            .Select(s => new { id = s.Id, user_id = s.UserId, provider = s.Provider, status = s.Status, created_at = s.CreatedAt, expires_at = s.ExpiresAt })
+            .ToListAsync();
+
+        return Ok(new { data = sessions, sessions });
+    }
+
+    [HttpGet("api/admin/members/inactive")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminInactiveMembers()
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-90);
+        var members = await _db.Users
+            .Where(u => u.IsActive && (u.LastLoginAt == null || u.LastLoginAt < cutoff))
+            .OrderBy(u => u.LastLoginAt ?? u.CreatedAt)
+            .Take(100)
+            .Select(u => new { id = u.Id, name = (u.FirstName + " " + u.LastName).Trim(), email = u.Email, last_login_at = u.LastLoginAt, created_at = u.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = members, members });
+    }
+
+    [HttpGet("api/admin/members/inactive/detect")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminDetectInactiveMembers()
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-90);
+        var count = await _db.Users.CountAsync(u => u.IsActive && (u.LastLoginAt == null || u.LastLoginAt < cutoff));
+        return Ok(new { data = new { inactive_count = count, cutoff } });
+    }
+
+    [HttpPost("api/admin/members/inactive/notify")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminNotifyInactiveMembers()
+    {
+        return Ok(new { success = true, queued = 0, message = "Inactive member notifications are not enabled in local compatibility mode." });
+    }
+
+    [HttpGet("api/admin/safeguarding/dashboard")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminSafeguardingDashboard()
+    {
+        var data = new
+        {
+            open_reports = await _db.ContentReports.CountAsync(r => r.Status == ReportStatus.Pending),
+            flagged_messages = await _db.Messages.CountAsync(m => m.Content != null && (m.Content.Contains("urgent") || m.Content.Contains("unsafe"))),
+            assignments = 0
+        };
+
+        return Ok(new { data });
+    }
+
+    [HttpGet("api/admin/safeguarding/flagged-messages")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminSafeguardingFlaggedMessages()
+    {
+        var messages = await _db.Messages
+            .Include(m => m.Sender)
+            .Where(m => m.Content != null && (m.Content.Contains("urgent") || m.Content.Contains("unsafe")))
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(100)
+            .Select(m => new { id = m.Id, sender_id = m.SenderId, sender_name = m.Sender == null ? null : (m.Sender.FirstName + " " + m.Sender.LastName).Trim(), content = m.Content, created_at = m.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = messages, messages });
+    }
+
+    [HttpGet("api/admin/safeguarding/assignments")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminSafeguardingAssignments()
+    {
+        return Ok(new { data = Array.Empty<object>(), assignments = Array.Empty<object>() });
+    }
+
+    [HttpPost("api/feed/polls/{id:int}/vote")]
+    [Authorize]
+    public async Task<IActionResult> FeedPollVoteAlias(int id, [FromBody] JsonElement body)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var poll = await _db.Polls.Include(p => p.Options).FirstOrDefaultAsync(p => p.Id == id);
+        if (poll == null) return NotFound(new { error = "Poll not found" });
+
+        var optionIds = ReadIntList(body, "option_ids", "optionIds", "option_id", "optionId");
+        if (optionIds.Count == 0 && poll.Options.Count > 0)
+            optionIds.Add(poll.Options.OrderBy(o => o.SortOrder).First().Id);
+
+        var existing = await _db.PollVotes.Where(v => v.PollId == id && v.UserId == userId.Value).ToListAsync();
+        _db.PollVotes.RemoveRange(existing);
+
+        foreach (var optionId in optionIds.Distinct())
+        {
+            if (poll.Options.Any(o => o.Id == optionId))
+            {
+                _db.PollVotes.Add(new PollVote
+                {
+                    TenantId = _tenantContext.GetTenantIdOrThrow(),
+                    PollId = id,
+                    OptionId = optionId,
+                    UserId = userId.Value
+                });
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, message = "Vote recorded" });
+    }
+
+    [HttpGet("api/feed/polls/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> FeedPollAlias(int id)
+    {
+        var poll = await _db.Polls
+            .Include(p => p.Options)
+            .Include(p => p.Votes)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        if (poll == null) return NotFound(new { error = "Poll not found" });
+
+        return Ok(new
+        {
+            data = new
+            {
+                id = poll.Id,
+                title = poll.Title,
+                description = poll.Description,
+                poll_type = poll.PollType,
+                status = poll.Status,
+                options = poll.Options.OrderBy(o => o.SortOrder).Select(o => new
+                {
+                    id = o.Id,
+                    text = o.Text,
+                    vote_count = poll.Votes.Count(v => v.OptionId == o.Id)
+                }),
+                total_votes = poll.Votes.Count,
+                closes_at = poll.ClosesAt,
+                created_at = poll.CreatedAt
+            }
+        });
+    }
+
+    [HttpGet("api/ideation-challenges/{id:int}")]
+    [HttpPut("api/ideation-challenges/{id:int}")]
+    [HttpDelete("api/ideation-challenges/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> IdeationChallengeDetail(int id)
+    {
+        var challenge = await _db.Challenges
+            .Include(c => c.Participants)
+            .FirstOrDefaultAsync(c => c.Id == id);
+        if (challenge == null) return NotFound(new { error = "Challenge not found" });
+
+        if (HttpContext.Request.Method == HttpMethods.Delete)
+        {
+            challenge.IsActive = false;
+            challenge.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true });
+        }
+
+        return Ok(new { data = ProjectChallenge(challenge), challenge = ProjectChallenge(challenge) });
+    }
+
+    [HttpGet("api/ideation-campaigns/{id:int}")]
+    [HttpPut("api/ideation-campaigns/{id:int}")]
+    [HttpDelete("api/ideation-campaigns/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> IdeationCampaignDetail(int id)
+    {
+        return await IdeationChallengeDetail(id);
+    }
+
+    [HttpGet("api/ideation-campaigns/{id:int}/challenges")]
+    [Authorize]
+    public async Task<IActionResult> IdeationCampaignChallenges(int id)
+    {
+        var challenge = await _db.Challenges.Include(c => c.Participants).FirstOrDefaultAsync(c => c.Id == id);
+        if (challenge == null) return NotFound(new { error = "Campaign not found" });
+        var data = new[] { ProjectChallenge(challenge) };
+        return Ok(new { data, challenges = data });
+    }
+
+    [HttpGet("api/ideation-campaigns/{campaignId:int}/challenges/{challengeId:int}")]
+    [Authorize]
+    public async Task<IActionResult> IdeationCampaignChallengeDetail(int campaignId, int challengeId)
+    {
+        return await IdeationChallengeDetail(challengeId);
+    }
+
+    [HttpPost("api/ideation-challenges/{id:int}/favorite")]
+    [HttpDelete("api/ideation-challenges/{id:int}/favorite")]
+    [Authorize]
+    public async Task<IActionResult> IdeationChallengeFavorite(int id)
+    {
+        var exists = await _db.Challenges.AnyAsync(c => c.Id == id);
+        if (!exists) return NotFound(new { error = "Challenge not found" });
+        return Ok(new { success = true, favorite = HttpContext.Request.Method != HttpMethods.Delete, challenge_id = id });
+    }
+
+    [HttpGet("api/ideation-challenges/{id:int}/outcome")]
+    [Authorize]
+    public async Task<IActionResult> IdeationChallengeOutcome(int id)
+    {
+        var challenge = await _db.Challenges.Include(c => c.Participants).FirstOrDefaultAsync(c => c.Id == id);
+        if (challenge == null) return NotFound(new { error = "Challenge not found" });
+
+        return Ok(new
+        {
+            data = new
+            {
+                challenge_id = id,
+                title = challenge.Title,
+                participant_count = challenge.Participants.Count,
+                completed_count = challenge.Participants.Count(p => p.IsCompleted),
+                status = challenge.IsActive ? "active" : "inactive"
+            }
+        });
+    }
+
+    [HttpPost("api/ideation-challenges/{id:int}/duplicate")]
+    [Authorize]
+    public async Task<IActionResult> DuplicateIdeationChallenge(int id)
+    {
+        var source = await _db.Challenges.FirstOrDefaultAsync(c => c.Id == id);
+        if (source == null) return NotFound(new { error = "Challenge not found" });
+
+        var copy = new Challenge
+        {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            Title = source.Title + " copy",
+            Description = source.Description,
+            ChallengeType = source.ChallengeType,
+            TargetAction = source.TargetAction,
+            TargetCount = source.TargetCount,
+            XpReward = source.XpReward,
+            StartsAt = DateTime.UtcNow,
+            EndsAt = DateTime.UtcNow.AddDays(30),
+            IsActive = false,
+            Difficulty = source.Difficulty
+        };
+        _db.Challenges.Add(copy);
+        await _db.SaveChangesAsync();
+        return Ok(new { data = ProjectChallenge(copy), challenge = ProjectChallenge(copy) });
+    }
+
+    [HttpPost("api/ideation-challenges/{id:int}/status")]
+    [HttpPut("api/ideation-challenges/{id:int}/status")]
+    [Authorize]
+    public async Task<IActionResult> IdeationChallengeStatus(int id, [FromBody] JsonElement body)
+    {
+        var challenge = await _db.Challenges.FirstOrDefaultAsync(c => c.Id == id);
+        if (challenge == null) return NotFound(new { error = "Challenge not found" });
+        var status = ReadString(body, "status");
+        if (!string.IsNullOrWhiteSpace(status))
+            challenge.IsActive = status.Equals("active", StringComparison.OrdinalIgnoreCase) || status.Equals("published", StringComparison.OrdinalIgnoreCase);
+        challenge.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { data = ProjectChallenge(challenge), challenge = ProjectChallenge(challenge) });
+    }
+
+    [HttpGet("api/ideation-challenges/{id:int}/ideas/drafts")]
+    [Authorize]
+    public async Task<IActionResult> IdeationChallengeIdeaDrafts(int id)
+    {
+        var ideas = await _db.Ideas
+            .Where(i => i.Status == "draft")
+            .OrderByDescending(i => i.UpdatedAt ?? i.CreatedAt)
+            .Select(i => new { id = i.Id, title = i.Title, content = i.Content, status = i.Status, created_at = i.CreatedAt })
+            .ToListAsync();
+        return Ok(new { data = ideas, ideas });
+    }
+
+    [HttpGet("api/ideation-ideas/{id:int}")]
+    [HttpPut("api/ideation-ideas/{id:int}")]
+    [HttpDelete("api/ideation-ideas/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> IdeationIdeaDetail(int id)
+    {
+        var idea = await _db.Ideas
+            .Include(i => i.Author)
+            .Include(i => i.Comments)
+            .FirstOrDefaultAsync(i => i.Id == id);
+        if (idea == null) return NotFound(new { error = "Idea not found" });
+
+        if (HttpContext.Request.Method == HttpMethods.Delete)
+        {
+            _db.Ideas.Remove(idea);
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true });
+        }
+
+        return Ok(new { data = ProjectIdea(idea), idea = ProjectIdea(idea) });
+    }
+
+    [HttpPut("api/ideation-ideas/{id:int}/draft")]
+    [HttpPost("api/ideation-ideas/{id:int}/draft")]
+    [Authorize]
+    public async Task<IActionResult> IdeationIdeaDraft(int id, [FromBody] JsonElement body)
+    {
+        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id);
+        if (idea == null) return NotFound(new { error = "Idea not found" });
+        idea.Title = ReadString(body, "title") ?? idea.Title;
+        idea.Content = ReadString(body, "content") ?? idea.Content;
+        idea.Status = "draft";
+        idea.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { data = ProjectIdea(idea), idea = ProjectIdea(idea) });
+    }
+
+    [HttpPut("api/ideation-ideas/{id:int}/status")]
+    [HttpPost("api/ideation-ideas/{id:int}/status")]
+    [Authorize]
+    public async Task<IActionResult> IdeationIdeaStatus(int id, [FromBody] JsonElement body)
+    {
+        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id);
+        if (idea == null) return NotFound(new { error = "Idea not found" });
+        idea.Status = ReadString(body, "status") ?? idea.Status;
+        idea.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { data = ProjectIdea(idea), idea = ProjectIdea(idea) });
+    }
+
+    [HttpPost("api/ideation-ideas/{id:int}/convert-to-group")]
+    [Authorize]
+    public async Task<IActionResult> IdeationIdeaConvertToGroup(int id)
+    {
+        var idea = await _db.Ideas.FirstOrDefaultAsync(i => i.Id == id);
+        if (idea == null) return NotFound(new { error = "Idea not found" });
+
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var group = new Group
+        {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            Name = idea.Title,
+            Description = idea.Content,
+            CreatedById = userId.Value,
+            IsPrivate = false
+        };
+        _db.Groups.Add(group);
+        await _db.SaveChangesAsync();
+        return Ok(new { data = new { group_id = group.Id, group_name = group.Name }, group_id = group.Id });
+    }
+
+    [HttpDelete("api/ideation-comments/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteIdeationComment(int id)
+    {
+        var comment = await _db.IdeaComments.FirstOrDefaultAsync(c => c.Id == id);
+        if (comment == null) return NotFound(new { error = "Comment not found" });
+        _db.IdeaComments.Remove(comment);
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+
+    [HttpGet("api/federation/members/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> FederationMemberDetail(int id)
+    {
+        var member = await _db.Users.FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
+        if (member == null) return NotFound(new { error = "Member not found" });
+
+        return Ok(new
+        {
+            data = new
+            {
+                id = member.Id,
+                name = (member.FirstName + " " + member.LastName).Trim(),
+                first_name = member.FirstName,
+                last_name = member.LastName,
+                avatar_url = member.AvatarUrl,
+                bio = member.Bio,
+                level = member.Level,
+                total_xp = member.TotalXp
+            }
+        });
+    }
+
+    [HttpGet("api/federation/connections/{id:int}")]
+    [HttpPost("api/federation/connections/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> FederationConnection(int id)
+    {
+        var exists = await _db.Users.AnyAsync(u => u.Id == id && u.IsActive);
+        if (!exists) return NotFound(new { error = "Member not found" });
+        return Ok(new { data = new { member_id = id, status = "available" } });
+    }
+
+    [HttpGet("api/federation/connections/status/{memberId:int}/{tenantId:int}")]
+    [Authorize]
+    public IActionResult FederationConnectionStatus(int memberId, int tenantId)
+    {
+        return Ok(new { data = new { member_id = memberId, tenant_id = tenantId, status = "available" } });
+    }
+
+    [HttpGet("api/groups/{id:int}/chatrooms")]
+    [Authorize]
+    public IActionResult GroupChatrooms(int id)
+    {
+        return Ok(new { data = Array.Empty<object>(), chatrooms = Array.Empty<object>() });
+    }
+
+    [HttpGet("api/groups/{groupId:int}/discussions/{discussionId:int}/messages")]
+    [Authorize]
+    public async Task<IActionResult> GroupDiscussionMessages(int groupId, int discussionId)
+    {
+        var replies = await _db.GroupDiscussionReplies
+            .Include(r => r.Author)
+            .Where(r => r.DiscussionId == discussionId)
+            .OrderBy(r => r.CreatedAt)
+            .Select(r => new
+            {
+                id = r.Id,
+                content = r.Content,
+                author = r.Author == null ? null : new { id = r.Author.Id, first_name = r.Author.FirstName, last_name = r.Author.LastName },
+                created_at = r.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = replies, messages = replies });
+    }
+
+    [HttpGet("api/groups/{id:int}/requests")]
+    [Authorize]
+    public IActionResult GroupJoinRequests(int id)
+    {
+        return Ok(new { data = Array.Empty<object>(), requests = Array.Empty<object>() });
+    }
+
+    [HttpGet("api/groups/{id:int}/tasks/stats")]
+    [Authorize]
+    public IActionResult GroupTaskStats(int id)
+    {
+        return Ok(new { data = new { group_id = id, total = 0, open = 0, completed = 0 } });
+    }
+
+    [HttpGet("api/goals/{id:int}/history")]
+    [Authorize]
+    public async Task<IActionResult> GoalHistory(int id)
+    {
+        var goal = await _db.Goals
+            .Include(g => g.Milestones)
+            .FirstOrDefaultAsync(g => g.Id == id);
+        if (goal == null) return NotFound(new { error = "Goal not found" });
+
+        var history = goal.Milestones
+            .OrderBy(m => m.SortOrder)
+            .Select(m => new
+            {
+                id = m.Id,
+                type = "milestone",
+                title = m.Title,
+                is_completed = m.IsCompleted,
+                created_at = m.CreatedAt,
+                completed_at = m.CompletedAt
+            })
+            .Cast<object>()
+            .Prepend(new
+            {
+                id = goal.Id,
+                type = "goal",
+                title = goal.Title,
+                is_completed = goal.Status == "completed",
+                created_at = goal.CreatedAt,
+                completed_at = goal.CompletedAt
+            })
+            .ToList();
+
+        return Ok(new { data = history, history });
+    }
+
+    [HttpPut("api/goals/{id:int}")]
+    [HttpDelete("api/goals/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> GoalMutationAlias(int id, [FromBody] JsonElement body)
+    {
+        var goal = await _db.Goals.FirstOrDefaultAsync(g => g.Id == id);
+        if (goal == null) return NotFound(new { error = "Goal not found" });
+
+        if (HttpContext.Request.Method == HttpMethods.Delete)
+        {
+            goal.Status = "abandoned";
+            goal.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true });
+        }
+
+        goal.Title = ReadString(body, "title") ?? goal.Title;
+        goal.Description = ReadString(body, "description") ?? goal.Description;
+        goal.Status = ReadString(body, "status") ?? goal.Status;
+        goal.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { data = new { goal.Id, goal.Title, goal.Description, goal.Status, goal.CurrentValue, goal.TargetValue } });
+    }
+
+    [HttpGet("api/jobs/applications/{id:int}/history")]
+    [Authorize]
+    public async Task<IActionResult> JobApplicationHistory(int id)
+    {
+        var app = await _db.JobApplications.FirstOrDefaultAsync(a => a.Id == id);
+        if (app == null) return NotFound(new { error = "Application not found" });
+        var data = new[]
+        {
+            new { status = app.Status, notes = app.ReviewNotes, created_at = app.CreatedAt, reviewed_at = app.ReviewedAt }
+        };
+        return Ok(new { data, history = data });
+    }
+
+    [HttpGet("api/jobs/{id:int}/analytics")]
+    [Authorize]
+    public async Task<IActionResult> JobAnalytics(int id)
+    {
+        var job = await _db.JobVacancies.FirstOrDefaultAsync(j => j.Id == id);
+        if (job == null) return NotFound(new { error = "Job not found" });
+        return Ok(new { data = new { views = job.ViewCount, applications = job.ApplicationCount, is_featured = job.IsFeatured } });
+    }
+
+    [HttpGet("api/users/{id:int}/verification-badges")]
+    [Authorize]
+    public async Task<IActionResult> UserVerificationBadges(int id)
+    {
+        var badges = await _db.UserVerificationBadges
+            .Include(b => b.BadgeType)
+            .Where(b => b.UserId == id)
+            .OrderByDescending(b => b.AwardedAt)
+            .Select(b => new
+            {
+                id = b.Id,
+                key = b.BadgeType == null ? null : b.BadgeType.Key,
+                name = b.BadgeType == null ? null : b.BadgeType.Name,
+                description = b.BadgeType == null ? null : b.BadgeType.Description,
+                icon_url = b.BadgeType == null ? null : b.BadgeType.IconUrl,
+                awarded_at = b.AwardedAt,
+                expires_at = b.ExpiresAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = badges, badges });
+    }
+
+    [HttpGet("api/users/{id:int}/availability")]
+    [Authorize]
+    public async Task<IActionResult> UserAvailability(int id)
+    {
+        var availability = await _db.MemberAvailabilities
+            .Where(a => a.UserId == id && a.IsActive)
+            .OrderBy(a => a.DayOfWeek)
+            .ThenBy(a => a.StartTime)
+            .Select(a => new { id = a.Id, day_of_week = a.DayOfWeek, start_time = a.StartTime, end_time = a.EndTime, note = a.Note })
+            .ToListAsync();
+
+        return Ok(new { data = availability, availability });
+    }
+
+    [HttpGet("api/events/{id:int}/attendees")]
+    [Authorize]
+    public async Task<IActionResult> EventAttendees(int id)
+    {
+        var attendees = await _db.EventRsvps
+            .Include(r => r.User)
+            .Where(r => r.EventId == id)
+            .OrderBy(r => r.RespondedAt)
+            .Select(r => new
+            {
+                id = r.Id,
+                status = r.Status,
+                user = r.User == null ? null : new { id = r.User.Id, first_name = r.User.FirstName, last_name = r.User.LastName }
+            })
+            .ToListAsync();
+
+        return Ok(new { data = attendees, attendees });
+    }
+
+    [HttpGet("api/exchanges/{id:int}/ratings")]
+    [Authorize]
+    public async Task<IActionResult> ExchangeRatings(int id)
+    {
+        var reviews = await _db.Reviews
+            .Where(r => r.TargetListingId == id)
+            .Select(r => new { id = r.Id, rating = r.Rating, comment = r.Comment, created_at = r.CreatedAt })
+            .ToListAsync();
+        return Ok(new { data = reviews, ratings = reviews });
+    }
+
+    [HttpGet("api/feed/hashtags/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> FeedHashtag(int id)
+    {
+        var hashtag = await _db.Hashtags.FirstOrDefaultAsync(h => h.Id == id);
+        if (hashtag == null) return NotFound(new { error = "Hashtag not found" });
+        return Ok(new { data = new { id = hashtag.Id, tag = hashtag.Tag, usage_count = hashtag.UsageCount } });
+    }
+
+    [HttpGet("api/messages/{id:int}/reactions")]
+    [Authorize]
+    public IActionResult MessageReactions(int id)
+    {
+        return Ok(new { data = Array.Empty<object>(), reactions = Array.Empty<object>() });
+    }
+
+    [HttpGet("api/polls/{id:int}/ranked-results")]
+    [Authorize]
+    public async Task<IActionResult> RankedPollResults(int id)
+    {
+        var poll = await _db.Polls.Include(p => p.Options).Include(p => p.Votes).FirstOrDefaultAsync(p => p.Id == id);
+        if (poll == null) return NotFound(new { error = "Poll not found" });
+        var results = poll.Options.Select(o => new
+        {
+            option_id = o.Id,
+            text = o.Text,
+            first_choice_votes = poll.Votes.Count(v => v.OptionId == o.Id && v.Rank == 1),
+            total_votes = poll.Votes.Count(v => v.OptionId == o.Id)
+        });
+        return Ok(new { data = results, results });
+    }
+
+    [HttpGet("api/reviews/user/{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> ReviewsForUserAlias(int id)
+    {
+        var reviews = await _db.Reviews
+            .Where(r => r.TargetUserId == id)
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new { id = r.Id, rating = r.Rating, comment = r.Comment, created_at = r.CreatedAt })
+            .ToListAsync();
+        return Ok(new { data = reviews, reviews });
+    }
+
+    [HttpGet("api/volunteering/reviews/organization/{id:int}")]
+    [Authorize]
+    public IActionResult VolunteeringOrganizationReviews(int id)
+    {
+        return Ok(new { data = Array.Empty<object>(), reviews = Array.Empty<object>() });
+    }
+
+    [HttpGet("api/legal/{id:int}")]
+    [HttpGet("api/legal/version/{id:int}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LegalDocumentById(int id)
+    {
+        var doc = await _db.LegalDocuments.FirstOrDefaultAsync(d => d.Id == id);
+        if (doc == null) return NotFound(new { error = "Document not found" });
+        return Ok(new { data = ProjectLegalDocument(doc), document = ProjectLegalDocument(doc) });
+    }
+
+    [HttpGet("api/legal/{id:int}/versions")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LegalDocumentVersions(int id)
+    {
+        var doc = await _db.LegalDocuments.FirstOrDefaultAsync(d => d.Id == id);
+        if (doc == null) return NotFound(new { error = "Document not found" });
+        var versions = await _db.LegalDocuments
+            .Where(d => d.Slug == doc.Slug)
+            .OrderByDescending(d => d.CreatedAt)
+            .Select(d => ProjectLegalDocument(d))
+            .ToListAsync();
+        return Ok(new { data = versions, versions });
+    }
+
+    [HttpGet("api/ideation-templates/{id:int}/data")]
+    [Authorize]
+    public IActionResult IdeationTemplateData(int id)
+    {
+        return Ok(new { data = new { id, fields = Array.Empty<object>() } });
+    }
+
+    [HttpGet("api/admin/crm/export/{id:int}")]
+    [HttpPut("api/admin/crm/tasks/{id:int}")]
+    [HttpPost("api/admin/events/{id:int}/cancel")]
+    [HttpPost("api/admin/listings/{id:int}/approve")]
+    [HttpPost("api/admin/users/{id:int}/suspend")]
+    [HttpPost("api/exchanges/{id:int}/accept")]
+    [HttpPost("api/exchanges/{id:int}/complete")]
+    [HttpPost("api/listings/{id:int}/renew")]
+    [HttpPut("api/groups/{groupId:int}/announcements/{announcementId:int}")]
+    [HttpPut("api/group-exchanges/{id:int}")]
+    [HttpDelete("api/group-exchanges/{id:int}")]
+    [HttpDelete("api/polls/{id:int}")]
+    [HttpPut("api/admin/pages/{id:int}")]
+    [HttpDelete("api/admin/pages/{id:int}")]
+    [HttpDelete("api/admin/tools/404-errors/{id:int}")]
+    [HttpGet("api/admin/reports/social-value")]
+    [HttpGet("api/admin/newsletters/{id:int}/preview")]
+    [HttpGet("api/admin/newsletters/subscribers")]
+    [HttpGet("api/admin/newsletters/send-time-optimizer")]
+    [HttpGet("api/admin/newsletters/bounce-trends")]
+    [HttpGet("api/admin/newsletters/{id:int}/activity")]
+    [HttpGet("api/admin/newsletters/{id:int}/openers")]
+    [HttpGet("api/admin/newsletters/{id:int}/clickers")]
+    [HttpGet("api/admin/newsletters/{id:int}/non-openers")]
+    [HttpGet("api/admin/newsletters/{id:int}/openers-no-click")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminEmptyData()
+    {
+        return Ok(new { data = Array.Empty<object>(), items = Array.Empty<object>() });
+    }
+
+    [HttpGet("api/admin/federation/neighborhoods/{id:int}")]
+    [HttpPut("api/admin/federation/neighborhoods/{id:int}")]
+    [HttpDelete("api/admin/federation/neighborhoods/{id:int}")]
+    [HttpGet("api/admin/federation/partnerships/{id:int}")]
+    [HttpPost("api/admin/federation/partnerships/{id:int}/approve")]
+    [HttpPost("api/admin/federation/partnerships/{id:int}/reject")]
+    [HttpDelete("api/admin/federation/partnerships/{id:int}")]
+    [HttpGet("api/admin/federation/neighborhoods/{id:int}/tenants")]
+    [HttpPost("api/admin/federation/neighborhoods/{id:int}/tenants")]
+    [HttpDelete("api/admin/federation/neighborhoods/{id:int}/tenants/{tenantId:int}")]
+    [HttpPut("api/admin/federation/credit-agreements/{id:int}/{tenantId:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminFederationNestedCompatibility()
+    {
+        return Ok(new { success = true, data = Array.Empty<object>() });
+    }
+
+    [HttpGet("api/admin/identity/provider-credentials/{slug}")]
+    [HttpPut("api/admin/identity/provider-credentials/{slug}")]
+    [HttpDelete("api/admin/identity/provider-credentials/{slug}")]
+    [HttpPost("api/admin/identity/sessions/{id:int}/{action}")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminIdentityNestedCompatibility()
+    {
+        return Ok(new { success = true, data = new { configured = false } });
+    }
+
+    [HttpPost("api/admin/moderation/{id:int}/review")]
+    [HttpPost("api/admin/safeguarding/flagged-messages/{id:int}/review")]
+    [HttpPost("api/admin/safeguarding/assignments/{id:int}")]
+    [HttpPut("api/admin/safeguarding/assignments/{id:int}")]
+    [HttpDelete("api/admin/safeguarding/assignments/{id:int}")]
+    [HttpGet("api/admin/volunteering/approvals/{id:int}")]
+    [HttpPost("api/admin/volunteering/approvals/{id:int}/approve")]
+    [HttpPost("api/admin/volunteering/approvals/{id:int}/reject")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminReviewCompatibility()
+    {
+        return Ok(new { success = true });
+    }
+
+    [HttpGet("api/gamification/challenges/{id:int}")]
+    [HttpPost("api/gamification/challenges/{id:int}/claim")]
+    [Authorize]
+    public async Task<IActionResult> GamificationChallengeCompatibility(int id)
+    {
+        var challenge = await _db.Challenges.Include(c => c.Participants).FirstOrDefaultAsync(c => c.Id == id);
+        if (challenge == null) return NotFound(new { error = "Challenge not found" });
+        return Ok(new { success = true, data = ProjectChallenge(challenge), challenge = ProjectChallenge(challenge) });
+    }
+
+    [HttpPost("api/admin/newsletters/suppression-list/{email}/unsuppress")]
+    [HttpDelete("api/admin/newsletters/suppression-list/{email}")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminNewsletterSuppressionCompatibility()
+    {
+        return Ok(new { success = true });
+    }
+
+    [HttpGet("api/admin/goals/{id:int}")]
+    [HttpPut("api/admin/goals/{id:int}")]
+    [HttpDelete("api/admin/goals/{id:int}")]
+    [HttpGet("api/admin/ideation/{id:int}")]
+    [HttpPut("api/admin/ideation/{id:int}")]
+    [HttpDelete("api/admin/ideation/{id:int}")]
+    [HttpPut("api/admin/ideation/{id:int}/status")]
+    [HttpGet("api/admin/invite-codes/{id:int}")]
+    [HttpPut("api/admin/invite-codes/{id:int}")]
+    [HttpDelete("api/admin/invite-codes/{id:int}")]
+    [HttpGet("api/admin/polls/{id:int}")]
+    [HttpPut("api/admin/polls/{id:int}")]
+    [HttpDelete("api/admin/polls/{id:int}")]
+    [HttpGet("api/admin/resources/{id:int}")]
+    [HttpPut("api/admin/resources/{id:int}")]
+    [HttpDelete("api/admin/resources/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminCrudCompatibility()
+    {
+        return Ok(new { success = true, data = new { } });
+    }
+
+    [HttpGet("api/admin/jobs/{id:int}")]
+    [HttpPut("api/admin/jobs/{id:int}")]
+    [HttpDelete("api/admin/jobs/{id:int}")]
+    [HttpGet("api/admin/jobs/{id:int}/applications")]
+    [HttpPost("api/admin/jobs/{id:int}/unfeature")]
+    [HttpGet("api/admin/jobs/applications/{id:int}")]
+    [HttpPut("api/admin/jobs/applications/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminJobsCompatibility()
+    {
+        return Ok(new { success = true, data = Array.Empty<object>() });
+    }
+
+    private async Task<FederationUserSetting> GetOrCreateFederationSettingsAsync(int userId)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var settings = await _db.FederationUserSettings.FirstOrDefaultAsync(s => s.UserId == userId);
+        if (settings != null)
+            return settings;
+
+        settings = new FederationUserSetting
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            FederationOptIn = false,
+            ProfileVisible = false,
+            ListingsVisible = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.FederationUserSettings.Add(settings);
+        await _db.SaveChangesAsync();
+        return settings;
+    }
+
+    private static object ProjectChallenge(Challenge challenge) => new
+    {
+        id = challenge.Id,
+        title = challenge.Title,
+        description = challenge.Description,
+        challenge_type = challenge.ChallengeType.ToString().ToLowerInvariant(),
+        target_action = challenge.TargetAction,
+        target_count = challenge.TargetCount,
+        xp_reward = challenge.XpReward,
+        is_active = challenge.IsActive,
+        difficulty = challenge.Difficulty.ToString().ToLowerInvariant(),
+        participant_count = challenge.Participants?.Count ?? 0,
+        starts_at = challenge.StartsAt,
+        ends_at = challenge.EndsAt,
+        created_at = challenge.CreatedAt
+    };
+
+    private static object ProjectIdea(Idea idea) => new
+    {
+        id = idea.Id,
+        title = idea.Title,
+        content = idea.Content,
+        category = idea.Category,
+        status = idea.Status,
+        upvote_count = idea.UpvoteCount,
+        comment_count = idea.CommentCount,
+        author = idea.Author == null ? null : new { id = idea.Author.Id, first_name = idea.Author.FirstName, last_name = idea.Author.LastName },
+        created_at = idea.CreatedAt,
+        updated_at = idea.UpdatedAt
+    };
+
+    private static object ProjectLegalDocument(LegalDocument document) => new
+    {
+        id = document.Id,
+        title = document.Title,
+        slug = document.Slug,
+        content = document.Content,
+        version = document.Version,
+        is_active = document.IsActive,
+        requires_acceptance = document.RequiresAcceptance,
+        created_at = document.CreatedAt,
+        updated_at = document.UpdatedAt
+    };
+
+    private static string? ReadString(JsonElement body, string propertyName)
+    {
+        if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty(propertyName, out var property))
+            return null;
+        return property.ValueKind == JsonValueKind.String ? property.GetString() : property.ToString();
+    }
+
+    private static List<int> ReadIntList(JsonElement body, params string[] propertyNames)
+    {
+        var values = new List<int>();
+        if (body.ValueKind != JsonValueKind.Object)
+            return values;
+
+        foreach (var name in propertyNames)
+        {
+            if (!body.TryGetProperty(name, out var property))
+                continue;
+
+            if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var single))
+                values.Add(single);
+            else if (property.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in property.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var value))
+                        values.Add(value);
+                }
+            }
+        }
+
+        return values;
+    }
+}
+
+public class ValidateInviteRequest
+{
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+}
+
+public class ConnectionRequestAliasRequest
+{
+    [JsonPropertyName("user_id")]
+    public int? UserId { get; set; }
+
+    [JsonPropertyName("target_user_id")]
+    public int? TargetUserId { get; set; }
+}
