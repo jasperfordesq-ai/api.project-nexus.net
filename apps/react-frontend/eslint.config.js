@@ -30,6 +30,25 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', '*.config.js', '*.config.ts', 'src/test/'],
+    ignores: [
+      'coverage/',
+      'dist/',
+      'node_modules/',
+      'playwright-report/',
+      'test-results/',
+      '*.config.js',
+      '*.config.ts',
+      'src/test/',
+      'src/**/__mocks__/',
+      'src/**/__tests__/',
+      'src/**/*.test.js',
+      'src/**/*.test.jsx',
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'src/**/*.spec.js',
+      'src/**/*.spec.jsx',
+      'src/**/*.spec.ts',
+      'src/**/*.spec.tsx',
+    ],
   }
 );

@@ -178,6 +178,7 @@ const SmartMatchMonitoring = lazy(() => import('./modules/community/SmartMatchMo
 const DeliverabilityDashboard = lazy(() => import('./modules/deliverability/DeliverabilityDashboard'));
 const DeliverablesList = lazy(() => import('./modules/deliverability/DeliverablesList'));
 const CreateDeliverable = lazy(() => import('./modules/deliverability/CreateDeliverable'));
+const EditDeliverable = lazy(() => import('./modules/deliverability/EditDeliverable'));
 const DeliverabilityAnalytics = lazy(() => import('./modules/deliverability/DeliverabilityAnalytics'));
 
 // Diagnostics module
@@ -452,6 +453,7 @@ export function AdminRoutes() {
       <Route path="deliverability" element={<Lazy><DeliverabilityDashboard /></Lazy>} />
       <Route path="deliverability/list" element={<Lazy><DeliverablesList /></Lazy>} />
       <Route path="deliverability/create" element={<Lazy><CreateDeliverable /></Lazy>} />
+      <Route path="deliverability/:id/edit" element={<Lazy><EditDeliverable /></Lazy>} />
       <Route path="deliverability/analytics" element={<Lazy><DeliverabilityAnalytics /></Lazy>} />
 
       {/* ─── MATCHING DIAGNOSTIC ─── */}
