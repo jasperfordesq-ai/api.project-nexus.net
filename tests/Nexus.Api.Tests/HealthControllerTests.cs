@@ -11,15 +11,20 @@ namespace Nexus.Api.Tests;
 /// Tests liveness and readiness probes.
 /// </summary>
 [Collection("Integration")]
-public class HealthControllerTests : IntegrationTestBase
+public class HealthControllerTests
 {
-    public HealthControllerTests(NexusWebApplicationFactory factory) : base(factory) { }
+    private readonly HttpClient _client;
+
+    public HealthControllerTests(NexusWebApplicationFactory factory)
+    {
+        _client = factory.CreateClient();
+    }
 
     [Fact]
     public async Task LivenessCheck_ReturnsHealthy()
     {
         // Act - no auth required
-        var response = await Client.GetAsync("/health");
+        var response = await _client.GetAsync("/health");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -32,7 +37,7 @@ public class HealthControllerTests : IntegrationTestBase
     public async Task LivenessCheck_LiveRoute_ReturnsHealthy()
     {
         // Act
-        var response = await Client.GetAsync("/health/live");
+        var response = await _client.GetAsync("/health/live");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -45,7 +50,7 @@ public class HealthControllerTests : IntegrationTestBase
     public async Task ReadinessCheck_WithDatabase_ReturnsOk()
     {
         // Act
-        var response = await Client.GetAsync("/health/ready");
+        var response = await _client.GetAsync("/health/ready");
 
         // Assert
         // Should be OK since we have a Testcontainer PostgreSQL running

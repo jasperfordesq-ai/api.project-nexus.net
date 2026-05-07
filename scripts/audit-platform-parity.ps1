@@ -1,0 +1,481 @@
+# Copyright 2024-2026 Jasper Ford
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Author: Jasper Ford
+# See NOTICE file for attribution and acknowledgements.
+
+[CmdletBinding()]
+param(
+    [string]$TargetRoot,
+    [string]$SourceRoot = 'C:\platforms\htdocs\staging',
+    [string]$OutDir
+)
+
+$ErrorActionPreference = 'Stop'
+
+if ([string]::IsNullOrWhiteSpace($TargetRoot)) {
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+    $TargetRoot = (Resolve-Path (Join-Path $scriptRoot '..')).Path
+}
+
+if ([string]::IsNullOrWhiteSpace($OutDir)) {
+    $OutDir = Join-Path $TargetRoot 'artifacts\parity-audit'
+}
+
+function Ensure-Directory {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) {
+        New-Item -ItemType Directory -Path $Path | Out-Null
+    }
+}
+
+function Normalize-RoutePath {
+    param([AllowNull()][string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return '/'
+    }
+
+    $normalized = $Path.Trim().Trim('"', "'")
+    $normalized = $normalized -replace '\\', '/'
+    $normalized = $normalized -replace '\?.*$', ''
+    $normalized = $normalized -replace '\[controller\]', 'controller'
+    $normalized = $normalized -replace '\{([A-Za-z0-9_]+)(:[^}]+)?\}', '{$1}'
+    $normalized = $normalized -replace ':([A-Za-z0-9_]+)', '{$1}'
+    $normalized = $normalized -replace '/+', '/'
+    $normalized = $normalized.TrimEnd('/')
+
+    if ($normalized.Length -eq 0) {
+        return '/'
+    }
+
+    if (-not $normalized.StartsWith('/')) {
+        $normalized = "/$normalized"
+    }
+
+    return $normalized.ToLowerInvariant()
+}
+
+function Join-RoutePath {
+    param([string]$Prefix, [string]$Child)
+
+    $combined = (($Prefix.Trim('/'), $Child.Trim('/')) | Where-Object { $_ }) -join '/'
+    return Normalize-RoutePath $combined
+}
+
+function Export-AspNetRoutes {
+    param([string]$Root, [string]$Destination)
+
+    $controllerRoot = Join-Path $Root 'src\Nexus.Api\Controllers'
+    if (-not (Test-Path -LiteralPath $controllerRoot)) {
+        Write-Warning "ASP.NET controller root not found: $controllerRoot"
+        return @()
+    }
+
+    $rows = New-Object System.Collections.Generic.List[object]
+    $httpMap = @{
+        HttpGet = 'GET'
+        HttpPost = 'POST'
+        HttpPut = 'PUT'
+        HttpPatch = 'PATCH'
+        HttpDelete = 'DELETE'
+        HttpHead = 'HEAD'
+        HttpOptions = 'OPTIONS'
+    }
+
+    Get-ChildItem -LiteralPath $controllerRoot -Recurse -Filter '*.cs' |
+        Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' } |
+        ForEach-Object {
+            $file = $_
+            $text = Get-Content -LiteralPath $file.FullName -Raw
+            $controllerName = $file.BaseName -replace 'Controller$', ''
+            $classIndex = $text.IndexOf(' class ')
+            if ($classIndex -lt 0) { $classIndex = $text.Length }
+
+            $prefix = ''
+            $prefixMatches = [regex]::Matches($text.Substring(0, $classIndex), '\[Route\("([^"]+)"\)\]')
+            if ($prefixMatches.Count -gt 0) {
+                $prefix = $prefixMatches[$prefixMatches.Count - 1].Groups[1].Value
+            }
+            $prefix = $prefix -replace '\[controller\]', $controllerName
+
+            $lines = $text -split "`r?`n"
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+                $line = $lines[$i]
+                $match = [regex]::Match($line, '\[(HttpGet|HttpPost|HttpPut|HttpPatch|HttpDelete|HttpHead|HttpOptions)(?:\("([^"]*)"\))?')
+                if (-not $match.Success) { continue }
+
+                $verb = $httpMap[$match.Groups[1].Value]
+                $child = $match.Groups[2].Value
+                $action = ''
+                $lookAheadEnd = [Math]::Min($i + 10, $lines.Count - 1)
+                for ($j = $i; $j -le $lookAheadEnd; $j++) {
+                    $actionMatch = [regex]::Match($lines[$j], '\b(?:async\s+)?(?:Task(?:<[^>]+>)?|IActionResult|ActionResult(?:<[^>]+>)?|[A-Za-z0-9_<>,\?\[\]]+)\s+([A-Za-z0-9_]+)\s*\(')
+                    if ($actionMatch.Success) {
+                        $action = $actionMatch.Groups[1].Value
+                        break
+                    }
+                }
+
+                $authNotes = @()
+                $nearbyStart = [Math]::Max(0, $i - 8)
+                $nearby = ($lines[$nearbyStart..$i] -join "`n")
+                if ($text -match '\[Authorize' -or $nearby -match '\[Authorize') { $authNotes += 'authorize' }
+                if ($nearby -match '\[AllowAnonymous') { $authNotes += 'allow-anonymous' }
+
+                $rows.Add([pscustomobject]@{
+                    method = $verb
+                    path = (Join-RoutePath $prefix $child)
+                    controller = $controllerName
+                    action = $action
+                    file = $file.FullName
+                    auth_notes = ($authNotes -join ';')
+                })
+            }
+        }
+
+    $rows | Sort-Object method, path, controller, action | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $rows
+}
+
+function Export-LaravelRoutes {
+    param([string]$SourceRoot, [string]$Destination)
+
+    $apiFile = Join-Path $SourceRoot 'routes\api.php'
+    if (-not (Test-Path -LiteralPath $apiFile)) {
+        Write-Warning "Laravel routes file not found: $apiFile"
+        return @()
+    }
+
+    $rows = New-Object System.Collections.Generic.List[object]
+    $text = Get-Content -LiteralPath $apiFile -Raw
+    $matches = [regex]::Matches($text, 'Route::(get|post|put|patch|delete|options|any)\s*\(\s*[''"]([^''"]+)[''"]\s*,\s*([^)]+)\)', 'IgnoreCase')
+
+    foreach ($match in $matches) {
+        $handler = ($match.Groups[3].Value -replace '\s+', ' ').Trim()
+        $routePath = Normalize-RoutePath $match.Groups[2].Value
+        if (-not $routePath.StartsWith('/api/')) {
+            $routePath = Normalize-RoutePath "/api/$($match.Groups[2].Value)"
+        }
+        $rows.Add([pscustomobject]@{
+            method = $match.Groups[1].Value.ToUpperInvariant()
+            path = $routePath
+            handler = $handler
+            file = $apiFile
+        })
+    }
+
+    $rows | Sort-Object method, path, handler | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $rows
+}
+
+function Export-ReactRoutes {
+    param([string]$AppFile, [string]$Destination, [string]$Label)
+
+    if (-not (Test-Path -LiteralPath $AppFile)) {
+        Write-Warning "$Label App.tsx not found: $AppFile"
+        return @()
+    }
+
+    $text = Get-Content -LiteralPath $AppFile -Raw
+    $rows = [regex]::Matches($text, '<Route\s+[^>]*path=\{?["'']([^"''}]+)["'']\}?', 'IgnoreCase') |
+        ForEach-Object {
+            [pscustomobject]@{
+                app = $Label
+                route = Normalize-RoutePath $_.Groups[1].Value
+                file = $AppFile
+            }
+        } |
+        Sort-Object route -Unique
+
+    $rows | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $rows
+}
+
+function Convert-NextFileToRoute {
+    param([string]$AppRoot, [string]$File)
+
+    $rootUri = [Uri]((Resolve-Path -LiteralPath $AppRoot).Path.TrimEnd('\') + '\')
+    $fileUri = [Uri](Resolve-Path -LiteralPath $File).Path
+    $relative = $rootUri.MakeRelativeUri($fileUri).ToString() -replace '\\', '/'
+    $route = $relative -replace '/(page|route)\.(tsx|ts|jsx|js)$', ''
+    $route = $route -replace '\([^)]+\)/?', ''
+    $route = $route -replace '\[([^\]]+)\]', '{$1}'
+    return Normalize-RoutePath $route
+}
+
+function Export-NextRoutes {
+    param([string]$AppRoot, [string]$Destination)
+
+    if (-not (Test-Path -LiteralPath $AppRoot)) {
+        Write-Warning "Next app root not found: $AppRoot"
+        return @()
+    }
+
+    $rows = Get-ChildItem -LiteralPath $AppRoot -Recurse -File |
+        Where-Object {
+            $_.FullName -notmatch '\\(node_modules|\.next|\.claude|coverage)\\' -and
+            $_.Name -match '^(page|route)\.(tsx|ts|jsx|js)$'
+        } |
+        ForEach-Object {
+            [pscustomobject]@{
+                app = 'web-modern'
+                route = Convert-NextFileToRoute $AppRoot $_.FullName
+                file = $_.FullName
+            }
+        } |
+        Sort-Object route -Unique
+
+    $rows | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $rows
+}
+
+function Export-FrontendApiStrings {
+    param([string]$Root, [string]$Destination)
+
+    $appSrcs = @(
+        'apps\react-frontend\src',
+        'apps\web-modern\src',
+        'apps\admin\src',
+        'apps\web-govie\src'
+    )
+
+    $pattern = '(?i)(?:/api|/v2)/[A-Za-z0-9_\-./:{}\[\]$?=&%]+'
+    $rows = New-Object System.Collections.Generic.List[object]
+
+    foreach ($relative in $appSrcs) {
+        $src = Join-Path $Root $relative
+        if (-not (Test-Path -LiteralPath $src)) { continue }
+        $app = ($relative -split '\\')[1]
+
+        Get-ChildItem -LiteralPath $src -Recurse -Include '*.ts','*.tsx','*.js','*.jsx' -File |
+            Where-Object {
+                $_.FullName -notmatch '\\(node_modules|dist|build|\.next|coverage|\.claude|__tests__|__mocks__)\\' -and
+                $_.Name -notmatch '\.(test|spec)\.(ts|tsx|js|jsx)$'
+            } |
+            ForEach-Object {
+                $file = $_
+                $lineNo = 0
+                Get-Content -LiteralPath $file.FullName | ForEach-Object {
+                    $lineNo++
+                    $trimmed = $_.TrimStart()
+                    if (-not ($trimmed.StartsWith('//') -or $trimmed.StartsWith('*') -or $trimmed.StartsWith('{/*'))) {
+                        foreach ($match in [regex]::Matches($_, $pattern)) {
+                            $skip = $false
+                            if ($match.Index -gt 0) {
+                                $previous = $_[$match.Index - 1]
+                                if ($previous -match '[A-Za-z0-9_.@-]') {
+                                    $skip = $true
+                                }
+                            }
+                            if (-not $skip) {
+                                $raw = $match.Value.TrimEnd("'", '"', '`', ',', '.', ')', '}', ']')
+                                $rows.Add([pscustomobject]@{
+                                    app = $app
+                                    method_hint = ''
+                                    raw = $raw
+                                    normalized = Normalize-RoutePath ($raw -replace '^/v2/', '/api/')
+                                    file = $file.FullName
+                                    line = $lineNo
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+    }
+
+    $rows | Sort-Object app, normalized, file, line | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $rows
+}
+
+function New-RouteIndex {
+    param([object[]]$Routes)
+
+    $byPath = @{}
+    $byMethodPath = @{}
+
+    foreach ($route in $Routes) {
+        $path = Normalize-RoutePath $route.path
+        $method = ([string]$route.method).ToUpperInvariant()
+        if (-not $byPath.ContainsKey($path)) {
+            $byPath[$path] = New-Object System.Collections.Generic.List[object]
+        }
+        $byPath[$path].Add($route)
+
+        $key = "$method $path"
+        if (-not $byMethodPath.ContainsKey($key)) {
+            $byMethodPath[$key] = New-Object System.Collections.Generic.List[object]
+        }
+        $byMethodPath[$key].Add($route)
+    }
+
+    return @{
+        ByPath = $byPath
+        ByMethodPath = $byMethodPath
+    }
+}
+
+function Test-UnresolvedTemplate {
+    param([string]$Path)
+    return $Path -match '\$\{|\$\(|\+|`'
+}
+
+function Get-RouteIndexMatches {
+    param([hashtable]$Index, [string]$Bucket, [string]$Key)
+
+    if (-not $Index[$Bucket].ContainsKey($Key)) {
+        return @()
+    }
+
+    $items = New-Object System.Collections.Generic.List[object]
+    foreach ($item in $Index[$Bucket][$Key]) {
+        $items.Add($item)
+    }
+    return $items.ToArray()
+}
+
+function Export-FrontendApiMatrix {
+    param([object[]]$ApiStrings, [hashtable]$AspNetIndex, [string]$Destination)
+
+    $rows = New-Object System.Collections.Generic.List[object]
+
+    foreach ($apiString in $ApiStrings) {
+        $path = Normalize-RoutePath $apiString.normalized
+        $matches = @()
+        $status = 'missing'
+
+        if (Test-UnresolvedTemplate $path) {
+            $status = 'dynamic-unresolved'
+        } elseif ($AspNetIndex.ByPath.ContainsKey($path)) {
+            $matches = Get-RouteIndexMatches $AspNetIndex 'ByPath' $path
+            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            if ($controllers -match 'Compatibility') {
+                $status = 'exists-compatibility'
+            } else {
+                $status = 'exists-any-method'
+            }
+        }
+
+        $rows.Add([pscustomobject]@{
+            app = $apiString.app
+            raw = $apiString.raw
+            normalized = $path
+            status = $status
+            aspnet_methods = (($matches | ForEach-Object { $_.method } | Sort-Object -Unique) -join ';')
+            aspnet_controllers = (($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';')
+            frontend_file = $apiString.file
+            frontend_line = $apiString.line
+        })
+    }
+
+    $rows | Sort-Object app, status, normalized, frontend_file, frontend_line | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $rows
+}
+
+function Export-LaravelToAspNetMatrix {
+    param([object[]]$LaravelRoutes, [hashtable]$AspNetIndex, [string]$Destination)
+
+    $rows = New-Object System.Collections.Generic.List[object]
+
+    foreach ($route in $LaravelRoutes) {
+        $path = Normalize-RoutePath $route.path
+        $method = ([string]$route.method).ToUpperInvariant()
+        $methodKey = "$method $path"
+        $matches = @()
+        $status = 'missing'
+
+        if ($AspNetIndex.ByMethodPath.ContainsKey($methodKey)) {
+            $matches = Get-RouteIndexMatches $AspNetIndex 'ByMethodPath' $methodKey
+            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            $status = if ($controllers -match 'Compatibility') { 'method-path-compatibility' } else { 'method-path-exact' }
+        } elseif ($AspNetIndex.ByPath.ContainsKey($path)) {
+            $matches = Get-RouteIndexMatches $AspNetIndex 'ByPath' $path
+            $status = 'path-exists-method-mismatch'
+        }
+
+        $rows.Add([pscustomobject]@{
+            v15_method = $method
+            v15_path = $path
+            v15_handler = $route.handler
+            status = $status
+            aspnet_methods = (($matches | ForEach-Object { $_.method } | Sort-Object -Unique) -join ';')
+            aspnet_controllers = (($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';')
+            aspnet_actions = (($matches | ForEach-Object { $_.action } | Sort-Object -Unique) -join ';')
+        })
+    }
+
+    $rows | Sort-Object status, v15_method, v15_path | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $rows
+}
+
+function Export-FrontendRouteParityMatrix {
+    param([object[]]$V15Routes, [object[]]$CurrentReactRoutes, [object[]]$WebModernRoutes, [string]$Destination)
+
+    $currentSet = @{}
+    foreach ($route in $CurrentReactRoutes) {
+        $currentSet[(Normalize-RoutePath $route.route)] = $true
+    }
+
+    $modernSet = @{}
+    foreach ($route in $WebModernRoutes) {
+        $modernSet[(Normalize-RoutePath $route.route)] = $true
+    }
+
+    $rows = New-Object System.Collections.Generic.List[object]
+    foreach ($route in $V15Routes) {
+        $path = Normalize-RoutePath $route.route
+        $hasCurrent = $currentSet.ContainsKey($path)
+        $hasModern = $modernSet.ContainsKey($path)
+        $status = if ($hasCurrent) {
+            'current-react-exact'
+        } elseif ($hasModern) {
+            'web-modern-only'
+        } else {
+            'missing'
+        }
+
+        $rows.Add([pscustomobject]@{
+            v15_route = $path
+            current_react_route = if ($hasCurrent) { $path } else { '' }
+            web_modern_route = if ($hasModern) { $path } else { '' }
+            status = $status
+        })
+    }
+
+    $rows | Sort-Object status, v15_route | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $rows
+}
+
+Ensure-Directory $OutDir
+
+$aspNetRoutes = Export-AspNetRoutes $TargetRoot (Join-Path $OutDir 'aspnet-routes.csv')
+$laravelRoutes = Export-LaravelRoutes $SourceRoot (Join-Path $OutDir 'v15-laravel-routes.csv')
+$currentReactRoutes = Export-ReactRoutes (Join-Path $TargetRoot 'apps\react-frontend\src\App.tsx') (Join-Path $OutDir 'react-routes-current.csv') 'react-frontend-current'
+$v15ReactRoutes = Export-ReactRoutes (Join-Path $SourceRoot 'react-frontend\src\App.tsx') (Join-Path $OutDir 'react-routes-v15.csv') 'react-frontend-v15'
+$nextRoutes = Export-NextRoutes (Join-Path $TargetRoot 'apps\web-modern\src\app') (Join-Path $OutDir 'web-modern-routes.csv')
+$frontendApiStrings = Export-FrontendApiStrings $TargetRoot (Join-Path $OutDir 'frontend-api-strings.csv')
+$aspNetIndex = New-RouteIndex $aspNetRoutes
+$frontendApiMatrix = Export-FrontendApiMatrix $frontendApiStrings $aspNetIndex (Join-Path $OutDir 'frontend-api-to-aspnet-matrix.csv')
+$laravelMatrix = Export-LaravelToAspNetMatrix $laravelRoutes $aspNetIndex (Join-Path $OutDir 'v15-laravel-to-aspnet-matrix.csv')
+$routeParityMatrix = Export-FrontendRouteParityMatrix $v15ReactRoutes $currentReactRoutes $nextRoutes (Join-Path $OutDir 'frontend-route-parity-matrix.csv')
+
+$summary = [pscustomobject]@{
+    generated_at = (Get-Date).ToString('o')
+    target_root = $TargetRoot
+    source_root = $SourceRoot
+    aspnet_routes = $aspNetRoutes.Count
+    v15_laravel_routes = $laravelRoutes.Count
+    current_react_routes = $currentReactRoutes.Count
+    v15_react_routes = $v15ReactRoutes.Count
+    web_modern_routes = $nextRoutes.Count
+    frontend_api_strings = $frontendApiStrings.Count
+    frontend_api_missing = @($frontendApiMatrix | Where-Object { $_.status -eq 'missing' }).Count
+    frontend_api_dynamic_unresolved = @($frontendApiMatrix | Where-Object { $_.status -eq 'dynamic-unresolved' }).Count
+    v15_laravel_missing = @($laravelMatrix | Where-Object { $_.status -eq 'missing' }).Count
+    v15_routes_missing = @($routeParityMatrix | Where-Object { $_.status -eq 'missing' }).Count
+}
+
+$summary | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $OutDir 'summary.json')
+$summary | Format-List
+
+Write-Host "Parity audit artifacts written to $OutDir"

@@ -8,6 +8,8 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { Layout } from './Layout'
 
+const routerFuture = { v7_startTransition: true, v7_relativeSplatPath: true } as const
+
 // Mock sub-components that may use hooks or complex imports
 vi.mock('./SiteHeader', () => ({
   SiteHeader: () => <header data-testid="site-header">Header</header>,
@@ -19,7 +21,7 @@ vi.mock('./SiteFooter', () => ({
 describe('Layout', () => {
   it('renders without crashing', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={routerFuture}>
         <Layout>
           <p>Test content</p>
         </Layout>
@@ -32,7 +34,7 @@ describe('Layout', () => {
 
   it('renders skip-to-main-content link', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={routerFuture}>
         <Layout>
           <div />
         </Layout>
@@ -43,7 +45,7 @@ describe('Layout', () => {
 
   it('renders main element with id main-content', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={routerFuture}>
         <Layout>
           <div />
         </Layout>

@@ -56,7 +56,7 @@ describe("ProtectedRoute", () => {
     );
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/login");
+      expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2F");
     });
   });
 
@@ -100,7 +100,7 @@ describe("ProtectedRoute", () => {
     });
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/login");
+      expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2F");
     });
   });
 });

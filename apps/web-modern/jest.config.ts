@@ -16,8 +16,11 @@ const config: Config = {
   testPathIgnorePatterns: [
     "<rootDir>/node_modules/",
     "<rootDir>/.next/",
+    "<rootDir>/.claude/",
     "<rootDir>/src/__tests__/utils/",
   ],
+  modulePathIgnorePatterns: ["<rootDir>/.claude/", "<rootDir>/.next/"],
+  watchPathIgnorePatterns: ["<rootDir>/.claude/", "<rootDir>/.next/"],
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",
     "!src/**/*.d.ts",

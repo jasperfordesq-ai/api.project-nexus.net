@@ -9,10 +9,13 @@ import { MemoryRouter } from 'react-router-dom'
 import { LoginPage } from './LoginPage'
 
 const mockLogin = vi.fn()
+const mockVerify2fa = vi.fn()
+const mockCancel2fa = vi.fn()
 const mockNavigate = vi.fn()
+const routerFuture = { v7_startTransition: true, v7_relativeSplatPath: true } as const
 
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ login: mockLogin }),
+  useAuth: () => ({ login: mockLogin, verify2fa: mockVerify2fa, cancel2fa: mockCancel2fa }),
   isApiError: (err: unknown) =>
     typeof err === 'object' && err !== null && 'statusCode' in err && 'message' in err,
 }))
@@ -27,7 +30,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 function renderLogin() {
   return render(
-    <MemoryRouter>
+    <MemoryRouter future={routerFuture}>
       <LoginPage />
     </MemoryRouter>,
   )
@@ -53,7 +56,7 @@ describe('LoginPage', () => {
   })
 
   it('calls login and navigates on successful submission', async () => {
-    mockLogin.mockResolvedValue(undefined)
+    mockLogin.mockResolvedValue({ requires2fa: false })
     renderLogin()
 
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'test@example.com' } })

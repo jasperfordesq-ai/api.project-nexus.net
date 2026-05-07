@@ -324,6 +324,14 @@ export interface SearchResult {
   match_reason: string;
 }
 
+export interface SavedSearch {
+  id: number;
+  name: string;
+  query: string;
+  filters: Record<string, string>;
+  created_at: string;
+}
+
 // AI Moderation
 export interface ModerationRequest {
   content: string;
@@ -730,6 +738,21 @@ function normalizeEvent(raw: any): Event {
     rsvp_counts: raw.rsvp_counts ?? raw.rsvpCounts ?? undefined,
     created_at: raw.createdAt ?? raw.created_at ?? '',
     updated_at: raw.updatedAt ?? raw.updated_at ?? '',
+  };
+}
+
+function normalizeSavedSearch(raw: any): SavedSearch {
+  if (!raw) {
+    return { id: 0, name: '', query: '', filters: {}, created_at: '' };
+  }
+
+  const filters = raw.filters ?? raw.filter_json ?? {};
+  return {
+    id: raw.id ?? 0,
+    name: raw.name ?? raw.title ?? raw.query ?? 'Saved Search',
+    query: raw.query ?? raw.searchTerm ?? raw.search_term ?? '',
+    filters: typeof filters === 'string' ? JSON.parse(filters || '{}') : filters,
+    created_at: raw.createdAt ?? raw.created_at ?? '',
   };
 }
 
@@ -2289,6 +2312,28 @@ class ApiClient {
     return this.request(
       `/api/search/suggestions?q=${encodeURIComponent(q)}&limit=${limit}`
     );
+  }
+
+  async getSavedSearches(): Promise<SavedSearch[]> {
+    const raw = await this.request<any>("/api/saved-searches");
+    const items = Array.isArray(raw) ? raw : raw?.data ?? raw?.saved_searches ?? [];
+    return items.map(normalizeSavedSearch);
+  }
+
+  async createSavedSearch(data: {
+    name?: string;
+    query: string;
+    filters?: Record<string, string>;
+  }): Promise<SavedSearch> {
+    const raw = await this.request<any>("/api/saved-searches", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return normalizeSavedSearch(raw?.data ?? raw);
+  }
+
+  async deleteSavedSearch(id: number): Promise<void> {
+    return this.request<void>(`/api/saved-searches/${id}`, { method: "DELETE" });
   }
 
   // ==========================================================================
@@ -4133,6 +4178,37 @@ class ApiClient {
 
   async getVolunteerHours(): Promise<any> {
     return this.request<any>("/api/volunteering/hours");
+  }
+
+  async getShifts(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }): Promise<any> {
+    const query = this.buildQueryString(params ?? {});
+    return this.request<any>(`/api/volunteering/shifts${query}`);
+  }
+
+  async getMyShifts(): Promise<any[]> {
+    const raw = await this.request<any>("/api/volunteering/my-shifts");
+    return Array.isArray(raw) ? raw : raw?.data ?? [];
+  }
+
+  async getShiftSwapRequests(): Promise<any[]> {
+    const raw = await this.request<any>("/api/volunteering/swaps");
+    return Array.isArray(raw) ? raw : raw?.data ?? [];
+  }
+
+  async signUpForShift(shiftId: number): Promise<void> {
+    return this.request<void>(`/api/volunteering/shifts/${shiftId}/signup`, {
+      method: "POST",
+    });
+  }
+
+  async cancelShiftSignup(shiftId: number): Promise<void> {
+    return this.request<void>(`/api/volunteering/shifts/${shiftId}/signup`, {
+      method: "DELETE",
+    });
   }
 
   async getVolunteerCertificate(opportunityId: number): Promise<Blob> {

@@ -30,4 +30,8 @@
     <ProjectReference Include="..\..\src\Nexus.Api\Nexus.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

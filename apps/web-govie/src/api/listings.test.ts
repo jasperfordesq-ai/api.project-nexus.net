@@ -27,7 +27,7 @@ describe('listingsApi', () => {
   it('list calls GET /api/listings', async () => {
     mock.get.mockResolvedValue({ data: { data: [], totalCount: 0 } })
     await listingsApi.list()
-    expect(mock.get).toHaveBeenCalledWith('/api/listings', { params: { page: undefined, limit: undefined, search: undefined, category: undefined, type: undefined } })
+    expect(mock.get).toHaveBeenCalledWith('/api/listings', { params: { page: undefined, pageSize: undefined, search: undefined, category: undefined, type: undefined } })
   })
 
   it('get calls GET /api/listings/:id', async () => {
@@ -49,6 +49,8 @@ describe('listingsApi', () => {
       location: undefined,
       estimated_hours: 2,
       category_id: undefined,
+      category: 'Tech',
+      tags: undefined,
     })
   })
 

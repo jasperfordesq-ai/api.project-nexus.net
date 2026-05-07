@@ -3,7 +3,6 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-import axios from 'axios'
 import apiClient from './client'
 import type {
   AuthResult,
@@ -74,14 +73,8 @@ export const authApi = {
   logout: () => apiClient.post('/api/auth/logout').then((r) => r.data),
 
   refresh: (refreshToken: string) => {
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-    const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'acme'
-    return axios
-      .post<RawRefreshResponse>(
-        `${BASE_URL}/api/auth/refresh`,
-        { refresh_token: refreshToken },
-        { headers: { 'Content-Type': 'application/json', 'X-Tenant-ID': TENANT_SLUG } },
-      )
+    return apiClient
+      .post<RawRefreshResponse>('/api/auth/refresh', { refresh_token: refreshToken })
       .then((r) => ({
         accessToken: r.data.access_token,
         refreshToken: r.data.refresh_token,

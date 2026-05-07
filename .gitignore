@@ -45,6 +45,8 @@ backups/
 # Logs
 *.log
 logs/
+artifacts/
+robocopy C*/
 
 # OS files
 .DS_Store

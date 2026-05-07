@@ -8,6 +8,8 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 
+const routerFuture = { v7_startTransition: true, v7_relativeSplatPath: true } as const
+
 // Mock useAuth
 vi.mock('../context/AuthContext', () => ({
   useAuth: vi.fn(),
@@ -20,7 +22,7 @@ describe('ProtectedRoute', () => {
   it('shows loading spinner when isLoading is true', () => {
     mockUseAuth.mockReturnValue({ isAuthenticated: false, isLoading: true })
     render(
-      <MemoryRouter>
+      <MemoryRouter future={routerFuture}>
         <ProtectedRoute>
           <p>Protected</p>
         </ProtectedRoute>
@@ -33,7 +35,7 @@ describe('ProtectedRoute', () => {
   it('renders children when authenticated', () => {
     mockUseAuth.mockReturnValue({ isAuthenticated: true, isLoading: false })
     render(
-      <MemoryRouter>
+      <MemoryRouter future={routerFuture}>
         <ProtectedRoute>
           <p>Protected content</p>
         </ProtectedRoute>
@@ -45,7 +47,7 @@ describe('ProtectedRoute', () => {
   it('redirects to /login when unauthenticated', () => {
     mockUseAuth.mockReturnValue({ isAuthenticated: false, isLoading: false })
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
+      <MemoryRouter initialEntries={['/dashboard']} future={routerFuture}>
         <Routes>
           <Route path="/login" element={<p>Login page</p>} />
           <Route
@@ -66,7 +68,7 @@ describe('ProtectedRoute', () => {
   it('redirects to custom redirectTo path when specified', () => {
     mockUseAuth.mockReturnValue({ isAuthenticated: false, isLoading: false })
     render(
-      <MemoryRouter initialEntries={['/secret']}>
+      <MemoryRouter initialEntries={['/secret']} future={routerFuture}>
         <Routes>
           <Route path="/signin" element={<p>Sign in</p>} />
           <Route
