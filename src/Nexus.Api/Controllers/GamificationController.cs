@@ -75,8 +75,30 @@ public class GamificationController : ControllerBase
             })
             .ToListAsync();
 
+        var currentXp = user.TotalXp - user.xp_required_for_current_level;
+        var nextLevelSpan = Math.Max(1, user.xp_required_for_next_level - user.xp_required_for_current_level);
+        var progressPercent = Math.Clamp(currentXp / (double)nextLevelSpan * 100, 0, 100);
+
         return Ok(new
         {
+            user = new
+            {
+                id = user.Id,
+                name = $"{user.FirstName} {user.LastName}".Trim(),
+                avatar_url = (string?)null
+            },
+            xp = user.TotalXp,
+            level = user.Level,
+            level_progress = new
+            {
+                current_xp = Math.Max(0, currentXp),
+                xp_for_current_level = user.xp_required_for_current_level,
+                xp_for_next_level = user.xp_required_for_next_level,
+                progress_percentage = Math.Round(progressPercent, 1)
+            },
+            badges_count = user.badges_earned,
+            showcased_badges = Array.Empty<object>(),
+            is_own_profile = true,
             profile = user,
             recent_xp = recentXp
         });
@@ -247,17 +269,23 @@ public class GamificationController : ControllerBase
                 .Select((x, index) =>
                 {
                     users.TryGetValue(x.UserId, out var u);
+                    var name = $"{u?.FirstName ?? ""} {u?.LastName ?? ""}".Trim();
                     return new
                     {
                         rank = (page - 1) * limit + index + 1,
+                        position = (page - 1) * limit + index + 1,
                         user = new
                         {
                             id = x.UserId,
                             first_name = u?.FirstName ?? "",
-                            last_name = u?.LastName ?? ""
+                            last_name = u?.LastName ?? "",
+                            name,
+                            avatar_url = u?.AvatarUrl
                         },
                         period_xp = x.PeriodXp,
                         total_xp = u?.TotalXp ?? 0,
+                        xp = x.PeriodXp,
+                        score = x.PeriodXp,
                         level = u?.Level ?? 1
                     };
                 })
@@ -294,8 +322,18 @@ public class GamificationController : ControllerBase
                 .Select((item, index) => new
                 {
                     rank = (page - 1) * limit + index + 1,
-                    item.user,
+                    position = (page - 1) * limit + index + 1,
+                    user = new
+                    {
+                        item.user.id,
+                        item.user.first_name,
+                        item.user.last_name,
+                        name = $"{item.user.first_name} {item.user.last_name}".Trim(),
+                        avatar_url = (string?)null
+                    },
                     item.total_xp,
+                    xp = item.total_xp,
+                    score = item.total_xp,
                     item.level,
                     item.badges_earned
                 })
@@ -333,6 +371,13 @@ public class GamificationController : ControllerBase
             data = leaderboard,
             current_user_rank = currentUserRank,
             period,
+            meta = new
+            {
+                period,
+                type = "xp",
+                your_position = currentUserRank,
+                total_entries = total
+            },
             pagination = new
             {
                 page,

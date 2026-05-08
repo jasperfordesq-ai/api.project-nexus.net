@@ -98,7 +98,11 @@ public class FeedControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("data").EnumerateArray().Should().NotBeEmpty();
+        var first = content.GetProperty("data").EnumerateArray().First();
+        first.GetProperty("type").GetString().Should().Be("post");
+        first.GetProperty("likes_count").GetInt32().Should().BeGreaterOrEqualTo(0);
+        first.GetProperty("comments_count").GetInt32().Should().BeGreaterOrEqualTo(0);
+        first.GetProperty("author_name").GetString().Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]

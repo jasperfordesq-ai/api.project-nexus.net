@@ -20,7 +20,7 @@ export interface FeedItem {
     avatar_url?: string;
   };
   created_at: string;
-  type: 'post' | 'listing' | 'event' | 'poll' | 'goal' | 'review' | 'job' | 'challenge' | 'volunteer' | 'blog' | 'discussion';
+  type: 'post' | 'listing' | 'event' | 'poll' | 'goal' | 'review' | 'job' | 'challenge' | 'volunteer' | 'blog' | 'discussion' | string;
   likes_count: number;
   comments_count: number;
   is_liked: boolean;

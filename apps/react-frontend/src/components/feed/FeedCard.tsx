@@ -266,7 +266,7 @@ const FeedCard = React.memo(function FeedCard({
 
   const author = getAuthor(item);
   const isOwnPost = currentUserId === author.id;
-  const config = typeConfig[item.type];
+  const config = typeConfig[item.type as keyof typeof typeConfig] ?? typeConfig.post;
   const detailPath = getItemDetailPath(item);
   const detailLabel = getItemDetailLabel(item);
   const { ref: trackingRef, recordClick } = useFeedTracking(item.id, isAuthenticated);

@@ -340,21 +340,61 @@ public class CompatibilityController : ControllerBase
 
         var score = await _nexusScoreService.GetScoreAsync(userId.Value);
         if (score == null)
-            return Ok(new { data = (object?)null, message = "Score not yet calculated" });
+            return Ok(new
+            {
+                data = new
+                {
+                    total_score = 0,
+                    max_score = 1000,
+                    percentage = 0,
+                    percentile = 0,
+                    tier = new { name = "Novice", icon = "seedling", color = "slate" },
+                    breakdown = Array.Empty<object>(),
+                    insights = new[] { "Complete exchanges and earn reviews to build your NexusScore." }
+                },
+                message = "Score not yet calculated"
+            });
+
+        static object Category(string key, string label, int value, int max) => new
+        {
+            key,
+            label,
+            score = value,
+            max,
+            percentage = max > 0 ? Math.Round(value / (double)max * 100, 1) : 0,
+            details = new { }
+        };
 
         return Ok(new
         {
             data = new
             {
-                score.UserId,
-                score.Score,
-                score.Tier,
+                user_id = score.UserId,
+                total_score = score.Score,
+                max_score = 1000,
+                percentage = Math.Round(score.Score / 1000d * 100, 1),
+                percentile = 0,
+                tier = new
+                {
+                    name = score.Tier,
+                    icon = score.Tier.ToLowerInvariant(),
+                    color = score.Tier.ToLowerInvariant()
+                },
                 exchange_score = score.ExchangeScore,
                 review_score = score.ReviewScore,
                 engagement_score = score.EngagementScore,
                 reliability_score = score.ReliabilityScore,
                 tenure_score = score.TenureScore,
-                last_calculated_at = score.LastCalculatedAt
+                last_calculated_at = score.LastCalculatedAt,
+                breakdown = new[]
+                {
+                    Category("engagement", "Engagement", score.EngagementScore, 200),
+                    Category("quality", "Reviews", score.ReviewScore, 200),
+                    Category("activity", "Exchanges", score.ExchangeScore, 250),
+                    Category("reliability", "Reliability", score.ReliabilityScore, 200),
+                    Category("impact", "Tenure", score.TenureScore, 150)
+                },
+                insights = new[] { "Keep exchanging, reviewing, and taking part to improve your score." }
             }
         });
     }

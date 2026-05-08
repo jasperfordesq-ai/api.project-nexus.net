@@ -1,6 +1,8 @@
 // Copyright © 2024–2026 Jasper Ford
 // SPDX-License-Identifier: AGPL-3.0-or-later
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using Nexus.Api.Tests.Fixtures;
 
@@ -42,6 +44,22 @@ public class NexusScoreControllerTests : IntegrationTestBase
         await AuthenticateAsMemberAsync();
         var r = await Client.PostAsync("/api/nexus-score/recalculate", null);
         r.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GetGamificationNexusScoreAlias_AsMember_ReturnsReactShape()
+    {
+        await AuthenticateAsMemberAsync();
+        await Client.PostAsync("/api/nexus-score/recalculate", null);
+
+        var r = await Client.GetAsync("/api/gamification/nexus-score");
+
+        r.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await r.Content.ReadFromJsonAsync<JsonElement>();
+        var data = content.GetProperty("data");
+        data.GetProperty("total_score").GetInt32().Should().BeGreaterOrEqualTo(0);
+        data.GetProperty("tier").GetProperty("name").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("breakdown").ValueKind.Should().Be(JsonValueKind.Array);
     }
 
     [Fact]

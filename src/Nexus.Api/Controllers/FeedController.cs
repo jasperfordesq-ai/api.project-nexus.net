@@ -75,14 +75,24 @@ public class FeedController : ControllerBase
             {
                 p.Id,
                 p.Content,
+                type = "post",
                 p.ImageUrl,
+                image_url = p.ImageUrl,
                 p.IsPinned,
                 p.CreatedAt,
+                created_at = p.CreatedAt,
                 p.UpdatedAt,
+                updated_at = p.UpdatedAt,
+                author_id = p.User!.Id,
+                author_name = (p.User.FirstName + " " + p.User.LastName).Trim(),
+                author_avatar = p.User.AvatarUrl,
                 user = new { p.User!.Id, p.User.FirstName, p.User.LastName, name = (p.User.FirstName + " " + p.User.LastName).Trim(), avatar_url = p.User.AvatarUrl },
+                author = new { id = p.User.Id, name = (p.User.FirstName + " " + p.User.LastName).Trim(), avatar_url = p.User.AvatarUrl },
                 group = p.GroupId != null ? new { p.Group!.Id, p.Group.Name } : null,
                 like_count = p.Likes.Count,
+                likes_count = p.Likes.Count,
                 comment_count = p.Comments.Count,
+                comments_count = p.Comments.Count,
                 is_liked = p.Likes.Any(l => l.UserId == userId)
             })
             .ToListAsync();
@@ -115,14 +125,24 @@ public class FeedController : ControllerBase
             {
                 p.Id,
                 p.Content,
+                type = "post",
                 p.ImageUrl,
+                image_url = p.ImageUrl,
                 p.IsPinned,
                 p.CreatedAt,
+                created_at = p.CreatedAt,
                 p.UpdatedAt,
+                updated_at = p.UpdatedAt,
+                author_id = p.User!.Id,
+                author_name = (p.User.FirstName + " " + p.User.LastName).Trim(),
+                author_avatar = p.User.AvatarUrl,
                 user = new { p.User!.Id, p.User.FirstName, p.User.LastName, name = (p.User.FirstName + " " + p.User.LastName).Trim(), avatar_url = p.User.AvatarUrl },
+                author = new { id = p.User.Id, name = (p.User.FirstName + " " + p.User.LastName).Trim(), avatar_url = p.User.AvatarUrl },
                 group = p.GroupId != null ? new { p.Group!.Id, p.Group.Name } : null,
                 like_count = p.Likes.Count,
+                likes_count = p.Likes.Count,
                 comment_count = p.Comments.Count,
+                comments_count = p.Comments.Count,
                 is_liked = p.Likes.Any(l => l.UserId == userId)
             })
             .FirstOrDefaultAsync();

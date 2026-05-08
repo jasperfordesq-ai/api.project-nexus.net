@@ -33,6 +33,10 @@ public class GamificationControllerTests : IntegrationTestBase
         content.GetProperty("profile").ValueKind.Should().Be(JsonValueKind.Object);
         content.GetProperty("profile").GetProperty("totalXp").GetInt32().Should().BeGreaterOrEqualTo(0);
         content.GetProperty("profile").GetProperty("level").GetInt32().Should().BeGreaterOrEqualTo(1);
+        content.GetProperty("xp").GetInt32().Should().BeGreaterOrEqualTo(0);
+        content.GetProperty("level").GetInt32().Should().BeGreaterOrEqualTo(1);
+        content.GetProperty("badges_count").GetInt32().Should().BeGreaterOrEqualTo(0);
+        content.GetProperty("level_progress").GetProperty("progress_percentage").GetDouble().Should().BeGreaterOrEqualTo(0);
     }
 
     [Fact]
@@ -130,6 +134,12 @@ public class GamificationControllerTests : IntegrationTestBase
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         content.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
         content.GetProperty("pagination").ValueKind.Should().Be(JsonValueKind.Object);
+        content.GetProperty("meta").GetProperty("type").GetString().Should().Be("xp");
+
+        var first = content.GetProperty("data").EnumerateArray().First();
+        first.GetProperty("position").GetInt32().Should().BeGreaterThan(0);
+        first.GetProperty("user").GetProperty("name").GetString().Should().NotBeNullOrWhiteSpace();
+        first.GetProperty("xp").GetInt32().Should().BeGreaterOrEqualTo(0);
     }
 
     [Fact]

@@ -411,6 +411,42 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return Ok(new { success = true, day, xp_awarded = xp, total_xp = user?.TotalXp });
     }
 
+    [HttpGet("api/gamification/daily-reward")]
+    [Authorize]
+    public async Task<IActionResult> DailyRewardStatus()
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var today = DateTime.UtcNow.Date;
+        var latest = await _db.DailyRewards
+            .AsNoTracking()
+            .Where(r => r.UserId == userId.Value)
+            .OrderByDescending(r => r.ClaimedAt)
+            .FirstOrDefaultAsync();
+
+        var claimedToday = latest?.ClaimedAt.Date == today;
+        var currentStreak = latest == null
+            ? 0
+            : latest.ClaimedAt.Date == today || latest.ClaimedAt.Date == today.AddDays(-1)
+                ? latest.Day
+                : 0;
+        var rewardDay = claimedToday ? Math.Min((latest?.Day ?? 1) + 1, 7) : Math.Min(currentStreak + 1, 7);
+        var rewardXp = 10 + (Math.Max(1, rewardDay) - 1) * 5;
+
+        return Ok(new
+        {
+            data = new
+            {
+                claimed_today = claimedToday,
+                current_streak = currentStreak,
+                reward_xp = rewardXp,
+                next_reward_xp = rewardXp,
+                next_claim_at = claimedToday ? today.AddDays(1) : (DateTime?)null
+            }
+        });
+    }
+
     [HttpGet("api/gamification/shop")]
     [Authorize]
     public async Task<IActionResult> GamificationShop()
