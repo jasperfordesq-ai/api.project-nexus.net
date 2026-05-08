@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -422,6 +423,62 @@ public class CompatibilityController : ControllerBase
             .ToListAsync();
 
         return Ok(new { data = categories, total = categories.Count });
+    }
+
+    /// <summary>
+    /// GET /api/v2/onboarding/categories - V2 alias for onboarding category selection.
+    /// </summary>
+    [HttpGet("api/v2/onboarding/categories")]
+    public Task<IActionResult> GetV2OnboardingCategories() => GetOnboardingCategories();
+
+    /// <summary>
+    /// POST /api/v2/onboarding/complete - Complete the React onboarding wizard.
+    /// </summary>
+    [HttpPost("api/v2/onboarding/complete")]
+    public async Task<IActionResult> CompleteV2Onboarding([FromBody] CompleteV2OnboardingRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value && u.TenantId == tenantId);
+        if (user == null) return Unauthorized(new { error = "Invalid token" });
+
+        if (string.IsNullOrWhiteSpace(user.AvatarUrl))
+        {
+            return BadRequest(new { error = "Profile photo is required before completing onboarding." });
+        }
+
+        if (string.IsNullOrWhiteSpace(user.Bio) || user.Bio.Trim().Length < 10)
+        {
+            return BadRequest(new { error = "Bio must be at least 10 characters before completing onboarding." });
+        }
+
+        var categoryIds = request.AllCategoryIds().Distinct().ToList();
+        var categories = categoryIds.Count == 0
+            ? new List<Category>()
+            : await _db.Categories
+                .Where(c => categoryIds.Contains(c.Id) && c.IsActive)
+                .ToListAsync();
+
+        var validCategoryIds = categories.Select(c => c.Id).ToHashSet();
+        if (categoryIds.Any(id => !validCategoryIds.Contains(id)))
+        {
+            return BadRequest(new { error = "One or more selected categories are invalid." });
+        }
+
+        await UpsertOnboardingMatchPreferencesAsync(userId.Value, tenantId, request, categories);
+        var listingsCreated = await CreateOnboardingListingsAsync(userId.Value, tenantId, request, categories);
+        await CompleteRequiredOnboardingStepsAsync(userId.Value, tenantId);
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = "Onboarding completed",
+            listings_created = listingsCreated
+        });
     }
 
     // ──────────────────────────────────────────────
@@ -1739,6 +1796,139 @@ public class CompatibilityController : ControllerBase
     // Config helpers
     // ──────────────────────────────────────────────
 
+    private async Task UpsertOnboardingMatchPreferencesAsync(
+        int userId,
+        int tenantId,
+        CompleteV2OnboardingRequest request,
+        List<Category> categories)
+    {
+        var preferences = await _db.MatchPreferences
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.TenantId == tenantId);
+
+        if (preferences == null)
+        {
+            preferences = new MatchPreference
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.MatchPreferences.Add(preferences);
+        }
+
+        preferences.PreferredCategories = JsonSerializer.Serialize(request.Interests.Distinct().ToArray());
+        preferences.SkillsOffered = string.Join(",", CategoryNames(request.Offers, categories));
+        preferences.SkillsWanted = string.Join(",", CategoryNames(request.Needs, categories));
+        preferences.IsActive = true;
+        preferences.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private async Task<int> CreateOnboardingListingsAsync(
+        int userId,
+        int tenantId,
+        CompleteV2OnboardingRequest request,
+        List<Category> categories)
+    {
+        var byId = categories.ToDictionary(c => c.Id);
+        var created = 0;
+
+        foreach (var categoryId in request.Offers.Distinct())
+        {
+            if (!byId.TryGetValue(categoryId, out var category)) continue;
+            if (await HasOnboardingListingAsync(userId, categoryId, ListingType.Offer)) continue;
+
+            _db.Listings.Add(new Listing
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                CategoryId = category.Id,
+                Type = ListingType.Offer,
+                Status = ListingStatus.Active,
+                Title = $"Offering {category.Name}",
+                Description = $"I can help with {category.Name}.",
+                EstimatedHours = 1,
+                CreatedAt = DateTime.UtcNow
+            });
+            created++;
+        }
+
+        foreach (var categoryId in request.Needs.Distinct())
+        {
+            if (!byId.TryGetValue(categoryId, out var category)) continue;
+            if (await HasOnboardingListingAsync(userId, categoryId, ListingType.Request)) continue;
+
+            _db.Listings.Add(new Listing
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                CategoryId = category.Id,
+                Type = ListingType.Request,
+                Status = ListingStatus.Active,
+                Title = $"Need help with {category.Name}",
+                Description = $"I would like help with {category.Name}.",
+                EstimatedHours = 1,
+                CreatedAt = DateTime.UtcNow
+            });
+            created++;
+        }
+
+        return created;
+    }
+
+    private Task<bool> HasOnboardingListingAsync(int userId, int categoryId, ListingType type)
+    {
+        return _db.Listings.AnyAsync(l =>
+            l.UserId == userId &&
+            l.CategoryId == categoryId &&
+            l.Type == type &&
+            l.DeletedAt == null &&
+            l.Status != ListingStatus.Cancelled &&
+            l.Status != ListingStatus.Rejected);
+    }
+
+    private async Task CompleteRequiredOnboardingStepsAsync(int userId, int tenantId)
+    {
+        var requiredSteps = await _db.OnboardingSteps
+            .Where(s => s.TenantId == tenantId && s.IsRequired)
+            .ToListAsync();
+
+        foreach (var step in requiredSteps)
+        {
+            var progress = await _db.Set<OnboardingProgress>()
+                .FirstOrDefaultAsync(p => p.UserId == userId && p.StepId == step.Id && p.TenantId == tenantId);
+
+            if (progress == null)
+            {
+                _db.Set<OnboardingProgress>().Add(new OnboardingProgress
+                {
+                    TenantId = tenantId,
+                    UserId = userId,
+                    StepId = step.Id,
+                    IsCompleted = true,
+                    CompletedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                progress.IsCompleted = true;
+                progress.CompletedAt = DateTime.UtcNow;
+            }
+        }
+    }
+
+    private static IEnumerable<string> CategoryNames(IEnumerable<int> ids, List<Category> categories)
+    {
+        var byId = categories.ToDictionary(c => c.Id);
+        foreach (var id in ids.Distinct())
+        {
+            if (byId.TryGetValue(id, out var category))
+            {
+                yield return category.Name;
+            }
+        }
+    }
+
     private static bool GetConfigBool(Dictionary<string, string> config, string key, bool defaultValue = false)
     {
         if (config.TryGetValue(key, out var value))
@@ -1758,6 +1948,20 @@ public class CompatibilityController : ControllerBase
 // ──────────────────────────────────────────────
 // DTOs specific to CompatibilityController
 // ──────────────────────────────────────────────
+
+public class CompleteV2OnboardingRequest
+{
+    [JsonPropertyName("interests")]
+    public List<int> Interests { get; set; } = new();
+
+    [JsonPropertyName("offers")]
+    public List<int> Offers { get; set; } = new();
+
+    [JsonPropertyName("needs")]
+    public List<int> Needs { get; set; } = new();
+
+    public IEnumerable<int> AllCategoryIds() => Interests.Concat(Offers).Concat(Needs);
+}
 
 public class SaveSearchRequest
 {
