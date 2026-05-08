@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using Nexus.Api.Tests.Fixtures;
 
@@ -69,5 +71,34 @@ public class UsersControllerTests : IntegrationTestBase
         var response = await Client.PostAsync("/api/users/me/avatar", form);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task UploadedAvatarDownload_WithoutAuth_ReturnsOk()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var imageBytes = new byte[1024];
+        imageBytes[0] = 0x89;
+        imageBytes[1] = 0x50;
+        imageBytes[2] = 0x4E;
+        imageBytes[3] = 0x47;
+
+        using var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(imageBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        content.Add(fileContent, "avatar", "avatar.png");
+
+        var uploadResponse = await Client.PostAsync("/api/users/me/avatar", content);
+        uploadResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var uploadJson = await uploadResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var avatarUrl = uploadJson.GetProperty("avatar_url").GetString();
+
+        ClearAuthToken();
+        var downloadResponse = await Client.GetAsync(avatarUrl);
+
+        downloadResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        downloadResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/png");
     }
 }

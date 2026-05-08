@@ -109,21 +109,30 @@ public class FilesController : ControllerBase
     /// Download/serve a file by ID.
     /// </summary>
     [HttpGet("{id:int}/download")]
+    [AllowAnonymous]
     public async Task<IActionResult> DownloadFile(int id)
     {
-        var tenantId = User.GetTenantId();
-        if (tenantId == null) return Unauthorized(new { error = "Invalid token" });
-
         var file = await _fileService.GetByIdAsync(id);
         if (file == null)
             return NotFound(new { error = "File not found" });
 
-        if (file.TenantId != tenantId.Value)
-            return NotFound(new { error = "File not found" });
+        var tenantId = User.GetTenantId();
+        if (file.Category != FileCategory.Avatar)
+        {
+            if (tenantId == null) return Unauthorized(new { error = "Invalid token" });
+            if (file.TenantId != tenantId.Value)
+                return NotFound(new { error = "File not found" });
+        }
 
         var fullPath = _fileService.GetFullPath(file);
         if (!System.IO.File.Exists(fullPath))
             return NotFound(new { error = "File not found on disk" });
+
+        if (file.Category == FileCategory.Avatar)
+        {
+            Response.Headers.CacheControl = "public, max-age=86400";
+            return PhysicalFile(fullPath, file.ContentType);
+        }
 
         Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{file.OriginalFilename}\"");
         return PhysicalFile(fullPath, file.ContentType, file.OriginalFilename);

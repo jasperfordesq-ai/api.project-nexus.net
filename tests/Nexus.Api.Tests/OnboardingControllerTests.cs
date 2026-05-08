@@ -103,6 +103,39 @@ public class OnboardingControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task CompleteCanonicalOnboarding_WithWizardPayload_ReturnsOk()
+    {
+        await AuthenticateAsMemberAsync();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var user = await db.Users.FindAsync(TestData.MemberUser.Id);
+            user!.AvatarUrl = "/api/files/1/download";
+            user.Bio = "Ready to participate in the community.";
+            db.OnboardingSteps.Add(new OnboardingStep
+            {
+                TenantId = TestData.Tenant1.Id,
+                Key = $"profile_complete_{Guid.NewGuid():N}",
+                Title = "Profile complete",
+                IsRequired = true,
+                SortOrder = 1,
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await Client.PostAsJsonAsync("/api/onboarding/complete", new
+        {
+            interests = Array.Empty<int>(),
+            offers = Array.Empty<int>(),
+            needs = Array.Empty<int>()
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task CompleteV2Onboarding_WithoutProfilePhoto_ReturnsBadRequest()
     {
         await AuthenticateAsMemberAsync();
