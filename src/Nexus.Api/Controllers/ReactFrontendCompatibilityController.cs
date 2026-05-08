@@ -68,16 +68,49 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> PlatformStats()
     {
+        var hoursExchanged = await _db.Transactions
+            .Where(t => t.Status == TransactionStatus.Completed)
+            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+
         var stats = new
         {
             members = await _db.Users.CountAsync(u => u.IsActive),
+            hours_exchanged = hoursExchanged,
             listings = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Active),
+            skills = await _db.Skills.CountAsync(),
+            communities = await _db.Groups.CountAsync(),
             exchanges = await _db.Transactions.CountAsync(t => t.Status == TransactionStatus.Completed),
             events = await _db.Set<Event>().CountAsync(e => !e.IsCancelled),
             volunteering_opportunities = await _db.VolunteerOpportunities.CountAsync(o => o.Status == OpportunityStatus.Published)
         };
 
         return Ok(new { data = stats, stats });
+    }
+
+    [HttpGet("api/menus")]
+    [AllowAnonymous]
+    public IActionResult Menus([FromQuery] string? location = null)
+    {
+        var menusByLocation = BuildDefaultMenusByLocation();
+
+        if (!string.IsNullOrWhiteSpace(location))
+        {
+            var menus = menusByLocation.TryGetValue(location, out var locatedMenus)
+                ? locatedMenus
+                : Array.Empty<object>();
+
+            return Ok(new { data = menus, menus });
+        }
+
+        return Ok(new { data = menusByLocation, menus = menusByLocation });
+    }
+
+    [HttpGet("api/menus/mobile")]
+    [AllowAnonymous]
+    public IActionResult MobileMenus()
+    {
+        var mobileMenus = BuildDefaultMenus("mobile", "Mobile navigation", "default-mobile-nav");
+        return Ok(new { data = mobileMenus, menus = mobileMenus });
     }
 
     [HttpGet("api/metrics")]
@@ -2353,6 +2386,28 @@ public class ReactFrontendCompatibilityController : ControllerBase
         created_at = document.CreatedAt,
         updated_at = document.UpdatedAt
     };
+
+    private static Dictionary<string, object[]> BuildDefaultMenusByLocation() => new()
+    {
+        ["header-main"] = BuildDefaultMenus("header-main", "Main navigation", "default-main-nav"),
+        ["header-secondary"] = BuildDefaultMenus("header-secondary", "Secondary navigation", "default-secondary-nav"),
+        ["footer"] = BuildDefaultMenus("footer", "Footer navigation", "default-footer-nav"),
+        ["sidebar"] = BuildDefaultMenus("sidebar", "Sidebar navigation", "default-sidebar-nav"),
+        ["mobile"] = BuildDefaultMenus("mobile", "Mobile navigation", "default-mobile-nav")
+    };
+
+    private static object[] BuildDefaultMenus(string location, string name, string slug) =>
+    [
+        new
+        {
+            id = slug,
+            name,
+            slug,
+            location,
+            is_active = 1,
+            items = Array.Empty<object>()
+        }
+    ];
 
     private static string? ReadString(JsonElement body, string propertyName)
     {

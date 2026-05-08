@@ -32,11 +32,11 @@ import { api } from '@/lib/api';
 import { logError } from '@/lib/logger';
 
 interface PlatformStats {
-  members: number;
-  hours_exchanged: number;
-  listings: number;
-  skills: number;
-  communities: number;
+  members?: number | null;
+  hours_exchanged?: number | null;
+  listings?: number | null;
+  skills?: number | null;
+  communities?: number | null;
 }
 
 const fadeInUp = {
@@ -71,14 +71,15 @@ const features = [
 ];
 
 // Format number with appropriate suffix (K, M, etc.)
-function formatStatNumber(num: number): string {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M+';
+function formatStatNumber(num: number | null | undefined): string {
+  const safeNum = typeof num === 'number' && Number.isFinite(num) ? num : 0;
+  if (safeNum >= 1000000) {
+    return (safeNum / 1000000).toFixed(1).replace(/\.0$/, '') + 'M+';
   }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K+';
+  if (safeNum >= 1000) {
+    return (safeNum / 1000).toFixed(1).replace(/\.0$/, '') + 'K+';
   }
-  return num.toString();
+  return safeNum.toString();
 }
 
 const coreValues = [

@@ -50,6 +50,10 @@ public class TenantResolutionMiddleware
         "/api/v1/federation",                  // Federation external API uses its own auth
         "/api/registration/config",            // Public registration config
         "/api/registration/webhook",           // Provider webhook callback
+        "/api/tenant/bootstrap",               // Public tenant discovery endpoint; resolves tenant itself
+        "/api/platform/stats",                 // Public landing page stats
+        "/api/metrics",                        // Public landing page stats alias
+        "/api/menus",                          // Public default menu contract
         "/api/announcements",                  // Handles optional tenant context itself
         "/api/realtime/config",                // Static config, no tenant-scoped data
         "/api/tenants",                         // Public tenant list for login page dropdown
