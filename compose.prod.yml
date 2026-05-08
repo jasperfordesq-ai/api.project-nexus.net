@@ -68,6 +68,11 @@ services:
     env_file: !override []
     environment:
       - NODE_ENV=production
+      - PORT=3001
+      - API_BASE_URL=http://api:8080
+      - COOKIE_SECRET=${COOKIE_SECRET:?COOKIE_SECRET environment variable is required}
+      - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET environment variable is required}
+      - TENANT_ID=${TENANT_ID:-1}
 
   # GOV.IE Frontend - production build (nginx, no volume mounts)
   web-govie:
