@@ -72,6 +72,7 @@ const i18nMap: Record<string, string> = {
   'nav.listings': 'Listings',
   'nav.messages': 'Messages',
   'nav.community': 'Community',
+  'nav.timebanking': 'Timebanking',
   'nav.more': 'More',
   'auth.log_in': 'Log In',
   'auth.sign_up': 'Sign Up',
@@ -174,11 +175,10 @@ describe('Navbar', () => {
       expect(screen.getByText('Sign Up')).toBeInTheDocument();
     });
 
-    it('does NOT show user avatar when not authenticated', () => {
+    it('does NOT show authenticated-only actions when not authenticated', () => {
       render(<Navbar />);
-      // When unauthenticated, there should be no Avatar component rendered
-      // Check for the user dropdown trigger (Avatar) rather than notification badge
-      expect(screen.queryByLabelText('Search (Ctrl+K)')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Notifications/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Create new' })).not.toBeInTheDocument();
     });
   });
 
@@ -231,7 +231,7 @@ describe('Navbar', () => {
 
     it('shows mobile search button', () => {
       render(<Navbar />);
-      expect(screen.getByLabelText('Search')).toBeInTheDocument();
+      expect(screen.getByLabelText('Search (Ctrl+K)')).toBeInTheDocument();
     });
   });
 
@@ -278,7 +278,7 @@ describe('Navbar', () => {
       expect(screen.getByText('Feed')).toBeInTheDocument();
     });
 
-    it('renders Listings link when module is enabled', () => {
+    it('renders Timebanking dropdown when listings module is enabled', () => {
       setupDefaultMocks({
         auth: { user: { id: 1, first_name: 'A', last_name: 'B', email: 'a@b.com', role: 'member' }, isAuthenticated: true },
         tenant: {
@@ -286,7 +286,7 @@ describe('Navbar', () => {
         },
       });
       render(<Navbar />);
-      expect(screen.getByText('Listings')).toBeInTheDocument();
+      expect(screen.getByText('Timebanking')).toBeInTheDocument();
     });
 
     it('renders Messages link when module is enabled', () => {

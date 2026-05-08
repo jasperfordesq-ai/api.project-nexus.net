@@ -78,10 +78,28 @@ const createOptionDefs: CreateOptionDef[] = [
   },
 ];
 
+const quickCreateFallbacks: Record<string, string> = {
+  'quick_create.title': 'Create New',
+  'quick_create.close_aria': 'Close quick create menu',
+  'quick_create.new_listing': 'New Listing',
+  'quick_create.new_listing_desc': 'Offer or request a service',
+  'quick_create.new_event': 'New Event',
+  'quick_create.new_event_desc': 'Organise a community event',
+  'quick_create.new_group': 'New Group',
+  'quick_create.new_group_desc': 'Start a community group',
+  'quick_create.new_goal': 'New Goal',
+  'quick_create.new_goal_desc': 'Set a personal goal',
+};
+
 export function QuickCreateMenu({ isOpen, onClose }: QuickCreateMenuProps) {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
   const { hasFeature, hasModule, tenantPath } = useTenant();
+  const text = (key: string) => {
+    const fallback = quickCreateFallbacks[key] ?? key;
+    const translated = t(key, fallback);
+    return translated && translated !== key ? translated : fallback;
+  };
 
   const visibleOptions = createOptionDefs.filter((option) => {
     if (option.feature && !hasFeature(option.feature)) return false;
@@ -117,17 +135,17 @@ export function QuickCreateMenu({ isOpen, onClose }: QuickCreateMenuProps) {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
               >
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 pt-5 pb-3">
                   <h2 className="text-lg font-semibold text-theme-primary">
-                    {t('quick_create.title')}
+                    {text('quick_create.title')}
                   </h2>
                   <Button
                     isIconOnly
                     variant="light"
                     size="sm"
                     onPress={onClose}
-                    aria-label={t('quick_create.close_aria')}
+                    aria-label={text('quick_create.close_aria')}
                     className="text-theme-muted hover:text-theme-primary"
                   >
                     <X className="w-5 h-5" aria-hidden="true" />
@@ -157,10 +175,10 @@ export function QuickCreateMenu({ isOpen, onClose }: QuickCreateMenuProps) {
                           </div>
                           <div className="text-center">
                             <p className="text-sm font-medium text-theme-primary">
-                              {t(option.labelKey)}
+                              {text(option.labelKey)}
                             </p>
                             <p className="text-[11px] text-theme-subtle leading-tight mt-0.5">
-                              {t(option.descKey)}
+                              {text(option.descKey)}
                             </p>
                           </div>
                         </Button>

@@ -28,6 +28,11 @@ interface ErrorBoundaryState {
   errorInfo: ErrorInfo | null;
 }
 
+function tCommon(key: string, defaultValue: string): string {
+  const translated = i18n.t(key, { ns: 'common', defaultValue });
+  return translated || defaultValue;
+}
+
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -91,11 +96,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 </div>
 
                 <h1 className="text-2xl font-bold text-theme-primary mb-2">
-                  {i18n.t('error_boundary.title', { ns: 'common' })}
+                  {tCommon('error_boundary.title', 'Something went wrong')}
                 </h1>
 
                 <p className="text-theme-muted mb-6">
-                  {i18n.t('error_boundary.description', { ns: 'common' })}
+                  {tCommon('error_boundary.description', 'The page hit an unexpected error. You can try again or return home.')}
                 </p>
 
                 {/* Error details in development */}
@@ -107,7 +112,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                     {this.state.errorInfo?.componentStack && (
                       <details className="mt-2">
                         <summary className="text-theme-subtle text-xs cursor-pointer">
-                          {i18n.t('error_boundary.component_stack', { ns: 'common' })}
+                          {tCommon('error_boundary.component_stack', 'Component stack')}
                         </summary>
                         <pre className="text-theme-subtle/70 text-xs mt-2 overflow-auto max-h-40">
                           {this.state.errorInfo.componentStack}
@@ -123,7 +128,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                     className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
                     startContent={<RefreshCw className="w-4 h-4" />}
                   >
-                    {i18n.t('error_boundary.try_again', { ns: 'common' })}
+                    {tCommon('error_boundary.try_again', 'Try Again')}
                   </Button>
 
                   <Button
@@ -132,7 +137,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                     className="flex-1 bg-theme-elevated text-theme-muted"
                     startContent={<Home className="w-4 h-4" />}
                   >
-                    {i18n.t('error_boundary.go_home', { ns: 'common' })}
+                    {tCommon('error_boundary.go_home', 'Go Home')}
                   </Button>
                 </div>
               </div>

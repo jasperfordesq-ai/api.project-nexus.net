@@ -56,6 +56,25 @@ vi.mock('@/contexts', () => ({
   useNotifications: (...args: unknown[]) => mockUseNotifications(...args),
 }));
 
+const i18nMap: Record<string, string> = {
+  'nav.home': 'Home',
+  'nav.listings': 'Listings',
+  'nav.messages': 'Messages',
+  'nav.menu': 'Menu',
+  'create.new': 'Create',
+  'create.new_content': 'Create new content',
+  'mobile_tab.create': 'Create',
+  'mobile_tab.menu': 'Menu',
+};
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, fallback?: string) => i18nMap[key] ?? fallback ?? key,
+    i18n: { language: 'en', changeLanguage: vi.fn() },
+  }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
+}));
+
 vi.mock('./QuickCreateMenu', () => ({
   QuickCreateMenu: ({ isOpen }: { isOpen?: boolean }) => (
     isOpen ? <div data-testid="quick-create-menu">Quick Create</div> : null

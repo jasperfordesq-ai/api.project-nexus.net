@@ -28,8 +28,13 @@ vi.mock('@/contexts', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="auth-provider">{children}</div>,
   NotificationsProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PusherProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  MenuProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   useTenant: (...args: unknown[]) => mockUseTenant(...args),
   useAuth: (...args: unknown[]) => mockUseAuth(...args),
+}));
+
+vi.mock('@/components/feedback', () => ({
+  CookieConsentBanner: () => null,
 }));
 
 vi.mock('@/lib/tenant-routing', () => ({

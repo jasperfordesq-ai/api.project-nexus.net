@@ -89,6 +89,34 @@ vi.mock('@/components/location', () => ({
   ),
 }));
 
+vi.mock('./tabs/PostTab', () => ({
+  PostTab: () => <div data-testid="compose-post-tab">Post form</div>,
+}));
+
+vi.mock('./tabs/PollTab', () => ({
+  PollTab: () => <div data-testid="compose-poll-tab">Poll form</div>,
+}));
+
+vi.mock('./tabs/ListingTab', () => ({
+  ListingTab: () => <div data-testid="compose-listing-tab">Listing form</div>,
+}));
+
+vi.mock('./tabs/EventTab', () => ({
+  EventTab: () => <div data-testid="compose-event-tab">Event form</div>,
+}));
+
+vi.mock('./tabs/GoalTab', () => ({
+  GoalTab: () => <div data-testid="compose-goal-tab">Goal form</div>,
+}));
+
+vi.mock('./shared/GroupSelector', () => ({
+  GroupSelector: () => null,
+}));
+
+vi.mock('./shared/TemplatePicker', () => ({
+  TemplatePicker: () => <button type="button">Template</button>,
+}));
+
 // Mock useMediaQuery to return false (desktop) by default
 vi.mock('@/hooks/useMediaQuery', () => ({
   useMediaQuery: vi.fn(() => false),

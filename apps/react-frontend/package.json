@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "lint": "eslint src --max-warnings 1000 && tsc --noEmit",
     "test": "vitest",
+    "test:ci": "node scripts/run-vitest-chunks.mjs",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",

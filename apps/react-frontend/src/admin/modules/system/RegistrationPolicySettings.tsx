@@ -836,8 +836,8 @@ export function RegistrationPolicySettings() {
           <CardBody>
             <div className="flex gap-3">
               <Info size={20} className="text-primary shrink-0 mt-0.5" />
-              <div className="text-sm space-y-2">
-                <p className="font-semibold text-base">Understanding Registration Modes</p>
+                <div className="text-sm space-y-2">
+                  <p className="font-semibold text-base">How registration modes work:</p>
                 <div className="space-y-2 text-default-700 dark:text-default-300">
                   <div className="flex items-start gap-2">
                     <Globe size={14} className="shrink-0 mt-1 text-success" />

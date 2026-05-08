@@ -16,6 +16,114 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HeroUIProvider } from '@heroui/react';
 
+vi.mock('@heroui/react', () => ({
+  HeroUIProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Button: ({ children, onPress, onClick, isLoading, ...props }: Record<string, unknown>) => (
+    <button
+      type={(props.type as 'button' | 'submit' | 'reset') || 'button'}
+      onClick={(event) => {
+        (onClick as ((event: React.MouseEvent<HTMLButtonElement>) => void) | undefined)?.(event);
+        (onPress as (() => void) | undefined)?.();
+      }}
+      disabled={Boolean(isLoading || props.disabled)}
+    >
+      {children as React.ReactNode}
+    </button>
+  ),
+  Input: ({ label, value, onChange, type = 'text', placeholder }: Record<string, unknown>) => (
+    <label>
+      {label as React.ReactNode}
+      <input
+        aria-label={label as string}
+        type={type as string}
+        placeholder={placeholder as string}
+        value={(value as string) ?? ''}
+        onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
+      />
+    </label>
+  ),
+  Textarea: ({ label, value, onChange, placeholder }: Record<string, unknown>) => (
+    <label>
+      {label as React.ReactNode}
+      <textarea
+        aria-label={label as string}
+        placeholder={placeholder as string}
+        value={(value as string) ?? ''}
+        onChange={onChange as React.ChangeEventHandler<HTMLTextAreaElement>}
+      />
+    </label>
+  ),
+  Switch: ({ children, isSelected, onValueChange }: Record<string, unknown>) => (
+    <label>
+      <input
+        type="checkbox"
+        checked={Boolean(isSelected)}
+        onChange={(event) => (onValueChange as ((checked: boolean) => void) | undefined)?.(event.target.checked)}
+      />
+      {children as React.ReactNode}
+    </label>
+  ),
+  Avatar: ({ name }: { name?: string }) => <div>{name}</div>,
+  Tabs: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Tab: ({ title, children }: { title: React.ReactNode; children?: React.ReactNode }) => (
+    <section>
+      <div>{title}</div>
+      {children}
+    </section>
+  ),
+  Select: ({ label, children }: { label?: React.ReactNode; children?: React.ReactNode }) => (
+    <label>
+      {label}
+      <select>{children}</select>
+    </label>
+  ),
+  SelectItem: ({ children }: { children: React.ReactNode }) => <option>{children}</option>,
+  Modal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ModalContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ModalHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ModalBody: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ModalFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Chip: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  Spinner: () => <div role="status">Loading</div>,
+  useDisclosure: () => ({
+    isOpen: false,
+    onOpen: vi.fn(),
+    onClose: vi.fn(),
+    onOpenChange: vi.fn(),
+  }),
+}));
+
+vi.mock('react-i18next', () => ({
+  initReactI18next: {
+    type: '3rdParty',
+    init: vi.fn(),
+  },
+  useTranslation: () => ({
+    t: (key: string, fallbackOrOptions?: string | Record<string, unknown>) => {
+      if (typeof fallbackOrOptions === 'string') return fallbackOrOptions;
+      const translations: Record<string, string> = {
+        page_title: 'Settings',
+        title: 'Settings',
+        subtitle: 'Manage your account preferences',
+        'header.title': 'Settings',
+        'header.subtitle': 'Manage your account preferences',
+        profile: 'Profile',
+        notifications: 'Notifications',
+        privacy: 'Privacy',
+        security: 'Security',
+        'tabs.profile': 'Profile',
+        'tabs.notifications': 'Notifications',
+        'tabs.privacy': 'Privacy',
+        'tabs.security': 'Security',
+        language: 'Language',
+        appearance: 'Appearance',
+        save_changes: 'Save Changes',
+      };
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: {
     get: vi.fn().mockResolvedValue({ success: true, data: {} }),
@@ -27,9 +135,8 @@ vi.mock('@/lib/api', () => ({
   tokenManager: { getTenantId: vi.fn() },
 }));
 
-vi.mock('@/contexts', () => ({
-  useAuth: vi.fn(() => ({
-    user: {
+vi.mock('@/contexts', () => {
+  const user = {
       id: 1,
       first_name: 'Test',
       last_name: 'User',
@@ -42,22 +149,50 @@ vi.mock('@/contexts', () => ({
       profile_type: 'individual',
       organization_name: '',
       has_2fa_enabled: false,
-    },
+    };
+  const tenant = { id: 2, name: 'Test Tenant', slug: 'test' };
+  const toast = {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  };
+  const theme = {
+    theme: 'light',
+    setTheme: vi.fn(),
+  };
+
+  return {
+  useAuth: vi.fn(() => ({
+    user,
     isAuthenticated: true,
     logout: vi.fn(),
     refreshUser: vi.fn(),
   })),
+  useTenant: vi.fn(() => ({
+    tenant,
+    tenantPath: (p: string) => `/test${p}`,
+    hasFeature: vi.fn(() => true),
+    hasModule: vi.fn(() => true),
+  })),
+  useToast: vi.fn(() => toast),
+  useTheme: vi.fn(() => theme),
+  };
+});
+
+vi.mock('@/contexts/TenantContext', () => ({
   useTenant: vi.fn(() => ({
     tenant: { id: 2, name: 'Test Tenant', slug: 'test' },
     tenantPath: (p: string) => `/test${p}`,
     hasFeature: vi.fn(() => true),
     hasModule: vi.fn(() => true),
   })),
-  useToast: vi.fn(() => ({
-    success: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn(),
-    warning: vi.fn(),
+  useTenantLanguages: vi.fn(() => ({
+    languages: [
+      { code: 'en', name: 'English', native_name: 'English', enabled: true, is_default: true },
+    ],
+    currentLanguage: 'en',
+    setCurrentLanguage: vi.fn(),
   })),
 }));
 
@@ -95,6 +230,26 @@ vi.mock('@/components/location', () => ({
       onChange={(e) => onChange(e.target.value)}
     />
   ),
+}));
+
+vi.mock('@/components/security/BiometricSettings', () => ({
+  BiometricSettings: () => <div data-testid="biometric-settings" />,
+}));
+
+vi.mock('@/components/skills/SkillSelector', () => ({
+  SkillSelector: () => <div data-testid="skill-selector" />,
+}));
+
+vi.mock('@/components/availability/AvailabilityGrid', () => ({
+  AvailabilityGrid: () => <div data-testid="availability-grid" />,
+}));
+
+vi.mock('@/components/subaccounts/SubAccountsManager', () => ({
+  SubAccountsManager: () => <div data-testid="subaccounts-manager" />,
+}));
+
+vi.mock('@/components/LanguageSwitcher', () => ({
+  LanguageSwitcher: () => <button type="button">English</button>,
 }));
 
 vi.mock('dompurify', () => ({

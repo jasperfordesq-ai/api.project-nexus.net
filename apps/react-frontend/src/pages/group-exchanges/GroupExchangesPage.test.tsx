@@ -10,6 +10,41 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@/test/test-utils';
 
+const { t } = vi.hoisted(() => ({
+  t: (key: string, opts?: Record<string, unknown>) => {
+    const values: Record<string, string> = {
+      page_title: 'Group Exchanges',
+      title: 'Group Exchanges',
+      subtitle: 'Multi-participant exchanges with split types and confirmations',
+      new_exchange: 'New Exchange',
+      tabs_aria: 'Group exchange filters',
+      tab_all: 'All',
+      tab_active: 'Active',
+      tab_needs_confirmation: 'Needs Confirmation',
+      tab_completed: 'Completed',
+      tab_cancelled: 'Cancelled',
+      empty_title: 'No Group Exchanges Found',
+      empty_description_all: 'No group exchanges have been created yet',
+      empty_description_filtered: 'No group exchanges match this filter',
+      create_exchange: 'Create Exchange',
+      role_organizer: 'You organized',
+      role_participant: 'Participant',
+      'status.active': 'Active',
+      'status.completed': 'Completed',
+      'split_type.equal': 'equal split',
+      'split_type.weighted': 'weighted split',
+      'split_type.custom': 'custom split',
+    };
+    if (key === 'participants_count') return `${opts?.count} participants`;
+    if (key === 'hours_count') return `${opts?.count} hours`;
+    return values[key] ?? key;
+  },
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t }),
+}));
+
 // Mock API module
 vi.mock('@/lib/api', () => ({
   api: {

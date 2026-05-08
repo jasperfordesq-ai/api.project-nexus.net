@@ -58,6 +58,7 @@ vi.mock('@/lib/api', () => ({
   api: {
     get: vi.fn((url: string) => {
       if (url.includes('/blog/')) return Promise.resolve({ success: true, data: mockBlogPost });
+      if (url.includes('/events/') && url.includes('/attendees')) return Promise.resolve({ success: true, data: [] });
       if (url.includes('/events/')) return Promise.resolve({ success: true, data: mockEvent });
       if (url.includes('/listings/')) return Promise.resolve({ success: true, data: mockListing });
       if (url.includes('/comments')) return Promise.resolve({ success: true, data: { comments: [] } });
@@ -99,6 +100,31 @@ vi.mock('@/contexts', () => ({
 
 vi.mock('@/hooks', () => ({
   usePageTitle: vi.fn(),
+  useSocialInteractions: vi.fn(() => ({
+    isLiked: false,
+    isLiking: false,
+    likesCount: 0,
+    commentsCount: 0,
+    comments: [],
+    commentsLoading: false,
+    commentsLoaded: false,
+    toggleLike: vi.fn(),
+    loadComments: vi.fn(),
+    submitComment: vi.fn(),
+    editComment: vi.fn(),
+    deleteComment: vi.fn(),
+    toggleReaction: vi.fn(),
+    searchMentions: vi.fn(),
+    shareToFeed: vi.fn(),
+    loadLikers: vi.fn(),
+  })),
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, fallback?: unknown) => typeof fallback === 'string' ? fallback : key,
+  }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock('@/lib/logger', () => ({
@@ -117,14 +143,6 @@ vi.mock('@/components/seo', () => ({
 
 vi.mock('framer-motion', () => {  const motionProps = new Set(['variants', 'initial', 'animate', 'whileInView', 'viewport', 'layout', 'transition', 'exit', 'whileHover', 'whileTap']);  const filterMotion = (props: Record<string, unknown>) => {    const filtered: Record<string, unknown> = {};    for (const [k, v] of Object.entries(props)) {      if (!motionProps.has(k)) filtered[k] = v;    }    return filtered;  };  return {    motion: {      div: ({ children, ...props }: Record<string, unknown>) => <div {...filterMotion(props)}>{children}</div>,      h1: ({ children, ...props }: Record<string, unknown>) => <h1 {...filterMotion(props)}>{children}</h1>,    },    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,  };});
 
-vi.mock('lucide-react', () => {
-  const MockIcon = ({ className, 'aria-hidden': ariaHidden }: { className?: string; 'aria-hidden'?: boolean | string }) => (
-    <span className={className} aria-hidden={ariaHidden}>icon</span>
-  );
-  return new Proxy({}, {
-    get: () => MockIcon,
-  });
-});
 
 vi.mock('dompurify', () => ({
   default: {
@@ -145,7 +163,7 @@ describe('Detail Pages', () => {
     it('renders without crashing', async () => {
       render(<BlogPostPage />);
       await waitFor(() => {
-        expect(screen.getByText('Test Blog Post')).toBeInTheDocument();
+        expect(screen.getAllByText('Test Blog Post')[0]).toBeInTheDocument();
       });
     });
 
@@ -166,7 +184,7 @@ describe('Detail Pages', () => {
     it('shows comments section', async () => {
       render(<BlogPostPage />);
       await waitFor(() => {
-        expect(screen.getByText(/Comments/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/Comments/i)[0]).toBeInTheDocument();
       });
     });
   });
@@ -175,7 +193,7 @@ describe('Detail Pages', () => {
     it('renders without crashing', async () => {
       render(<EventDetailPage />);
       await waitFor(() => {
-        expect(screen.getByText('Test Event')).toBeInTheDocument();
+        expect(screen.getAllByText('Test Event')[0]).toBeInTheDocument();
       });
     });
 
@@ -196,7 +214,7 @@ describe('Detail Pages', () => {
     it('shows attendees count', async () => {
       render(<EventDetailPage />);
       await waitFor(() => {
-        expect(screen.getByText(/10/)).toBeInTheDocument();
+        expect(screen.getAllByText(/^10$/)[0]).toBeInTheDocument();
       });
     });
   });
@@ -205,7 +223,7 @@ describe('Detail Pages', () => {
     it('renders without crashing', async () => {
       render(<ListingDetailPage />);
       await waitFor(() => {
-        expect(screen.getByText('Test Listing')).toBeInTheDocument();
+        expect(screen.getAllByText('Test Listing')[0]).toBeInTheDocument();
       });
     });
 
@@ -226,7 +244,7 @@ describe('Detail Pages', () => {
     it('shows hours estimate', async () => {
       render(<ListingDetailPage />);
       await waitFor(() => {
-        expect(screen.getByText(/2/)).toBeInTheDocument();
+        expect(screen.getAllByText(/2/)[0]).toBeInTheDocument();
       });
     });
   });

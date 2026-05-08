@@ -28,6 +28,22 @@ vi.mock('@/contexts', () => ({
 }));
 
 vi.mock('@/hooks', () => ({ usePageTitle: vi.fn() }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown> | string) => {
+      if (typeof options === 'string') return options;
+      const map: Record<string, string> = {
+        page_title: 'Blog',
+        title: 'Blog',
+        subtitle: 'Latest community news and stories',
+        search_placeholder: 'Search blog posts',
+        filter_all: 'All',
+        empty_title: 'No posts found',
+      };
+      return map[key] ?? key;
+    },
+  }),
+}));
 vi.mock('@/lib/logger', () => ({ logError: vi.fn() }));
 vi.mock('@/lib/helpers', () => ({
   resolveAvatarUrl: vi.fn((url) => url || '/default-avatar.png'),

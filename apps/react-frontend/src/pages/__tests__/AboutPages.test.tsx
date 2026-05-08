@@ -10,6 +10,36 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 
+const { translations } = vi.hoisted(() => ({
+  translations: {
+    'impact_report.hero_title': 'Social Impact Study',
+    'impact_report.toc_heading': 'Contents',
+    'impact_report.download_full_report': 'Download Full Report',
+    'impact_summary.hero_headline': 'Impact at a Glance',
+    'impact_summary.wellbeing_heading': 'Key Outcomes',
+    'impact_summary.hero_subtitle': 'Creating social value',
+    'partner.our_partners_heading': 'Our Partners',
+    'partner.why_partner_heading': 'Funding Partners',
+    'partner.partnership_opportunities_heading': 'Strategic Partners',
+    'social_prescribing.hero_title': 'Social Prescribing',
+    'social_prescribing.strategic_fit_heading': 'What is Social Prescribing',
+    'social_prescribing.validated_outcomes_heading': 'Benefits',
+    'strategic_plan.page_title': 'Strategic Plan',
+    'strategic_plan.vision_heading': 'Vision',
+    'strategic_plan.pillar_1_title': 'Strategic Pillars',
+    'timebanking_guide.page_title': 'Timebanking Guide',
+    'timebanking_guide.how_it_works_heading': 'How It Works',
+    'timebanking_guide.cta_heading': 'Getting Started',
+    'timebanking_guide.values_heading': 'Benefits',
+  } as Record<string, string>,
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, fallback?: string) => translations[key] ?? (typeof fallback === 'string' ? fallback : key),
+  }),
+}));
+
 // Mock dependencies
 vi.mock('@/lib/api', () => ({
   api: {
@@ -75,16 +105,6 @@ vi.mock('framer-motion', () => {
   };
 });
 
-vi.mock('lucide-react', () => {
-  const MockIcon = ({ className, 'aria-hidden': ariaHidden }: { className?: string; 'aria-hidden'?: boolean | string }) => (
-    <span className={className} aria-hidden={ariaHidden}>icon</span>
-  );
-  // Return a Proxy that returns MockIcon for any icon name
-  return new Proxy({}, {
-    get: () => MockIcon,
-  });
-});
-
 import { ImpactReportPage } from '../about/ImpactReportPage';
 import { ImpactSummaryPage } from '../about/ImpactSummaryPage';
 import { PartnerPage } from '../about/PartnerPage';
@@ -100,17 +120,17 @@ describe('About Pages', () => {
   describe('ImpactReportPage', () => {
     it('renders without crashing', () => {
       render(<ImpactReportPage />);
-      expect(screen.getByText(/Social Impact Study/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Social Impact Study/i)[0]).toBeInTheDocument();
     });
 
     it('shows SROI ratio', () => {
       render(<ImpactReportPage />);
-      expect(screen.getByText(/16.*1/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/16.*1/i)[0]).toBeInTheDocument();
     });
 
     it('renders table of contents', () => {
       render(<ImpactReportPage />);
-      expect(screen.getByText(/Contents/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Contents/i)[0]).toBeInTheDocument();
     });
 
     it('shows download buttons', () => {
@@ -122,90 +142,90 @@ describe('About Pages', () => {
   describe('ImpactSummaryPage', () => {
     it('renders without crashing', () => {
       render(<ImpactSummaryPage />);
-      expect(screen.getByText(/Impact at a Glance/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Impact at a Glance/i)[0]).toBeInTheDocument();
     });
 
     it('shows key metrics', () => {
       render(<ImpactSummaryPage />);
-      expect(screen.getByText(/Key Outcomes/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Key Outcomes/i)[0]).toBeInTheDocument();
     });
 
     it('renders hero section', () => {
       render(<ImpactSummaryPage />);
-      expect(screen.getByText(/Creating social value/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Creating social value/i)[0]).toBeInTheDocument();
     });
   });
 
   describe('PartnerPage', () => {
     it('renders without crashing', () => {
       render(<PartnerPage />);
-      expect(screen.getByText(/Our Partners/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Our Partners/i)[0]).toBeInTheDocument();
     });
 
     it('shows partner categories', () => {
       render(<PartnerPage />);
-      expect(screen.getByText(/Funding Partners/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Funding Partners/i)[0]).toBeInTheDocument();
     });
 
     it('renders partner logos section', () => {
       render(<PartnerPage />);
-      expect(screen.getByText(/Strategic Partners/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Strategic Partners/i)[0]).toBeInTheDocument();
     });
   });
 
   describe('SocialPrescribingPage', () => {
     it('renders without crashing', () => {
       render(<SocialPrescribingPage />);
-      expect(screen.getByText(/Social Prescribing/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Social Prescribing/i)[0]).toBeInTheDocument();
     });
 
     it('shows what is social prescribing section', () => {
       render(<SocialPrescribingPage />);
-      expect(screen.getByText(/What is Social Prescribing/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/What is Social Prescribing/i)[0]).toBeInTheDocument();
     });
 
     it('renders benefits section', () => {
       render(<SocialPrescribingPage />);
-      expect(screen.getByText(/Benefits/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Benefits/i)[0]).toBeInTheDocument();
     });
   });
 
   describe('StrategicPlanPage', () => {
     it('renders without crashing', () => {
       render(<StrategicPlanPage />);
-      expect(screen.getByText(/Strategic Plan/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Strategic Plan/i)[0]).toBeInTheDocument();
     });
 
     it('shows vision and mission', () => {
       render(<StrategicPlanPage />);
-      expect(screen.getByText(/Vision/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Vision/i)[0]).toBeInTheDocument();
     });
 
     it('renders strategic pillars', () => {
       render(<StrategicPlanPage />);
-      expect(screen.getByText(/Strategic Pillars/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Strategic Pillars/i)[0]).toBeInTheDocument();
     });
   });
 
   describe('TimebankingGuidePage', () => {
     it('renders without crashing', () => {
       render(<TimebankingGuidePage />);
-      expect(screen.getByText(/Timebanking Guide/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Timebanking Guide/i)[0]).toBeInTheDocument();
     });
 
     it('shows how it works section', () => {
       render(<TimebankingGuidePage />);
-      expect(screen.getByText(/How.*Works/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/How.*Works/i)[0]).toBeInTheDocument();
     });
 
     it('renders getting started section', () => {
       render(<TimebankingGuidePage />);
-      expect(screen.getByText(/Getting Started/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Getting Started/i)[0]).toBeInTheDocument();
     });
 
     it('shows benefits section', () => {
       render(<TimebankingGuidePage />);
-      expect(screen.getByText(/Benefits/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Benefits/i)[0]).toBeInTheDocument();
     });
   });
 });

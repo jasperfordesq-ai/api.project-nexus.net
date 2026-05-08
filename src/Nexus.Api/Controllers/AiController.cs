@@ -178,6 +178,16 @@ public class AiController : ControllerBase
             _logger.LogWarning(ex, "Llama request timed out");
             return StatusCode(504, new { error = "AI service request timed out" });
         }
+        catch (Exception ex) when (IsAiServiceUnavailable(ex))
+        {
+            _logger.LogWarning(ex, "AI service unavailable");
+            return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "AI chat failed");
+            return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
+        }
     }
 
     // =========================================================================
@@ -283,8 +293,9 @@ public class AiController : ControllerBase
 
             return Ok(suggestions);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI profile suggestions failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -310,8 +321,9 @@ public class AiController : ControllerBase
             var matches = await _aiService.FindMatchesForListing(listingId, maxResults, ct);
             return Ok(matches);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI community insights failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -354,8 +366,9 @@ public class AiController : ControllerBase
             var results = await _aiService.SmartSearch(SanitizeInput(request.Query), maxResults, ct);
             return Ok(results);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI challenge generation failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -395,8 +408,9 @@ public class AiController : ControllerBase
             var result = await _aiService.ModerateContent(request.Content, contentType, ct);
             return Ok(result);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI skill recommendations failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -419,8 +433,9 @@ public class AiController : ControllerBase
             var suggestions = await _aiService.SuggestProfileEnhancements(userId, ct);
             return Ok(suggestions);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI current-user profile suggestions failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -445,8 +460,9 @@ public class AiController : ControllerBase
             var suggestions = await _aiService.SuggestProfileEnhancements(userId, ct);
             return Ok(suggestions);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI community insights failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -468,8 +484,9 @@ public class AiController : ControllerBase
             var insights = await _aiService.GetCommunityInsights(ct);
             return Ok(insights);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI community insights failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -521,7 +538,7 @@ public class AiController : ControllerBase
             var result = await _aiService.Translate(SanitizeInput(request.Text), targetLang, ct);
             return Ok(result);
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (IsAiServiceUnavailable(ex))
         {
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
@@ -626,7 +643,7 @@ public class AiController : ControllerBase
         {
             return NotFound(new { error = "Conversation not found or inactive" });
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (IsAiServiceUnavailable(ex))
         {
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
@@ -737,8 +754,9 @@ public class AiController : ControllerBase
             );
             return Ok(suggestions);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI challenge generation failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -781,8 +799,9 @@ public class AiController : ControllerBase
             );
             return Ok(listing);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI skill recommendations failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -883,8 +902,9 @@ public class AiController : ControllerBase
             var challenges = await _aiService.GenerateChallenges(userId, count, ct);
             return Ok(challenges);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI challenge generation failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -952,8 +972,9 @@ public class AiController : ControllerBase
             var recommendations = await _aiService.GetSkillRecommendations(userId, ct);
             return Ok(recommendations);
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "AI skill recommendations failed");
             return StatusCode(503, new { error = "AI service temporarily unavailable", retryAfter = 30 });
         }
     }
@@ -1217,6 +1238,14 @@ public class AiController : ControllerBase
         };
 
         return sensitivePatterns.Any(pattern => lowerResponse.Contains(pattern));
+    }
+
+    private static bool IsAiServiceUnavailable(Exception ex)
+    {
+        return ex is HttpRequestException
+            || ex is TaskCanceledException
+            || ex is TimeoutException
+            || ex.GetType().Name.Contains("Timeout", StringComparison.OrdinalIgnoreCase);
     }
 }
 

@@ -14,10 +14,43 @@ import { render, screen } from '@/test/test-utils';
 
 const mockUseTenant = vi.fn();
 const mockUseFeature = vi.fn();
+const mockResetConsent = vi.fn();
 
 vi.mock('@/contexts', () => ({
   useTenant: (...args: unknown[]) => mockUseTenant(...args),
   useFeature: (...args: unknown[]) => mockUseFeature(...args),
+  useCookieConsent: () => ({ resetConsent: mockResetConsent }),
+}));
+
+const i18nMap: Record<string, string> = {
+  'footer.platform': 'Platform',
+  'footer.support': 'Support',
+  'footer.legal': 'Legal',
+  'footer.help_center': 'Help Center',
+  'footer.contact_us': 'Contact Us',
+  'footer.about': 'About',
+  'footer.report_bug': 'Report a Bug',
+  'footer.cookie_settings': 'Cookie settings',
+  'footer.terms': 'Terms',
+  'footer.privacy': 'Privacy',
+  'nav.listings': 'Listings',
+  'nav.members': 'Members',
+  'nav.events': 'Events',
+  'nav.blog': 'Blog',
+  'nav.knowledge_base': 'Knowledge Base',
+  'legal.legal_hub': 'Legal Hub',
+  'legal.terms_of_service': 'Terms of Service',
+  'legal.privacy_policy': 'Privacy Policy',
+  'legal.cookie_policy': 'Cookie Policy',
+  'legal.accessibility': 'Accessibility',
+};
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, fallback?: string) => i18nMap[key] ?? fallback ?? key,
+    i18n: { language: 'en', changeLanguage: vi.fn() },
+  }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }));
 
 import { Footer, FooterLink } from './Footer';
@@ -87,21 +120,21 @@ describe('Footer', () => {
   });
 
   describe('AGPL attribution', () => {
-    it('renders Built on Project NEXUS by Jasper Ford', () => {
+    it('renders Project NEXUS attribution and AGPL notice', () => {
       render(<Footer />);
-      const link = screen.getByText('Built on Project NEXUS by Jasper Ford');
-      expect(link).toBeInTheDocument();
+      expect(screen.getByText('Project NEXUS')).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`AGPL-3\\.0.*Jasper Ford`))).toBeInTheDocument();
     });
 
     it('attribution links to the GitHub repository', () => {
       render(<Footer />);
-      const link = screen.getByText('Built on Project NEXUS by Jasper Ford').closest('a');
+      const link = screen.getByText('Project NEXUS').closest('a');
       expect(link).toHaveAttribute('href', 'https://github.com/jasperfordesq-ai/nexus-v1');
     });
 
     it('attribution opens in new tab with security attributes', () => {
       render(<Footer />);
-      const link = screen.getByText('Built on Project NEXUS by Jasper Ford').closest('a');
+      const link = screen.getByText('Project NEXUS').closest('a');
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });

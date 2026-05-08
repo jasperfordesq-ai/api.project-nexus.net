@@ -10,6 +10,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@/test/test-utils';
 
+const { toast } = vi.hoisted(() => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  },
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (_key: string, fallback: string, _opts?: object) => fallback ?? _key,
@@ -26,12 +35,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 vi.mock('@/contexts', () => ({
-  useToast: vi.fn(() => ({
-    success: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn(),
-    warning: vi.fn(),
-  })),
+  useToast: vi.fn(() => toast),
 }));
 
 vi.mock('@/components/ui', () => ({
@@ -147,7 +151,7 @@ describe('GroupAnnouncementsTab', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /New Announcement/i }));
     await waitFor(() => {
-      expect(screen.getByText('New Announcement')).toBeInTheDocument();
+      expect(screen.getAllByText('New Announcement').length).toBeGreaterThanOrEqual(1);
     });
 
     // Fill in the form fields

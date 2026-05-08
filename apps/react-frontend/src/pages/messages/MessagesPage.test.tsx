@@ -10,6 +10,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 
+const { t } = vi.hoisted(() => ({
+  t: (key: string) => ({
+    title: 'Messages',
+    page_subtitle: 'Your conversations with community members',
+    new_message: 'New Message',
+    search_placeholder: 'Search conversations',
+    tab_inbox: 'Inbox',
+    tab_archived: 'Archived',
+  }[key] ?? key),
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t }),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: {
     get: vi.fn().mockResolvedValue({ success: true, data: [] }),

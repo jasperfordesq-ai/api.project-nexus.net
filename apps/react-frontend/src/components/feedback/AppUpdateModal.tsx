@@ -22,6 +22,10 @@ interface AppUpdateModalProps {
 export function AppUpdateModal({ updateInfo, onDismiss }: AppUpdateModalProps) {
   const { t } = useTranslation('errors');
   const notes = Object.values(updateInfo.releaseNotes).flat();
+  const text = (key: string, fallback: string, options?: Record<string, unknown>) => {
+    const translated = t(key, { ...options, defaultValue: fallback });
+    return translated && translated !== key ? translated : fallback;
+  };
 
   const handleUpdate = () => {
     window.open(updateInfo.updateUrl, '_system');
@@ -38,18 +42,25 @@ export function AppUpdateModal({ updateInfo, onDismiss }: AppUpdateModalProps) {
       <ModalContent>
         <ModalHeader className="flex items-center gap-2">
           <Sparkles size={20} className="text-primary" />
-          {t('update_available')}
+          {text('update_available', 'Update Available')}
         </ModalHeader>
         <ModalBody>
           <p className="text-default-600">{updateInfo.updateMessage}</p>
 
           <p className="text-sm text-default-400">
-            {t('version_info', { currentVersion: updateInfo.currentVersion, clientVersion: updateInfo.clientVersion })}
+            {text(
+              'version_info',
+              `Version ${updateInfo.currentVersion} is available; you have ${updateInfo.clientVersion}.`,
+              {
+                currentVersion: updateInfo.currentVersion,
+                clientVersion: updateInfo.clientVersion,
+              },
+            )}
           </p>
 
           {notes.length > 0 && (
             <div className="mt-2">
-              <p className="text-sm font-medium text-default-700 mb-1">{t('whats_new')}</p>
+              <p className="text-sm font-medium text-default-700 mb-1">{text('whats_new', "What's new")}</p>
               <ul className="list-disc list-inside text-sm text-default-500 space-y-0.5">
                 {notes.map((note, i) => (
                   <li key={i}>{note}</li>
@@ -61,7 +72,7 @@ export function AppUpdateModal({ updateInfo, onDismiss }: AppUpdateModalProps) {
         <ModalFooter>
           {!updateInfo.forceUpdate && (
             <Button variant="flat" onPress={onDismiss}>
-              {t('later')}
+              {text('later', 'Later')}
             </Button>
           )}
           <Button
@@ -69,7 +80,7 @@ export function AppUpdateModal({ updateInfo, onDismiss }: AppUpdateModalProps) {
             startContent={<Download size={16} />}
             onPress={handleUpdate}
           >
-            {t('download_update')}
+            {text('download_update', 'Download Update')}
           </Button>
         </ModalFooter>
       </ModalContent>

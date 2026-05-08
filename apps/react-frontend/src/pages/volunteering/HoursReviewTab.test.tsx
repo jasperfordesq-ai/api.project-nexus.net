@@ -94,8 +94,8 @@ describe('HoursReviewTab', () => {
       expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     });
     expect(screen.getByText('Green Help')).toBeInTheDocument();
-    expect(screen.getByText('Food Bank Volunteer')).toBeInTheDocument();
-    expect(screen.getByText(/3 hours/)).toBeInTheDocument();
+    expect(screen.getByText(/Food Bank Volunteer/)).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === '3 hours')).toBeInTheDocument();
     expect(screen.getByText('Helped at the food bank.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Approve hours for Jane Doe/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Decline hours for Jane Doe/i })).toBeInTheDocument();

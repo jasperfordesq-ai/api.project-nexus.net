@@ -40,6 +40,11 @@ public class OrgWalletController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
+        var orgExists = await _db.Set<Organisation>()
+            .AsNoTracking()
+            .AnyAsync(o => o.Id == orgId);
+        if (!orgExists) return NotFound(new { error = "Organisation not found" });
+
         // Verify user is a member of this organisation
         var isMember = await _db.Set<OrganisationMember>()
             .AnyAsync(m => m.OrganisationId == orgId && m.UserId == userId.Value);
@@ -74,6 +79,11 @@ public class OrgWalletController : ControllerBase
 
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
+
+        var orgExists = await _db.Set<Organisation>()
+            .AsNoTracking()
+            .AnyAsync(o => o.Id == orgId);
+        if (!orgExists) return NotFound(new { error = "Organisation not found" });
 
         // Verify user is a member of this organisation
         var isMember = await _db.Set<OrganisationMember>()

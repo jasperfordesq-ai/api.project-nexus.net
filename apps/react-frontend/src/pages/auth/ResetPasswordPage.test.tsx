@@ -37,6 +37,20 @@ vi.mock('@/contexts', () => ({
 
 vi.mock('@/hooks', () => ({ usePageTitle: vi.fn() }));
 vi.mock('@/components/seo', () => ({ PageMeta: () => null }));
+vi.mock('react-i18next', () => {
+  const translations: Record<string, string> = {
+    'reset_password.page_title': 'Set new password',
+    'reset_password.new_password_placeholder': 'Enter a strong password',
+    'reset_password.confirm_placeholder': 'Re-enter your password',
+    'reset_password.back_to_login': 'Back to login',
+  };
+
+  return {
+    useTranslation: () => ({
+      t: (key: string, fallback?: unknown) => translations[key] ?? (typeof fallback === 'string' ? fallback : key),
+    }),
+  };
+});
 vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: Record<string, unknown>) => {

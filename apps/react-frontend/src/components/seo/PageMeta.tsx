@@ -31,10 +31,11 @@ export function PageMeta({
   noIndex = false,
 }: PageMetaProps) {
   const { branding } = useTenant();
+  const safeBranding = branding ?? {};
 
-  const siteName = branding.name || 'NEXUS';
+  const siteName = safeBranding.name || 'NEXUS';
   const fullTitle = title ? `${title} | ${siteName}` : siteName;
-  const metaDescription = description || branding.tagline || 'Community Time Banking Platform';
+  const metaDescription = description || safeBranding.tagline || 'Community Time Banking Platform';
   const canonicalUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
 
   return (

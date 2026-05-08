@@ -37,6 +37,34 @@ vi.mock('@/contexts', () => ({
 }));
 
 vi.mock('@/hooks', () => ({ usePageTitle: vi.fn() }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown> | string) => {
+      if (typeof options === 'string') return options;
+      const map: Record<string, string> = {
+        title: 'Events',
+        subtitle: 'Discover and join community events',
+        create_event: 'Create Event',
+        search_placeholder: 'Search events',
+        search_aria: 'Search events',
+        filter_placeholder: 'When',
+        filter_aria: 'Filter events',
+        filter_upcoming: 'Upcoming',
+        filter_past: 'Past',
+        filter_all: 'All',
+        view_mode_aria: 'View mode',
+        view_list: 'List view',
+        view_map: 'Map view',
+        category_aria: 'Event categories',
+        unable_to_load: 'Unable to load events',
+        try_again: 'Try Again',
+        no_events: 'No events found',
+        load_more: 'Load More',
+      };
+      return map[key] ?? key.replace(/^category\./, '');
+    },
+  }),
+}));
 vi.mock('@/lib/logger', () => ({ logError: vi.fn() }));
 vi.mock('@/lib/helpers', () => ({
   resolveAvatarUrl: vi.fn((url) => url || '/default-avatar.png'),

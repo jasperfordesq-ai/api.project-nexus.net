@@ -35,6 +35,8 @@ export function Footer({ children, copyright }: FooterProps) {
   const footerText = tenant?.config?.footer_text?.trim()
     || copyright
     || `© ${year} ${branding.name}. All rights reserved.`;
+  const buildTime = typeof __BUILD_TIME__ === 'undefined' ? 'local' : __BUILD_TIME__;
+  const buildCommit = typeof __BUILD_COMMIT__ === 'undefined' ? 'local' : __BUILD_COMMIT__;
 
   const contact = tenant?.contact;
 
@@ -179,8 +181,8 @@ export function Footer({ children, copyright }: FooterProps) {
               <Link to={tenantPath('/platform/privacy')} className="hover:text-theme-primary transition-colors">
                 {t('footer.privacy')}
               </Link>
-              <span className="font-mono text-[10px] text-theme-subtle/40" title={`Built ${__BUILD_TIME__}`}>
-                {__BUILD_COMMIT__}
+              <span className="font-mono text-[10px] text-theme-subtle/40" title={`Built ${buildTime}`}>
+                {buildCommit}
               </span>
             </div>
           </div>

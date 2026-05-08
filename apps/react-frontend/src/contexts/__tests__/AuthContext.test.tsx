@@ -56,20 +56,22 @@ vi.mock('@/lib/webauthn', () => ({
 }));
 
 // Mock the api module
-const mockApiGet = vi.fn();
-const mockApiPost = vi.fn();
-const mockTokenManager = {
-  getAccessToken: vi.fn(),
-  setAccessToken: vi.fn(),
-  getRefreshToken: vi.fn(),
-  setRefreshToken: vi.fn(),
-  getTenantId: vi.fn(),
-  setTenantId: vi.fn(),
-  clearTokens: vi.fn(),
-  clearAll: vi.fn(),
-  hasAccessToken: vi.fn(),
-  hasRefreshToken: vi.fn(),
-};
+const { mockApiGet, mockApiPost, mockTokenManager } = vi.hoisted(() => ({
+  mockApiGet: vi.fn(),
+  mockApiPost: vi.fn(),
+  mockTokenManager: {
+    getAccessToken: vi.fn(),
+    setAccessToken: vi.fn(),
+    getRefreshToken: vi.fn(),
+    setRefreshToken: vi.fn(),
+    getTenantId: vi.fn(),
+    setTenantId: vi.fn(),
+    clearTokens: vi.fn(),
+    clearAll: vi.fn(),
+    hasAccessToken: vi.fn(),
+    hasRefreshToken: vi.fn(),
+  },
+}));
 
 vi.mock('@/lib/api', () => ({
   api: {

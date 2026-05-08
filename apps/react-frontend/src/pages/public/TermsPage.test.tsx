@@ -11,6 +11,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 import React from 'react';
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const translations: Record<string, string> = {
+        'terms.page_title': 'Terms of Service',
+        'terms.heading': 'Terms of Service',
+        'terms.subtitle': 'The terms for using Project NEXUS.',
+        'terms.last_updated': 'Last updated May 2026',
+        'terms.community_specific': `${options?.name ?? 'Test Community'} terms information.`,
+      };
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: { get: vi.fn().mockResolvedValue({ success: true, data: null }) },
   tokenManager: { getTenantId: vi.fn() },

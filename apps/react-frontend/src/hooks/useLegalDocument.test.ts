@@ -61,7 +61,7 @@ describe('useLegalDocument', () => {
     });
 
     expect(result.current.document).toEqual(mockDoc);
-    expect(mockApiGet).toHaveBeenCalledWith('/v2/legal/terms');
+    expect(mockApiGet).toHaveBeenCalledWith('/v2/legal/terms', { skipAuth: true });
   });
 
   it('returns null document when API returns no data', async () => {

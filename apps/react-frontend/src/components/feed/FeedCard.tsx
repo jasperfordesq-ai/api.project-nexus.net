@@ -156,6 +156,10 @@ export const CommentItem = React.memo(function CommentItem({ comment }: CommentI
   const { t } = useTranslation('feed');
   const { tenantPath } = useTenant();
   const [showReplies, setShowReplies] = useState(false);
+  const editedLabel = t('card.edited', 'edited');
+  const hideRepliesLabel = t('card.hide', 'Hide');
+  const replyLabel = t('card.reply', 'reply');
+  const repliesLabel = t('card.replies', 'replies');
 
   return (
     <div className="flex items-start gap-2.5">
@@ -177,7 +181,7 @@ export const CommentItem = React.memo(function CommentItem({ comment }: CommentI
               {comment.author.name}
             </Link>
             {comment.edited && (
-              <span className="text-[10px] text-[var(--text-subtle)] italic">({t('card.edited')})</span>
+              <span className="text-[10px] text-[var(--text-subtle)] italic">({editedLabel})</span>
             )}
           </div>
           <p className="text-xs text-[var(--text-secondary)] mt-0.5 whitespace-pre-wrap leading-relaxed">{comment.content}</p>
@@ -194,7 +198,7 @@ export const CommentItem = React.memo(function CommentItem({ comment }: CommentI
               className="text-[10px] text-[var(--color-primary)] p-0 min-w-0 h-auto"
               onPress={() => setShowReplies(!showReplies)}
             >
-              {showReplies ? t('card.hide') : `${comment.replies.length}`} {comment.replies.length === 1 ? t('card.reply') : t('card.replies')}
+              {showReplies ? hideRepliesLabel : `${comment.replies.length}`} {comment.replies.length === 1 ? replyLabel : repliesLabel}
             </Button>
           )}
         </div>
@@ -441,7 +445,7 @@ const FeedCard = React.memo(function FeedCard({
                     color="danger"
                     onPress={() => onDeletePost(item)}
                   >
-                    {t('card.delete_post')}
+                    {t('card.delete_post', 'Delete post')}
                   </DropdownItem>
                 ) : (
                   <>
@@ -450,14 +454,14 @@ const FeedCard = React.memo(function FeedCard({
                       startContent={<EyeOff className="w-4 h-4" aria-hidden="true" />}
                       onPress={() => onHidePost(item)}
                     >
-                      {t('card.hide_post')}
+                      {t('card.hide_post', 'Hide post')}
                     </DropdownItem>
                     <DropdownItem
                       key="mute"
                       startContent={<VolumeX className="w-4 h-4" aria-hidden="true" />}
                       onPress={() => onMuteUser(item)}
                     >
-                      {t('card.mute_user', { name: author.name })}
+                      {t('card.mute_user', { name: author.name, defaultValue: `Mute ${author.name}` })}
                     </DropdownItem>
                     <DropdownItem
                       key="report"
@@ -466,7 +470,7 @@ const FeedCard = React.memo(function FeedCard({
                       color="danger"
                       onPress={() => onReportPost(item)}
                     >
-                      {t('card.report_post')}
+                      {t('card.report_post', 'Report post')}
                     </DropdownItem>
                   </>
                 )}
@@ -600,7 +604,7 @@ const FeedCard = React.memo(function FeedCard({
                   })}
                   <p className="text-xs text-[var(--text-subtle)] flex items-center gap-1.5 pt-1">
                     <TrendingUp className="w-3 h-3" aria-hidden="true" />
-                    {pollData.total_votes} {pollData.total_votes === 1 ? t('card.vote') : t('card.votes')}
+                    {pollData.total_votes} {pollData.total_votes === 1 ? t('card.vote', 'vote') : t('card.votes', 'votes')}
                   </p>
                 </CardBody>
               </Card>
@@ -614,7 +618,7 @@ const FeedCard = React.memo(function FeedCard({
             <CardBody className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--text-muted)] uppercase tracking-wide font-medium">{t('card.reviewed')}</span>
+                  <span className="text-xs text-[var(--text-muted)] uppercase tracking-wide font-medium">{t('card.reviewed', 'Reviewed')}</span>
                   <Link
                     to={tenantPath(`/profile/${item.receiver.id}`)}
                     className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--color-primary)] transition-colors"
@@ -664,7 +668,7 @@ const FeedCard = React.memo(function FeedCard({
                       <Heart className="w-2.5 h-2.5 text-white fill-white" aria-hidden="true" />
                     </span>
                   </span>
-                  {item.likes_count} {item.likes_count === 1 ? t('card.like') : t('card.likes')}
+                  {item.likes_count} {item.likes_count === 1 ? t('card.like', 'like') : t('card.likes', 'likes')}
                 </span>
               )}
             </span>
@@ -675,7 +679,7 @@ const FeedCard = React.memo(function FeedCard({
                 className="text-xs text-[var(--text-subtle)] hover:text-[var(--text-primary)] p-0 min-w-0 h-auto"
                 onPress={toggleComments}
               >
-                {localCommentsCount} {localCommentsCount === 1 ? t('card.comment') : t('card.comments')}
+                {localCommentsCount} {localCommentsCount === 1 ? t('card.comment', 'comment') : t('card.comments', 'comments')}
               </Button>
             )}
           </div>
@@ -686,7 +690,7 @@ const FeedCard = React.memo(function FeedCard({
 
         {/* Action Buttons */}
         <div className="flex items-center justify-around -mx-1">
-          <Tooltip content={item.is_liked ? t('card.unlike') : t('card.like_action')} delay={400} closeDelay={0} size="sm">
+          <Tooltip content={item.is_liked ? t('card.unlike', 'Unlike') : t('card.like_action', 'Like')} delay={400} closeDelay={0} size="sm">
             <Button
               size="sm"
               variant="light"
@@ -703,11 +707,11 @@ const FeedCard = React.memo(function FeedCard({
               onPress={isAuthenticated ? () => onToggleLike(item) : undefined}
               isDisabled={!isAuthenticated}
             >
-              {t('card.like_action')}
+              {t('card.like_action', 'Like')}
             </Button>
           </Tooltip>
 
-          <Tooltip content={t('card.view_comments')} delay={400} closeDelay={0} size="sm">
+          <Tooltip content={t('card.view_comments', 'View comments')} delay={400} closeDelay={0} size="sm">
             <Button
               size="sm"
               variant="light"
@@ -715,7 +719,7 @@ const FeedCard = React.memo(function FeedCard({
               startContent={<MessageCircle className={`w-[18px] h-[18px] ${showComments ? 'fill-[var(--color-primary)]/20' : ''}`} aria-hidden="true" />}
               onPress={toggleComments}
             >
-              {t('card.comment_action')}
+              {t('card.comment_action', 'Comment')}
             </Button>
           </Tooltip>
 
@@ -760,8 +764,8 @@ const FeedCard = React.memo(function FeedCard({
               {isAuthenticated && (
                 <div className="flex items-start gap-2.5">
                   <Input
-                    placeholder={t('card.write_comment')}
-                    aria-label={t('card.write_comment')}
+                    placeholder={t('card.write_comment', 'Write a comment...')}
+                    aria-label={t('card.write_comment', 'Write a comment...')}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmitComment()}
@@ -803,7 +807,7 @@ const FeedCard = React.memo(function FeedCard({
                 </div>
               ) : comments.length === 0 ? (
                 <p className="text-xs text-[var(--text-subtle)] text-center py-3 italic">
-                  {t('card.no_comments')}
+                  {t('card.no_comments', 'No comments yet')}
                 </p>
               ) : (
                 <div className="space-y-3">

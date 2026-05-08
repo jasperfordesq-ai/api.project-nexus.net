@@ -18,6 +18,7 @@ import { DevelopmentStatusBanner } from '@/components/layout/DevelopmentStatusBa
 
 export function AdminLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,22 +34,24 @@ export function AdminLayout() {
       </div>
 
       {/* Header */}
-      <AdminHeader sidebarCollapsed={sidebarCollapsed} onSidebarToggle={() => setSidebarCollapsed((prev) => !prev)} />
+      <AdminHeader sidebarCollapsed={sidebarCollapsed} onSidebarToggle={() => setMobileSidebarOpen(true)} />
 
       {/* Mobile sidebar overlay */}
-      {!sidebarCollapsed && (
+      {mobileSidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/50 md:hidden"
-          onClick={() => setSidebarCollapsed(true)}
+          onClick={() => setMobileSidebarOpen(false)}
         />
       )}
       {/* Mobile sidebar drawer */}
-      <div className={`fixed left-0 top-0 z-40 h-screen w-64 border-r border-divider bg-content1 transition-transform duration-300 md:hidden ${sidebarCollapsed ? '-translate-x-full' : 'translate-x-0'}`}>
-        <AdminSidebar
-          collapsed={false}
-          onToggle={() => setSidebarCollapsed(true)}
-        />
-      </div>
+      {mobileSidebarOpen && (
+        <div className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-divider bg-content1 transition-transform duration-300 md:hidden">
+          <AdminSidebar
+            collapsed={false}
+            onToggle={() => setMobileSidebarOpen(false)}
+          />
+        </div>
+      )}
 
       {/* Main content */}
       <main

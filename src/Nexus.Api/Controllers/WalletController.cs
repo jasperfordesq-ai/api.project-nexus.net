@@ -139,7 +139,7 @@ public class WalletController : ControllerBase
                 amount = t.Amount,
                 description = t.Description,
                 status = t.Status.ToString().ToLowerInvariant(),
-                type = t.SenderId == userId.Value ? "debit" : "credit",
+                type = t.SenderId == userId.Value ? "sent" : "received",
                 sender = t.Sender == null ? null : new
                 {
                     id = t.Sender.Id,
@@ -230,7 +230,7 @@ public class WalletController : ControllerBase
             amount = transaction.Amount,
             description = transaction.Description,
             status = transaction.Status.ToString().ToLowerInvariant(),
-            type = isSender ? "debit" : "credit",
+            type = isSender ? "sent" : "received",
             sender = transaction.Sender == null ? null : new
             {
                 id = transaction.Sender.Id,

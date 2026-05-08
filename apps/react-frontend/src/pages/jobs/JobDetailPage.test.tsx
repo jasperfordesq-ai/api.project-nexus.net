@@ -8,10 +8,14 @@ import { render, screen, waitFor } from '@/test/test-utils';
 import type { ReactNode } from 'react';
 
 const mockNavigate = vi.fn();
+const { t } = vi.hoisted(() => ({
+  t: (key: string, opts?: Record<string, unknown>) =>
+    (opts?.defaultValue as string | undefined) ?? key,
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) =>
-      (opts?.defaultValue as string | undefined) ?? key,
+    t,
   }),
 }));
 

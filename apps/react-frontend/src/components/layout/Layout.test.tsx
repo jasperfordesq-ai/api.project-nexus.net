@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@/test/test-utils';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 
 // Mock child components to isolate Layout logic
@@ -34,6 +34,9 @@ vi.mock('@/components/ui/BackToTop', () => ({
 vi.mock('@/components/feedback/OfflineIndicator', () => ({
   OfflineIndicator: () => <div data-testid="offline-indicator">Offline Mock</div>,
 }));
+vi.mock('@/components/feedback/UpdateAvailableBanner', () => ({
+  UpdateAvailableBanner: () => null,
+}));
 vi.mock('@/components/feedback', () => ({
   SessionExpiredModal: () => <div data-testid="session-modal">SessionExpired Mock</div>,
 }));
@@ -45,6 +48,15 @@ vi.mock('@/hooks', () => ({
 }));
 vi.mock('@/hooks/useAppUpdate', () => ({
   useAppUpdate: vi.fn(() => ({ updateInfo: null, dismiss: vi.fn() })),
+}));
+vi.mock('@/hooks/useHeaderScroll', () => ({
+  useHeaderScroll: vi.fn(() => ({ isScrolled: false, isUtilityBarVisible: true, scrollDirection: null })),
+}));
+vi.mock('./DevelopmentStatusBanner', () => ({
+  DevelopmentStatusBanner: () => null,
+}));
+vi.mock('@/components/LanguageSwitcher', () => ({
+  LanguageSwitcher: () => null,
 }));
 
 // Mock react-router-dom Outlet to render test content

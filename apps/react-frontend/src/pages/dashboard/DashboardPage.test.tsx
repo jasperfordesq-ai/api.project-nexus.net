@@ -47,6 +47,37 @@ vi.mock('@/hooks', () => ({
   usePageTitle: vi.fn(),
 }));
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown> | string) => {
+      if (typeof options === 'string') return options;
+      const map: Record<string, string> = {
+        'meta.title': 'Dashboard',
+        'meta.description': 'Dashboard',
+        welcome_back: `Welcome back, ${String(options?.name ?? 'there')}!`,
+        community_activity: `Here is what is happening in ${String(options?.community ?? 'your community')}`,
+        new_listing: 'New Listing',
+        'stats.balance': 'Balance',
+        'stats.active_listings': 'Active Listings',
+        'stats.messages': 'Messages',
+        'stats.pending': 'Pending',
+        'sections.quick_actions': 'Quick Actions',
+        'sections.recent_listings': 'Recent Listings',
+        'quick_actions.create_listing': 'Create Listing',
+        'quick_actions.messages': 'Messages',
+        'quick_actions.view_wallet': 'View Wallet',
+        'quick_actions.find_members': 'Find Members',
+        'onboarding.banner_title': 'Complete your profile setup',
+        'onboarding.banner_subtitle': 'Finish onboarding to get the most from your community.',
+        'onboarding.get_started': 'Get Started',
+        view_all: 'View All',
+        view_all_caps: 'View All',
+      };
+      return map[key] ?? key;
+    },
+  }),
+}));
+
 vi.mock('@/lib/logger', () => ({
   logError: vi.fn(),
 }));

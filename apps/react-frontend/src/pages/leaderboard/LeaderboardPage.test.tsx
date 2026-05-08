@@ -10,6 +10,38 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@/test/test-utils';
 
+const { t } = vi.hoisted(() => ({
+  t: (key: string, options?: Record<string, unknown> | string) => {
+    if (typeof options === 'string') return options;
+    const map: Record<string, string> = {
+      'leaderboard.page_title': 'Leaderboard',
+      'leaderboard.title': 'Leaderboard',
+      'leaderboard.subtitle': "See who's leading the community",
+      'leaderboard.type_aria': 'Leaderboard type',
+      'leaderboard.period_aria': 'Leaderboard period',
+      'leaderboard.type.xp': 'XP',
+      'leaderboard.type.volunteer_hours': 'Volunteer Hours',
+      'leaderboard.type.credits_earned': 'Credits Earned',
+      'leaderboard.type.nexus_score': 'NexusScore',
+      'leaderboard.period.all': 'All Time',
+      'leaderboard.period.season': 'Season',
+      'leaderboard.period.month': 'Month',
+      'leaderboard.period.week': 'Week',
+      'leaderboard.empty_title': 'No rankings yet',
+      'leaderboard.unable_to_load': 'Unable to Load Leaderboard',
+      'leaderboard.try_again': 'Try Again',
+      'leaderboard.you': 'You',
+    };
+    if (key === 'leaderboard.level') return `Level ${options?.level}`;
+    if (key === 'leaderboard.your_rank') return `Your rank: ${options?.rank}`;
+    return map[key] ?? key;
+  },
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t }),
+}));
+
 // Mock API module
 // Default mock: returns null data for seasons (SeasonCard) and empty array for leaderboard
 vi.mock('@/lib/api', () => ({
@@ -77,10 +109,17 @@ vi.mock('@/components/feedback', () => ({
 vi.mock('framer-motion', () => {  const motionProps = new Set(['variants', 'initial', 'animate', 'layout', 'transition', 'exit', 'whileHover', 'whileTap', 'whileInView', 'viewport']);  const filterMotion = (props: Record<string, unknown>) => {    const filtered: Record<string, unknown> = {};    for (const [k, v] of Object.entries(props)) {      if (!motionProps.has(k)) filtered[k] = v;    }    return filtered;  };  return {    motion: {      div: ({ children, ...props }: Record<string, unknown>) => <div {...filterMotion(props)}>{children}</div>,    },    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,  };});
 
 import { LeaderboardPage } from './LeaderboardPage';
+import { api } from '@/lib/api';
 
 describe('LeaderboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url.includes('/seasons')) {
+        return Promise.resolve({ success: true, data: null, meta: {} });
+      }
+      return Promise.resolve({ success: true, data: [], meta: {} });
+    });
   });
 
   it('renders page title and description', () => {
@@ -100,9 +139,9 @@ describe('LeaderboardPage', () => {
   });
 
   it('shows loading skeleton initially', () => {
+    vi.mocked(api.get).mockReturnValue(new Promise(() => {}));
     render(<LeaderboardPage />);
-    const skeletons = document.querySelectorAll('.animate-pulse');
-    expect(skeletons.length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Loading season')).toBeInTheDocument();
   });
 
   it('shows empty state when no entries are loaded', async () => {
@@ -207,7 +246,7 @@ describe('LeaderboardPage', () => {
     render(<LeaderboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('(You)')).toBeInTheDocument();
+      expect(screen.getByText('You')).toBeInTheDocument();
     });
   });
 

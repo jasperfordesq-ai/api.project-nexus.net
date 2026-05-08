@@ -10,6 +10,37 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@/test/test-utils';
 
+const { t } = vi.hoisted(() => ({
+  t: vi.fn((key: string, options?: Record<string, unknown>) => {
+    const translations: Record<string, string> = {
+      'organisations.page_title': 'Organisations',
+      'organisations.breadcrumb_volunteering': 'Volunteering',
+      'organisations.breadcrumb_organisations': 'Organisations',
+      'organisations.heading': 'Organisations',
+      'organisations.subtitle': 'Discover volunteer organisations in your community',
+      'organisations.register_button': 'Register organisation',
+      'organisations.search_placeholder': 'Search organisations...',
+      'organisations.unable_to_load': 'Unable to Load Organisations',
+      'organisations.error_load': 'Unable to load organisations',
+      'organisations.error_load_retry': 'Please try again.',
+      'organisations.try_again': 'Try Again',
+      'organisations.no_organisations_found': 'No organisations found',
+      'organisations.no_organisations_available': 'No organisations are available yet.',
+      'organisations.try_different_search': 'Try a different search.',
+      'organisations.website': 'Website',
+    };
+
+    if (key === 'organisations.opportunity_count') return `${options?.count ?? 0} opportunities`;
+    if (key === 'organisations.volunteer_count') return `${options?.count ?? 0} volunteers`;
+    if (key === 'organisations.hours_logged') return `${options?.hours ?? 0}h logged`;
+    return translations[key] ?? key;
+  }),
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t }),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: {
     get: vi.fn().mockResolvedValue({ success: true, data: [], meta: {} }),

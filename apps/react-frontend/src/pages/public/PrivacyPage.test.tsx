@@ -10,6 +10,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const translations: Record<string, string> = {
+        'privacy.page_title': 'Privacy Policy',
+        'privacy.heading': 'Privacy Policy',
+        'privacy.subtitle': 'How we collect, use, and protect your data.',
+        'privacy.last_updated': 'Last updated May 2026',
+        'privacy.data_collection_title': 'Data we collect',
+        'privacy.use_title': 'How we use data',
+        'privacy.rights_title': 'Your rights',
+        'privacy.contact_title': 'Contact us',
+        'privacy.community_specific': `${options?.name ?? 'Test Community'} privacy information.`,
+      };
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: { get: vi.fn().mockResolvedValue({ success: true, data: null }) },
   tokenManager: { getTenantId: vi.fn() },

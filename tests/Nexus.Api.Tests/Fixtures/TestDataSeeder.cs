@@ -131,6 +131,24 @@ public static class TestDataSeeder
         db.Listings.AddRange(listing1, listing2);
         await db.SaveChangesAsync();
 
+        // Listing reviews require a completed exchange involving the reviewer.
+        // Seed one so review tests exercise the real production precondition.
+        var completedExchange = new Exchange
+        {
+            TenantId = tenant1.Id,
+            ListingId = listing1.Id,
+            InitiatorId = memberUser.Id,
+            ListingOwnerId = adminUser.Id,
+            Status = ExchangeStatus.Completed,
+            AgreedHours = 2.0m,
+            CompletedAt = DateTime.UtcNow.AddHours(-1),
+            CreatedAt = DateTime.UtcNow.AddDays(-2),
+            UpdatedAt = DateTime.UtcNow.AddHours(-1)
+        };
+
+        db.Exchanges.Add(completedExchange);
+        await db.SaveChangesAsync();
+
         // Create badges for gamification tests
         var badges = new[]
         {

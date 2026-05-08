@@ -77,7 +77,7 @@ export function SessionExpiredModal() {
                   <Clock className="w-8 h-8 text-amber-600 dark:text-amber-400" />
                 </div>
               </div>
-              <span className="text-xl font-semibold text-theme-primary">{t('session_expired')}</span>
+              <span className="text-xl font-semibold text-theme-primary">{t('session_expired', 'Session Expired')}</span>
             </ModalHeader>
 
             <ModalBody
@@ -85,7 +85,7 @@ export function SessionExpiredModal() {
               className="text-center pb-4"
             >
               <p className="text-theme-muted">
-                {t('session_expired_message')}
+                {t('session_expired_message', 'Your session has expired. Please log in again to continue.')}
               </p>
             </ModalBody>
 
@@ -95,14 +95,14 @@ export function SessionExpiredModal() {
                 className="flex-1 bg-theme-elevated text-theme-primary"
                 onPress={onClose}
               >
-                {t('dismiss')}
+                {t('dismiss', 'Dismiss')}
               </Button>
               <Button
                 className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
                 startContent={<LogIn className="w-4 h-4" />}
                 onPress={handleLogin}
               >
-                {t('auth.log_in', { ns: 'common' })}
+                {t('auth.log_in', { ns: 'common', defaultValue: 'Log In' })}
               </Button>
             </ModalFooter>
           </>

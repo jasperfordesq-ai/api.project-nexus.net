@@ -9,9 +9,20 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@/test/test-utils';
-import { framerMotionMock } from '@/test/mocks';
 
-vi.mock('framer-motion', () => framerMotionMock);
+vi.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => {
+      const motionProps = new Set(['variants', 'initial', 'animate', 'exit', 'transition', 'layout', 'whileHover', 'whileTap']);
+      const rest: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(props)) {
+        if (!motionProps.has(key)) rest[key] = value;
+      }
+      return <div {...rest}>{children}</div>;
+    },
+  },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 vi.mock('@/lib/api', () => ({
   api: {

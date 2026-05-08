@@ -57,15 +57,16 @@ public class WalletConcurrencyTests : IntegrationTestBase
         // Assert - Only some transfers should succeed (up to available balance)
         var successCount = responses.Count(r => r.StatusCode == HttpStatusCode.Created);
         var insufficientBalanceCount = responses.Count(r => r.StatusCode == HttpStatusCode.BadRequest);
-        // Serialization conflicts (500) are also valid - they indicate the lock prevented a race condition
+        // Serialization conflicts indicate the lock prevented a race condition.
+        var conflictCount = responses.Count(r => r.StatusCode == HttpStatusCode.Conflict);
         var serializationConflictCount = responses.Count(r => r.StatusCode == HttpStatusCode.InternalServerError);
 
         // Max possible successes depends on current balance
         var maxPossibleSuccesses = (int)(initialBalance / 3.0m);
         successCount.Should().BeLessOrEqualTo(maxPossibleSuccesses + 1,
             $"because only {initialBalance} hours are available (max {maxPossibleSuccesses} transfers of 3.0)");
-        // All requests should complete with one of: Created, BadRequest (insufficient), or 500 (serialization conflict)
-        (successCount + insufficientBalanceCount + serializationConflictCount).Should().Be(5, "because all requests should complete");
+        // All requests should complete with one of: Created, BadRequest (insufficient), 409, or legacy 500 serialization conflict.
+        (successCount + insufficientBalanceCount + conflictCount + serializationConflictCount).Should().Be(5, "because all requests should complete");
 
         // Verify final balance is not negative
         var balanceResponse = await clients[0].GetAsync("/api/wallet/balance");

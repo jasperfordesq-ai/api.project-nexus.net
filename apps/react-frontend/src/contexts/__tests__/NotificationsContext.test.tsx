@@ -27,8 +27,10 @@ vi.mock('react-i18next', () => ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Mock the PusherContext which NotificationsContext consumes via usePusherOptional
-const mockOnNewMessage = vi.fn(() => vi.fn()); // returns unsubscribe
-const mockOnUnreadCount = vi.fn(() => vi.fn()); // returns unsubscribe
+const { mockOnNewMessage, mockOnUnreadCount } = vi.hoisted(() => ({
+  mockOnNewMessage: vi.fn(() => vi.fn()),
+  mockOnUnreadCount: vi.fn(() => vi.fn()),
+}));
 
 vi.mock('../PusherContext', () => ({
   usePusherOptional: () => ({
@@ -46,12 +48,14 @@ vi.mock('../PusherContext', () => ({
 // API mock
 // ─────────────────────────────────────────────────────────────────────────────
 
-const mockApiGet = vi.fn();
-const mockApiPost = vi.fn();
-const mockTokenManager = {
-  getAccessToken: vi.fn().mockReturnValue('test-token'),
-  getTenantId: vi.fn().mockReturnValue('2'),
-};
+const { mockApiGet, mockApiPost, mockTokenManager } = vi.hoisted(() => ({
+  mockApiGet: vi.fn(),
+  mockApiPost: vi.fn(),
+  mockTokenManager: {
+    getAccessToken: vi.fn().mockReturnValue('test-token'),
+    getTenantId: vi.fn().mockReturnValue('2'),
+  },
+}));
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -75,7 +79,9 @@ vi.mock('@/lib/logger', () => ({
 // AuthContext mock
 // ─────────────────────────────────────────────────────────────────────────────
 
-const mockUseAuth = vi.fn();
+const { mockUseAuth } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+}));
 
 vi.mock('../AuthContext', () => ({
   useAuth: () => mockUseAuth(),

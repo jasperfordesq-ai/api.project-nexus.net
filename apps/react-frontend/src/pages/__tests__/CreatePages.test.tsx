@@ -61,6 +61,27 @@ vi.mock('@/hooks', () => ({
   usePageTitle: vi.fn(),
 }));
 
+vi.mock('react-i18next', () => {
+  const translations: Record<string, string> = {
+    'form.create_title': 'Create New Listing',
+    'form.offer_title': 'Offer Help',
+    'form.request_title': 'Request Help',
+    'form.title_label': 'Title',
+    'form.title_placeholder': 'What are you offering or requesting?',
+    'form.submit_create': 'Create Listing',
+    'form.create': 'Create Listing',
+    create: 'Create Listing',
+    'form.cancel': 'Cancel',
+  };
+
+  return {
+    useTranslation: () => ({
+      t: (key: string, fallback?: unknown) => translations[key] ?? (typeof fallback === 'string' ? fallback : key),
+    }),
+    Trans: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
+
 vi.mock('@/lib/logger', () => ({
   logError: vi.fn(),
 }));
@@ -100,14 +121,6 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('lucide-react', () => {
-  const MockIcon = ({ className, 'aria-hidden': ariaHidden }: { className?: string; 'aria-hidden'?: boolean | string }) => (
-    <span className={className} aria-hidden={ariaHidden}>icon</span>
-  );
-  return new Proxy({}, {
-    get: () => MockIcon,
-  });
-});
 
 import { CreateListingPage } from '../listings/CreateListingPage';
 
@@ -135,7 +148,7 @@ describe('Create Pages', () => {
     it('displays title input field', async () => {
       render(<CreateListingPage />);
       await waitFor(() => {
-        expect(screen.getByLabelText(/Title/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('What are you offering or requesting?')).toBeInTheDocument();
       });
     });
 

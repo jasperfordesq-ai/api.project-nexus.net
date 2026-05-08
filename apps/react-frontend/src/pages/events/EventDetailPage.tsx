@@ -125,7 +125,7 @@ export function EventDetailPage() {
         setError(t('detail.not_found_desc'));
       }
       if (attendeesRes.success && attendeesRes.data) {
-        setAttendees(attendeesRes.data);
+        setAttendees(Array.isArray(attendeesRes.data) ? attendeesRes.data : []);
       }
     } catch (err) {
       logError('Failed to load event', err);

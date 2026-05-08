@@ -9,9 +9,18 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@/test/test-utils';
-import { framerMotionMock } from '@/test/mocks';
 
-vi.mock('framer-motion', () => framerMotionMock);
+vi.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+      <div {...props}>{children}</div>
+    ),
+    button: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+      <button {...props}>{children}</button>
+    ),
+  },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 vi.mock('@/lib/api', () => ({
   api: {

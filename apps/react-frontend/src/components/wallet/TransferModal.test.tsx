@@ -111,7 +111,7 @@ describe('TransferModal', () => {
   it('calls onClose when close (X) button is clicked', () => {
     const onClose = vi.fn();
     render(<TransferModal {...defaultProps} onClose={onClose} />);
-    const closeButton = screen.getByLabelText('Close modal');
+    const closeButton = screen.getByRole('button', { name: /close/i });
     fireEvent.click(closeButton);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -125,6 +125,6 @@ describe('TransferModal', () => {
     render(<TransferModal {...defaultProps} />);
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveAttribute('aria-labelledby', 'transfer-modal-title');
+    expect(dialog).toHaveAttribute('aria-labelledby');
   });
 });

@@ -10,6 +10,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 
+const { t } = vi.hoisted(() => ({
+  t: (key: string, fallback?: string) => ({
+    title: 'Listings',
+    page_subtitle: 'Browse services and requests from the community',
+    create: 'New Listing',
+    search_placeholder: 'Search by title',
+    aria_grid_view: 'Grid view',
+    aria_list_view: 'List view',
+  }[key] ?? fallback ?? key),
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t }),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: {
     get: vi.fn().mockResolvedValue({ success: true, data: [], meta: {} }),

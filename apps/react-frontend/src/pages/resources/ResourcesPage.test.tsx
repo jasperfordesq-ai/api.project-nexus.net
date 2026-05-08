@@ -10,6 +10,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, fallbackOrOptions?: string | Record<string, unknown>) => {
+      const translations: Record<string, string> = {
+        'resources.page_title': 'Resources',
+        'resources.heading': 'Resources',
+        'resources.subtitle': 'Shared community files and guides.',
+        'resources.upload_resource': 'Upload resource',
+        'resources.search_placeholder': 'Search resources...',
+        'resources.filter_all': 'All',
+        'resources.no_resources_found': 'No resources found',
+      };
+      if (typeof fallbackOrOptions === 'string') return fallbackOrOptions;
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: {
     get: vi.fn().mockResolvedValue({ success: true, data: [], meta: {} }),
@@ -22,6 +40,11 @@ vi.mock('@/contexts', () => ({
   useAuth: vi.fn(() => ({
     user: { id: 1, first_name: 'Test' },
     isAuthenticated: true,
+  })),
+  useTenant: vi.fn(() => ({
+    tenant: { id: 2, name: 'Test Tenant', slug: 'test' },
+    tenantPath: (p: string) => `/test${p}`,
+    hasFeature: vi.fn(() => true),
   })),
   useToast: vi.fn(() => ({
     success: vi.fn(),

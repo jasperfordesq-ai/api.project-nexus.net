@@ -59,6 +59,41 @@ vi.mock('@/contexts/ToastContext', () => ({
 }));
 
 vi.mock('@/hooks', () => ({ usePageTitle: vi.fn() }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown> | string) => {
+      if (typeof options === 'string') return options;
+      const map: Record<string, string> = {
+        page_title: 'My Exchanges',
+        title: 'My Exchanges',
+        subtitle: 'Track your service exchange requests and confirmations',
+        browse_listings: 'Browse Listings',
+        'tabs.aria_label': 'Exchange status',
+        'tabs.active': 'Active',
+        'tabs.needs_confirmation': 'Needs Confirmation',
+        'tabs.completed': 'Completed',
+        'tabs.all': 'All',
+        'error.unable_to_load': 'Unable to Load Exchanges',
+        try_again: 'Try Again',
+        'empty.title': 'No Exchanges Found',
+        'empty.active_description': 'Browse listings to start an exchange.',
+        'empty.filter_description': 'No exchanges match this filter.',
+        service_exchange: 'Service Exchange',
+        unknown: 'Unknown',
+        hours_count: `${String(options?.count ?? 0)} hours`,
+        'card.with_party': `with ${String(options?.name ?? 'Unknown')}`,
+        'card.from_party': `from ${String(options?.name ?? 'Unknown')}`,
+        'card.you_requested': 'You requested',
+        'card.you_providing': 'You are providing',
+        'card.confirm_hours': 'Confirm Hours',
+        'card.waiting_for_other': 'Waiting for other member',
+        'card.respond': 'Respond',
+        load_more: 'Load More',
+      };
+      return map[key] ?? key;
+    },
+  }),
+}));
 vi.mock('@/lib/logger', () => ({ logError: vi.fn() }));
 vi.mock('@/lib/helpers', () => ({
   resolveAvatarUrl: vi.fn((url) => url || '/default-avatar.png'),

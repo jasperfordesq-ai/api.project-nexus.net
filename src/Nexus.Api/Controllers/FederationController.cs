@@ -154,7 +154,7 @@ public class FederationController : ControllerBase
         var (partner, error) = await _federationService.ApprovePartnershipAsync(id, userId.Value);
 
         if (partner == null && error == "Partnership not found")
-            return Forbid();
+            return BadRequest(new { error });
 
         if (error != null)
             return BadRequest(new { error });
@@ -186,7 +186,7 @@ public class FederationController : ControllerBase
         var (partner, error) = await _federationService.SuspendPartnershipAsync(id, userId.Value, request?.Reason);
 
         if (partner == null && error == "Partnership not found")
-            return Forbid();
+            return BadRequest(new { error });
 
         if (error != null)
             return BadRequest(new { error });
@@ -213,7 +213,7 @@ public class FederationController : ControllerBase
         var (syncedCount, error) = await _federationService.SyncListingsToPartnerAsync(id);
 
         if (syncedCount == 0 && error == "Partnership not found")
-            return Forbid();
+            return BadRequest(new { error });
 
         if (error != null)
             return BadRequest(new { error });

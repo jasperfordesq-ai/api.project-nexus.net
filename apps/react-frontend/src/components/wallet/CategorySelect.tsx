@@ -35,8 +35,10 @@ export function CategorySelect({
     async function loadCategories() {
       try {
         const response = await api.get<TransactionCategory[]>('/v2/wallet/categories');
-        if (response.success && response.data) {
+        if (response.success && Array.isArray(response.data)) {
           setCategories(response.data);
+        } else {
+          setCategories([]);
         }
       } catch (err) {
         logError('Failed to load categories', err);

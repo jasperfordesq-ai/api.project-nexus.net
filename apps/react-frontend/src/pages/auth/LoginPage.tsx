@@ -258,7 +258,9 @@ export function LoginPage() {
       // User cancelled — do nothing
     } else if (result.error?.includes('not found') || result.error?.includes('Credential not found')) {
       // No passkey registered for this account
-      toast.error(t('passkey_not_found'));
+      toast.error(t('passkey_not_found', {
+        defaultValue: 'No passkey found for this account. Log in with your password, then go to Settings to register a passkey.',
+      }));
     }
   };
 

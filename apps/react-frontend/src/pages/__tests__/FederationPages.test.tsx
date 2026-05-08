@@ -76,6 +76,22 @@ vi.mock('@/hooks', () => ({
   usePageTitle: vi.fn(),
 }));
 
+vi.mock('react-i18next', () => {
+  const translations: Record<string, string> = {
+    'events.heading': 'Federated Events',
+    'events.search_placeholder': 'Search federated events',
+    'events.all_communities': 'All Communities',
+    'events.upcoming_only': 'Upcoming Only',
+  };
+
+  return {
+    useTranslation: () => ({
+      t: (key: string, fallback?: unknown) => translations[key] ?? (typeof fallback === 'string' ? fallback : key),
+    }),
+    Trans: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
+
 vi.mock('@/lib/logger', () => ({
   logError: vi.fn(),
 }));
@@ -92,14 +108,6 @@ vi.mock('@/components/seo', () => ({
 
 vi.mock('framer-motion', () => {  const motionProps = new Set(['variants', 'initial', 'animate', 'transition', 'exit', 'whileHover', 'whileTap', 'whileInView', 'viewport', 'layout']);  const filterMotion = (props: Record<string, unknown>) => {    const filtered: Record<string, unknown> = {};    for (const [k, v] of Object.entries(props)) {      if (!motionProps.has(k)) filtered[k] = v;    }    return filtered;  };  return {    motion: {      div: ({ children, ...props }: Record<string, unknown>) => <div {...filterMotion(props)}>{children}</div>,    },    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,  };});
 
-vi.mock('lucide-react', () => {
-  const MockIcon = ({ className, 'aria-hidden': ariaHidden }: { className?: string; 'aria-hidden'?: boolean | string }) => (
-    <span className={className} aria-hidden={ariaHidden}>icon</span>
-  );
-  return new Proxy({}, {
-    get: () => MockIcon,
-  });
-});
 
 import { FederationEventsPage } from '../federation/FederationEventsPage';
 
@@ -126,7 +134,7 @@ describe('Federation Pages', () => {
     it('displays partner filter dropdown', async () => {
       render(<FederationEventsPage />);
       await waitFor(() => {
-        expect(screen.getByText(/All Communities/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/All Communities/i)[0]).toBeInTheDocument();
       });
     });
 

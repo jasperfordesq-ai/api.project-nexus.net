@@ -41,7 +41,12 @@ vi.mock('@/components/feedback', () => ({
 
 // Mock heavy dependencies that ProtectedRoute might import transitively
 vi.mock('@/lib/api', () => ({
-  api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+  api: {
+    get: vi.fn(() => Promise.resolve({ success: true, data: { has_pending: false, documents: [] } })),
+    post: vi.fn(() => Promise.resolve({ success: true, data: null })),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
   tokenManager: { getAccessToken: vi.fn(), getTenantId: vi.fn() },
 }));
 

@@ -578,7 +578,7 @@ export function ConversationPage() {
   }, [pagination.hasOlderMessages, isLoadingOlder, loadOlderMessages]);
 
   function scrollToBottom() {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }
 
   /**

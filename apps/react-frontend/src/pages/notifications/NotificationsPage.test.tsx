@@ -10,6 +10,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@/test/test-utils';
 
+const { t } = vi.hoisted(() => ({
+  t: vi.fn((key: string, options?: Record<string, unknown>) => {
+    const translations: Record<string, string> = {
+      page_title: 'Notifications',
+      title: 'Notifications',
+      subtitle: 'Stay updated with your activity',
+      mark_all_read: 'Mark all read',
+      settings_aria: 'Notification settings',
+      filter_all: 'All',
+      empty_title: 'No notifications',
+      empty_desc: 'You have no notifications yet.',
+      empty_caught_up: 'No unread notifications',
+      empty_caught_up_desc: 'You are all caught up.',
+      loading_aria: 'Loading notifications',
+      mark_read_aria: 'Mark as read',
+      delete_aria: 'Delete notification',
+      error_load: 'Unable to load notifications',
+    };
+
+    if (key === 'unread_badge') return `${options?.count ?? 0} new`;
+    if (key === 'filter_unread') return `Unread (${options?.count ?? 0})`;
+    return translations[key] ?? key;
+  }),
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t }),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: {
     get: vi.fn().mockResolvedValue({ success: true, data: [] }),
@@ -35,6 +64,11 @@ vi.mock('@/contexts', () => ({
     error: vi.fn(),
     info: vi.fn(),
     warning: vi.fn(),
+  })),
+  useNotifications: vi.fn(() => ({
+    refreshCounts: vi.fn(),
+    markAsRead: vi.fn().mockResolvedValue(undefined),
+    markAllAsRead: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 

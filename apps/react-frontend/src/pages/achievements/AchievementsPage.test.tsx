@@ -46,6 +46,39 @@ vi.mock('@/hooks', () => ({
   usePageTitle: vi.fn(),
 }));
 
+vi.mock('react-i18next', () => {
+  const translations: Record<string, string> = {
+    'achievements.title': 'Achievements',
+    'achievements.subtitle': 'Track your badges, XP, and progress',
+    'achievements.level': 'Level {{level}}',
+    'achievements.xp_total': '{{xp}} XP total',
+    'achievements.badges_label': 'Badges',
+    'achievements.filter_badges_aria': 'Filter badges by type',
+    'achievements.manage_showcase': 'Manage Showcase',
+    'achievements.tab_badges': 'Badges',
+    'achievements.tab_challenges': 'Challenges',
+    'achievements.tab_collections': 'Collections',
+    'achievements.tab_shop': 'XP Shop',
+    'achievements.unable_to_load': 'Unable to Load Achievements',
+    'achievements.try_again': 'Try Again',
+    'achievements.showcased': 'Showcased',
+  };
+
+  const interpolate = (value: string, options?: Record<string, unknown>) =>
+    value.replace(/\{\{(\w+)\}\}/g, (_, key: string) => String(options?.[key] ?? ''));
+
+  return {
+    useTranslation: () => ({
+      t: (key: string, options?: unknown) => {
+        const fallback = typeof options === 'object' && options && 'defaultValue' in options
+          ? String((options as { defaultValue?: string }).defaultValue)
+          : undefined;
+        return interpolate(translations[key] ?? fallback ?? key, options as Record<string, unknown> | undefined);
+      },
+    }),
+  };
+});
+
 vi.mock('@/lib/logger', () => ({
   logError: vi.fn(),
 }));

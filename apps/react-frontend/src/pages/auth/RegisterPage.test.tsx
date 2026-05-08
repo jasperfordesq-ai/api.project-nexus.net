@@ -45,6 +45,21 @@ vi.mock('@/contexts', () => ({
 
 vi.mock('@/hooks', () => ({ usePageTitle: vi.fn() }));
 vi.mock('@/components/seo', () => ({ PageMeta: () => null }));
+vi.mock('react-i18next', () => {
+  const translations: Record<string, string> = {
+    'register.title': 'Create Account',
+    'register.have_account': 'Already have an account?',
+    'register.sign_in_link': 'Sign in',
+  };
+
+  return {
+    useTranslation: () => ({
+      t: (key: string, fallback?: unknown) => translations[key] ?? (typeof fallback === 'string' ? fallback : key),
+    }),
+    Trans: ({ i18nKey, children }: { i18nKey?: string; children?: React.ReactNode }) =>
+      i18nKey === 'register.terms_agreement' ? <span>Terms agreement</span> : <>{children}</>,
+  };
+});
 vi.mock('framer-motion', () => {  const motionProps = new Set(['variants', 'initial', 'animate', 'layout', 'transition', 'exit', 'whileHover', 'whileTap', 'whileInView', 'viewport']);  const filterMotion = (props: Record<string, unknown>) => {    const filtered: Record<string, unknown> = {};    for (const [k, v] of Object.entries(props)) {      if (!motionProps.has(k)) filtered[k] = v;    }    return filtered;  };  return {    motion: {      div: ({ children, ...props }: Record<string, unknown>) => <div {...filterMotion(props)}>{children}</div>,      form: ({ children, ...props }: Record<string, unknown>) => <form {...filterMotion(props)}>{children}</form>,    },    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,  };});
 
 import { RegisterPage } from './RegisterPage';

@@ -52,6 +52,46 @@ vi.mock('@/contexts/ToastContext', () => ({
 }));
 
 vi.mock('@/hooks', () => ({ usePageTitle: vi.fn() }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown> | string) => {
+      if (typeof options === 'string') return options;
+      const map: Record<string, string> = {
+        'hub.page_title': 'Federation Hub',
+        'hub.breadcrumb_dashboard': 'Dashboard',
+        'hub.breadcrumb_federation': 'Federation',
+        'hub.loading': 'Loading federation data...',
+        'hub.unable_to_load': 'Unable to Load',
+        'hub.error_generic': 'Something went wrong. Please try again.',
+        'hub.try_again': 'Try Again',
+        'hub.not_available_title': 'Federation Not Available',
+        'hub.not_available_description': 'Federation is not available for this community.',
+        'hub.not_available_contact': 'Contact your administrator.',
+        'hub.title': 'Federation Hub',
+        'hub.subtitle_opted_in': 'Explore the network',
+        'hub.subtitle_opted_out': 'Connect beyond your community',
+        'hub.hero_title': 'Connect Beyond Your Community',
+        'hub.hero_description': 'Share services across trusted partner communities.',
+        'hub.enable_federation': 'Enable Federation',
+        'hub.how_it_works': 'How It Works',
+        'hub.how_it_works_0_title': 'Discover Partners',
+        'hub.how_it_works_1_title': 'Connect with Members',
+        'hub.how_it_works_2_title': 'Exchange Across Communities',
+        'hub.explore_network': 'Explore the Network',
+        'hub.quick_link_0_title': 'Federated Members',
+        'hub.quick_link_1_title': 'Federated Messages',
+        'hub.quick_link_2_title': 'Federated Listings',
+        'hub.quick_link_3_title': 'Federated Events',
+        'hub.quick_link_4_title': 'Federation Settings',
+        'hub.partner_communities': 'Partner Communities',
+        'hub.no_partners_yet': 'No partners yet',
+        'hub.recent_activity': 'Recent Activity',
+        'hub.no_activity_yet': 'No activity yet',
+      };
+      return map[key] ?? key;
+    },
+  }),
+}));
 vi.mock('@/lib/logger', () => ({ logError: vi.fn() }));
 vi.mock('@/lib/helpers', () => ({
   resolveAvatarUrl: vi.fn((url) => url || '/default-avatar.png'),

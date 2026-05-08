@@ -10,11 +10,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@/test/test-utils';
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, optionsOrFallback?: Record<string, unknown> | string) => {
+      const translations: Record<string, string> = {
+        page_title: 'Search',
+        title: 'Search',
+        subtitle: 'Find listings, members, events, and groups',
+        search_placeholder: 'Search for anything...',
+        search_button: 'Search',
+        error_title: 'Search Error',
+        error_message: 'Search failed. Please try again.',
+        try_again: 'Try Again',
+        no_results_title: 'No results found',
+        no_results_desc: 'No results matched your search.',
+        initial_title: 'Start searching',
+        initial_desc: 'Enter a search term to find listings, members, events, and groups',
+        listing_offering: 'Offering',
+        listing_requesting: 'Requesting',
+      };
+
+      if (typeof optionsOrFallback === 'string') return optionsOrFallback;
+      if (key === 'tab_all') return `All (${optionsOrFallback?.count ?? 0})`;
+      if (key === 'tab_listings' || key === 'section_listings') return `Listings (${optionsOrFallback?.count ?? 0})`;
+      if (key === 'tab_members' || key === 'section_members') return `Members (${optionsOrFallback?.count ?? 0})`;
+      if (key === 'tab_events' || key === 'section_events') return `Events (${optionsOrFallback?.count ?? 0})`;
+      if (key === 'tab_groups' || key === 'section_groups') return `Groups (${optionsOrFallback?.count ?? 0})`;
+      if (key === 'members_count') return `${optionsOrFallback?.count ?? 0} members`;
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 vi.mock('@/lib/api', () => ({
   api: {
     get: vi.fn().mockResolvedValue({
       success: true,
-      data: { listings: [], users: [], events: [], groups: [] },
+      data: [],
     }),
     post: vi.fn().mockResolvedValue({ success: true }),
   },
@@ -57,6 +89,7 @@ vi.mock('@/components/ui', () => ({
   GlassCard: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div data-testid="glass-card" className={className}>{children}</div>
   ),
+  AlgorithmLabel: () => <div data-testid="algorithm-label" />,
 }));
 
 vi.mock('@/components/feedback', () => ({
@@ -73,14 +106,24 @@ vi.mock('framer-motion', () => {  const motionProps = new Set(['variants', 'init
 import { SearchPage } from './SearchPage';
 import { api } from '@/lib/api';
 
+function mockSearchResponse(data: unknown[]) {
+  vi.mocked(api.get).mockImplementation((url: string) => {
+    if (url.includes('/v2/search/saved')) {
+      return Promise.resolve({ success: true, data: [] });
+    }
+    return Promise.resolve({ success: true, data });
+  });
+}
+
 describe('SearchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSearchResponse([]);
   });
 
   it('renders the page heading and description', () => {
     render(<SearchPage />);
-    expect(screen.getByText('Search')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Search' })).toBeInTheDocument();
     expect(screen.getByText('Find listings, members, events, and groups')).toBeInTheDocument();
   });
 
@@ -104,10 +147,7 @@ describe('SearchPage', () => {
   });
 
   it('shows no results state when search returns empty', async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      success: true,
-      data: { listings: [], users: [], events: [], groups: [] },
-    });
+    mockSearchResponse([]);
 
     render(<SearchPage />);
 
@@ -127,19 +167,10 @@ describe('SearchPage', () => {
   });
 
   it('shows result tabs with counts after search', async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      success: true,
-      data: {
-        listings: [
-          { id: 1, title: 'Test Listing', description: 'A listing', type: 'offer', hours_estimate: 2 },
-        ],
-        users: [
-          { id: 1, name: 'Alice Smith', avatar: null, tagline: 'Hello', location: 'Dublin' },
-        ],
-        events: [],
-        groups: [],
-      },
-    });
+    mockSearchResponse([
+        { id: 1, type: 'listing', title: 'Test Listing', description: 'A listing', listing_type: 'offer', hours_estimate: 2 },
+        { id: 1, type: 'user', name: 'Alice Smith', avatar_url: null, bio: 'Hello', location: 'Dublin' },
+    ]);
 
     render(<SearchPage />);
 
@@ -163,19 +194,10 @@ describe('SearchPage', () => {
   });
 
   it('renders search results with listing and user details', async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      success: true,
-      data: {
-        listings: [
-          { id: 1, title: 'Garden Help', description: 'Need help in garden', type: 'request', hours_estimate: 3 },
-        ],
-        users: [
-          { id: 2, name: 'Bob Jones', avatar: null, tagline: 'Gardener', location: 'Cork' },
-        ],
-        events: [],
-        groups: [],
-      },
-    });
+    mockSearchResponse([
+        { id: 1, type: 'listing', title: 'Garden Help', description: 'Need help in garden', listing_type: 'request', hours_estimate: 3 },
+        { id: 2, type: 'user', name: 'Bob Jones', avatar_url: null, bio: 'Gardener', location: 'Cork' },
+    ]);
 
     render(<SearchPage />);
 
@@ -196,7 +218,12 @@ describe('SearchPage', () => {
   });
 
   it('shows error state when search API fails', async () => {
-    vi.mocked(api.get).mockRejectedValue(new Error('Network error'));
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url.includes('/v2/search/saved')) {
+        return Promise.resolve({ success: true, data: [] });
+      }
+      return Promise.reject(new Error('Network error'));
+    });
 
     render(<SearchPage />);
 

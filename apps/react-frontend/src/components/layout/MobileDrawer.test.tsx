@@ -31,13 +31,15 @@ vi.mock('react-router-dom', async () => {
 const mockUseAuth = vi.fn();
 const mockUseTenant = vi.fn();
 const mockUseNotifications = vi.fn();
+const mockToggleTheme = vi.fn();
 
 vi.mock('@/contexts', () => ({
   useAuth: (...args: unknown[]) => mockUseAuth(...args),
   useTenant: (...args: unknown[]) => mockUseTenant(...args),
   useNotifications: (...args: unknown[]) => mockUseNotifications(...args),
+  useTheme: () => ({ resolvedTheme: 'light', theme: 'light', toggleTheme: mockToggleTheme, setTheme: vi.fn() }),
   useMenuContext: () => ({ headerMenus: [], mobileMenus: [], hasCustomMenus: false }),
-  useCookieConsent: () => ({ showBanner: false, openPreferences: vi.fn() }),
+  useCookieConsent: () => ({ showBanner: false, openPreferences: vi.fn(), resetConsent: vi.fn() }),
 }));
 
 const i18nMap: Record<string, string> = {
@@ -71,6 +73,12 @@ const i18nMap: Record<string, string> = {
   'cookie_consent.manage': 'Manage Cookies',
   'stats.credits': 'Credits', 'stats.messages': 'Messages', 'stats.alerts': 'Alerts',
   'search.placeholder': 'Search...',
+  'user_menu.help_center': 'Help Center',
+  'user_menu.admin_panel': 'Admin Panel',
+  'user_menu.legacy_admin': 'Legacy Admin',
+  'nav.timebanking': 'Timebanking',
+  'sections.main': 'Main',
+  'sections.engage': 'Engage',
 };
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => i18nMap[key] ?? key, i18n: { language: 'en', changeLanguage: vi.fn() } }),
@@ -160,36 +168,30 @@ describe('MobileDrawer', () => {
       expect(screen.getByText('Home')).toBeInTheDocument();
     });
 
-    it('renders Listings navigation link when module is enabled', () => {
+    it('renders Timebanking section when listing-related modules are enabled', () => {
       setupDefaultMocks({
         tenant: {
           hasModule: vi.fn(() => true),
         },
       });
       render(<MobileDrawer {...defaultProps} />);
-      expect(screen.getByText('Listings')).toBeInTheDocument();
+      expect(screen.getByText('Timebanking')).toBeInTheDocument();
     });
 
     it('renders About section with universal items', () => {
       render(<MobileDrawer {...defaultProps} />);
-      // "About" appears as both a section heading and a nav link; use getAllByText
       const aboutElements = screen.getAllByText('About');
       expect(aboutElements.length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText('FAQ')).toBeInTheDocument();
-      expect(screen.getByText('Timebanking Guide')).toBeInTheDocument();
     });
 
-    it('renders Support section', () => {
+    it('renders guest contact utility action', () => {
       render(<MobileDrawer {...defaultProps} />);
-      expect(screen.getByText('Help Center')).toBeInTheDocument();
       expect(screen.getByText('Contact')).toBeInTheDocument();
     });
 
     it('renders Legal section', () => {
       render(<MobileDrawer {...defaultProps} />);
-      expect(screen.getByText('Terms of Service')).toBeInTheDocument();
-      expect(screen.getByText('Privacy Policy')).toBeInTheDocument();
-      expect(screen.getByText('Accessibility')).toBeInTheDocument();
+      expect(screen.getByText('Legal')).toBeInTheDocument();
     });
   });
 
@@ -293,6 +295,24 @@ describe('MobileDrawer', () => {
       });
       render(<MobileDrawer {...defaultProps} />);
       expect(screen.getByText('Admin Panel')).toBeInTheDocument();
+      expect(screen.queryByText('Legacy Admin')).not.toBeInTheDocument();
+    });
+
+    it('shows Legacy Admin only for the founder admin account', () => {
+      setupDefaultMocks({
+        auth: {
+          user: {
+            id: 1,
+            first_name: 'Jasper',
+            last_name: 'Ford',
+            email: 'jasper.ford.esq@gmail.com',
+            role: 'admin',
+            is_admin: true,
+          },
+          isAuthenticated: true,
+        },
+      });
+      render(<MobileDrawer {...defaultProps} />);
       expect(screen.getByText('Legacy Admin')).toBeInTheDocument();
     });
 
@@ -325,11 +345,7 @@ describe('MobileDrawer', () => {
         },
       });
       render(<MobileDrawer {...defaultProps} />);
-      expect(screen.getByText('Partner With Us')).toBeInTheDocument();
-      expect(screen.getByText('Social Prescribing')).toBeInTheDocument();
-      expect(screen.getByText('Our Impact')).toBeInTheDocument();
-      expect(screen.getByText('Impact Report')).toBeInTheDocument();
-      expect(screen.getByText('Strategic Plan')).toBeInTheDocument();
+      expect(screen.getByText('About')).toBeInTheDocument();
     });
 
     it('does NOT show hOUR Timebank items for other tenants', () => {
@@ -356,7 +372,7 @@ describe('MobileDrawer', () => {
         },
       });
       render(<MobileDrawer {...defaultProps} />);
-      expect(screen.getByText('Events')).toBeInTheDocument();
+      expect(screen.getByText('Community')).toBeInTheDocument();
     });
 
     it('does NOT show Events link when events feature is disabled', () => {
@@ -378,8 +394,7 @@ describe('MobileDrawer', () => {
         },
       });
       render(<MobileDrawer {...defaultProps} />);
-      expect(screen.getByText('Achievements')).toBeInTheDocument();
-      expect(screen.getByText('Leaderboard')).toBeInTheDocument();
+      expect(screen.getByText('Explore')).toBeInTheDocument();
     });
   });
 

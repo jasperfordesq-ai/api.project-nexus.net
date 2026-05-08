@@ -38,6 +38,9 @@ vi.mock('@/contexts', () => ({
     branding: { name: 'Test', primary_color: '#4F46E5' },
     tenantSlug: 'test',
   })),
+  useAuth: vi.fn(() => ({
+    status: 'authenticated',
+  })),
 }));
 
 describe('SessionExpiredModal', () => {
