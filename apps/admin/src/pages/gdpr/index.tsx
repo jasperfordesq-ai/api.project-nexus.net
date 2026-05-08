@@ -21,11 +21,15 @@ const severityColors: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
+  detected: "red",
+  contained: "blue",
+  remediated: "green",
   open: "red",
   investigating: "orange",
   resolved: "green",
   closed: "default",
   pending: "orange",
+  approved: "blue",
   completed: "green",
   processing: "blue",
   rejected: "red",
@@ -37,6 +41,7 @@ export const GdprPage = () => {
   const [requestPage, setRequestPage] = useState(1);
   const [requestPageSize, setRequestPageSize] = useState(20);
   const [exportUserId, setExportUserId] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const { data: breachData, isLoading: breachLoading, refetch: refetchBreaches } = useCustom({
     url: "/api/admin/gdpr/breaches",
@@ -64,21 +69,38 @@ export const GdprPage = () => {
 
   const breachRaw = breachData?.data as any;
   const breaches = breachRaw?.items || breachRaw?.data || [];
-  const breachTotalCount = breachRaw?.total || breachRaw?.totalCount || breaches.length;
+  const breachTotalCount = breachRaw?.pagination?.total || breachRaw?.total || breachRaw?.totalCount || breaches.length;
 
   const consentTypes = (consentTypesData?.data as any)?.items || (consentTypesData?.data as any)?.data || [];
-  const consentStats = (consentStatsData?.data as any)?.items || (consentStatsData?.data as any)?.data || consentStatsData?.data || {};
+  const consentStatsRows = (consentStatsData?.data as any)?.items || (consentStatsData?.data as any)?.data || [];
+  const consentStats = Array.isArray(consentStatsRows)
+    ? {
+        active_types: consentStatsRows.length,
+        total_records: consentStatsRows.reduce((sum: number, item: any) => sum + (item.total_records || 0), 0),
+        granted_count: consentStatsRows.reduce((sum: number, item: any) => sum + (item.granted_count || 0), 0),
+        revoked_count: consentStatsRows.reduce((sum: number, item: any) => sum + (item.revoked_count || 0), 0),
+      }
+    : consentStatsRows || {};
 
   const requestsRaw = requestsData?.data as any;
   const requests = requestsRaw?.items || requestsRaw?.data || (Array.isArray(requestsData?.data) ? requestsData.data : []);
   const requestsTotalCount = requestsRaw?.pagination?.total || requestsRaw?.total || requestsRaw?.totalCount || requests.length;
 
-  const handleExportUser = () => {
+  const handleExportUser = async () => {
     if (!exportUserId) {
       message.warning("Enter a user ID to export");
       return;
     }
-    message.info(`Data export is self-service: users request their data via POST /api/privacy/export. To trigger on behalf of user #${exportUserId}, use the API directly.`);
+    try {
+      setExporting(true);
+      await axiosInstance.post(`/api/admin/privacy/users/${exportUserId}/export`, { format: "json" });
+      message.success(`Data export requested for user #${exportUserId}`);
+      setExportUserId("");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to request data export"));
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleProcessRequest = async (id: number, action: "approve" | "reject") => {
@@ -154,7 +176,7 @@ export const GdprPage = () => {
           style={{ width: 120 }}
           type="number"
         />
-        <Button icon={<DownloadOutlined />} onClick={handleExportUser}>Export User Data</Button>
+        <Button icon={<DownloadOutlined />} onClick={handleExportUser} loading={exporting}>Export User Data</Button>
       </Space>
 
       {requestsLoading ? (
@@ -239,7 +261,7 @@ export const GdprPage = () => {
             <Table.Column dataIndex="name" title="Name" />
             <Table.Column dataIndex="description" title="Description" ellipsis />
             <Table.Column
-              dataIndex="required"
+              dataIndex="is_required"
               title="Required"
               width={90}
               render={(v: boolean) => <Tag color={v ? "red" : "default"}>{v ? "Yes" : "No"}</Tag>}

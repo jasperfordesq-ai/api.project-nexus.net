@@ -48,11 +48,16 @@ export const BlogEditPage = () => {
     }
     try {
       setSaving(true);
+      const payload = {
+        ...values,
+        publish: values.status === "published",
+      };
+      delete payload.slug;
       if (isNew) {
-        await axiosInstance.post("/api/admin/blog", values);
+        await axiosInstance.post("/api/admin/blog", payload);
         message.success("Post created");
       } else {
-        await axiosInstance.put(`/api/admin/blog/${id}`, values);
+        await axiosInstance.put(`/api/admin/blog/${id}`, payload);
         message.success("Post updated");
       }
       navigate("/blog");
@@ -71,7 +76,7 @@ export const BlogEditPage = () => {
       <Card>
         <Form form={form} layout="vertical" style={{ maxWidth: 800 }}>
           <Form.Item name="title" label="Title" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="slug" label="Slug" rules={[{ required: true }]}><Input /></Form.Item>
+          {!isNew && <Form.Item name="slug" label="Slug"><Input disabled /></Form.Item>}
           <Form.Item name="excerpt" label="Excerpt"><Input.TextArea rows={2} /></Form.Item>
           <Form.Item name="content" label="Content" rules={[{ required: true }]}><Input.TextArea rows={12} /></Form.Item>
           <Form.Item name="category_id" label="Category">

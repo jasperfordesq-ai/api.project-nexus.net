@@ -121,6 +121,14 @@ public class FileUploadService
     }
 
     /// <summary>
+    /// Get the stable API URL that serves a file through the download endpoint.
+    /// </summary>
+    public string GetDownloadUrl(FileUpload file)
+    {
+        return $"/api/files/{file.Id}/download";
+    }
+
+    /// <summary>
     /// List files for an entity (e.g., all images for a listing).
     /// </summary>
     public async Task<List<FileUpload>> GetByEntityAsync(string entityType, int entityId)

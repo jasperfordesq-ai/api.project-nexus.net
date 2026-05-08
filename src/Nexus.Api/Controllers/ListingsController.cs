@@ -89,6 +89,11 @@ public class ListingsController : ControllerBase
                 expires_at = l.ExpiresAt,
                 created_at = l.CreatedAt,
                 updated_at = l.UpdatedAt,
+                image_file_id = _db.FileUploads
+                    .Where(f => f.EntityType == "listing" && f.EntityId == l.Id && f.Category == FileCategory.Listing)
+                    .OrderByDescending(f => f.CreatedAt)
+                    .Select(f => (int?)f.Id)
+                    .FirstOrDefault(),
                 user = l.User != null
                     ? new
                     {
@@ -106,7 +111,23 @@ public class ListingsController : ControllerBase
 
         return Ok(new
         {
-            data = listings,
+            data = listings.Select(l => new
+            {
+                l.id,
+                l.title,
+                l.description,
+                l.type,
+                l.status,
+                l.location,
+                l.estimated_hours,
+                image_url = BuildFileDownloadUrl(l.image_file_id),
+                l.is_featured,
+                l.view_count,
+                l.expires_at,
+                l.created_at,
+                l.updated_at,
+                l.user
+            }),
             pagination = new
             {
                 page,
@@ -142,6 +163,11 @@ public class ListingsController : ControllerBase
                 expires_at = l.ExpiresAt,
                 created_at = l.CreatedAt,
                 updated_at = l.UpdatedAt,
+                image_file_id = _db.FileUploads
+                    .Where(f => f.EntityType == "listing" && f.EntityId == l.Id && f.Category == FileCategory.Listing)
+                    .OrderByDescending(f => f.CreatedAt)
+                    .Select(f => (int?)f.Id)
+                    .FirstOrDefault(),
                 user = l.User != null
                     ? new
                     {
@@ -170,6 +196,7 @@ public class ListingsController : ControllerBase
             listing.category_id,
             listing.location,
             listing.estimated_hours,
+            image_url = BuildFileDownloadUrl(listing.image_file_id),
             listing.is_featured,
             listing.view_count,
             listing.expires_at,
@@ -478,6 +505,11 @@ public class ListingsController : ControllerBase
     }
 
     private int? GetCurrentUserId() => User.GetUserId();
+
+    private static string? BuildFileDownloadUrl(int? fileId)
+    {
+        return fileId.HasValue ? $"/api/files/{fileId.Value}/download" : null;
+    }
 }
 
 /// <summary>

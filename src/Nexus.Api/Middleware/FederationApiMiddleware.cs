@@ -4,6 +4,8 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Middleware;
@@ -21,6 +23,7 @@ public class FederationApiMiddleware
     private readonly ILogger<FederationApiMiddleware> _logger;
     private const string FederationApiPrefix = "/api/v1/federation";
     private const string ApiKeyHeader = "X-Federation-Key";
+    private const string LegacyApiKeyHeader = "X-API-Key";
 
     public FederationApiMiddleware(RequestDelegate next, ILogger<FederationApiMiddleware> logger)
     {
@@ -37,8 +40,9 @@ public class FederationApiMiddleware
             return;
         }
 
-        // Allow the info endpoint without auth
-        if (context.Request.Path.Equals($"{FederationApiPrefix}", StringComparison.OrdinalIgnoreCase) &&
+        // Allow the info and health endpoints without auth.
+        if ((context.Request.Path.Equals($"{FederationApiPrefix}", StringComparison.OrdinalIgnoreCase) ||
+             context.Request.Path.Equals($"{FederationApiPrefix}/health", StringComparison.OrdinalIgnoreCase)) &&
             context.Request.Method == "GET")
         {
             await _next(context);
@@ -49,10 +53,19 @@ public class FederationApiMiddleware
         var apiKeyService = context.RequestServices.GetRequiredService<FederationApiKeyService>();
         var jwtService = context.RequestServices.GetRequiredService<FederationJwtService>();
 
-        // Try API Key authentication first
-        if (context.Request.Headers.TryGetValue(ApiKeyHeader, out var apiKeyValue))
+        // Try API Key authentication first. V1.5 accepts X-API-Key and raw Bearer
+        // API keys; keep X-Federation-Key as the V2-native header.
+        var apiKeyText = GetApiKey(context);
+        if (!string.IsNullOrWhiteSpace(apiKeyText))
         {
-            var apiKey = await apiKeyService.ValidateApiKeyAsync(apiKeyValue.ToString());
+            if (HasHmacHeaders(context) && !await VerifyHmacSignatureAsync(context, apiKeyText))
+            {
+                sw.Stop();
+                await LogAndReject(context, apiKeyService, sw.Elapsed, "Invalid request signature");
+                return;
+            }
+
+            var apiKey = await apiKeyService.ValidateApiKeyAsync(apiKeyText);
             if (apiKey == null)
             {
                 sw.Stop();
@@ -61,7 +74,7 @@ public class FederationApiMiddleware
             }
 
             // Store the authenticated tenant info in HttpContext
-            context.Items["FederationAuth"] = "apikey";
+            context.Items["FederationAuth"] = HasHmacHeaders(context) ? "hmac" : "apikey";
             context.Items["FederationTenantId"] = apiKey.TenantId;
             context.Items["FederationApiKeyId"] = apiKey.Id;
             context.Items["FederationScopes"] = apiKey.Scopes;
@@ -109,6 +122,63 @@ public class FederationApiMiddleware
         // No valid authentication
         sw.Stop();
         await LogAndReject(context, apiKeyService, sw.Elapsed, "Federation API authentication required");
+    }
+
+    private static string? GetApiKey(HttpContext context)
+    {
+        if (context.Request.Headers.TryGetValue(ApiKeyHeader, out var apiKeyValue))
+            return apiKeyValue.ToString();
+
+        if (context.Request.Headers.TryGetValue(LegacyApiKeyHeader, out var legacyApiKeyValue))
+            return legacyApiKeyValue.ToString();
+
+        var authHeader = context.Request.Headers.Authorization.ToString();
+        if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var bearer = authHeader["Bearer ".Length..].Trim();
+        return bearer.Count(c => c == '.') == 2 ? null : bearer;
+    }
+
+    private static bool HasHmacHeaders(HttpContext context) =>
+        context.Request.Headers.ContainsKey("X-Federation-Signature") &&
+        context.Request.Headers.ContainsKey("X-Federation-Timestamp");
+
+    private static async Task<bool> VerifyHmacSignatureAsync(HttpContext context, string sharedSecret)
+    {
+        var timestamp = context.Request.Headers["X-Federation-Timestamp"].ToString();
+        var signature = context.Request.Headers["X-Federation-Signature"].ToString();
+        var nonce = context.Request.Headers["X-Federation-Nonce"].ToString();
+
+        if (string.IsNullOrWhiteSpace(timestamp) ||
+            string.IsNullOrWhiteSpace(signature) ||
+            string.IsNullOrWhiteSpace(nonce))
+            return false;
+
+        if (!DateTimeOffset.TryParse(timestamp, out var parsedTimestamp) &&
+            (!long.TryParse(timestamp, out var unixTimestamp) ||
+             (parsedTimestamp = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp)) == default))
+            return false;
+
+        if (Math.Abs((DateTimeOffset.UtcNow - parsedTimestamp.ToUniversalTime()).TotalSeconds) > 300)
+            return false;
+
+        context.Request.EnableBuffering();
+        string body;
+        using (var reader = new StreamReader(context.Request.Body, Encoding.UTF8, leaveOpen: true))
+        {
+            body = await reader.ReadToEndAsync();
+            context.Request.Body.Position = 0;
+        }
+
+        var path = context.Request.Path + context.Request.QueryString;
+        var stringToSign = string.Join("\n", context.Request.Method.ToUpperInvariant(), path, timestamp, nonce, body);
+        var expectedBytes = HMACSHA256.HashData(Encoding.UTF8.GetBytes(sharedSecret), Encoding.UTF8.GetBytes(stringToSign));
+        var expected = Convert.ToHexString(expectedBytes).ToLowerInvariant();
+
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(expected),
+            Encoding.UTF8.GetBytes(signature.ToLowerInvariant()));
     }
 
     private async Task LogAndReject(HttpContext context, FederationApiKeyService apiKeyService,

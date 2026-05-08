@@ -272,6 +272,38 @@ public class AdminGdprController : ControllerBase
     private int? GetCurrentUserId() => User.GetUserId();
 
     /// <summary>
+    /// POST /api/admin/privacy/users/{userId}/export - Request a data export for a user.
+    /// </summary>
+    [HttpPost("users/{userId:int}/export")]
+    public async Task<IActionResult> RequestUserExport(int userId, [FromBody] ExportRequest? request = null)
+    {
+        var userExists = await _db.Users.AnyAsync(u => u.Id == userId);
+        if (!userExists) return NotFound(new { error = "User not found" });
+
+        try
+        {
+            var exportRequest = await _gdprService.RequestDataExportAsync(userId, request?.Format ?? "json");
+            return Ok(new
+            {
+                id = exportRequest.Id,
+                user_id = userId,
+                status = exportRequest.Status.ToString().ToLowerInvariant(),
+                format = exportRequest.Format,
+                requested_at = exportRequest.RequestedAt,
+                message = "Data export requested"
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// GET /api/admin/privacy/deletions - List pending deletion requests.
     /// </summary>
     [HttpGet("deletions")]

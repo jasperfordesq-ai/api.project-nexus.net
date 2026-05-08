@@ -178,6 +178,11 @@ export const resources: ResourceProps[] = [
     meta: { label: "Vetting", icon: e(IdcardOutlined), parent: "security", apiPath: "/api/admin/vetting" },
   },
   {
+    name: "safeguarding",
+    list: "/safeguarding",
+    meta: { label: "Safeguarding", icon: e(SafetyOutlined), parent: "security", apiPath: "/api/admin/safeguarding" },
+  },
+  {
     name: "audit",
     list: "/audit",
     meta: { label: "Audit Logs", icon: e(AuditOutlined), parent: "security", apiPath: "/api/admin/audit" },

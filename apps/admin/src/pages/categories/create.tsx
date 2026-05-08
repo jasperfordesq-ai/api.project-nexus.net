@@ -18,7 +18,7 @@ export const CategoryCreate = () => {
         <Form.Item label="Name" name="name" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item label="Slug" name="slug" rules={[{ required: true }]}>
+        <Form.Item label="Slug" name="slug">
           <Input />
         </Form.Item>
         <Form.Item label="Sort Order" name="sort_order" initialValue={0}>

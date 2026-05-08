@@ -149,7 +149,12 @@ public class SystemAdminController : ControllerBase
     public async Task<IActionResult> GetAnnouncements()
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var announcements = await _systemAdmin.GetActiveAnnouncementsAsync(tenantId);
+        var announcements = await _db.PlatformAnnouncements
+            .AsNoTracking()
+            .Include(a => a.CreatedBy)
+            .Where(a => a.TenantId == tenantId)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync();
 
         var response = announcements.Select(MapAnnouncementResponse);
         return Ok(response);
@@ -188,6 +193,53 @@ public class SystemAdminController : ControllerBase
     }
 
     /// <summary>
+    /// PUT /api/admin/system/announcements/{id} - Update or reactivate an announcement.
+    /// </summary>
+    [HttpPut("announcements/{id:int}")]
+    public async Task<IActionResult> UpdateAnnouncement(int id, [FromBody] UpdateSystemAnnouncementRequest request)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var announcement = await _db.PlatformAnnouncements
+            .Include(a => a.CreatedBy)
+            .FirstOrDefaultAsync(a => a.Id == id && a.TenantId == tenantId);
+
+        if (announcement == null)
+            return NotFound(new { error = "Announcement not found" });
+
+        if (request.Title != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+                return BadRequest(new { error = "title cannot be empty" });
+            announcement.Title = request.Title.Trim();
+        }
+
+        if (request.Content != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Content))
+                return BadRequest(new { error = "content cannot be empty" });
+            announcement.Content = request.Content.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Type) &&
+            Enum.TryParse<AnnouncementType>(request.Type, true, out var type))
+        {
+            announcement.Type = type;
+        }
+
+        if (request.IsActive.HasValue)
+            announcement.IsActive = request.IsActive.Value;
+        if (request.StartsAt.HasValue)
+            announcement.StartsAt = request.StartsAt;
+        if (request.EndsAt.HasValue)
+            announcement.EndsAt = request.EndsAt;
+
+        announcement.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(MapAnnouncementResponse(announcement));
+    }
+
+    /// <summary>
     /// PUT /api/admin/system/announcements/{id}/deactivate - Deactivate an announcement.
     /// </summary>
     [HttpPut("announcements/{id:int}/deactivate")]
@@ -199,6 +251,25 @@ public class SystemAdminController : ControllerBase
             return NotFound(new { error = "Announcement not found" });
 
         return Ok(new { message = "Announcement deactivated" });
+    }
+
+    /// <summary>
+    /// DELETE /api/admin/system/announcements/{id} - Delete an announcement.
+    /// </summary>
+    [HttpDelete("announcements/{id:int}")]
+    public async Task<IActionResult> DeleteAnnouncement(int id)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var announcement = await _db.PlatformAnnouncements
+            .FirstOrDefaultAsync(a => a.Id == id && a.TenantId == tenantId);
+
+        if (announcement == null)
+            return NotFound(new { error = "Announcement not found" });
+
+        _db.PlatformAnnouncements.Remove(announcement);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Announcement deleted" });
     }
 
     #endregion
@@ -613,6 +684,27 @@ public class SystemAdminController : ControllerBase
 
         [JsonPropertyName("type")]
         public string Type { get; set; } = "info";
+
+        [JsonPropertyName("starts_at")]
+        public DateTime? StartsAt { get; set; }
+
+        [JsonPropertyName("ends_at")]
+        public DateTime? EndsAt { get; set; }
+    }
+
+    public class UpdateSystemAnnouncementRequest
+    {
+        [JsonPropertyName("title")]
+        public string? Title { get; set; }
+
+        [JsonPropertyName("content")]
+        public string? Content { get; set; }
+
+        [JsonPropertyName("type")]
+        public string? Type { get; set; }
+
+        [JsonPropertyName("is_active")]
+        public bool? IsActive { get; set; }
 
         [JsonPropertyName("starts_at")]
         public DateTime? StartsAt { get; set; }

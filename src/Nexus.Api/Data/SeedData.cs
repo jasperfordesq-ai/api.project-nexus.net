@@ -6,6 +6,8 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Entities;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Nexus.Api.Data;
 
@@ -54,9 +56,9 @@ public static class SeedData
 
         db.Tenants.AddRange(tenant1, tenant2);
 
-        // Create test users — password is the standard dev seed value
+        // Create test users with the strong local demo password shared by the V2 showcase seed.
         // BCrypt hash computed at runtime for deterministic seeding
-        var passwordHash = BCrypt.Net.BCrypt.HashPassword("Test123!");
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(DemoShowcaseSeedData.DemoPassword);
 
         var user1 = new User
         {
@@ -323,6 +325,101 @@ public static class SeedData
         };
 
         db.Messages.AddRange(messages);
+
+        // Enable V1.5-compatible federation between the two seeded tenants.
+        db.FederationSystemControls.Add(new FederationSystemControl
+        {
+            Id = 1,
+            FederationEnabled = true,
+            EmergencyLockdown = false,
+            RequireTenantWhitelist = true,
+            AutoApprovePartnerships = true,
+            MaxPartnersPerTenant = 100,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        db.FederationTenantWhitelists.AddRange(
+            new FederationTenantWhitelist { Id = 1, TenantId = 1, IsEnabled = true, ApprovedByUserId = 1, Notes = "Seed federation enabled" },
+            new FederationTenantWhitelist { Id = 2, TenantId = 2, IsEnabled = true, ApprovedByUserId = 2, Notes = "Seed federation enabled" });
+
+        var federationFeatureId = 1;
+        foreach (var tenantId in new[] { 1, 2 })
+        {
+            foreach (var feature in new[] { "profiles", "members", "listings", "messages", "transactions", "reviews", "events", "groups", "connections", "volunteering", "member_sync" })
+            {
+                db.FederationTenantFeatures.Add(new FederationTenantFeature
+                {
+                    Id = federationFeatureId++,
+                    TenantId = tenantId,
+                    Feature = feature,
+                    IsEnabled = true,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        db.FederationPartners.AddRange(
+            new FederationPartner
+            {
+                Id = 1,
+                TenantId = 1,
+                PartnerTenantId = 2,
+                Status = PartnerStatus.Active,
+                SharedListings = true,
+                SharedEvents = true,
+                SharedMembers = true,
+                CreditExchangeRate = 1m,
+                RequestedById = 1,
+                ApprovedById = 2,
+                ApprovedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            },
+            new FederationPartner
+            {
+                Id = 2,
+                TenantId = 2,
+                PartnerTenantId = 1,
+                Status = PartnerStatus.Active,
+                SharedListings = true,
+                SharedEvents = true,
+                SharedMembers = true,
+                CreditExchangeRate = 1m,
+                RequestedById = 2,
+                ApprovedById = 1,
+                ApprovedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        db.FederationUserSettings.AddRange(
+            new FederationUserSetting { Id = 1, TenantId = 1, UserId = 1, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true },
+            new FederationUserSetting { Id = 2, TenantId = 1, UserId = 3, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true },
+            new FederationUserSetting { Id = 3, TenantId = 2, UserId = 2, FederationOptIn = true, ProfileVisible = true, ListingsVisible = true });
+
+        db.FederationApiKeys.AddRange(
+            new FederationApiKey
+            {
+                Id = 1,
+                TenantId = 1,
+                Name = "Seed ACME federation key",
+                KeyHash = Sha256("nxfed_seed_acme_to_globex"),
+                KeyPrefix = "nxfed_se",
+                Scopes = "*,listings,members,messages,messages:read,messages:write,transactions,transactions:read,transactions:write,reviews,reviews:read,reviews:write,exchanges",
+                IsActive = true,
+                RateLimitPerMinute = 600,
+                CreatedAt = DateTime.UtcNow
+            },
+            new FederationApiKey
+            {
+                Id = 2,
+                TenantId = 2,
+                Name = "Seed Globex federation key",
+                KeyHash = Sha256("nxfed_seed_globex_to_acme"),
+                KeyPrefix = "nxfed_se",
+                Scopes = "*,listings,members,messages,messages:read,messages:write,transactions,transactions:read,transactions:write,reviews,reviews:read,reviews:write,exchanges",
+                IsActive = true,
+                RateLimitPerMinute = 600,
+                CreatedAt = DateTime.UtcNow
+            });
 
         // Create connections for testing connection functionality
         var connections = new List<Connection>
@@ -910,8 +1007,20 @@ public static class SeedData
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('tenant_configs', 'Id'), (SELECT MAX(\"Id\") FROM tenant_configs))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('supported_locales', 'Id'), (SELECT MAX(\"Id\") FROM supported_locales))");
         await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('translations', 'Id'), (SELECT MAX(\"Id\") FROM translations))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('federation_system_control', 'Id'), (SELECT MAX(\"Id\") FROM federation_system_control))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('federation_tenant_whitelist', 'Id'), (SELECT MAX(\"Id\") FROM federation_tenant_whitelist))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('federation_tenant_features', 'Id'), (SELECT MAX(\"Id\") FROM federation_tenant_features))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('federation_partners', 'Id'), (SELECT MAX(\"Id\") FROM federation_partners))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('federation_user_settings', 'Id'), (SELECT MAX(\"Id\") FROM federation_user_settings))");
+        await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('federation_api_keys', 'Id'), (SELECT MAX(\"Id\") FROM federation_api_keys))");
 
         logger.LogInformation("Seeded {TenantCount} tenants, {UserCount} users, {ListingCount} listings, {TransactionCount} transactions, {ConversationCount} conversations, {MessageCount} messages, {ConnectionCount} connections, {GroupCount} groups, {EventCount} events, {RsvpCount} RSVPs, {PostCount} posts, {BadgeCount} badges, {ReviewCount} reviews, {CategoryCount} categories, {RoleCount} roles, {ConfigCount} configs, {LocaleCount} locales, {TranslationCount} translations",
             2, 3, listings.Count, transactions.Count, conversations.Count, messages.Count, connections.Count, groups.Count, events.Count, eventRsvps.Count, feedPosts.Count, badges.Count, reviews.Count, categories.Count, roles.Count, tenantConfigs.Count, locales.Count, translations.Count);
+    }
+
+    private static string Sha256(string value)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
     }
 }

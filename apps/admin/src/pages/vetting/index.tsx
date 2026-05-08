@@ -24,8 +24,9 @@ export const VettingPage = () => {
 
   const recordsRaw = recordsData?.data as any;
   const records = recordsRaw?.items || recordsRaw?.data || [];
-  const totalCount = recordsRaw?.total || recordsRaw?.totalCount || records.length;
-  const stats = statsData?.data as any;
+  const totalCount = recordsRaw?.meta?.total || recordsRaw?.total || recordsRaw?.totalCount || records.length;
+  const statsRaw = statsData?.data as any;
+  const stats = statsRaw?.data || statsRaw;
   const expiring = (expiringData?.data as any)?.items || (expiringData?.data as any)?.data || (Array.isArray(expiringData?.data) ? expiringData.data : []);
   const pending = (pendingData?.data as any)?.items || (pendingData?.data as any)?.data || (Array.isArray(pendingData?.data) ? pendingData.data : []);
 
@@ -61,10 +62,17 @@ export const VettingPage = () => {
 
   const vettingColumns = [
     { dataIndex: "id", title: "ID", width: 60 },
-    { dataIndex: "user_id", title: "User ID", width: 80 },
-    { dataIndex: "type", title: "Type" },
+    {
+      title: "User",
+      render: (_: any, r: any) => {
+        const user = r.user;
+        const name = user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : "";
+        return name || user?.email || `User #${r.user_id}`;
+      },
+    },
+    { dataIndex: "vetting_type", title: "Type" },
     { dataIndex: "status", title: "Status", render: (s: string) => <StatusTag status={s} /> },
-    { dataIndex: "expiry_date", title: "Expiry", render: (d: string) => d ? dayjs(d).format("DD MMM YYYY") : "—" },
+    { dataIndex: "expires_at", title: "Expiry", render: (d: string) => d ? dayjs(d).format("DD MMM YYYY") : "—" },
   ];
 
   return (

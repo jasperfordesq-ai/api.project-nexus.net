@@ -160,6 +160,12 @@ public class NexusDbContext : DbContext
     public DbSet<FederationFeatureToggle> FederationFeatureToggles => Set<FederationFeatureToggle>();
     public DbSet<FederationUserSetting> FederationUserSettings => Set<FederationUserSetting>();
     public DbSet<FederationApiLog> FederationApiLogs => Set<FederationApiLog>();
+    public DbSet<FederationExternalPartner> FederationExternalPartners => Set<FederationExternalPartner>();
+    public DbSet<FederationExternalPartnerLog> FederationExternalPartnerLogs => Set<FederationExternalPartnerLog>();
+    public DbSet<FederationWebhookNonce> FederationWebhookNonces => Set<FederationWebhookNonce>();
+    public DbSet<FederationSystemControl> FederationSystemControls => Set<FederationSystemControl>();
+    public DbSet<FederationTenantWhitelist> FederationTenantWhitelists => Set<FederationTenantWhitelist>();
+    public DbSet<FederationTenantFeature> FederationTenantFeatures => Set<FederationTenantFeature>();
 
     // Phase 36: Predictive Staffing
     public DbSet<StaffingPrediction> StaffingPredictions => Set<StaffingPrediction>();
@@ -290,6 +296,11 @@ public class NexusDbContext : DbContext
     // Broker Assignments
     public DbSet<BrokerAssignment> BrokerAssignments => Set<BrokerAssignment>();
     public DbSet<BrokerNote> BrokerNotes => Set<BrokerNote>();
+    public DbSet<SafeguardingOption> SafeguardingOptions => Set<SafeguardingOption>();
+    public DbSet<SafeguardingAssignment> SafeguardingAssignments => Set<SafeguardingAssignment>();
+    public DbSet<SafeguardingMessageReview> SafeguardingMessageReviews => Set<SafeguardingMessageReview>();
+    public DbSet<BrokerRiskTag> BrokerRiskTags => Set<BrokerRiskTag>();
+    public DbSet<UserMonitoringRestriction> UserMonitoringRestrictions => Set<UserMonitoringRestriction>();
 
     // Enterprise Config
     public DbSet<EnterpriseConfig> EnterpriseConfigs => Set<EnterpriseConfig>();

@@ -44,8 +44,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 # Copy published output only (no source needed at runtime)
 COPY --from=build /app/publish .
 
-# Change ownership and switch to non-root user
-RUN chown -R appuser:appuser /app
+# Create writable upload storage and switch to non-root user
+RUN mkdir -p /app/uploads \
+    && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port 8080 (container internal port)

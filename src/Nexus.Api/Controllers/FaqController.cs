@@ -63,7 +63,7 @@ public class FaqController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Question)) return BadRequest(new { error = "Question is required" });
         if (string.IsNullOrWhiteSpace(request.Answer)) return BadRequest(new { error = "Answer is required" });
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var faq = new Faq { TenantId = tenantId, Question = request.Question.Trim(), Answer = request.Answer.Trim(), Category = request.Category?.Trim(), IsPublished = true };
+        var faq = new Faq { TenantId = tenantId, Question = request.Question.Trim(), Answer = request.Answer.Trim(), Category = request.Category?.Trim(), SortOrder = request.SortOrder ?? 0, IsPublished = true };
         _db.Faqs.Add(faq); await _db.SaveChangesAsync();
         _logger.LogInformation("FAQ created: {FaqId}", faq.Id);
         return CreatedAtAction(nameof(Get), new { id = faq.Id }, new { success = true, message = "FAQ created", faq = new { faq.Id, faq.Question, faq.Answer, faq.Category, sort_order = faq.SortOrder, is_published = faq.IsPublished, created_at = faq.CreatedAt } });
@@ -78,6 +78,7 @@ public class FaqController : ControllerBase
         if (request.Question != null) { if (string.IsNullOrWhiteSpace(request.Question)) return BadRequest(new { error = "Question cannot be empty" }); faq.Question = request.Question.Trim(); }
         if (request.Answer != null) { if (string.IsNullOrWhiteSpace(request.Answer)) return BadRequest(new { error = "Answer cannot be empty" }); faq.Answer = request.Answer.Trim(); }
         if (request.Category != null) faq.Category = string.IsNullOrWhiteSpace(request.Category) ? null : request.Category.Trim();
+        if (request.SortOrder.HasValue) faq.SortOrder = request.SortOrder.Value;
         if (request.IsPublished.HasValue) faq.IsPublished = request.IsPublished.Value;
         faq.UpdatedAt = DateTime.UtcNow; await _db.SaveChangesAsync();
         return Ok(new { success = true, message = "FAQ updated", faq = new { faq.Id, faq.Question, faq.Answer, faq.Category, sort_order = faq.SortOrder, is_published = faq.IsPublished, updated_at = faq.UpdatedAt } });
@@ -110,6 +111,7 @@ public record CreateFaqDto
     [JsonPropertyName("question")] public string Question { get; init; } = string.Empty;
     [JsonPropertyName("answer")] public string Answer { get; init; } = string.Empty;
     [JsonPropertyName("category")] public string? Category { get; init; }
+    [JsonPropertyName("sort_order")] public int? SortOrder { get; init; }
 }
 
 public record UpdateFaqDto
@@ -117,6 +119,7 @@ public record UpdateFaqDto
     [JsonPropertyName("question")] public string? Question { get; init; }
     [JsonPropertyName("answer")] public string? Answer { get; init; }
     [JsonPropertyName("category")] public string? Category { get; init; }
+    [JsonPropertyName("sort_order")] public int? SortOrder { get; init; }
     [JsonPropertyName("is_published")] public bool? IsPublished { get; init; }
 }
 

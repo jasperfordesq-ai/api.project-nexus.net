@@ -14,7 +14,9 @@ const { Title, Text } = Typography;
 
 export const SearchAdminPage = () => {
   const { data, isLoading, refetch } = useCustom({ url: "/api/admin/search/stats", method: "get" });
-  const stats = data?.data as any;
+  const rawStats = data?.data as any;
+  const stats = rawStats?.data || rawStats;
+  const totalDocuments = stats?.total_documents ?? Object.values(stats?.indexes || {}).reduce((sum: number, index: any) => sum + (index.document_count || 0), 0);
   const [reindexing, setReindexing] = useState(false);
   const [reindexType, setReindexType] = useState<string | null>(null);
 
@@ -54,7 +56,7 @@ export const SearchAdminPage = () => {
               prefix={stats.healthy ? <CheckCircleOutlined style={{ color: "#52c41a" }} /> : <WarningOutlined style={{ color: "#ff4d4f" }} />} /></Card>
           </Col>
           <Col xs={24} sm={12} lg={8}>
-            <Card><Statistic title="Total Documents" value={stats.total_documents ?? 0} /></Card>
+            <Card><Statistic title="Total Documents" value={totalDocuments} /></Card>
           </Col>
         </Row>
       )}

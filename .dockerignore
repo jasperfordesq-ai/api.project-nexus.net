@@ -23,6 +23,7 @@
 
 # Backup files
 backups/
+uploads/
 
 # Environment files (use compose.yml environment instead)
 .env

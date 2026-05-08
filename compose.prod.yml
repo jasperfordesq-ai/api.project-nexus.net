@@ -20,6 +20,9 @@ services:
       - RateLimiting__Auth__WindowSeconds=60
       - RateLimiting__General__PermitLimit=500
       - RateLimiting__General__WindowSeconds=60
+      - FileUpload__UploadsRoot=/app/uploads
+    volumes:
+      - nexus-backend-uploads:/app/uploads
 
   # Admin Panel - production build (nginx, no hot-reload, no volume mounts)
   admin:

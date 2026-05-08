@@ -73,8 +73,8 @@ docker compose down
 
 | Email | Password | Tenant |
 |-------|----------|--------|
-| admin@acme.test | Test123! | acme |
-| member@acme.test | Test123! | acme |
+| admin@acme.test | NexusV2!Demo#2026 | acme |
+| member@acme.test | NexusV2!Demo#2026 | acme |
 
 ## Tech Stack
 

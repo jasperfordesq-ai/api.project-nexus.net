@@ -28,8 +28,8 @@ docker compose --profile production up
 
 | Email | Password | Tenant | Role |
 |-------|----------|--------|------|
-| admin@acme.test | Test123! | acme | admin |
-| admin@globex.test | Test123! | globex | admin |
+| admin@acme.test | NexusV2!Demo#2026 | acme | admin |
+| admin@globex.test | NexusV2!Demo#2026 | globex | admin |
 
 ## Stack
 

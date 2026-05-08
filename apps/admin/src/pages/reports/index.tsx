@@ -14,9 +14,10 @@ const { Title } = Typography;
 
 const statusColors: Record<string, string> = {
   pending: "orange",
-  reviewing: "blue",
-  resolved: "green",
+  underreview: "blue",
+  actiontaken: "green",
   dismissed: "default",
+  escalated: "red",
 };
 
 export const ReportsPage = () => {
@@ -36,13 +37,18 @@ export const ReportsPage = () => {
 
   const raw = data?.data as any;
   const reports = raw?.items || raw?.data || [];
-  const totalCount = raw?.total || raw?.totalCount || reports.length;
-  const stats = statsData?.data || {};
+  const totalCount = raw?.pagination?.total || raw?.total || raw?.totalCount || reports.length;
+  const statsRaw = statsData?.data as any;
+  const stats = statsRaw?.data || statsRaw || {};
+  const numericStats = Object.entries(stats).filter(([, value]) => typeof value === "number");
 
   const handleReview = async (id: number) => {
     try {
-      await axiosInstance.put(`/api/admin/reports/${id}/review`);
-      message.success("Report marked as reviewing");
+      await axiosInstance.put(`/api/admin/reports/${id}/review`, {
+        status: 1,
+        notes: "Marked as under review from the admin panel",
+      });
+      message.success("Report marked as under review");
       refetch();
     } catch (err: unknown) {
       message.error(getErrorMessage(err, "Failed to update report"));
@@ -53,9 +59,9 @@ export const ReportsPage = () => {
     <div>
       <Title level={4}>Reports</Title>
 
-      {Object.keys(stats).length > 0 && (
+      {numericStats.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          {Object.entries(stats).map(([key, value]) => (
+          {numericStats.map(([key, value]) => (
             <Col xs={24} sm={12} lg={6} key={key}>
               <Card>
                 <Statistic title={key.replace(/_/g, " ")} value={typeof value === "number" ? value : String(value ?? 0)} />
@@ -85,7 +91,14 @@ export const ReportsPage = () => {
               title="Status"
               render={(s: string) => <Tag color={statusColors[s] || "default"}>{s}</Tag>}
             />
-            <Table.Column dataIndex="reporter_name" title="Reporter" />
+            <Table.Column
+              title="Reporter"
+              render={(_, r: any) => {
+                const reporter = r.reporter;
+                if (!reporter) return "--";
+                return `${reporter.first_name || ""} ${reporter.last_name || ""}`.trim() || `User #${reporter.id}`;
+              }}
+            />
             <Table.Column
               dataIndex="created_at"
               title="Reported"

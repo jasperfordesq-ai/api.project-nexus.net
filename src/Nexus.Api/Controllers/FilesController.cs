@@ -116,8 +116,9 @@ public class FilesController : ControllerBase
         if (file == null)
             return NotFound(new { error = "File not found" });
 
+        var isPublicImage = IsPublicImage(file);
         var tenantId = User.GetTenantId();
-        if (file.Category != FileCategory.Avatar)
+        if (!isPublicImage)
         {
             if (tenantId == null) return Unauthorized(new { error = "Invalid token" });
             if (file.TenantId != tenantId.Value)
@@ -128,7 +129,7 @@ public class FilesController : ControllerBase
         if (!System.IO.File.Exists(fullPath))
             return NotFound(new { error = "File not found on disk" });
 
-        if (file.Category == FileCategory.Avatar)
+        if (isPublicImage)
         {
             Response.Headers.CacheControl = "public, max-age=86400";
             return PhysicalFile(fullPath, file.ContentType);
@@ -168,7 +169,7 @@ public class FilesController : ControllerBase
         return Ok(new { success = true, message = "File deleted" });
     }
 
-    private static object MapFileResponse(FileUpload f) => new
+    private object MapFileResponse(FileUpload f) => new
     {
         id = f.Id,
         original_filename = f.OriginalFilename,
@@ -177,7 +178,18 @@ public class FilesController : ControllerBase
         category = f.Category.ToString().ToLowerInvariant(),
         entity_id = f.EntityId,
         entity_type = f.EntityType,
-        url = $"/api/files/{f.Id}/download",
+        url = _fileService.GetDownloadUrl(f),
         created_at = f.CreatedAt
     };
+
+    private static bool IsPublicImage(FileUpload file)
+    {
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return file.Category is FileCategory.Avatar
+            or FileCategory.Listing
+            or FileCategory.Group
+            or FileCategory.Event;
+    }
 }

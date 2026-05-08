@@ -195,6 +195,29 @@ public class AdminBlogController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/admin/blog/categories - List blog categories.
+    /// </summary>
+    [HttpGet("categories")]
+    public async Task<IActionResult> ListCategories()
+    {
+        var categories = await _blog.GetCategoriesAsync();
+
+        return Ok(new
+        {
+            data = categories.Select(c => new
+            {
+                c.Id,
+                c.Name,
+                c.Slug,
+                c.Description,
+                c.Color,
+                sort_order = c.SortOrder,
+                created_at = c.CreatedAt
+            })
+        });
+    }
+
+    /// <summary>
     /// POST /api/admin/blog/categories - Create a category.
     /// </summary>
     [HttpPost("categories")]

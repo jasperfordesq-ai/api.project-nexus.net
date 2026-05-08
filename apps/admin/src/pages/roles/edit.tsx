@@ -35,13 +35,15 @@ export const RoleEdit = () => {
           message.error("Permissions must be a JSON array");
           return;
         }
-        values.permissions = parsed;
+        values.permissions = JSON.stringify(parsed);
       } catch {
         message.error("Invalid JSON — permissions must be a valid JSON array");
         return;
       }
     } else if (!Array.isArray(raw)) {
-      values.permissions = [];
+      values.permissions = "[]";
+    } else {
+      values.permissions = JSON.stringify(raw);
     }
     formProps.onFinish?.(values);
   };

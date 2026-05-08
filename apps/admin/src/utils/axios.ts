@@ -12,6 +12,38 @@ const axiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+const toSnakeCase = (key: string) =>
+  key
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/[-\s]+/g, "_")
+    .toLowerCase();
+
+const withSnakeCaseAliases = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(withSnakeCaseAliases);
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const source = value as Record<string, unknown>;
+  const output: Record<string, unknown> = { ...source };
+
+  Object.entries(source).forEach(([key, child]) => {
+    const normalizedChild = withSnakeCaseAliases(child);
+    output[key] = normalizedChild;
+
+    const snakeKey = toSnakeCase(key);
+    if (!(snakeKey in output)) {
+      output[snakeKey] = normalizedChild;
+    }
+  });
+
+  return output;
+};
+
 // Attach JWT to every request
 axiosInstance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getToken();
@@ -42,7 +74,10 @@ const processQueue = (error: unknown, token: string | null) => {
 };
 
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    response.data = withSnakeCaseAliases(response.data);
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 

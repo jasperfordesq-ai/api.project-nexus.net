@@ -94,6 +94,8 @@ public class AdminNotificationsController : ControllerBase
             return BadRequest(new { error = "Message is required" });
 
         var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var notificationType = string.IsNullOrWhiteSpace(request.Type) ? "info" : request.Type.Trim();
+        var targetRole = string.IsNullOrWhiteSpace(request.TargetRole) ? null : request.TargetRole.Trim().ToLowerInvariant();
 
         // Use batched processing to avoid loading all users into memory at once
         const int batchSize = 500;
@@ -102,7 +104,13 @@ public class AdminNotificationsController : ControllerBase
 
         while (true)
         {
-            var userIds = await _db.Users
+            var usersQuery = _db.Users
+                .Where(u => u.IsActive);
+
+            if (targetRole is not null)
+                usersQuery = usersQuery.Where(u => u.Role.ToLower() == targetRole);
+
+            var userIds = await usersQuery
                 .OrderBy(u => u.Id)
                 .Skip(skip)
                 .Take(batchSize)
@@ -115,7 +123,7 @@ public class AdminNotificationsController : ControllerBase
             {
                 TenantId = tenantId,
                 UserId = userId,
-                Type = "admin_broadcast",
+                Type = notificationType,
                 Title = request.Title,
                 Body = request.Message,
                 IsRead = false
@@ -128,7 +136,7 @@ public class AdminNotificationsController : ControllerBase
             skip += batchSize;
         }
 
-        return Ok(new { message = $"Broadcast sent to {totalSent} users" });
+        return Ok(new { message = $"Broadcast sent to {totalSent} users", sent_count = totalSent, target_role = targetRole });
     }
 
     /// <summary>
@@ -148,7 +156,7 @@ public class AdminNotificationsController : ControllerBase
             .Where(n => n.TenantId == tenantId && n.IsRead && n.CreatedAt < cutoff)
             .ExecuteDeleteAsync();
 
-        return Ok(new { message = $"Deleted {deletedCount} old notifications" });
+        return Ok(new { message = $"Deleted {deletedCount} old notifications", deleted_count = deletedCount });
     }
 }
 
@@ -156,4 +164,6 @@ public class BroadcastNotificationRequest
 {
     [JsonPropertyName("title")] public string Title { get; set; } = string.Empty;
     [JsonPropertyName("message")] public string Message { get; set; } = string.Empty;
+    [JsonPropertyName("type")] public string? Type { get; set; }
+    [JsonPropertyName("target_role")] public string? TargetRole { get; set; }
 }

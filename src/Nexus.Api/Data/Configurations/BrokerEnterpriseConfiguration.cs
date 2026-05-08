@@ -41,6 +41,77 @@ public class BrokerEnterpriseConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<SafeguardingOption>(entity =>
+        {
+            entity.ToTable("safeguarding_options");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OptionKey).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.OptionType).HasMaxLength(40).IsRequired();
+            entity.Property(e => e.Label).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(2000);
+            entity.Property(e => e.HelpUrl).HasMaxLength(500);
+            entity.Property(e => e.PresetSource).HasMaxLength(80);
+            entity.HasIndex(e => new { e.TenantId, e.OptionKey }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<SafeguardingAssignment>(entity =>
+        {
+            entity.ToTable("safeguarding_assignments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.HasIndex(e => new { e.TenantId, e.WardUserId, e.GuardianUserId, e.RevokedAt });
+            entity.HasOne(e => e.Ward).WithMany().HasForeignKey(e => e.WardUserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Guardian).WithMany().HasForeignKey(e => e.GuardianUserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<SafeguardingMessageReview>(entity =>
+        {
+            entity.ToTable("safeguarding_message_reviews");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Severity).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.FlagReason).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.ReviewNotes).HasMaxLength(4000);
+            entity.HasIndex(e => new { e.TenantId, e.MessageId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.IsFlagged, e.ReviewedAt });
+            entity.HasOne(e => e.Message).WithMany().HasForeignKey(e => e.MessageId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Sender).WithMany().HasForeignKey(e => e.SenderId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Recipient).WithMany().HasForeignKey(e => e.RecipientId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.ReviewedBy).WithMany().HasForeignKey(e => e.ReviewedByUserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<BrokerRiskTag>(entity =>
+        {
+            entity.ToTable("broker_risk_tags");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RiskLevel).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.RiskType).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.HasIndex(e => new { e.TenantId, e.ListingId }).IsUnique();
+            entity.HasOne(e => e.Listing).WithMany().HasForeignKey(e => e.ListingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<UserMonitoringRestriction>(entity =>
+        {
+            entity.ToTable("user_monitoring_restrictions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Reason).HasMaxLength(2000);
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SetBy).WithMany().HasForeignKey(e => e.SetByUserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         // EnterpriseConfig uses TenantId as a partition key but does NOT use a global query filter
         modelBuilder.Entity<EnterpriseConfig>(entity =>
         {

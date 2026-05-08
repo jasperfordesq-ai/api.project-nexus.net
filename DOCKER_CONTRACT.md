@@ -85,9 +85,9 @@ Seed data runs automatically in Development mode. Test credentials:
 
 | Email | Password | Tenant |
 |-------|----------|--------|
-| admin@acme.test | Test123! | acme |
-| member@acme.test | Test123! | acme |
-| admin@globex.test | Test123! | globex |
+| admin@acme.test | NexusV2!Demo#2026 | acme |
+| member@acme.test | NexusV2!Demo#2026 | acme |
+| admin@globex.test | NexusV2!Demo#2026 | globex |
 
 ## Database Backup & Restore
 

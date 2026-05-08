@@ -44,7 +44,8 @@ export const JobsAdminPage = () => {
       title: "Toggle featured status?",
       onOk: async () => {
         try {
-          await axiosInstance.post("/api/admin/jobs/" + id + "/feature");
+          const current = jobs.find((job: any) => job.id === id);
+          await axiosInstance.post("/api/admin/jobs/" + id + "/feature", { featured: !current?.is_featured });
           message.success("Featured toggled");
           refetch();
         } catch (err: unknown) { message.error(getErrorMessage(err, "Failed to toggle featured")); }
@@ -77,7 +78,7 @@ export const JobsAdminPage = () => {
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
             <Table.Column dataIndex="status" title="Status" render={(s: string) => (
-              <Tag color={s === "active" ? "green" : s === "closed" ? "red" : "default"}>{s}</Tag>
+              <Tag color={s === "active" ? "green" : s === "filled" ? "blue" : s === "expired" || s === "cancelled" ? "red" : "default"}>{s}</Tag>
             )} />
             <Table.Column dataIndex="is_featured" title="Featured" render={(v: boolean) => v ? <StarFilled style={{ color: "#faad14" }} /> : <StarOutlined />} />
             <Table.Column dataIndex="created_at" title="Created" render={(d: string) => d ? dayjs(d).format("DD MMM YYYY") : "—"} />
@@ -86,7 +87,9 @@ export const JobsAdminPage = () => {
                 <Select size="small" value={r.status} style={{ width: 100 }} onChange={(v) => handleStatusChange(r.id, v, r.status)}
                   options={[
                     { label: "Active", value: "active" },
-                    { label: "Closed", value: "closed" },
+                    { label: "Filled", value: "filled" },
+                    { label: "Expired", value: "expired" },
+                    { label: "Cancelled", value: "cancelled" },
                     { label: "Draft", value: "draft" },
                   ]} />
                 <Button size="small" onClick={() => handleFeature(r.id)}>{r.is_featured ? "Unfeature" : "Feature"}</Button>

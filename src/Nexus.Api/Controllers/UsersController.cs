@@ -250,7 +250,8 @@ public class UsersController : ControllerBase
             return BadRequest(new { error });
 
         // Update user's avatar URL
-        var avatarUrl = $"/api/files/{upload!.Id}/download";
+        var savedUpload = upload!;
+        var avatarUrl = _fileService.GetDownloadUrl(savedUpload);
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
         if (user != null)
         {
@@ -259,7 +260,7 @@ public class UsersController : ControllerBase
             await _db.SaveChangesAsync();
         }
 
-        return Ok(new { avatar_url = avatarUrl, url = avatarUrl, id = upload.Id });
+        return Ok(new { avatar_url = avatarUrl, url = avatarUrl, id = savedUpload.Id });
     }
 
     /// <summary>

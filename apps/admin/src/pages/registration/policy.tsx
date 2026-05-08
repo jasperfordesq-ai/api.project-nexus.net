@@ -4,7 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 import { useCustom } from "@refinedev/core";
-import { Card, Typography, Form, Select, Switch, Button, Spin, message, Space } from "antd";
+import { Card, Typography, Form, Select, Button, Spin, message, Space, Input, InputNumber } from "antd";
 import { TeamOutlined } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -27,8 +27,10 @@ export const RegistrationPolicyPage = () => {
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
-  const policy = data?.data as any;
-  const options = optionsData?.data as any;
+  const policyRaw = data?.data as any;
+  const optionsRaw = optionsData?.data as any;
+  const policy = policyRaw?.data || policyRaw;
+  const options = optionsRaw?.data || optionsRaw;
 
   useEffect(() => {
     if (policy) {
@@ -41,7 +43,15 @@ export const RegistrationPolicyPage = () => {
       const values = await form.validateFields();
       setSaving(true);
       try {
-        await axiosInstance.put("/api/registration/admin/policy", values);
+        await axiosInstance.put("/api/registration/admin/policy", {
+          mode: values.mode_value,
+          provider: values.provider_value,
+          verification_level: values.verification_level_value,
+          post_verification_action: values.post_verification_action_value,
+          registration_message: values.registration_message ?? "",
+          invite_code: values.invite_code ?? "",
+          max_invite_uses: values.max_invite_uses,
+        });
         message.success("Policy updated");
         refetch();
       } catch (err: unknown) {
@@ -56,13 +66,16 @@ export const RegistrationPolicyPage = () => {
 
   if (isLoading) return <Spin size="large" style={{ display: "flex", justifyContent: "center", marginTop: 100 }} />;
 
-  const modeOptions = options?.registration_modes?.map((m: string) => ({ label: m, value: m })) || [
-    { label: "open", value: "open" },
-    { label: "admin_approval", value: "admin_approval" },
-    { label: "invite_only", value: "invite_only" },
-    { label: "identity_verification", value: "identity_verification" },
-    { label: "closed", value: "closed" },
+  const modeOptions = options?.modes?.map((m: any) => ({ label: m.name, value: m.value })) || [
+    { label: "Open", value: 0 },
+    { label: "Admin Approval", value: 1 },
+    { label: "Invite Only", value: 2 },
+    { label: "Verified Identity", value: 3 },
+    { label: "Closed", value: 4 },
   ];
+  const providerOptions = options?.providers?.map((p: any) => ({ label: p.name, value: p.value })) || [];
+  const verificationLevelOptions = options?.verification_levels?.map((l: any) => ({ label: l.name, value: l.value })) || [];
+  const postVerificationOptions = options?.post_verification_actions?.map((a: any) => ({ label: a.name, value: a.value })) || [];
 
   return (
     <div>
@@ -76,14 +89,26 @@ export const RegistrationPolicyPage = () => {
       </div>
       <Card>
         <Form form={form} layout="vertical" onFinish={handleSave}>
-          <Form.Item name="mode" label="Registration Mode">
+          <Form.Item name="mode_value" label="Registration Mode">
             <Select options={modeOptions} />
           </Form.Item>
-          <Form.Item name="require_email_verification" label="Require Email Verification" valuePropName="checked">
-            <Switch />
+          <Form.Item name="provider_value" label="Identity Verification Provider">
+            <Select options={providerOptions} />
           </Form.Item>
-          <Form.Item name="allow_public_registration" label="Allow Public Registration" valuePropName="checked">
-            <Switch />
+          <Form.Item name="verification_level_value" label="Verification Level">
+            <Select options={verificationLevelOptions} />
+          </Form.Item>
+          <Form.Item name="post_verification_action_value" label="After Verification">
+            <Select options={postVerificationOptions} />
+          </Form.Item>
+          <Form.Item name="registration_message" label="Registration Message">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item name="invite_code" label="Invite Code">
+            <Input />
+          </Form.Item>
+          <Form.Item name="max_invite_uses" label="Maximum Invite Uses">
+            <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={saving}>Save Policy</Button>

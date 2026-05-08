@@ -37,9 +37,10 @@ export const CrmPage = () => {
   });
 
   const raw = data?.data as any;
-  const users = raw?.items || raw?.data || [];
+  const users = raw?.users || raw?.items || raw?.data || [];
   const totalCount = raw?.total || raw?.totalCount || users.length;
-  const flaggedNotes = (flaggedData?.data as any)?.items || (flaggedData?.data as any)?.data || (Array.isArray(flaggedData?.data) ? flaggedData.data : []);
+  const flaggedRaw = flaggedData?.data as any;
+  const flaggedNotes = flaggedRaw?.notes || flaggedRaw?.items || flaggedRaw?.data || (Array.isArray(flaggedData?.data) ? flaggedData.data : []);
 
   const updateFilter = (key: string, value: any) => {
     const f = { ...filters, [key]: value || undefined };
@@ -58,7 +59,11 @@ export const CrmPage = () => {
     }
     try {
       setSaving(true);
-      await axiosInstance.post(`/api/admin/crm/users/${noteUserId}/notes`, values);
+      await axiosInstance.post(`/api/admin/crm/users/${noteUserId}/notes`, {
+        content: values.content,
+        category: values.category,
+        is_flagged: Boolean(values.flagged),
+      });
       message.success("Note added");
       setNoteModalOpen(false);
       setNoteUserId(null);
@@ -86,7 +91,7 @@ export const CrmPage = () => {
                 <Input.Search placeholder="Search..." style={{ width: 200 }} onSearch={(v) => updateFilter("search", v)} allowClear />
                 <Select placeholder="Role" allowClear style={{ width: 130 }} onChange={(v) => updateFilter("role", v)}
                   options={[{ label: "Admin", value: "admin" }, { label: "Member", value: "member" }]} />
-                <Select placeholder="Status" allowClear style={{ width: 130 }} onChange={(v) => updateFilter("active", v)}
+                <Select placeholder="Status" allowClear style={{ width: 130 }} onChange={(v) => updateFilter("is_active", v)}
                   options={[{ label: "Active", value: "true" }, { label: "Inactive", value: "false" }]} />
               </Space>
 
@@ -109,8 +114,8 @@ export const CrmPage = () => {
                     <Table.Column dataIndex="email" title="Email" />
                     <Table.Column title="Name" render={(_, r: any) => `${r.first_name || ""} ${r.last_name || ""}`.trim() || "—"} />
                     <Table.Column dataIndex="role" title="Role" render={(r: string) => <StatusTag status={r} />} />
-                    <Table.Column dataIndex="xp" title="XP" />
-                    <Table.Column dataIndex="warnings_count" title="Warnings" render={(v: number) => v > 0 ? <Tag color="red">{v}</Tag> : "0"} />
+                    <Table.Column dataIndex="total_xp" title="XP" />
+                    <Table.Column dataIndex="exchange_count" title="Exchanges" />
                     <Table.Column title="Actions" render={(_, record: any) => (
                       <Button size="small" icon={<PlusOutlined />} onClick={() => { setNoteUserId(record.id); setNoteModalOpen(true); }}>Note</Button>
                     )} />

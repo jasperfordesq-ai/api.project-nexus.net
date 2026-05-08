@@ -496,28 +496,32 @@ public class CompatibilityAliasController : ControllerBase
     /// POST /api/listings/{id}/image — Upload listing image.
     /// </summary>
     [HttpPost("api/listings/{id:int}/image")]
-    public async Task<IActionResult> UploadListingImage(int id, IFormFile? file = null)
+    public async Task<IActionResult> UploadListingImage(int id, IFormFile? file = null, IFormFile? image = null)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        if (file == null || file.Length == 0)
+        var uploadedFile = ResolveUploadedFile(file, image);
+        if (uploadedFile == null || uploadedFile.Length == 0)
             return BadRequest(new { error = "No file provided" });
 
         var listing = await _db.Listings.FirstOrDefaultAsync(l => l.Id == id && l.UserId == userId.Value);
         if (listing == null) return NotFound(new { error = "Listing not found" });
 
         // Use FileUploadService to save the file
+        await using var stream = uploadedFile.OpenReadStream();
         var (upload, error) = await _fileService.UploadAsync(
-            file.OpenReadStream(), file.FileName, file.ContentType, file.Length,
+            stream, uploadedFile.FileName, uploadedFile.ContentType, uploadedFile.Length,
             userId.Value, _tenantContext.GetTenantIdOrThrow(), FileCategory.Listing, id, "listing");
         if (error != null)
             return BadRequest(new { error });
 
+        var imageUrl = BuildUploadUrl(upload);
         return Ok(new
         {
             success = true,
-            image_url = upload?.FilePath,
+            image_url = imageUrl,
+            url = imageUrl,
             file_id = upload?.Id
         });
     }
@@ -534,6 +538,12 @@ public class CompatibilityAliasController : ControllerBase
         var listing = await _db.Listings.FirstOrDefaultAsync(l => l.Id == id && l.UserId == userId.Value);
         if (listing == null) return NotFound(new { error = "Listing not found" });
 
+        var files = await _fileService.GetByEntityAsync("listing", id);
+        foreach (var image in files.Where(f => f.Category == FileCategory.Listing))
+        {
+            await _fileService.DeleteAsync(image.Id, userId.Value);
+        }
+
         return Ok(new { success = true, message = "Image removed" });
     }
 
@@ -541,40 +551,75 @@ public class CompatibilityAliasController : ControllerBase
     /// POST /api/events/{id}/image — Upload event image.
     /// </summary>
     [HttpPost("api/events/{id:int}/image")]
-    public async Task<IActionResult> UploadEventImage(int id, IFormFile? file = null)
+    public async Task<IActionResult> UploadEventImage(int id, IFormFile? file = null, IFormFile? image = null)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        if (file == null || file.Length == 0)
+        var uploadedFile = ResolveUploadedFile(file, image);
+        if (uploadedFile == null || uploadedFile.Length == 0)
             return BadRequest(new { error = "No file provided" });
 
+        var eventEntity = await _db.Events.FirstOrDefaultAsync(e => e.Id == id);
+        if (eventEntity == null) return NotFound(new { error = "Event not found" });
+
+        if (eventEntity.CreatedById != userId.Value)
+        {
+            if (!eventEntity.GroupId.HasValue)
+                return StatusCode(403, new { error = "Only the event creator can update this event" });
+
+            var membership = await _db.GroupMembers.FirstOrDefaultAsync(gm =>
+                gm.GroupId == eventEntity.GroupId.Value && gm.UserId == userId.Value);
+            if (membership == null || (membership.Role != Group.Roles.Admin && membership.Role != Group.Roles.Owner))
+                return StatusCode(403, new { error = "Only the event creator or group admins can update this event" });
+        }
+
+        await using var stream = uploadedFile.OpenReadStream();
         var (upload, error) = await _fileService.UploadAsync(
-            file.OpenReadStream(), file.FileName, file.ContentType, file.Length,
+            stream, uploadedFile.FileName, uploadedFile.ContentType, uploadedFile.Length,
             userId.Value, _tenantContext.GetTenantIdOrThrow(), FileCategory.Event, id, "event");
         if (error != null) return BadRequest(new { error });
 
-        return Ok(new { success = true, image_url = upload?.FilePath, file_id = upload?.Id });
+        var imageUrl = BuildUploadUrl(upload);
+        eventEntity.ImageUrl = imageUrl;
+        eventEntity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, image_url = imageUrl, url = imageUrl, file_id = upload?.Id });
     }
 
     /// <summary>
     /// POST /api/groups/{id}/image — Upload group image.
     /// </summary>
     [HttpPost("api/groups/{id:int}/image")]
-    public async Task<IActionResult> UploadGroupImage(int id, IFormFile? file = null)
+    public async Task<IActionResult> UploadGroupImage(int id, IFormFile? file = null, IFormFile? image = null)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        if (file == null || file.Length == 0)
+        var uploadedFile = ResolveUploadedFile(file, image);
+        if (uploadedFile == null || uploadedFile.Length == 0)
             return BadRequest(new { error = "No file provided" });
 
+        var group = await _db.Groups.FirstOrDefaultAsync(g => g.Id == id);
+        if (group == null) return NotFound(new { error = "Group not found" });
+
+        var groupMembership = await _db.GroupMembers.FirstOrDefaultAsync(gm => gm.GroupId == id && gm.UserId == userId.Value);
+        if (groupMembership == null || (groupMembership.Role != Group.Roles.Admin && groupMembership.Role != Group.Roles.Owner))
+            return StatusCode(403, new { error = "Only admins and owners can update the group" });
+
+        await using var stream = uploadedFile.OpenReadStream();
         var (upload, error) = await _fileService.UploadAsync(
-            file.OpenReadStream(), file.FileName, file.ContentType, file.Length,
+            stream, uploadedFile.FileName, uploadedFile.ContentType, uploadedFile.Length,
             userId.Value, _tenantContext.GetTenantIdOrThrow(), FileCategory.Group, id, "group");
         if (error != null) return BadRequest(new { error });
 
-        return Ok(new { success = true, image_url = upload?.FilePath, file_id = upload?.Id });
+        var imageUrl = BuildUploadUrl(upload);
+        group.ImageUrl = imageUrl;
+        group.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, image_url = imageUrl, url = imageUrl, file_id = upload?.Id });
     }
 
     /// <summary>
@@ -594,7 +639,8 @@ public class CompatibilityAliasController : ControllerBase
             userId.Value, _tenantContext.GetTenantIdOrThrow(), FileCategory.Document, id, "group");
         if (error != null) return BadRequest(new { error });
 
-        return Ok(new { success = true, file_url = upload?.FilePath, file_id = upload?.Id });
+        var fileUrl = BuildUploadUrl(upload);
+        return Ok(new { success = true, file_url = fileUrl, url = fileUrl, file_id = upload?.Id });
     }
 
     /// <summary>
@@ -614,7 +660,7 @@ public class CompatibilityAliasController : ControllerBase
                 userId.Value, _tenantContext.GetTenantIdOrThrow(), FileCategory.Listing);
             if (uploadError != null)
                 return BadRequest(new { error = uploadError });
-            imageUrl = upload?.FilePath;
+            imageUrl = BuildUploadUrl(upload);
         }
 
         var post = new FeedPost
@@ -649,7 +695,8 @@ public class CompatibilityAliasController : ControllerBase
             userId.Value, _tenantContext.GetTenantIdOrThrow(), FileCategory.Document);
         if (error != null) return BadRequest(new { error });
 
-        return Ok(new { success = true, file_url = upload?.FilePath, file_id = upload?.Id });
+        var fileUrl = BuildUploadUrl(upload);
+        return Ok(new { success = true, file_url = fileUrl, url = fileUrl, file_id = upload?.Id });
     }
 
     /// <summary>
@@ -669,7 +716,8 @@ public class CompatibilityAliasController : ControllerBase
             userId.Value, _tenantContext.GetTenantIdOrThrow(), FileCategory.Document);
         if (error != null) return BadRequest(new { error });
 
-        return Ok(new { success = true, file_url = upload?.FilePath, file_id = upload?.Id });
+        var fileUrl = BuildUploadUrl(upload);
+        return Ok(new { success = true, file_url = fileUrl, url = fileUrl, file_id = upload?.Id });
     }
 
     // ──────────────────────────────────────────────
@@ -1050,7 +1098,8 @@ public class CompatibilityAliasController : ControllerBase
             userId.Value, _tenantContext.GetTenantIdOrThrow(), FileCategory.Document, id, "idea");
         if (error != null) return BadRequest(new { error });
 
-        return Ok(new { success = true, file_url = upload?.FilePath, file_id = upload?.Id });
+        var fileUrl = BuildUploadUrl(upload);
+        return Ok(new { success = true, file_url = fileUrl, url = fileUrl, file_id = upload?.Id });
     }
 
     /// <summary>
@@ -1601,6 +1650,24 @@ public class CompatibilityAliasController : ControllerBase
     public IActionResult ResendVerificationByEmail([FromBody] object? request = null)
     {
         return Ok(new { success = true, message = "Verification email sent if account exists" });
+    }
+
+    private IFormFile? ResolveUploadedFile(params IFormFile?[] candidates)
+    {
+        foreach (var candidate in candidates)
+        {
+            if (candidate is { Length: > 0 })
+            {
+                return candidate;
+            }
+        }
+
+        return Request.HasFormContentType ? Request.Form.Files.FirstOrDefault(f => f.Length > 0) : null;
+    }
+
+    private string? BuildUploadUrl(FileUpload? upload)
+    {
+        return upload == null ? null : _fileService.GetDownloadUrl(upload);
     }
 
     private int? GetCurrentUserId() => User.GetUserId();

@@ -193,7 +193,7 @@ export const AnalyticsPage = () => {
           <Select value={topMetric} onChange={setTopMetric} size="small" style={{ width: 160 }} options={[
             { label: "By Exchanges", value: "exchanges" },
             { label: "By XP", value: "xp" },
-            { label: "By Hours", value: "hours" },
+            { label: "By Hours Given", value: "hours_given" },
             { label: "By Listings", value: "listings" },
           ]} />
         </div>

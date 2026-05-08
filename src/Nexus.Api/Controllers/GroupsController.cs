@@ -75,6 +75,10 @@ public class GroupsController : ControllerBase
                 g.Description,
                 g.IsPrivate,
                 g.ImageUrl,
+                image_url = g.ImageUrl,
+                cover_image_url = g.ImageUrl,
+                cover_image = g.ImageUrl,
+                visibility = g.IsPrivate ? "private" : "public",
                 g.CreatedAt,
                 created_by = g.CreatedBy != null
                     ? new { g.CreatedBy.Id, g.CreatedBy.FirstName, g.CreatedBy.LastName }
@@ -116,6 +120,10 @@ public class GroupsController : ControllerBase
                 gm.Group.Description,
                 gm.Group.IsPrivate,
                 gm.Group.ImageUrl,
+                image_url = gm.Group.ImageUrl,
+                cover_image_url = gm.Group.ImageUrl,
+                cover_image = gm.Group.ImageUrl,
+                visibility = gm.Group.IsPrivate ? "private" : "public",
                 gm.Group.CreatedAt,
                 my_role = gm.Role,
                 joined_at = gm.JoinedAt,
@@ -145,6 +153,10 @@ public class GroupsController : ControllerBase
                 g.Description,
                 g.IsPrivate,
                 g.ImageUrl,
+                image_url = g.ImageUrl,
+                cover_image_url = g.ImageUrl,
+                cover_image = g.ImageUrl,
+                visibility = g.IsPrivate ? "private" : "public",
                 g.CreatedAt,
                 g.UpdatedAt,
                 created_by = g.CreatedBy != null
@@ -247,6 +259,10 @@ public class GroupsController : ControllerBase
                 group.Description,
                 group.IsPrivate,
                 group.ImageUrl,
+                image_url = group.ImageUrl,
+                cover_image_url = group.ImageUrl,
+                cover_image = group.ImageUrl,
+                visibility = group.IsPrivate ? "private" : "public",
                 group.CreatedAt,
                 my_role = Group.Roles.Owner
             }
@@ -321,6 +337,10 @@ public class GroupsController : ControllerBase
                 group.Description,
                 group.IsPrivate,
                 group.ImageUrl,
+                image_url = group.ImageUrl,
+                cover_image_url = group.ImageUrl,
+                cover_image = group.ImageUrl,
+                visibility = group.IsPrivate ? "private" : "public",
                 group.CreatedAt,
                 group.UpdatedAt
             }

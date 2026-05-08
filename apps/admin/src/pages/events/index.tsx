@@ -22,7 +22,8 @@ export const EventsAdminPage = () => {
   const raw = data?.data as any;
   const events = raw?.items || raw?.data || [];
   const totalCount = raw?.total || raw?.totalCount || events.length;
-  const stats = statsData?.data as any;
+  const statsRaw = statsData?.data as any;
+  const stats = statsRaw?.data || statsRaw;
 
   const handleCancel = (id: number) => {
     Modal.confirm({

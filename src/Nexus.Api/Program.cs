@@ -251,6 +251,7 @@ if (allowedOrigins.Length > 0 && !app.Environment.IsProduction())
     if (app.Environment.IsDevelopment())
     {
         await SeedData.SeedAsync(db, logger, app.Environment);
+        await DemoShowcaseSeedData.SeedAsync(db, logger, app.Environment);
     }
 }
 
@@ -302,6 +303,9 @@ if (!app.Environment.IsDevelopment())
 
 // Security headers - add early to apply to all responses
 app.UseSecurityHeaders();
+
+// Local demo/static assets for generated showcase imagery under wwwroot.
+app.UseStaticFiles();
 
 // Rate Limiting - early in pipeline to protect all endpoints
 app.UseRateLimiter();

@@ -101,10 +101,10 @@ The app runs at **http://localhost:5180** (container port 3001 mapped to host 51
 
 ```bash
 # 1. Upload changed files to server
-scp -i "C:\ssh-keys\project-nexus.pem" -r src/ azureuser@20.224.171.253:/opt/nexus-uk-frontend/
+scp -i "<path-to-production-ssh-key>" -r src/ <production-user>@<production-host>:/opt/nexus-uk-frontend/
 
 # 2. SSH to server
-ssh -i "C:\ssh-keys\project-nexus.pem" azureuser@20.224.171.253
+ssh -i "<path-to-production-ssh-key>" <production-user>@<production-host>
 
 # 3. Rebuild and restart
 cd /opt/nexus-uk-frontend
@@ -349,7 +349,7 @@ res.redirect('/listings');
 
 | Email | Password | Tenant |
 |-------|----------|--------|
-| admin@acme.test | Test123! | acme |
-| member@acme.test | Test123! | acme |
+| admin@acme.test | NexusV2!Demo#2026 | acme |
+| member@acme.test | NexusV2!Demo#2026 | acme |
 
 **Note:** Production uses different secure passwords. See `asp.net-backend/.claude/production-server.md`.

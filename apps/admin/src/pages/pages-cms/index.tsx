@@ -4,8 +4,8 @@
 // See NOTICE file for attribution and acknowledgements.
 
 import { useCustom } from "@refinedev/core";
-import { Card, Table, Typography, Spin, Button, Space, message, Tag, Modal, Form, Input } from "antd";
-import { PlusOutlined, CopyOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Card, Table, Typography, Spin, Button, Space, message, Tag, Modal, Form, Input, Switch, InputNumber } from "antd";
+import { PlusOutlined, CopyOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
@@ -26,10 +26,32 @@ export const PagesCmsPage = () => {
   const pages = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
   const total = raw?.total || raw?.totalCount || pages.length;
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingPageId, setEditingPageId] = useState<number | null>(null);
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
 
-  const handleCreate = async () => {
+  const openCreate = () => {
+    setEditingPageId(null);
+    form.resetFields();
+    setCreateOpen(true);
+  };
+
+  const openEdit = async (id: number) => {
+    try {
+      setSaving(true);
+      const { data: response } = await axiosInstance.get(`/api/admin/pages/${id}`);
+      const pageData = response?.data || response;
+      setEditingPageId(id);
+      form.setFieldsValue(pageData);
+      setCreateOpen(true);
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to load page"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSavePage = async () => {
     let values;
     try {
       values = await form.validateFields();
@@ -39,9 +61,15 @@ export const PagesCmsPage = () => {
     }
     try {
       setSaving(true);
-      await axiosInstance.post("/api/admin/pages", values);
-      message.success("Page created");
+      if (editingPageId) {
+        await axiosInstance.put(`/api/admin/pages/${editingPageId}`, values);
+        message.success("Page updated");
+      } else {
+        await axiosInstance.post("/api/admin/pages", values);
+        message.success("Page created");
+      }
       setCreateOpen(false);
+      setEditingPageId(null);
       form.resetFields();
       refetch();
     } catch (err: unknown) {
@@ -80,7 +108,7 @@ export const PagesCmsPage = () => {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <Title level={4}>Pages CMS</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>New Page</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>New Page</Button>
       </div>
       {isLoading ? <Spin /> : (
         <Card>
@@ -88,10 +116,17 @@ export const PagesCmsPage = () => {
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="title" title="Title" />
             <Table.Column dataIndex="slug" title="Slug" />
-            <Table.Column dataIndex="status" title="Status" render={(s: string) => <Tag color={s === "published" ? "green" : "default"}>{s}</Tag>} />
+            <Table.Column
+              title="Status"
+              render={(_, r: any) => {
+                const status = r.status || (r.is_published ? "published" : "draft");
+                return <Tag color={status === "published" ? "green" : "default"}>{status}</Tag>;
+              }}
+            />
             <Table.Column dataIndex="updated_at" title="Updated" render={(d: string) => d ? dayjs(d).format("DD MMM YYYY") : "—"} />
             <Table.Column title="Actions" render={(_, r: any) => (
               <Space>
+                <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(r.id)}>Edit</Button>
                 <Button size="small" icon={<CopyOutlined />} onClick={() => handleDuplicate(r.id)}>Duplicate</Button>
                 <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(r.id)} />
               </Space>
@@ -100,11 +135,29 @@ export const PagesCmsPage = () => {
         </Card>
       )}
 
-      <Modal title="New Page" open={createOpen} onOk={handleCreate} onCancel={() => { setCreateOpen(false); form.resetFields(); }} confirmLoading={saving}>
+      <Modal
+        title={editingPageId ? "Edit Page" : "New Page"}
+        open={createOpen}
+        onOk={handleSavePage}
+        onCancel={() => { setCreateOpen(false); setEditingPageId(null); form.resetFields(); }}
+        confirmLoading={saving}
+        width={720}
+      >
         <Form form={form} layout="vertical">
           <Form.Item name="title" label="Title" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="slug" label="Slug" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="content" label="Content" rules={[{ required: true }]}><Input.TextArea rows={6} /></Form.Item>
+          <Space size="large" wrap>
+            <Form.Item name="is_published" label="Published" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+            <Form.Item name="show_in_menu" label="Show in Menu" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+          </Space>
+          <Form.Item name="menu_location" label="Menu Location"><Input placeholder="e.g. footer, main" /></Form.Item>
+          <Form.Item name="sort_order" label="Sort Order"><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
+          <Form.Item name="meta_title" label="Meta Title"><Input /></Form.Item>
+          <Form.Item name="meta_description" label="Meta Description"><Input.TextArea rows={2} /></Form.Item>
         </Form>
       </Modal>
     </div>

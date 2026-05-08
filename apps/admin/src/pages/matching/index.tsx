@@ -13,8 +13,10 @@ export const MatchingPage = () => {
   const { data: statsData, isLoading: statsLoading, isError: statsError } = useCustom({ url: "/api/admin/matching/stats", method: "get" });
   const { data: healthData, isLoading: healthLoading, isError: healthError } = useCustom({ url: "/api/admin/matching/health", method: "get" });
 
-  const stats = statsData?.data as any;
-  const health = healthData?.data as any;
+  const statsRaw = statsData?.data as any;
+  const healthRaw = healthData?.data as any;
+  const stats = statsRaw?.data || statsRaw;
+  const health = healthRaw?.data || healthRaw;
 
   if (statsLoading || healthLoading) return <Spin size="large" style={{ display: "flex", justifyContent: "center", marginTop: 100 }} />;
 

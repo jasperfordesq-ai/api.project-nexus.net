@@ -30,16 +30,35 @@ public class AdminGroupsController : ControllerBase
     /// GET /api/admin/groups - List all groups with stats.
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> ListGroups([FromQuery] int page = 1, [FromQuery] int limit = 20)
+    public async Task<IActionResult> ListGroups(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] string? type = null)
     {
-        var groups = await _db.Groups
+        var query = _db.Groups
             .Include(g => g.CreatedBy)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(g => g.Name.ToLower().Contains(term) ||
+                                     (g.Description != null && g.Description.ToLower().Contains(term)));
+        }
+
+        if (type == "public")
+            query = query.Where(g => !g.IsPrivate);
+        else if (type == "private")
+            query = query.Where(g => g.IsPrivate);
+
+        var total = await query.CountAsync();
+
+        var groups = await query
             .OrderByDescending(g => g.CreatedAt)
             .Skip((Math.Max(1, page) - 1) * Math.Clamp(limit, 1, 100))
             .Take(Math.Clamp(limit, 1, 100))
             .ToListAsync();
-
-        var total = await _db.Groups.CountAsync();
 
         var groupIds = groups.Select(g => g.Id).ToList();
         var memberCounts = await _db.GroupMembers

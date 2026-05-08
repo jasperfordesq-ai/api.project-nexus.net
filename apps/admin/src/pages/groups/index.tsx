@@ -17,7 +17,6 @@ const { Title } = Typography;
 const typeColors: Record<string, string> = {
   public: "green",
   private: "blue",
-  secret: "purple",
 };
 
 export const GroupsAdminPage = () => {
@@ -41,7 +40,8 @@ export const GroupsAdminPage = () => {
   const raw = data?.data as any;
   const groups = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
   const totalCount = raw?.total || raw?.totalCount || groups.length;
-  const stats = statsData?.data as any;
+  const statsRaw = statsData?.data as any;
+  const stats = statsRaw?.data || statsRaw;
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
@@ -97,7 +97,7 @@ export const GroupsAdminPage = () => {
           </Col>
           <Col xs={24} sm={12} lg={6}>
             <Card>
-              <Statistic title="Total Members" value={stats.total_members ?? 0} />
+              <Statistic title="Total Members" value={stats.total_memberships ?? stats.total_members ?? 0} />
             </Card>
           </Col>
         </Row>
@@ -122,7 +122,6 @@ export const GroupsAdminPage = () => {
           options={[
             { label: "Public", value: "public" },
             { label: "Private", value: "private" },
-            { label: "Secret", value: "secret" },
           ]}
         />
       </Space>
@@ -148,18 +147,21 @@ export const GroupsAdminPage = () => {
             <Table.Column
               title="Owner"
               render={(_, r: any) =>
-                r.owner_name || r.owner_email || (r.owner_id ? `User #${r.owner_id}` : "—")
+                r.created_by
+                  ? `${r.created_by.first_name || ""} ${r.created_by.last_name || ""}`.trim() || `User #${r.created_by.id}`
+                  : "—"
               }
             />
             <Table.Column dataIndex="member_count" title="Members" width={90} />
             <Table.Column
-              dataIndex="type"
               title="Type"
-              render={(t: string) => (
+              render={(_: any, r: any) => {
+                const t = r.type || (r.is_private ? "private" : "public");
+                return (
                 <Tag color={typeColors[t?.toLowerCase()] || "default"}>
                   {t ? t.charAt(0).toUpperCase() + t.slice(1) : "—"}
                 </Tag>
-              )}
+              )}}
             />
             <Table.Column
               dataIndex="status"

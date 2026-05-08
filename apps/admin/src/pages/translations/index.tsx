@@ -119,9 +119,12 @@ export const TranslationsPage = () => {
       const values = await bulkForm.validateFields();
       setSaving(true);
       const translations = JSON.parse(values.json);
+      const normalizedTranslations = Array.isArray(translations)
+        ? translations
+        : Object.entries(translations).map(([key, value]) => ({ key, value: String(value ?? "") }));
       await axiosInstance.post("/api/admin/translations/bulk", {
         locale: values.locale,
-        translations: Array.isArray(translations) ? translations : [],
+        translations: normalizedTranslations,
       });
       message.success("Translations imported");
       setBulkModalOpen(false);

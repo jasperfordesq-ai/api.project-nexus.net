@@ -78,7 +78,7 @@ public class PageService
     public async Task<(Page? Page, string? Error)> CreatePageAsync(
         int userId, string title, string content, bool isPublished,
         bool showInMenu, string? menuLocation, int? parentId, DateTime? publishAt,
-        string? metaTitle, string? metaDescription)
+        string? metaTitle, string? metaDescription, int? sortOrder = null)
     {
         var slug = GenerateSlug(title);
         var existing = await _db.Set<Page>().AnyAsync(p => p.Slug == slug);
@@ -97,6 +97,7 @@ public class PageService
             PublishAt = publishAt,
             MetaTitle = metaTitle,
             MetaDescription = metaDescription,
+            SortOrder = sortOrder ?? 0,
             CreatedById = userId,
             CurrentVersion = 1
         };
@@ -124,7 +125,7 @@ public class PageService
     public async Task<(Page? Page, string? Error)> UpdatePageAsync(
         int pageId, int userId, string? title, string? content, bool? isPublished,
         bool? showInMenu, string? menuLocation, int? parentId, DateTime? publishAt,
-        string? metaTitle, string? metaDescription)
+        string? metaTitle, string? metaDescription, int? sortOrder = null)
     {
         var page = await _db.Set<Page>().FirstOrDefaultAsync(x => x.Id == pageId);
         if (page == null) return (null, "Page not found");
@@ -146,6 +147,7 @@ public class PageService
         if (publishAt.HasValue) page.PublishAt = publishAt;
         if (metaTitle != null) page.MetaTitle = metaTitle;
         if (metaDescription != null) page.MetaDescription = metaDescription;
+        if (sortOrder.HasValue) page.SortOrder = sortOrder.Value;
 
         page.UpdatedAt = DateTime.UtcNow;
         page.CurrentVersion++;

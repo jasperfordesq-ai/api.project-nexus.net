@@ -52,15 +52,15 @@ export const AuditLogList = () => {
     if (dates && dates[0] && dates[1]) {
       setFilters(prev => ({
         ...prev,
-        from_date: dates[0].format("YYYY-MM-DD"),
-        to_date: dates[1].format("YYYY-MM-DD"),
+        date_from: dates[0].format("YYYY-MM-DD"),
+        date_to: dates[1].format("YYYY-MM-DD"),
       }));
       setPage(1);
     } else {
       setFilters(prev => {
         const next = { ...prev };
-        delete next.from_date;
-        delete next.to_date;
+        delete next.date_from;
+        delete next.date_to;
         return next;
       });
       setPage(1);
@@ -117,7 +117,7 @@ export const AuditLogList = () => {
             { label: "Warning", value: "warning" },
             { label: "Critical", value: "critical" },
           ]} />
-        <RangePicker onChange={handleDateRange} format="YYYY-MM-DD" value={filters.from_date && filters.to_date ? [dayjs(filters.from_date), dayjs(filters.to_date)] : null} />
+        <RangePicker onChange={handleDateRange} format="YYYY-MM-DD" value={filters.date_from && filters.date_to ? [dayjs(filters.date_from), dayjs(filters.date_to)] : null} />
         {Object.keys(filters).length > 0 && (
           <Button onClick={clearFilters}>Clear Filters</Button>
         )}
@@ -140,11 +140,11 @@ export const AuditLogList = () => {
             }}
           >
             <Table.Column
-              dataIndex="timestamp"
+              dataIndex="created_at"
               title="Timestamp"
               width={170}
               render={(d: string) => d ? dayjs(d).format("DD/MM/YY HH:mm:ss") : "—"}
-              sorter={(a: any, b: any) => dayjs(a.timestamp).unix() - dayjs(b.timestamp).unix()}
+              sorter={(a: any, b: any) => dayjs(a.created_at).unix() - dayjs(b.created_at).unix()}
             />
             <Table.Column
               dataIndex="user_id"
@@ -174,7 +174,7 @@ export const AuditLogList = () => {
               width={120}
               render={(ip: string) => ip || "—"}
             />
-            <Table.Column dataIndex="details" title="Details" ellipsis />
+            <Table.Column title="Details" ellipsis render={(_, r: any) => r.details || r.metadata || r.new_values || r.old_values || "n/a"} />
           </Table>
         </Card>
       )}

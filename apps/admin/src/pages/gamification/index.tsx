@@ -4,7 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 import { useCustom } from "@refinedev/core";
-import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, Modal, Form, Input, InputNumber, Select, message } from "antd";
+import { Card, Table, Typography, Row, Col, Statistic, Spin, Button, Space, Modal, Form, Input, InputNumber, Tag, message } from "antd";
 import { PlusOutlined, TrophyOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import axiosInstance from "../../utils/axios";
@@ -16,7 +16,8 @@ export const GamificationPage = () => {
   const { data: statsData } = useCustom({ url: "/api/admin/gamification/stats", method: "get" });
   const { data: badgesData, isLoading, refetch } = useCustom({ url: "/api/admin/gamification/badges", method: "get" });
 
-  const stats = statsData?.data as any;
+  const statsRaw = statsData?.data as any;
+  const stats = statsRaw?.data || statsRaw;
   const badgesRaw = badgesData?.data as any;
   const badges = badgesRaw?.items || badgesRaw?.data || (Array.isArray(badgesData?.data) ? badgesData.data : []);
   const [createOpen, setCreateOpen] = useState(false);
@@ -35,7 +36,10 @@ export const GamificationPage = () => {
     }
     try {
       setSaving(true);
-      await axiosInstance.post("/api/admin/gamification/badges", values);
+      await axiosInstance.post("/api/admin/gamification/badges", {
+        ...values,
+        xp_reward: values.xp_reward ?? 0,
+      });
       message.success("Badge created");
       setCreateOpen(false);
       form.resetFields();
@@ -98,8 +102,9 @@ export const GamificationPage = () => {
             <Table.Column dataIndex="id" title="ID" width={60} />
             <Table.Column dataIndex="name" title="Name" />
             <Table.Column dataIndex="description" title="Description" ellipsis />
-            <Table.Column dataIndex="category" title="Category" />
-            <Table.Column dataIndex="earned_count" title="Earned" />
+            <Table.Column dataIndex="slug" title="Slug" />
+            <Table.Column dataIndex="is_active" title="Active" render={(v: boolean) => <Tag color={v ? "green" : "default"}>{v ? "Yes" : "No"}</Tag>} />
+            <Table.Column title="Earned" render={(_, r: any) => r.times_earned ?? r.earned_count ?? 0} />
             <Table.Column title="Actions" render={(_, r: any) => (
               <Space>
                 <Button size="small" icon={<TrophyOutlined />} onClick={() => { setAwardBadgeId(r.id); setAwardOpen(true); }}>Award</Button>
@@ -113,9 +118,10 @@ export const GamificationPage = () => {
       <Modal title="Create Badge" open={createOpen} onOk={handleCreate} onCancel={() => { setCreateOpen(false); form.resetFields(); }} confirmLoading={saving}>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
+          <Form.Item name="slug" label="Slug"><Input /></Form.Item>
           <Form.Item name="description" label="Description"><Input.TextArea rows={2} /></Form.Item>
-          <Form.Item name="category" label="Category"><Input /></Form.Item>
-          <Form.Item name="xp_value" label="XP Value" initialValue={0}><InputNumber min={0} /></Form.Item>
+          <Form.Item name="icon" label="Icon"><Input placeholder="e.g. trophy, heart, handshake" /></Form.Item>
+          <Form.Item name="xp_reward" label="XP Reward" initialValue={0}><InputNumber min={0} /></Form.Item>
         </Form>
       </Modal>
 

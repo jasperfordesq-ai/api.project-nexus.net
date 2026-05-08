@@ -11,10 +11,26 @@ import type { User } from '@/types/api';
 import { logError } from './logger';
 
 /**
- * API Base URL for resolving relative image/asset URLs
- * This is the ASP.NET backend URL where uploads are stored
+ * API base URL for resolving relative image/asset URLs.
+ * Relative API bases stay same-origin so Docker/nginx/Vite proxies serve uploads.
  */
-const API_ASSET_BASE = import.meta.env.VITE_API_BASE?.replace(/\/api$/, '') || 'https://api.project-nexus.net';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
+function getApiAssetBase(apiBase: string): string {
+  const trimmed = apiBase.trim().replace(/\/$/, '');
+
+  if (!trimmed || trimmed.startsWith('/')) {
+    return '';
+  }
+
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed.replace(/\/api$/, '');
+  }
+
+  return '';
+}
+
+const API_ASSET_BASE = getApiAssetBase(API_BASE);
 
 /**
  * Resolve a relative URL to an absolute URL pointing to the API server.
@@ -48,7 +64,7 @@ export function resolveAssetUrl(url: string | null | undefined, fallback?: strin
  * Resolve an avatar URL with a default fallback
  */
 export function resolveAvatarUrl(url: string | null | undefined): string {
-  return resolveAssetUrl(url, `${API_ASSET_BASE}/assets/img/defaults/default_avatar.png`);
+  return resolveAssetUrl(url);
 }
 
 /**

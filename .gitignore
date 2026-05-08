@@ -45,6 +45,7 @@ backups/
 # Logs
 *.log
 logs/
+uploads/
 artifacts/
 robocopy C*/
 

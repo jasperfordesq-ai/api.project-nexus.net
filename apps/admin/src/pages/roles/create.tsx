@@ -21,13 +21,13 @@ export const RoleCreate = () => {
           message.error("Permissions must be a JSON array");
           return;
         }
-        values.permissions = parsed;
+        values.permissions = JSON.stringify(parsed);
       } catch {
         message.error("Invalid JSON — permissions must be a valid JSON array");
         return;
       }
     } else {
-      values.permissions = [];
+      values.permissions = "[]";
     }
     formProps.onFinish?.(values);
   };

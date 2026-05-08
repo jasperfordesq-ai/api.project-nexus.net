@@ -434,9 +434,9 @@ dotnet test
    | GOV.IE Frontend | http://localhost:5200 | Nexus Community (GOV.IE DS) |
 
 4. **Test credentials:**
-   - `admin@acme.test` / `Test123!` / tenant_slug: `acme`
-   - `member@acme.test` / `Test123!` / tenant_slug: `acme`
-   - `admin@globex.test` / `Test123!` / tenant_slug: `globex`
+   - `admin@acme.test` / `NexusV2!Demo#2026` / tenant_slug: `acme`
+   - `member@acme.test` / `NexusV2!Demo#2026` / tenant_slug: `acme`
+   - `admin@globex.test` / `NexusV2!Demo#2026` / tenant_slug: `globex`
 
 5. **See [DOCKER_CONTRACT.md](DOCKER_CONTRACT.md)** for full Docker documentation
 

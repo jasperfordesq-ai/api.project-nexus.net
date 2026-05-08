@@ -25,7 +25,7 @@ export const RegistrationPendingPage = () => {
 
   const raw = data?.data as any;
   const pending = raw?.items || raw?.data || (Array.isArray(raw) ? raw : []);
-  const totalCount = raw?.total || raw?.totalCount || raw?.count || pending.length;
+  const totalCount = raw?.pagination?.total || raw?.total || raw?.totalCount || raw?.count || pending.length;
 
   const handleApprove = (userId: number) => {
     Modal.confirm({
@@ -50,7 +50,9 @@ export const RegistrationPendingPage = () => {
       okText: "Reject",
       onOk: async () => {
         try {
-          await axiosInstance.put(`/api/registration/admin/users/${userId}/reject`);
+          await axiosInstance.put(`/api/registration/admin/users/${userId}/reject`, {
+            reason: "Rejected from the admin panel",
+          });
           message.success("User rejected");
           refetch();
         } catch (err: unknown) {

@@ -76,6 +76,7 @@ public static class ServiceExtensions
         services.AddScoped<FederationGatewayService>();
         services.AddScoped<FederationApiKeyService>();
         services.AddHttpClient<FederationExternalApiClient>();
+        services.AddScoped<FederationExternalPartnerService>();
         services.AddScoped<PredictiveStaffingService>();
         services.AddScoped<SystemAdminService>();
         services.AddScoped<LockdownService>();

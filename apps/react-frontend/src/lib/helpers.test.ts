@@ -17,6 +17,8 @@ import {
   cn,
   getUserDisplayName,
   getUserInitials,
+  resolveAssetUrl,
+  resolveAvatarUrl,
 } from './helpers';
 
 describe('formatRelativeTime', () => {
@@ -140,5 +142,22 @@ describe('getUserInitials', () => {
 
   it('handles undefined names', () => {
     expect(getUserInitials({ first_name: undefined, last_name: undefined } as Parameters<typeof getUserInitials>[0])).toBe('');
+  });
+});
+
+describe('asset URL helpers', () => {
+  it('keeps API-served uploads on the current origin when VITE_API_BASE is relative', () => {
+    expect(resolveAssetUrl('/api/files/42/download')).toBe('/api/files/42/download');
+    expect(resolveAssetUrl('api/files/42/download')).toBe('/api/files/42/download');
+  });
+
+  it('does not invent a missing avatar image URL', () => {
+    expect(resolveAvatarUrl(null)).toBe('');
+    expect(resolveAvatarUrl(undefined)).toBe('');
+  });
+
+  it('leaves absolute URLs untouched', () => {
+    expect(resolveAssetUrl('https://api.project-nexus.net/api/files/42/download'))
+      .toBe('https://api.project-nexus.net/api/files/42/download');
   });
 });

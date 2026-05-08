@@ -92,6 +92,8 @@ public class EventsController : ControllerBase
                 ends_at = e.EndsAt,
                 max_attendees = e.MaxAttendees,
                 e.ImageUrl,
+                image_url = e.ImageUrl,
+                cover_image = e.ImageUrl,
                 e.CreatedAt,
                 created_by = e.CreatedBy != null
                     ? new { e.CreatedBy.Id, e.CreatedBy.FirstName, e.CreatedBy.LastName, name = (e.CreatedBy.FirstName + " " + e.CreatedBy.LastName).Trim(), avatar_url = e.CreatedBy.AvatarUrl }
@@ -150,6 +152,8 @@ public class EventsController : ControllerBase
                 starts_at = r.Event.StartsAt,
                 ends_at = r.Event.EndsAt,
                 r.Event.ImageUrl,
+                image_url = r.Event.ImageUrl,
+                cover_image = r.Event.ImageUrl,
                 my_rsvp = r.Status,
                 responded_at = r.RespondedAt,
                 group = r.Event.GroupId != null && r.Event.Group != null
@@ -194,6 +198,8 @@ public class EventsController : ControllerBase
                 ends_at = e.EndsAt,
                 max_attendees = e.MaxAttendees,
                 e.ImageUrl,
+                image_url = e.ImageUrl,
+                cover_image = e.ImageUrl,
                 e.IsCancelled,
                 e.CreatedAt,
                 e.UpdatedAt,
@@ -334,6 +340,8 @@ public class EventsController : ControllerBase
                 ends_at = eventEntity.EndsAt,
                 max_attendees = eventEntity.MaxAttendees,
                 eventEntity.ImageUrl,
+                image_url = eventEntity.ImageUrl,
+                cover_image = eventEntity.ImageUrl,
                 eventEntity.CreatedAt,
                 group_id = eventEntity.GroupId,
                 my_rsvp = Event.RsvpStatus.Going
@@ -448,6 +456,8 @@ public class EventsController : ControllerBase
                 ends_at = eventEntity.EndsAt,
                 max_attendees = eventEntity.MaxAttendees,
                 eventEntity.ImageUrl,
+                image_url = eventEntity.ImageUrl,
+                cover_image = eventEntity.ImageUrl,
                 eventEntity.CreatedAt,
                 eventEntity.UpdatedAt
             }

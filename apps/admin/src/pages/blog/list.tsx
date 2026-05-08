@@ -54,8 +54,7 @@ export const BlogListPage = () => {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <Title level={4}>Blog Posts</Title>
-        {/* Route /blog/new/edit uses the shared BlogEditPage; id="new" triggers create mode (see edit.tsx line 19) */}
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/blog/new/edit")}>New Post</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/blog/create")}>New Post</Button>
       </div>
       {isLoading ? <Spin /> : (
         <Card>

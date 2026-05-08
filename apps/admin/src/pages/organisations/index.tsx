@@ -40,7 +40,7 @@ export const OrganisationsPage = () => {
 
   const raw = data?.data as any;
   const orgs = raw?.items || raw?.data || (Array.isArray(data?.data) ? data.data : []);
-  const totalCount = raw?.total || raw?.totalCount || orgs.length;
+  const totalCount = raw?.pagination?.total || raw?.total || raw?.totalCount || orgs.length;
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
     setPage(1);

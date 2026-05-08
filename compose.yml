@@ -65,6 +65,9 @@ services:
       - LlamaService__BaseUrl=http://llama-service:11434
       - LlamaService__Model=llama3.2:11b
       - LlamaService__TimeoutSeconds=180
+      - FileUpload__UploadsRoot=/app/uploads
+    volumes:
+      - nexus-backend-uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -344,3 +347,5 @@ volumes:
     name: nexus-backend-rabbitmq-data
   nexus-backend-llama-models:
     name: nexus-backend-llama-models
+  nexus-backend-uploads:
+    name: nexus-backend-uploads

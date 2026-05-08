@@ -98,7 +98,7 @@ public class AdminPagesController : ControllerBase
         var (page, error) = await _pages.CreatePageAsync(
             userId.Value, request.Title, request.Content, request.IsPublished,
             request.ShowInMenu, request.MenuLocation, request.ParentId, request.PublishAt,
-            request.MetaTitle, request.MetaDescription);
+            request.MetaTitle, request.MetaDescription, request.SortOrder);
 
         if (error != null) return BadRequest(new { error });
         return Created($"/api/pages/{page!.Slug}", new { data = new { page.Id, page.Title, page.Slug } });
@@ -116,7 +116,7 @@ public class AdminPagesController : ControllerBase
         var (page, error) = await _pages.UpdatePageAsync(
             id, userId.Value, request.Title, request.Content, request.IsPublished,
             request.ShowInMenu, request.MenuLocation, request.ParentId, request.PublishAt,
-            request.MetaTitle, request.MetaDescription);
+            request.MetaTitle, request.MetaDescription, request.SortOrder);
 
         if (error != null) return NotFound(new { error });
         return Ok(new { data = new { page!.Id, page.Title, page.Slug, current_version = page.CurrentVersion } });
@@ -215,6 +215,8 @@ public class CreatePageRequest
     public string? MetaTitle { get; set; }
     [JsonPropertyName("meta_description")]
     public string? MetaDescription { get; set; }
+    [JsonPropertyName("sort_order")]
+    public int? SortOrder { get; set; }
 }
 
 public class UpdatePageRequest
@@ -237,6 +239,8 @@ public class UpdatePageRequest
     public string? MetaTitle { get; set; }
     [JsonPropertyName("meta_description")]
     public string? MetaDescription { get; set; }
+    [JsonPropertyName("sort_order")]
+    public int? SortOrder { get; set; }
 }
 
 public class RevertRequest

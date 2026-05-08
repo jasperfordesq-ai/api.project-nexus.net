@@ -137,5 +137,79 @@ public class FederationConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.TenantId);
             // No tenant query filter - FederationApiLog is not tenant-scoped (TenantId is nullable)
         });
+
+        modelBuilder.Entity<FederationExternalPartner>(entity =>
+        {
+            entity.ToTable("federation_external_partners");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.BaseUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.ApiPath).HasMaxLength(255);
+            entity.Property(e => e.ApiKey).HasColumnType("text");
+            entity.Property(e => e.AuthMethod).HasMaxLength(30);
+            entity.Property(e => e.ProtocolType).HasMaxLength(30);
+            entity.Property(e => e.SigningSecret).HasColumnType("text");
+            entity.Property(e => e.OAuthClientId).HasMaxLength(255);
+            entity.Property(e => e.OAuthClientSecret).HasColumnType("text");
+            entity.Property(e => e.OAuthTokenUrl).HasMaxLength(1000);
+            entity.Property(e => e.Status).HasMaxLength(30);
+            entity.Property(e => e.LastError).HasColumnType("text");
+            entity.Property(e => e.PartnerMetadata).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.BaseUrl }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Status });
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederationExternalPartnerLog>(entity =>
+        {
+            entity.ToTable("federation_external_partner_logs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Endpoint).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.Method).HasMaxLength(10);
+            entity.Property(e => e.RequestBody).HasColumnType("text");
+            entity.Property(e => e.ResponseBody).HasColumnType("text");
+            entity.Property(e => e.ErrorMessage).HasColumnType("text");
+            entity.HasIndex(e => e.PartnerId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasOne(e => e.Partner).WithMany().HasForeignKey(e => e.PartnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FederationWebhookNonce>(entity =>
+        {
+            entity.ToTable("federation_webhook_nonces");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PlatformId).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Nonce).HasMaxLength(255).IsRequired();
+            entity.HasIndex(e => new { e.PlatformId, e.Nonce }).IsUnique();
+            entity.HasIndex(e => e.ExpiresAt);
+        });
+
+        modelBuilder.Entity<FederationSystemControl>(entity =>
+        {
+            entity.ToTable("federation_system_control");
+            entity.HasKey(e => e.Id);
+        });
+
+        modelBuilder.Entity<FederationTenantWhitelist>(entity =>
+        {
+            entity.ToTable("federation_tenant_whitelist");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.HasIndex(e => e.TenantId).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederationTenantFeature>(entity =>
+        {
+            entity.ToTable("federation_tenant_features");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Feature).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Configuration).HasColumnType("text");
+            entity.HasIndex(e => new { e.TenantId, e.Feature }).IsUnique();
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
     }
 }

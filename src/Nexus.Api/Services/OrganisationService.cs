@@ -273,20 +273,37 @@ public class OrganisationService
 
     // ── Admin ───────────────────────────────────────────────
 
-    public async Task<List<Organisation>> AdminListAsync(string? status = null, int page = 1, int limit = 20)
+    public async Task<(List<Organisation> Items, int Total)> AdminListAsync(
+        string? status = null,
+        string? search = null,
+        int page = 1,
+        int limit = 20)
     {
         var query = _db.Set<Organisation>()
             .Include(o => o.Owner)
+            .Include(o => o.Members)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status))
             query = query.Where(o => o.Status == status);
 
-        return await query
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(o =>
+                o.Name.ToLower().Contains(term) ||
+                (o.Slug != null && o.Slug.ToLower().Contains(term)) ||
+                (o.Industry != null && o.Industry.ToLower().Contains(term)));
+        }
+
+        var total = await query.CountAsync();
+        var items = await query
             .OrderByDescending(o => o.CreatedAt)
             .Skip((Math.Max(1, page) - 1) * Math.Clamp(limit, 1, 100))
             .Take(Math.Clamp(limit, 1, 100))
             .ToListAsync();
+
+        return (items, total);
     }
 
     public async Task<(Organisation? Org, string? Error)> AdminVerifyAsync(int orgId)

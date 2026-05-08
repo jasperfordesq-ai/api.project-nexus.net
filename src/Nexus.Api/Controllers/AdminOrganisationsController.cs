@@ -30,20 +30,24 @@ public class AdminOrganisationsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> ListOrganisations(
         [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
         page = Math.Max(page, 1);
         limit = Math.Clamp(limit, 1, 100);
-        var orgs = await _orgs.AdminListAsync(status, page, limit);
+        var (orgs, total) = await _orgs.AdminListAsync(status, search, page, limit);
         return Ok(new
         {
             data = orgs.Select(o => new
             {
                 o.Id, o.Name, o.Slug, o.Type, o.Industry, o.Status,
+                email = o.Email,
+                member_count = o.Members.Count,
                 is_public = o.IsPublic, created_at = o.CreatedAt, verified_at = o.VerifiedAt,
                 owner = o.Owner != null ? new { o.Owner.Id, o.Owner.FirstName, o.Owner.LastName } : null
-            })
+            }),
+            pagination = new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) }
         });
     }
 

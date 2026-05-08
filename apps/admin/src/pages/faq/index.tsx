@@ -21,6 +21,7 @@ export const FaqPage = () => {
   const { data, isLoading, refetch } = useCustom({
     url: "/api/faqs",
     method: "get",
+    config: { query: { publishedOnly: false } },
   });
 
   const faqs = (data?.data as any)?.items || (data?.data as any)?.data || [];
@@ -74,7 +75,7 @@ export const FaqPage = () => {
 
   const handlePublishToggle = async (id: number, checked: boolean) => {
     try {
-      await axiosInstance.patch(`/api/faqs/${id}`, { is_published: checked });
+      await axiosInstance.put(`/api/faqs/${id}`, { is_published: checked });
       message.success(checked ? "Published" : "Unpublished");
       refetch();
     } catch (err: unknown) {

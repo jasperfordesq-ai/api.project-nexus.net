@@ -128,8 +128,8 @@ docker compose build --no-cache && docker compose up -d
 
 ### Test Credentials (Local Only)
 
-- `admin@acme.test` / `Test123!` / tenant_slug: `acme`
-- `member@acme.test` / `Test123!` / tenant_slug: `acme`
+- `admin@acme.test` / `NexusV2!Demo#2026` / tenant_slug: `acme`
+- `member@acme.test` / `NexusV2!Demo#2026` / tenant_slug: `acme`
 
 **Note:** Production uses different, secure passwords. See production-server.md.
 
@@ -141,10 +141,10 @@ Production runs at https://app.project-nexus.net
 
 ```bash
 # 1. Upload changed files to server
-scp -i "C:\ssh-keys\project-nexus.pem" -r src/ azureuser@20.224.171.253:/opt/nexus-modern-frontend/
+scp -i "<path-to-production-ssh-key>" -r src/ <production-user>@<production-host>:/opt/nexus-modern-frontend/
 
 # 2. SSH to server
-ssh -i "C:\ssh-keys\project-nexus.pem" azureuser@20.224.171.253
+ssh -i "<path-to-production-ssh-key>" <production-user>@<production-host>
 
 # 3. Rebuild and restart (production mode)
 cd /opt/nexus-modern-frontend
