@@ -274,12 +274,12 @@ public class UsersController : ControllerBase
             .CountAsync();
         var completedRequired = totalRequired > 0
             ? await _db.Set<OnboardingProgress>()
-                .Where(p => p.UserId == user.Id && p.IsCompleted)
-                .Join(_db.Set<OnboardingStep>().Where(s => s.IsRequired),
+                .Where(p => p.UserId == user.Id && p.TenantId == user.TenantId && p.IsCompleted)
+                .Join(_db.Set<OnboardingStep>().Where(s => s.TenantId == user.TenantId && s.IsRequired),
                     p => p.StepId, s => s.Id, (p, s) => p)
                 .CountAsync()
             : 0;
-        var onboardingCompleted = totalRequired > 0 && completedRequired >= totalRequired;
+        var onboardingCompleted = totalRequired == 0 || completedRequired >= totalRequired;
 
         // Get preferred language from user preferences
         var preferredLanguage = await _db.Set<UserPreference>()

@@ -28,6 +28,9 @@ public class UsersControllerTests : IntegrationTestBase
         await AuthenticateAsMemberAsync();
         var r = await Client.GetAsync("/api/users/me");
         r.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var user = await r.Content.ReadFromJsonAsync<JsonElement>();
+        user.GetProperty("onboarding_completed").GetBoolean().Should().BeTrue();
     }
 
     [Fact]
