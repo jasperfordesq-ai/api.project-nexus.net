@@ -94,8 +94,8 @@ function getApiPath(resource: string, meta?: Record<string, any>): string {
     "system-settings": "/api/admin/system/settings",
     announcements: "/api/admin/system/announcements",
     audit: "/api/admin/audit",
-    analytics: "/api/admin/analytics",
-    registration: "/api/registration/admin",
+    analytics: "/api/admin/analytics/overview",
+    registration: "/api/registration/admin/policy",
   };
   return pathMap[resource] || `/api/admin/${resource}`;
 }

@@ -11,10 +11,10 @@ export interface Idea {
 }
 
 export const ideationApi = {
-  list: (params?: PaginationParams) => apiClient.get<PaginatedResponse<Idea>>('/api/ideation', { params }).then(r => r.data),
-  get: (id: number) => apiClient.get<Idea>(`/api/ideation/${id}`).then(r => r.data),
+  list: (params?: PaginationParams) => apiClient.get<PaginatedResponse<Idea>>('/api/ideas', { params }).then(r => r.data),
+  get: (id: number) => apiClient.get<Idea>(`/api/ideas/${id}`).then(r => r.data),
   create: (payload: { title: string; description: string }) =>
-    apiClient.post<Idea>('/api/ideation', payload).then(r => r.data),
-  vote: (id: number) => apiClient.post(`/api/ideation/${id}/vote`).then(r => r.data),
-  unvote: (id: number) => apiClient.delete(`/api/ideation/${id}/vote`).then(r => r.data),
+    apiClient.post<Idea>('/api/ideas', payload).then(r => r.data),
+  vote: (id: number) => apiClient.post(`/api/ideas/${id}/vote`).then(r => r.data),
+  unvote: (id: number) => apiClient.delete(`/api/ideas/${id}/vote`).then(r => r.data),
 }

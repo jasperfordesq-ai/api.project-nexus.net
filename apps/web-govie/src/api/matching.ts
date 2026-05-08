@@ -10,7 +10,7 @@ export interface MatchResult {
 }
 
 export const matchingApi = {
-  myMatches: () => apiClient.get<MatchResult[]>('/api/matching/my').then(r => r.data),
+  myMatches: () => apiClient.get<MatchResult[]>('/api/matching').then(r => r.data),
   listingMatches: (listingId: number) =>
     apiClient.get<MatchResult[]>(`/api/ai/listings/${listingId}/matches`).then(r => r.data),
 }

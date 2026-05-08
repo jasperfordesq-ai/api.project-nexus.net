@@ -264,7 +264,7 @@ function AppInner() {
               <Route path="/email-settings" element={<CompatAdminPage title="Email Settings" apiPath="/api/admin/email/config" />} />
               <Route path="/algorithm-settings" element={<CompatAdminPage title="Algorithm Settings" apiPath="/api/admin/config/algorithms" />} />
               <Route path="/seo" element={<CompatAdminPage title="SEO Overview" apiPath="/api/admin/config/seo" />} />
-              <Route path="/404-errors" element={<CompatAdminPage title="404 Error Tracking" apiPath="/api/admin/404-errors" />} />
+              <Route path="/404-errors" element={<CompatAdminPage title="404 Error Tracking" apiPath="/api/admin/tools/404-errors" />} />
               <Route path="/timebanking" element={<TimebankingPage />} />
               <Route path="/timebanking/alerts" element={<TimebankingPage />} />
               <Route path="/timebanking/org-wallets" element={<TimebankingPage />} />
@@ -292,9 +292,9 @@ function AppInner() {
               <Route path="/federation/neighborhoods" element={<FederationPage />} />
               <Route path="/federation/external-partners" element={<FederationPage />} />
               <Route path="/federation/webhooks" element={<FederationPage />} />
-              <Route path="/cron-jobs" element={<CompatAdminPage title="Cron Jobs" apiPath="/api/admin/cron-jobs" />} />
-              <Route path="/cron-jobs/logs" element={<CompatAdminPage title="Cron Job Logs" apiPath="/api/admin/cron-jobs/logs" />} />
-              <Route path="/cron-jobs/settings" element={<CompatAdminPage title="Cron Job Settings" apiPath="/api/admin/cron-jobs/settings" />} />
+              <Route path="/cron-jobs" element={<CompatAdminPage title="Cron Jobs" apiPath="/api/admin/system/cron-jobs" />} />
+              <Route path="/cron-jobs/logs" element={<CompatAdminPage title="Cron Job Logs" apiPath="/api/admin/system/cron-jobs/logs" />} />
+              <Route path="/cron-jobs/settings" element={<CompatAdminPage title="Cron Job Settings" apiPath="/api/admin/system/cron-jobs/settings" />} />
               <Route path="/activity-log" element={<CompatAdminPage title="Activity Log" apiPath="/api/admin/dashboard/activity" />} />
               <Route path="/volunteering" element={<VolunteeringAdminPage />} />
               <Route path="/volunteering/approvals" element={<VolunteeringAdminPage />} />
@@ -305,8 +305,8 @@ function AppInner() {
               <Route path="/goals" element={<CompatAdminPage title="Goals" apiPath="/api/admin/goals" />} />
               <Route path="/resources" element={<ResourcesAdminPage />} />
               <Route path="/resources/categories" element={<ResourcesAdminPage />} />
-              <Route path="/marketplace" element={<CompatAdminPage title="Marketplace" apiPath="/api/admin/marketplace" />} />
-              <Route path="/marketplace/moderation" element={<CompatAdminPage title="Marketplace Moderation" apiPath="/api/admin/marketplace/moderation" />} />
+              <Route path="/marketplace" element={<CompatAdminPage title="Marketplace" apiPath="/api/admin/marketplace/dashboard" />} />
+              <Route path="/marketplace/moderation" element={<CompatAdminPage title="Marketplace Moderation" apiPath="/api/admin/marketplace/reports" />} />
               <Route path="/marketplace/sellers" element={<CompatAdminPage title="Marketplace Sellers" apiPath="/api/admin/marketplace/sellers" />} />
               <Route path="/marketplace/coupons" element={<CompatAdminPage title="Coupons" apiPath="/api/admin/marketplace/coupons" />} />
               <Route path="/ideation" element={<CompatAdminPage title="Ideation" apiPath="/api/admin/ideation" />} />
@@ -333,26 +333,26 @@ function AppInner() {
               <Route path="/safeguarding-options" element={<SafeguardingPage />} />
               <Route path="/settings" element={<SystemSettingsPage />} />
               <Route path="/settings/registration-policy" element={<RegistrationPolicyPage />} />
-              <Route path="/onboarding-settings" element={<CompatAdminPage title="Onboarding Settings" apiPath="/api/admin/onboarding-settings" />} />
+              <Route path="/onboarding-settings" element={<CompatAdminPage title="Onboarding Settings" apiPath="/api/admin/config/features" />} />
               <Route path="/tenant-features" element={<CompatAdminPage title="Tenant Features" apiPath="/api/admin/config/features" />} />
               <Route path="/module-configuration" element={<CompatAdminPage title="Module Configuration" apiPath="/api/admin/config/modules" />} />
               <Route path="/translation-config" element={<CompatAdminPage title="Translation Config" apiPath="/api/admin/config/languages" />} />
-              <Route path="/seed-generator" element={<CompatAdminPage title="Seed Generator" apiPath="/api/admin/seed-generator" />} />
-              <Route path="/tests" element={<CompatAdminPage title="Test Runner" apiPath="/api/admin/tests" />} />
-              <Route path="/webp-converter" element={<CompatAdminPage title="WebP Converter" apiPath="/api/admin/webp-converter" />} />
+              <Route path="/seed-generator" element={<CompatAdminPage title="Seed Generator" apiPath="/api/admin/tools/health" createPath="/api/admin/tools/seed" />} />
+              <Route path="/tests" element={<CompatAdminPage title="Test Runner" apiPath="/api/admin/tools/health" />} />
+              <Route path="/webp-converter" element={<CompatAdminPage title="WebP Converter" apiPath="/api/admin/tools/webp-stats" createPath="/api/admin/tools/webp-convert" />} />
               <Route path="/image-settings" element={<CompatAdminPage title="Image Settings" apiPath="/api/admin/config/images" />} />
               <Route path="/native-app" element={<CompatAdminPage title="Native App" apiPath="/api/admin/config/native-app" />} />
-              <Route path="/blog-restore" element={<CompatAdminPage title="Blog Restore" apiPath="/api/admin/blog/restore" />} />
+              <Route path="/blog-restore" element={<CompatAdminPage title="Blog Restore" apiPath="/api/admin/tools/blog-backups" />} />
               <Route path="/reports/members" element={<CompatAdminPage title="Member Reports" apiPath="/api/admin/reports/members" />} />
               <Route path="/reports/hours" element={<CompatAdminPage title="Hours Reports" apiPath="/api/admin/reports/hours" />} />
-              <Route path="/reports/inactive-members" element={<CompatAdminPage title="Inactive Members" apiPath="/api/admin/reports/inactive-members" />} />
-              <Route path="/reports/municipal-impact" element={<CompatAdminPage title="Municipal Impact Reports" apiPath="/api/admin/reports/municipal-impact" />} />
+              <Route path="/reports/inactive-members" element={<CompatAdminPage title="Inactive Members" apiPath="/api/admin/analytics/inactive-members" />} />
+              <Route path="/reports/municipal-impact" element={<CompatAdminPage title="Municipal Impact Reports" apiPath="/api/admin/impact-report" />} />
               <Route path="/impact-report" element={<CompatAdminPage title="Impact Report" apiPath="/api/admin/impact-report" />} />
-              <Route path="/performance" element={<CompatAdminPage title="Performance Dashboard" apiPath="/api/admin/performance" />} />
-              <Route path="/matching-diagnostic" element={<CompatAdminPage title="Matching Diagnostic" apiPath="/api/admin/matching-diagnostic" />} />
-              <Route path="/nexus-score/analytics" element={<CompatAdminPage title="NexusScore Analytics" apiPath="/api/admin/nexus-score/analytics" />} />
-              <Route path="/smart-match-users" element={<CompatAdminPage title="Smart Match Users" apiPath="/api/admin/smart-match-users" />} />
-              <Route path="/smart-match-monitoring" element={<CompatAdminPage title="Smart Match Monitoring" apiPath="/api/admin/smart-match-monitoring" />} />
+              <Route path="/performance" element={<CompatAdminPage title="Performance Dashboard" apiPath="/api/admin/monitor/system" />} />
+              <Route path="/matching-diagnostic" element={<CompatAdminPage title="Matching Diagnostic" apiPath="/api/admin/matching/health" />} />
+              <Route path="/nexus-score/analytics" element={<CompatAdminPage title="NexusScore Analytics" apiPath="/api/admin/analytics/overview" />} />
+              <Route path="/smart-match-users" element={<CompatAdminPage title="Smart Match Users" apiPath="/api/admin/matching/stats" />} />
+              <Route path="/smart-match-monitoring" element={<CompatAdminPage title="Smart Match Monitoring" apiPath="/api/admin/matching/health" />} />
               <Route path="/users/create" element={<CompatAdminPage title="Create User" apiPath="/api/admin/users" />} />
               <Route path="/users/:id/permissions" element={<CompatAdminPage title="User Permissions" apiPath="/api/admin/enterprise/permissions" />} />
               <Route path="/tenants" element={<CompatAdminPage title="Tenants" apiPath="/api/admin/super/tenants" />} />
@@ -360,33 +360,33 @@ function AppInner() {
               <Route path="/tenants/:id" element={<CompatAdminPage title="Tenant Detail" apiPath="/api/admin/super/tenants/:id" />} />
               <Route path="/tenants/:id/edit" element={<CompatAdminPage title="Edit Tenant" apiPath="/api/admin/super/tenants/:id" />} />
               <Route path="/tenants/hierarchy" element={<CompatAdminPage title="Tenant Hierarchy" apiPath="/api/admin/super/tenants/hierarchy" />} />
-              <Route path="/provisioning-requests" element={<CompatAdminPage title="Provisioning Requests" apiPath="/api/admin/provisioning-requests" />} />
-              <Route path="/platform/pilot-inquiries" element={<CompatAdminPage title="Pilot Inquiries" apiPath="/api/admin/platform/pilot-inquiries" />} />
+              <Route path="/provisioning-requests" element={<CompatAdminPage title="Provisioning Requests" apiPath="/api/admin/super/tenants" />} />
+              <Route path="/platform/pilot-inquiries" element={<CompatAdminPage title="Pilot Inquiries" apiPath="/api/admin/community-analytics" />} />
               <Route path="/community-analytics" element={<CompatAdminPage title="Community Analytics" apiPath="/api/admin/community-analytics" />} />
-              <Route path="/analytics/regional" element={<CompatAdminPage title="Regional Analytics" apiPath="/api/admin/analytics/regional" />} />
-              <Route path="/regional-points" element={<CompatAdminPage title="Regional Points" apiPath="/api/admin/regional-points" />} />
-              <Route path="/national/kiss" element={<CompatAdminPage title="National KISS Dashboard" apiPath="/api/admin/national/kiss" />} />
-              <Route path="/agents" element={<CompatAdminPage title="Agents" apiPath="/api/admin/agents" />} />
-              <Route path="/agents/proposals" element={<CompatAdminPage title="Agent Proposals" apiPath="/api/admin/agents/proposals" />} />
-              <Route path="/agents/runs" element={<CompatAdminPage title="Agent Runs" apiPath="/api/admin/agents/runs" />} />
-              <Route path="/ai/ki-agents" element={<CompatAdminPage title="KI Agents" apiPath="/api/admin/ai/ki-agents" />} />
-              <Route path="/advertising/campaigns" element={<CompatAdminPage title="Ad Campaigns" apiPath="/api/admin/advertising/campaigns" />} />
-              <Route path="/advertising/push-campaigns" element={<CompatAdminPage title="Push Campaigns" apiPath="/api/admin/advertising/push-campaigns" />} />
-              <Route path="/billing" element={<CompatAdminPage title="Billing" apiPath="/api/admin/billing" />} />
-              <Route path="/billing/plans" element={<CompatAdminPage title="Billing Plans" apiPath="/api/admin/billing/plans" />} />
-              <Route path="/billing/invoices" element={<CompatAdminPage title="Invoices" apiPath="/api/admin/billing/invoices" />} />
-              <Route path="/billing/revenue" element={<CompatAdminPage title="Revenue Dashboard" apiPath="/api/admin/billing/revenue" />} />
-              <Route path="/member-premium" element={<CompatAdminPage title="Member Premium" apiPath="/api/admin/member-premium" />} />
-              <Route path="/member-premium/subscribers" element={<CompatAdminPage title="Premium Subscribers" apiPath="/api/admin/member-premium/subscribers" />} />
+              <Route path="/analytics/regional" element={<CompatAdminPage title="Regional Analytics" apiPath="/api/admin/analytics/overview" />} />
+              <Route path="/regional-points" element={<CompatAdminPage title="Regional Points" apiPath="/api/admin/analytics/overview" />} />
+              <Route path="/national/kiss" element={<CompatAdminPage title="National KISS Dashboard" apiPath="/api/admin/community-analytics" />} />
+              <Route path="/agents" element={<CompatAdminPage title="Agents" apiPath="/api/admin/tools/health" />} />
+              <Route path="/agents/proposals" element={<CompatAdminPage title="Agent Proposals" apiPath="/api/admin/tools/health" />} />
+              <Route path="/agents/runs" element={<CompatAdminPage title="Agent Runs" apiPath="/api/admin/tools/health" />} />
+              <Route path="/ai/ki-agents" element={<CompatAdminPage title="KI Agents" apiPath="/api/admin/config/ai" />} />
+              <Route path="/advertising/campaigns" element={<CompatAdminPage title="Ad Campaigns" apiPath="/api/admin/marketplace/dashboard" />} />
+              <Route path="/advertising/push-campaigns" element={<CompatAdminPage title="Push Campaigns" apiPath="/api/admin/notifications" />} />
+              <Route path="/billing" element={<CompatAdminPage title="Billing" apiPath="/api/admin/plans" />} />
+              <Route path="/billing/plans" element={<CompatAdminPage title="Billing Plans" apiPath="/api/admin/plans" />} />
+              <Route path="/billing/invoices" element={<CompatAdminPage title="Invoices" apiPath="/api/admin/plans" />} />
+              <Route path="/billing/revenue" element={<CompatAdminPage title="Revenue Dashboard" apiPath="/api/admin/analytics/sroi" />} />
+              <Route path="/member-premium" element={<CompatAdminPage title="Member Premium" apiPath="/api/admin/plans" />} />
+              <Route path="/member-premium/subscribers" element={<CompatAdminPage title="Premium Subscribers" apiPath="/api/admin/plans" />} />
               <Route path="/broker-controls" element={<BrokerPage />} />
               <Route path="/broker-controls/*" element={<BrokerPage />} />
-              <Route path="/bulk" element={<CompatAdminPage title="Bulk Operations" apiPath="/api/admin/super/bulk" />} />
-              <Route path="/billing/checkout-return" element={<CompatAdminPage title="Checkout Return" apiPath="/api/admin/billing/checkout-return" />} />
-              <Route path="/cron-jobs/setup" element={<CompatAdminPage title="Cron Job Setup" apiPath="/api/admin/cron-jobs/setup" />} />
+              <Route path="/bulk" element={<CompatAdminPage title="Bulk Operations" apiPath="/api/admin/super/dashboard" createPath="/api/admin/super/bulk/move-users" />} />
+              <Route path="/billing/checkout-return" element={<CompatAdminPage title="Checkout Return" apiPath="/api/admin/plans" />} />
+              <Route path="/cron-jobs/setup" element={<CompatAdminPage title="Cron Job Setup" apiPath="/api/admin/system/cron-jobs/health" />} />
               <Route path="/custom-badges/create" element={<CompatAdminPage title="Create Custom Badge" apiPath="/api/admin/gamification/badges" />} />
               <Route path="/deliverability/create" element={<CompatAdminPage title="Create Deliverable" apiPath="/api/admin/deliverability" />} />
               <Route path="/deliverability/edit/:id" element={<CompatAdminPage title="Edit Deliverable" apiPath="/api/admin/deliverability" />} />
-              <Route path="/enterprise/fadp" element={<CompatAdminPage title="FADP" apiPath="/api/admin/enterprise/fadp" />} />
+              <Route path="/enterprise/fadp" element={<CompatAdminPage title="FADP" apiPath="/api/admin/enterprise/compliance" />} />
               <Route path="/enterprise/gdpr/breaches/:id" element={<EnterprisePage />} />
               <Route path="/enterprise/gdpr/consent-types" element={<EnterprisePage />} />
               <Route path="/enterprise/gdpr/requests/create" element={<EnterprisePage />} />
@@ -407,7 +407,7 @@ function AppInner() {
               <Route path="/groups/:id/detail" element={<GroupsAdminPage />} />
               <Route path="/groups/:id/edit" element={<GroupsAdminPage />} />
               <Route path="/groups/ranking" element={<GroupsAdminPage />} />
-              <Route path="/help" element={<CompatAdminPage title="Admin Help" apiPath="/api/admin/help" />} />
+              <Route path="/help" element={<CompatAdminPage title="Admin Help" apiPath="/api/admin/system/health" />} />
               <Route path="/landing-page" element={<CompatAdminPage title="Landing Page Builder" apiPath="/api/admin/pages" />} />
               <Route path="/legal-documents/create" element={<LegalDocumentsPage />} />
               <Route path="/legal-documents/:id" element={<LegalDocumentsPage />} />
@@ -417,12 +417,12 @@ function AppInner() {
               <Route path="/match-debug" element={<MatchingPage />} />
               <Route path="/plans/create" element={<ListingsAdminPage />} />
               <Route path="/plans/edit/:id" element={<ListingsAdminPage />} />
-              <Route path="/regional-analytics/subscriptions" element={<CompatAdminPage title="Regional Analytics Subscriptions" apiPath="/api/admin/regional-analytics/subscriptions" />} />
+              <Route path="/regional-analytics/subscriptions" element={<CompatAdminPage title="Regional Analytics Subscriptions" apiPath="/api/admin/analytics/overview" />} />
               <Route path="/reports/social-value" element={<CompatAdminPage title="Social Value Reports" apiPath="/api/admin/reports/social-value" />} />
               <Route path="/resources/create" element={<ResourcesAdminPage />} />
               <Route path="/resources/edit/:id" element={<ResourcesAdminPage />} />
-              <Route path="/seo/audit" element={<CompatAdminPage title="SEO Audit" apiPath="/api/admin/config/seo/audit" />} />
-              <Route path="/seo/redirects" element={<CompatAdminPage title="Redirects" apiPath="/api/admin/config/seo/redirects" />} />
+              <Route path="/seo/audit" element={<CompatAdminPage title="SEO Audit" apiPath="/api/admin/tools/seo-audit" createPath="/api/admin/tools/seo-audit" />} />
+              <Route path="/seo/redirects" element={<CompatAdminPage title="Redirects" apiPath="/api/admin/tools/redirects" />} />
               <Route path="/timebanking/create-org" element={<TimebankingPage />} />
               <Route path="/timebanking/user-report" element={<TimebankingPage />} />
               <Route path="/timebanking/user-report/:id" element={<TimebankingPage />} />

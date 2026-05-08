@@ -121,7 +121,11 @@ export const BrokerPage = () => {
 
   const handleExchangeAction = async (id: number, action: "approve" | "reject") => {
     try {
-      await axiosInstance.post(`/api/admin/broker/exchanges/${id}/${action}`, action === "reject" ? { reason: "Rejected by broker admin" } : {});
+      if (action === "approve") {
+        await axiosInstance.post(`/api/admin/broker/exchanges/${id}/approve`);
+      } else {
+        await axiosInstance.post(`/api/admin/broker/exchanges/${id}/reject`, { reason: "Rejected by broker admin" });
+      }
       message.success(action === "approve" ? "Exchange approved" : "Exchange rejected");
       refreshBroker();
     } catch (err: unknown) {

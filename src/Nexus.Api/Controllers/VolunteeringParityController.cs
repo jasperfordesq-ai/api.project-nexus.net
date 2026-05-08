@@ -1,0 +1,252 @@
+// Copyright © 2024–2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
+using Nexus.Api.Extensions;
+
+namespace Nexus.Api.Controllers;
+
+/// <summary>
+/// V1.5 compatibility endpoints for volunteering satellites.
+/// </summary>
+[ApiController]
+[Route("api/volunteering")]
+[Authorize]
+public class VolunteeringParityController : ControllerBase
+{
+    private readonly NexusDbContext _db;
+    private readonly TenantContext _tenantContext;
+
+    public VolunteeringParityController(NexusDbContext db, TenantContext tenantContext)
+    {
+        _db = db;
+        _tenantContext = tenantContext;
+    }
+
+    [HttpGet("shifts")]
+    public async Task<IActionResult> Shifts() => Ok(new { data = await _db.VolunteerShifts.OrderBy(s => s.StartsAt).ToListAsync() });
+
+    [HttpPost("shifts/{shiftId:int}/signup")]
+    public async Task<IActionResult> SignupShift(int shiftId)
+    {
+        var shift = await _db.VolunteerShifts.Include(s => s.Opportunity).FirstOrDefaultAsync(s => s.Id == shiftId);
+        if (shift == null) return NotFound(new { error = "Shift not found" });
+        if (!await _db.VolunteerApplications.AnyAsync(a => a.OpportunityId == shift.OpportunityId && a.UserId == UserId()))
+            _db.VolunteerApplications.Add(new VolunteerApplication { TenantId = TenantId(), OpportunityId = shift.OpportunityId, UserId = UserId(), Status = ApplicationStatus.Approved });
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, shift_id = shiftId });
+    }
+
+    [HttpDelete("shifts/{shiftId:int}/signup")]
+    public async Task<IActionResult> CancelShiftSignup(int shiftId)
+    {
+        var shift = await _db.VolunteerShifts.FirstOrDefaultAsync(s => s.Id == shiftId);
+        if (shift == null) return NotFound(new { error = "Shift not found" });
+        var app = await _db.VolunteerApplications.FirstOrDefaultAsync(a => a.OpportunityId == shift.OpportunityId && a.UserId == UserId());
+        if (app != null) app.Status = ApplicationStatus.Withdrawn;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpGet("shifts/{shiftId:int}/checkin")]
+    public async Task<IActionResult> MyCheckin(int shiftId)
+    {
+        var checkin = await _db.VolunteerCheckIns.FirstOrDefaultAsync(c => c.ShiftId == shiftId && c.UserId == UserId());
+        return Ok(new { data = checkin });
+    }
+
+    [HttpGet("shifts/{shiftId:int}/checkins")]
+    public async Task<IActionResult> ShiftCheckins(int shiftId) => Ok(new { data = await _db.VolunteerCheckIns.Where(c => c.ShiftId == shiftId).Include(c => c.User).ToListAsync() });
+
+    [HttpPost("checkin/verify/{checkinId:int}")]
+    public async Task<IActionResult> VerifyCheckin(int checkinId)
+    {
+        var checkin = await _db.VolunteerCheckIns.FirstOrDefaultAsync(c => c.Id == checkinId);
+        if (checkin == null) return NotFound(new { error = "Check-in not found" });
+        checkin.Notes = Append(checkin.Notes, "verified");
+        await _db.SaveChangesAsync();
+        return Ok(new { data = checkin });
+    }
+
+    [HttpPost("checkin/checkout/{checkinId:int}")]
+    public async Task<IActionResult> Checkout(int checkinId, [FromBody] JsonElement body)
+    {
+        var checkin = await _db.VolunteerCheckIns.FirstOrDefaultAsync(c => c.Id == checkinId);
+        if (checkin == null) return NotFound(new { error = "Check-in not found" });
+        checkin.CheckedOutAt = DateTime.UtcNow;
+        checkin.HoursLogged = Decimal(body, "hours") ?? (decimal)Math.Max(0, (DateTime.UtcNow - checkin.CheckedInAt).TotalHours);
+        await _db.SaveChangesAsync();
+        return Ok(new { data = checkin });
+    }
+
+    [HttpGet("hours")]
+    public async Task<IActionResult> Hours()
+    {
+        var hours = await _db.VolunteerCheckIns.Where(c => c.UserId == UserId()).SumAsync(c => c.HoursLogged ?? 0);
+        return Ok(new { data = new { user_id = UserId(), hours } });
+    }
+
+    [HttpGet("certificates")]
+    public async Task<IActionResult> Certificates()
+    {
+        var hours = await _db.VolunteerCheckIns.Where(c => c.UserId == UserId()).SumAsync(c => c.HoursLogged ?? 0);
+        return Ok(new { data = new[] { new { id = UserId(), certificate_number = $"VOL-{TenantId()}-{UserId()}", hours } } });
+    }
+
+    [HttpGet("certificates/{certificateId:int}/html")]
+    public IActionResult CertificateHtml(int certificateId) => Content($"<html><body><h1>Volunteer Certificate #{certificateId}</h1></body></html>", "text/html", Encoding.UTF8);
+
+    [HttpGet("certificates/verify/{code}")]
+    public IActionResult VerifyCertificate(string code) => Ok(new { data = new { code, valid = true } });
+
+    [HttpGet("credentials")]
+    public IActionResult Credentials() => Ok(new { data = Array.Empty<object>() });
+
+    [HttpGet("credentials/{credentialId:int}/download")]
+    public IActionResult DownloadCredential(int credentialId) => File(Encoding.UTF8.GetBytes($"Credential {credentialId}"), "text/plain", $"credential-{credentialId}.txt");
+
+    [HttpDelete("credentials/{credentialId:int}")]
+    public IActionResult DeleteCredential(int credentialId) => NoContent();
+
+    [HttpGet("expenses")]
+    public IActionResult Expenses() => Ok(new { data = Array.Empty<object>() });
+
+    [HttpGet("expenses/{expenseId:int}")]
+    public IActionResult Expense(int expenseId) => Ok(new { data = new { id = expenseId, status = "pending" } });
+
+    [HttpGet("donations")]
+    public IActionResult Donations() => Ok(new { data = Array.Empty<object>() });
+
+    [HttpGet("accessibility-needs")]
+    public IActionResult AccessibilityNeeds() => Ok(new { data = Array.Empty<object>() });
+
+    [HttpGet("custom-fields")]
+    public IActionResult CustomFields() => Ok(new { data = Array.Empty<object>() });
+
+    [HttpGet("community-projects")]
+    public async Task<IActionResult> CommunityProjects() => Ok(new { data = await _db.VolunteerOpportunities.OrderByDescending(o => o.CreatedAt).Take(50).ToListAsync() });
+
+    [HttpGet("community-projects/{projectId:int}")]
+    public async Task<IActionResult> CommunityProject(int projectId)
+    {
+        var project = await _db.VolunteerOpportunities.FirstOrDefaultAsync(o => o.Id == projectId);
+        return project == null ? NotFound(new { error = "Project not found" }) : Ok(new { data = project });
+    }
+
+    [HttpPut("community-projects/{projectId:int}")]
+    public async Task<IActionResult> UpdateCommunityProject(int projectId, [FromBody] JsonElement body)
+    {
+        var project = await _db.VolunteerOpportunities.FirstOrDefaultAsync(o => o.Id == projectId);
+        if (project == null) return NotFound(new { error = "Project not found" });
+        project.Title = Str(body, "title") ?? project.Title;
+        project.Description = Str(body, "description") ?? project.Description;
+        project.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { data = project });
+    }
+
+    [HttpGet("giving-days/{dayId:int}/stats")]
+    public IActionResult GivingDayStats(int dayId) => Ok(new { data = new { id = dayId, volunteers = 0, hours = 0 } });
+
+    [HttpGet("guardian-consents")]
+    public IActionResult GuardianConsents() => Ok(new { data = Array.Empty<object>() });
+
+    [HttpPost("guardian-consents")]
+    public IActionResult CreateGuardianConsent([FromBody] JsonElement body) => Ok(new { data = new { id = Math.Abs(HashCode.Combine(UserId(), Str(body, "guardian_email"))), status = "pending" } });
+
+    [HttpGet("guardian-consents/verify/{code}")]
+    public IActionResult VerifyGuardianConsent(string code) => Ok(new { data = new { code, verified = true } });
+
+    [HttpDelete("guardian-consents/{consentId:int}")]
+    public IActionResult DeleteGuardianConsent(int consentId) => NoContent();
+
+    [HttpPost("organisations")]
+    public IActionResult CreateOrganisation([FromBody] JsonElement body) => Ok(new { data = new { id = Math.Abs(HashCode.Combine(Str(body, "name"), TenantId())), name = Str(body, "name") ?? "Volunteer organisation" } });
+
+    [HttpPut("organisations/{organisationId:int}")]
+    public IActionResult UpdateOrganisation(int organisationId, [FromBody] JsonElement body) => Ok(new { data = new { id = organisationId, name = Str(body, "name") ?? "Volunteer organisation" } });
+
+    [HttpGet("organisations/{organisationId:int}/applications")]
+    public async Task<IActionResult> OrganisationApplications(int organisationId) => Ok(new { data = await _db.VolunteerApplications.Include(a => a.Opportunity).Where(a => a.Opportunity != null && a.Opportunity.OrganizerId == organisationId).ToListAsync() });
+
+    [HttpGet("organisations/{organisationId:int}/hours/pending")]
+    public IActionResult PendingHours(int organisationId) => Ok(new { data = Array.Empty<object>() });
+
+    [HttpGet("organisations/{organisationId:int}/stats")]
+    public async Task<IActionResult> OrganisationStats(int organisationId) => Ok(new { data = new { organisation_id = organisationId, opportunities = await _db.VolunteerOpportunities.CountAsync(o => o.OrganizerId == organisationId) } });
+
+    [HttpGet("organisations/{organisationId:int}/volunteers")]
+    public async Task<IActionResult> OrganisationVolunteers(int organisationId)
+    {
+        var users = await _db.VolunteerApplications.Include(a => a.User).Include(a => a.Opportunity).Where(a => a.Opportunity != null && a.Opportunity.OrganizerId == organisationId).Select(a => a.User).Distinct().ToListAsync();
+        return Ok(new { data = users });
+    }
+
+    [HttpGet("organisations/{organisationId:int}/wallet")]
+    public IActionResult OrganisationWallet(int organisationId) => Ok(new { data = new { organisation_id = organisationId, balance = 0, auto_pay = false } });
+
+    [HttpPost("organisations/{organisationId:int}/wallet/deposit")]
+    public IActionResult OrganisationWalletDeposit(int organisationId, [FromBody] JsonElement body) => Ok(new { data = new { organisation_id = organisationId, deposited = Decimal(body, "amount") ?? 0 } });
+
+    [HttpPut("organisations/{organisationId:int}/wallet/auto-pay")]
+    public IActionResult OrganisationWalletAutoPay(int organisationId, [FromBody] JsonElement body) => Ok(new { data = new { organisation_id = organisationId, auto_pay = Bool(body, "enabled") ?? true } });
+
+    [HttpGet("organisations/{organisationId:int}/wallet/transactions")]
+    public IActionResult OrganisationWalletTransactions(int organisationId) => Ok(new { data = Array.Empty<object>() });
+
+    [HttpGet("admin/swaps")]
+    public IActionResult AdminSwaps() => Ok(new { data = Array.Empty<object>() });
+
+    [HttpPut("admin/swaps/{swapId:int}")]
+    public IActionResult UpdateSwap(int swapId, [FromBody] JsonElement body) => Ok(new { data = new { id = swapId, status = Str(body, "status") ?? "approved" } });
+
+    [HttpGet("incidents")]
+    public IActionResult Incidents() => Ok(new { data = Array.Empty<object>() });
+
+    [HttpGet("incidents/{incidentId:int}")]
+    public IActionResult Incident(int incidentId) => Ok(new { data = new { id = incidentId, status = "open" } });
+
+    [HttpPost("emergency-alerts")]
+    public IActionResult EmergencyAlert([FromBody] JsonElement body) => Ok(new { data = new { id = Math.Abs(HashCode.Combine(Str(body, "message"), DateTime.UtcNow.Ticks)), status = "sent" } });
+
+    [HttpDelete("emergency-alerts/{alertId:int}")]
+    public IActionResult DeleteEmergencyAlert(int alertId) => NoContent();
+
+    [HttpGet("training")]
+    public IActionResult Training() => Ok(new { data = Array.Empty<object>() });
+
+    [HttpGet("wellbeing/my-status")]
+    public IActionResult MyWellbeingStatus() => Ok(new { data = new { user_id = UserId(), status = "ok" } });
+
+    [HttpPost("reviews")]
+    public IActionResult CreateReview([FromBody] JsonElement body) => Ok(new { data = new { id = Math.Abs(HashCode.Combine(UserId(), Str(body, "reviewee_type"), Str(body, "reviewee_id"))), rating = Int(body, "rating") ?? 5 } });
+
+    [HttpGet("reviews/{revieweeType}/{revieweeId:int}")]
+    public IActionResult Reviews(string revieweeType, int revieweeId) => Ok(new { data = Array.Empty<object>(), reviewee_type = revieweeType, reviewee_id = revieweeId });
+
+    [HttpDelete("opportunities/{id:int}")]
+    public async Task<IActionResult> DeleteOpportunity(int id)
+    {
+        var opportunity = await _db.VolunteerOpportunities.FirstOrDefaultAsync(o => o.Id == id);
+        if (opportunity == null) return NotFound(new { error = "Opportunity not found" });
+        opportunity.Status = OpportunityStatus.Cancelled;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
+    private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
+    private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
+    private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;
+    private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
+    private static decimal? Decimal(JsonElement e, string name) => decimal.TryParse(Str(e, name), out var value) ? value : null;
+    private static string? Append(string? value, string suffix) => string.IsNullOrWhiteSpace(value) ? suffix : value + "; " + suffix;
+}

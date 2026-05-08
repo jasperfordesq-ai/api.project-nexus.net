@@ -93,6 +93,10 @@ function Get-FrontendMethodHint {
 function Join-RoutePath {
     param([string]$Prefix, [string]$Child)
 
+    if (-not [string]::IsNullOrWhiteSpace($Child) -and $Child.Trim().StartsWith('/')) {
+        return Normalize-RoutePath $Child
+    }
+
     $combined = (($Prefix.Trim('/'), $Child.Trim('/')) | Where-Object { $_ }) -join '/'
     return Normalize-RoutePath $combined
 }
@@ -122,49 +126,65 @@ function Export-AspNetRoutes {
         ForEach-Object {
             $file = $_
             $text = Get-Content -LiteralPath $file.FullName -Raw
-            $controllerName = $file.BaseName -replace 'Controller$', ''
-            $classIndex = $text.IndexOf(' class ')
-            if ($classIndex -lt 0) { $classIndex = $text.Length }
-
-            $prefix = ''
-            $prefixMatches = [regex]::Matches($text.Substring(0, $classIndex), '\[Route\("([^"]+)"\)\]')
-            if ($prefixMatches.Count -gt 0) {
-                $prefix = $prefixMatches[$prefixMatches.Count - 1].Groups[1].Value
+            $classMatches = [regex]::Matches($text, '(?m)^\s*(?:public\s+)?(?:partial\s+)?class\s+([A-Za-z0-9_]+)\b')
+            if ($classMatches.Count -eq 0) {
+                $classMatches = @([pscustomobject]@{ Index = 0; Groups = @(@{ Value = $file.BaseName }) })
             }
-            $prefix = $prefix -replace '\[controller\]', $controllerName
 
-            $lines = $text -split "`r?`n"
-            for ($i = 0; $i -lt $lines.Count; $i++) {
-                $line = $lines[$i]
-                $match = [regex]::Match($line, '\[(HttpGet|HttpPost|HttpPut|HttpPatch|HttpDelete|HttpHead|HttpOptions)(?:\("([^"]*)"\))?')
-                if (-not $match.Success) { continue }
+            for ($classIdx = 0; $classIdx -lt $classMatches.Count; $classIdx++) {
+                $classMatch = $classMatches[$classIdx]
+                $className = $classMatch.Groups[1].Value
+                $controllerName = $className -replace 'Controller$', ''
+                $segmentStart = $classMatch.Index
+                $segmentEnd = if ($classIdx + 1 -lt $classMatches.Count) { $classMatches[$classIdx + 1].Index } else { $text.Length }
+                $segment = $text.Substring($segmentStart, $segmentEnd - $segmentStart)
 
-                $verb = $httpMap[$match.Groups[1].Value]
-                $child = $match.Groups[2].Value
-                $action = ''
-                $lookAheadEnd = [Math]::Min($i + 10, $lines.Count - 1)
-                for ($j = $i; $j -le $lookAheadEnd; $j++) {
-                    $actionMatch = [regex]::Match($lines[$j], '\b(?:async\s+)?(?:Task(?:<[^>]+>)?|IActionResult|ActionResult(?:<[^>]+>)?|[A-Za-z0-9_<>,\?\[\]]+)\s+([A-Za-z0-9_]+)\s*\(')
-                    if ($actionMatch.Success) {
-                        $action = $actionMatch.Groups[1].Value
-                        break
-                    }
+                $attributeWindowStart = [Math]::Max(0, $segmentStart - 1500)
+                $attributeWindow = $text.Substring($attributeWindowStart, $segmentStart - $attributeWindowStart)
+                $routeMatches = [regex]::Matches($attributeWindow, '\[Route\("([^"]+)"\)\]')
+                $prefixes = New-Object System.Collections.Generic.List[string]
+                foreach ($routeMatch in $routeMatches) {
+                    $prefixes.Add(($routeMatch.Groups[1].Value -replace '\[controller\]', $controllerName))
+                }
+                if ($prefixes.Count -eq 0) {
+                    $prefixes.Add('')
                 }
 
-                $authNotes = @()
-                $nearbyStart = [Math]::Max(0, $i - 8)
-                $nearby = ($lines[$nearbyStart..$i] -join "`n")
-                if ($text -match '\[Authorize' -or $nearby -match '\[Authorize') { $authNotes += 'authorize' }
-                if ($nearby -match '\[AllowAnonymous') { $authNotes += 'allow-anonymous' }
+                $lines = $segment -split "`r?`n"
+                for ($i = 0; $i -lt $lines.Count; $i++) {
+                    $line = $lines[$i]
+                    $match = [regex]::Match($line, '\[(HttpGet|HttpPost|HttpPut|HttpPatch|HttpDelete|HttpHead|HttpOptions)(?:\("([^"]*)"\))?')
+                    if (-not $match.Success) { continue }
 
-                $rows.Add([pscustomobject]@{
-                    method = $verb
-                    path = (Join-RoutePath $prefix $child)
-                    controller = $controllerName
-                    action = $action
-                    file = $file.FullName
-                    auth_notes = ($authNotes -join ';')
-                })
+                    $verb = $httpMap[$match.Groups[1].Value]
+                    $child = $match.Groups[2].Value
+                    $action = ''
+                    $lookAheadEnd = [Math]::Min($i + 10, $lines.Count - 1)
+                    for ($j = $i; $j -le $lookAheadEnd; $j++) {
+                        $actionMatch = [regex]::Match($lines[$j], '\b(?:async\s+)?(?:Task(?:<[^>]+>)?|IActionResult|ActionResult(?:<[^>]+>)?|[A-Za-z0-9_<>,\?\[\]]+)\s+([A-Za-z0-9_]+)\s*\(')
+                        if ($actionMatch.Success) {
+                            $action = $actionMatch.Groups[1].Value
+                            break
+                        }
+                    }
+
+                    $authNotes = @()
+                    $nearbyStart = [Math]::Max(0, $i - 8)
+                    $nearby = ($lines[$nearbyStart..$i] -join "`n")
+                    if ($segment -match '\[Authorize' -or $nearby -match '\[Authorize') { $authNotes += 'authorize' }
+                    if ($nearby -match '\[AllowAnonymous') { $authNotes += 'allow-anonymous' }
+
+                    foreach ($prefix in $prefixes) {
+                        $rows.Add([pscustomobject]@{
+                            method = $verb
+                            path = (Join-RoutePath $prefix $child)
+                            controller = $controllerName
+                            action = $action
+                            file = $file.FullName
+                            auth_notes = ($authNotes -join ';')
+                        })
+                    }
+                }
             }
         }
 
@@ -231,7 +251,7 @@ function Convert-NextFileToRoute {
 
     $rootUri = [Uri]((Resolve-Path -LiteralPath $AppRoot).Path.TrimEnd('\') + '\')
     $fileUri = [Uri](Resolve-Path -LiteralPath $File).Path
-    $relative = $rootUri.MakeRelativeUri($fileUri).ToString() -replace '\\', '/'
+    $relative = [Uri]::UnescapeDataString($rootUri.MakeRelativeUri($fileUri).ToString()) -replace '\\', '/'
     $route = $relative -replace '/(page|route)\.(tsx|ts|jsx|js)$', ''
     $route = $route -replace '\([^)]+\)/?', ''
     $route = $route -replace '\[([^\]]+)\]', '{$1}'

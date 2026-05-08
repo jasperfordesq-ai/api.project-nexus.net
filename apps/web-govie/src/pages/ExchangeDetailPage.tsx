@@ -62,7 +62,12 @@ export function ExchangeDetailPage() {
   const doAction = async (action: string) => {
     setActing(true)
     try {
-      await apiClient.put(`/api/exchanges/${id}/${action}`)
+      const endpoint =
+        action === 'accept' ? `/api/exchanges/${id}/accept` :
+        action === 'decline' ? `/api/exchanges/${id}/decline` :
+        action === 'complete' ? `/api/exchanges/${id}/complete` :
+        `/api/exchanges/${id}/cancel`
+      await apiClient.put(endpoint)
       setExchange(e => e ? { ...e, status: action === 'accept' ? 'accepted' : action === 'complete' ? 'completed' : action === 'decline' ? 'declined' : 'cancelled' } : e)
       setActionIsError(false)
       setActionMsg('Action completed successfully.')

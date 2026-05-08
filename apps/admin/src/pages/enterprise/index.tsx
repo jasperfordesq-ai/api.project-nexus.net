@@ -43,7 +43,7 @@ export const EnterprisePage = () => {
   const logsQuery = useCustom({ url: "/api/admin/enterprise/monitoring/logs", method: "get", queryOptions: { queryKey: ["enterprise-logs"] } });
   const configQuery = useCustom({ url: "/api/admin/enterprise/config", method: "get", queryOptions: { queryKey: ["enterprise-config"] } });
   const secretsQuery = useCustom({ url: "/api/admin/enterprise/config/secrets", method: "get", queryOptions: { queryKey: ["enterprise-secrets"] } });
-  const featuresQuery = useCustom({ url: "/api/admin/enterprise/config/features", method: "get", queryOptions: { queryKey: ["enterprise-features"] } });
+  const featuresQuery = useCustom({ url: "/api/admin/config/features", method: "get", queryOptions: { queryKey: ["enterprise-features"] } });
   const gdprQuery = useCustom({ url: "/api/admin/enterprise/gdpr/dashboard", method: "get", queryOptions: { queryKey: ["enterprise-gdpr-dashboard"] } });
   const gdprRequestsQuery = useCustom({ url: "/api/admin/enterprise/gdpr/requests", method: "get", queryOptions: { queryKey: ["enterprise-gdpr-requests"] } });
   const gdprBreachesQuery = useCustom({ url: "/api/admin/enterprise/gdpr/breaches", method: "get", queryOptions: { queryKey: ["enterprise-gdpr-breaches"] } });

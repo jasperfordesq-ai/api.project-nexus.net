@@ -30,15 +30,15 @@ export const VolunteeringAdminPage = () => {
 
   const overviewQuery = useCustom({ url: "/api/admin/volunteering", method: "get", queryOptions: { queryKey: ["admin-vol-overview"] } });
   const approvalsQuery = useCustom({ url: "/api/admin/volunteering/approvals", method: "get", queryOptions: { queryKey: ["admin-vol-approvals"] } });
-  const expensesQuery = useCustom({ url: "/api/admin/volunteering/expenses", method: "get", queryOptions: { queryKey: ["admin-vol-expenses"] } });
-  const trainingQuery = useCustom({ url: "/api/admin/volunteering/training", method: "get", queryOptions: { queryKey: ["admin-vol-training"] } });
-  const safeguardingQuery = useCustom({ url: "/api/admin/volunteering/safeguarding", method: "get", queryOptions: { queryKey: ["admin-vol-safeguarding"] } });
-  const configQuery = useCustom({ url: "/api/admin/volunteering/config", method: "get", queryOptions: { queryKey: ["admin-vol-config"] } });
-  const consentsQuery = useCustom({ url: "/api/admin/volunteering/consents", method: "get", queryOptions: { queryKey: ["admin-vol-consents"] } });
-  const givingDaysQuery = useCustom({ url: "/api/admin/volunteering/giving-days", method: "get", queryOptions: { queryKey: ["admin-vol-giving-days"] } });
-  const hoursQuery = useCustom({ url: "/api/admin/volunteering/hours", method: "get", queryOptions: { queryKey: ["admin-vol-hours"] } });
+  const expensesQuery = useCustom({ url: "/api/admin/volunteering", method: "get", queryOptions: { queryKey: ["admin-vol-expenses"] } });
+  const trainingQuery = useCustom({ url: "/api/admin/volunteering", method: "get", queryOptions: { queryKey: ["admin-vol-training"] } });
+  const safeguardingQuery = useCustom({ url: "/api/admin/volunteering", method: "get", queryOptions: { queryKey: ["admin-vol-safeguarding"] } });
+  const configQuery = useCustom({ url: "/api/admin/volunteering", method: "get", queryOptions: { queryKey: ["admin-vol-config"] } });
+  const consentsQuery = useCustom({ url: "/api/admin/volunteering", method: "get", queryOptions: { queryKey: ["admin-vol-consents"] } });
+  const givingDaysQuery = useCustom({ url: "/api/admin/volunteering", method: "get", queryOptions: { queryKey: ["admin-vol-giving-days"] } });
+  const hoursQuery = useCustom({ url: "/api/admin/volunteering", method: "get", queryOptions: { queryKey: ["admin-vol-hours"] } });
   const organizationsQuery = useCustom({ url: "/api/admin/volunteering/organizations", method: "get", queryOptions: { queryKey: ["admin-vol-organizations"] } });
-  const projectsQuery = useCustom({ url: "/api/admin/volunteering/projects", method: "get", queryOptions: { queryKey: ["admin-vol-projects"] } });
+  const projectsQuery = useCustom({ url: "/api/admin/volunteering", method: "get", queryOptions: { queryKey: ["admin-vol-projects"] } });
 
   const overview = dataFrom(overviewQuery.data);
   const approvals = rowsFrom(approvalsQuery.data);

@@ -22,7 +22,7 @@ export const preferencesApi = {
     apiClient.put<UserPreferences>('/api/preferences', payload).then((r) => r.data),
 
   language: (language: string) =>
-    apiClient.put('/api/preferences/language', { language }).then((r) => r.data),
+    apiClient.put('/api/preferences/display', { language }).then((r) => r.data),
 
   theme: (theme: string) =>
     apiClient.put('/api/preferences/display', { theme }).then((r) => r.data),

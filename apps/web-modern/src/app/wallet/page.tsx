@@ -9,7 +9,6 @@ import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
-  Chip,
   Skeleton,
   Dropdown,
   DropdownTrigger,
@@ -23,7 +22,6 @@ import {
   Wallet,
   ArrowUpRight,
   ArrowDownLeft,
-  ChevronDown,
   Send,
   History,
   Clock,
@@ -38,7 +36,6 @@ import {
   api,
   type WalletBalance,
   type Transaction,
-  type PaginatedResponse,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
@@ -210,6 +207,11 @@ function WalletContent() {
                       startContent={<Send className="w-4 h-4" />}
                     >
                       Send Credits
+                    </Button>
+                  </Link>
+                  <Link href="/wallet/regional-points" className="flex-1 sm:flex-none">
+                    <Button className="w-full bg-white/10 text-white hover:bg-white/20">
+                      Regional Points
                     </Button>
                   </Link>
                   <Dropdown>

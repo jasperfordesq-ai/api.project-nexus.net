@@ -1537,8 +1537,10 @@ class ApiClient {
     status: "accepted" | "rejected"
   ): Promise<Connection> {
     // Backend has separate /accept and /decline endpoints
-    const action = status === "accepted" ? "accept" : "decline";
-    const raw = await this.request<any>(`/api/connections/${id}/${action}`, {
+    const endpoint = status === "accepted"
+      ? `/api/connections/${id}/accept`
+      : `/api/connections/${id}/decline`;
+    const raw = await this.request<any>(endpoint, {
       method: "PUT",
     });
     return normalizeConnection(raw);
@@ -2366,7 +2368,7 @@ class ApiClient {
     marketing: boolean;
     functional: boolean;
   }> {
-    return this.request("/api/privacy/cookie-consent");
+    return this.request("/api/cookie-consent");
   }
 
   async updateCookieConsent(data: {
@@ -2374,8 +2376,8 @@ class ApiClient {
     marketing?: boolean;
     functional?: boolean;
   }): Promise<void> {
-    return this.request<void>("/api/privacy/cookie-consent", {
-      method: "PUT",
+    return this.request<void>("/api/cookie-consent", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
@@ -2691,18 +2693,18 @@ class ApiClient {
     status: string;
     document_url?: string;
   }[]> {
-    return this.request("/api/insurance/certificates");
+    return this.request("/api/insurance");
   }
 
   async uploadCertificate(data: FormData): Promise<{ id: number }> {
-    return this.request("/api/insurance/certificates", {
+    return this.request("/api/insurance", {
       method: "POST",
       body: data,
     });
   }
 
   async deleteCertificate(id: number): Promise<void> {
-    return this.request<void>(`/api/insurance/certificates/${id}`, { method: "DELETE" });
+    return this.request<void>(`/api/insurance/${id}`, { method: "DELETE" });
   }
 
 
@@ -3743,35 +3745,35 @@ class ApiClient {
   // ==========================================================================
 
   async getChallenges(): Promise<any[]> {
-    return this.request<any[]>("/api/gamification/challenges");
+    return this.request<any[]>("/api/gamification/v2/challenges");
   }
 
   async joinChallenge(challengeId: number): Promise<void> {
-    return this.request<void>(`/api/gamification/challenges/${challengeId}/join`, { method: "POST" });
+    return this.request<void>(`/api/gamification/v2/challenges/${challengeId}/join`, { method: "POST" });
   }
 
   async getChallengeProgress(challengeId: number): Promise<any> {
-    return this.request<any>(`/api/gamification/challenges/${challengeId}/progress`);
+    return this.request<any>(`/api/gamification/v2/challenges/${challengeId}`);
   }
 
   async getStreak(): Promise<any> {
-    return this.request<any>("/api/gamification/streak");
+    return this.request<any>("/api/gamification/v2/streaks/detail");
   }
 
   async claimDailyReward(): Promise<any> {
-    return this.request<any>("/api/gamification/daily-reward", { method: "POST" });
+    return this.request<any>("/api/gamification/v2/daily-reward", { method: "POST" });
   }
 
   async getSeasons(): Promise<any[]> {
-    return this.request<any[]>("/api/gamification/seasons");
+    return this.request<any[]>("/api/gamification/v2/seasons");
   }
 
   async getCurrentSeason(): Promise<any> {
-    return this.request<any>("/api/gamification/seasons/current");
+    return this.request<any>("/api/gamification/v2/seasons/current");
   }
 
   async getSeasonLeaderboard(seasonId: number): Promise<any[]> {
-    return this.request<any[]>(`/api/gamification/seasons/${seasonId}/leaderboard`);
+    return this.request<any[]>(`/api/gamification/v2/seasons/${seasonId}/leaderboard`);
   }
 
   async getAchievements(): Promise<any[]> {
@@ -3779,7 +3781,7 @@ class ApiClient {
   }
 
   async getGamificationStats(): Promise<any> {
-    return this.request<any>("/api/gamification/stats");
+    return this.request<any>("/api/gamification/profile");
   }
 
 
@@ -3796,7 +3798,7 @@ class ApiClient {
   }
 
   async getListingTags(): Promise<string[]> {
-    return this.request<string[]>("/api/listings/tags");
+    return this.request<string[]>("/api/v2/listings/tags/popular");
   }
 
   async getListingAnalytics(listingId: number): Promise<any> {
@@ -3821,7 +3823,7 @@ class ApiClient {
   }
 
   async getWalletLimits(): Promise<any> {
-    return this.request<any>("/api/wallet/limits");
+    return this.request<any>("/api/wallet/features/limits");
   }
 
   async makeDonation(data: { recipient_id: number; amount: number; message?: string }): Promise<any> {
@@ -3937,17 +3939,17 @@ class ApiClient {
   // ==========================================================================
 
   async getMemberActivity(memberId: number): Promise<any[]> {
-    return this.request<any[]>(`/api/members/${memberId}/activity`);
+    return this.request<any[]>(`/api/users/${memberId}/activity`);
   }
 
   async getMyActivity(): Promise<any[]> {
-    return this.request<any[]>("/api/members/me/activity");
+    return this.request<any[]>("/api/users/me/activity");
   }
 
   async getActivityFeed(page: number = 1, type?: string): Promise<any> {
     const params = new URLSearchParams({ page: String(page) });
     if (type && type !== "all") params.set("type", type);
-    return this.request<any>(`/api/activity/feed?${params.toString()}`);
+    return this.request<any>(`/api/feed/ranked?${params.toString()}`);
   }
 
 
@@ -3970,7 +3972,7 @@ class ApiClient {
   }
 
   async getVerificationBadges(memberId: number): Promise<any[]> {
-    return this.request<any[]>(`/api/members/${memberId}/badges`);
+    return this.request<any[]>(`/api/verification-badges/users/${memberId}`);
   }
 
 
@@ -3996,11 +3998,11 @@ class ApiClient {
   }
 
   async getSupportedLanguages(): Promise<any[]> {
-    return this.request<any[]>("/api/i18n/languages");
+    return this.request<any[]>("/api/i18n/locales");
   }
 
   async setLanguagePreference(locale: string): Promise<void> {
-    return this.request<void>("/api/i18n/preference", { method: "PUT", body: JSON.stringify({ locale }) });
+    return this.request<void>("/api/i18n/my-locale", { method: "PUT", body: JSON.stringify({ locale }) });
   }
 
 
@@ -4125,11 +4127,11 @@ class ApiClient {
   }
 
   async getBlogByCategory(categorySlug: string): Promise<any[]> {
-    return this.request<any[]>(`/api/blog/categories/${categorySlug}/posts`);
+    return this.request<any[]>(`/api/blog?category=${categorySlug}`);
   }
 
   async getFeaturedBlogPosts(): Promise<any[]> {
-    return this.request<any[]>("/api/blog/featured");
+    return this.request<any[]>("/api/blog?featured=true");
   }
 
 
@@ -4155,7 +4157,7 @@ class ApiClient {
   }
 
   async updateMilestone(goalId: number, milestoneId: number, data: any): Promise<any> {
-    return this.request<any>(`/api/goals/${goalId}/milestones/${milestoneId}`, { method: "PUT", body: JSON.stringify(data) });
+    return this.request<any>(`/api/goals/${goalId}/milestones/${milestoneId}/complete`, { method: "PUT", body: JSON.stringify(data) });
   }
 
 
@@ -4190,7 +4192,7 @@ class ApiClient {
   }
 
   async getMyShifts(): Promise<any[]> {
-    const raw = await this.request<any>("/api/volunteering/my-shifts");
+    const raw = await this.request<any>("/api/volunteering/shifts");
     return Array.isArray(raw) ? raw : raw?.data ?? [];
   }
 
@@ -4216,7 +4218,7 @@ class ApiClient {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
-    const response = await fetch(`${this.baseUrl}/api/volunteering/${opportunityId}/certificate`, { headers });
+    const response = await fetch(`${this.baseUrl}/api/volunteering/certificates/${opportunityId}/html`, { headers });
     return response.blob();
   }
 

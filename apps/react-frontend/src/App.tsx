@@ -271,6 +271,7 @@ function AppRoutes() {
         {/* Matches — cross-module matches page (MA1) */}
         <Route path="matches" element={<ErrorBoundary><MatchesPage /></ErrorBoundary>} />
         <Route path="matches/preferences" element={<Navigate to="settings" replace />} />
+        <Route path="broker/*" element={<ErrorBoundary><ComingSoonPage feature="Broker" /></ErrorBoundary>} />
 
         {/* Tenant 2 (hOUR Timebank) specific pages — redirect other tenants to /about */}
         <Route path="partner" element={<ErrorBoundary><TenantSlugGate slug="hour-timebank"><PartnerPage /></TenantSlugGate></ErrorBoundary>} />

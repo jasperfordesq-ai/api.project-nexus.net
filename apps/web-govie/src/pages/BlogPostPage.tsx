@@ -36,7 +36,7 @@ export function BlogPostPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get(`/api/blog/posts/${slug}`)
+    apiClient.get(`/api/blog/${slug}`)
       .then(r => setPost(mapBlogPost(r.data)))
       .catch(err => setError(isApiError(err) ? err.message : 'Could not load post.'))
       .finally(() => setIsLoading(false))

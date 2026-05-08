@@ -52,8 +52,8 @@ export const FederationPage = () => {
   const creditAgreementsQuery = useCustom({ url: "/api/admin/federation/credit-agreements", method: "get", queryOptions: { queryKey: ["fed-credit-agreements"] } });
   const neighborhoodsQuery = useCustom({ url: "/api/admin/federation/neighborhoods", method: "get", queryOptions: { queryKey: ["fed-neighborhoods"] } });
   const externalPartnersQuery = useCustom({ url: "/api/admin/federation/external-partners", method: "get", queryOptions: { queryKey: ["fed-external-partners"] } });
-  const webhooksQuery = useCustom({ url: "/api/admin/federation/webhooks", method: "get", queryOptions: { queryKey: ["fed-webhooks"] } });
-  const activityQuery = useCustom({ url: "/api/admin/federation/activity", method: "get", queryOptions: { queryKey: ["fed-activity"] } });
+  const webhooksQuery = useCustom({ url: "/api/admin/system/federation/audit-log", method: "get", queryOptions: { queryKey: ["fed-webhooks"] } });
+  const activityQuery = useCustom({ url: "/api/admin/system/federation/stats", method: "get", queryOptions: { queryKey: ["fed-activity"] } });
   const controlsQuery = useCustom({ url: "/api/admin/super/federation/system-controls", method: "get", queryOptions: { queryKey: ["fed-controls"] } });
   const whitelistQuery = useCustom({ url: "/api/admin/super/federation/whitelist", method: "get", queryOptions: { queryKey: ["fed-whitelist"] } });
 

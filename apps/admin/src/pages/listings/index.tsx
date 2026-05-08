@@ -68,7 +68,7 @@ export const ListingsAdminPage = () => {
   const attributesQuery = useCustom({ url: "/api/admin/attributes", method: "get", queryOptions: { queryKey: ["admin-attributes"] } });
   const menusQuery = useCustom({ url: "/api/admin/menus", method: "get", queryOptions: { queryKey: ["admin-menus"] } });
   const plansQuery = useCustom({ url: "/api/admin/plans", method: "get", queryOptions: { queryKey: ["admin-plans"] } });
-  const subscriptionsQuery = useCustom({ url: "/api/admin/plans/subscriptions", method: "get", queryOptions: { queryKey: ["admin-plan-subscriptions"] } });
+  const subscriptionsQuery = useCustom({ url: "/api/admin/plans", method: "get", queryOptions: { queryKey: ["admin-plan-subscriptions"] } });
 
   const listings = rowsFrom(listingsQuery.data);
   const pending = rowsFrom(pendingQuery.data);

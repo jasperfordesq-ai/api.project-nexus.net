@@ -34,7 +34,7 @@ export const LegalDocumentsPage = () => {
   const docsQuery = useCustom({ url: "/api/admin/legal-documents", method: "get", queryOptions: { queryKey: ["legal-documents"] } });
   const complianceQuery = useCustom({ url: "/api/admin/legal-documents/compliance", method: "get", queryOptions: { queryKey: ["legal-documents-compliance"] } });
   const versionsQuery = useCustom({
-    url: selectedDoc?.id ? `/api/admin/legal-documents/${selectedDoc.id}/versions` : "/api/admin/legal-documents/0/versions",
+    url: selectedDoc?.id ? `/api/admin/legal-documents/${selectedDoc.id}/versions` : "/api/admin/legal-documents",
     method: "get",
     queryOptions: { queryKey: ["legal-document-versions", selectedDoc?.id], enabled: !!selectedDoc?.id },
   });

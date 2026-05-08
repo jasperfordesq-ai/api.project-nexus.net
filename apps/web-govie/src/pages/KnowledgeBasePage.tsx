@@ -42,7 +42,7 @@ export function KnowledgeBasePage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    apiClient.get('/api/knowledge-base/articles', { signal: controller.signal })
+    apiClient.get('/api/knowledge/articles', { signal: controller.signal })
       .then(r => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = r.data as any

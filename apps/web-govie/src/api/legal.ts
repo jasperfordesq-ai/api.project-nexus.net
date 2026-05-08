@@ -10,7 +10,7 @@ export interface LegalDocument {
 }
 
 export const legalApi = {
-  get: (type: string) => apiClient.get<LegalDocument>(`/api/legal/${type}`).then(r => r.data),
-  accept: (type: string, version: string) =>
-    apiClient.post(`/api/legal/${type}/accept`, { version }).then(r => r.data),
+  get: (type: string) => apiClient.get<LegalDocument>(`/api/legal/documents/${type}`).then(r => r.data),
+  accept: (id: number, version: string) =>
+    apiClient.post(`/api/legal/documents/${id}/accept`, { version }).then(r => r.data),
 }

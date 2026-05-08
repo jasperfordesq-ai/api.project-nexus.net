@@ -13,7 +13,7 @@ export interface BlogPost {
 
 export const blogApi = {
   posts: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<BlogPost>>('/api/blog/posts', { params }).then(r => r.data),
-  post: (slug: string) => apiClient.get<BlogPost>(`/api/blog/posts/${slug}`).then(r => r.data),
+    apiClient.get<PaginatedResponse<BlogPost>>('/api/blog', { params }).then(r => r.data),
+  post: (slug: string) => apiClient.get<BlogPost>(`/api/blog/${slug}`).then(r => r.data),
   categories: () => apiClient.get<{ id: number; name: string; postCount: number }[]>('/api/blog/categories').then(r => r.data),
 }

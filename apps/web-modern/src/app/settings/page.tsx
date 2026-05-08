@@ -400,6 +400,30 @@ function SettingsContent() {
                   <ChevronRight className="w-4 h-4 text-white/30" />
                 </div>
               </Link>
+              <Link href="/settings/data-export">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <p className="text-white font-medium">Data Export</p>
+                      <p className="text-sm text-white/40">Download and review account data</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-white/30" />
+                </div>
+              </Link>
+              <Link href="/settings/blocked">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-5 h-5 text-rose-400" />
+                    <div>
+                      <p className="text-white font-medium">Blocked Members</p>
+                      <p className="text-sm text-white/40">Manage account-level member blocks</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-white/30" />
+                </div>
+              </Link>
               <Link href="/push-notifications">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
                   <div className="flex items-center gap-3">

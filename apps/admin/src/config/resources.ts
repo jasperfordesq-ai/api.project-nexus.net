@@ -56,7 +56,7 @@ export const resources: ResourceProps[] = [
   {
     name: "crm",
     list: "/crm",
-    meta: { label: "CRM", icon: e(ContactsOutlined), parent: "people", apiPath: "/api/admin/crm" },
+    meta: { label: "CRM", icon: e(ContactsOutlined), parent: "people", apiPath: "/api/admin/crm/dashboard" },
   },
   {
     name: "organisations",
@@ -66,7 +66,7 @@ export const resources: ResourceProps[] = [
   {
     name: "broker",
     list: "/broker",
-    meta: { label: "Broker", icon: e(TeamOutlined), parent: "people", apiPath: "/api/admin/broker" },
+    meta: { label: "Broker", icon: e(TeamOutlined), parent: "people", apiPath: "/api/admin/broker/dashboard" },
   },
   {
     name: "saved-searches",
@@ -129,12 +129,12 @@ export const resources: ResourceProps[] = [
   {
     name: "gamification",
     list: "/gamification",
-    meta: { label: "Gamification", icon: e(TrophyOutlined), parent: "community", apiPath: "/api/admin/gamification" },
+    meta: { label: "Gamification", icon: e(TrophyOutlined), parent: "community", apiPath: "/api/admin/gamification/stats" },
   },
   {
     name: "matching",
     list: "/matching",
-    meta: { label: "Matching", icon: e(ApiOutlined), parent: "community", apiPath: "/api/admin/matching" },
+    meta: { label: "Matching", icon: e(ApiOutlined), parent: "community", apiPath: "/api/admin/matching/stats" },
   },
   {
     name: "jobs",
@@ -151,7 +151,7 @@ export const resources: ResourceProps[] = [
   {
     name: "email-templates",
     list: "/email-templates",
-    meta: { label: "Email Templates", icon: e(MailOutlined), parent: "communication", apiPath: "/api/admin/emails" },
+    meta: { label: "Email Templates", icon: e(MailOutlined), parent: "communication", apiPath: "/api/admin/emails/templates" },
   },
   {
     name: "translations",
@@ -180,7 +180,7 @@ export const resources: ResourceProps[] = [
   {
     name: "safeguarding",
     list: "/safeguarding",
-    meta: { label: "Safeguarding", icon: e(SafetyOutlined), parent: "security", apiPath: "/api/admin/safeguarding" },
+    meta: { label: "Safeguarding", icon: e(SafetyOutlined), parent: "security", apiPath: "/api/admin/safeguarding/dashboard" },
   },
   {
     name: "audit",
@@ -190,7 +190,7 @@ export const resources: ResourceProps[] = [
   {
     name: "registration",
     list: "/registration",
-    meta: { label: "Registration", icon: e(IdcardOutlined), parent: "security", apiPath: "/api/registration/admin" },
+    meta: { label: "Registration", icon: e(IdcardOutlined), parent: "security", apiPath: "/api/registration/admin/policy" },
   },
 
   // ─── System ────────────────────────────────────
@@ -222,32 +222,32 @@ export const resources: ResourceProps[] = [
   {
     name: "analytics",
     list: "/analytics",
-    meta: { label: "Analytics", icon: e(BarChartOutlined), parent: "system", apiPath: "/api/admin/analytics" },
+    meta: { label: "Analytics", icon: e(BarChartOutlined), parent: "system", apiPath: "/api/admin/analytics/overview" },
   },
   {
     name: "search-admin",
     list: "/search-admin",
-    meta: { label: "Search", icon: e(SearchOutlined), parent: "system", apiPath: "/api/admin/search" },
+    meta: { label: "Search", icon: e(SearchOutlined), parent: "system", apiPath: "/api/admin/search/stats" },
   },
   {
     name: "gdpr",
     list: "/gdpr",
-    meta: { label: "GDPR", icon: e(SafetyOutlined), parent: "system", apiPath: "/api/admin/gdpr" },
+    meta: { label: "GDPR", icon: e(SafetyOutlined), parent: "system", apiPath: "/api/admin/gdpr/breaches" },
   },
   {
     name: "enterprise",
     list: "/enterprise",
-    meta: { label: "Enterprise", icon: e(ClusterOutlined), parent: "system", apiPath: "/api/admin/enterprise" },
+    meta: { label: "Enterprise", icon: e(ClusterOutlined), parent: "system", apiPath: "/api/admin/enterprise/dashboard" },
   },
   {
     name: "federation",
     list: "/federation",
-    meta: { label: "Federation", icon: e(GlobalOutlined), parent: "system", apiPath: "/api/admin/system/federation" },
+    meta: { label: "Federation", icon: e(GlobalOutlined), parent: "system", apiPath: "/api/admin/system/federation/stats" },
   },
   {
     name: "staffing",
     list: "/staffing",
-    meta: { label: "Staffing", icon: e(SolutionOutlined), parent: "system", apiPath: "/api/admin/staffing" },
+    meta: { label: "Staffing", icon: e(SolutionOutlined), parent: "system", apiPath: "/api/admin/staffing/dashboard" },
   },
   {
     name: "sessions",

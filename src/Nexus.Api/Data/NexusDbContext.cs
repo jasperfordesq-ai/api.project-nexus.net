@@ -90,6 +90,21 @@ public class NexusDbContext : DbContext
     public DbSet<GroupFile> GroupFiles => Set<GroupFile>();
     public DbSet<GroupDiscussion> GroupDiscussions => Set<GroupDiscussion>();
     public DbSet<GroupDiscussionReply> GroupDiscussionReplies => Set<GroupDiscussionReply>();
+    public DbSet<GroupInvite> GroupInvites => Set<GroupInvite>();
+    public DbSet<GroupMediaItem> GroupMediaItems => Set<GroupMediaItem>();
+    public DbSet<GroupWikiPage> GroupWikiPages => Set<GroupWikiPage>();
+    public DbSet<GroupWikiRevision> GroupWikiRevisions => Set<GroupWikiRevision>();
+    public DbSet<GroupQuestion> GroupQuestions => Set<GroupQuestion>();
+    public DbSet<GroupAnswer> GroupAnswers => Set<GroupAnswer>();
+    public DbSet<GroupQaVote> GroupQaVotes => Set<GroupQaVote>();
+    public DbSet<GroupChallenge> GroupChallenges => Set<GroupChallenge>();
+    public DbSet<GroupScheduledPost> GroupScheduledPosts => Set<GroupScheduledPost>();
+    public DbSet<GroupWebhook> GroupWebhooks => Set<GroupWebhook>();
+    public DbSet<GroupNotificationPreference> GroupNotificationPreferences => Set<GroupNotificationPreference>();
+    public DbSet<GroupCustomField> GroupCustomFields => Set<GroupCustomField>();
+    public DbSet<GroupWelcomeSettings> GroupWelcomeSettings => Set<GroupWelcomeSettings>();
+    public DbSet<GroupChatroomPin> GroupChatroomPins => Set<GroupChatroomPin>();
+    public DbSet<GroupRecommendationEvent> GroupRecommendationEvents => Set<GroupRecommendationEvent>();
 
     // Phase 22: Gamification expansion
     public DbSet<Challenge> Challenges => Set<Challenge>();
@@ -98,6 +113,12 @@ public class NexusDbContext : DbContext
     public DbSet<LeaderboardSeason> LeaderboardSeasons => Set<LeaderboardSeason>();
     public DbSet<LeaderboardEntry> LeaderboardEntries => Set<LeaderboardEntry>();
     public DbSet<DailyReward> DailyRewards => Set<DailyReward>();
+    public DbSet<Story> Stories => Set<Story>();
+    public DbSet<StoryView> StoryViews => Set<StoryView>();
+    public DbSet<StoryReaction> StoryReactions => Set<StoryReaction>();
+    public DbSet<StoryCloseFriend> StoryCloseFriends => Set<StoryCloseFriend>();
+    public DbSet<StoryHighlight> StoryHighlights => Set<StoryHighlight>();
+    public DbSet<StoryHighlightItem> StoryHighlightItems => Set<StoryHighlightItem>();
 
     // Phase 23: Skills & Endorsements
     public DbSet<Skill> Skills => Set<Skill>();
@@ -369,6 +390,40 @@ public class NexusDbContext : DbContext
     // Webhook Events
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
 
+    // Marketplace
+    public DbSet<MarketplaceCategory> MarketplaceCategories => Set<MarketplaceCategory>();
+    public DbSet<MarketplaceListing> MarketplaceListings => Set<MarketplaceListing>();
+    public DbSet<MarketplaceImage> MarketplaceImages => Set<MarketplaceImage>();
+    public DbSet<MarketplaceSellerProfile> MarketplaceSellerProfiles => Set<MarketplaceSellerProfile>();
+    public DbSet<MarketplaceSavedListing> MarketplaceSavedListings => Set<MarketplaceSavedListing>();
+    public DbSet<MarketplaceOffer> MarketplaceOffers => Set<MarketplaceOffer>();
+    public DbSet<MarketplaceOrder> MarketplaceOrders => Set<MarketplaceOrder>();
+    public DbSet<MarketplaceReport> MarketplaceReports => Set<MarketplaceReport>();
+    public DbSet<MarketplaceSavedSearch> MarketplaceSavedSearches => Set<MarketplaceSavedSearch>();
+    public DbSet<MarketplaceCollection> MarketplaceCollections => Set<MarketplaceCollection>();
+    public DbSet<MarketplaceCollectionItem> MarketplaceCollectionItems => Set<MarketplaceCollectionItem>();
+    public DbSet<MarketplacePromotion> MarketplacePromotions => Set<MarketplacePromotion>();
+    public DbSet<MarketplaceShippingOption> MarketplaceShippingOptions => Set<MarketplaceShippingOption>();
+    public DbSet<MarketplacePickupSlot> MarketplacePickupSlots => Set<MarketplacePickupSlot>();
+    public DbSet<MarketplacePickupReservation> MarketplacePickupReservations => Set<MarketplacePickupReservation>();
+    public DbSet<MarketplaceDeliveryOffer> MarketplaceDeliveryOffers => Set<MarketplaceDeliveryOffer>();
+    public DbSet<MarketplaceSellerRating> MarketplaceSellerRatings => Set<MarketplaceSellerRating>();
+    public DbSet<MerchantCoupon> MerchantCoupons => Set<MerchantCoupon>();
+    public DbSet<MerchantCouponRedemption> MerchantCouponRedemptions => Set<MerchantCouponRedemption>();
+
+    // Jobs parity
+    public DbSet<JobSavedProfile> JobSavedProfiles => Set<JobSavedProfile>();
+    public DbSet<JobTemplate> JobTemplates => Set<JobTemplate>();
+    public DbSet<JobVacancyTeamMember> JobVacancyTeamMembers => Set<JobVacancyTeamMember>();
+    public DbSet<JobInterview> JobInterviews => Set<JobInterview>();
+    public DbSet<JobInterviewSlot> JobInterviewSlots => Set<JobInterviewSlot>();
+    public DbSet<JobOffer> JobOffers => Set<JobOffer>();
+    public DbSet<JobOfferTemplate> JobOfferTemplates => Set<JobOfferTemplate>();
+    public DbSet<JobScorecard> JobScorecards => Set<JobScorecard>();
+    public DbSet<JobPipelineRule> JobPipelineRules => Set<JobPipelineRule>();
+    public DbSet<JobReferral> JobReferrals => Set<JobReferral>();
+    public DbSet<EmployerReview> EmployerReviews => Set<EmployerReview>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -422,6 +477,11 @@ public class NexusDbContext : DbContext
             config.Configure(modelBuilder);
         }
 
+        ConfigureMarketplace(modelBuilder);
+        ConfigureJobsParity(modelBuilder);
+        ConfigureGroupsParity(modelBuilder);
+        ConfigureStories(modelBuilder);
+
         // Re-apply tenant query filters referencing DbContext's _tenantContext field
         // so EF Core can parameterize them per-query (fixes broken config class references)
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
@@ -461,6 +521,115 @@ public class NexusDbContext : DbContext
             modelBuilder.Entity<T>().HasQueryFilter(e =>
                 !IsTenantResolved || e.TenantId == CurrentTenantId);
         }
+    }
+
+    private static void ConfigureMarketplace(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MarketplaceCategory>(entity =>
+        {
+            entity.ToTable("marketplace_categories");
+            entity.HasIndex(e => new { e.TenantId, e.Slug }).IsUnique();
+        });
+        modelBuilder.Entity<MarketplaceListing>(entity =>
+        {
+            entity.ToTable("marketplace_listings");
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.ModerationStatus });
+            entity.HasIndex(e => new { e.TenantId, e.UserId });
+        });
+        modelBuilder.Entity<MarketplaceImage>().ToTable("marketplace_images");
+        modelBuilder.Entity<MarketplaceSellerProfile>(entity =>
+        {
+            entity.ToTable("marketplace_seller_profiles");
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+        });
+        modelBuilder.Entity<MarketplaceSavedListing>(entity =>
+        {
+            entity.ToTable("marketplace_saved_listings");
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.MarketplaceListingId }).IsUnique();
+        });
+        modelBuilder.Entity<MarketplaceOffer>().ToTable("marketplace_offers");
+        modelBuilder.Entity<MarketplaceOrder>().ToTable("marketplace_orders");
+        modelBuilder.Entity<MarketplaceReport>().ToTable("marketplace_reports");
+        modelBuilder.Entity<MarketplaceSavedSearch>().ToTable("marketplace_saved_searches");
+        modelBuilder.Entity<MarketplaceCollection>().ToTable("marketplace_collections");
+        modelBuilder.Entity<MarketplaceCollectionItem>(entity =>
+        {
+            entity.ToTable("marketplace_collection_items");
+            entity.HasIndex(e => new { e.TenantId, e.MarketplaceCollectionId, e.MarketplaceListingId }).IsUnique();
+        });
+        modelBuilder.Entity<MarketplacePromotion>().ToTable("marketplace_promotions");
+        modelBuilder.Entity<MarketplaceShippingOption>().ToTable("marketplace_shipping_options");
+        modelBuilder.Entity<MarketplacePickupSlot>().ToTable("marketplace_pickup_slots");
+        modelBuilder.Entity<MarketplacePickupReservation>().ToTable("marketplace_pickup_reservations");
+        modelBuilder.Entity<MarketplaceDeliveryOffer>().ToTable("marketplace_delivery_offers");
+        modelBuilder.Entity<MarketplaceSellerRating>().ToTable("marketplace_seller_ratings");
+        modelBuilder.Entity<MerchantCoupon>(entity =>
+        {
+            entity.ToTable("merchant_coupons");
+            entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
+        });
+        modelBuilder.Entity<MerchantCouponRedemption>().ToTable("merchant_coupon_redemptions");
+    }
+
+    private static void ConfigureJobsParity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<JobSavedProfile>(entity =>
+        {
+            entity.ToTable("job_saved_profiles");
+            entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+        });
+        modelBuilder.Entity<JobTemplate>().ToTable("job_templates");
+        modelBuilder.Entity<JobVacancyTeamMember>(entity =>
+        {
+            entity.ToTable("job_vacancy_team_members");
+            entity.HasIndex(e => new { e.TenantId, e.JobId, e.UserId }).IsUnique();
+        });
+        modelBuilder.Entity<JobInterview>().ToTable("job_interviews");
+        modelBuilder.Entity<JobInterviewSlot>().ToTable("job_interview_slots");
+        modelBuilder.Entity<JobOffer>().ToTable("job_offers");
+        modelBuilder.Entity<JobOfferTemplate>().ToTable("job_offer_templates");
+        modelBuilder.Entity<JobScorecard>(entity =>
+        {
+            entity.ToTable("job_scorecards");
+            entity.HasIndex(e => new { e.TenantId, e.ApplicationId, e.ReviewerUserId }).IsUnique();
+        });
+        modelBuilder.Entity<JobPipelineRule>().ToTable("job_pipeline_rules");
+        modelBuilder.Entity<JobReferral>(entity =>
+        {
+            entity.ToTable("job_referrals");
+            entity.HasIndex(e => new { e.TenantId, e.JobId, e.ReferrerUserId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
+        });
+        modelBuilder.Entity<EmployerReview>().ToTable("employer_reviews");
+    }
+
+    private static void ConfigureGroupsParity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<GroupInvite>(entity => { entity.ToTable("group_invites"); entity.HasIndex(e => new { e.TenantId, e.Token }).IsUnique(); });
+        modelBuilder.Entity<GroupMediaItem>().ToTable("group_media_items");
+        modelBuilder.Entity<GroupWikiPage>(entity => { entity.ToTable("group_wiki_pages"); entity.HasIndex(e => new { e.TenantId, e.GroupId, e.Slug }).IsUnique(); });
+        modelBuilder.Entity<GroupWikiRevision>().ToTable("group_wiki_revisions");
+        modelBuilder.Entity<GroupQuestion>().ToTable("group_questions");
+        modelBuilder.Entity<GroupAnswer>().ToTable("group_answers");
+        modelBuilder.Entity<GroupQaVote>(entity => { entity.ToTable("group_qa_votes"); entity.HasIndex(e => new { e.TenantId, e.UserId, e.TargetType, e.TargetId }).IsUnique(); });
+        modelBuilder.Entity<GroupChallenge>().ToTable("group_challenges");
+        modelBuilder.Entity<GroupScheduledPost>().ToTable("group_scheduled_posts");
+        modelBuilder.Entity<GroupWebhook>().ToTable("group_webhooks");
+        modelBuilder.Entity<GroupNotificationPreference>(entity => { entity.ToTable("group_notification_preferences"); entity.HasIndex(e => new { e.TenantId, e.GroupId, e.UserId }).IsUnique(); });
+        modelBuilder.Entity<GroupCustomField>(entity => { entity.ToTable("group_custom_fields"); entity.HasIndex(e => new { e.TenantId, e.GroupId, e.Key }).IsUnique(); });
+        modelBuilder.Entity<GroupWelcomeSettings>(entity => { entity.ToTable("group_welcome_settings"); entity.HasIndex(e => new { e.TenantId, e.GroupId }).IsUnique(); });
+        modelBuilder.Entity<GroupChatroomPin>().ToTable("group_chatroom_pins");
+        modelBuilder.Entity<GroupRecommendationEvent>().ToTable("group_recommendation_events");
+    }
+
+    private static void ConfigureStories(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Story>(entity => { entity.ToTable("stories"); entity.HasIndex(e => new { e.TenantId, e.UserId }); });
+        modelBuilder.Entity<StoryView>(entity => { entity.ToTable("story_views"); entity.HasIndex(e => new { e.TenantId, e.StoryId, e.UserId }).IsUnique(); });
+        modelBuilder.Entity<StoryReaction>(entity => { entity.ToTable("story_reactions"); entity.HasIndex(e => new { e.TenantId, e.StoryId, e.UserId, e.Reaction }); });
+        modelBuilder.Entity<StoryCloseFriend>(entity => { entity.ToTable("story_close_friends"); entity.HasIndex(e => new { e.TenantId, e.UserId, e.FriendUserId }).IsUnique(); });
+        modelBuilder.Entity<StoryHighlight>(entity => { entity.ToTable("story_highlights"); entity.HasIndex(e => new { e.TenantId, e.UserId }); });
+        modelBuilder.Entity<StoryHighlightItem>(entity => { entity.ToTable("story_highlight_items"); entity.HasIndex(e => new { e.TenantId, e.HighlightId, e.StoryId }).IsUnique(); });
     }
 
     /// <summary>

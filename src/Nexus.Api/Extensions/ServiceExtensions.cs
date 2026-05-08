@@ -132,6 +132,7 @@ public static class ServiceExtensions
         services.AddScoped<SubAccountService>();
         services.AddScoped<FederationAdminService>();
         services.AddScoped<SecretsVaultService>();
+        services.AddScoped<MarketplaceService>();
 
         // Background services
         services.AddHostedService<SavedSearchAlertService>();

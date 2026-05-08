@@ -12,6 +12,6 @@ export const onboardingApi = {
   steps: () => apiClient.get<OnboardingStep[]>('/api/onboarding/steps').then(r => r.data),
   progress: () => apiClient.get('/api/onboarding/progress').then(r => r.data),
   complete: (stepId: string) =>
-    apiClient.post(`/api/onboarding/steps/${stepId}/complete`).then(r => r.data),
+    apiClient.post('/api/onboarding/complete', { step_key: stepId }).then(r => r.data),
   reset: () => apiClient.post('/api/onboarding/reset').then(r => r.data),
 }
