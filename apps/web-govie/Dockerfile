@@ -6,8 +6,8 @@
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install a pinned pnpm version so production builds are reproducible.
+RUN corepack enable && corepack prepare pnpm@10.25.0 --activate
 
 WORKDIR /app
 
