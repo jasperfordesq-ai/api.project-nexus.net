@@ -63,4 +63,16 @@ public class PublicCompatibilityEndpointsTests : IntegrationTestBase
         menus.TryGetProperty("header-main", out var headerMain).Should().BeTrue();
         headerMain.ValueKind.Should().Be(JsonValueKind.Array);
     }
+
+    [Fact]
+    public async Task CookieConsentStatus_WithoutTenantHeader_ReturnsOk()
+    {
+        ClearAuthToken();
+
+        var response = await Client.GetAsync("/api/cookie-consent");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("necessary_cookies").GetBoolean().Should().BeTrue();
+    }
 }

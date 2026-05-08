@@ -63,6 +63,19 @@ public class CompatibilityAliasController : ControllerBase
     /// <summary>
     /// POST /api/cookie-consent — Alias for POST /api/consent/accept.
     /// </summary>
+    [HttpGet("api/cookie-consent")]
+    [AllowAnonymous]
+    public IActionResult CookieConsentStatusAlias()
+    {
+        return Ok(new
+        {
+            necessary_cookies = true,
+            analytics_cookies = false,
+            marketing_cookies = false,
+            preference_cookies = true
+        });
+    }
+
     [HttpPost("api/cookie-consent")]
     [AllowAnonymous]
     public async Task<IActionResult> CookieConsentAlias([FromBody] CookieConsentAliasRequest request)

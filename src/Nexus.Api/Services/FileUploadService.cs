@@ -20,7 +20,7 @@ public class FileUploadService
     private readonly ILogger<FileUploadService> _logger;
 
     private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
-    private const long MaxAvatarSizeBytes = 2 * 1024 * 1024; // 2 MB
+    private const long MaxAvatarSizeBytes = 5 * 1024 * 1024; // 5 MB
 
     private static readonly HashSet<string> AllowedImageTypes = new(StringComparer.OrdinalIgnoreCase)
     {

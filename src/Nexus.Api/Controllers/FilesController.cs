@@ -65,7 +65,7 @@ public class FilesController : ControllerBase
     /// Upload an avatar for the current user.
     /// </summary>
     [HttpPost("avatar")]
-    [RequestSizeLimit(2 * 1024 * 1024)] // 2 MB
+    [RequestSizeLimit(5 * 1024 * 1024)] // 5 MB
     public async Task<IActionResult> UploadAvatar(IFormFile file)
     {
         var userId = User.GetUserId();

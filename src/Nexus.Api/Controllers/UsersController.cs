@@ -230,7 +230,7 @@ public class UsersController : ControllerBase
     /// Accepts multipart form with field "avatar" or "file".
     /// </summary>
     [HttpPost("me/avatar")]
-    [RequestSizeLimit(2 * 1024 * 1024)] // 2 MB
+    [RequestSizeLimit(5 * 1024 * 1024)] // 5 MB
     public async Task<IActionResult> UploadAvatar(IFormFile? avatar, IFormFile? file)
     {
         var uploadedFile = avatar ?? file;
