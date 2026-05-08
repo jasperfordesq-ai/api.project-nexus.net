@@ -55,7 +55,6 @@ public class TenantResolutionMiddleware
         "/api/metrics",                        // Public landing page stats alias
         "/api/menus",                          // Public default menu contract
         "/api/cookie-consent",                 // Public cookie consent compatibility endpoint
-        "/api/cookies/consent",                // Public cookie consent endpoint
         "/api/announcements",                  // Handles optional tenant context itself
         "/api/realtime/config",                // Static config, no tenant-scoped data
         "/api/tenants",                         // Public tenant list for login page dropdown
