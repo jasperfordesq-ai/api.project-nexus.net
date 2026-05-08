@@ -32,9 +32,9 @@ services:
       target: production
       args:
         VITE_API_URL: https://api.project-nexus.net
-    ports:
+    ports: !override
       - "127.0.0.1:5191:80"
-    volumes: []
+    volumes: !override []
     environment:
       - NODE_ENV=production
     depends_on:
@@ -49,9 +49,10 @@ services:
       target: production
       args:
         NEXT_PUBLIC_API_URL: https://api.project-nexus.net
-    ports:
+    ports: !override
       - "127.0.0.1:5170:3002"
-    volumes: []
+    volumes: !override []
+    env_file: !override []
     environment:
       - NODE_ENV=production
 
@@ -61,9 +62,10 @@ services:
       context: ./apps/web-uk
       dockerfile: Dockerfile
       target: production
-    ports:
+    ports: !override
       - "127.0.0.1:5180:3001"
-    volumes: []
+    volumes: !override []
+    env_file: !override []
     environment:
       - NODE_ENV=production
 
@@ -77,6 +79,6 @@ services:
         VITE_APP_NAME: Nexus Community
         VITE_APP_VERSION: "0.1.0"
         VITE_TENANT_SLUG: acme
-    ports:
+    ports: !override
       - "127.0.0.1:5200:80"
-    volumes: []
+    volumes: !override []
