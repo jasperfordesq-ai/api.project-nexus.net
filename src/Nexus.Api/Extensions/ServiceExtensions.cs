@@ -184,6 +184,11 @@ public static class ServiceExtensions
         // Background services
         services.AddHostedService<SavedSearchAlertService>();
 
+        // Phase 73 — singleton registry that hosted services write to so the
+        // /api/admin/system/diagnostics endpoint can show ops staff which jobs
+        // are running, idle, or failing.
+        services.AddSingleton<Nexus.Api.Services.Scheduled.ScheduledJobsRegistry>();
+
         // Phase 63 — V1 cron task port (8 hosted services). Each can be disabled
         // individually via Scheduled:{JobName}:Enabled=false in appsettings.
         services.AddHostedService<Nexus.Api.Services.Scheduled.SyncFederationPartnersJob>();

@@ -68,10 +68,15 @@ public abstract class ScheduledHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Resolve the singleton registry once (it's optional so existing tests
+        // that build the host without registering it keep working).
+        var registry = TryGetRegistry();
+
         var enabled = Configuration.GetValue<bool?>($"Scheduled:{JobName}:Enabled") ?? true;
         if (!enabled)
         {
             Logger.LogInformation("Scheduled job {JobName} disabled via Scheduled:{JobName}:Enabled=false", JobName, JobName);
+            registry?.RecordDisabled(JobName);
             return;
         }
 
@@ -96,12 +101,15 @@ public abstract class ScheduledHostedService : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             var startedAt = DateTime.UtcNow;
+            registry?.RecordStart(JobName);
             try
             {
                 await RunOnceAsync(stoppingToken);
+                var elapsed = DateTime.UtcNow - startedAt;
                 Logger.LogInformation(
                     "Scheduled job {JobName} completed in {ElapsedMs}ms",
-                    JobName, (DateTime.UtcNow - startedAt).TotalMilliseconds);
+                    JobName, elapsed.TotalMilliseconds);
+                registry?.RecordSuccess(JobName, elapsed);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -110,6 +118,7 @@ public abstract class ScheduledHostedService : BackgroundService
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Scheduled job {JobName} failed", JobName);
+                registry?.RecordFailure(JobName, ex);
             }
 
             try
@@ -168,5 +177,23 @@ public abstract class ScheduledHostedService : BackgroundService
         // Tenants are not tenant-scoped themselves — read directly.
         return await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
             db.Tenants.Select(t => t.Id), ct);
+    }
+
+    /// <summary>
+    /// Resolve the singleton registry without throwing if it isn't registered
+    /// (some test hosts skip it). Logs a warning once on the first miss so
+    /// production misconfigurations are surfaced.
+    /// </summary>
+    private ScheduledJobsRegistry? TryGetRegistry()
+    {
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            return scope.ServiceProvider.GetService<ScheduledJobsRegistry>();
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

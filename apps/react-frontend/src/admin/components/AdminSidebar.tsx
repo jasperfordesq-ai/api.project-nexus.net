@@ -523,6 +523,8 @@ function useAdminNav(): NavSection[] {
           { label: 'Cron Jobs', href: '/admin/cron-jobs', icon: Timer },
           // Phase 73 — Phase 63 scheduled hosted-services observability
           { label: 'Scheduled Jobs', href: '/admin/scheduled-jobs', icon: Timer },
+          // Phase 73 — comprehensive operational diagnostics for ops staff
+          { label: 'System Diagnostics', href: '/admin/system/diagnostics', icon: Activity },
           { label: 'Cron Logs', href: '/admin/cron-jobs/logs', icon: FileText },
           { label: 'Cron Setup', href: '/admin/cron-jobs/setup', icon: Wrench },
           ...(isPlatformSuperAdmin

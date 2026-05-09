@@ -146,6 +146,7 @@ const VolunteerEmergencyAlertsAdmin = lazy(() => import('./modules/volunteering/
 const FederationAuditLogPage = lazy(() => import('./modules/federation/FederationAuditLogPage'));
 const AdminFederationPartnersPage = lazy(() => import('./modules/federation/AdminFederationPartnersPage'));
 const AdminGdprDeletionsPage = lazy(() => import('./modules/enterprise/AdminGdprDeletionsPage'));
+const AdminDiagnosticsPage = lazy(() => import('./modules/system/AdminDiagnosticsPage'));
 const VolunteerTraining = lazyParityPage('VolunteerTrainingPage');
 const VolunteerSafeguarding = lazyParityPage('VolunteerSafeguardingPage');
 const VolunteerHoursAudit = lazyParityPage('VolunteerHoursAuditPage');
@@ -451,6 +452,8 @@ export function AdminRoutes() {
       <Route path="federation/partners-admin" element={<Lazy><AdminFederationPartnersPage /></Lazy>} />
       {/* Phase 73 — GDPR deletion requests queue */}
       <Route path="enterprise/gdpr/deletions" element={<Lazy><AdminGdprDeletionsPage /></Lazy>} />
+      {/* Phase 73 — comprehensive system diagnostics */}
+      <Route path="system/diagnostics" element={<Lazy><AdminDiagnosticsPage /></Lazy>} />
       <Route path="agents" element={<Lazy><AgentsAdminPage /></Lazy>} />
       <Route path="agents/proposals" element={<Lazy><AgentProposalsPage /></Lazy>} />
       <Route path="agents/runs" element={<Lazy><AgentRunsPage /></Lazy>} />
