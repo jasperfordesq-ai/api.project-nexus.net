@@ -958,6 +958,11 @@ cd apps/admin && docker compose up -d  # dev on :5190, prod on :5191
 - PHASE0_EXECUTION.md through PHASE15_EXECUTION.md - Test scripts for each completed phase
 
 ### Deployment & Operations
+- **[PHASE63_73_DEPLOY_NOTES.md](./PHASE63_73_DEPLOY_NOTES.md)** — required reading
+  before deploying any commit from `fb4fcce` onward (2026-05-09 production
+  pass). Lists every new env var, the 4 new EF migrations, post-deploy
+  verification steps, and rollback procedure. The diagnostics page at
+  `/admin/system/diagnostics` is the deploy ground-truth view.
 - FRONTEND_INTEGRATION.md - Frontend integration guide (API reference, CORS, architecture)
 - [ADMIN_INTEGRATION.md](./ADMIN_INTEGRATION.md) - Admin panel API integration guide (144+ admin endpoints, response examples, UI suggestions)
 - PLESK_DEPLOYMENT.md - Plesk deployment guide (concepts, theory, troubleshooting)
