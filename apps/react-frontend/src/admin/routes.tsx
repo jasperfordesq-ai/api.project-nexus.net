@@ -141,6 +141,9 @@ const AdminPlansPageReal = lazy(() => import('./modules/billing/AdminPlansPage')
 const AdminJobTemplatesPageReal = lazy(() => import('./modules/jobs/AdminJobTemplatesPage'));
 const AdminAiAgentsPageReal = lazy(() => import('./modules/ai/AdminAiAgentsPage'));
 const AdminScheduledJobsPageReal = lazy(() => import('./modules/system/AdminScheduledJobsPage'));
+const AdminDonationsPageReal = lazy(() => import('./modules/billing/AdminDonationsPage'));
+const VolunteerEmergencyAlertsAdmin = lazy(() => import('./modules/volunteering/VolunteerEmergencyAlertsAdmin'));
+const FederationAuditLogPage = lazy(() => import('./modules/federation/FederationAuditLogPage'));
 const VolunteerTraining = lazyParityPage('VolunteerTrainingPage');
 const VolunteerSafeguarding = lazyParityPage('VolunteerSafeguardingPage');
 const VolunteerHoursAudit = lazyParityPage('VolunteerHoursAuditPage');
@@ -436,6 +439,12 @@ export function AdminRoutes() {
       <Route path="ai/agents" element={<Lazy><AdminAiAgentsPageReal /></Lazy>} />
       {/* Phase 73 — Phase 63 scheduled-jobs observability */}
       <Route path="scheduled-jobs" element={<Lazy><AdminScheduledJobsPageReal /></Lazy>} />
+      {/* Phase 73 — Phase 72 fiat donations admin */}
+      <Route path="donations" element={<Lazy><AdminDonationsPageReal /></Lazy>} />
+      {/* Phase 73 — Phase 65 volunteer emergency alerts admin */}
+      <Route path="volunteering/alerts" element={<Lazy><VolunteerEmergencyAlertsAdmin /></Lazy>} />
+      {/* Phase 73 — federation audit log */}
+      <Route path="federation/audit" element={<Lazy><FederationAuditLogPage /></Lazy>} />
       <Route path="agents" element={<Lazy><AgentsAdminPage /></Lazy>} />
       <Route path="agents/proposals" element={<Lazy><AgentProposalsPage /></Lazy>} />
       <Route path="agents/runs" element={<Lazy><AgentRunsPage /></Lazy>} />

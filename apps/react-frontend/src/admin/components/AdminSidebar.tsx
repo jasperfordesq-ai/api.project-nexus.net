@@ -270,6 +270,7 @@ function useAdminNav(): NavSection[] {
         { label: 'Volunteer Expenses', href: '/admin/volunteering/expenses', icon: Heart },
         { label: 'Volunteer Wellbeing', href: '/admin/volunteering/wellbeing', icon: Heart },
         { label: 'Volunteer Certificates', href: '/admin/volunteering/certificates', icon: Heart },
+        { label: 'Volunteer Alerts', href: '/admin/volunteering/alerts', icon: AlertTriangle },
       ] : []),
     ];
 
@@ -320,6 +321,8 @@ function useAdminNav(): NavSection[] {
       ] : []),
       { label: 'Plans & Pricing', href: '/admin/plans', icon: CreditCard },
       { label: 'Billing', href: '/admin/billing', icon: CreditCard },
+      // Phase 73 — Phase 72 fiat donations admin
+      { label: 'Donations', href: '/admin/donations', icon: CreditCard },
       ...(hasFeature('member_premium') ? [
         { label: 'Member Premium', href: '/admin/member-premium', icon: Crown },
         { label: 'Premium Subscribers', href: '/admin/member-premium/subscribers', icon: Users },
@@ -495,6 +498,7 @@ function useAdminNav(): NavSection[] {
           { label: 'CC Config', href: '/admin/federation/cc-config', icon: Network },
           { label: 'Webhooks', href: '/admin/federation/webhooks', icon: Webhook },
           { label: 'Activity', href: '/admin/federation/activity', icon: Activity },
+          { label: 'Audit Log', href: '/admin/federation/audit', icon: ScrollText },
           { label: 'Data Management', href: '/admin/federation/data', icon: Database },
         ],
       }] as NavSection[] : []),
