@@ -1498,6 +1498,9 @@ public class AdminCompatibilityController : ControllerBase
         });
     }
 
+    // Refactored from UpsertTenantConfigAsync("tools.webp_conversion.last", ...) to use the
+    // AuditLog entity. Tool-run records belong in the audit trail, not in TenantConfig where they
+    // would shadow real configuration data and bypass the audit query API.
     [HttpPost("tools/webp-convert")]
     public async Task<IActionResult> RunWebpConversion()
     {
@@ -1516,13 +1519,25 @@ public class AdminCompatibilityController : ControllerBase
             recorded_at = DateTime.UtcNow
         };
 
-        await UpsertTenantConfigAsync("tools.webp_conversion.last", JsonSerializer.Serialize(result));
+        _db.AuditLogs.Add(new AuditLog
+        {
+            TenantId = _tenant.GetTenantIdOrThrow(),
+            UserId = GetCurrentUserId(),
+            Action = "admin.tools.webp_convert.run",
+            EntityType = "Tool",
+            NewValues = JsonSerializer.Serialize(result),
+            Severity = AuditSeverity.Info,
+            CreatedAt = DateTime.UtcNow
+        });
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} recorded WebP conversion compatibility run; {Pending} images pending", GetCurrentUserId(), pending);
         return Accepted(result);
     }
 
+    // Refactored from UpsertTenantConfigAsync("tools.seed.last", ...) to use AuditLog so that
+    // seed-generation runs are visible in the standard audit query API instead of being hidden
+    // inside the tenant config table.
     [HttpPost("tools/seed")]
     public async Task<IActionResult> RunSeedGenerator()
     {
@@ -1535,7 +1550,16 @@ public class AdminCompatibilityController : ControllerBase
             recorded_at = DateTime.UtcNow
         };
 
-        await UpsertTenantConfigAsync("tools.seed.last", JsonSerializer.Serialize(result));
+        _db.AuditLogs.Add(new AuditLog
+        {
+            TenantId = _tenant.GetTenantIdOrThrow(),
+            UserId = GetCurrentUserId(),
+            Action = "admin.tools.seed.run",
+            EntityType = "Tool",
+            NewValues = JsonSerializer.Serialize(result),
+            Severity = AuditSeverity.Info,
+            CreatedAt = DateTime.UtcNow
+        });
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} recorded seed-generation compatibility run", GetCurrentUserId());
@@ -1548,6 +1572,9 @@ public class AdminCompatibilityController : ControllerBase
         return Ok(new { data = Array.Empty<object>(), total = 0 });
     }
 
+    // Refactored from UpsertTenantConfigAsync("tools.blog_backup_restore.{id}", ...) to use
+    // AuditLog. Each restore request creates a discrete audit row (proper history) instead of
+    // overwriting a TenantConfig key, so admins can see every restore attempt.
     [HttpPost("tools/blog-backups/{backupId}/restore")]
     public async Task<IActionResult> RestoreBlogBackup(string backupId)
     {
@@ -1561,7 +1588,17 @@ public class AdminCompatibilityController : ControllerBase
             recorded_at = DateTime.UtcNow
         };
 
-        await UpsertTenantConfigAsync($"tools.blog_backup_restore.{NormalizeConfigSegment(backupId)}", JsonSerializer.Serialize(result));
+        _db.AuditLogs.Add(new AuditLog
+        {
+            TenantId = _tenant.GetTenantIdOrThrow(),
+            UserId = GetCurrentUserId(),
+            Action = "admin.tools.blog_backup.restore",
+            EntityType = "BlogBackup",
+            NewValues = JsonSerializer.Serialize(result),
+            Metadata = JsonSerializer.Serialize(new { backup_id = backupId }),
+            Severity = AuditSeverity.Info,
+            CreatedAt = DateTime.UtcNow
+        });
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} recorded blog backup restore compatibility request {BackupId}", GetCurrentUserId(), backupId);
@@ -1598,7 +1635,19 @@ public class AdminCompatibilityController : ControllerBase
             }
         };
 
-        await UpsertTenantConfigAsync("tools.seo_audit.latest", JsonSerializer.Serialize(result));
+        // Refactored from UpsertTenantConfigAsync("tools.seo_audit.latest", ...) to use AuditLog
+        // so each SEO audit run is preserved as history rather than overwriting a single config key.
+        _db.AuditLogs.Add(new AuditLog
+        {
+            TenantId = _tenant.GetTenantIdOrThrow(),
+            UserId = GetCurrentUserId(),
+            Action = "admin.tools.seo_audit.run",
+            EntityType = "Tool",
+            NewValues = JsonSerializer.Serialize(result),
+            Metadata = JsonSerializer.Serialize(new { score, issues = issueCount }),
+            Severity = AuditSeverity.Info,
+            CreatedAt = DateTime.UtcNow
+        });
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} ran SEO audit with score {Score}", GetCurrentUserId(), score);

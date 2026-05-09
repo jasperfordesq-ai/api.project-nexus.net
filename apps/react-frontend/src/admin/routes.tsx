@@ -67,7 +67,7 @@ const CampaignList = lazy(() => import('./modules/gamification/CampaignList'));
 const CampaignForm = lazy(() => import('./modules/gamification/CampaignForm'));
 const GamificationAnalytics = lazy(() => import('./modules/gamification/GamificationAnalytics'));
 const CustomBadges = lazy(() => import('./modules/gamification/CustomBadges'));
-const BadgeConfiguration = lazyParityPage('BadgeConfigurationPage');
+const BadgeConfiguration = lazy(() => import('./modules/gamification/BadgeConfigurationAdmin'));
 const CreateBadge = lazy(() => import('./modules/gamification/CreateBadge'));
 const GroupList = lazy(() => import('./modules/groups/GroupList'));
 const GroupAnalytics = lazy(() => import('./modules/groups/GroupAnalytics'));
@@ -100,12 +100,12 @@ const LegalDocVersionList = lazy(() => import('./modules/enterprise/LegalDocVers
 const LegalDocComplianceDashboard = lazy(() => import('./modules/enterprise/LegalDocComplianceDashboard'));
 const GdprRequestDetail = lazyParityPage('GdprRequestDetailPage');
 const GdprRequestCreate = lazyParityPage('GdprRequestCreatePage');
-const GdprConsentTypes = lazyParityPage('GdprConsentTypesPage');
-const GdprBreachDetail = lazyParityPage('GdprBreachDetailPage');
+const GdprConsentTypes = lazy(() => import('./modules/enterprise/GdprConsentTypesAdmin'));
+const GdprBreachDetail = lazy(() => import('./modules/enterprise/GdprBreachDetailAdmin'));
 const LogFiles = lazyParityPage('LogFilesPage');
 const LogFileViewer = lazyParityPage('LogFileViewerPage');
 const SystemRequirements = lazyParityPage('SystemRequirementsPage');
-const FeatureFlags = lazyParityPage('EnterpriseFeatureFlagsPage');
+const FeatureFlags = lazy(() => import('./modules/enterprise/EnterpriseFeatureFlagsAdmin'));
 
 // Performance module
 const PerformanceDashboard = lazy(() => import('./modules/performance/PerformanceDashboard'));
