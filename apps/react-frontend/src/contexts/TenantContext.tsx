@@ -85,6 +85,12 @@ const defaultFeatures: TenantFeatures = {
   group_exchanges: true,
   search: true,
   ai_chat: true,
+  member_premium: false,
+  ai_agents: false,
+  marketplace: false,
+  local_advertising: false,
+  newsletter: true,
+  partner_api: false,
 };
 
 // Default modules (all enabled)

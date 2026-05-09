@@ -16,7 +16,7 @@ import {
   Button, Card, CardBody, CardHeader, Chip, Select, SelectItem, Spinner,
   Table, TableBody, TableCell, TableColumn, TableHeader, TableRow,
 } from '@heroui/react';
-import { Globe, RefreshCw, Pause, Play } from 'lucide-react';
+import { Globe, RefreshCw, Pause } from 'lucide-react';
 import { usePageTitle } from '@/hooks';
 import { useToast } from '@/contexts';
 import { api } from '@/lib/api';
