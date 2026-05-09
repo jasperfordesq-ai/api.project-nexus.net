@@ -266,6 +266,10 @@ function useAdminNav(): NavSection[] {
       ] : []),
       ...(hasFeature('volunteering') ? [
         { label: 'Volunteering', href: '/admin/volunteering', icon: Heart },
+        // Phase 73 — surfaced real Phase 65 volunteer-admin pages
+        { label: 'Volunteer Expenses', href: '/admin/volunteering/expenses', icon: Heart },
+        { label: 'Volunteer Wellbeing', href: '/admin/volunteering/wellbeing', icon: Heart },
+        { label: 'Volunteer Certificates', href: '/admin/volunteering/certificates', icon: Heart },
       ] : []),
     ];
 

@@ -129,9 +129,16 @@ const NewsletterActivity = lazy(() => import('./modules/newsletters/NewsletterAc
 const VolunteeringOverview = lazy(() => import('./modules/volunteering/VolunteeringOverview'));
 const VolunteerApprovals = lazy(() => import('./modules/volunteering/VolunteerApprovals'));
 const VolunteerOrganizations = lazy(() => import('./modules/volunteering/VolunteerOrganizations'));
-// Phase 73 — replaces the lazyParityPage stub with a real CRUD admin page
-// wired to the Phase 65 /api/admin/volunteer/expenses endpoints.
+// Phase 73 — replaces lazyParityPage stubs with real CRUD admin pages wired
+// to the Phase 65 / Phase 68 / Phase 69 endpoints + the existing
+// /api/admin/plans + /api/jobs/templates endpoints.
 const VolunteerExpenses = lazy(() => import('./modules/volunteering/VolunteerExpensesAdmin'));
+const VolunteerWellbeingAdmin = lazy(() => import('./modules/volunteering/VolunteerWellbeingAdmin'));
+const VolunteerCertificatesAdmin = lazy(() => import('./modules/volunteering/VolunteerCertificatesAdmin'));
+const FederationHourTransfersAdmin = lazy(() => import('./modules/federation/FederationHourTransfersAdmin'));
+const AdminAiProvidersPageReal = lazy(() => import('./modules/ai/AdminAiProvidersPage'));
+const AdminPlansPageReal = lazy(() => import('./modules/billing/AdminPlansPage'));
+const AdminJobTemplatesPageReal = lazy(() => import('./modules/jobs/AdminJobTemplatesPage'));
 const VolunteerTraining = lazyParityPage('VolunteerTrainingPage');
 const VolunteerSafeguarding = lazyParityPage('VolunteerSafeguardingPage');
 const VolunteerHoursAudit = lazyParityPage('VolunteerHoursAuditPage');
@@ -151,8 +158,8 @@ const AgentProposalsPage = lazyParityPage('AgentProposalsPage');
 const AgentRunsPage = lazyParityPage('AgentRunsPage');
 
 // Billing / paid products
-const BillingPage = lazyParityPage('BillingPage');
-const PlanSelector = lazyParityPage('BillingPlansPage');
+const BillingPage = AdminPlansPageReal;
+const PlanSelector = AdminPlansPageReal;
 const InvoiceHistory = lazyParityPage('InvoiceHistoryPage');
 const CheckoutReturn = lazyParityPage('CheckoutReturnPage');
 const BillingControl = lazyParityPage('BillingControlPage');
@@ -179,7 +186,7 @@ const JobsAdmin = lazy(() => import('./modules/jobs/JobsAdmin'));
 const JobModerationQueue = lazyParityPage('JobModerationQueuePage');
 const JobBiasAudit = lazyParityPage('JobBiasAuditPage');
 const JobPipelineOverview = lazyParityPage('JobPipelineOverviewPage');
-const JobTemplatesAdmin = lazyParityPage('JobTemplatesAdminPage');
+const JobTemplatesAdmin = AdminJobTemplatesPageReal;
 
 // Marketplace module
 const MarketplaceAdmin = lazyParityPage('MarketplaceAdminPage');
@@ -422,6 +429,8 @@ export function AdminRoutes() {
       {/* ─── ADVANCED ─── */}
       <Route path="ai-settings" element={<Lazy><AiSettings /></Lazy>} />
       <Route path="ai/ki-agents" element={<Lazy><KiAgentAdminPage /></Lazy>} />
+      {/* Phase 73 — real Phase 69 AI provider admin */}
+      <Route path="ai-providers" element={<Lazy><AdminAiProvidersPageReal /></Lazy>} />
       <Route path="agents" element={<Lazy><AgentsAdminPage /></Lazy>} />
       <Route path="agents/proposals" element={<Lazy><AgentProposalsPage /></Lazy>} />
       <Route path="agents/runs" element={<Lazy><AgentRunsPage /></Lazy>} />
@@ -500,6 +509,8 @@ export function AdminRoutes() {
       <Route path="federation/activity" element={<Lazy><FederationActivityFeed /></Lazy>} />
       <Route path="federation/cc-config" element={<Lazy><CreditCommonsConfig /></Lazy>} />
       <Route path="federation/aggregates" element={<Lazy><FederationAggregatesPage /></Lazy>} />
+      {/* Phase 73 — real Phase 68 protocol-layer transfer admin */}
+      <Route path="federation/transfers" element={<Lazy><FederationHourTransfersAdmin /></Lazy>} />
 
       {/* ─── SAFEGUARDING ─── */}
       <Route path="safeguarding" element={<Lazy><SafeguardingDashboard /></Lazy>} />
@@ -544,6 +555,9 @@ export function AdminRoutes() {
       <Route path="volunteering/approvals" element={<Lazy><VolunteerApprovals /></Lazy>} />
       <Route path="volunteering/organizations" element={<Lazy><VolunteerOrganizations /></Lazy>} />
       <Route path="volunteering/expenses" element={<Lazy><VolunteerExpenses /></Lazy>} />
+      {/* Phase 73 — real Wellbeing + Certificates pages (Phase 65 endpoints) */}
+      <Route path="volunteering/wellbeing" element={<Lazy><VolunteerWellbeingAdmin /></Lazy>} />
+      <Route path="volunteering/certificates" element={<Lazy><VolunteerCertificatesAdmin /></Lazy>} />
       <Route path="volunteering/training" element={<Lazy><VolunteerTraining /></Lazy>} />
       <Route path="volunteering/safeguarding" element={<Lazy><VolunteerSafeguarding /></Lazy>} />
       <Route path="volunteering/hours" element={<Lazy><VolunteerHoursAudit /></Lazy>} />
