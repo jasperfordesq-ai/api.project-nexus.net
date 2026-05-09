@@ -129,7 +129,9 @@ const NewsletterActivity = lazy(() => import('./modules/newsletters/NewsletterAc
 const VolunteeringOverview = lazy(() => import('./modules/volunteering/VolunteeringOverview'));
 const VolunteerApprovals = lazy(() => import('./modules/volunteering/VolunteerApprovals'));
 const VolunteerOrganizations = lazy(() => import('./modules/volunteering/VolunteerOrganizations'));
-const VolunteerExpenses = lazyParityPage('VolunteerExpensesPage');
+// Phase 73 — replaces the lazyParityPage stub with a real CRUD admin page
+// wired to the Phase 65 /api/admin/volunteer/expenses endpoints.
+const VolunteerExpenses = lazy(() => import('./modules/volunteering/VolunteerExpensesAdmin'));
 const VolunteerTraining = lazyParityPage('VolunteerTrainingPage');
 const VolunteerSafeguarding = lazyParityPage('VolunteerSafeguardingPage');
 const VolunteerHoursAudit = lazyParityPage('VolunteerHoursAuditPage');

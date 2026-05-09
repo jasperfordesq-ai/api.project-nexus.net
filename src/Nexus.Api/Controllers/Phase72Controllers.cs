@@ -104,20 +104,33 @@ public class AdminDonationsController : ControllerBase
 public class StripeWebhookController : ControllerBase
 {
     private readonly MoneyDonationService _service;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
     private readonly ILogger<StripeWebhookController> _logger;
 
-    public StripeWebhookController(MoneyDonationService service, ILogger<StripeWebhookController> logger)
+    public StripeWebhookController(
+        MoneyDonationService service,
+        Microsoft.Extensions.Configuration.IConfiguration config,
+        ILogger<StripeWebhookController> logger)
     {
         _service = service;
+        _config = config;
         _logger = logger;
     }
 
     /// <summary>
     /// Stripe webhook receiver for checkout.session.completed,
-    /// payment_intent.payment_failed, and charge.refunded events. Signature
-    /// verification (Stripe-Signature header HMAC of body + secret) is left
-    /// to a future hardening pass; for now we trust events arrive only via
-    /// the Stripe-side configured endpoint URL.
+    /// payment_intent.payment_failed, and charge.refunded events.
+    ///
+    /// Signature verification: Stripe sends a <c>Stripe-Signature</c> header
+    /// of the form <c>t=&lt;ts&gt;,v1=&lt;hex-hmac-sha256&gt;,...</c>. We
+    /// recompute <c>HMAC-SHA256(secret, "&lt;ts&gt;.&lt;raw-body&gt;")</c>
+    /// and timing-safe-compare. The webhook secret is read from
+    /// <c>Stripe:WebhookSecret</c> (or <c>Stripe:WebhookSecret_Donations</c>
+    /// to scope per-endpoint). If the secret is unconfigured, we accept the
+    /// payload but log a warning — that lets local-dev work without Stripe
+    /// CLI signature wiring.
+    ///
+    /// Replay protection: a 5-minute tolerance window on the timestamp.
     /// </summary>
     [HttpPost("donations")]
     [AllowAnonymous]
@@ -130,6 +143,24 @@ public class StripeWebhookController : ControllerBase
         Request.Body.Position = 0;
 
         if (string.IsNullOrWhiteSpace(raw)) return BadRequest(new { error = "empty_body" });
+
+        // Signature verification (Phase 73 hardening).
+        var webhookSecret = _config["Stripe:WebhookSecret_Donations"] ?? _config["Stripe:WebhookSecret"];
+        if (!string.IsNullOrWhiteSpace(webhookSecret))
+        {
+            var sigHeader = Request.Headers["Stripe-Signature"].FirstOrDefault();
+            var (ok, reason) = VerifyStripeSignature(raw, sigHeader, webhookSecret!);
+            if (!ok)
+            {
+                _logger.LogWarning("Stripe webhook signature rejected: {Reason}", reason);
+                return Unauthorized(new { error = "signature_invalid", reason });
+            }
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Stripe webhook received without configured secret — accepting payload (set Stripe:WebhookSecret to enforce).");
+        }
 
         try
         {
@@ -148,6 +179,51 @@ public class StripeWebhookController : ControllerBase
             _logger.LogWarning(ex, "Stripe webhook body not valid JSON");
             return BadRequest(new { error = "invalid_json" });
         }
+    }
+
+    /// <summary>
+    /// Verify the <c>Stripe-Signature</c> header for the given raw body.
+    /// Returns (true, null) on success, (false, reason) on failure. The
+    /// header format is <c>t=&lt;unix-ts&gt;,v1=&lt;hex&gt;[,v0=...|,v1=...]</c>.
+    /// We accept any v1 signature that matches; v0 (test mode) is ignored.
+    /// Tolerance: 300 seconds.
+    /// </summary>
+    public static (bool Ok, string? Reason) VerifyStripeSignature(string rawBody, string? signatureHeader, string secret)
+    {
+        if (string.IsNullOrWhiteSpace(signatureHeader)) return (false, "missing_signature_header");
+        long? timestamp = null;
+        var v1Sigs = new List<string>();
+        foreach (var pair in signatureHeader.Split(','))
+        {
+            var eq = pair.IndexOf('=');
+            if (eq <= 0) continue;
+            var k = pair[..eq].Trim();
+            var v = pair[(eq + 1)..].Trim();
+            if (k == "t" && long.TryParse(v, out var ts)) timestamp = ts;
+            else if (k == "v1") v1Sigs.Add(v);
+        }
+        if (timestamp is null) return (false, "missing_timestamp");
+        if (v1Sigs.Count == 0) return (false, "missing_v1_signature");
+
+        const int toleranceSeconds = 300;
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (Math.Abs(nowUnix - timestamp.Value) > toleranceSeconds) return (false, "timestamp_outside_tolerance");
+
+        var signedPayload = $"{timestamp.Value}.{rawBody}";
+        using var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(secret));
+        var expectedBytes = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(signedPayload));
+        var expectedHex = Convert.ToHexString(expectedBytes).ToLowerInvariant();
+
+        foreach (var candidate in v1Sigs)
+        {
+            // Timing-safe compare via FixedTimeEquals on byte arrays of equal length.
+            if (candidate.Length != expectedHex.Length) continue;
+            var candidateBytes = System.Text.Encoding.ASCII.GetBytes(candidate.ToLowerInvariant());
+            var expectedHexBytes = System.Text.Encoding.ASCII.GetBytes(expectedHex);
+            if (System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(candidateBytes, expectedHexBytes))
+                return (true, null);
+        }
+        return (false, "no_v1_signature_match");
     }
 }
 

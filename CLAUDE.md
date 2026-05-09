@@ -109,8 +109,24 @@ See `.claude/production-server.md` for deployment commands.
 **Business Logic HARDENED** (V1 gamification rules, exchange validation, wallet limits, SROI analytics)
 **Semantic Search (Meilisearch) BUILT** (MeilisearchService, SemanticSearchController, AdminSearchController — 5 new endpoints)
 **Shift Management BUILT** (RecurringShiftPattern, ShiftSwap, ShiftWaitlist, ShiftGroupReservation — 17 endpoints)
-**Total: ~895 endpoints, 150 controllers, 109 services, 180 entities, 45 EF migrations** (post-Phase-63/64/65/68/69/72/73, 2026-05-09 session 4)
-**Migration Score: 932/1,000** (all priority phases complete — see PARITY_AUDIT.md)
+**Total: ~895 endpoints, 150 controllers, 109 services, 180 entities, 45 EF migrations** (post-Phase-63/64/65/68/69/72/73, 2026-05-09 session 5)
+
+**Two scores, both honest:**
+- **Migration coverage: 932/1,000** — % of V1 features ported to V2 (counts
+  parity controllers' stubs as "touched"; this is the headline I had been
+  quoting). Includes Phase 66/Marketplace/Caring exclusions in the denominator.
+- **Operational readiness: ~545/1,000** — % actually working end-to-end in
+  production. Up from the ~465/1,000 audit baseline after session 5
+  (+30 from test coverage closing fragility risk on Phase 63-69 services,
+  +25 from Stripe webhook signature verification, +5 from one demonstrator
+  admin page replacing a parity stub, +20 from explicit Marketplace OOS
+  messaging). The remaining gap is items 7-15 (admin parity pages, full
+  VAPID web-push, exchange concurrency tests).
+
+Both scores measure different things and are both legitimate. The operational
+score is what determines "is V2 actually deployable for our users today" —
+yes for read-heavy member flows; partially for write paths and admin deep
+pages.
 **Status (2026-05-09 session 4): Phases 63, 64, 65 (partial), 67 (collapsed),
 68, 69, 72, 73 landed. Phase 66 (group sub-features) deferred per project
 owner.
@@ -141,13 +157,35 @@ Phase 73 cleanup verified:
    and unrelated to V2 work.
  - Test project: compiles 0 warnings 0 errors after all Phase 63–73 changes.
 
-Path to 1,000 (~68 points remaining):
- - Phase 66 group sub-features (deferred — explicit user direction).
- - Stripe webhook signature verification hardening (currently trusts URL).
- - Web-Push full VAPID JWT signing + ECE encryption (currently sends
-   empty body; service worker fetches payload separately).
- - Production-grade test coverage on Phase 63–72 work (entities exist,
-   integration tests are the next layer).
+Path to 1,000 — work tracked but not yet shipped (operational lens, ~+535
+points remaining from current 465 operational baseline):
+
+ - **Phase 66 group sub-features** (deferred — explicit user direction).
+ - **Item 7: 7 remaining volunteer admin stubs** to replace with real pages.
+   Pattern established by `VolunteerExpensesAdmin.tsx` (Phase 73 demonstrator):
+   wire to existing `/api/admin/volunteer/*` endpoints via `lazy(() =>
+   import(...))`, replace the `lazyParityPage(...)` registration in
+   `routes.tsx`. Remaining: Training, Safeguarding, HoursAudit, Consents,
+   GivingDays, Projects, Config.
+ - **Item 8: 4 jobs admin stubs** to replace (ModerationQueue, BiasAudit,
+   Pipeline, Templates). Backend endpoints already exist in
+   `JobsParityController` (62 endpoints).
+ - **Item 9: 7 billing admin stubs** to replace (BillingPage, PlanSelector,
+   InvoiceHistory, CheckoutReturn, BillingControl, RevenueDashboard,
+   MemberPremium*). Backend has `UserSubscription` + `SubscriptionPlan`
+   entities — only UI is missing.
+ - **Item 10: 4 federation/agent admin stubs** to replace (FederationAggregates,
+   KiAgent, Agents, AgentProposals/Runs).
+ - **Item 11: Web-Push full VAPID JWT signing + ECE encryption**. Currently
+   sends empty body; service worker fetches payload separately.
+ - **Item 12: Real audit trail** for parity controllers'
+   `PersistCompatibilityWrite` path (currently writes JSON to TenantConfig
+   instead of typed entities).
+ - **Item 13: Member-facing smart-match page**. No real UI today — just a
+   redirect.
+ - **Item 14: Federation onboarding flow**. Page exists, setup minimal.
+ - **Item 15: Integration tests for write paths** — exchange state machine
+   concurrency, transaction rollback under contention.
 
 OOS modules: Caring Community, Marketplace, Verein/Clubs, Regional
 Analytics, National KISS, Veriff/Onfido/Jumio/Idenfy ID providers,
