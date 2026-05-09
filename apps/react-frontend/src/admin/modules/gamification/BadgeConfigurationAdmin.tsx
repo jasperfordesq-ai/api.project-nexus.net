@@ -103,7 +103,7 @@ export default function BadgeConfigurationAdminPage() {
         setShowModal(false);
         load();
       } else {
-        toast.error(res.error?.message || 'Save failed');
+        toast.error(res.error || 'Save failed');
       }
     } catch { toast.error('Save failed'); }
     finally { setSaving(false); }
@@ -114,7 +114,7 @@ export default function BadgeConfigurationAdminPage() {
     try {
       const res = await api.delete(`/v2/admin/gamification/badges/${id}`);
       if (res.success) { toast.success('Badge deleted'); load(); }
-      else toast.error(res.error?.message || 'Delete failed');
+      else toast.error(res.error || 'Delete failed');
     } catch { toast.error('Delete failed'); }
   };
 

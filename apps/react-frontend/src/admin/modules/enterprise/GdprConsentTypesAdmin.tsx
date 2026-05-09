@@ -93,7 +93,7 @@ export default function GdprConsentTypesAdminPage() {
         setForm({ key: '', name: '', description: '', is_required: false });
         load();
       } else {
-        toast.error(res.error?.message || 'Create failed');
+        toast.error(res.error || 'Create failed');
       }
     } catch { toast.error('Create failed'); }
     finally { setSaving(false); }

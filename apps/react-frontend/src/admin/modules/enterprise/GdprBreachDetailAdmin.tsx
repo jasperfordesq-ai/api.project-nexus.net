@@ -104,7 +104,7 @@ export default function GdprBreachDetailAdminPage() {
         affected_users_count: affectedNum,
       });
       if (res.success) { toast.success('Breach updated'); load(); }
-      else toast.error(res.error?.message || 'Update failed');
+      else toast.error(res.error || 'Update failed');
     } catch { toast.error('Update failed'); }
     finally { setSaving(false); }
   };
@@ -118,7 +118,7 @@ export default function GdprBreachDetailAdminPage() {
         authority_reference: authRef.trim() || null,
       });
       if (res.success) { toast.success('Reported to authority'); load(); }
-      else toast.error(res.error?.message || 'Report failed');
+      else toast.error(res.error || 'Report failed');
     } catch { toast.error('Report failed'); }
     finally { setReporting(false); }
   };

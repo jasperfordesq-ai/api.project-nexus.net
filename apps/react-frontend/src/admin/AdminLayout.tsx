@@ -10,15 +10,46 @@
  */
 
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Button } from '@heroui/react';
+import { AlertTriangle } from 'lucide-react';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminHeader } from './components/AdminHeader';
 import { AdminBreadcrumbs } from './components/AdminBreadcrumbs';
 import { DevelopmentStatusBanner } from '@/components/layout/DevelopmentStatusBanner';
+import { ErrorBoundary } from '@/components/feedback/ErrorBoundary';
+
+// Per-page admin fallback: shows a friendly empty-state when an admin module
+// crashes (typically because the API returned a stub shape that the page's
+// render path didn't expect). Keeps the rest of the admin navigable.
+function AdminPageFallback() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center px-6 py-12">
+      <div className="max-w-lg text-center">
+        <AlertTriangle className="mx-auto mb-4 h-10 w-10 text-warning-500" />
+        <h2 className="mb-2 text-lg font-semibold">This admin page didn't load</h2>
+        <p className="mb-6 text-sm text-default-500">
+          The page expected data from the API that wasn't available, so it stopped
+          rendering instead of showing partial state. The rest of the admin still
+          works — try another item in the sidebar, or reload to retry this one.
+        </p>
+        <div className="flex justify-center gap-2">
+          <Button color="primary" variant="flat" as={Link} to="/admin">
+            Admin home
+          </Button>
+          <Button variant="bordered" onPress={() => window.location.reload()}>
+            Reload
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function AdminLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,7 +92,11 @@ export function AdminLayout() {
       >
         <div className="p-3 sm:p-4 md:p-6">
           <AdminBreadcrumbs />
-          <Outlet />
+          {/* key={location.pathname} forces a fresh ErrorBoundary on every route
+              change, so a crash on one admin page does not poison the next one. */}
+          <ErrorBoundary key={location.pathname} fallback={<AdminPageFallback />}>
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </main>
     </div>

@@ -94,7 +94,7 @@ export default function EnterpriseFeatureFlagsAdminPage() {
         setShowModal(false);
         load();
       } else {
-        toast.error(res.error?.message || 'Save failed');
+        toast.error(res.error || 'Save failed');
       }
     } catch { toast.error('Save failed'); }
     finally { setSaving(false); }
@@ -111,7 +111,7 @@ export default function EnterpriseFeatureFlagsAdminPage() {
         key: c.key, value: newValue, category: 'features', description: c.description,
       });
       if (res.success) { toast.success(`${c.key} → ${newValue}`); load(); }
-      else toast.error(res.error?.message || 'Toggle failed');
+      else toast.error(res.error || 'Toggle failed');
     } catch { toast.error('Toggle failed'); }
   };
 
@@ -120,7 +120,7 @@ export default function EnterpriseFeatureFlagsAdminPage() {
     try {
       const res = await api.delete(`/v2/admin/enterprise/config/${encodeURIComponent(key)}`);
       if (res.success) { toast.success('Flag deleted'); load(); }
-      else toast.error(res.error?.message || 'Delete failed');
+      else toast.error(res.error || 'Delete failed');
     } catch { toast.error('Delete failed'); }
   };
 
