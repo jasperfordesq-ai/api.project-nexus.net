@@ -63,3 +63,78 @@ updates:
     labels:
       - "dependencies"
       - "docker"
+
+  # npm — V1 parity React SPA (primary frontend; where the 37 alerts concentrate)
+  - package-ecosystem: "npm"
+    directory: "/apps/react-frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Dublin"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+      - "react-frontend"
+    groups:
+      heroui:
+        patterns:
+          - "@heroui/*"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "vitest"
+      eslint:
+        patterns:
+          - "eslint*"
+          - "@typescript-eslint/*"
+      types:
+        patterns:
+          - "@types/*"
+        exclude-patterns:
+          - "@types/react"
+          - "@types/react-dom"
+
+  # npm — standalone admin (Refine app, secondary surface)
+  - package-ecosystem: "npm"
+    directory: "/apps/admin"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Dublin"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "admin"
+    groups:
+      refine:
+        patterns:
+          - "@refinedev/*"
+      antd:
+        patterns:
+          - "antd"
+          - "@ant-design/*"
+
+  # npm — UK GOV.UK Express frontend
+  - package-ecosystem: "npm"
+    directory: "/apps/web-uk"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Dublin"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "web-uk"
