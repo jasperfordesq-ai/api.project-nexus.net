@@ -331,6 +331,7 @@ function useAdminNav(): NavSection[] {
         { label: 'AI Settings', href: '/admin/ai-settings', icon: Brain },
         // Phase 69 — multi-provider abstraction (Anthropic / OpenAI / Gemini / Ollama)
         { label: 'AI Providers', href: '/admin/ai-providers', icon: Cpu },
+        { label: 'AI Agents', href: '/admin/ai/agents', icon: Bot },
       ] : []),
       ...(hasFeature('ai_agents') ? [
         { label: 'AI Agents', href: '/admin/agents', icon: Bot },
@@ -515,6 +516,8 @@ function useAdminNav(): NavSection[] {
           { label: 'Translation Settings', href: '/admin/translation-config', icon: Languages },
           { label: 'Activity Log', href: '/admin/activity-log', icon: Activity },
           { label: 'Cron Jobs', href: '/admin/cron-jobs', icon: Timer },
+          // Phase 73 — Phase 63 scheduled hosted-services observability
+          { label: 'Scheduled Jobs', href: '/admin/scheduled-jobs', icon: Timer },
           { label: 'Cron Logs', href: '/admin/cron-jobs/logs', icon: FileText },
           { label: 'Cron Setup', href: '/admin/cron-jobs/setup', icon: Wrench },
           ...(isPlatformSuperAdmin

@@ -139,6 +139,8 @@ const FederationHourTransfersAdmin = lazy(() => import('./modules/federation/Fed
 const AdminAiProvidersPageReal = lazy(() => import('./modules/ai/AdminAiProvidersPage'));
 const AdminPlansPageReal = lazy(() => import('./modules/billing/AdminPlansPage'));
 const AdminJobTemplatesPageReal = lazy(() => import('./modules/jobs/AdminJobTemplatesPage'));
+const AdminAiAgentsPageReal = lazy(() => import('./modules/ai/AdminAiAgentsPage'));
+const AdminScheduledJobsPageReal = lazy(() => import('./modules/system/AdminScheduledJobsPage'));
 const VolunteerTraining = lazyParityPage('VolunteerTrainingPage');
 const VolunteerSafeguarding = lazyParityPage('VolunteerSafeguardingPage');
 const VolunteerHoursAudit = lazyParityPage('VolunteerHoursAuditPage');
@@ -429,8 +431,11 @@ export function AdminRoutes() {
       {/* ─── ADVANCED ─── */}
       <Route path="ai-settings" element={<Lazy><AiSettings /></Lazy>} />
       <Route path="ai/ki-agents" element={<Lazy><KiAgentAdminPage /></Lazy>} />
-      {/* Phase 73 — real Phase 69 AI provider admin */}
+      {/* Phase 73 — real Phase 69 AI provider + agents admin */}
       <Route path="ai-providers" element={<Lazy><AdminAiProvidersPageReal /></Lazy>} />
+      <Route path="ai/agents" element={<Lazy><AdminAiAgentsPageReal /></Lazy>} />
+      {/* Phase 73 — Phase 63 scheduled-jobs observability */}
+      <Route path="scheduled-jobs" element={<Lazy><AdminScheduledJobsPageReal /></Lazy>} />
       <Route path="agents" element={<Lazy><AgentsAdminPage /></Lazy>} />
       <Route path="agents/proposals" element={<Lazy><AgentProposalsPage /></Lazy>} />
       <Route path="agents/runs" element={<Lazy><AgentRunsPage /></Lazy>} />
