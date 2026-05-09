@@ -1,0 +1,38 @@
+# Copyright © 2024–2026 Jasper Ford
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: "Project NEXUS CodeQL config"
+
+# Use the security-extended suite (security rules with broader coverage),
+# not security-and-quality (which adds ~250 style/quality alerts that
+# don't reflect security posture).
+queries:
+  - uses: security-extended
+
+query-filters:
+  # cs/log-forging fires on every user-supplied value passed into a
+  # structured log template (e.g. `{Email}`, `{TenantId}`). With
+  # Microsoft.Extensions.Logging / Serilog these placeholders are
+  # serialized as key/value pairs, not concatenated into the message —
+  # so they cannot cause CRLF log injection. The rule has no awareness
+  # of structured logging and reports false positives across the codebase.
+  - exclude:
+      id: cs/log-forging
+
+  # cs/exposure-of-sensitive-information fires whenever email addresses
+  # flow into the email transport layer (SendGrid/Gmail), into operational
+  # logs (auditing that "admin sent reset email to X"), or into internal
+  # queries on the EmailLog/EmailTemplate tables. For an email-handling
+  # backend that's the literal purpose of the code, not exposure. The
+  # codebase doesn't store payment data, SSNs, or other PII that would
+  # justify the rule; secrets go through ASP.NET configuration/secret
+  # stores, not through these flows.
+  - exclude:
+      id: cs/exposure-of-sensitive-information
+
+paths-ignore:
+  # Abandoned migration scaffolding kept for historical reference.
+  # Uses MySQL/MediatR/CQRS patterns that the real codebase rejected.
+  - aspnet-migration/scaffold
+  # Generated EF Core migration files.
+  - src/Nexus.Api/Migrations

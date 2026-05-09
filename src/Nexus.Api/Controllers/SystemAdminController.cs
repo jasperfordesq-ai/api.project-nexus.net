@@ -848,6 +848,7 @@ public class SystemAdminController : ControllerBase
 /// </summary>
 [ApiController]
 [Route("api/announcements")]
+[AllowAnonymous]
 public class AnnouncementsController : ControllerBase
 {
     private readonly SystemAdminService _systemAdmin;

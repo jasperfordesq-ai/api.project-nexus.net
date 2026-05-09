@@ -373,11 +373,28 @@ public class V15MemberParityController : ControllerBase
     public IActionResult V2ListingLightweight(int id) => Ok(new { success = true, data = new { listing_id = id } });
 
     [HttpGet("api/v2/wallet/balance")]
-    [HttpGet("api/partner/v1/wallet/balance/{userId:int}")]
-    public async Task<IActionResult> V2WalletBalance(int? userId = null)
+    public async Task<IActionResult> V2WalletBalance()
     {
-        var targetUserId = userId ?? CurrentUserId();
+        var targetUserId = CurrentUserId();
         if (targetUserId == null) return Unauthorized(new { error = "Invalid token" });
+        return await BuildWalletBalanceAsync(targetUserId.Value);
+    }
+
+    [HttpGet("api/partner/v1/wallet/balance/{userId:int}")]
+    public async Task<IActionResult> PartnerWalletBalance(int userId)
+    {
+        // Partner federation endpoint: must be invoked through the federation
+        // auth middleware (which sets FederationTenantId on HttpContext.Items).
+        // Without that context, treat as unauthorized — never let an ordinary
+        // authenticated user pass an arbitrary userId here.
+        if (!HttpContext.Items.ContainsKey("FederationTenantId"))
+            return Unauthorized(new { error = "Federation authentication required" });
+
+        return await BuildWalletBalanceAsync(userId);
+    }
+
+    private async Task<IActionResult> BuildWalletBalanceAsync(int targetUserId)
+    {
         var received = await _db.Transactions.Where(t => t.ReceiverId == targetUserId && t.Status == TransactionStatus.Completed).SumAsync(t => t.Amount);
         var sent = await _db.Transactions.Where(t => t.SenderId == targetUserId && t.Status == TransactionStatus.Completed).SumAsync(t => t.Amount);
         return Ok(new { balance = received - sent, currency = "hours", received_total = received, sent_total = sent });
