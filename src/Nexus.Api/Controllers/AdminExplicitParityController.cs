@@ -5,6 +5,11 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
+using System.Text;
+using System.Text.Json;
 
 namespace Nexus.Api.Controllers;
 
@@ -12,6 +17,24 @@ namespace Nexus.Api.Controllers;
 [Authorize(Policy = "AdminOnly")]
 public class AdminExplicitParityController : ControllerBase
 {
+    private readonly NexusDbContext _db;
+    private const string BillingInvoicesKey = "admin_explicit.billing.invoices";
+    private const string FederationTopicsKey = "admin_explicit.federation.topics";
+    private const string FederationTopicSubscriptionsKey = "admin_explicit.federation.topic_subscriptions";
+    private const string FederationWebhooksKey = "admin_explicit.federation.webhooks";
+    private const string CompatibilityWritesKey = "admin_explicit.compatibility_writes";
+
+    private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNameCaseInsensitive = true
+    };
+
+    public AdminExplicitParityController(NexusDbContext db)
+    {
+        _db = db;
+    }
+
     [HttpDelete("/api/v2/admin/enterprise/config/secrets/{key}")]
     [HttpDelete("/api/v2/admin/enterprise/gdpr/consent-types/{id}")]
     [HttpDelete("/api/v2/admin/enterprise/monitoring/log-files/{filename}")]
@@ -29,7 +52,16 @@ public class AdminExplicitParityController : ControllerBase
     [HttpDelete("/api/v2/admin/users/{id}/verification-badges/{type}")]
     [HttpDelete("/api/v2/admin/volunteering/custom-fields/{id}")]
     [HttpDelete("/api/v2/admin/volunteering/webhooks/{id}")]
-    public IActionResult Delete() => Ok(new { data = new { compatibility = true } });
+    public async Task<IActionResult> Delete()
+    {
+        var path = Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+
+        return path switch
+        {
+            _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await DeleteStoredRecord(FederationWebhooksKey, webhookId, "federation_webhook"),
+            _ => await PersistCompatibilityWrite("delete")
+        };
+    }
 
     [HttpGet("/api/admin/users/search")]
     [HttpGet("/api/v2/admin/ad-campaigns")]
@@ -54,7 +86,6 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/config/sitemap-stats")]
     [HttpGet("/api/v2/admin/config/translation")]
     [HttpGet("/api/v2/admin/config/volunteering")]
-    [HttpGet("/api/v2/admin/email/status")]
     [HttpGet("/api/v2/admin/enterprise/config/features")]
     [HttpGet("/api/v2/admin/enterprise/gdpr/audit/export")]
     [HttpGet("/api/v2/admin/enterprise/gdpr/breaches/{id}")]
@@ -181,11 +212,85 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/volunteering/trends")]
     [HttpGet("/api/v2/admin/volunteering/webhooks")]
     [HttpGet("/api/v2/admin/volunteering/webhooks/{id}/logs")]
-    public IActionResult Get() => Ok(new { data = new { compatibility = true } });
+    public async Task<IActionResult> Get()
+    {
+        var path = Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+
+        return path switch
+        {
+            "/api/admin/users/search" => await SearchUsers(),
+            "/api/v2/admin/billing/subscription" => await GetBillingSubscription(),
+            "/api/v2/admin/billing/invoices" => await GetBillingInvoices(),
+            "/api/v2/admin/config/landing-page" => await GetLandingPageMetadata(),
+            "/api/v2/admin/config/sitemap-stats" => await GetSitemapStats(),
+            "/api/v2/admin/enterprise/config/features" => await GetEnterpriseFeatures(),
+            "/api/v2/admin/enterprise/gdpr/consent-types" => await GetGdprConsentTypes(),
+            "/api/v2/admin/enterprise/gdpr/statistics" => await GetGdprStatistics(),
+            "/api/v2/admin/enterprise/gdpr/trends" => await GetGdprTrends(),
+            "/api/v2/admin/enterprise/monitoring/requirements" => await GetMonitoringRequirements(),
+            "/api/v2/admin/fadp/consent-ledger" => await GetConsentLedger(),
+            "/api/v2/admin/fadp/processing-register" => await GetProcessingRegister(),
+            "/api/v2/admin/fadp/processing-register.csv" => await GetProcessingRegisterCsv(),
+            "/api/v2/admin/federation/activity" => await GetFederationActivity(),
+            "/api/v2/admin/federation/analytics/overview" => await GetFederationAnalyticsOverview(),
+            "/api/v2/admin/federation/credit-balances" => await GetFederationCreditBalances(),
+            "/api/v2/admin/federation/topics" => await GetFederationTopics(),
+            "/api/v2/admin/federation/topics/mine" => await GetFederationTopicSubscriptions(),
+            "/api/v2/admin/federation/webhooks" => await GetFederationWebhooks(),
+            "/api/v2/admin/help/faqs" => await GetFaqs(),
+            "/api/v2/admin/jobs/templates" => await GetJobTemplates(),
+            "/api/v2/admin/listings/moderation-queue" => await GetListingsModerationQueue(),
+            "/api/v2/admin/listings/moderation-stats" => await GetListingsModerationStats(),
+            "/api/v2/admin/listings/stats" => await GetListingsStats(),
+            "/api/v2/admin/reports/export-types" => GetReportExportTypes(),
+            "/api/v2/admin/super/billing/export" => await GetBillingExportCsv(),
+            "/api/v2/admin/super/billing/revenue" => await GetBillingRevenue(),
+            "/api/v2/admin/super/billing/snapshot" => await GetBillingSnapshot(),
+            _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/breaches/", out var breachId) => await GetGdprBreach(breachId),
+            _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/requests/", out var requestId) => await GetGdprRequest(requestId),
+            _ when TryGetSlugBeforeSuffix(path, "/api/v2/admin/enterprise/gdpr/consent-types/", "/users", out var usersSlug) => await GetConsentTypeUsers(usersSlug),
+            _ when TryGetSlugBeforeSuffix(path, "/api/v2/admin/enterprise/gdpr/consent-types/", "/export", out var exportSlug) => await GetConsentTypeExport(exportSlug),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/logs", out var webhookLogId) => await GetFederationWebhookLogs(webhookLogId),
+            _ when TryGetLastInt(path, "/api/v2/admin/events/", out var eventId) => await GetEvent(eventId),
+            _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await GetGroup(groupId),
+            _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await GetListing(listingId),
+            _ => await GetPersistedCompatibilityRead(path)
+        };
+    }
+
+    [HttpGet("/api/v2/admin/email/status")]
+    public async Task<IActionResult> GetEmailStatus()
+    {
+        var today = DateTime.UtcNow.Date;
+        var sentToday = await _db.EmailLogs.CountAsync(e => e.Status == EmailSendStatus.Sent && e.SentAt >= today);
+        var failedToday = await _db.EmailLogs.CountAsync(e => e.Status == EmailSendStatus.Failed && e.CreatedAt >= today);
+        var pendingEmails = await _db.EmailLogs.CountAsync(e => e.Status == EmailSendStatus.Pending);
+        var activeSubscribers = await _db.NewsletterSubscriptions.CountAsync(s => s.IsSubscribed);
+
+        var newsletterStatuses = await _db.Newsletters
+            .AsNoTracking()
+            .GroupBy(n => n.Status)
+            .Select(g => new { status = g.Key.ToString().ToLowerInvariant(), count = g.Count() })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = new
+            {
+                provider = "gmail",
+                sent_today = sentToday,
+                failed_today = failedToday,
+                pending = pendingEmails,
+                active_subscribers = activeSubscribers,
+                newsletters = newsletterStatuses,
+                generated_at = DateTime.UtcNow
+            }
+        });
+    }
 
     [HttpPatch("/api/v2/admin/agents/{id}")]
     [HttpPatch("/api/v2/admin/enterprise/config/features")]
-    public IActionResult Patch() => Ok(new { data = new { compatibility = true } });
+    public async Task<IActionResult> Patch() => await PersistCompatibilityWrite("patch");
 
     [HttpPost("/api/v2/admin/ad-campaigns/{id}/approve")]
     [HttpPost("/api/v2/admin/ad-campaigns/{id}/pause")]
@@ -292,7 +397,17 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPost("/api/v2/admin/volunteering/send-shift-reminders")]
     [HttpPost("/api/v2/admin/volunteering/webhooks")]
     [HttpPost("/api/v2/admin/volunteering/webhooks/{id}/test")]
-    public IActionResult Post() => Ok(new { data = new { compatibility = true } });
+    public async Task<IActionResult> Post()
+    {
+        var path = Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+
+        return path switch
+        {
+            "/api/v2/admin/federation/webhooks" => await CreateStoredRecord(FederationWebhooksKey, "federation_webhook"),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/test", out var webhookId) => await TestFederationWebhook(webhookId),
+            _ => await PersistCompatibilityWrite("post")
+        };
+    }
 
     [HttpPut("/api/v2/admin/api-partners/{id}")]
     [HttpPut("/api/v2/admin/config/groups")]
@@ -341,5 +456,1444 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPut("/api/v2/admin/volunteering/training/{id}/reject")]
     [HttpPut("/api/v2/admin/volunteering/training/{id}/verify")]
     [HttpPut("/api/v2/admin/volunteering/webhooks/{id}")]
-    public IActionResult Put() => Ok(new { data = new { compatibility = true } });
+    public async Task<IActionResult> Put()
+    {
+        var path = Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+
+        return path switch
+        {
+            "/api/v2/admin/federation/topics/mine" => await PutFederationTopicSubscriptions(),
+            _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpsertStoredRecord(FederationWebhooksKey, webhookId, "federation_webhook"),
+            _ => await PersistCompatibilityWrite("put")
+        };
+    }
+
+    private async Task<IActionResult> SearchUsers()
+    {
+        var term = (Request.Query["q"].FirstOrDefault() ?? Request.Query["search"].FirstOrDefault() ?? string.Empty).Trim().ToLowerInvariant();
+        var query = _db.Users.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(term))
+        {
+            query = query.Where(u =>
+                u.Email.ToLower().Contains(term) ||
+                u.FirstName.ToLower().Contains(term) ||
+                u.LastName.ToLower().Contains(term));
+        }
+
+        var userRows = await query
+            .OrderBy(u => u.Email)
+            .Take(50)
+            .Select(u => new
+            {
+                u.Id,
+                u.Email,
+                u.FirstName,
+                u.LastName,
+                u.Role,
+                u.IsActive,
+                u.RegistrationStatus
+            })
+            .ToListAsync();
+        var users = userRows.Select(u => new
+        {
+            u.Id,
+            u.Email,
+            full_name = (u.FirstName + " " + u.LastName).Trim(),
+            u.Role,
+            u.IsActive,
+            registration_status = u.RegistrationStatus.ToString().ToLowerInvariant()
+        }).ToList();
+
+        return Ok(new { data = users, meta = new { total = users.Count } });
+    }
+
+    private async Task<IActionResult> GetListingsStats()
+    {
+        var rawStatusCounts = await _db.Listings
+            .AsNoTracking()
+            .GroupBy(l => l.Status)
+            .Select(g => new { status = g.Key, count = g.Count() })
+            .ToListAsync();
+        var statusCounts = rawStatusCounts
+            .Select(g => new { status = g.status.ToString().ToLowerInvariant(), g.count })
+            .ToList();
+
+        var marketplaceModeration = await _db.MarketplaceListings
+            .AsNoTracking()
+            .GroupBy(l => l.ModerationStatus)
+            .Select(g => new { status = g.Key, count = g.Count() })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = new
+            {
+                total = await _db.Listings.CountAsync(),
+                active = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Active),
+                pending = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Pending),
+                rejected = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Rejected),
+                featured = await _db.Listings.CountAsync(l => l.IsFeatured),
+                marketplace_total = await _db.MarketplaceListings.CountAsync(),
+                marketplace_reports_open = await _db.MarketplaceReports.CountAsync(r => r.Status != "resolved"),
+                by_status = statusCounts,
+                marketplace_moderation = marketplaceModeration,
+                generated_at = DateTime.UtcNow
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetListingsModerationStats()
+    {
+        return Ok(new
+        {
+            data = new
+            {
+                pending = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Pending),
+                rejected = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Rejected),
+                reviewed = await _db.Listings.CountAsync(l => l.ReviewedAt != null),
+                marketplace_pending = await _db.MarketplaceListings.CountAsync(l => l.ModerationStatus == "pending"),
+                marketplace_rejected = await _db.MarketplaceListings.CountAsync(l => l.ModerationStatus == "rejected"),
+                open_marketplace_reports = await _db.MarketplaceReports.CountAsync(r => r.Status != "resolved")
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetListingsModerationQueue()
+    {
+        var listingRows = await _db.Listings
+            .AsNoTracking()
+            .Where(l => l.Status == ListingStatus.Pending)
+            .OrderByDescending(l => l.CreatedAt)
+            .Take(100)
+            .Select(l => new { type = "timebank", l.Id, l.Title, l.Status, l.CreatedAt })
+            .ToListAsync();
+        var listings = listingRows
+            .Select(l => new { l.type, l.Id, l.Title, status = l.Status.ToString().ToLowerInvariant(), l.CreatedAt })
+            .ToList();
+
+        var marketplace = await _db.MarketplaceListings
+            .AsNoTracking()
+            .Where(l => l.ModerationStatus == "pending")
+            .OrderByDescending(l => l.CreatedAt)
+            .Take(100)
+            .Select(l => new { type = "marketplace", l.Id, l.Title, status = l.ModerationStatus, l.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = listings.Cast<object>().Concat(marketplace), meta = new { total = listings.Count + marketplace.Count } });
+    }
+
+    private async Task<IActionResult> GetListing(int id)
+    {
+        var listing = await _db.Listings.AsNoTracking()
+            .Where(l => l.Id == id)
+            .Select(l => new
+            {
+                l.Id,
+                l.Title,
+                l.Description,
+                l.Type,
+                l.Status,
+                l.IsFeatured,
+                l.ViewCount,
+                l.CreatedAt,
+                l.UpdatedAt
+            })
+            .FirstOrDefaultAsync();
+
+        return listing == null
+            ? NotFound(new { error = "Listing not found" })
+            : Ok(new
+            {
+                data = new
+                {
+                    listing.Id,
+                    listing.Title,
+                    listing.Description,
+                    type = listing.Type.ToString().ToLowerInvariant(),
+                    status = listing.Status.ToString().ToLowerInvariant(),
+                    listing.IsFeatured,
+                    listing.ViewCount,
+                    listing.CreatedAt,
+                    listing.UpdatedAt
+                }
+            });
+    }
+
+    private async Task<IActionResult> GetBillingSubscription()
+    {
+        var subscriptionRows = await _db.UserSubscriptions
+            .AsNoTracking()
+            .Include(s => s.Plan)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => new
+            {
+                s.Id,
+                s.UserId,
+                s.PlanId,
+                plan_name = s.Plan == null ? null : s.Plan.Name,
+                plan_price = s.Plan == null ? 0 : s.Plan.Price,
+                currency = s.Plan == null ? null : s.Plan.Currency,
+                s.Status,
+                s.StartedAt,
+                s.NextBillingDate,
+                s.ExpiresAt,
+                has_stripe_subscription = !string.IsNullOrEmpty(s.StripeSubscriptionId)
+            })
+            .Take(100)
+            .ToListAsync();
+        var subscriptions = subscriptionRows
+            .Select(s => new
+            {
+                s.Id,
+                s.UserId,
+                s.PlanId,
+                s.plan_name,
+                s.plan_price,
+                s.currency,
+                status = s.Status.ToString().ToLowerInvariant(),
+                s.StartedAt,
+                s.NextBillingDate,
+                s.ExpiresAt,
+                s.has_stripe_subscription
+            })
+            .ToList();
+
+        return Ok(new { data = subscriptions, meta = new { total = subscriptions.Count } });
+    }
+
+    private async Task<IActionResult> GetBillingInvoices()
+    {
+        var subscriptionRows = await _db.UserSubscriptions
+            .AsNoTracking()
+            .Include(s => s.Plan)
+            .Include(s => s.User)
+            .OrderByDescending(s => s.NextBillingDate ?? s.StartedAt)
+            .Select(s => new
+            {
+                s.Id,
+                s.UserId,
+                user_email = s.User == null ? null : s.User.Email,
+                plan_name = s.Plan == null ? null : s.Plan.Name,
+                amount = s.Plan == null ? 0 : s.Plan.Price,
+                currency = s.Plan == null ? "EUR" : s.Plan.Currency,
+                s.Status,
+                s.StartedAt,
+                s.NextBillingDate,
+                s.ExpiresAt,
+                s.StripeSubscriptionId
+            })
+            .Take(200)
+            .ToListAsync();
+
+        var invoices = subscriptionRows
+            .Select(s => (object)new
+            {
+                id = $"subscription-{s.Id}",
+                invoice_number = $"SUB-{s.Id:D6}",
+                source = "user_subscription",
+                subscription_id = s.Id,
+                user_id = s.UserId,
+                s.user_email,
+                s.plan_name,
+                amount = s.amount,
+                s.currency,
+                status = s.Status == SubscriptionStatus.Active ? "paid" : s.Status.ToString().ToLowerInvariant(),
+                issued_at = s.StartedAt,
+                due_at = s.NextBillingDate,
+                paid_at = s.Status == SubscriptionStatus.Active ? s.StartedAt : (DateTime?)null,
+                expires_at = s.ExpiresAt,
+                has_stripe_subscription = !string.IsNullOrWhiteSpace(s.StripeSubscriptionId)
+            })
+            .ToList();
+
+        var persistedInvoices = await LoadStoredRecordsAsync(BillingInvoicesKey);
+        invoices.AddRange(persistedInvoices.Select(ToResponseRecord));
+
+        return Ok(new
+        {
+            data = invoices,
+            meta = new
+            {
+                total = invoices.Count,
+                subscription_backed = subscriptionRows.Count,
+                persisted = persistedInvoices.Count
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetBillingSnapshot()
+    {
+        var activeSubscriptions = await _db.UserSubscriptions.CountAsync(s => s.Status == SubscriptionStatus.Active);
+        var pastDueSubscriptions = await _db.UserSubscriptions.CountAsync(s => s.Status == SubscriptionStatus.PastDue);
+        var monthlyRevenue = await ActiveMonthlyRevenue();
+
+        return Ok(new
+        {
+            data = new
+            {
+                plans = await _db.SubscriptionPlans.CountAsync(),
+                active_plans = await _db.SubscriptionPlans.CountAsync(p => p.IsActive),
+                subscriptions = await _db.UserSubscriptions.CountAsync(),
+                active_subscriptions = activeSubscriptions,
+                past_due_subscriptions = pastDueSubscriptions,
+                monthly_recurring_revenue = monthlyRevenue,
+                currency = await DefaultBillingCurrency(),
+                generated_at = DateTime.UtcNow
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetBillingRevenue()
+    {
+        var byPlan = await _db.UserSubscriptions
+            .AsNoTracking()
+            .Where(s => s.Status == SubscriptionStatus.Active)
+            .GroupBy(s => new { s.PlanId, s.Plan!.Name, s.Plan.Currency, s.Plan.Price })
+            .Select(g => new
+            {
+                plan_id = g.Key.PlanId,
+                plan_name = g.Key.Name,
+                currency = g.Key.Currency,
+                active_subscriptions = g.Count(),
+                monthly_revenue = g.Count() * g.Key.Price
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = new
+            {
+                monthly_recurring_revenue = byPlan.Sum(p => p.monthly_revenue),
+                currency = byPlan.FirstOrDefault()?.currency ?? await DefaultBillingCurrency(),
+                by_plan = byPlan,
+                generated_at = DateTime.UtcNow
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetBillingExportCsv()
+    {
+        var rows = await _db.UserSubscriptions
+            .AsNoTracking()
+            .Include(s => s.Plan)
+            .OrderBy(s => s.Id)
+            .Select(s => new
+            {
+                s.Id,
+                s.UserId,
+                plan = s.Plan == null ? string.Empty : s.Plan.Name,
+                s.Status,
+                price = s.Plan == null ? 0 : s.Plan.Price,
+                currency = s.Plan == null ? string.Empty : s.Plan.Currency,
+                s.StartedAt,
+                s.NextBillingDate
+            })
+            .ToListAsync();
+
+        var csv = new StringBuilder("id,user_id,plan,status,price,currency,started_at,next_billing_date\n");
+        foreach (var row in rows)
+        {
+            csv.AppendLine($"{row.Id},{row.UserId},{Csv(row.plan)},{row.Status},{row.price},{row.currency},{row.StartedAt:O},{row.NextBillingDate:O}");
+        }
+
+        return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "billing-subscriptions.csv");
+    }
+
+    private async Task<IActionResult> GetEnterpriseFeatures()
+    {
+        var tenantId = _db.CurrentTenantId;
+        var features = await _db.EnterpriseConfigs
+            .AsNoTracking()
+            .Where(c => !tenantId.HasValue || c.TenantId == tenantId.Value)
+            .Where(c => c.Category == "features" || c.Key.StartsWith("feature."))
+            .OrderBy(c => c.Key)
+            .Select(c => new { c.Key, c.Value, c.Description, c.UpdatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = features, meta = new { total = features.Count } });
+    }
+
+    private async Task<IActionResult> GetGdprConsentTypes()
+    {
+        var rows = await _db.GdprConsentTypes.AsNoTracking()
+            .OrderBy(c => c.Key)
+            .Select(c => new { c.Id, slug = c.Key, c.Name, c.Description, c.IsRequired, c.Version, c.IsActive, c.CreatedAt, c.UpdatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = rows, meta = new { total = rows.Count } });
+    }
+
+    private async Task<IActionResult> GetGdprStatistics()
+    {
+        return Ok(new
+        {
+            data = new
+            {
+                consent_records = await _db.ConsentRecords.CountAsync(),
+                granted_consents = await _db.ConsentRecords.CountAsync(c => c.IsGranted),
+                revoked_consents = await _db.ConsentRecords.CountAsync(c => !c.IsGranted),
+                export_requests = await _db.DataExportRequests.CountAsync(),
+                pending_export_requests = await _db.DataExportRequests.CountAsync(r => r.Status == ExportStatus.Pending),
+                deletion_requests = await _db.DataDeletionRequests.CountAsync(),
+                pending_deletion_requests = await _db.DataDeletionRequests.CountAsync(r => r.Status == DeletionStatus.Pending),
+                breaches = await _db.GdprBreaches.CountAsync(),
+                open_breaches = await _db.GdprBreaches.CountAsync(b => b.ResolvedAt == null),
+                generated_at = DateTime.UtcNow
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetGdprTrends()
+    {
+        var since = DateTime.UtcNow.Date.AddDays(-29);
+        var exports = await _db.DataExportRequests.AsNoTracking()
+            .Where(r => r.RequestedAt >= since)
+            .GroupBy(r => r.RequestedAt.Date)
+            .Select(g => new { date = g.Key, export_requests = g.Count() })
+            .ToListAsync();
+
+        var deletions = await _db.DataDeletionRequests.AsNoTracking()
+            .Where(r => r.CreatedAt >= since)
+            .GroupBy(r => r.CreatedAt.Date)
+            .Select(g => new { date = g.Key, deletion_requests = g.Count() })
+            .ToListAsync();
+
+        return Ok(new { data = new { since, exports, deletions } });
+    }
+
+    private async Task<IActionResult> GetGdprBreach(int id)
+    {
+        var breach = await _db.GdprBreaches.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
+        return breach == null ? NotFound(new { error = "GDPR breach not found" }) : Ok(new { data = breach });
+    }
+
+    private async Task<IActionResult> GetGdprRequest(int id)
+    {
+        var exportRequest = await _db.DataExportRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
+        var deletionRequest = await _db.DataDeletionRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
+
+        if (exportRequest == null && deletionRequest == null)
+        {
+            return NotFound(new { error = "GDPR request not found" });
+        }
+
+        return Ok(new { data = new { export_request = exportRequest, deletion_request = deletionRequest } });
+    }
+
+    private async Task<IActionResult> GetConsentTypeUsers(string slug)
+    {
+        var rows = await _db.ConsentRecords.AsNoTracking()
+            .Where(c => c.ConsentType == slug)
+            .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt)
+            .Select(c => new { c.UserId, c.ConsentType, c.IsGranted, c.GrantedAt, c.RevokedAt, c.CreatedAt, c.UpdatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = rows, meta = new { total = rows.Count } });
+    }
+
+    private async Task<IActionResult> GetConsentTypeExport(string slug)
+    {
+        var rows = await _db.ConsentRecords.AsNoTracking()
+            .Where(c => c.ConsentType == slug)
+            .OrderBy(c => c.UserId)
+            .ToListAsync();
+
+        var csv = new StringBuilder("user_id,consent_type,is_granted,granted_at,revoked_at,created_at,updated_at\n");
+        foreach (var row in rows)
+        {
+            csv.AppendLine($"{row.UserId},{Csv(row.ConsentType)},{row.IsGranted},{row.GrantedAt:O},{row.RevokedAt:O},{row.CreatedAt:O},{row.UpdatedAt:O}");
+        }
+
+        return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"consent-{slug}.csv");
+    }
+
+    private async Task<IActionResult> GetConsentLedger()
+    {
+        var rows = await _db.ConsentRecords.AsNoTracking()
+            .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt)
+            .Take(200)
+            .Select(c => new { c.Id, c.UserId, c.ConsentType, c.IsGranted, c.GrantedAt, c.RevokedAt, c.CreatedAt, c.UpdatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = rows, meta = new { total = rows.Count } });
+    }
+
+    private async Task<IActionResult> GetProcessingRegister()
+    {
+        var documents = await _db.LegalDocuments.AsNoTracking()
+            .OrderBy(d => d.Slug)
+            .Select(d => new { d.Slug, d.Title, d.Version, d.IsActive, d.RequiresAcceptance, d.UpdatedAt })
+            .ToListAsync();
+
+        var consentTypes = await _db.GdprConsentTypes.AsNoTracking()
+            .OrderBy(c => c.Key)
+            .Select(c => new { slug = c.Key, c.Name, c.Description, c.IsRequired, c.Version, c.IsActive })
+            .ToListAsync();
+
+        return Ok(new { data = new { legal_documents = documents, consent_types = consentTypes } });
+    }
+
+    private async Task<IActionResult> GetProcessingRegisterCsv()
+    {
+        var rows = await _db.GdprConsentTypes.AsNoTracking().OrderBy(c => c.Key).ToListAsync();
+        var csv = new StringBuilder("slug,name,description,is_required,version,is_active\n");
+        foreach (var row in rows)
+        {
+            csv.AppendLine($"{Csv(row.Key)},{Csv(row.Name)},{Csv(row.Description)},{row.IsRequired},{row.Version},{row.IsActive}");
+        }
+
+        return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "processing-register.csv");
+    }
+
+    private async Task<IActionResult> GetMonitoringRequirements()
+    {
+        return Ok(new
+        {
+            data = new
+            {
+                database = "postgresql",
+                scheduled_tasks = await _db.ScheduledTasks.CountAsync(),
+                failed_scheduled_tasks = await _db.ScheduledTasks.CountAsync(t => t.Status == ScheduledTaskStatus.Failed),
+                email_pending = await _db.EmailLogs.CountAsync(e => e.Status == EmailSendStatus.Pending),
+                open_gdpr_breaches = await _db.GdprBreaches.CountAsync(b => b.ResolvedAt == null),
+                active_announcements = await _db.PlatformAnnouncements.CountAsync(a => a.IsActive),
+                checked_at = DateTime.UtcNow
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetFederationActivity()
+    {
+        var audit = await _db.FederationAuditLogs.AsNoTracking()
+            .OrderByDescending(l => l.CreatedAt)
+            .Take(50)
+            .Select(l => new { source = "audit", l.Id, l.Action, l.EntityType, l.EntityId, l.PartnerTenantId, l.CreatedAt })
+            .ToListAsync();
+
+        var api = await _db.FederationApiLogs.AsNoTracking()
+            .OrderByDescending(l => l.CreatedAt)
+            .Take(50)
+            .Select(l => new { source = "api", l.Id, action = l.HttpMethod + " " + l.Path, entityType = (string?)null, entityId = (int?)null, partnerTenantId = (int?)null, l.CreatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = audit.Cast<object>().Concat(api).Take(100), meta = new { total = audit.Count + api.Count } });
+    }
+
+    private async Task<IActionResult> GetFederationAnalyticsOverview()
+    {
+        return Ok(new
+        {
+            data = new
+            {
+                partners = await _db.FederationPartners.CountAsync(),
+                active_partners = await _db.FederationPartners.CountAsync(p => p.Status == PartnerStatus.Active),
+                api_keys = await _db.FederationApiKeys.CountAsync(),
+                active_api_keys = await _db.FederationApiKeys.CountAsync(k => k.IsActive),
+                api_calls = await _db.FederationApiLogs.CountAsync(),
+                failed_api_calls = await _db.FederationApiLogs.CountAsync(l => l.StatusCode >= 400),
+                federated_listings = await _db.FederatedListings.CountAsync(),
+                federated_exchanges = await _db.FederatedExchanges.CountAsync(),
+                generated_at = DateTime.UtcNow
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetFederationCreditBalances()
+    {
+        var balances = await _db.FederationPartners.AsNoTracking()
+            .GroupBy(p => p.PartnerTenantId)
+            .Select(g => new
+            {
+                partner_tenant_id = g.Key,
+                agreements = g.Count(),
+                active_agreements = g.Count(p => p.Status == PartnerStatus.Active),
+                average_exchange_rate = g.Average(p => p.CreditExchangeRate)
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = balances,
+            note = "V2 has federation partnership exchange rates but no persisted cross-tenant credit-balance ledger."
+        });
+    }
+
+    private async Task<IActionResult> GetFederationTopics()
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var stored = await GetTenantConfigValueAsync(FederationTopicsKey);
+        if (!string.IsNullOrWhiteSpace(stored))
+        {
+            var storedPayload = ParseStoredPayload(stored);
+            return Ok(new
+            {
+                data = storedPayload,
+                meta = new { source = "tenant_config", total = CountPayloadItems(storedPayload) }
+            });
+        }
+
+        var subscribed = await GetSubscribedTopicKeys();
+        var topics = DefaultFederationTopics()
+            .Select(t => new
+            {
+                t.id,
+                t.key,
+                t.name,
+                t.description,
+                status = "active",
+                subscribed = subscribed.Contains(t.key)
+            })
+            .ToList();
+
+        return Ok(new
+        {
+            data = topics,
+            meta = new { source = "v1_compatibility_defaults", total = topics.Count }
+        });
+    }
+
+    private async Task<IActionResult> GetFederationTopicSubscriptions()
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var stored = await GetTenantConfigValueAsync(FederationTopicSubscriptionsKey);
+        var data = string.IsNullOrWhiteSpace(stored)
+            ? new { topics = Array.Empty<string>(), updated_at = (DateTime?)null }
+            : ParseStoredPayload(stored);
+
+        return Ok(new
+        {
+            data,
+            meta = new { source = "tenant_config", total = CountPayloadItems(data) }
+        });
+    }
+
+    private async Task<IActionResult> PutFederationTopicSubscriptions()
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        await UpsertTenantConfigValueAsync(FederationTopicSubscriptionsKey, payloadJson);
+        await _db.SaveChangesAsync();
+
+        var data = ParseStoredPayload(payloadJson);
+        return Ok(new
+        {
+            success = true,
+            data,
+            compatibility = new
+            {
+                mode = "tenant_config",
+                key = FederationTopicSubscriptionsKey
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetFederationWebhooks()
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var records = await LoadStoredRecordsAsync(FederationWebhooksKey);
+        return Ok(new
+        {
+            data = records.Select(ToResponseRecord).ToList(),
+            meta = new { source = "tenant_config", total = records.Count }
+        });
+    }
+
+    private async Task<IActionResult> GetFederationWebhookLogs(int webhookId)
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var records = await LoadStoredRecordsAsync(FederationWebhookLogsKey(webhookId));
+        return Ok(new
+        {
+            data = records.Select(ToResponseRecord).ToList(),
+            meta = new { source = "tenant_config", webhook_id = webhookId, total = records.Count }
+        });
+    }
+
+    private async Task<IActionResult> CreateStoredRecord(string key, string kind)
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        var records = await LoadStoredRecordsAsync(key, includeDeleted: true);
+        var requestedId = ExtractIntFromPayload(payloadJson, "id");
+        var id = requestedId.HasValue && records.All(r => r.Id != requestedId.Value)
+            ? requestedId.Value
+            : NextStoredRecordId(records);
+
+        var now = DateTime.UtcNow;
+        var record = BuildStoredRecord(id, kind, "create", payloadJson, now);
+        records.Add(record);
+        await SaveStoredRecordsAsync(key, records);
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            success = true,
+            data = ToResponseRecord(record),
+            compatibility = CompatibilityMetadata(key)
+        });
+    }
+
+    private async Task<IActionResult> UpsertStoredRecord(string key, int id, string kind)
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        var records = await LoadStoredRecordsAsync(key, includeDeleted: true);
+        var now = DateTime.UtcNow;
+        var record = records.FirstOrDefault(r => r.Id == id);
+
+        if (record == null)
+        {
+            record = BuildStoredRecord(id, kind, "upsert", payloadJson, now);
+            records.Add(record);
+        }
+        else
+        {
+            ApplyStoredRecordUpdate(record, payloadJson, "update", now);
+        }
+
+        await SaveStoredRecordsAsync(key, records);
+
+        return Ok(new
+        {
+            success = true,
+            data = ToResponseRecord(record),
+            compatibility = CompatibilityMetadata(key)
+        });
+    }
+
+    private async Task<IActionResult> DeleteStoredRecord(string key, int id, string kind)
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var records = await LoadStoredRecordsAsync(key, includeDeleted: true);
+        var now = DateTime.UtcNow;
+        var record = records.FirstOrDefault(r => r.Id == id);
+
+        if (record == null)
+        {
+            record = BuildStoredRecord(id, kind, "delete", "{}", now);
+            records.Add(record);
+        }
+
+        record.Status = "deleted";
+        record.Action = "delete";
+        record.DeletedAt = now;
+        record.UpdatedAt = now;
+        record.Path = Request.Path.Value;
+        record.Method = Request.Method;
+        record.AdminUserId = GetCurrentAdminUserId();
+
+        await SaveStoredRecordsAsync(key, records);
+
+        return Ok(new
+        {
+            success = true,
+            data = ToResponseRecord(record),
+            compatibility = CompatibilityMetadata(key)
+        });
+    }
+
+    private async Task<IActionResult> TestFederationWebhook(int webhookId)
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        var key = FederationWebhookLogsKey(webhookId);
+        var records = await LoadStoredRecordsAsync(key, includeDeleted: true);
+        var now = DateTime.UtcNow;
+        var record = BuildStoredRecord(NextStoredRecordId(records), "federation_webhook_log", "test", payloadJson, now);
+        record.Name = $"Webhook {webhookId} test";
+        record.Status = "recorded";
+        records.Add(record);
+        await SaveStoredRecordsAsync(key, records);
+
+        return Ok(new
+        {
+            success = true,
+            data = ToResponseRecord(record),
+            delivery_status = "recorded",
+            compatibility = CompatibilityMetadata(key)
+        });
+    }
+
+    private async Task<IActionResult> GetFaqs()
+    {
+        var rows = await _db.Faqs.AsNoTracking()
+            .OrderBy(f => f.SortOrder)
+            .ThenBy(f => f.Id)
+            .Select(f => new { f.Id, f.Question, f.Answer, f.Category, f.SortOrder, f.IsPublished, f.CreatedAt, f.UpdatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = rows, meta = new { total = rows.Count } });
+    }
+
+    private async Task<IActionResult> GetLandingPageMetadata()
+    {
+        var pages = await _db.Pages.AsNoTracking()
+            .Where(p => p.Slug == "home" || p.Slug == "landing" || p.ShowInMenu)
+            .OrderBy(p => p.SortOrder)
+            .Select(p => new { p.Id, p.Title, p.Slug, p.IsPublished, p.ShowInMenu, p.MenuLocation, p.MetaTitle, p.MetaDescription, p.UpdatedAt })
+            .ToListAsync();
+
+        var resources = await _db.Resources.AsNoTracking()
+            .Where(r => r.IsPublished)
+            .OrderBy(r => r.SortOrder)
+            .Take(10)
+            .Select(r => new { r.Id, r.Title, r.Description, r.Url, r.ResourceType })
+            .ToListAsync();
+
+        return Ok(new { data = new { pages, featured_resources = resources } });
+    }
+
+    private async Task<IActionResult> GetSitemapStats()
+    {
+        return Ok(new
+        {
+            data = new
+            {
+                pages = await _db.Pages.CountAsync(p => p.IsPublished),
+                blog_posts = await _db.BlogPosts.CountAsync(p => p.Status == "published"),
+                listings = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Active),
+                resources = await _db.Resources.CountAsync(r => r.IsPublished),
+                faqs = await _db.Faqs.CountAsync(f => f.IsPublished),
+                generated_at = DateTime.UtcNow
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetJobTemplates()
+    {
+        var rows = await _db.JobTemplates.AsNoTracking()
+            .OrderBy(t => t.Title)
+            .Select(t => new { t.Id, t.Title, t.Description, t.Category, t.JobType, t.RequiredSkills, t.IsPublic, t.CreatedAt, t.UpdatedAt })
+            .ToListAsync();
+
+        return Ok(new { data = rows, meta = new { total = rows.Count } });
+    }
+
+    private async Task<IActionResult> GetEvent(int id)
+    {
+        var item = await _db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
+        return item == null ? NotFound(new { error = "Event not found" }) : Ok(new { data = item });
+    }
+
+    private async Task<IActionResult> GetGroup(int id)
+    {
+        var item = await _db.Groups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id);
+        return item == null ? NotFound(new { error = "Group not found" }) : Ok(new { data = item });
+    }
+
+    private IActionResult GetReportExportTypes()
+    {
+        return Ok(new { data = new[] { "csv", "json" } });
+    }
+
+    private async Task<IActionResult> GetPersistedCompatibilityRead(string path)
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var records = await LoadStoredRecordsAsync(CompatibilityWritesKey);
+        var matching = records
+            .Where(r => string.Equals(r.Path, path, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(r => r.UpdatedAt)
+            .Select(ToResponseRecord)
+            .ToList();
+
+        return Ok(new
+        {
+            data = matching,
+            meta = new
+            {
+                total = matching.Count,
+                source = "tenant_config",
+                path
+            },
+            compatibility = new
+            {
+                mode = "tenant_config_record",
+                side_effect = "read_recorded_writes_only"
+            }
+        });
+    }
+
+    private async Task<IActionResult> PersistCompatibilityWrite(string action)
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        var records = await LoadStoredRecordsAsync(CompatibilityWritesKey, includeDeleted: true);
+        var now = DateTime.UtcNow;
+        var record = BuildStoredRecord(NextStoredRecordId(records), "admin_explicit_parity_write", action, payloadJson, now);
+        record.Name = $"{Request.Method} {Request.Path.Value}";
+        record.Status = "recorded";
+
+        records.Add(record);
+        await SaveStoredRecordsAsync(CompatibilityWritesKey, records);
+
+        return Accepted(new
+        {
+            success = true,
+            data = ToResponseRecord(record),
+            compatibility = new
+            {
+                mode = "tenant_config_record",
+                key = CompatibilityWritesKey,
+                side_effect = "recorded_only"
+            }
+        });
+    }
+
+    private bool TryRequireTenant(out int tenantId, out IActionResult? error)
+    {
+        if (_db.CurrentTenantId.HasValue)
+        {
+            tenantId = _db.CurrentTenantId.Value;
+            error = null;
+            return true;
+        }
+
+        tenantId = 0;
+        error = BadRequest(new
+        {
+            error = "tenant_context_required",
+            message = "Admin explicit parity persistence requires a resolved tenant context."
+        });
+        return false;
+    }
+
+    private async Task<string?> GetTenantConfigValueAsync(string key)
+    {
+        return await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.Key == key)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+    }
+
+    private async Task UpsertTenantConfigValueAsync(string key, string value)
+    {
+        if (!TryRequireTenant(out var tenantId, out _))
+        {
+            throw new InvalidOperationException("Tenant context is required to persist admin parity config.");
+        }
+
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.Key == key);
+        if (existing != null)
+        {
+            existing.Value = value;
+            existing.UpdatedAt = DateTime.UtcNow;
+            return;
+        }
+
+        _db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenantId,
+            Key = key,
+            Value = value,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+    }
+
+    private async Task<string> ReadRequestPayloadJsonAsync()
+    {
+        Request.EnableBuffering();
+        if (Request.Body.CanSeek)
+        {
+            Request.Body.Position = 0;
+        }
+
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
+        var raw = await reader.ReadToEndAsync();
+
+        if (Request.Body.CanSeek)
+        {
+            Request.Body.Position = 0;
+        }
+
+        return NormalizePayloadJson(raw);
+    }
+
+    private async Task<List<StoredParityRecord>> LoadStoredRecordsAsync(string key, bool includeDeleted = false)
+    {
+        var raw = await GetTenantConfigValueAsync(key);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new List<StoredParityRecord>();
+        }
+
+        try
+        {
+            var records = JsonSerializer.Deserialize<List<StoredParityRecord>>(raw, StoreJsonOptions) ?? new List<StoredParityRecord>();
+            return records
+                .Where(r => includeDeleted || r.DeletedAt == null)
+                .OrderBy(r => r.Id)
+                .ToList();
+        }
+        catch (JsonException)
+        {
+            return new List<StoredParityRecord>();
+        }
+    }
+
+    private async Task SaveStoredRecordsAsync(string key, List<StoredParityRecord> records)
+    {
+        var json = JsonSerializer.Serialize(records.OrderBy(r => r.Id).ToList(), StoreJsonOptions);
+        await UpsertTenantConfigValueAsync(key, json);
+        await _db.SaveChangesAsync();
+    }
+
+    private StoredParityRecord BuildStoredRecord(int id, string kind, string action, string payloadJson, DateTime now)
+    {
+        return new StoredParityRecord
+        {
+            Id = id,
+            Kind = kind,
+            Name = ExtractNameFromPayload(payloadJson) ?? $"{kind}-{id}",
+            Status = ExtractStatusFromPayload(payloadJson),
+            PayloadJson = payloadJson,
+            Path = Request.Path.Value,
+            Method = Request.Method,
+            Action = action,
+            AdminUserId = GetCurrentAdminUserId(),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+    }
+
+    private void ApplyStoredRecordUpdate(StoredParityRecord record, string payloadJson, string action, DateTime now)
+    {
+        record.Name = ExtractNameFromPayload(payloadJson) ?? record.Name;
+        record.Status = ExtractStatusFromPayload(payloadJson, record.Status);
+        record.PayloadJson = payloadJson;
+        record.Path = Request.Path.Value;
+        record.Method = Request.Method;
+        record.Action = action;
+        record.AdminUserId = GetCurrentAdminUserId();
+        record.DeletedAt = null;
+        record.UpdatedAt = now;
+    }
+
+    private async Task<HashSet<string>> GetSubscribedTopicKeys()
+    {
+        var stored = await GetTenantConfigValueAsync(FederationTopicSubscriptionsKey);
+        return ExtractTopicKeys(stored);
+    }
+
+    private static HashSet<string> ExtractTopicKeys(string? payloadJson)
+    {
+        var topics = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(payloadJson))
+        {
+            return topics;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            AddTopicKeys(doc.RootElement, topics);
+        }
+        catch (JsonException)
+        {
+            return topics;
+        }
+
+        return topics;
+    }
+
+    private static void AddTopicKeys(JsonElement element, ISet<string> topics)
+    {
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                AddTopicKeys(item, topics);
+            }
+
+            return;
+        }
+
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            var value = element.GetString();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                topics.Add(value);
+            }
+
+            return;
+        }
+
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        if (TryFindProperty(element, "topics", out var topicsArray) || TryFindProperty(element, "subscriptions", out topicsArray))
+        {
+            AddTopicKeys(topicsArray, topics);
+        }
+
+        if (TryFindProperty(element, "key", out var keyElement) || TryFindProperty(element, "topic", out keyElement) || TryFindProperty(element, "slug", out keyElement))
+        {
+            var key = JsonElementToString(keyElement);
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                topics.Add(key);
+            }
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                if (property.Value.GetBoolean())
+                {
+                    topics.Add(property.Name);
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<(int id, string key, string name, string description)> DefaultFederationTopics()
+    {
+        return new[]
+        {
+            (1, "listings.shared", "Shared listings", "Listings published to federation partners."),
+            (2, "events.shared", "Shared events", "Events visible across federation partners."),
+            (3, "members.directory", "Member directory", "Member directory records shared by approved partnerships."),
+            (4, "exchanges.completed", "Completed exchanges", "Completed exchange summaries for cross-tenant accounting."),
+            (5, "credit.agreements", "Credit agreements", "Federated credit agreement and exchange-rate updates."),
+            (6, "gdpr.aggregate_consent", "Aggregate consent", "Aggregate consent state for federation data sharing."),
+            (7, "webhooks.delivery", "Webhook delivery", "Outbound federation webhook delivery status.")
+        };
+    }
+
+    private static object ToResponseRecord(StoredParityRecord record)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["id"] = record.Id,
+            ["kind"] = record.Kind,
+            ["name"] = record.Name,
+            ["status"] = record.Status,
+            ["payload"] = ParseStoredPayload(record.PayloadJson),
+            ["path"] = record.Path,
+            ["method"] = record.Method,
+            ["action"] = record.Action,
+            ["admin_user_id"] = record.AdminUserId,
+            ["created_at"] = record.CreatedAt,
+            ["updated_at"] = record.UpdatedAt,
+            ["deleted_at"] = record.DeletedAt
+        };
+    }
+
+    private static object? ParseStoredPayload(string? payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson))
+        {
+            return new Dictionary<string, object?>();
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            return ConvertJsonValue(doc.RootElement);
+        }
+        catch (JsonException)
+        {
+            return payloadJson;
+        }
+    }
+
+    private static object? ConvertJsonValue(JsonElement value)
+    {
+        return value.ValueKind switch
+        {
+            JsonValueKind.Object => value.EnumerateObject()
+                .ToDictionary(p => p.Name, p => ConvertJsonValue(p.Value), StringComparer.OrdinalIgnoreCase),
+            JsonValueKind.Array => value.EnumerateArray().Select(ConvertJsonValue).ToList(),
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number when value.TryGetInt64(out var longValue) => longValue,
+            JsonValueKind.Number when value.TryGetDecimal(out var decimalValue) => decimalValue,
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => value.GetRawText()
+        };
+    }
+
+    private static int CountPayloadItems(object? payload)
+    {
+        return payload switch
+        {
+            null => 0,
+            IReadOnlyCollection<object?> collection => collection.Count,
+            IReadOnlyDictionary<string, object?> dictionary when dictionary.TryGetValue("topics", out var topics) => CountPayloadItems(topics),
+            IReadOnlyDictionary<string, object?> dictionary => dictionary.Count,
+            _ => 1
+        };
+    }
+
+    private static string NormalizePayloadJson(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return "{}";
+        }
+
+        try
+        {
+            using var _ = JsonDocument.Parse(raw);
+            return raw;
+        }
+        catch (JsonException)
+        {
+            return JsonSerializer.Serialize(new { raw }, StoreJsonOptions);
+        }
+    }
+
+    private static int NextStoredRecordId(IReadOnlyCollection<StoredParityRecord> records)
+    {
+        return records.Count == 0 ? 1 : records.Max(r => r.Id) + 1;
+    }
+
+    private static int? ExtractIntFromPayload(string payloadJson, string propertyName)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object || !TryFindProperty(doc.RootElement, propertyName, out var property))
+            {
+                return null;
+            }
+
+            if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var number))
+            {
+                return number;
+            }
+
+            if (property.ValueKind == JsonValueKind.String && int.TryParse(property.GetString(), out var parsed))
+            {
+                return parsed;
+            }
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
+    }
+
+    private static string? ExtractNameFromPayload(string payloadJson)
+    {
+        return ExtractStringFromPayload(payloadJson, "name", "title", "label", "topic", "key", "slug", "url", "endpoint", "target_url");
+    }
+
+    private static string ExtractStatusFromPayload(string payloadJson, string fallback = "active")
+    {
+        var status = ExtractStringFromPayload(payloadJson, "status", "state");
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            return status;
+        }
+
+        var enabled = ExtractBoolFromPayload(payloadJson, "enabled", "active", "is_active");
+        if (enabled.HasValue)
+        {
+            return enabled.Value ? "active" : "disabled";
+        }
+
+        return fallback;
+    }
+
+    private static string? ExtractStringFromPayload(string payloadJson, params string[] propertyNames)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            foreach (var propertyName in propertyNames)
+            {
+                if (TryFindProperty(doc.RootElement, propertyName, out var property))
+                {
+                    return JsonElementToString(property);
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
+    }
+
+    private static bool? ExtractBoolFromPayload(string payloadJson, params string[] propertyNames)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            foreach (var propertyName in propertyNames)
+            {
+                if (!TryFindProperty(doc.RootElement, propertyName, out var property))
+                {
+                    continue;
+                }
+
+                if (property.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                {
+                    return property.GetBoolean();
+                }
+
+                if (property.ValueKind == JsonValueKind.String && bool.TryParse(property.GetString(), out var parsed))
+                {
+                    return parsed;
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
+    }
+
+    private static bool TryFindProperty(JsonElement element, string propertyName, out JsonElement property)
+    {
+        foreach (var candidate in element.EnumerateObject())
+        {
+            if (string.Equals(candidate.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                property = candidate.Value;
+                return true;
+            }
+        }
+
+        property = default;
+        return false;
+    }
+
+    private static string? JsonElementToString(JsonElement value)
+    {
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number => value.GetRawText(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            JsonValueKind.Null => null,
+            _ => value.GetRawText()
+        };
+    }
+
+    private static string FederationWebhookLogsKey(int webhookId)
+    {
+        return $"admin_explicit.federation.webhook_logs.{webhookId}";
+    }
+
+    private static object CompatibilityMetadata(string key)
+    {
+        return new
+        {
+            mode = "tenant_config",
+            key,
+            side_effect = "json_persisted"
+        };
+    }
+
+    private int? GetCurrentAdminUserId()
+    {
+        var userId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+        return int.TryParse(userId, out var parsed) ? parsed : null;
+    }
+
+    private async Task<decimal> ActiveMonthlyRevenue()
+    {
+        return await _db.UserSubscriptions
+            .AsNoTracking()
+            .Where(s => s.Status == SubscriptionStatus.Active)
+            .Select(s => s.Plan == null ? 0 : s.Plan.Price)
+            .SumAsync();
+    }
+
+    private async Task<string> DefaultBillingCurrency()
+    {
+        return await _db.SubscriptionPlans
+            .AsNoTracking()
+            .OrderBy(p => p.Id)
+            .Select(p => p.Currency)
+            .FirstOrDefaultAsync() ?? "EUR";
+    }
+
+    private static bool TryGetLastInt(string path, string prefix, out int id)
+    {
+        id = 0;
+        if (!path.StartsWith(prefix, StringComparison.Ordinal)) return false;
+
+        var tail = path[prefix.Length..];
+        if (tail.Contains('/')) return false;
+
+        return int.TryParse(tail, out id);
+    }
+
+    private static bool TryGetIntBeforeSuffix(string path, string prefix, string suffix, out int id)
+    {
+        id = 0;
+        if (!path.StartsWith(prefix, StringComparison.Ordinal) || !path.EndsWith(suffix, StringComparison.Ordinal)) return false;
+
+        var tail = path[prefix.Length..^suffix.Length];
+        if (tail.Contains('/')) return false;
+
+        return int.TryParse(tail, out id);
+    }
+
+    private static bool TryGetSlugBeforeSuffix(string path, string prefix, string suffix, out string slug)
+    {
+        slug = string.Empty;
+        if (!path.StartsWith(prefix, StringComparison.Ordinal) || !path.EndsWith(suffix, StringComparison.Ordinal)) return false;
+
+        slug = path[prefix.Length..^suffix.Length];
+        return !string.IsNullOrWhiteSpace(slug) && !slug.Contains('/');
+    }
+
+    private static string Csv(string? value)
+    {
+        value ??= string.Empty;
+        return "\"" + value.Replace("\"", "\"\"") + "\"";
+    }
+
+    private sealed class StoredParityRecord
+    {
+        public int Id { get; set; }
+        public string Kind { get; set; } = string.Empty;
+        public string? Name { get; set; }
+        public string Status { get; set; } = "active";
+        public string PayloadJson { get; set; } = "{}";
+        public string? Path { get; set; }
+        public string? Method { get; set; }
+        public string? Action { get; set; }
+        public int? AdminUserId { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? DeletedAt { get; set; }
+    }
 }

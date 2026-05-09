@@ -17,15 +17,21 @@ public class NewsletterService
 {
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
+    private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<NewsletterService> _logger;
 
     public NewsletterService(
         NexusDbContext db,
         TenantContext tenantContext,
+        IEmailService emailService,
+        IConfiguration configuration,
         ILogger<NewsletterService> logger)
     {
         _db = db;
         _tenantContext = tenantContext;
+        _emailService = emailService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -160,16 +166,62 @@ public class NewsletterService
         var recipientCount = await _db.Set<NewsletterSubscription>()
             .CountAsync(s => s.TenantId == tenantId && s.IsSubscribed);
 
-        // TODO: Actual email dispatch must be implemented (e.g. via a background service / email provider).
-        // For now we mark as Queued so callers know dispatch has not yet occurred.
+        await QueueNewsletterLogsAsync(newsletter);
+
         newsletter.Status = NewsletterStatus.Queued;
         newsletter.RecipientCount = recipientCount;
         newsletter.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
 
+        if (GetEmailProviderStatus().Configured)
+        {
+            await ProcessQueuedNewsletterLogsAsync(newsletter.Id);
+            await _db.Entry(newsletter).ReloadAsync();
+        }
+
         _logger.LogInformation(
             "Newsletter {NewsletterId} queued for {RecipientCount} recipients in tenant {TenantId}",
+            id, recipientCount, tenantId);
+
+        return newsletter;
+    }
+
+    /// <summary>
+    /// Queue a previously queued/sent newsletter for another dispatch attempt.
+    /// </summary>
+    public async Task<Newsletter?> ResendNewsletterAsync(int id)
+    {
+        var newsletter = await _db.Set<Newsletter>()
+            .FirstOrDefaultAsync(n => n.Id == id);
+
+        if (newsletter == null) return null;
+
+        if (newsletter.Status is NewsletterStatus.Draft or NewsletterStatus.Scheduled or NewsletterStatus.Cancelled)
+        {
+            throw new InvalidOperationException(
+                $"Cannot resend newsletter in {newsletter.Status} status. Send it once before resending.");
+        }
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var recipientCount = await CountRecipientsAsync(true);
+
+        await QueueNewsletterLogsAsync(newsletter);
+
+        newsletter.Status = NewsletterStatus.Queued;
+        newsletter.RecipientCount = recipientCount;
+        newsletter.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        if (GetEmailProviderStatus().Configured)
+        {
+            await ProcessQueuedNewsletterLogsAsync(newsletter.Id);
+            await _db.Entry(newsletter).ReloadAsync();
+        }
+
+        _logger.LogInformation(
+            "Newsletter {NewsletterId} re-queued for {RecipientCount} recipients in tenant {TenantId}",
             id, recipientCount, tenantId);
 
         return newsletter;
@@ -310,6 +362,313 @@ public class NewsletterService
         return (items, total);
     }
 
+    public async Task<ImportSubscribersResult> ImportSubscribersAsync(IEnumerable<ImportSubscriberInput> subscribers)
+    {
+        var result = new ImportSubscribersResult();
+
+        foreach (var subscriber in subscribers)
+        {
+            var email = subscriber.Email?.Trim();
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+            {
+                result.Skipped++;
+                continue;
+            }
+
+            var before = await _db.Set<NewsletterSubscription>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Email == email.ToLowerInvariant());
+
+            await SubscribeAsync(email, subscriber.UserId, subscriber.Source ?? "import");
+
+            if (before == null)
+                result.Imported++;
+            else
+                result.Updated++;
+        }
+
+        return result;
+    }
+
+    public async Task<List<NewsletterSubscriberExport>> ExportSubscribersAsync(bool? subscribed = null)
+    {
+        var query = _db.Set<NewsletterSubscription>()
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (subscribed.HasValue)
+            query = query.Where(s => s.IsSubscribed == subscribed.Value);
+
+        return await query
+            .OrderBy(s => s.Email)
+            .Select(s => new NewsletterSubscriberExport
+            {
+                Id = s.Id,
+                Email = s.Email,
+                UserId = s.UserId,
+                IsSubscribed = s.IsSubscribed,
+                Source = s.Source,
+                SubscribedAt = s.SubscribedAt,
+                UnsubscribedAt = s.UnsubscribedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<SyncSubscribersResult> SyncMembersAsSubscribersAsync()
+    {
+        var users = await _db.Set<User>()
+            .AsNoTracking()
+            .Where(u => u.IsActive && u.Email != "")
+            .Select(u => new { u.Id, u.Email })
+            .ToListAsync();
+
+        var result = new SyncSubscribersResult { EligibleMembers = users.Count };
+
+        foreach (var user in users)
+        {
+            var existing = await _db.Set<NewsletterSubscription>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Email == user.Email.ToLowerInvariant());
+
+            await SubscribeAsync(user.Email, user.Id, "member_sync");
+
+            if (existing == null)
+                result.Created++;
+            else
+                result.Updated++;
+        }
+
+        return result;
+    }
+
+    public async Task<int> CountRecipientsAsync(bool activeOnly = true)
+    {
+        var query = _db.Set<NewsletterSubscription>().AsNoTracking();
+        if (activeOnly)
+            query = query.Where(s => s.IsSubscribed);
+        return await query.CountAsync();
+    }
+
+    public async Task<NewsletterDispatchStatus?> GetDispatchStatusAsync(int newsletterId)
+    {
+        var newsletter = await _db.Set<Newsletter>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(n => n.Id == newsletterId);
+
+        if (newsletter == null) return null;
+
+        var logPrefix = NewsletterTemplateKey(newsletterId);
+        var logs = await _db.Set<EmailLog>()
+            .AsNoTracking()
+            .Where(l => l.TemplateKey == logPrefix || l.TemplateKey.StartsWith(logPrefix + ":"))
+            .ToListAsync();
+        var provider = GetEmailProviderStatus();
+
+        return new NewsletterDispatchStatus
+        {
+            NewsletterId = newsletter.Id,
+            Status = newsletter.Status,
+            RecipientCount = newsletter.RecipientCount,
+            SentAt = newsletter.SentAt,
+            ScheduledAt = newsletter.ScheduledAt,
+            UpdatedAt = newsletter.UpdatedAt,
+            Queued = newsletter.Status is NewsletterStatus.Queued or NewsletterStatus.Sending,
+            PendingLogs = logs.Count(l => l.Status == EmailSendStatus.Pending),
+            SentLogs = logs.Count(l => l.Status == EmailSendStatus.Sent),
+            FailedLogs = logs.Count(l => l.Status == EmailSendStatus.Failed),
+            ProviderConfigured = provider.Configured,
+            Provider = provider.Provider,
+            Message = newsletter.Status == NewsletterStatus.Queued
+                ? provider.Configured
+                    ? "Newsletter has queued email logs. Use the explicit queue processor to retry pending delivery."
+                    : "Newsletter is queued locally; provider_not_configured."
+                : "Newsletter status is persisted locally."
+        };
+    }
+
+    public async Task<EmailLog?> QueueTestEmailLogAsync(int newsletterId, string toEmail, int? userId = null)
+    {
+        var newsletter = await _db.Set<Newsletter>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(n => n.Id == newsletterId);
+
+        if (newsletter == null) return null;
+
+        var log = new EmailLog
+        {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            UserId = userId,
+            ToEmail = toEmail.Trim().ToLowerInvariant(),
+            Subject = $"[Test] {newsletter.Subject}",
+            TemplateKey = $"newsletter:{newsletter.Id}:test",
+            Status = EmailSendStatus.Pending,
+            ErrorMessage = GetEmailProviderStatus().Configured
+                ? null
+                : "provider_not_configured",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Set<EmailLog>().Add(log);
+        await _db.SaveChangesAsync();
+
+        if (GetEmailProviderStatus().Configured)
+        {
+            await ProcessEmailLogAsync(log, newsletter);
+            await _db.SaveChangesAsync();
+        }
+
+        return log;
+    }
+
+    public async Task<NewsletterDispatchProcessResult?> ProcessQueuedNewsletterLogsAsync(
+        int newsletterId,
+        int maxLogs = 100,
+        CancellationToken ct = default)
+    {
+        var newsletter = await _db.Set<Newsletter>()
+            .FirstOrDefaultAsync(n => n.Id == newsletterId, ct);
+
+        if (newsletter == null) return null;
+
+        var logPrefix = NewsletterTemplateKey(newsletterId);
+        var logs = await _db.Set<EmailLog>()
+            .Where(l => l.Status == EmailSendStatus.Pending)
+            .Where(l => l.TemplateKey == logPrefix || l.TemplateKey.StartsWith(logPrefix + ":"))
+            .OrderBy(l => l.CreatedAt)
+            .Take(Math.Clamp(maxLogs, 1, 500))
+            .ToListAsync(ct);
+
+        var provider = GetEmailProviderStatus();
+        var result = new NewsletterDispatchProcessResult
+        {
+            NewsletterId = newsletterId,
+            Provider = provider.Provider,
+            ProviderConfigured = provider.Configured,
+            Attempted = logs.Count
+        };
+
+        if (logs.Count == 0)
+            return result;
+
+        newsletter.Status = NewsletterStatus.Sending;
+        newsletter.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        if (!provider.Configured)
+        {
+            foreach (var log in logs)
+            {
+                log.Status = EmailSendStatus.Failed;
+                log.ErrorMessage = "provider_not_configured";
+                log.RetryCount++;
+                result.Failed++;
+            }
+
+            newsletter.Status = NewsletterStatus.Queued;
+            newsletter.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+            return result;
+        }
+
+        foreach (var log in logs)
+        {
+            if (await ProcessEmailLogAsync(log, newsletter, ct))
+                result.Sent++;
+            else
+                result.Failed++;
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        var remainingPending = await _db.Set<EmailLog>()
+            .AnyAsync(l =>
+                l.Status == EmailSendStatus.Pending &&
+                (l.TemplateKey == logPrefix || l.TemplateKey.StartsWith(logPrefix + ":")), ct);
+
+        if (!remainingPending && result.Failed == 0)
+        {
+            newsletter.Status = NewsletterStatus.Sent;
+            newsletter.SentAt = DateTime.UtcNow;
+        }
+        else
+        {
+            newsletter.Status = NewsletterStatus.Queued;
+        }
+
+        newsletter.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        return result;
+    }
+
+    /// <summary>
+    /// Background-friendly queue processor for due scheduled newsletters and pending
+    /// newsletter email logs. This method is safe for a hosted worker or admin job:
+    /// it queues due scheduled newsletters, then attempts only persisted pending logs.
+    /// </summary>
+    public async Task<NewsletterQueueProcessResult> ProcessDueNewsletterQueueAsync(
+        int maxNewsletters = 25,
+        int maxLogsPerNewsletter = 100,
+        CancellationToken ct = default)
+    {
+        maxNewsletters = Math.Clamp(maxNewsletters, 1, 100);
+        maxLogsPerNewsletter = Math.Clamp(maxLogsPerNewsletter, 1, 500);
+
+        var provider = GetEmailProviderStatus();
+        var result = new NewsletterQueueProcessResult
+        {
+            Provider = provider.Provider,
+            ProviderConfigured = provider.Configured
+        };
+
+        var now = DateTime.UtcNow;
+        var dueScheduled = await _db.Set<Newsletter>()
+            .Where(n => n.Status == NewsletterStatus.Scheduled)
+            .Where(n => n.ScheduledAt != null && n.ScheduledAt <= now)
+            .OrderBy(n => n.ScheduledAt)
+            .Take(maxNewsletters)
+            .ToListAsync(ct);
+
+        foreach (var newsletter in dueScheduled)
+        {
+            if (!await HasNewsletterLogsAsync(newsletter.Id, ct))
+            {
+                await QueueNewsletterLogsAsync(newsletter, ct);
+            }
+
+            newsletter.Status = NewsletterStatus.Queued;
+            newsletter.RecipientCount = await CountActiveSubscribersAsync(ct);
+            newsletter.UpdatedAt = DateTime.UtcNow;
+            result.QueuedNewsletters++;
+        }
+
+        if (dueScheduled.Count > 0)
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+
+        var candidateIds = await _db.Set<Newsletter>()
+            .AsNoTracking()
+            .Where(n => n.Status == NewsletterStatus.Queued || n.Status == NewsletterStatus.Sending)
+            .OrderBy(n => n.UpdatedAt ?? n.CreatedAt)
+            .Take(maxNewsletters)
+            .Select(n => n.Id)
+            .ToListAsync(ct);
+
+        foreach (var newsletterId in candidateIds.Distinct())
+        {
+            var processed = await ProcessQueuedNewsletterLogsAsync(newsletterId, maxLogsPerNewsletter, ct);
+            if (processed == null)
+                continue;
+
+            result.ProcessedNewsletters++;
+            result.Attempted += processed.Attempted;
+            result.Sent += processed.Sent;
+            result.Failed += processed.Failed;
+        }
+
+        return result;
+    }
+
     /// <summary>
     /// Get subscription statistics: total, active, unsubscribed counts.
     /// </summary>
@@ -328,6 +687,109 @@ public class NewsletterService
 
         return stats;
     }
+
+    private async Task QueueNewsletterLogsAsync(Newsletter newsletter, CancellationToken ct = default)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var subscribers = await _db.Set<NewsletterSubscription>()
+            .AsNoTracking()
+            .Where(s => s.TenantId == tenantId && s.IsSubscribed)
+            .Select(s => new { s.Email, s.UserId })
+            .ToListAsync(ct);
+
+        var provider = GetEmailProviderStatus();
+
+        foreach (var subscriber in subscribers)
+        {
+            _db.Set<EmailLog>().Add(new EmailLog
+            {
+                TenantId = tenantId,
+                UserId = subscriber.UserId,
+                ToEmail = subscriber.Email,
+                Subject = newsletter.Subject,
+                TemplateKey = NewsletterTemplateKey(newsletter.Id),
+                Status = EmailSendStatus.Pending,
+                ErrorMessage = provider.Configured ? null : "provider_not_configured",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+    }
+
+    private async Task<bool> HasNewsletterLogsAsync(int newsletterId, CancellationToken ct)
+    {
+        var logPrefix = NewsletterTemplateKey(newsletterId);
+        return await _db.Set<EmailLog>()
+            .AsNoTracking()
+            .AnyAsync(l => l.TemplateKey == logPrefix || l.TemplateKey.StartsWith(logPrefix + ":"), ct);
+    }
+
+    private async Task<int> CountActiveSubscribersAsync(CancellationToken ct)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        return await _db.Set<NewsletterSubscription>()
+            .AsNoTracking()
+            .CountAsync(s => s.TenantId == tenantId && s.IsSubscribed, ct);
+    }
+
+    private async Task<bool> ProcessEmailLogAsync(
+        EmailLog log,
+        Newsletter newsletter,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var sent = await _emailService.SendEmailAsync(
+                log.ToEmail,
+                log.Subject,
+                newsletter.ContentHtml,
+                newsletter.ContentText,
+                ct);
+
+            log.RetryCount++;
+
+            if (sent)
+            {
+                log.Status = EmailSendStatus.Sent;
+                log.SentAt = DateTime.UtcNow;
+                log.ErrorMessage = null;
+                return true;
+            }
+
+            log.Status = EmailSendStatus.Failed;
+            log.ErrorMessage = "provider_send_failed";
+            return false;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            log.RetryCount++;
+            log.Status = EmailSendStatus.Failed;
+            log.ErrorMessage = "provider_send_failed";
+            _logger.LogWarning(ex, "Newsletter email log {EmailLogId} failed during provider dispatch", log.Id);
+            return false;
+        }
+    }
+
+    private (string Provider, bool Configured) GetEmailProviderStatus()
+    {
+        var sendGridApiKey = _configuration["SendGrid:ApiKey"];
+        if (_configuration.GetValue("SendGrid:Enabled", false) || !string.IsNullOrWhiteSpace(sendGridApiKey))
+        {
+            return ("sendgrid", !string.IsNullOrWhiteSpace(sendGridApiKey));
+        }
+
+        var gmailEnabled = _configuration.GetValue("Gmail:Enabled", false);
+        var gmailConfigured =
+            !string.IsNullOrWhiteSpace(_configuration["Gmail:ClientId"]) &&
+            !string.IsNullOrWhiteSpace(_configuration["Gmail:ClientSecret"]) &&
+            !string.IsNullOrWhiteSpace(_configuration["Gmail:RefreshToken"]) &&
+            !string.IsNullOrWhiteSpace(_configuration["Gmail:SenderEmail"]);
+
+        return gmailEnabled || gmailConfigured
+            ? ("gmail", gmailEnabled && gmailConfigured)
+            : ("none", false);
+    }
+
+    private static string NewsletterTemplateKey(int newsletterId) => $"newsletter:{newsletterId}";
 }
 
 public class SubscriptionStats
@@ -335,4 +797,74 @@ public class SubscriptionStats
     public int Total { get; set; }
     public int Active { get; set; }
     public int Unsubscribed { get; set; }
+}
+
+public class ImportSubscriberInput
+{
+    public string? Email { get; set; }
+    public int? UserId { get; set; }
+    public string? Source { get; set; }
+}
+
+public class ImportSubscribersResult
+{
+    public int Imported { get; set; }
+    public int Updated { get; set; }
+    public int Skipped { get; set; }
+}
+
+public class SyncSubscribersResult
+{
+    public int EligibleMembers { get; set; }
+    public int Created { get; set; }
+    public int Updated { get; set; }
+}
+
+public class NewsletterSubscriberExport
+{
+    public int Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public int? UserId { get; set; }
+    public bool IsSubscribed { get; set; }
+    public string? Source { get; set; }
+    public DateTime SubscribedAt { get; set; }
+    public DateTime? UnsubscribedAt { get; set; }
+}
+
+public class NewsletterDispatchStatus
+{
+    public int NewsletterId { get; set; }
+    public NewsletterStatus Status { get; set; }
+    public int RecipientCount { get; set; }
+    public DateTime? SentAt { get; set; }
+    public DateTime? ScheduledAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public bool Queued { get; set; }
+    public int PendingLogs { get; set; }
+    public int SentLogs { get; set; }
+    public int FailedLogs { get; set; }
+    public bool ProviderConfigured { get; set; }
+    public string Provider { get; set; } = "none";
+    public string Message { get; set; } = string.Empty;
+}
+
+public class NewsletterDispatchProcessResult
+{
+    public int NewsletterId { get; set; }
+    public int Attempted { get; set; }
+    public int Sent { get; set; }
+    public int Failed { get; set; }
+    public bool ProviderConfigured { get; set; }
+    public string Provider { get; set; } = "none";
+}
+
+public class NewsletterQueueProcessResult
+{
+    public int QueuedNewsletters { get; set; }
+    public int ProcessedNewsletters { get; set; }
+    public int Attempted { get; set; }
+    public int Sent { get; set; }
+    public int Failed { get; set; }
+    public bool ProviderConfigured { get; set; }
+    public string Provider { get; set; } = "none";
 }

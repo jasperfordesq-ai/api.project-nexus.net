@@ -3,6 +3,9 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Globalization;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -17,18 +20,29 @@ public class LocationService
 {
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<LocationService> _logger;
+    private readonly IHttpClientFactory? _httpClientFactory;
+
+    private static readonly JsonSerializerOptions ProviderJsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Earth's radius in kilometres.
     /// </summary>
     private const double EarthRadiusKm = 6371.0;
 
-    public LocationService(NexusDbContext db, TenantContext tenantContext, ILogger<LocationService> logger)
+    public LocationService(
+        NexusDbContext db,
+        TenantContext tenantContext,
+        IConfiguration configuration,
+        ILogger<LocationService> logger,
+        IHttpClientFactory? httpClientFactory = null)
     {
         _db = db;
         _tenantContext = tenantContext;
+        _configuration = configuration;
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -251,13 +265,92 @@ public class LocationService
     }
 
     /// <summary>
-    /// Placeholder for geocoding an address string.
-    /// Returns null - implement with an external geocoding API (e.g., Nominatim, Google Maps) when needed.
+    /// Resolve an address through a configured generic HTTP geocoder, falling back to
+    /// tenant-local location data. Coordinate strings are parsed directly.
     /// </summary>
-    public Task<GeocodingResult?> GeocodeAddressAsync(string address)
+    public async Task<GeocodingResult?> GeocodeAddressAsync(string address)
     {
-        _logger.LogInformation("Geocoding requested for address: {Address} (not implemented - requires external API)", address);
-        return Task.FromResult<GeocodingResult?>(null);
+        if (string.IsNullOrWhiteSpace(address))
+            return null;
+
+        var trimmed = address.Trim();
+        var provider = GetGeocodingProviderStatus();
+        if (TryParseCoordinates(trimmed, out var latitude, out var longitude))
+        {
+            ValidateCoordinates(latitude, longitude);
+            return new GeocodingResult
+            {
+                Latitude = latitude,
+                Longitude = longitude,
+                FormattedAddress = trimmed,
+                Source = "coordinates",
+                Provider = provider.Provider,
+                ProviderConfigured = provider.Configured,
+                ProviderMessage = provider.Configured
+                    ? "Coordinates parsed directly; configured external geocoding provider was not needed."
+                    : "Coordinates parsed directly; external geocoding provider_not_configured."
+            };
+        }
+
+        var providerFailed = false;
+        if (provider.CanDispatch)
+        {
+            var providerResult = await TryGeocodeWithProviderAsync(trimmed, provider);
+            if (providerResult != null)
+                return providerResult;
+
+            providerFailed = true;
+        }
+        else if (provider.Configured)
+        {
+            providerFailed = true;
+        }
+
+        var query = trimmed.ToLowerInvariant();
+        var matches = await _db.Set<UserLocation>()
+            .AsNoTracking()
+            .Where(l =>
+                (l.FormattedAddress != null && l.FormattedAddress.ToLower().Contains(query)) ||
+                (l.City != null && l.City.ToLower().Contains(query)) ||
+                (l.Region != null && l.Region.ToLower().Contains(query)) ||
+                (l.Country != null && l.Country.ToLower().Contains(query)) ||
+                (l.PostalCode != null && l.PostalCode.ToLower().Contains(query)))
+            .ToListAsync();
+
+        var best = matches
+            .OrderByDescending(l => ScoreAddressMatch(l, query))
+            .ThenByDescending(l => l.UpdatedAt)
+            .FirstOrDefault();
+
+        if (best == null)
+        {
+            _logger.LogInformation(
+                "No geocoding result for address {Address}; provider {Provider}, configured={Configured}, can_dispatch={CanDispatch}",
+                address,
+                provider.Provider,
+                provider.Configured,
+                provider.CanDispatch);
+            return null;
+        }
+
+        return new GeocodingResult
+        {
+            Latitude = best.Latitude,
+            Longitude = best.Longitude,
+            FormattedAddress = best.FormattedAddress ?? BuildFormattedAddress(best.City, best.Region, best.Country, best.PostalCode),
+            City = best.City,
+            Region = best.Region,
+            Country = best.Country,
+            PostalCode = best.PostalCode,
+            Source = "tenant_locations",
+            Provider = provider.Provider,
+            ProviderConfigured = provider.Configured,
+            ProviderMessage = providerFailed
+                ? $"Configured external geocoding {provider.FailureReason ?? "provider_send_failed"}; resolved from tenant-local fallback."
+                : provider.Configured
+                    ? "Resolved from tenant-local data; configured external geocoding provider was not dispatchable."
+                : "Resolved from tenant-local data; external geocoding provider_not_configured."
+        };
     }
 
     #region Helpers
@@ -314,6 +407,312 @@ public class LocationService
         return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
+    private static bool TryParseCoordinates(string address, out double latitude, out double longitude)
+    {
+        latitude = 0;
+        longitude = 0;
+
+        var parts = address.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 2 &&
+               double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out latitude) &&
+               double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out longitude);
+    }
+
+    private static int ScoreAddressMatch(UserLocation location, string query)
+    {
+        static bool EqualsQuery(string? value, string query) =>
+            string.Equals(value?.Trim(), query, StringComparison.OrdinalIgnoreCase);
+
+        if (EqualsQuery(location.PostalCode, query)) return 100;
+        if (EqualsQuery(location.FormattedAddress, query)) return 90;
+        if (EqualsQuery(location.City, query)) return 80;
+        if (EqualsQuery(location.Region, query)) return 70;
+        if (EqualsQuery(location.Country, query)) return 60;
+        return 10;
+    }
+
+    private GeocodingProviderStatus GetGeocodingProviderStatus()
+    {
+        var endpointValue = FirstConfiguredValue(
+            "Geocoding:Http:Endpoint",
+            "Geocoding:GenericHttp:Endpoint",
+            "Geocoding:ProviderEndpoint",
+            "Geocoding:Endpoint");
+        var endpoint = TryCreateHttpUri(endpointValue);
+        var endpointWasConfigured = !string.IsNullOrWhiteSpace(endpointValue);
+
+        var provider = _configuration["Geocoding:Provider"];
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            provider = endpoint != null || endpointWasConfigured
+                ? "generic-http"
+                : !string.IsNullOrWhiteSpace(_configuration["GoogleMaps:ApiKey"])
+                ? "google_maps"
+                : !string.IsNullOrWhiteSpace(_configuration["Mapbox:AccessToken"])
+                    ? "mapbox"
+                    : "none";
+        }
+
+        var legacyProviderConfigured = provider switch
+        {
+            "google_maps" => !string.IsNullOrWhiteSpace(_configuration["GoogleMaps:ApiKey"]),
+            "mapbox" => !string.IsNullOrWhiteSpace(_configuration["Mapbox:AccessToken"]),
+            "none" => false,
+            _ => false
+        };
+
+        var configured = endpoint != null || legacyProviderConfigured;
+        var failureReason = endpointWasConfigured && endpoint == null
+            ? "provider_endpoint_invalid"
+            : configured
+                ? endpoint == null ? "provider_dispatch_not_implemented" : null
+                : "provider_not_configured";
+
+        return new GeocodingProviderStatus
+        {
+            Provider = provider,
+            Configured = configured,
+            Endpoint = endpoint,
+            FailureReason = failureReason,
+            Method = FirstConfiguredValue("Geocoding:Http:Method", "Geocoding:Method") ?? "POST",
+            QueryParameter = FirstConfiguredValue("Geocoding:Http:QueryParameter", "Geocoding:QueryParameter") ?? "q",
+            AuthHeaderName = FirstConfiguredValue("Geocoding:Http:AuthHeaderName", "Geocoding:AuthHeaderName"),
+            AuthHeaderValue = FirstConfiguredValue("Geocoding:Http:AuthHeaderValue", "Geocoding:AuthHeaderValue"),
+            BearerToken = FirstConfiguredValue("Geocoding:Http:BearerToken", "Geocoding:BearerToken")
+        };
+    }
+
+    private async Task<GeocodingResult?> TryGeocodeWithProviderAsync(
+        string address,
+        GeocodingProviderStatus provider,
+        CancellationToken ct = default)
+    {
+        if (_httpClientFactory == null)
+        {
+            provider.FailureReason = "provider_client_not_available";
+            return null;
+        }
+
+        try
+        {
+            using var request = BuildGeocodingRequest(address, provider);
+            ApplyConfiguredAuthHeaders(request, provider);
+
+            var client = _httpClientFactory.CreateClient("NexusGeocodingProvider");
+            using var response = await client.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                provider.FailureReason = $"provider_http_{(int)response.StatusCode}";
+                return null;
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            using var json = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            return ParseGeocodingProviderResult(json.RootElement, provider);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or JsonException or ArgumentException or TaskCanceledException)
+        {
+            provider.FailureReason = "provider_send_failed";
+            _logger.LogWarning(ex, "External geocoding provider {Provider} failed for address {Address}", provider.Provider, address);
+            return null;
+        }
+    }
+
+    private HttpRequestMessage BuildGeocodingRequest(string address, GeocodingProviderStatus provider)
+    {
+        var method = string.Equals(provider.Method, "GET", StringComparison.OrdinalIgnoreCase)
+            ? HttpMethod.Get
+            : HttpMethod.Post;
+
+        var endpoint = method == HttpMethod.Get
+            ? BuildGeocodingGetUri(provider.Endpoint!, address, provider.QueryParameter)
+            : provider.Endpoint!;
+
+        var request = new HttpRequestMessage(method, endpoint);
+        if (method != HttpMethod.Get)
+        {
+            request.Content = JsonContent.Create(new
+            {
+                query = address,
+                tenantId = _tenantContext.GetTenantIdOrThrow()
+            }, options: ProviderJsonOptions);
+        }
+
+        return request;
+    }
+
+    private static Uri BuildGeocodingGetUri(Uri endpoint, string address, string queryParameter)
+    {
+        var endpointText = endpoint.ToString();
+        if (endpointText.Contains("{query}", StringComparison.OrdinalIgnoreCase))
+        {
+            return new Uri(endpointText.Replace("{query}", Uri.EscapeDataString(address), StringComparison.OrdinalIgnoreCase));
+        }
+
+        var separator = string.IsNullOrEmpty(endpoint.Query) ? "?" : "&";
+        return new Uri($"{endpointText}{separator}{Uri.EscapeDataString(queryParameter)}={Uri.EscapeDataString(address)}");
+    }
+
+    private static GeocodingResult? ParseGeocodingProviderResult(
+        JsonElement root,
+        GeocodingProviderStatus provider)
+    {
+        if (TryGetPropertyCaseInsensitive(root, "results", out var results) &&
+            results.ValueKind == JsonValueKind.Array &&
+            results.GetArrayLength() > 0)
+        {
+            root = results[0];
+        }
+
+        if (!TryReadCoordinate(root, out var latitude, "latitude", "lat") ||
+            !TryReadCoordinate(root, out var longitude, "longitude", "lng", "lon"))
+        {
+            provider.FailureReason = "provider_response_invalid";
+            return null;
+        }
+
+        ValidateCoordinates(latitude, longitude);
+
+        return new GeocodingResult
+        {
+            Latitude = latitude,
+            Longitude = longitude,
+            FormattedAddress = ReadString(root, "formattedAddress", "formatted_address", "address", "label"),
+            City = ReadString(root, "city", "locality"),
+            Region = ReadString(root, "region", "state", "county"),
+            Country = ReadString(root, "country"),
+            PostalCode = ReadString(root, "postalCode", "postal_code", "postcode"),
+            Source = "provider",
+            Provider = provider.Provider,
+            ProviderConfigured = provider.Configured,
+            ProviderMessage = "Resolved by configured external geocoding provider."
+        };
+    }
+
+    private static bool TryReadCoordinate(JsonElement root, out double value, params string[] names)
+    {
+        if (TryReadDouble(root, out value, names))
+            return true;
+
+        if (TryGetPropertyCaseInsensitive(root, "location", out var location) &&
+            TryReadDouble(location, out value, names))
+        {
+            return true;
+        }
+
+        if (TryGetPropertyCaseInsensitive(root, "geometry", out var geometry) &&
+            TryGetPropertyCaseInsensitive(geometry, "location", out var geometryLocation) &&
+            TryReadDouble(geometryLocation, out value, names))
+        {
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
+    private static bool TryReadDouble(JsonElement root, out double value, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (!TryGetPropertyCaseInsensitive(root, name, out var property))
+                continue;
+
+            if (property.ValueKind == JsonValueKind.Number && property.TryGetDouble(out value))
+                return true;
+
+            if (property.ValueKind == JsonValueKind.String &&
+                double.TryParse(property.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+            {
+                return true;
+            }
+        }
+
+        value = 0;
+        return false;
+    }
+
+    private static string? ReadString(JsonElement root, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (TryGetPropertyCaseInsensitive(root, name, out var property) &&
+                property.ValueKind == JsonValueKind.String)
+            {
+                return property.GetString();
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryGetPropertyCaseInsensitive(JsonElement root, string name, out JsonElement value)
+    {
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in root.EnumerateObject())
+            {
+                if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static void ApplyConfiguredAuthHeaders(HttpRequestMessage request, GeocodingProviderStatus provider)
+    {
+        if (!string.IsNullOrWhiteSpace(provider.BearerToken))
+        {
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", provider.BearerToken);
+        }
+
+        if (!string.IsNullOrWhiteSpace(provider.AuthHeaderName) &&
+            !string.IsNullOrWhiteSpace(provider.AuthHeaderValue))
+        {
+            request.Headers.TryAddWithoutValidation(provider.AuthHeaderName, provider.AuthHeaderValue);
+        }
+    }
+
+    private string? FirstConfiguredValue(params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = _configuration[key];
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return null;
+    }
+
+    private static Uri? TryCreateHttpUri(string? value)
+    {
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+               (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            ? uri
+            : null;
+    }
+
+    private sealed class GeocodingProviderStatus
+    {
+        public string Provider { get; init; } = "none";
+        public bool Configured { get; init; }
+        public Uri? Endpoint { get; init; }
+        public bool CanDispatch => Endpoint != null;
+        public string? FailureReason { get; set; }
+        public string Method { get; init; } = "POST";
+        public string QueryParameter { get; init; } = "q";
+        public string? AuthHeaderName { get; init; }
+        public string? AuthHeaderValue { get; init; }
+        public string? BearerToken { get; init; }
+    }
+
     #endregion
 }
 
@@ -364,6 +763,10 @@ public class GeocodingResult
     public string? Region { get; set; }
     public string? Country { get; set; }
     public string? PostalCode { get; set; }
+    public string Source { get; set; } = "tenant_locations";
+    public string Provider { get; set; } = "none";
+    public bool ProviderConfigured { get; set; }
+    public string ProviderMessage { get; set; } = "external geocoding provider_not_configured";
 }
 
 #endregion

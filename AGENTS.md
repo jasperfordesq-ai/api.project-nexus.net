@@ -6,7 +6,18 @@ This is the **new** ASP.NET Core 8 backend for Project NEXUS, a timebanking/comm
 
 **This is NOT a migration of the PHP codebase. This is a clean implementation.**
 
-**Architecture Note:** The admin panel is now a **separate microservice project**. Admin-only endpoints (`/api/admin/*`) are still served by this backend API, but the admin frontend is its own project with its own documentation. The `FRONTEND_INTEGRATION.md` in this repo covers member-facing frontends only.
+**Architecture Note:** The backend serves admin-only endpoints (`/api/admin/*`). The production parity admin UI is the embedded React admin under `apps/react-frontend/src/admin/`. The standalone `apps/admin/` project may still exist for separate admin-service work, but it is not the primary V1 parity target unless explicitly requested.
+
+## Frontend Parity Target (MANDATORY)
+
+The production parity target for the V1 migration is `apps/react-frontend/`.
+
+- `https://platform.project-nexus.net/` serves the Vite React SPA from `apps/react-frontend/`.
+- The comprehensive admin panel is the embedded React admin app under `apps/react-frontend/src/admin/`, mounted at `/admin/*`.
+- `apps/web-modern/` is obsolete and should be retired. Do not build new parity work there.
+- `apps/web-govie/` is obsolete and should be retired. Do not build new parity work there.
+- `apps/web-uk/` remains out of scope for V1 parity work.
+- `apps/admin/` is not the primary parity admin panel unless explicitly requested; parity work should target the embedded admin in `apps/react-frontend/src/admin/`.
 
 ## License and Attribution (MANDATORY)
 
@@ -428,10 +439,11 @@ dotnet test
    | Swagger | http://localhost:5080/swagger | API documentation |
    | Health | http://localhost:5080/health | Health check |
    | RabbitMQ | http://localhost:15672 | Message queue UI (guest/guest) |
-   | Modern Frontend | http://localhost:5170 | Next.js + HeroUI (apps/web-modern/) |
+   | React Frontend | http://localhost:5173 | Canonical V1 parity SPA + embedded admin (apps/react-frontend/) |
+   | Modern Frontend | http://localhost:5170 | OBSOLETE - retire; do not target parity work (apps/web-modern/) |
    | UK Frontend | http://localhost:5180 | GOV.UK Design System (apps/web-uk/) |
-   | Admin Panel | http://localhost:5190 | Refine + Ant Design (apps/admin/) |
-   | GOV.IE Frontend | http://localhost:5200 | Nexus Community (GOV.IE DS) |
+   | Admin Panel | http://localhost:5190 | Standalone admin app only; not primary parity target (apps/admin/) |
+   | GOV.IE Frontend | http://localhost:5200 | OBSOLETE - retire; do not target parity work (apps/web-govie/) |
 
 4. **Test credentials:**
    - `admin@acme.test` / `NexusV2!Demo#2026` / tenant_slug: `acme`
@@ -659,9 +671,9 @@ tests/
   Nexus.Messaging.Tests/
 ```
 
-## Admin Panel (apps/admin)
+## Standalone Admin Panel (apps/admin)
 
-The admin panel lives inside this repo at `apps/admin/`. Consumes the backend's admin API endpoints.
+The standalone admin panel lives inside this repo at `apps/admin/` and consumes the backend's admin API endpoints. It is not the primary V1 parity admin surface; parity work should target the embedded admin under `apps/react-frontend/src/admin/` unless explicitly requested.
 
 > Previously at `../nexus-admin/` — migrated into the monorepo 2026-03-08.
 

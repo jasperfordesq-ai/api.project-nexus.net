@@ -51,4 +51,19 @@ public class PushNotificationControllerTests : IntegrationTestBase
         });
         r.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Created);
     }
+
+    [Fact]
+    public async Task RegisterDevice_LegacyAlias_AsMember_ReturnsOk()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var r = await Client.PostAsJsonAsync("/api/push/register-device", new
+        {
+            device_token = "legacy-device-token-123",
+            platform = "web",
+            device_name = "Test Browser"
+        });
+
+        r.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
 }

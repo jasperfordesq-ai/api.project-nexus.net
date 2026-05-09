@@ -3,6 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,17 +30,20 @@ public class AdminCompatibility2Controller : ControllerBase
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly NewsletterService _newsletter;
+    private readonly LocationService _location;
     private readonly ILogger<AdminCompatibility2Controller> _logger;
 
     public AdminCompatibility2Controller(
         NexusDbContext db,
         TenantContext tenantContext,
         NewsletterService newsletter,
+        LocationService location,
         ILogger<AdminCompatibility2Controller> logger)
     {
         _db = db;
         _tenantContext = tenantContext;
         _newsletter = newsletter;
+        _location = location;
         _logger = logger;
     }
 
@@ -173,18 +178,94 @@ public class AdminCompatibility2Controller : ControllerBase
 
     /// <summary>POST /api/admin/newsletters/subscribers/import - Import subscribers.</summary>
     [HttpPost("newsletters/subscribers/import")]
-    public IActionResult ImportSubscribers()
-        => Ok(new { message = "Import not yet implemented", imported = 0 });
+    public async Task<IActionResult> ImportSubscribers([FromBody] ImportSubscribersRequest? request)
+    {
+        request ??= new ImportSubscribersRequest();
+        var inputs = new List<ImportSubscriberInput>();
+
+        if (request.Subscribers != null)
+        {
+            inputs.AddRange(request.Subscribers.Select(s => new ImportSubscriberInput
+            {
+                Email = s.Email,
+                UserId = s.UserId,
+                Source = s.Source ?? "import"
+            }));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Csv))
+        {
+            inputs.AddRange(ParseSubscriberCsv(request.Csv));
+        }
+
+        if (inputs.Count == 0)
+            return BadRequest(new { error = "Provide subscribers or csv rows to import." });
+
+        var result = await _newsletter.ImportSubscribersAsync(inputs);
+        return Ok(new
+        {
+            message = "Subscribers imported",
+            imported = result.Imported,
+            updated = result.Updated,
+            skipped = result.Skipped
+        });
+    }
 
     /// <summary>GET /api/admin/newsletters/subscribers/export - Export subscribers.</summary>
     [HttpGet("newsletters/subscribers/export")]
-    public IActionResult ExportSubscribers()
-        => Ok(new { message = "Export not yet implemented", data = Array.Empty<object>() });
+    public async Task<IActionResult> ExportSubscribers([FromQuery] bool? subscribed = null, [FromQuery] string format = "json")
+    {
+        var subscribers = await _newsletter.ExportSubscribersAsync(subscribed);
+
+        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+        {
+            var csv = new StringBuilder();
+            csv.AppendLine("id,email,user_id,is_subscribed,source,subscribed_at,unsubscribed_at");
+            foreach (var s in subscribers)
+            {
+                csv.Append(s.Id).Append(',')
+                    .Append(EscapeCsv(s.Email)).Append(',')
+                    .Append(s.UserId?.ToString() ?? "").Append(',')
+                    .Append(s.IsSubscribed).Append(',')
+                    .Append(EscapeCsv(s.Source ?? "")).Append(',')
+                    .Append(s.SubscribedAt.ToString("O")).Append(',')
+                    .Append(s.UnsubscribedAt?.ToString("O") ?? "")
+                    .AppendLine();
+            }
+
+            return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "newsletter-subscribers.csv");
+        }
+
+        return Ok(new
+        {
+            data = subscribers.Select(s => new
+            {
+                s.Id,
+                s.Email,
+                user_id = s.UserId,
+                is_subscribed = s.IsSubscribed,
+                s.Source,
+                subscribed_at = s.SubscribedAt,
+                unsubscribed_at = s.UnsubscribedAt
+            }),
+            meta = new { total = subscribers.Count }
+        });
+    }
 
     /// <summary>POST /api/admin/newsletters/subscribers/sync - Sync members as subscribers.</summary>
     [HttpPost("newsletters/subscribers/sync")]
-    public IActionResult SyncSubscribers()
-        => Ok(new { message = "Sync not yet implemented", synced = 0 });
+    public async Task<IActionResult> SyncSubscribers()
+    {
+        var result = await _newsletter.SyncMembersAsSubscribersAsync();
+        return Ok(new
+        {
+            message = "Active members synced as newsletter subscribers",
+            eligible_members = result.EligibleMembers,
+            created = result.Created,
+            updated = result.Updated,
+            synced = result.Created + result.Updated
+        });
+    }
 
     // =====================================================================
     // NEWSLETTERS — Segments
@@ -295,13 +376,42 @@ public class AdminCompatibility2Controller : ControllerBase
 
     /// <summary>GET /api/admin/newsletters/{id}/resend-info - Resend info.</summary>
     [HttpGet("newsletters/{id:int}/resend-info")]
-    public IActionResult ResendInfo(int id)
-        => Ok(new { data = new { newsletter_id = id, can_resend = false, reason = "Not yet implemented" } });
+    public async Task<IActionResult> ResendInfo(int id)
+    {
+        var status = await _newsletter.GetDispatchStatusAsync(id);
+        if (status == null) return NotFound(new { error = "Newsletter not found" });
+
+        var canResend = status.Status is NewsletterStatus.Queued or NewsletterStatus.Sending or NewsletterStatus.Sent;
+        return Ok(new
+        {
+            data = new
+            {
+                newsletter_id = id,
+                can_resend = canResend,
+                status = status.Status.ToString(),
+                recipient_count = status.RecipientCount,
+                provider_configured = status.ProviderConfigured,
+                provider = status.Provider,
+                reason = canResend ? "Newsletter can be re-queued locally." : "Only queued, sending, or sent newsletters can be resent."
+            }
+        });
+    }
 
     /// <summary>POST /api/admin/newsletters/{id}/resend - Resend newsletter.</summary>
     [HttpPost("newsletters/{id:int}/resend")]
-    public IActionResult Resend(int id)
-        => Ok(new { message = "Resend not yet implemented", newsletter_id = id });
+    public async Task<IActionResult> Resend(int id)
+    {
+        try
+        {
+            var newsletter = await _newsletter.ResendNewsletterAsync(id);
+            if (newsletter == null) return NotFound(new { error = "Newsletter not found" });
+            return Ok(new { message = "Newsletter re-queued for dispatch", data = MapNewsletter(newsletter) });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 
     /// <summary>GET /api/admin/newsletters/send-time-optimizer - Send time optimization data.</summary>
     [HttpGet("newsletters/send-time-optimizer")]
@@ -310,8 +420,28 @@ public class AdminCompatibility2Controller : ControllerBase
 
     /// <summary>GET /api/admin/newsletters/diagnostics - Newsletter diagnostics.</summary>
     [HttpGet("newsletters/diagnostics")]
-    public IActionResult NewsletterDiagnostics()
-        => Ok(new { data = new { email_provider = "not_configured", delivery_rate = 0.0, issues = Array.Empty<string>() } });
+    public async Task<IActionResult> NewsletterDiagnostics()
+    {
+        var queued = await _db.Set<Newsletter>().CountAsync(n => n.Status == NewsletterStatus.Queued);
+        var sending = await _db.Set<Newsletter>().CountAsync(n => n.Status == NewsletterStatus.Sending);
+        var sent = await _db.Set<Newsletter>().CountAsync(n => n.Status == NewsletterStatus.Sent);
+        var activeSubscribers = await _newsletter.CountRecipientsAsync(true);
+
+        return Ok(new
+        {
+            data = new
+            {
+                email_provider = "not_configured",
+                provider_configured = false,
+                active_subscribers = activeSubscribers,
+                queued,
+                sending,
+                sent,
+                delivery_rate = sent + queued + sending == 0 ? 0.0 : Math.Round(sent / (double)(sent + queued + sending), 4),
+                issues = new[] { "Newsletter dispatch provider/background worker is not configured; sends are queued locally." }
+            }
+        });
+    }
 
     /// <summary>GET /api/admin/newsletters/bounce-trends - Bounce trends.</summary>
     [HttpGet("newsletters/bounce-trends")]
@@ -320,23 +450,70 @@ public class AdminCompatibility2Controller : ControllerBase
 
     /// <summary>GET /api/admin/newsletters/{id}/stats - Per-newsletter stats.</summary>
     [HttpGet("newsletters/{id:int}/stats")]
-    public IActionResult NewsletterStats(int id)
-        => Ok(new { data = new { newsletter_id = id, sent = 0, opens = 0, clicks = 0, bounces = 0, unsubscribes = 0, open_rate = 0.0, click_rate = 0.0 } });
+    public async Task<IActionResult> NewsletterStats(int id)
+    {
+        var newsletter = await _newsletter.GetNewsletterAsync(id);
+        if (newsletter == null) return NotFound(new { error = "Newsletter not found" });
+
+        return Ok(new
+        {
+            data = new
+            {
+                newsletter_id = id,
+                status = newsletter.Status.ToString(),
+                sent = newsletter.Status == NewsletterStatus.Sent ? newsletter.RecipientCount : 0,
+                queued = newsletter.Status == NewsletterStatus.Queued ? newsletter.RecipientCount : 0,
+                opens = newsletter.OpenCount,
+                clicks = newsletter.ClickCount,
+                bounces = 0,
+                unsubscribes = await _db.Set<NewsletterSubscription>().CountAsync(s => !s.IsSubscribed),
+                open_rate = newsletter.RecipientCount == 0 ? 0.0 : Math.Round(newsletter.OpenCount / (double)newsletter.RecipientCount, 4),
+                click_rate = newsletter.RecipientCount == 0 ? 0.0 : Math.Round(newsletter.ClickCount / (double)newsletter.RecipientCount, 4)
+            }
+        });
+    }
 
     /// <summary>POST /api/admin/newsletters/{id}/ab-winner - Select A/B winner.</summary>
     [HttpPost("newsletters/{id:int}/ab-winner")]
-    public IActionResult SelectAbWinner(int id, [FromBody] object body)
-        => Ok(new { message = "A/B winner selection not yet implemented", newsletter_id = id });
+    public async Task<IActionResult> SelectAbWinner(int id, [FromBody] JsonElement body)
+    {
+        var newsletter = await _newsletter.GetNewsletterAsync(id);
+        if (newsletter == null) return NotFound(new { error = "Newsletter not found" });
+
+        return Conflict(new
+        {
+            error = "No persisted A/B test variants exist for this newsletter.",
+            newsletter_id = id,
+            status = newsletter.Status.ToString(),
+            supported = false
+        });
+    }
 
     /// <summary>POST /api/admin/newsletters/{id}/send-test - Send test email.</summary>
     [HttpPost("newsletters/{id:int}/send-test")]
-    public IActionResult SendTestEmail(int id, [FromBody] object body)
-        => Ok(new { message = "Test email not yet implemented", newsletter_id = id });
+    public async Task<IActionResult> SendTestEmail(int id, [FromBody] SendTestEmailRequest? request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Email) || !request.Email.Contains('@'))
+            return BadRequest(new { error = "A valid email is required." });
+
+        var userId = User.GetUserId();
+        var log = await _newsletter.QueueTestEmailLogAsync(id, request.Email, userId);
+        if (log == null) return NotFound(new { error = "Newsletter not found" });
+
+        return Ok(new
+        {
+            message = "Test email queued locally",
+            newsletter_id = id,
+            email_log_id = log.Id,
+            status = log.Status.ToString(),
+            provider_configured = false
+        });
+    }
 
     /// <summary>POST /api/admin/newsletters/recipient-count - Get recipient count for criteria.</summary>
     [HttpPost("newsletters/recipient-count")]
-    public IActionResult RecipientCount([FromBody] object body)
-        => Ok(new { count = 0 });
+    public async Task<IActionResult> RecipientCount([FromBody] JsonElement body)
+        => Ok(new { count = await _newsletter.CountRecipientsAsync(true), criteria_supported = new[] { "active_subscribers" } });
 
     /// <summary>POST /api/admin/newsletters/{id}/duplicate - Duplicate newsletter.</summary>
     [HttpPost("newsletters/{id:int}/duplicate")]
@@ -579,13 +756,76 @@ public class AdminCompatibility2Controller : ControllerBase
 
     /// <summary>POST /api/admin/groups/{groupId}/geocode - Geocode group location.</summary>
     [HttpPost("groups/{groupId}/geocode")]
-    public IActionResult GeocodeGroup(int groupId)
-        => Ok(new { message = "Geocoding not yet implemented", group_id = groupId });
+    public async Task<IActionResult> GeocodeGroup(int groupId, [FromBody] GeocodeGroupRequest? request = null)
+    {
+        var group = await _db.Set<Group>().AsNoTracking().FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group == null) return NotFound(new { error = "Group not found" });
+
+        var query = request?.Address;
+        if (string.IsNullOrWhiteSpace(query))
+            query = group.Name;
+
+        var result = await _location.GeocodeAddressAsync(query);
+        return Ok(new
+        {
+            group_id = groupId,
+            query,
+            matched = result != null,
+            persisted = false,
+            message = result == null
+                ? "No tenant-local geocode match found."
+                : "Geocode resolved from tenant-local location data; group coordinates are not persisted by the current group model.",
+            result = result == null ? null : new
+            {
+                latitude = result.Latitude,
+                longitude = result.Longitude,
+                formatted_address = result.FormattedAddress,
+                city = result.City,
+                region = result.Region,
+                country = result.Country,
+                postal_code = result.PostalCode
+            }
+        });
+    }
 
     /// <summary>POST /api/admin/groups/batch-geocode - Batch geocode groups.</summary>
     [HttpPost("groups/batch-geocode")]
-    public IActionResult BatchGeocodeGroups()
-        => Ok(new { message = "Batch geocoding not yet implemented", processed = 0 });
+    public async Task<IActionResult> BatchGeocodeGroups([FromBody] BatchGeocodeGroupsRequest? request = null)
+    {
+        var limit = Math.Clamp(request?.Limit ?? 50, 1, 200);
+        var query = _db.Set<Group>().AsNoTracking().OrderBy(g => g.Id).AsQueryable();
+        if (request?.GroupIds is { Count: > 0 })
+            query = query.Where(g => request.GroupIds.Contains(g.Id));
+
+        var groups = await query.Take(limit).ToListAsync();
+        var rows = new List<object>();
+        var matched = 0;
+
+        foreach (var group in groups)
+        {
+            var result = await _location.GeocodeAddressAsync(group.Name);
+            if (result != null) matched++;
+            rows.Add(new
+            {
+                group_id = group.Id,
+                query = group.Name,
+                matched = result != null,
+                persisted = false,
+                latitude = result?.Latitude,
+                longitude = result?.Longitude,
+                formatted_address = result?.FormattedAddress
+            });
+        }
+
+        return Ok(new
+        {
+            message = "Batch geocode completed against tenant-local location data; group coordinates are not persisted by the current group model.",
+            processed = groups.Count,
+            matched,
+            persisted = 0,
+            data = rows
+        });
+    }
 
     /// <summary>GET /api/admin/groups/recommendations - Recommendation engine data.</summary>
     [HttpGet("groups/recommendations")]
@@ -742,5 +982,65 @@ public class AdminCompatibility2Controller : ControllerBase
     {
         [JsonPropertyName("email")] public string Email { get; set; } = string.Empty;
         [JsonPropertyName("user_id")] public int? UserId { get; set; }
+    }
+
+    public class ImportSubscribersRequest
+    {
+        [JsonPropertyName("subscribers")] public List<SubscriberImportRow>? Subscribers { get; set; }
+        [JsonPropertyName("csv")] public string? Csv { get; set; }
+    }
+
+    public class SubscriberImportRow
+    {
+        [JsonPropertyName("email")] public string? Email { get; set; }
+        [JsonPropertyName("user_id")] public int? UserId { get; set; }
+        [JsonPropertyName("source")] public string? Source { get; set; }
+    }
+
+    public class SendTestEmailRequest
+    {
+        [JsonPropertyName("email")] public string Email { get; set; } = string.Empty;
+    }
+
+    public class GeocodeGroupRequest
+    {
+        [JsonPropertyName("address")] public string? Address { get; set; }
+    }
+
+    public class BatchGeocodeGroupsRequest
+    {
+        [JsonPropertyName("group_ids")] public List<int>? GroupIds { get; set; }
+        [JsonPropertyName("limit")] public int? Limit { get; set; }
+    }
+
+    private static IEnumerable<ImportSubscriberInput> ParseSubscriberCsv(string csv)
+    {
+        foreach (var line in csv.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.StartsWith("email", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var parts = line.Split(',', StringSplitOptions.TrimEntries);
+            if (parts.Length == 0) continue;
+
+            int? userId = null;
+            if (parts.Length > 1 && int.TryParse(parts[1], out var parsedUserId))
+                userId = parsedUserId;
+
+            yield return new ImportSubscriberInput
+            {
+                Email = parts[0],
+                UserId = userId,
+                Source = parts.Length > 2 && !string.IsNullOrWhiteSpace(parts[2]) ? parts[2] : "import"
+            };
+        }
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        if (!value.Contains(',') && !value.Contains('"') && !value.Contains('\n'))
+            return value;
+
+        return $"\"{value.Replace("\"", "\"\"")}\"";
     }
 }

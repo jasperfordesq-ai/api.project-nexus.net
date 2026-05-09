@@ -2246,7 +2246,6 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [HttpPut("api/group-exchanges/{id:int}")]
     [HttpDelete("api/group-exchanges/{id:int}")]
     [HttpDelete("api/polls/{id:int}")]
-    [HttpDelete("api/admin/tools/404-errors/{id:int}")]
     [HttpGet("api/admin/reports/social-value")]
     [HttpGet("api/admin/newsletters/{id:int}/preview")]
     [HttpGet("api/admin/newsletters/subscribers")]

@@ -27,7 +27,7 @@ public class AdminParityController : ControllerBase
         _db = db;
     }
 
-    [HttpGet("{**path}")]
+    [HttpGet("{**path}", Order = 1000)]
     public async Task<IActionResult> Get(string path)
     {
         if (IsUserSearch(path))
@@ -36,19 +36,19 @@ public class AdminParityController : ControllerBase
         return Ok(BuildReadResponse(path));
     }
 
-    [HttpPost("{**path}")]
+    [HttpPost("{**path}", Order = 1000)]
     public IActionResult Post(string path)
         => Ok(BuildWriteResponse(path, "created"));
 
-    [HttpPut("{**path}")]
+    [HttpPut("{**path}", Order = 1000)]
     public IActionResult Put(string path)
         => Ok(BuildWriteResponse(path, "updated"));
 
-    [HttpPatch("{**path}")]
+    [HttpPatch("{**path}", Order = 1000)]
     public IActionResult Patch(string path)
         => Ok(BuildWriteResponse(path, "patched"));
 
-    [HttpDelete("{**path}")]
+    [HttpDelete("{**path}", Order = 1000)]
     public IActionResult Delete(string path)
         => Ok(BuildWriteResponse(path, "deleted"));
 

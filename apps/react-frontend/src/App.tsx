@@ -82,11 +82,38 @@ import { ToastProvider, ThemeProvider, CookieConsentProvider, useTenant } from '
 
 // Google Maps Provider (loads API key, enables PlaceAutocompleteInput)
 import { GoogleMapsProvider } from '@/components/location';
+import { RESERVED_PATHS } from '@/lib/tenant-routing';
 
 // Layout Components
 import { Layout, AuthLayout } from '@/components/layout';
 import { ProtectedRoute, FeatureGate, ScrollToTop, TenantShell } from '@/components/routing';
 import { LoadingScreen, ErrorBoundary, FeatureErrorBoundary } from '@/components/feedback';
+
+const MEMBER_PARITY_RESERVED_PATHS = [
+  'advertise',
+  'auth',
+  'broker',
+  'clubs',
+  'coupons',
+  'developers',
+  'donations',
+  'explore',
+  'marketplace',
+  'me',
+  'partner-analytics',
+  'pilot-apply',
+  'pilot-inquiry',
+  'premium',
+  'regional-analytics',
+  'saved',
+  'users',
+  'verify-identity',
+  'verify-identity-optional',
+];
+
+for (const path of MEMBER_PARITY_RESERVED_PATHS) {
+  RESERVED_PATHS.add(path);
+}
 
 // Auth Pages (critical path - eager loaded)
 import { LoginPage, RegisterPage } from '@/pages/auth';
@@ -96,6 +123,7 @@ const ForgotPasswordPage = lazyWithRetry(() => import('./pages/auth/ForgotPasswo
 const ResetPasswordPage = lazyWithRetry(() => import('./pages/auth/ResetPasswordPage'));
 const VerifyEmailPage = lazyWithRetry(() => import('./pages/auth/VerifyEmailPage'));
 const VerifyIdentityPage = lazyWithRetry(() => import('./pages/auth/VerifyIdentityPage'));
+const AuthCallbackPage = lazyWithRetry(() => import('./pages/auth/AuthCallbackPage'));
 
 // Admin Panel (lazy-loaded — keeps recharts, jsPDF, admin sidebar/header out of main bundle)
 const AdminApp = lazyWithRetry(() => import('@/admin/AdminApp'));
@@ -178,6 +206,12 @@ const SkillsBrowsePage = lazyWithRetry(() => import('@/pages/skills/SkillsBrowse
 const ActivityDashboardPage = lazyWithRetry(() => import('@/pages/activity/ActivityDashboardPage'));
 const HashtagPage = lazyWithRetry(() => import('@/pages/feed/HashtagPage'));
 const HashtagsDiscoveryPage = lazyWithRetry(() => import('@/pages/feed/HashtagsDiscoveryPage'));
+const MemberParityPage = lazyWithRetry(() => import('@/pages/parity/MemberParityPage'));
+const MarketplaceParityPage = lazyWithRetry(() => import('@/pages/marketplace/MarketplaceParityPage'));
+const PremiumParityPage = lazyWithRetry(() => import('@/pages/premium/PremiumParityPage'));
+const DeveloperDocsPage = lazyWithRetry(() => import('@/pages/developers/DeveloperDocsPage'));
+const JobsWorkspacePage = lazyWithRetry(() => import('@/pages/jobs/JobsWorkspacePage'));
+const BrokerParityPage = lazyWithRetry(() => import('@/pages/parity/BrokerParityPage'));
 
 // Static Pages
 const DevelopmentStatusPage = lazyWithRetry(() => import('@/pages/public/DevelopmentStatusPage'));
@@ -236,6 +270,9 @@ function AppRoutes() {
         <Route path="password/reset" element={<ResetPasswordPage />} />
         <Route path="verify-email" element={<VerifyEmailPage />} />
         <Route path="verify-identity" element={<VerifyIdentityPage />} />
+        <Route path="verify-identity/callback" element={<VerifyIdentityPage />} />
+        <Route path="verify-identity-optional" element={<VerifyIdentityPage />} />
+        <Route path="auth/oauth/callback" element={<AuthCallbackPage />} />
       </Route>
 
       {/* Main Routes (with navbar/footer) */}
@@ -265,13 +302,25 @@ function AppRoutes() {
         <Route path="platform/disclaimer" element={<ErrorBoundary><PlatformDisclaimerPage /></ErrorBoundary>} />
         <Route path="timebanking-guide" element={<ErrorBoundary><TimebankingGuidePage /></ErrorBoundary>} />
 
+        {/* V1 member route parity: public intake, developer docs, analytics, and discovery */}
+        <Route path="pilot-inquiry" element={<ErrorBoundary><MemberParityPage pageKey="pilot" /></ErrorBoundary>} />
+        <Route path="pilot-apply" element={<ErrorBoundary><MemberParityPage pageKey="pilot" /></ErrorBoundary>} />
+        <Route path="pilot-apply/status/:token" element={<ErrorBoundary><MemberParityPage pageKey="pilot" /></ErrorBoundary>} />
+        <Route path="developers" element={<ErrorBoundary><DeveloperDocsPage /></ErrorBoundary>} />
+        <Route path="developers/auth" element={<ErrorBoundary><DeveloperDocsPage /></ErrorBoundary>} />
+        <Route path="developers/endpoints" element={<ErrorBoundary><DeveloperDocsPage /></ErrorBoundary>} />
+        <Route path="developers/webhooks" element={<ErrorBoundary><DeveloperDocsPage /></ErrorBoundary>} />
+        <Route path="regional-analytics" element={<ErrorBoundary><MemberParityPage pageKey="regional-analytics" /></ErrorBoundary>} />
+        <Route path="partner-analytics/dashboard" element={<ErrorBoundary><MemberParityPage pageKey="regional-analytics" /></ErrorBoundary>} />
+        <Route path="explore" element={<ErrorBoundary><MemberParityPage pageKey="explore" /></ErrorBoundary>} />
+
         {/* Newsletter unsubscribe — public, no auth, token-based */}
         <Route path="newsletter/unsubscribe" element={<ErrorBoundary><NewsletterUnsubscribePage /></ErrorBoundary>} />
 
         {/* Matches — cross-module matches page (MA1) */}
         <Route path="matches" element={<ErrorBoundary><MatchesPage /></ErrorBoundary>} />
         <Route path="matches/preferences" element={<Navigate to="settings" replace />} />
-        <Route path="broker/*" element={<ErrorBoundary><ComingSoonPage feature="Broker" /></ErrorBoundary>} />
+        <Route path="broker/*" element={<ErrorBoundary><BrokerParityPage /></ErrorBoundary>} />
 
         {/* Tenant 2 (hOUR Timebank) specific pages — redirect other tenants to /about */}
         <Route path="partner" element={<ErrorBoundary><TenantSlugGate slug="hour-timebank"><PartnerPage /></TenantSlugGate></ErrorBoundary>} />
@@ -314,6 +363,19 @@ function AppRoutes() {
             </FeatureErrorBoundary>
           </FeatureGate>
         } />
+
+        {/* V1 member route parity: public marketplace, coupons, and clubs */}
+        <Route path="marketplace" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="marketplace/search" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="marketplace/map" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="marketplace/seller/:id" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="marketplace/category/:slug" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="marketplace/collections" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="marketplace/free" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="marketplace/:id" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="coupons" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="coupons/:id" element={<ErrorBoundary><MarketplaceParityPage /></ErrorBoundary>} />
+        <Route path="clubs" element={<ErrorBoundary><MemberParityPage pageKey="clubs" /></ErrorBoundary>} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
@@ -367,6 +429,13 @@ function AppRoutes() {
               </FeatureErrorBoundary>
             </FeatureGate>
           } />
+          <Route path="wallet/regional-points" element={
+            <FeatureGate module="wallet" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Regional Points">
+                <MemberParityPage pageKey="regional-points" />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
           <Route path="profile" element={
             <FeatureGate module="profile" redirect="/dashboard">
               <FeatureErrorBoundary featureName="Profile">
@@ -381,6 +450,36 @@ function AppRoutes() {
               </FeatureErrorBoundary>
             </FeatureGate>
           } />
+          <Route path="me/collections" element={
+            <FeatureErrorBoundary featureName="Collections">
+              <MemberParityPage pageKey="collections" />
+            </FeatureErrorBoundary>
+          } />
+          <Route path="me/collections/:id" element={
+            <FeatureErrorBoundary featureName="Collections">
+              <MemberParityPage pageKey="collections" />
+            </FeatureErrorBoundary>
+          } />
+          <Route path="users/:userId/collections" element={
+            <FeatureErrorBoundary featureName="Collections">
+              <MemberParityPage pageKey="collections" />
+            </FeatureErrorBoundary>
+          } />
+          <Route path="users/:userId/appreciations" element={
+            <FeatureErrorBoundary featureName="Appreciations">
+              <MemberParityPage pageKey="collections" />
+            </FeatureErrorBoundary>
+          } />
+          <Route path="me/verein-dues" element={
+            <FeatureErrorBoundary featureName="Verein Dues">
+              <MemberParityPage pageKey="clubs" />
+            </FeatureErrorBoundary>
+          } />
+          <Route path="me/verein-invitations" element={
+            <FeatureErrorBoundary featureName="Verein Invitations">
+              <MemberParityPage pageKey="clubs" />
+            </FeatureErrorBoundary>
+          } />
           <Route path="settings" element={
             <FeatureGate module="settings" redirect="/dashboard">
               <FeatureErrorBoundary featureName="Settings">
@@ -388,6 +487,8 @@ function AppRoutes() {
               </FeatureErrorBoundary>
             </FeatureGate>
           } />
+          <Route path="settings/blocked" element={<Navigate to="../settings?tab=privacy" replace />} />
+          <Route path="settings/data-export" element={<Navigate to="../settings?tab=privacy" replace />} />
           <Route path="search" element={
             <FeatureGate feature="search" redirect="/dashboard">
               <FeatureErrorBoundary featureName="Search">
@@ -550,6 +651,16 @@ function AppRoutes() {
               </FeatureErrorBoundary>
             </FeatureGate>
           } />
+          <Route path="clubs/:id/admin/import" element={
+            <FeatureErrorBoundary featureName="Verein Import">
+              <MemberParityPage pageKey="clubs" />
+            </FeatureErrorBoundary>
+          } />
+          <Route path="clubs/:id/admin/dues" element={
+            <FeatureErrorBoundary featureName="Verein Dues">
+              <MemberParityPage pageKey="clubs" />
+            </FeatureErrorBoundary>
+          } />
 
           {/* Feature-gated: Gamification */}
           <Route path="achievements" element={
@@ -576,6 +687,13 @@ function AppRoutes() {
 
           {/* Feature-gated: Goals */}
           <Route path="goals" element={
+            <FeatureGate feature="goals" fallback={<ComingSoonPage feature="Goals" />}>
+              <FeatureErrorBoundary featureName="Goals">
+                <GoalsPage />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+          <Route path="goals/:id" element={
             <FeatureGate feature="goals" fallback={<ComingSoonPage feature="Goals" />}>
               <FeatureErrorBoundary featureName="Goals">
                 <GoalsPage />
@@ -642,6 +760,64 @@ function AppRoutes() {
               </FeatureErrorBoundary>
             </FeatureGate>
           } />
+          <Route path="jobs/:id/kanban" element={
+            <FeatureGate feature="job_vacancies" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Job Vacancies">
+                <JobsWorkspacePage />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+          <Route path="jobs/employers/:userId" element={
+            <FeatureGate feature="job_vacancies" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Job Vacancies">
+                <JobsWorkspacePage />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+          <Route path="jobs/talent-search" element={
+            <FeatureGate feature="job_vacancies" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Job Vacancies">
+                <JobsWorkspacePage />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+          <Route path="jobs/bias-audit" element={
+            <FeatureGate feature="job_vacancies" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Job Vacancies">
+                <JobsWorkspacePage />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+          <Route path="jobs/employer-onboarding" element={
+            <FeatureGate feature="job_vacancies" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Job Vacancies">
+                <JobsWorkspacePage />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+
+          {/* V1 member route parity: marketplace seller and commercial workspaces */}
+          <Route path="marketplace/sell" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/my-listings" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/my-offers" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/:id/edit" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/orders" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/orders/sales" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/seller/onboard" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/become-partner" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/seller/onboarding" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/seller/pickup-slots" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/seller/pickup-scan" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/me/pickups" element={<FeatureErrorBoundary featureName="Marketplace"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/seller/coupons" element={<FeatureErrorBoundary featureName="Coupons"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/seller/coupons/new" element={<FeatureErrorBoundary featureName="Coupons"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+          <Route path="marketplace/seller/coupons/:id/edit" element={<FeatureErrorBoundary featureName="Coupons"><MarketplaceParityPage /></FeatureErrorBoundary>} />
+
+          <Route path="premium" element={<FeatureErrorBoundary featureName="Premium"><PremiumParityPage /></FeatureErrorBoundary>} />
+          <Route path="premium/return" element={<FeatureErrorBoundary featureName="Premium"><PremiumParityPage /></FeatureErrorBoundary>} />
+          <Route path="premium/manage" element={<FeatureErrorBoundary featureName="Premium"><PremiumParityPage /></FeatureErrorBoundary>} />
+          <Route path="advertise/campaigns" element={<FeatureErrorBoundary featureName="Advertising"><MemberParityPage pageKey="advertising" /></FeatureErrorBoundary>} />
+          <Route path="advertise/push-campaigns" element={<FeatureErrorBoundary featureName="Advertising"><MemberParityPage pageKey="advertising" /></FeatureErrorBoundary>} />
 
           {/* Feature-gated: Ideation Challenges */}
           <Route path="ideation" element={
@@ -724,6 +900,27 @@ function AppRoutes() {
             </FeatureGate>
           } />
           <Route path="volunteering/my-applications" element={<Navigate to="../volunteering?tab=applications" replace />} />
+          <Route path="volunteering/org/:orgId/dashboard" element={
+            <FeatureGate feature="volunteering" fallback={<ComingSoonPage feature="Volunteering" />}>
+              <FeatureErrorBoundary featureName="Volunteering">
+                <MemberParityPage pageKey="volunteering-org" />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+          <Route path="volunteering/my-organisations" element={
+            <FeatureGate feature="volunteering" fallback={<ComingSoonPage feature="Volunteering" />}>
+              <FeatureErrorBoundary featureName="Volunteering">
+                <MemberParityPage pageKey="volunteering-org" />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+          <Route path="donations/:id/receipt" element={
+            <FeatureGate feature="volunteering" fallback={<ComingSoonPage feature="Volunteering" />}>
+              <FeatureErrorBoundary featureName="Donations">
+                <MemberParityPage pageKey="donation-receipt" />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
           <Route path="organisations/register" element={
             <FeatureGate feature="organisations" fallback={<ComingSoonPage feature="Organisations" />}>
               <FeatureErrorBoundary featureName="Organisations">
@@ -754,6 +951,20 @@ function AppRoutes() {
               </FeatureErrorBoundary>
             </FeatureGate>
           } />
+          <Route path="feed/posts/:id" element={
+            <FeatureGate module="feed" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Feed">
+                <MemberParityPage pageKey="feed-detail" />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+          <Route path="feed/item/:type/:id" element={
+            <FeatureGate module="feed" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Feed">
+                <MemberParityPage pageKey="feed-detail" />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
           <Route path="feed/hashtag/:tag" element={
             <FeatureGate module="feed" redirect="/dashboard">
               <FeatureErrorBoundary featureName="Feed">
@@ -767,6 +978,11 @@ function AppRoutes() {
                 <HashtagsDiscoveryPage />
               </FeatureErrorBoundary>
             </FeatureGate>
+          } />
+          <Route path="saved" element={
+            <FeatureErrorBoundary featureName="Saved Items">
+              <MemberParityPage pageKey="collections" />
+            </FeatureErrorBoundary>
           } />
 
           {/* Feature-gated: Resources */}
@@ -851,6 +1067,13 @@ function AppRoutes() {
               </FeatureErrorBoundary>
             </FeatureGate>
           } />
+          <Route path="federation/groups" element={
+            <FeatureGate feature="federation" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Federation">
+                <MemberParityPage pageKey="federation-groups" />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
           <Route path="federation/settings" element={
             <FeatureGate feature="federation" redirect="/dashboard">
               <FeatureErrorBoundary featureName="Federation">
@@ -869,6 +1092,13 @@ function AppRoutes() {
             <FeatureGate feature="federation" redirect="/dashboard">
               <FeatureErrorBoundary featureName="Federation">
                 <FederationConnectionsPage />
+              </FeatureErrorBoundary>
+            </FeatureGate>
+          } />
+          <Route path="reviews" element={
+            <FeatureGate feature="reviews" redirect="/dashboard">
+              <FeatureErrorBoundary featureName="Reviews">
+                <MemberParityPage pageKey="reviews" />
               </FeatureErrorBoundary>
             </FeatureGate>
           } />

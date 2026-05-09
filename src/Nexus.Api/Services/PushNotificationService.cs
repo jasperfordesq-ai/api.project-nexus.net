@@ -3,7 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -18,16 +19,24 @@ public class PushNotificationService
 {
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<PushNotificationService> _logger;
+    private readonly IHttpClientFactory? _httpClientFactory;
+
+    private static readonly JsonSerializerOptions ProviderJsonOptions = new(JsonSerializerDefaults.Web);
 
     public PushNotificationService(
         NexusDbContext db,
         TenantContext tenantContext,
-        ILogger<PushNotificationService> logger)
+        IConfiguration configuration,
+        ILogger<PushNotificationService> logger,
+        IHttpClientFactory? httpClientFactory = null)
     {
         _db = db;
         _tenantContext = tenantContext;
+        _configuration = configuration;
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -116,9 +125,8 @@ public class PushNotificationService
     }
 
     /// <summary>
-    /// Send a push notification to all active devices for a user.
-    /// Creates log entries for each delivery attempt.
-    /// Note: Actual FCM/APNs delivery is stubbed - integrate with a push provider.
+    /// Queue a push notification for all active devices for a user.
+    /// Creates honest provider-status log entries for each delivery attempt.
     /// </summary>
     public async Task<int> SendPushAsync(int userId, string title, string body, string? data = null)
     {
@@ -132,7 +140,8 @@ public class PushNotificationService
             return 0;
         }
 
-        var sentCount = 0;
+        var providerStatus = GetProviderStatusInternal();
+        var queuedCount = 0;
 
         foreach (var device in devices)
         {
@@ -143,46 +152,26 @@ public class PushNotificationService
                 SubscriptionId = device.Id,
                 Title = title,
                 Body = body,
-                Data = data,
-                Status = PushStatus.Pending
+                Data = BuildProviderLogData(data, providerStatus.Provider, providerStatus.Configured),
+                Status = PushStatus.Pending,
+                ErrorMessage = providerStatus.FailureReason
             };
 
-            try
-            {
-                // TODO: Integrate with FCM/APNs/Web Push provider here
-                // For now, mark as sent (stub)
-                log.Status = PushStatus.Sent;
-                log.SentAt = DateTime.UtcNow;
-
-                device.LastUsedAt = DateTime.UtcNow;
-                sentCount++;
-
-                _logger.LogDebug(
-                    "Push notification sent to device {DeviceId} for user {UserId}: {Title}",
-                    device.Id, userId, title);
-            }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
-            {
-                log.Status = PushStatus.Failed;
-                log.ErrorMessage = ex.Message.Length > 1000
-                    ? ex.Message[..1000]
-                    : ex.Message;
-
-                _logger.LogWarning(ex,
-                    "Failed to send push notification to device {DeviceId} for user {UserId}",
-                    device.Id, userId);
-            }
-
             _db.Set<PushNotificationLog>().Add(log);
+            queuedCount++;
+
+            _logger.LogDebug(
+                "Push notification queued for device {DeviceId}, user {UserId}, provider {Provider}, configured={Configured}: {Title}",
+                device.Id, userId, providerStatus.Provider, providerStatus.Configured, title);
         }
 
         await _db.SaveChangesAsync();
 
         _logger.LogInformation(
-            "Push notification sent to {SentCount}/{TotalCount} devices for user {UserId}",
-            sentCount, devices.Count, userId);
+            "Push notification queued to {QueuedCount}/{TotalCount} devices for user {UserId}; provider {Provider}, configured={Configured}",
+            queuedCount, devices.Count, userId, providerStatus.Provider, providerStatus.Configured);
 
-        return sentCount;
+        return queuedCount;
     }
 
     /// <summary>
@@ -198,6 +187,60 @@ public class PushNotificationService
         }
 
         return totalSent;
+    }
+
+    /// <summary>
+    /// Explicitly attempts queued push dispatch through the configured generic HTTP provider.
+    /// If no dispatchable provider is configured, attempts are marked failed with a
+    /// machine-readable reason instead of pretending delivery succeeded.
+    /// </summary>
+    public async Task<PushDispatchProcessResult> ProcessPendingPushNotificationsAsync(
+        int maxLogs = 100,
+        CancellationToken ct = default)
+    {
+        var providerStatus = GetProviderStatusInternal();
+        var logs = await _db.Set<PushNotificationLog>()
+            .Include(l => l.Subscription)
+            .Where(l => l.Status == PushStatus.Pending)
+            .OrderBy(l => l.CreatedAt)
+            .Take(Math.Clamp(maxLogs, 1, 500))
+            .ToListAsync(ct);
+
+        var result = new PushDispatchProcessResult
+        {
+            Provider = providerStatus.Provider,
+            ProviderConfigured = providerStatus.Configured,
+            Attempted = logs.Count
+        };
+
+        foreach (var log in logs)
+        {
+            log.Data = BuildProviderLogData(log.Data, providerStatus.Provider, providerStatus.Configured);
+
+            if (!providerStatus.CanDispatch)
+            {
+                MarkPushFailed(log, providerStatus.FailureReason ?? "provider_not_configured");
+                result.Failed++;
+                continue;
+            }
+
+            if (await DispatchPushLogAsync(log, providerStatus, ct))
+            {
+                result.Sent++;
+            }
+            else
+            {
+                result.Failed++;
+            }
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Processed {Attempted} pending push notifications; provider {Provider}, configured={Configured}, failed={Failed}",
+            result.Attempted, result.Provider, result.ProviderConfigured, result.Failed);
+
+        return result;
     }
 
     /// <summary>
@@ -303,4 +346,202 @@ public class PushNotificationService
 
         return count;
     }
+
+    private PushProviderStatus GetProviderStatusInternal()
+    {
+        var endpointValue = FirstConfiguredValue(
+            "Push:Http:Endpoint",
+            "Push:GenericHttp:Endpoint",
+            "Push:ProviderEndpoint",
+            "Push:Endpoint");
+
+        var endpoint = TryCreateHttpUri(endpointValue);
+        var endpointWasConfigured = !string.IsNullOrWhiteSpace(endpointValue);
+
+        var provider = _configuration["Push:Provider"];
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            if (endpoint != null || endpointWasConfigured)
+            {
+                provider = "generic-http";
+            }
+            else if (!string.IsNullOrWhiteSpace(_configuration["Firebase:ServerKey"]) ||
+                !string.IsNullOrWhiteSpace(_configuration["Fcm:ServerKey"]))
+            {
+                provider = "fcm";
+            }
+            else if (!string.IsNullOrWhiteSpace(_configuration["Vapid:PublicKey"]) &&
+                     !string.IsNullOrWhiteSpace(_configuration["Vapid:PrivateKey"]))
+            {
+                provider = "web-push";
+            }
+            else if (!string.IsNullOrWhiteSpace(_configuration["Apns:KeyId"]))
+            {
+                provider = "apns";
+            }
+            else
+            {
+                provider = "none";
+            }
+        }
+
+        var legacyProviderConfigured = provider switch
+        {
+            "fcm" => !string.IsNullOrWhiteSpace(_configuration["Firebase:ServerKey"]) ||
+                     !string.IsNullOrWhiteSpace(_configuration["Fcm:ServerKey"]),
+            "web-push" => !string.IsNullOrWhiteSpace(_configuration["Vapid:PublicKey"]) &&
+                          !string.IsNullOrWhiteSpace(_configuration["Vapid:PrivateKey"]),
+            "apns" => !string.IsNullOrWhiteSpace(_configuration["Apns:KeyId"]),
+            _ => false
+        };
+
+        var configured = endpoint != null || legacyProviderConfigured;
+        var failureReason = endpointWasConfigured && endpoint == null
+            ? "provider_endpoint_invalid"
+            : configured
+                ? endpoint == null ? "provider_dispatch_not_implemented" : null
+                : "provider_not_configured";
+
+        return new PushProviderStatus
+        {
+            Provider = provider,
+            Configured = configured,
+            Endpoint = endpoint,
+            FailureReason = failureReason,
+            AuthHeaderName = FirstConfiguredValue("Push:Http:AuthHeaderName", "Push:AuthHeaderName"),
+            AuthHeaderValue = FirstConfiguredValue("Push:Http:AuthHeaderValue", "Push:AuthHeaderValue"),
+            BearerToken = FirstConfiguredValue("Push:Http:BearerToken", "Push:BearerToken")
+        };
+    }
+
+    private static string BuildProviderLogData(string? data, string provider, bool providerConfigured)
+    {
+        return JsonSerializer.Serialize(new
+        {
+            provider,
+            provider_configured = providerConfigured,
+            original_data = data
+        });
+    }
+
+    private async Task<bool> DispatchPushLogAsync(
+        PushNotificationLog log,
+        PushProviderStatus provider,
+        CancellationToken ct)
+    {
+        if (_httpClientFactory == null)
+        {
+            MarkPushFailed(log, "provider_client_not_available");
+            return false;
+        }
+
+        if (log.Subscription == null)
+        {
+            MarkPushFailed(log, "subscription_not_found");
+            return false;
+        }
+
+        try
+        {
+            var payload = new
+            {
+                tenantId = log.TenantId,
+                userId = log.UserId,
+                subscriptionId = log.SubscriptionId,
+                deviceToken = log.Subscription.DeviceToken,
+                platform = log.Subscription.Platform,
+                title = log.Title,
+                body = log.Body,
+                data = log.Data
+            };
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, provider.Endpoint);
+            request.Content = JsonContent.Create(payload, options: ProviderJsonOptions);
+            ApplyConfiguredAuthHeaders(request, provider);
+
+            var client = _httpClientFactory.CreateClient("NexusPushProvider");
+            using var response = await client.SendAsync(request, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                MarkPushFailed(log, $"provider_http_{(int)response.StatusCode}");
+                return false;
+            }
+
+            log.Status = PushStatus.Sent;
+            log.ErrorMessage = null;
+            log.SentAt = DateTime.UtcNow;
+            log.Subscription.LastUsedAt = DateTime.UtcNow;
+            log.Subscription.UpdatedAt = DateTime.UtcNow;
+            return true;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            MarkPushFailed(log, "provider_send_failed");
+            _logger.LogWarning(ex, "Push notification log {PushLogId} failed during provider dispatch", log.Id);
+            return false;
+        }
+    }
+
+    private static void ApplyConfiguredAuthHeaders(HttpRequestMessage request, PushProviderStatus provider)
+    {
+        if (!string.IsNullOrWhiteSpace(provider.BearerToken))
+        {
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", provider.BearerToken);
+        }
+
+        if (!string.IsNullOrWhiteSpace(provider.AuthHeaderName) &&
+            !string.IsNullOrWhiteSpace(provider.AuthHeaderValue))
+        {
+            request.Headers.TryAddWithoutValidation(provider.AuthHeaderName, provider.AuthHeaderValue);
+        }
+    }
+
+    private static void MarkPushFailed(PushNotificationLog log, string reason)
+    {
+        log.Status = PushStatus.Failed;
+        log.ErrorMessage = reason;
+    }
+
+    private string? FirstConfiguredValue(params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = _configuration[key];
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return null;
+    }
+
+    private static Uri? TryCreateHttpUri(string? value)
+    {
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+               (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            ? uri
+            : null;
+    }
+
+    private sealed class PushProviderStatus
+    {
+        public string Provider { get; init; } = "none";
+        public bool Configured { get; init; }
+        public Uri? Endpoint { get; init; }
+        public bool CanDispatch => Endpoint != null;
+        public string? FailureReason { get; init; }
+        public string? AuthHeaderName { get; init; }
+        public string? AuthHeaderValue { get; init; }
+        public string? BearerToken { get; init; }
+    }
+}
+
+public class PushDispatchProcessResult
+{
+    public int Attempted { get; set; }
+    public int Sent { get; set; }
+    public int Failed { get; set; }
+    public bool ProviderConfigured { get; set; }
+    public string Provider { get; set; } = "none";
 }

@@ -138,6 +138,28 @@ public class LocationControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Geocode_KnownTenantLocation_ReturnsCoordinates()
+    {
+        await AuthenticateAsMemberAsync();
+        await Client.PutAsJsonAsync("/api/location/me", new
+        {
+            latitude = 51.8969,
+            longitude = -8.4863,
+            city = "Cork",
+            region = "Munster",
+            country = "Ireland",
+            is_public = true
+        });
+
+        var response = await Client.GetAsync("/api/location/geocode?address=Cork");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("latitude").GetDouble().Should().BeApproximately(51.8969, 0.0001);
+        content.GetProperty("source").GetString().Should().Be("tenant_locations");
+    }
+
+    [Fact]
     public async Task UpdateLocation_Unauthenticated_Returns401()
     {
         ClearAuthToken();

@@ -248,10 +248,24 @@ if (allowedOrigins.Length > 0 && !app.Environment.IsProduction())
 
     // WARNING: TEST DATA ONLY — never runs in Production.
     // Seeds fictitious tenants/users/listings with well-known dev passwords.
+    var runDemoShowcaseSeed = app.Configuration.GetValue<bool>("DemoShowcaseSeed:Run");
+    var seedOnly = app.Configuration.GetValue<bool>("DemoShowcaseSeed:SeedOnly");
+
     if (app.Environment.IsDevelopment())
     {
         await SeedData.SeedAsync(db, logger, app.Environment);
         await DemoShowcaseSeedData.SeedAsync(db, logger, app.Environment);
+    }
+    else if (runDemoShowcaseSeed)
+    {
+        logger.LogWarning("Running explicitly requested Project NEXUS V2 demo showcase seed in {Environment}.", app.Environment.EnvironmentName);
+        await DemoShowcaseSeedData.SeedAsync(db, logger, app.Environment, allowProduction: true);
+
+        if (seedOnly)
+        {
+            logger.LogInformation("DemoShowcaseSeed:SeedOnly is enabled; exiting after seed.");
+            return;
+        }
     }
 }
 

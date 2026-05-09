@@ -27,9 +27,9 @@ public static class DemoShowcaseSeedData
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public static async Task SeedAsync(NexusDbContext db, ILogger logger, IWebHostEnvironment? env = null)
+    public static async Task SeedAsync(NexusDbContext db, ILogger logger, IWebHostEnvironment? env = null, bool allowProduction = false)
     {
-        if (env != null && env.IsProduction())
+        if (env != null && env.IsProduction() && !allowProduction)
         {
             logger.LogWarning("DemoShowcaseSeedData.SeedAsync called in Production environment - aborted.");
             return;

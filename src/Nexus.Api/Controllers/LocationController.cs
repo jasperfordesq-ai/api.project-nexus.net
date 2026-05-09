@@ -277,6 +277,42 @@ public class LocationController : ControllerBase
             distance_miles = Math.Round(distance.Value * 0.621371, 2)
         });
     }
+
+    /// <summary>
+    /// GET /api/location/geocode - Resolve an address from tenant-local location data.
+    /// </summary>
+    [HttpGet("geocode")]
+    public async Task<IActionResult> Geocode([FromQuery] string? address)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null) return Unauthorized(new { error = "Invalid token" });
+
+        if (string.IsNullOrWhiteSpace(address))
+            return BadRequest(new { error = "address is required" });
+
+        try
+        {
+            var result = await _locationService.GeocodeAddressAsync(address);
+            if (result == null)
+                return NotFound(new { error = "Address not found in tenant location data" });
+
+            return Ok(new
+            {
+                latitude = result.Latitude,
+                longitude = result.Longitude,
+                formatted_address = result.FormattedAddress,
+                city = result.City,
+                region = result.Region,
+                country = result.Country,
+                postal_code = result.PostalCode,
+                source = "tenant_locations"
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }
 
 #region Request DTOs

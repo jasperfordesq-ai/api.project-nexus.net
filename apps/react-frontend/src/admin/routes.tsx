@@ -9,15 +9,26 @@
  * Uses lazy loading for all module pages.
  */
 
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, type ComponentType } from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { LoadingScreen } from '@/components/feedback';
 import { SuperAdminRoute } from './SuperAdminRoute';
+
+type V1ParityModule = typeof import('./modules/parity/V1AdminParityPages');
+
+function lazyParityPage(name: keyof V1ParityModule) {
+  return lazy(() =>
+    import('./modules/parity/V1AdminParityPages').then((module) => ({
+      default: module[name] as ComponentType,
+    }))
+  );
+}
 
 // Lazy-loaded admin pages
 const AdminDashboard = lazy(() => import('./modules/dashboard/AdminDashboard'));
 const UserList = lazy(() => import('./modules/users/UserList'));
 const TenantFeatures = lazy(() => import('./modules/config/TenantFeatures'));
+const ModuleConfiguration = lazyParityPage('ModuleConfigurationPage');
 const UserCreate = lazy(() => import('./modules/users/UserCreate'));
 const UserEdit = lazy(() => import('./modules/users/UserEdit'));
 const ListingsAdmin = lazy(() => import('./modules/listings/ListingsAdmin'));
@@ -56,6 +67,7 @@ const CampaignList = lazy(() => import('./modules/gamification/CampaignList'));
 const CampaignForm = lazy(() => import('./modules/gamification/CampaignForm'));
 const GamificationAnalytics = lazy(() => import('./modules/gamification/GamificationAnalytics'));
 const CustomBadges = lazy(() => import('./modules/gamification/CustomBadges'));
+const BadgeConfiguration = lazyParityPage('BadgeConfigurationPage');
 const CreateBadge = lazy(() => import('./modules/gamification/CreateBadge'));
 const GroupList = lazy(() => import('./modules/groups/GroupList'));
 const GroupAnalytics = lazy(() => import('./modules/groups/GroupAnalytics'));
@@ -72,6 +84,7 @@ const RoleList = lazy(() => import('./modules/enterprise/RoleList'));
 const RoleForm = lazy(() => import('./modules/enterprise/RoleForm'));
 const PermissionBrowser = lazy(() => import('./modules/enterprise/PermissionBrowser'));
 const GdprDashboard = lazy(() => import('./modules/enterprise/GdprDashboard'));
+const FadpAdminPage = lazyParityPage('FadpAdminPage');
 const GdprRequests = lazy(() => import('./modules/enterprise/GdprRequests'));
 const GdprConsents = lazy(() => import('./modules/enterprise/GdprConsents'));
 const GdprBreaches = lazy(() => import('./modules/enterprise/GdprBreaches'));
@@ -85,6 +98,14 @@ const LegalDocList = lazy(() => import('./modules/enterprise/LegalDocList'));
 const LegalDocForm = lazy(() => import('./modules/enterprise/LegalDocForm'));
 const LegalDocVersionList = lazy(() => import('./modules/enterprise/LegalDocVersionList'));
 const LegalDocComplianceDashboard = lazy(() => import('./modules/enterprise/LegalDocComplianceDashboard'));
+const GdprRequestDetail = lazyParityPage('GdprRequestDetailPage');
+const GdprRequestCreate = lazyParityPage('GdprRequestCreatePage');
+const GdprConsentTypes = lazyParityPage('GdprConsentTypesPage');
+const GdprBreachDetail = lazyParityPage('GdprBreachDetailPage');
+const LogFiles = lazyParityPage('LogFilesPage');
+const LogFileViewer = lazyParityPage('LogFileViewerPage');
+const SystemRequirements = lazyParityPage('SystemRequirementsPage');
+const FeatureFlags = lazyParityPage('EnterpriseFeatureFlagsPage');
 
 // Performance module
 const PerformanceDashboard = lazy(() => import('./modules/performance/PerformanceDashboard'));
@@ -108,6 +129,34 @@ const NewsletterActivity = lazy(() => import('./modules/newsletters/NewsletterAc
 const VolunteeringOverview = lazy(() => import('./modules/volunteering/VolunteeringOverview'));
 const VolunteerApprovals = lazy(() => import('./modules/volunteering/VolunteerApprovals'));
 const VolunteerOrganizations = lazy(() => import('./modules/volunteering/VolunteerOrganizations'));
+const VolunteerExpenses = lazyParityPage('VolunteerExpensesPage');
+const VolunteerTraining = lazyParityPage('VolunteerTrainingPage');
+const VolunteerSafeguarding = lazyParityPage('VolunteerSafeguardingPage');
+const VolunteerHoursAudit = lazyParityPage('VolunteerHoursAuditPage');
+const VolunteerGivingDays = lazyParityPage('VolunteerGivingDaysPage');
+const VolunteerConsents = lazyParityPage('VolunteerConsentsPage');
+const VolunteerProjects = lazyParityPage('VolunteerProjectsPage');
+const VolunteerConfig = lazyParityPage('VolunteerConfigPage');
+
+// Advertising module
+const AdCampaignAdminPage = lazyParityPage('AdvertisingCampaignsPage');
+const PushCampaignAdminPage = lazyParityPage('PushCampaignsPage');
+
+// AI / Agents module
+const KiAgentAdminPage = lazyParityPage('KiAgentAdminPage');
+const AgentsAdminPage = lazyParityPage('AgentsAdminPage');
+const AgentProposalsPage = lazyParityPage('AgentProposalsPage');
+const AgentRunsPage = lazyParityPage('AgentRunsPage');
+
+// Billing / paid products
+const BillingPage = lazyParityPage('BillingPage');
+const PlanSelector = lazyParityPage('BillingPlansPage');
+const InvoiceHistory = lazyParityPage('InvoiceHistoryPage');
+const CheckoutReturn = lazyParityPage('CheckoutReturnPage');
+const BillingControl = lazyParityPage('BillingControlPage');
+const RevenueDashboard = lazyParityPage('RevenueDashboardPage');
+const MemberPremiumAdminPage = lazyParityPage('MemberPremiumAdminPage');
+const MemberPremiumSubscribersPage = lazyParityPage('MemberPremiumSubscribersPage');
 
 // Events module
 const EventsAdmin = lazy(() => import('./modules/events/EventsAdmin'));
@@ -120,15 +169,28 @@ const GoalsAdmin = lazy(() => import('./modules/goals/GoalsAdmin'));
 
 // Resources / Knowledge Base module
 const ResourcesAdmin = lazy(() => import('./modules/resources/ResourcesAdmin'));
+const KBArticleForm = lazyParityPage('ResourceEditorPage');
+const ResourceCategoriesAdmin = lazyParityPage('ResourceCategoriesPage');
 
 // Jobs module
 const JobsAdmin = lazy(() => import('./modules/jobs/JobsAdmin'));
+const JobModerationQueue = lazyParityPage('JobModerationQueuePage');
+const JobBiasAudit = lazyParityPage('JobBiasAuditPage');
+const JobPipelineOverview = lazyParityPage('JobPipelineOverviewPage');
+const JobTemplatesAdmin = lazyParityPage('JobTemplatesAdminPage');
+
+// Marketplace module
+const MarketplaceAdmin = lazyParityPage('MarketplaceAdminPage');
+const MarketplaceModerationPage = lazyParityPage('MarketplaceModerationPage');
+const MarketplaceSellerAdmin = lazyParityPage('MarketplaceSellerAdminPage');
+const AdminCouponsPage = lazyParityPage('AdminCouponsPage');
 
 // Ideation / Challenges module
 const IdeationAdmin = lazy(() => import('./modules/ideation/IdeationAdmin'));
 
 // Federation module
 const FederationSettings = lazy(() => import('./modules/federation/FederationSettings'));
+const FederationAggregatesPage = lazyParityPage('FederationAggregatesPage');
 const Partnerships = lazy(() => import('./modules/federation/Partnerships'));
 const PartnerDirectory = lazy(() => import('./modules/federation/PartnerDirectory'));
 const MyProfile = lazy(() => import('./modules/federation/MyProfile'));
@@ -138,9 +200,20 @@ const CreateApiKey = lazy(() => import('./modules/federation/CreateApiKey'));
 const DataManagement = lazy(() => import('./modules/federation/DataManagement'));
 const CreditAgreements = lazy(() => import('./modules/federation/CreditAgreements'));
 const Neighborhoods = lazy(() => import('./modules/federation/Neighborhoods'));
+const ExternalPartners = lazyParityPage('FederationExternalPartnersPage');
+const Webhooks = lazyParityPage('FederationWebhooksPage');
+const ApiDocumentation = lazyParityPage('FederationApiDocsPage');
+const FederationActivityFeed = lazyParityPage('FederationActivityPage');
+const CreditCommonsConfig = lazyParityPage('FederationCreditCommonsPage');
 
 // Safeguarding module
 const SafeguardingDashboard = lazy(() => import('./modules/safeguarding/SafeguardingDashboard'));
+const SafeguardingOptionsAdmin = lazyParityPage('SafeguardingOptionsAdminPage');
+
+// Regional / national analytics
+const RegionalAnalyticsPage = lazyParityPage('RegionalAnalyticsPage');
+const RegionalAnalyticsAdminPage = lazyParityPage('RegionalAnalyticsAdminPage');
+const NationalKissDashboardPage = lazyParityPage('NationalKissDashboardPage');
 
 // Advanced/SEO module
 const AiSettings = lazy(() => import('./modules/advanced/AiSettings'));
@@ -163,6 +236,8 @@ const ActivityTimeline = lazy(() => import('./modules/crm/ActivityTimeline'));
 // System tools
 const AdminSettings = lazy(() => import('./modules/system/AdminSettings'));
 const RegistrationPolicySettings = lazy(() => import('./modules/system/RegistrationPolicySettings'));
+const OnboardingSettings = lazyParityPage('OnboardingSettingsPage');
+const TranslationConfig = lazyParityPage('TranslationConfigPage');
 const TestRunner = lazy(() => import('./modules/system/TestRunner'));
 const SeedGenerator = lazy(() => import('./modules/system/SeedGenerator'));
 const WebpConverter = lazy(() => import('./modules/system/WebpConverter'));
@@ -232,6 +307,13 @@ const AttributesAdmin = lazy(() => import('./modules/content/AttributesAdmin'));
 const PlansAdmin = lazy(() => import('./modules/content/PlansAdmin'));
 const PlanForm = lazy(() => import('./modules/content/PlanForm'));
 const SubscriptionsAdmin = lazy(() => import('./modules/content/Subscriptions'));
+const LandingPageBuilder = lazyParityPage('LandingPageBuilderPage');
+
+// Platform / provisioning / integrations
+const PilotInquiryAdminPage = lazyParityPage('PilotInquiryAdminPage');
+const ProvisioningRequestsPage = lazyParityPage('ProvisioningRequestsPage');
+const ApiPartnersAdminPage = lazyParityPage('ApiPartnersAdminPage');
+const AdminHelpCenterPage = lazyParityPage('AdminHelpCenterPage');
 
 // Wrap lazy components in Suspense
 function Lazy({ children }: { children: React.ReactNode }) {
@@ -277,6 +359,7 @@ export function AdminRoutes() {
       <Route path="categories/create" element={<Lazy><CategoriesAdmin /></Lazy>} />
       <Route path="categories/edit/:id" element={<Lazy><CategoriesAdmin /></Lazy>} />
       <Route path="attributes" element={<Lazy><AttributesAdmin /></Lazy>} />
+      <Route path="landing-page" element={<Lazy><LandingPageBuilder /></Lazy>} />
 
       {/* ─── ENGAGEMENT ─── */}
       <Route path="gamification" element={<Lazy><GamificationHub /></Lazy>} />
@@ -284,6 +367,7 @@ export function AdminRoutes() {
       <Route path="gamification/campaigns/create" element={<Lazy><CampaignForm /></Lazy>} />
       <Route path="gamification/campaigns/edit/:id" element={<Lazy><CampaignForm /></Lazy>} />
       <Route path="gamification/analytics" element={<Lazy><GamificationAnalytics /></Lazy>} />
+      <Route path="gamification/badge-config" element={<Lazy><BadgeConfiguration /></Lazy>} />
       <Route path="custom-badges" element={<Lazy><CustomBadges /></Lazy>} />
       <Route path="custom-badges/create" element={<Lazy><CreateBadge /></Lazy>} />
 
@@ -305,6 +389,7 @@ export function AdminRoutes() {
       <Route path="broker-controls/messages/:id" element={<Lazy><MessageDetail /></Lazy>} />
       <Route path="broker-controls/archives" element={<Lazy><ReviewArchive /></Lazy>} />
       <Route path="broker-controls/archives/:id" element={<Lazy><ArchiveDetail /></Lazy>} />
+      <Route path="broker-controls/*" element={<Lazy><BrokerDashboard /></Lazy>} />
 
       {/* ─── MODERATION ─── */}
       <Route path="moderation/feed" element={<Lazy><FeedModeration /></Lazy>} />
@@ -329,9 +414,15 @@ export function AdminRoutes() {
       <Route path="newsletters/diagnostics" element={<Lazy><NewsletterDiagnostics /></Lazy>} />
       <Route path="newsletters/:id/stats" element={<Lazy><NewsletterStats /></Lazy>} />
       <Route path="newsletters/:id/activity" element={<Lazy><NewsletterActivity /></Lazy>} />
+      <Route path="advertising/campaigns" element={<Lazy><AdCampaignAdminPage /></Lazy>} />
+      <Route path="advertising/push-campaigns" element={<Lazy><PushCampaignAdminPage /></Lazy>} />
 
       {/* ─── ADVANCED ─── */}
       <Route path="ai-settings" element={<Lazy><AiSettings /></Lazy>} />
+      <Route path="ai/ki-agents" element={<Lazy><KiAgentAdminPage /></Lazy>} />
+      <Route path="agents" element={<Lazy><AgentsAdminPage /></Lazy>} />
+      <Route path="agents/proposals" element={<Lazy><AgentProposalsPage /></Lazy>} />
+      <Route path="agents/runs" element={<Lazy><AgentRunsPage /></Lazy>} />
       <Route path="email-settings" element={<Lazy><EmailSettings /></Lazy>} />
       <Route path="feed-algorithm" element={<Navigate to="/admin/algorithm-settings" replace />} />
       <Route path="algorithm-settings" element={<Lazy><AlgorithmSettings /></Lazy>} />
@@ -363,14 +454,23 @@ export function AdminRoutes() {
       <Route path="enterprise/permissions" element={<Lazy><PermissionBrowser /></Lazy>} />
       <Route path="enterprise/gdpr" element={<Lazy><GdprDashboard /></Lazy>} />
       <Route path="enterprise/gdpr/requests" element={<Lazy><GdprRequests /></Lazy>} />
+      <Route path="enterprise/gdpr/requests/create" element={<Lazy><GdprRequestCreate /></Lazy>} />
+      <Route path="enterprise/gdpr/requests/:id" element={<Lazy><GdprRequestDetail /></Lazy>} />
       <Route path="enterprise/gdpr/consents" element={<Lazy><GdprConsents /></Lazy>} />
+      <Route path="enterprise/gdpr/consent-types" element={<Lazy><GdprConsentTypes /></Lazy>} />
       <Route path="enterprise/gdpr/breaches" element={<Lazy><GdprBreaches /></Lazy>} />
+      <Route path="enterprise/gdpr/breaches/:id" element={<Lazy><GdprBreachDetail /></Lazy>} />
       <Route path="enterprise/gdpr/audit" element={<Lazy><GdprAuditLog /></Lazy>} />
+      <Route path="enterprise/fadp" element={<Lazy><FadpAdminPage /></Lazy>} />
       <Route path="enterprise/monitoring" element={<Lazy><SystemMonitoring /></Lazy>} />
       <Route path="enterprise/monitoring/health" element={<Lazy><HealthCheck /></Lazy>} />
       <Route path="enterprise/monitoring/logs" element={<Lazy><ErrorLogs /></Lazy>} />
+      <Route path="enterprise/monitoring/log-files" element={<Lazy><LogFiles /></Lazy>} />
+      <Route path="enterprise/monitoring/log-files/:filename" element={<Lazy><LogFileViewer /></Lazy>} />
+      <Route path="enterprise/monitoring/requirements" element={<Lazy><SystemRequirements /></Lazy>} />
       <Route path="enterprise/config" element={<Lazy><SystemConfig /></Lazy>} />
       <Route path="enterprise/config/secrets" element={<Lazy><SecretsVault /></Lazy>} />
+      <Route path="enterprise/config/features" element={<Lazy><FeatureFlags /></Lazy>} />
 
       {/* ─── PERFORMANCE ─── */}
       <Route path="performance" element={<Lazy><PerformanceDashboard /></Lazy>} />
@@ -392,14 +492,24 @@ export function AdminRoutes() {
       <Route path="federation/data" element={<Lazy><DataManagement /></Lazy>} />
       <Route path="federation/credit-agreements" element={<Lazy><CreditAgreements /></Lazy>} />
       <Route path="federation/neighborhoods" element={<Lazy><Neighborhoods /></Lazy>} />
+      <Route path="federation/external-partners" element={<Lazy><ExternalPartners /></Lazy>} />
+      <Route path="federation/webhooks" element={<Lazy><Webhooks /></Lazy>} />
+      <Route path="federation/api-docs" element={<Lazy><ApiDocumentation /></Lazy>} />
+      <Route path="federation/activity" element={<Lazy><FederationActivityFeed /></Lazy>} />
+      <Route path="federation/cc-config" element={<Lazy><CreditCommonsConfig /></Lazy>} />
+      <Route path="federation/aggregates" element={<Lazy><FederationAggregatesPage /></Lazy>} />
 
       {/* ─── SAFEGUARDING ─── */}
       <Route path="safeguarding" element={<Lazy><SafeguardingDashboard /></Lazy>} />
+      <Route path="safeguarding-options" element={<Lazy><SafeguardingOptionsAdmin /></Lazy>} />
 
       {/* ─── SYSTEM ─── */}
       <Route path="settings" element={<Lazy><AdminSettings /></Lazy>} />
       <Route path="settings/registration-policy" element={<Lazy><RegistrationPolicySettings /></Lazy>} />
+      <Route path="onboarding-settings" element={<Lazy><OnboardingSettings /></Lazy>} />
       <Route path="tenant-features" element={<Lazy><TenantFeatures /></Lazy>} />
+      <Route path="module-configuration" element={<Lazy><ModuleConfiguration /></Lazy>} />
+      <Route path="translation-config" element={<Lazy><TranslationConfig /></Lazy>} />
       <Route path="cron-jobs" element={<Lazy><CronJobs /></Lazy>} />
       <Route path="cron-jobs/logs" element={<Lazy><CronJobLogs /></Lazy>} />
       <Route path="cron-jobs/settings" element={<Lazy><CronJobSettings /></Lazy>} />
@@ -419,6 +529,7 @@ export function AdminRoutes() {
       <Route path="groups/moderation" element={<Lazy><GroupModeration /></Lazy>} />
       <Route path="groups/types" element={<Lazy><GroupTypes /></Lazy>} />
       <Route path="groups/:id/detail" element={<Lazy><GroupDetail /></Lazy>} />
+      <Route path="groups/:id/edit" element={<Lazy><GroupDetail /></Lazy>} />
       <Route path="groups/recommendations" element={<Lazy><GroupRecommendations /></Lazy>} />
       <Route path="groups/ranking" element={<Lazy><GroupRanking /></Lazy>} />
       <Route path="group-types" element={<Lazy><GroupList /></Lazy>} />
@@ -430,6 +541,14 @@ export function AdminRoutes() {
       <Route path="volunteering" element={<Lazy><VolunteeringOverview /></Lazy>} />
       <Route path="volunteering/approvals" element={<Lazy><VolunteerApprovals /></Lazy>} />
       <Route path="volunteering/organizations" element={<Lazy><VolunteerOrganizations /></Lazy>} />
+      <Route path="volunteering/expenses" element={<Lazy><VolunteerExpenses /></Lazy>} />
+      <Route path="volunteering/training" element={<Lazy><VolunteerTraining /></Lazy>} />
+      <Route path="volunteering/safeguarding" element={<Lazy><VolunteerSafeguarding /></Lazy>} />
+      <Route path="volunteering/hours" element={<Lazy><VolunteerHoursAudit /></Lazy>} />
+      <Route path="volunteering/giving-days" element={<Lazy><VolunteerGivingDays /></Lazy>} />
+      <Route path="volunteering/consents" element={<Lazy><VolunteerConsents /></Lazy>} />
+      <Route path="volunteering/projects" element={<Lazy><VolunteerProjects /></Lazy>} />
+      <Route path="volunteering/config" element={<Lazy><VolunteerConfig /></Lazy>} />
 
       {/* ─── EVENTS ─── */}
       <Route path="events" element={<Lazy><EventsAdmin /></Lazy>} />
@@ -442,9 +561,22 @@ export function AdminRoutes() {
 
       {/* ─── RESOURCES / KNOWLEDGE BASE ─── */}
       <Route path="resources" element={<Lazy><ResourcesAdmin /></Lazy>} />
+      <Route path="resources/create" element={<Lazy><KBArticleForm /></Lazy>} />
+      <Route path="resources/edit/:id" element={<Lazy><KBArticleForm /></Lazy>} />
+      <Route path="resources/categories" element={<Lazy><ResourceCategoriesAdmin /></Lazy>} />
 
       {/* ─── JOBS ─── */}
       <Route path="jobs" element={<Lazy><JobsAdmin /></Lazy>} />
+      <Route path="jobs/moderation" element={<Lazy><JobModerationQueue /></Lazy>} />
+      <Route path="jobs/bias-audit" element={<Lazy><JobBiasAudit /></Lazy>} />
+      <Route path="jobs/pipeline" element={<Lazy><JobPipelineOverview /></Lazy>} />
+      <Route path="jobs/templates" element={<Lazy><JobTemplatesAdmin /></Lazy>} />
+
+      {/* ─── MARKETPLACE ─── */}
+      <Route path="marketplace" element={<Lazy><MarketplaceAdmin /></Lazy>} />
+      <Route path="marketplace/moderation" element={<Lazy><MarketplaceModerationPage /></Lazy>} />
+      <Route path="marketplace/sellers" element={<Lazy><MarketplaceSellerAdmin /></Lazy>} />
+      <Route path="marketplace/coupons" element={<Lazy><AdminCouponsPage /></Lazy>} />
 
       {/* ─── IDEATION / CHALLENGES ─── */}
       <Route path="ideation" element={<Lazy><IdeationAdmin /></Lazy>} />
@@ -453,6 +585,7 @@ export function AdminRoutes() {
       <Route path="deliverability" element={<Lazy><DeliverabilityDashboard /></Lazy>} />
       <Route path="deliverability/list" element={<Lazy><DeliverablesList /></Lazy>} />
       <Route path="deliverability/create" element={<Lazy><CreateDeliverable /></Lazy>} />
+      <Route path="deliverability/edit/:id" element={<Lazy><EditDeliverable /></Lazy>} />
       <Route path="deliverability/:id/edit" element={<Lazy><EditDeliverable /></Lazy>} />
       <Route path="deliverability/analytics" element={<Lazy><DeliverabilityAnalytics /></Lazy>} />
 
@@ -461,6 +594,15 @@ export function AdminRoutes() {
 
       {/* ─── NEXUS SCORE ─── */}
       <Route path="nexus-score/analytics" element={<Lazy><NexusScoreAnalytics /></Lazy>} />
+
+      {/* ─── BILLING ─── */}
+      <Route path="member-premium" element={<Lazy><MemberPremiumAdminPage /></Lazy>} />
+      <Route path="member-premium/subscribers" element={<Lazy><MemberPremiumSubscribersPage /></Lazy>} />
+      <Route path="billing" element={<Lazy><BillingPage /></Lazy>} />
+      <Route path="billing/plans" element={<Lazy><PlanSelector /></Lazy>} />
+      <Route path="billing/invoices" element={<Lazy><InvoiceHistory /></Lazy>} />
+      <Route path="billing/checkout-return" element={<Lazy><CheckoutReturn /></Lazy>} />
+      <Route path="billing/revenue" element={<Lazy><RevenueDashboard /></Lazy>} />
 
       {/* ─── SUPER ADMIN (requires super admin role) ─── */}
       <Route path="super" element={<SuperAdminRoute />}>
@@ -482,7 +624,16 @@ export function AdminRoutes() {
         <Route path="federation/partnerships" element={<Lazy><SuperPartnerships /></Lazy>} />
         <Route path="federation/audit" element={<Lazy><FederationAuditLog /></Lazy>} />
         <Route path="federation/tenant/:tenantId/features" element={<Lazy><FederationTenantFeatures /></Lazy>} />
+        <Route path="billing" element={<Lazy><BillingControl /></Lazy>} />
+        <Route path="billing/revenue" element={<Lazy><RevenueDashboard /></Lazy>} />
       </Route>
+
+      <Route element={<SuperAdminRoute />}>
+        <Route path="provisioning-requests" element={<Lazy><ProvisioningRequestsPage /></Lazy>} />
+      </Route>
+
+      {/* ─── NATIONAL KISS FOUNDATION DASHBOARD ─── */}
+      <Route path="national/kiss" element={<Lazy><NationalKissDashboardPage /></Lazy>} />
 
       {/* ─── ANALYTICS & REPORTING ─── */}
       <Route path="community-analytics" element={<Lazy><CommunityAnalytics /></Lazy>} />
@@ -492,6 +643,11 @@ export function AdminRoutes() {
       <Route path="reports/hours" element={<Lazy><HoursReportsPage /></Lazy>} />
       <Route path="reports/inactive-members" element={<Lazy><InactiveMembersPage /></Lazy>} />
       <Route path="moderation/queue" element={<Lazy><ModerationQueuePage /></Lazy>} />
+      <Route path="analytics/regional" element={<Lazy><RegionalAnalyticsPage /></Lazy>} />
+      <Route path="regional-analytics/subscriptions" element={<Lazy><RegionalAnalyticsAdminPage /></Lazy>} />
+      <Route path="platform/pilot-inquiries" element={<Lazy><PilotInquiryAdminPage /></Lazy>} />
+      <Route path="api-partners" element={<Lazy><ApiPartnersAdminPage /></Lazy>} />
+      <Route path="help" element={<Lazy><AdminHelpCenterPage /></Lazy>} />
 
       {/* ─── REDIRECT: /admin/login → main login page ─── */}
       <Route path="login" element={<Navigate to="/login" replace />} />
