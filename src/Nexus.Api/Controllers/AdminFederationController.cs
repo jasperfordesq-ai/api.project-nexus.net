@@ -103,7 +103,8 @@ public class AdminFederationController : ControllerBase
             action = l.Action, entity_type = l.EntityType, entity_id = l.EntityId,
             details = l.Details, created_at = l.CreatedAt
         });
-        return Ok(new { data, total, page, limit });
+        var pages = limit > 0 ? (int)Math.Ceiling(total / (double)limit) : 1;
+        return Ok(new { data, pagination = new { page, limit, total, pages } });
     }
 
     [HttpGet("tenants/{tenantId:int}/toggles")]

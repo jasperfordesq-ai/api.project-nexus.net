@@ -34,19 +34,14 @@ interface AuditEntry {
   created_at: string;
 }
 
-interface AuditResponse {
-  data: AuditEntry[];
-  total: number;
-  page: number;
-  per_page: number;
-}
-
 export default function FederationAuditLogPage() {
   usePageTitle('Admin - Federation Audit Log');
   const toast = useToast();
   const [partnerId, setPartnerId] = useState('');
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<AuditResponse | null>(null);
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -56,15 +51,18 @@ export default function FederationAuditLogPage() {
       if (partnerId) params.set('partnerId', partnerId);
       params.set('page', String(page));
       params.set('limit', '50');
-      const res = await api.get<AuditResponse>(`/v2/admin/system/federation/audit-log?${params}`);
-      if (res.success && res.data) setData((res.data as unknown) as AuditResponse);
+      const res = await api.get<AuditEntry[]>(`/v2/admin/system/federation/audit-log?${params}`);
+      if (res.success) {
+        setEntries(Array.isArray(res.data) ? res.data : []);
+        const meta = res.meta;
+        setTotal(meta?.total ?? meta?.total_items ?? 0);
+        setTotalPages(meta?.total_pages ?? meta?.last_page ?? 1);
+      }
     } catch { toast.error('Failed to load audit log'); }
     finally { setLoading(false); }
   }, [partnerId, page, toast]);
 
   useEffect(() => { load(); }, [load]);
-
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1;
 
   return (
     <div>
@@ -81,7 +79,7 @@ export default function FederationAuditLogPage() {
           <Input label="Filter by partner tenant ID" type="number" value={partnerId}
             onValueChange={(v) => { setPartnerId(v); setPage(1); }} className="max-w-xs" />
           <p className="text-xs text-default-500">
-            {data ? `${data.total} entries · page ${data.page}/${totalPages}` : ''}
+            {`${total} entries · page ${page}/${totalPages}`}
           </p>
         </CardBody>
       </Card>
@@ -101,7 +99,7 @@ export default function FederationAuditLogPage() {
               <TableColumn>When</TableColumn>
             </TableHeader>
             <TableBody emptyContent="No audit entries" isLoading={loading} loadingContent={<Spinner />}>
-              {(data?.data ?? []).map((e) => (
+              {entries.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>#{e.id}</TableCell>
                   <TableCell className="font-medium">{e.action}</TableCell>

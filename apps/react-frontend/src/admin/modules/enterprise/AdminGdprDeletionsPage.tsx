@@ -43,9 +43,11 @@ interface DeletionRequest {
   created_at: string;
 }
 
-interface DeletionResponse {
-  data: DeletionRequest[];
-  pagination: { page: number; limit: number; total: number; pages: number };
+interface DeletionPagination {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
 }
 
 const STATUS_OPTIONS: DeletionStatus[] = ['pending', 'approved', 'rejected', 'completed'];
@@ -64,15 +66,29 @@ export default function AdminGdprDeletionsPage() {
   const toast = useToast();
   const [filter, setFilter] = useState<DeletionStatus>('pending');
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<DeletionResponse | null>(null);
+  const [items, setItems] = useState<DeletionRequest[]>([]);
+  const [pagination, setPagination] = useState<DeletionPagination | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const url = `/v2/admin/privacy/deletions?status=${encodeURIComponent(filter)}&page=${page}&limit=50`;
-      const res = await api.get<DeletionResponse>(url);
-      if (res.success && res.data) setData((res.data as unknown) as DeletionResponse);
+      const res = await api.get<DeletionRequest[]>(url);
+      if (res.success) {
+        setItems(Array.isArray(res.data) ? res.data : []);
+        const meta = res.meta;
+        if (meta) {
+          setPagination({
+            page: meta.current_page ?? page,
+            limit: meta.per_page ?? 50,
+            total: meta.total ?? meta.total_items ?? 0,
+            pages: meta.total_pages ?? meta.last_page ?? 1,
+          });
+        } else {
+          setPagination(null);
+        }
+      }
     } catch { toast.error('Failed to load deletion requests'); }
     finally { setLoading(false); }
   }, [filter, page, toast]);
@@ -103,7 +119,7 @@ export default function AdminGdprDeletionsPage() {
         <CardHeader className="flex items-center gap-2">
           <ShieldOff size={18} className="text-warning" />
           <h3 className="text-lg font-semibold">
-            {filter} ({data?.pagination?.total ?? 0})
+            {filter} ({pagination?.total ?? items.length})
           </h3>
         </CardHeader>
         <CardBody>
@@ -118,7 +134,7 @@ export default function AdminGdprDeletionsPage() {
               <TableColumn>Completed</TableColumn>
             </TableHeader>
             <TableBody emptyContent={`No ${filter} requests`} isLoading={loading} loadingContent={<Spinner />}>
-              {(data?.data ?? []).map((r) => (
+              {items.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell>#{r.id}</TableCell>
                   <TableCell>
@@ -142,14 +158,14 @@ export default function AdminGdprDeletionsPage() {
               ))}
             </TableBody>
           </Table>
-          {data && data.pagination.pages > 1 && (
+          {pagination && pagination.pages > 1 && (
             <div className="mt-3 flex justify-end gap-2">
               <Button size="sm" variant="flat" isDisabled={page <= 1}
                 onPress={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
               <p className="self-center text-xs text-default-500">
-                Page {page} of {data.pagination.pages}
+                Page {page} of {pagination.pages}
               </p>
-              <Button size="sm" variant="flat" isDisabled={page >= data.pagination.pages}
+              <Button size="sm" variant="flat" isDisabled={page >= pagination.pages}
                 onPress={() => setPage((p) => p + 1)}>Next</Button>
             </div>
           )}

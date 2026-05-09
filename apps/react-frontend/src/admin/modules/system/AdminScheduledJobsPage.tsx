@@ -31,7 +31,7 @@ interface JobStatus {
 }
 
 interface JobsResponse {
-  data: JobStatus[];
+  jobs: JobStatus[];
   latest_monthly_report: { key: string; updated_at: string; payload: Record<string, unknown> | string | null } | null;
 }
 
@@ -91,7 +91,7 @@ export default function AdminScheduledJobsPage() {
                 <TableColumn>Latest payload</TableColumn>
               </TableHeader>
               <TableBody emptyContent="No scheduled jobs registered" isLoading={loading} loadingContent={<Spinner />}>
-                {(data?.data ?? []).map((j) => (
+                {(data?.jobs ?? []).map((j) => (
                   <TableRow key={j.name}>
                     <TableCell className="font-medium">{j.name}</TableCell>
                     <TableCell>

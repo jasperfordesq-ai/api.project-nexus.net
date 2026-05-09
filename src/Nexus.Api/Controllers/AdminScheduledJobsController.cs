@@ -76,7 +76,7 @@ public class AdminScheduledJobsController : ControllerBase
 
         return Ok(new
         {
-            data = results,
+            jobs = results,
             latest_monthly_report = latestMonthly == null
                 ? null
                 : (object)new
