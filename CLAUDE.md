@@ -963,6 +963,11 @@ cd apps/admin && docker compose up -d  # dev on :5190, prod on :5191
   pass). Lists every new env var, the 4 new EF migrations, post-deploy
   verification steps, and rollback procedure. The diagnostics page at
   `/admin/system/diagnostics` is the deploy ground-truth view.
+- **[DEPENDABOT_TRIAGE.md](./DEPENDABOT_TRIAGE.md)** — manual playbook for
+  working through the 37 open Dependabot alerts safely. Per-alert procedure,
+  tier-based prioritization (auth/DB/crypto first, devDeps last), known-good
+  version table, frontend `overrides` pattern. Required reading before
+  bumping any dependency outside CI.
 - FRONTEND_INTEGRATION.md - Frontend integration guide (API reference, CORS, architecture)
 - [ADMIN_INTEGRATION.md](./ADMIN_INTEGRATION.md) - Admin panel API integration guide (144+ admin endpoints, response examples, UI suggestions)
 - PLESK_DEPLOYMENT.md - Plesk deployment guide (concepts, theory, troubleshooting)
