@@ -22,11 +22,10 @@ End point: System live, verified, and documented.
   - Consult: Your registrar's documentation
   - Success: A record points to your server IP
 
-- [ ] **Create A record for ie.project-nexus.net**
   - Consult: Your registrar's documentation
   - Success: A record points to your server IP
 
-- [ ] **Create A record for app.project-nexus.net**
+- [ ] **Create A record for platform.project-nexus.net**
   - Consult: Your registrar's documentation
   - Success: A record points to your server IP
 
@@ -101,7 +100,7 @@ End point: System live, verified, and documented.
 - [ ] **Configure WebAuthn/Passkey (FIDO2) settings**
   - Set `Fido2__ServerDomain` to your production domain (e.g., `project-nexus.net`)
   - Set `Fido2__ServerName` to `Project NEXUS`
-  - Set `Fido2__Origins__0` to `https://app.project-nexus.net` (and additional origins as needed)
+  - Set `Fido2__Origins__0` to `https://platform.project-nexus.net` (and additional origins as needed)
   - IMPORTANT: `ServerDomain` must match the domain users access the site from
   - IMPORTANT: `Origins` must use HTTPS in production — passkeys require secure context
   - Note: Cross-device QR code flows (e.g., scanning from phone to sign in on desktop)
@@ -132,19 +131,17 @@ End point: System live, verified, and documented.
   - Consult: PLESK_EXECUTION.md (Section 2)
   - Success: Green padlock appears
 
-- [ ] **Add ie.project-nexus.net domain in Plesk**
   - Consult: PLESK_EXECUTION.md (Section 1)
   - Success: Domain appears in Websites & Domains list
 
-- [ ] **Install SSL certificate for ie.project-nexus.net**
   - Consult: PLESK_EXECUTION.md (Section 2)
   - Success: Green padlock appears
 
-- [ ] **Add app.project-nexus.net domain in Plesk**
+- [ ] **Add platform.project-nexus.net domain in Plesk**
   - Consult: PLESK_EXECUTION.md (Section 1)
   - Success: Domain appears in Websites & Domains list
 
-- [ ] **Install SSL certificate for app.project-nexus.net**
+- [ ] **Install SSL certificate for platform.project-nexus.net**
   - Consult: PLESK_EXECUTION.md (Section 2)
   - Success: Green padlock appears
 
@@ -176,11 +173,11 @@ End point: System live, verified, and documented.
   - Consult: PLESK_DEPLOYMENT.md (Frontend Deployment section)
   - Success: Files visible in httpdocs folder
 
-- [ ] **Build Modern frontend locally**
+- [ ] **Build React frontend locally**
   - Consult: Frontend project README
   - Success: Build folder contains index.html
 
-- [ ] **Upload Modern frontend files to server**
+- [ ] **Upload React frontend files to server**
   - Consult: PLESK_DEPLOYMENT.md (Frontend Deployment section)
   - Success: Files visible in httpdocs folder
 
@@ -194,11 +191,10 @@ End point: System live, verified, and documented.
 
 - [ ] **Verify IE frontend loads**
   - Consult: RECOVERY_GUIDE.md (Checking the Frontends section)
-  - Success: https://ie.project-nexus.net shows the UI
 
-- [ ] **Verify Modern frontend loads**
+- [ ] **Verify React frontend loads**
   - Consult: RECOVERY_GUIDE.md (Checking the Frontends section)
-  - Success: https://app.project-nexus.net shows the UI
+  - Success: https://platform.project-nexus.net shows the UI
 
 - [ ] **Test login from UK frontend**
   - Consult: FRONTEND_INTEGRATION.md (Authentication Flow section)
@@ -208,7 +204,7 @@ End point: System live, verified, and documented.
   - Consult: FRONTEND_INTEGRATION.md (Authentication Flow section)
   - Success: You can log in and see the dashboard
 
-- [ ] **Test login from Modern frontend**
+- [ ] **Test login from React frontend**
   - Consult: FRONTEND_INTEGRATION.md (Authentication Flow section)
   - Success: You can log in and see the dashboard
 
@@ -220,7 +216,6 @@ End point: System live, verified, and documented.
 
 ## Phase 8: Security Verification
 
-- [ ] **Confirm LLaMA service is not publicly accessible**
   - Consult: AI_SERVICE_BOUNDARY.md
   - Success: No public URL exists for the AI service
 

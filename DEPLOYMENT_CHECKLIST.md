@@ -25,8 +25,7 @@ Do this first. Everything else depends on DNS being ready.
 - [ ] **What:** Add these A records pointing to your server IP:
   - `api.project-nexus.net`
   - `uk.project-nexus.net`
-  - `ie.project-nexus.net`
-  - `app.project-nexus.net`
+  - `platform.project-nexus.net`
   - `admin.project-nexus.net` (optional)
 - **Why now:** DNS propagation takes time. Start it now.
 - **Success:** Each A record shows your server IP in the DNS settings.
@@ -160,8 +159,7 @@ Do this fifth. Now that the API works, add the frontends.
 ### 5.3 Repeat for other frontends
 
 - [ ] **What:** Repeat steps 5.1-5.2 for:
-  - `ie.project-nexus.net`
-  - `app.project-nexus.net`
+  - `platform.project-nexus.net`
   - `admin.project-nexus.net` (if needed)
 - **Why now:** All frontends need domains and SSL.
 - **Success:** All domains have green padlocks.
@@ -204,13 +202,13 @@ Do this last. Confirm everything works together.
 
 ### 7.2 Test login from IE frontend
 
-- [ ] **What:** Go to `https://ie.project-nexus.net` and try to log in.
+- [ ] **What:** Go to `https://platform.project-nexus.net` and try to log in.
 - **Why now:** Confirm CORS works for all origins.
 - **Success:** You can log in.
 
-### 7.3 Test login from Modern frontend
+### 7.3 Test login from React frontend
 
-- [ ] **What:** Go to `https://app.project-nexus.net` and try to log in.
+- [ ] **What:** Go to `https://platform.project-nexus.net` and try to log in.
 - **Why now:** Confirm all frontends work.
 - **Success:** You can log in.
 

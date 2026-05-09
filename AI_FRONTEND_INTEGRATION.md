@@ -29,7 +29,6 @@ This guide explains how to integrate the AI features of the Nexus API into your 
 
 ## Overview
 
-The AI API provides intelligent features powered by a local LLaMA 3.2 model. All AI endpoints require authentication and are rate-limited.
 
 **Base URL:** `http://localhost:5080/api/ai`
 
@@ -71,7 +70,6 @@ async function askAi(prompt) {
 // Example
 const result = await askAi('What is timebanking?');
 console.log(result.response);
-// { response: "Timebanking is...", tokensUsed: 45, model: "llama3.2:3b" }
 ```
 
 ### Check AI Status
@@ -85,7 +83,6 @@ async function checkAiStatus() {
 }
 
 // Example response
-// { available: true, model: "llama3.2:3b", queueDepth: 0 }
 ```
 
 ---

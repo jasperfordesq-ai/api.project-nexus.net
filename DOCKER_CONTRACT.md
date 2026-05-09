@@ -156,7 +156,6 @@ docker compose ps
 Why Docker-only:
 
 - **Consistency**: Same environment for all developers and CI/CD
-- **Dependencies**: All services (PostgreSQL, RabbitMQ, Ollama) are containerized
 - **No host pollution**: No need to install PostgreSQL, .NET SDK, etc. on your machine
 - **Reproducibility**: `docker compose up -d` always works the same way
 

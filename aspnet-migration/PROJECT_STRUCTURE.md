@@ -13,7 +13,7 @@ Nexus.sln
 │   ├── Nexus.Domain/                   # Domain entities and enums
 │   ├── Nexus.Infrastructure/           # Data access, external services
 │   ├── Nexus.Shared/                   # Cross-cutting concerns
-│   └── Nexus.GovDesign/                # Design system abstraction for GOV.UK/GOV.IE
+│   └── Nexus.GovDesign/                # Design system abstraction for GOV.UK/React
 │
 ├── tests/
 │   ├── Nexus.Api.Tests/
@@ -568,8 +568,8 @@ Nexus.GovDesign/
 │   │   └── ...
 │   └── Layouts/
 │
-├── GovIE/                              # GOV.IE implementation
-│   ├── GovIEDesignSystem.cs
+├── react/                              # React implementation
+│   ├── reactDesignSystem.cs
 │   ├── Components/
 │   └── Layouts/
 │
@@ -604,7 +604,7 @@ Using MediatR for command/query separation enables:
 - Both systems share the same database during transition
 
 ### 5. Design System Abstraction
-- Abstract design system allows switching between GOV.UK and GOV.IE
+- Abstract design system allows switching between GOV.UK and React
 - Server-rendered components with design system tokens
 - WCAG 2.1 AA compliance built into component library
 

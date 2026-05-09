@@ -220,9 +220,6 @@ EFFORT│                 │                   │ EFFORT
 ### Model Selection
 | Use Case | Recommended Model | Reason |
 |----------|-------------------|--------|
-| Chat/Conversation | LLaMA 3.2 3B | Good balance speed/quality |
-| Complex Analysis | LLaMA 3.2 8B+ | Better reasoning |
-| Quick Tasks | LLaMA 3.2 1B | Fast response |
 | Embeddings | all-MiniLM-L6-v2 | Semantic search |
 | Transcription | Whisper | Voice features |
 

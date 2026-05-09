@@ -770,7 +770,6 @@ V1 has admin controllers for:
 
 | Legacy Feature | V2 Status | Notes |
 |----------------|-----------|-------|
-| AI Chat | Done (LLaMA) | V1 uses OpenAI, V2 uses Ollama |
 | Conversation History | Done | V2 advantage |
 | AI Listing Generation | Done | - |
 | AI Bio Generation | Done | - |

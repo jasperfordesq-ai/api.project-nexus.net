@@ -51,7 +51,6 @@ Located in `src/Controllers/SuperAdmin/`
 | Notifications | 9 | NotificationDispatcher, PusherService, RealtimeService, WebPushService, FCMPushService, SocialNotificationService, OrgNotificationService, ProgressNotificationService, DigestService |
 | Utilities | 9 | UploadService, RedisCache, GeocodingService, LayoutHelper, LayoutValidator, CSSSanitizer, SchemaService, AuditLogService, SuperAdminAuditService |
 | Matching | 8 | MatchingService, SmartMatchingEngine, SmartMatchingAnalyticsService, MatchLearningService, SmartGroupMatchingService, GroupRecommendationEngine, SmartGroupRankingService, SmartSegmentSuggestionService |
-| AI | 7 | AIServiceFactory, AIProviderInterface, BaseProvider, OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider |
 | Authentication | 6 | TokenService, TotpService, WebAuthnChallengeStore, TwoFactorChallengeManager, SocialAuthService, CookieConsentService |
 | Email/Newsletter | 5 | NewsletterService, NewsletterTemplates, MailchimpService, EmailTemplateBuilder, DeliverabilityTrackingService |
 | Ranking/Scoring | 5 | RankingService, ListingRankingService, MemberRankingService, NexusScoreService, NexusScoreCacheService |
@@ -226,7 +225,6 @@ ai.php, pusher.php, config.php, ApiDeprecation.php
 
 **AI Providers:**
 - Factory: `src/Services/AI/AIServiceFactory.php`
-- Default: Gemini, fallbacks: OpenAI, Anthropic, Ollama
 
 ---
 

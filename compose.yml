@@ -36,11 +36,9 @@ services:
       - Jwt__Issuer=
       - Jwt__Audience=
       - Cors__AllowedOrigins__0=http://localhost:5080
-      - Cors__AllowedOrigins__1=http://localhost:5170
+      - Cors__AllowedOrigins__1=http://localhost:5173
       - Cors__AllowedOrigins__2=http://localhost:5180
       - Cors__AllowedOrigins__3=http://localhost:5190
-      - Cors__AllowedOrigins__4=http://localhost:5200
-      - Cors__AllowedOrigins__5=http://localhost:5173
       # Rate limiting (relaxed for development)
       - RateLimiting__Auth__PermitLimit=10
       - RateLimiting__Auth__WindowSeconds=60
@@ -58,13 +56,8 @@ services:
       - Fido2__ServerDomain=localhost
       - Fido2__ServerName=Project NEXUS
       - Fido2__Origins__0=http://localhost:5080
-      - Fido2__Origins__1=http://localhost:5170
+      - Fido2__Origins__1=http://localhost:5173
       - Fido2__Origins__2=http://localhost:5180
-      - Fido2__Origins__3=http://localhost:5173
-      # Llama AI service configuration
-      - LlamaService__BaseUrl=http://llama-service:11434
-      - LlamaService__Model=llama3.2:11b
-      - LlamaService__TimeoutSeconds=180
       - FileUpload__UploadsRoot=/app/uploads
     volumes:
       - nexus-backend-uploads:/app/uploads
@@ -73,8 +66,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      llama-service:
-        condition: service_started
     networks:
       - nexus-backend-net
     restart: unless-stopped
@@ -140,37 +131,6 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # AI Service (Ollama with Llama 3.2)
-  # ---------------------------------------------------------------------------
-  # NOTE: After starting, you must pull the model:
-  #   docker compose exec llama-service ollama pull llama3.2:3b
-  # ---------------------------------------------------------------------------
-  llama-service:
-    image: ollama/ollama:latest
-    container_name: nexus-backend-llama
-    # No port exposed — accessible only via Docker network (http://llama-service:11434)
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-    volumes:
-      - nexus-backend-llama-models:/root/.ollama
-    networks:
-      - nexus-backend-net
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
-      interval: 60s
-      timeout: 30s
-      start_period: 180s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 12G
-        reservations:
-          memory: 8G
-
-
-  # ---------------------------------------------------------------------------
   # React Frontend (apps/react-frontend) - V1 React SPA converted for V2 backend
   # Production domain: platform.project-nexus.net
   # ---------------------------------------------------------------------------
@@ -206,40 +166,6 @@ services:
 
 
   # ---------------------------------------------------------------------------
-  # GOV.IE Design System Frontend (Nexus Community - web-govie)
-  # NOTE: Not an official government service. Uses @govie-ds/* open-source
-  # packages as a UI foundation only. See apps/web-govie/BRANDING.md.
-  # ---------------------------------------------------------------------------
-  web-govie:
-    build:
-      context: ./apps/web-govie
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: http://localhost:5080
-        VITE_APP_NAME: Nexus Community
-        VITE_APP_VERSION: 0.1.0
-        VITE_TENANT_SLUG: acme
-    container_name: nexus-web-govie
-    ports:
-      - "5200:80"
-    networks:
-      - nexus-backend-net
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health || exit 1"]
-      interval: 30s
-      timeout: 5s
-      start_period: 15s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-        reservations:
-          memory: 128M
-
-
-  # ---------------------------------------------------------------------------
   # Admin Panel (Nexus Admin - apps/admin)
   # Refine v4 + Ant Design + Vite - migrated from htdocs/nexus-admin
   # ---------------------------------------------------------------------------
@@ -270,37 +196,6 @@ services:
         reservations:
           memory: 256M
 
-
-  # ---------------------------------------------------------------------------
-  # Modern Frontend (apps/web-modern) - Next.js + HeroUI
-  # Previously at htdocs/nexus-modern-frontend/
-  # ---------------------------------------------------------------------------
-  web-modern:
-    build:
-      context: ./apps/web-modern
-      dockerfile: Dockerfile
-      target: dev
-    container_name: nexus-frontend-dev
-    ports:
-      - "5170:3002"
-    volumes:
-      - ./apps/web-modern:/app
-      - /app/node_modules
-      - /app/.next
-    env_file:
-      - ./apps/web-modern/.env.docker
-    environment:
-      - NODE_ENV=development
-      - NEXT_PUBLIC_TENANT_ID=${NEXT_PUBLIC_TENANT_ID:-1}
-    networks:
-      - nexus-backend-net
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
 
   # ---------------------------------------------------------------------------
   # UK Frontend (apps/web-uk) - GOV.UK Design System (Express/Node)
@@ -345,7 +240,5 @@ volumes:
     name: nexus-backend-db-data
   nexus-backend-rabbitmq-data:
     name: nexus-backend-rabbitmq-data
-  nexus-backend-llama-models:
-    name: nexus-backend-llama-models
   nexus-backend-uploads:
     name: nexus-backend-uploads

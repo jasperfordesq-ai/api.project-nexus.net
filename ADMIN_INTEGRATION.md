@@ -665,7 +665,6 @@ GET /api/wallet/transactions?type=sent
 Docker is required for local development. Do NOT use `dotnet run` directly.
 
 ```powershell
-# Start the full stack (API + PostgreSQL + RabbitMQ + Ollama)
 cd c:\platforms\htdocs\asp.net-backend
 docker compose up -d
 

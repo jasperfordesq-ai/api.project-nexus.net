@@ -21,7 +21,6 @@
       "Bash(set \"Jwt__Secret=test-secret-for-migrations-only-not-production-use\")",
       "Bash(ADMIN_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidGVuYW50X2lkIjoiMSIsInJvbGUiOiJhZG1pbiIsImVtYWlsIjoiYWRtaW5AYWNtZS50ZXN0IiwiaWF0IjoxNzcwMTQ1OTQ5LCJleHAiOjE3NzAxNTMxNDl9.d0KsIfoGmw2Emat0xsmj-GdOJxQqyhJazkd3UrRrPaU\":*)",
       "Bash(dir /b \"c:\\\\xampp\\\\htdocs\\\\asp.net-backend\\\\*.yml\")",
-      "Bash(dir /b \"c:\\\\xampp\\\\htdocs\\\\nexus-modern-frontend\\\\*.yml\")",
       "Bash(dir /s /b \"c:\\\\xampp\\\\htdocs\\\\*docker-compose*\")",
       "Bash(docker ps:*)",
       "Bash(docker logs:*)",

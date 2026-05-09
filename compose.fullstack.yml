@@ -1,20 +1,17 @@
 # =============================================================================
 # Docker Compose - NEXUS Full Stack LOCAL Development
 # =============================================================================
-# Runs ALL services locally for development: Backend + Both Frontends
+# Runs supported local services for development: Backend + kept frontends
 #
 # Usage:
 #   docker compose -f compose.fullstack.yml up -d --build
 #
 # Services:
 #   - API:              http://localhost:5080  (+ Swagger at /swagger)
-#   - Modern Frontend:  http://localhost:5170  (Next.js + HeroUI)
+#   - React Frontend:   http://localhost:5173  (Vite React SPA)
 #   - UK Frontend:      http://localhost:5180  (Express + GOV.UK)
+#   - Admin Panel:      http://localhost:5190  (Vite React admin)
 #   - RabbitMQ UI:      http://localhost:15672 (guest/guest)
-#   - Ollama API:       http://localhost:11434
-#
-# After first start, pull the AI model:
-#   docker compose -f compose.fullstack.yml exec llama-service ollama pull llama3.2:3b
 # =============================================================================
 
 name: nexus-fullstack
@@ -37,8 +34,9 @@ services:
       - Jwt__Issuer=
       - Jwt__Audience=
       - Cors__AllowedOrigins__0=http://localhost:5080
-      - Cors__AllowedOrigins__1=http://localhost:5170
+      - Cors__AllowedOrigins__1=http://localhost:5173
       - Cors__AllowedOrigins__2=http://localhost:5180
+      - Cors__AllowedOrigins__3=http://localhost:5190
       - RateLimiting__Auth__PermitLimit=10
       - RateLimiting__Auth__WindowSeconds=60
       - RateLimiting__General__PermitLimit=200
@@ -50,9 +48,6 @@ services:
       - RabbitMq__VirtualHost=/
       - RabbitMq__ExchangeName=nexus.events
       - RabbitMq__Enabled=true
-      - LlamaService__BaseUrl=http://llama-service:11434
-      - LlamaService__Model=llama3.2:3b
-      - LlamaService__TimeoutSeconds=180
       - FileUpload__UploadsRoot=/app/uploads
     volumes:
       - nexus-fullstack-uploads:/app/uploads
@@ -61,8 +56,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      llama-service:
-        condition: service_started
     networks:
       - nexus-fullstack-net
     restart: unless-stopped
@@ -74,23 +67,25 @@ services:
       retries: 3
 
   # ---------------------------------------------------------------------------
-  # Modern Frontend (Next.js + HeroUI) - Development Mode
+  # React Frontend (apps/react-frontend)
   # ---------------------------------------------------------------------------
-  modern-frontend:
+  react-frontend:
     build:
-      context: ../nexus-modern-frontend
+      context: ./apps/react-frontend
       dockerfile: Dockerfile
       target: dev
-    container_name: nexus-fullstack-modern
+    container_name: nexus-fullstack-react
     ports:
-      - "5170:3002"
+      - "5173:5173"
+    volumes:
+      - ./apps/react-frontend:/app
+      - /app/node_modules
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:5080
-    volumes:
-      # Mount source for hot reload (exclude node_modules)
-      - ../nexus-modern-frontend/src:/app/src:ro
-      - ../nexus-modern-frontend/public:/app/public:ro
+      - DOCKER_ENV=true
+      - VITE_API_URL=http://api:8080
+      - VITE_API_BASE=/api
+      - VITE_DEFAULT_TENANT_ID=1
     depends_on:
       api:
         condition: service_healthy
@@ -99,25 +94,45 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # UK Frontend (Express + GOV.UK) - Development Mode
+  # Admin Panel (apps/admin)
   # ---------------------------------------------------------------------------
-  uk-frontend:
+  admin:
     build:
-      context: ../nexus-uk-frontend
+      context: ./apps/admin
+      dockerfile: Dockerfile
+      target: dev
+    container_name: nexus-fullstack-admin
+    ports:
+      - "5190:5190"
+    volumes:
+      - ./apps/admin:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:5080
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - nexus-fullstack-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # UK Frontend (apps/web-uk)
+  # ---------------------------------------------------------------------------
+  web-uk:
+    build:
+      context: ./apps/web-uk
       dockerfile: Dockerfile
       target: development
     container_name: nexus-fullstack-uk
     ports:
       - "5180:3001"
-    environment:
-      - NODE_ENV=development
-      - PORT=3001
-      - API_URL=http://api:8080
-      - SESSION_SECRET=dev-session-secret-not-for-production
     volumes:
-      # Mount source for hot reload
-      - ../nexus-uk-frontend/src:/app/src:ro
-      - ../nexus-uk-frontend/public:/app/public
+      - ./apps/web-uk:/app
+      - /app/node_modules
+    env_file:
+      - ./apps/web-uk/.env.docker
     depends_on:
       api:
         condition: service_healthy
@@ -169,34 +184,6 @@ services:
       timeout: 10s
       retries: 5
 
-  # ---------------------------------------------------------------------------
-  # AI Service (Ollama)
-  # ---------------------------------------------------------------------------
-  llama-service:
-    image: ollama/ollama:latest
-    container_name: nexus-fullstack-llama
-    ports:
-      - "11434:11434"
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-    volumes:
-      - nexus-fullstack-llama-models:/root/.ollama
-    networks:
-      - nexus-fullstack-net
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
-      interval: 30s
-      timeout: 10s
-      start_period: 120s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 8G
-        reservations:
-          memory: 4G
-
 # -----------------------------------------------------------------------------
 # Networks
 # -----------------------------------------------------------------------------
@@ -213,7 +200,5 @@ volumes:
     name: nexus-fullstack-db-data
   nexus-fullstack-rabbitmq-data:
     name: nexus-fullstack-rabbitmq-data
-  nexus-fullstack-llama-models:
-    name: nexus-fullstack-llama-models
   nexus-fullstack-uploads:
     name: nexus-fullstack-uploads

@@ -59,7 +59,7 @@ docker compose --profile prod up
 
 | Service | Host Port | Container Port | Notes |
 |---------|-----------|----------------|-------|
-| UK Frontend | 5180 | 3001 | Avoids conflict with modern frontend (5170) |
+| UK Frontend | 5180 | 3001 | Avoids conflict with React Frontend (5173) |
 
 ## API URL Rules
 

@@ -244,7 +244,6 @@ public class ThemeViewLocationExpander : IViewLocationExpander
 | Google Gemini | gemini-1.5-flash | Default (fast, cost-effective) |
 | OpenAI | gpt-4, gpt-3.5-turbo | Alternative (high quality) |
 | Anthropic | claude-3-sonnet | Alternative (reasoning) |
-| Ollama | llama3, mistral | Self-hosted (privacy) |
 
 ### Configuration (from `src/Config/ai.php`)
 
@@ -294,7 +293,6 @@ public class AiProviderFactory : IAiProviderFactory
             "gemini" => _services.GetRequiredService<GeminiProvider>(),
             "openai" => _services.GetRequiredService<OpenAiProvider>(),
             "anthropic" => _services.GetRequiredService<AnthropicProvider>(),
-            "ollama" => _services.GetRequiredService<OllamaProvider>(),
             _ => throw new ArgumentException($"Unknown provider: {name}")
         };
     }

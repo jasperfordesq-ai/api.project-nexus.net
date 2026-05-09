@@ -75,7 +75,7 @@ nexus-admin/
 | Service | Port |
 |---------|------|
 | Backend API | 5080 |
-| Modern Frontend | 5170 |
+| React Frontend | 5173 |
 | UK Frontend | 5180 |
 | **Admin Panel (dev)** | **5190** |
 | Admin Panel (prod) | 5191 |

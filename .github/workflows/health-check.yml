@@ -38,15 +38,15 @@ jobs:
             echo "::warning::UK frontend returned HTTP $HTTP_STATUS"
           fi
 
-      - name: Check Modern frontend
+      - name: Check React frontend
         id: app_health
         run: |
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --max-time 15 \
-            https://app.project-nexus.net || echo "000")
+            https://platform.project-nexus.net || echo "000")
           echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
           if [ "$HTTP_STATUS" != "200" ]; then
-            echo "::warning::Modern frontend returned HTTP $HTTP_STATUS"
+            echo "::warning::React frontend returned HTTP $HTTP_STATUS"
           fi
 
       - name: Create issue on failure
@@ -61,7 +61,7 @@ jobs:
               `**Time**: ${new Date().toISOString()}`,
               `**API Status**: HTTP ${process.env.API_STATUS}`,
               `**UK Frontend**: HTTP ${process.env.UK_STATUS}`,
-              `**Modern Frontend**: HTTP ${process.env.APP_STATUS}`,
+              `**React Frontend**: HTTP ${process.env.APP_STATUS}`,
               '',
               '### Recovery Steps',
               '1. SSH to production: `ssh -i key.pem azureuser@<server-ip>`',

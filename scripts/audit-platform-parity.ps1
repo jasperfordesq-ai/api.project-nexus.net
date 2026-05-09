@@ -258,40 +258,13 @@ function Convert-NextFileToRoute {
     return Normalize-RoutePath $route
 }
 
-function Export-NextRoutes {
-    param([string]$AppRoot, [string]$Destination)
-
-    if (-not (Test-Path -LiteralPath $AppRoot)) {
-        Write-Warning "Next app root not found: $AppRoot"
-        return @()
-    }
-
-    $rows = Get-ChildItem -LiteralPath $AppRoot -Recurse -File |
-        Where-Object {
-            $_.FullName -notmatch '\\(node_modules|\.next|\.claude|coverage)\\' -and
-            $_.Name -match '^(page|route)\.(tsx|ts|jsx|js)$'
-        } |
-        ForEach-Object {
-            [pscustomobject]@{
-                app = 'web-modern'
-                route = Convert-NextFileToRoute $AppRoot $_.FullName
-                file = $_.FullName
-            }
-        } |
-        Sort-Object route -Unique
-
-    $rows | Export-Csv -LiteralPath $Destination -NoTypeInformation
-    return $rows
-}
-
 function Export-FrontendApiStrings {
     param([string]$Root, [string]$Destination)
 
     $appSrcs = @(
         'apps\react-frontend\src',
-        'apps\web-modern\src',
         'apps\admin\src',
-        'apps\web-govie\src'
+        'apps\web-uk\src'
     )
 
     $pattern = '(?i)(?:/api|/v2)/[A-Za-z0-9_\-./:{}\[\]$?=&%]+'
@@ -518,27 +491,19 @@ function Export-LaravelToAspNetMatrix {
 }
 
 function Export-FrontendRouteParityMatrix {
-    param([object[]]$V15Routes, [object[]]$CurrentReactRoutes, [object[]]$WebModernRoutes, [string]$Destination)
+    param([object[]]$V15Routes, [object[]]$CurrentReactRoutes, [string]$Destination)
 
     $currentSet = @{}
     foreach ($route in $CurrentReactRoutes) {
         $currentSet[(Normalize-RoutePath $route.route)] = $true
     }
 
-    $modernSet = @{}
-    foreach ($route in $WebModernRoutes) {
-        $modernSet[(Normalize-RoutePath $route.route)] = $true
-    }
-
     $rows = New-Object System.Collections.Generic.List[object]
     foreach ($route in $V15Routes) {
         $path = Normalize-RoutePath $route.route
         $hasCurrent = $currentSet.ContainsKey($path)
-        $hasModern = $modernSet.ContainsKey($path)
         $status = if ($hasCurrent) {
             'current-react-exact'
-        } elseif ($hasModern) {
-            'web-modern-only'
         } else {
             'missing'
         }
@@ -546,7 +511,6 @@ function Export-FrontendRouteParityMatrix {
         $rows.Add([pscustomobject]@{
             v15_route = $path
             current_react_route = if ($hasCurrent) { $path } else { '' }
-            web_modern_route = if ($hasModern) { $path } else { '' }
             status = $status
         })
     }
@@ -561,12 +525,11 @@ $aspNetRoutes = Export-AspNetRoutes $TargetRoot (Join-Path $OutDir 'aspnet-route
 $laravelRoutes = Export-LaravelRoutes $SourceRoot (Join-Path $OutDir 'v15-laravel-routes.csv')
 $currentReactRoutes = Export-ReactRoutes (Join-Path $TargetRoot 'apps\react-frontend\src\App.tsx') (Join-Path $OutDir 'react-routes-current.csv') 'react-frontend-current'
 $v15ReactRoutes = Export-ReactRoutes (Join-Path $SourceRoot 'react-frontend\src\App.tsx') (Join-Path $OutDir 'react-routes-v15.csv') 'react-frontend-v15'
-$nextRoutes = Export-NextRoutes (Join-Path $TargetRoot 'apps\web-modern\src\app') (Join-Path $OutDir 'web-modern-routes.csv')
 $frontendApiStrings = Export-FrontendApiStrings $TargetRoot (Join-Path $OutDir 'frontend-api-strings.csv')
 $aspNetIndex = New-RouteIndex $aspNetRoutes
 $frontendApiMatrix = Export-FrontendApiMatrix $frontendApiStrings $aspNetIndex (Join-Path $OutDir 'frontend-api-to-aspnet-matrix.csv')
 $laravelMatrix = Export-LaravelToAspNetMatrix $laravelRoutes $aspNetIndex (Join-Path $OutDir 'v15-laravel-to-aspnet-matrix.csv')
-$routeParityMatrix = Export-FrontendRouteParityMatrix $v15ReactRoutes $currentReactRoutes $nextRoutes (Join-Path $OutDir 'frontend-route-parity-matrix.csv')
+$routeParityMatrix = Export-FrontendRouteParityMatrix $v15ReactRoutes $currentReactRoutes (Join-Path $OutDir 'frontend-route-parity-matrix.csv')
 
 $summary = [pscustomobject]@{
     generated_at = (Get-Date).ToString('o')
@@ -576,7 +539,6 @@ $summary = [pscustomobject]@{
     v15_laravel_routes = $laravelRoutes.Count
     current_react_routes = $currentReactRoutes.Count
     v15_react_routes = $v15ReactRoutes.Count
-    web_modern_routes = $nextRoutes.Count
     frontend_api_strings = $frontendApiStrings.Count
     frontend_api_missing = @($frontendApiMatrix | Where-Object { $_.status -eq 'missing' }).Count
     frontend_api_dynamic_unresolved = @($frontendApiMatrix | Where-Object { $_.status -eq 'dynamic-unresolved' }).Count

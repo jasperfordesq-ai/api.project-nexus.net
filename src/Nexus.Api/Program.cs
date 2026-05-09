@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Nexus.Api.Data;
 using Nexus.Api.Extensions;
-using Nexus.Api.HealthChecks;
 using Nexus.Api.Hubs;
 using Nexus.Api.Middleware;
 using Sentry.AspNetCore;
@@ -142,7 +141,7 @@ builder.Services.AddDbContext<NexusDbContext>((sp, options) =>
 // TenantContext - scoped per request
 builder.Services.AddScoped<TenantContext>();
 
-// Domain services, Meilisearch, Registration Policy Engine, AI, SignalR, Llama
+// Domain services, Meilisearch, Registration Policy Engine, AI, and SignalR
 builder.Services.AddNexusServices(builder.Configuration);
 
 // JWT Bearer authentication + AdminOnly authorization policy
@@ -153,7 +152,6 @@ var healthChecks = builder.Services.AddHealthChecks();
 var defaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!string.IsNullOrEmpty(defaultConnectionString))
     healthChecks.AddNpgSql(defaultConnectionString);
-healthChecks.AddCheck<LlamaHealthCheck>("llama", tags: new[] { "ready" });
 
 // CORS - Only browser origins, no internal services
 // Note: AllowCredentials() is NOT used since we use JWT Bearer tokens (not cookies)

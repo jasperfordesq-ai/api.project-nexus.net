@@ -1,7 +1,7 @@
 /* =============================================
    GLASS UTILITIES
    Reusable glassmorphism classes
-   Matches nexus-modern-frontend styling
+   Shared glassmorphism styling
    ============================================= */
 
 /* ─────────────────────────────────────────────
@@ -182,7 +182,7 @@
 
 /* ─────────────────────────────────────────────
    GLOW UTILITIES
-   Matches nexus-modern-frontend glow intensities
+   Shared glow intensities
    ───────────────────────────────────────────── */
 .glow-primary {
   box-shadow: 0 0 20px var(--glow-primary), 0 0 40px var(--glow-primary-subtle);

@@ -70,7 +70,6 @@ Plesk sits between the internet and your applications:
 │          │                     │                     │         │
 │          ▼                     ▼                     ▼         │
 │   ┌─────────────┐      ┌─────────────┐      ┌─────────────┐   │
-│   │ ASP.NET API │      │   Frontend  │      │   LLaMA     │   │
 │   │ port 5000   │      │   (static)  │      │  port 8000  │   │
 │   │ (internal)  │      │             │      │ (internal)  │   │
 │   └─────────────┘      └─────────────┘      └─────────────┘   │
@@ -98,7 +97,7 @@ Plesk sits between the internet and your applications:
 ┌───────────────────┐    ┌───────────────────┐    ┌───────────────────┐
 │ uk.project-nexus  │    │ ie.project-nexus  │    │ app.project-nexus │
 │      .net         │    │      .net         │    │      .net         │
-│  (GOV.UK style)   │    │  (GOV.IE style)   │    │  (Modern SPA)     │
+│  (GOV.UK style)   │    │  (React SPA)      │    │  (Admin app)      │
 └───────────────────┘    └───────────────────┘    └───────────────────┘
           │                           │                           │
           │         JavaScript fetch() calls to API               │
@@ -126,7 +125,6 @@ Plesk sits between the internet and your applications:
                     │                                   │
                     ▼                                   ▼
 ┌───────────────────────────────┐    ┌───────────────────────────────┐
-│      PostgreSQL Database      │    │    LLaMA AI Service           │
 │      localhost:5432           │    │    localhost:8000             │
 │      (internal only)          │    │    (internal only)            │
 └───────────────────────────────┘    └───────────────────────────────┘
@@ -138,8 +136,8 @@ Plesk sits between the internet and your applications:
 |--------|---------|-----------|
 | `api.project-nexus.net` | ASP.NET API | Plesk → localhost:5000 |
 | `uk.project-nexus.net` | UK frontend | Static files or Node.js |
-| `ie.project-nexus.net` | Ireland frontend | Static files or Node.js |
-| `app.project-nexus.net` | Modern SPA | Static files |
+| `platform.project-nexus.net` | React SPA | Static files |
+| `admin.project-nexus.net` | Admin panel | Static files |
 | `admin.project-nexus.net` | Admin dashboard | Static files or Node.js |
 
 ---
@@ -287,8 +285,7 @@ Your API's `appsettings.Production.json`:
   "Cors": {
     "AllowedOrigins": [
       "https://uk.project-nexus.net",
-      "https://ie.project-nexus.net",
-      "https://app.project-nexus.net",
+      "https://platform.project-nexus.net",
       "https://admin.project-nexus.net"
     ]
   }
@@ -348,7 +345,6 @@ const API_URL = 'https://api.project-nexus.net';
 ### 5. Adding Internal Services to CORS
 
 ```json
-// ❌ WRONG: LLaMA is internal, not browser-facing
 {
   "AllowedOrigins": [
     "https://uk.project-nexus.net",
@@ -396,8 +392,8 @@ If missing, install .NET 8 Runtime on your server.
 |--------|------|--------------|-----------------|
 | `api.project-nexus.net` | API | Nginx proxy | localhost:5000 |
 | `uk.project-nexus.net` | Frontend | Static hosting | (none) |
-| `ie.project-nexus.net` | Frontend | Static hosting | (none) |
-| `app.project-nexus.net` | Frontend | Static hosting | (none) |
+| `platform.project-nexus.net` | Frontend | Static hosting | (none) |
+| `admin.project-nexus.net` | Admin panel | Static hosting | (none) |
 | `admin.project-nexus.net` | Frontend | Static hosting | (none) |
 
 ---

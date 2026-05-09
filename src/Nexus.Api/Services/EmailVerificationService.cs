@@ -67,7 +67,7 @@ public class EmailVerificationService
         await _db.SaveChangesAsync();
 
         // Build verification URL and send email
-        var baseUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5170";
+        var baseUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:5173";
         var verifyUrl = $"{baseUrl}/verify-email?token={token}";
         var subject = "Verify your email address";
         var htmlBody = $"<h2>Email Verification</h2><p>Hi {user.FirstName},</p>"

@@ -41,8 +41,7 @@ https://api.project-nexus.net/health
 Visit each frontend URL in your browser:
 
 - https://uk.project-nexus.net
-- https://ie.project-nexus.net
-- https://app.project-nexus.net
+- https://platform.project-nexus.net
 
 **If the page loads:** The frontend is deployed correctly.
 

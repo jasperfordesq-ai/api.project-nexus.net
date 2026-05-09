@@ -82,7 +82,6 @@ Based on MIGRATION_GAP_MAP.md analysis of ~300 legacy features (updated 2026-03-
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| AI Features | ✅ Done (LLaMA) | 22 endpoints |
 | Advanced Gamification | ✅ Tested | GamificationV2Controller (10 endpoints) |
 | CRM | ✅ Tested | AdminCrmController (6 endpoints) |
 | Content Reports | ✅ Tested | ReportsController (10 endpoints) |

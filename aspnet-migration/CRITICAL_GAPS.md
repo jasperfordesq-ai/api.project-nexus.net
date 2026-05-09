@@ -441,7 +441,6 @@ public class AiServiceFactory : IAiServiceFactory
             "openai" => _serviceProvider.GetRequiredService<OpenAiService>(),
             "anthropic" => _serviceProvider.GetRequiredService<AnthropicService>(),
             "gemini" => _serviceProvider.GetRequiredService<GeminiService>(),
-            "ollama" => _serviceProvider.GetRequiredService<OllamaService>(),
             _ => throw new ArgumentException($"Unknown AI provider: {selectedProvider}")
         };
     }

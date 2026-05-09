@@ -52,13 +52,10 @@ if (-not $SkipBackend) {
 }
 
 if (-not $SkipFrontend) {
-    Invoke-Check 'web-modern tests' 'npm test -- --runInBand' (Join-Path $repoRoot 'apps\web-modern')
-    Invoke-Check 'web-modern build' 'npm run build' (Join-Path $repoRoot 'apps\web-modern')
-    Invoke-Check 'web-govie tests' 'npm test -- --run' (Join-Path $repoRoot 'apps\web-govie')
-    Invoke-Check 'web-govie build' 'npm run build' (Join-Path $repoRoot 'apps\web-govie')
     Invoke-Check 'admin tests' 'npm test' (Join-Path $repoRoot 'apps\admin')
     Invoke-Check 'admin build' 'npm run build' (Join-Path $repoRoot 'apps\admin')
     Invoke-Check 'web-uk brand check' 'npm run brand:check' (Join-Path $repoRoot 'apps\web-uk')
+    Invoke-Check 'react-frontend tests' 'npm test -- --run' (Join-Path $repoRoot 'apps\react-frontend')
 
     if ($FullFrontend) {
         Invoke-Check 'react-frontend typecheck' 'npx tsc -p tsconfig.json --noEmit --pretty false' (Join-Path $repoRoot 'apps\react-frontend')

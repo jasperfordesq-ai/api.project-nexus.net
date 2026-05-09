@@ -632,7 +632,7 @@ public class AuthController : ControllerBase
         _logger.LogInformation("Password reset requested for user {UserId}", user.Id);
 
         // Build reset URL from frontend base URL
-        var frontendUrl = _config["App:FrontendUrl"]?.TrimEnd('/') ?? "http://localhost:5170";
+        var frontendUrl = _config["App:FrontendUrl"]?.TrimEnd('/') ?? "http://localhost:5173";
         var resetUrl = $"{frontendUrl}/reset-password?token={Uri.EscapeDataString(resetToken)}";
 
         // Send the password reset email (fire-and-forget, don't block the response)

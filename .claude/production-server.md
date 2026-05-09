@@ -1,177 +1,48 @@
-# Production Server Connection Details
+# Production Server Notes
 
-## Development Workflow (MANDATORY)
+Production changes must be made from the local repository first, tested locally, and then deployed through Docker.
 
-**NEVER modify production directly. All changes go through local first.**
+## Supported Apps
 
-```
-Local Development (Docker) → Test Locally → Deploy to Production (Docker)
-```
+| App | Domain | Local service |
+|---|---|---|
+| API | https://api.project-nexus.net | api |
+| React frontend | https://platform.project-nexus.net | react-frontend |
+| UK frontend | https://uk.project-nexus.net | web-uk |
+| Admin panel | https://admin.project-nexus.net | admin |
 
-### Deployment Steps
-
-1. **Make changes locally** - Edit files in local repo
-2. **Test with Docker** - `docker compose up` and verify
-3. **Upload to production** - scp files to server
-4. **Rebuild on production** - `docker compose build && docker compose up -d`
-
-### Production Override Files
-
-Each project has a `compose.prod.yml` in the local repo. On production, copy it:
-
-```bash
-# Backend
-cp compose.prod.yml compose.override.yml
-
-# Modern Frontend
-cp compose.prod.yml compose.override.yml
-```
-
-These files contain production-specific CORS, ports, and API URLs.
-
-## SSH Connection
-
-Credentials stored in local password manager. NOT in this file.
-
-## Live URLs (All HTTPS with Let's Encrypt)
-
-| Service | URL | Status |
-|---------|-----|--------|
-| API | https://api.project-nexus.net | Live |
-| AI Service | https://ai.project-nexus.net | Live |
-| UK Frontend | https://uk.project-nexus.net | Live |
-| App Frontend | https://app.project-nexus.net | Live |
-| IE Frontend | https://ie.project-nexus.net | Ready — deploy nginx-configs/ie.project-nexus.conf |
-| Admin | https://admin.project-nexus.net | Ready — deploy nginx-configs/admin.project-nexus.conf |
-
-## Architecture
-
-```
-Internet → Plesk nginx (SSL termination) → Custom nginx configs → Docker containers
-```
-
-- **Plesk**: Manages domains, SSL certificates (Let's Encrypt)
-- **Custom nginx**: `/etc/nginx/conf.d/*.conf` - reverse proxy to Docker
-- **Docker**: Native docker compose (NOT Plesk Docker extension)
-
-## Deployment Locations
-
-> **MONOREPO (2026-03-08):** All frontends now inside backend repo. Stale paths:
-> - /opt/nexus-uk-frontend/ -> now /opt/nexus-backend/apps/web-uk/
-> - /opt/nexus-modern-frontend/ -> now /opt/nexus-backend/apps/web-modern/
-> Update nginx proxy configs on next deploy. See MONOREPO_MAP.md.
-
+## Repository Paths
 
 | Component | Path |
-|-----------|------|
-| Backend (API, DB, RabbitMQ, Ollama) | `/opt/nexus-backend/` |
-| UK Frontend | `/opt/nexus-uk-frontend/` |
-| Modern Frontend | `/opt/nexus-modern-frontend/` |
+|---|---|
+| Repository | `/opt/nexus-backend/` |
+| API | `/opt/nexus-backend/src/Nexus.Api/` |
+| React frontend | `/opt/nexus-backend/apps/react-frontend/` |
+| UK frontend | `/opt/nexus-backend/apps/web-uk/` |
+| Admin panel | `/opt/nexus-backend/apps/admin/` |
 | nginx configs | `/etc/nginx/conf.d/` |
-| SSL certificates | `/opt/psa/var/certificates/` |
 
-## Docker Container Management
+## Deployment
 
 ```bash
-# View all containers
-docker ps -a
-
-# Backend services
 cd /opt/nexus-backend
+cp compose.prod.yml compose.override.yml
+git pull origin main
+docker compose build
+docker compose up -d
 docker compose ps
-docker compose logs -f api
-docker compose restart api
-
-# UK Frontend
-cd /opt/nexus-uk-frontend
-docker compose ps
-docker compose logs -f
-docker compose restart
-
-# Modern Frontend
-cd /opt/nexus-modern-frontend
-docker compose ps
-docker compose logs -f
-docker compose restart
-
-# Pull AI model (if needed)
-docker compose -f /opt/nexus-backend/compose.yml exec llama-service ollama pull llama3.2:11b
+curl https://api.project-nexus.net/health
 ```
 
-## Environment Variables
+## Production Ports
 
-### Backend (.env at /opt/nexus-backend/.env)
-
-- `DB_PASSWORD` - PostgreSQL password
-- `JWT_SECRET` - JWT signing secret (must match PHP backend)
-- `RABBITMQ_PASSWORD` - RabbitMQ password
-
-### UK Frontend (.env at /opt/nexus-uk-frontend/.env)
-
-- `API_BASE_URL` - Internal Docker network API URL
-- `COOKIE_SECRET` - Session cookie secret
-
-### Modern Frontend (.env at /opt/nexus-modern-frontend/.env)
-
-- `NEXT_PUBLIC_API_URL` - Public API URL
-
-## nginx Config Files
-
-| Domain | Config File |
-|--------|-------------|
-| api.project-nexus.net | `/etc/nginx/conf.d/api.project-nexus.conf` |
-| ai.project-nexus.net | `/etc/nginx/conf.d/ai.project-nexus.conf` |
-| uk.project-nexus.net | `/etc/nginx/conf.d/uk.project-nexus.conf` |
-| app.project-nexus.net | `/etc/nginx/conf.d/app.project-nexus.conf` |
-| admin.project-nexus.net | `/etc/nginx/conf.d/admin.project-nexus.conf` (template: `nginx-configs/admin.project-nexus.conf`) |
-| ie.project-nexus.net | `/etc/nginx/conf.d/ie.project-nexus.conf` (template: `nginx-configs/ie.project-nexus.conf`) |
-
-## Port Mappings
-
-| Service | Internal Port | Exposed Port |
-|---------|---------------|--------------|
+| Service | Container port | Host binding |
+|---|---:|---|
 | API | 8080 | 127.0.0.1:5080 |
-| PostgreSQL | 5432 | internal only |
-| RabbitMQ AMQP | 5672 | internal only |
-| RabbitMQ Management | 15672 | internal only |
-| Ollama | 11434 | 127.0.0.1:11434 |
-| UK Frontend | 3000 | 127.0.0.1:3001 |
-| Modern Frontend | 3000 | 127.0.0.1:3002 |
-| Admin Panel | 80 | 127.0.0.1:5191 |
-| GOV.IE Frontend | 80 | 127.0.0.1:5200 |
+| React frontend | 80 | 127.0.0.1:5173 |
+| UK frontend | 3001 | 127.0.0.1:5180 |
+| Admin panel | 80 | 127.0.0.1:5191 |
 
-## Redeployment Commands
+## Configuration
 
-See deploy.sh in the repo root, or use `make deploy`.
-
-## SSL Certificate Renewal
-
-Managed automatically by Plesk Let's Encrypt extension.
-
-## Troubleshooting
-
-### Check nginx config
-
-```bash
-nginx -t
-systemctl reload nginx
-```
-
-### Check container logs
-
-```bash
-docker logs nexus-backend-api
-docker logs nexus-uk-frontend
-docker logs nexus-modern-frontend
-```
-
-### Check health endpoints
-
-```bash
-curl -k https://api.project-nexus.net/health
-curl -k https://ai.project-nexus.net/api/tags
-```
-
-## Deployment Date
-
-Deployed: February 2026
+Secrets stay on the production server and out of git. CORS and WebAuthn origins must be provided through environment variables or production overrides and must match the supported production domains.

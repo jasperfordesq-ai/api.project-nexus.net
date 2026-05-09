@@ -14,8 +14,6 @@ The production parity target for the V1 migration is `apps/react-frontend/`.
 
 - `https://platform.project-nexus.net/` serves the Vite React SPA from `apps/react-frontend/`.
 - The comprehensive admin panel is the embedded React admin app under `apps/react-frontend/src/admin/`, mounted at `/admin/*`.
-- `apps/web-modern/` is obsolete and should be retired. Do not build new parity work there.
-- `apps/web-govie/` is obsolete and should be retired. Do not build new parity work there.
 - `apps/web-uk/` remains out of scope for V1 parity work.
 - `apps/admin/` is not the primary parity admin panel unless explicitly requested; parity work should target the embedded admin in `apps/react-frontend/src/admin/`.
 
@@ -312,7 +310,7 @@ Keep it simple. Add abstractions only when proven necessary.
 ```yaml
 environment:
   - Cors__AllowedOrigins__0=http://localhost:5080
-  - Cors__AllowedOrigins__1=http://localhost:5170
+  - Cors__AllowedOrigins__1=http://localhost:5173
   - Cors__AllowedOrigins__2=http://localhost:5180
   - Cors__AllowedOrigins__3=http://localhost:5190
 ```
@@ -322,9 +320,9 @@ environment:
 Set via environment variables in your deployment:
 
 ```bash
-Cors__AllowedOrigins__0=https://uk.project-nexus.net
-Cors__AllowedOrigins__1=https://ie.project-nexus.net
-Cors__AllowedOrigins__2=https://app.project-nexus.net
+Cors__AllowedOrigins__0=https://platform.project-nexus.net
+Cors__AllowedOrigins__1=https://uk.project-nexus.net
+Cors__AllowedOrigins__2=https://admin.project-nexus.net
 ```
 
 Or configure in `appsettings.Production.json`:
@@ -333,8 +331,9 @@ Or configure in `appsettings.Production.json`:
 {
   "Cors": {
     "AllowedOrigins": [
+      "https://platform.project-nexus.net",
       "https://uk.project-nexus.net",
-      "https://ie.project-nexus.net"
+      "https://admin.project-nexus.net"
     ]
   }
 }
@@ -358,7 +357,7 @@ environment:
   - Fido2__ServerDomain=localhost
   - Fido2__ServerName=Project NEXUS
   - Fido2__Origins__0=http://localhost:5080
-  - Fido2__Origins__1=http://localhost:5170
+  - Fido2__Origins__1=http://localhost:5173
   - Fido2__Origins__2=http://localhost:5180
 ```
 
@@ -367,9 +366,9 @@ environment:
 ```bash
 Fido2__ServerDomain=project-nexus.net
 Fido2__ServerName=Project NEXUS
-Fido2__Origins__0=https://app.project-nexus.net
+Fido2__Origins__0=https://platform.project-nexus.net
 Fido2__Origins__1=https://uk.project-nexus.net
-Fido2__Origins__2=https://ie.project-nexus.net
+Fido2__Origins__2=https://admin.project-nexus.net
 ```
 
 **Rules:**
@@ -419,7 +418,6 @@ dotnet test
 
 **IMPORTANT: All services run in Docker. Do NOT use `dotnet run` or dev servers.**
 
-1. **Start the Docker stack** (API + PostgreSQL + RabbitMQ + Ollama)
 
    ```bash
    docker compose up -d
@@ -428,7 +426,6 @@ dotnet test
 2. **Pull the AI model** (first time only)
 
    ```bash
-   docker compose exec llama-service ollama pull llama3.2:3b
    ```
 
 3. **Services available at:**
@@ -440,10 +437,8 @@ dotnet test
    | Health | http://localhost:5080/health | Health check |
    | RabbitMQ | http://localhost:15672 | Message queue UI (guest/guest) |
    | React Frontend | http://localhost:5173 | Canonical V1 parity SPA + embedded admin (apps/react-frontend/) |
-   | Modern Frontend | http://localhost:5170 | OBSOLETE - retire; do not target parity work (apps/web-modern/) |
    | UK Frontend | http://localhost:5180 | GOV.UK Design System (apps/web-uk/) |
    | Admin Panel | http://localhost:5190 | Standalone admin app only; not primary parity target (apps/admin/) |
-   | GOV.IE Frontend | http://localhost:5200 | OBSOLETE - retire; do not target parity work (apps/web-govie/) |
 
 4. **Test credentials:**
    - `admin@acme.test` / `Test123!` / tenant_slug: `acme`
@@ -627,11 +622,7 @@ src/
       PasskeysController.cs
       RegistrationPolicyController.cs
     Clients/
-      ILlamaClient.cs
-      LlamaClient.cs
-      LlamaDtos.cs
     Configuration/
-      LlamaServiceOptions.cs
     Data/
       NexusDbContext.cs
       TenantContext.cs
@@ -644,7 +635,6 @@ src/
       IdentityVerificationEvent.cs
       RegistrationEnums.cs
     HealthChecks/
-      LlamaHealthCheck.cs
     Hubs/
       MessagesHub.cs
     Services/
@@ -736,7 +726,6 @@ cd apps/admin && docker compose up -d  # dev on :5190, prod on :5191
 - DOCKER_CONTRACT.md - Docker Compose specification
 
 ### AI & Security
-- AI_SERVICE_BOUNDARY.md - Security boundary for LLaMA AI service
 - AI_FEATURES_ROADMAP.md - AI feature roadmap
 - AI_FRONTEND_INTEGRATION.md - Frontend AI integration
 - AI_DEPLOYMENT_PLESK_UBUNTU.md - Ubuntu/Plesk AI deployment

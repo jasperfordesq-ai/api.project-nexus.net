@@ -25,7 +25,7 @@
 │   └─────────────────────┘    └─────────────────────┘                        │
 │                                                                              │
 │   ┌─────────────────────┐    ┌─────────────────────┐                        │
-│   │   GOV.UK Frontend   │    │   GOV.IE Frontend   │                        │
+│   │   GOV.UK Frontend   │    │   React Frontend   │                        │
 │   │   (Nunjucks/Node)   │    │   (React SPA)       │                        │
 │   │      :3000          │    │      :3001          │                        │
 │   └─────────────────────┘    └─────────────────────┘                        │
@@ -52,7 +52,7 @@
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   API Server    │    │  Frontend A     │    │  Frontend B     │
-│  (ASP.NET Core) │    │  (GOV.UK/Node)  │    │  (GOV.IE/React) │
+│  (ASP.NET Core) │    │  (GOV.UK/Node)  │    │  (React/React) │
 │   api.nexus.ie  │    │  civic.nexus.ie │    │  app.nexus.ie   │
 │   3x replicas   │    │   2x replicas   │    │   2x replicas   │
 └────────┬────────┘    └────────┬────────┘    └────────┬────────┘

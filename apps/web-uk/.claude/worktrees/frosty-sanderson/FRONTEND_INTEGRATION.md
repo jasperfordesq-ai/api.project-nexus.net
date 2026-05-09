@@ -46,10 +46,9 @@ These features are **NOT implemented**. Do not build frontend UI for:
 ### Key Principles
 
 1. **One API, Multiple Frontends** - There is a single ASP.NET Core API. All frontends connect to it via CORS-allowed origins.
-2. **Hostnames, Not Ports** - Different apps are distinguished by hostname (uk.project-nexus.net, ie.project-nexus.net), not by API ports.
+2. **Hostnames, Not Ports** - Different apps are distinguished by hostname (uk.project-nexus.net, platform.project-nexus.net), not by API ports.
 3. **Dev Ports are Local-Only** - Ports like 3000, 3001, 3002 are for local development convenience only. They have no architectural significance in production.
 4. **Mobile Apps Skip CORS** - Native mobile apps make direct HTTP requests (not browser requests), so they don't need CORS configuration.
-5. **Internal Services are Never Browser-Facing** - AI services (LLaMA) and other internal APIs communicate server-to-server. They are never exposed to browsers.
 
 ### System Diagram
 
@@ -63,7 +62,7 @@ These features are **NOT implemented**. Do not build frontend UI for:
           ▼                           ▼                           ▼
   https://uk.project       https://ie.project       https://app.project
      -nexus.net               -nexus.net               -nexus.net
-  (GOV.UK Frontend)         (GOV.IE Frontend)         (Modern Frontend)
+  (GOV.UK Frontend)         (React Frontend)         (React Frontend)
           │                           │                           │
           └───────────────────────────┼───────────────────────────┘
                                       │
@@ -94,7 +93,6 @@ These features are **NOT implemented**. Do not build frontend UI for:
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                       INTERNAL SERVICES                                 │
-│                    LLaMA AI Service (internal:8000)                     │
 │                    PostgreSQL Database (port 5432)                      │
 │                    (Never exposed to browsers)                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -114,18 +112,16 @@ These features are **NOT implemented**. Do not build frontend UI for:
 | App             | Dev URL                 | Production URL                     | CORS Required | Notes                         |
 |-----------------|-------------------------|------------------------------------|---------------|-------------------------------|
 | GOV.UK Frontend | `http://localhost:3000` | `https://uk.project-nexus.net`     | Yes           | UK government-style portal    |
-| GOV.IE Frontend | `http://localhost:3001` | `https://ie.project-nexus.net`     | Yes           | Irish government-style portal |
-| Modern Frontend | `http://localhost:3002` | `https://app.project-nexus.net`    | Yes           | Modern SPA interface          |
+| React Frontend | `http://localhost:3001` | `https://platform.project-nexus.net`     | Yes           | Irish government-style portal |
+| React Frontend | `http://localhost:3002` | `https://platform.project-nexus.net`    | Yes           | React SPA interface          |
 | Admin Dashboard | N/A                     | `https://admin.project-nexus.net`  | Yes           | Platform administration       |
 | Mobile App      | N/A                     | `https://api.project-nexus.net`    | **No**        | Native HTTP client            |
-| LLaMA Service   | `http://localhost:8000` | Internal only                      | **No**        | Server-to-server only         |
 
 ## Common Mistakes to Avoid
 
 ### 1. Do NOT add internal services to CORS
 
 ```json
-// WRONG - LLaMA is internal, never browser-facing
 {
   "Cors": {
     "AllowedOrigins": [
@@ -136,20 +132,19 @@ These features are **NOT implemented**. Do not build frontend UI for:
 }
 ```
 
-Internal services (LLaMA, databases, message queues) communicate server-to-server. They don't make browser requests, so CORS doesn't apply.
 
 ### 2. Do NOT create one API per frontend
 
 ```text
 ❌ WRONG:
   uk.project-nexus.net    → api-uk.project-nexus.net:5001
-  ie.project-nexus.net    → api-ie.project-nexus.net:5002
-  app.project-nexus.net   → api-app.project-nexus.net:5003
+  platform.project-nexus.net    → api-platform.project-nexus.net:5002
+  platform.project-nexus.net   → api-platform.project-nexus.net:5003
 
 ✅ CORRECT:
   uk.project-nexus.net    → api.project-nexus.net (CORS allows origin)
-  ie.project-nexus.net    → api.project-nexus.net (CORS allows origin)
-  app.project-nexus.net   → api.project-nexus.net (CORS allows origin)
+  platform.project-nexus.net    → api.project-nexus.net (CORS allows origin)
+  platform.project-nexus.net   → api.project-nexus.net (CORS allows origin)
 ```
 
 One API, multiple allowed origins. The API identifies the tenant from JWT claims, not from which frontend called it.
@@ -158,10 +153,8 @@ One API, multiple allowed origins. The API identifies the tenant from JWT claims
 
 ```text
 ❌ WRONG:
-  Browser → https://llama.project-nexus.net/chat  (direct browser access)
 
 ✅ CORRECT:
-  Browser → https://api.project-nexus.net/ai/chat → Internal LLaMA service
 ```
 
 AI services should be called by the API server, not by browsers. This allows for:
@@ -203,8 +196,8 @@ Both HTTP and HTTPS are included for local HTTPS dev servers (e.g., Vite with `-
   "Cors": {
     "AllowedOrigins": [
       "https://uk.project-nexus.net",
-      "https://ie.project-nexus.net",
-      "https://app.project-nexus.net",
+      "https://platform.project-nexus.net",
+      "https://platform.project-nexus.net",
       "https://admin.project-nexus.net"
     ]
   }
@@ -214,7 +207,6 @@ Both HTTP and HTTPS are included for local HTTPS dev servers (e.g., Vite with `-
 **Important notes:**
 
 - Mobile apps do NOT need CORS (they make direct HTTP requests, not browser requests)
-- LLaMA service does NOT need CORS (server-to-server calls from ASP.NET API)
 - Origins must be valid URLs (no trailing slash, no paths) - invalid entries are filtered out
 - In Production, at least one valid origin is required or the app won't start
 - In Development, missing origins only logs a warning (Swagger still works)

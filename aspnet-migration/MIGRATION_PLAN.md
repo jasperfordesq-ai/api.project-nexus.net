@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document outlines a comprehensive migration strategy from the existing PHP codebase to ASP.NET Core 8, supporting two separate frontends (GOV.UK and GOV.IE design systems) using the strangler fig pattern for incremental migration.
+This document outlines a comprehensive migration strategy from the existing PHP codebase to ASP.NET Core 8, supporting two separate frontends (GOV.UK and React and GOV.UK frontends) using the strangler fig pattern for incremental migration.
 
 ### Current State
 - **Platform**: PHP 8.1+ with custom MVC framework
@@ -16,7 +16,7 @@ This document outlines a comprehensive migration strategy from the existing PHP 
 - **Database**: Same MySQL 8.0 (shared during migration)
 - **ORM**: Entity Framework Core with Pomelo MySQL provider
 - **API**: Versioned REST API with full backward compatibility
-- **Design Systems**: GOV.UK Frontend + GOV.IE (via abstraction layer)
+- **Design Systems**: GOV.UK Frontend + React (via abstraction layer)
 
 ---
 
@@ -79,12 +79,12 @@ This document outlines a comprehensive migration strategy from the existing PHP 
 
 ---
 
-## Design System Strategy (GOV.UK & GOV.IE)
+## Design System Strategy (GOV.UK & React)
 
 ### Abstraction Layer
 
 ```csharp
-// IDesignSystem interface allows switching between GOV.UK and GOV.IE
+// IDesignSystem interface allows switching between GOV.UK and React
 public interface IDesignSystem
 {
     string SystemName { get; }
@@ -106,11 +106,11 @@ public class GovUKDesignSystem : IDesignSystem
     // ...
 }
 
-// GOV.IE Implementation (future)
-public class GovIEDesignSystem : IDesignSystem
+// React Implementation (future)
+public class reactDesignSystem : IDesignSystem
 {
-    public string SystemName => "GOV.IE";
-    public string CssFrameworkPath => "/govie-frontend/govie-frontend.min.css";
+    public string SystemName => "React";
+    public string CssFrameworkPath => "/react-frontend/react-frontend.min.css";
     // ...
 }
 ```
@@ -123,7 +123,7 @@ services.AddScoped<IDesignSystem>(sp =>
     var tenant = sp.GetRequiredService<ICurrentTenantService>();
     return tenant.DesignSystem switch
     {
-        "govie" => sp.GetRequiredService<GovIEDesignSystem>(),
+        "react" => sp.GetRequiredService<reactDesignSystem>(),
         _ => sp.GetRequiredService<GovUKDesignSystem>()
     };
 });

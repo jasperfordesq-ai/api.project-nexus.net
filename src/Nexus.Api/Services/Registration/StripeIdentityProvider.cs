@@ -19,7 +19,7 @@ namespace Nexus.Api.Services.Registration;
 /// {
 ///   "secret_key": "sk_live_...",
 ///   "webhook_secret": "whsec_...",
-///   "return_url": "https://app.project-nexus.net/registration/verify/complete"
+///   "return_url": "https://platform.project-nexus.net/registration/verify/complete"
 /// }
 /// </summary>
 public class StripeIdentityProvider : IIdentityVerificationProvider

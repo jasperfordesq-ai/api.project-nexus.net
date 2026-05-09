@@ -77,7 +77,6 @@ This document captures ALL items discovered during the exhaustive ninth audit of
 | Notifications | 9 | NotificationDispatcher, PusherService, RealtimeService, WebPushService, FCMPushService, SocialNotificationService, OrgNotificationService, ProgressNotificationService, DigestService |
 | Utilities | 9 | UploadService, RedisCache, GeocodingService, LayoutHelper, LayoutValidator, CSSSanitizer, SchemaService, AuditLogService, SuperAdminAuditService |
 | Matching | 8 | MatchingService, SmartMatchingEngine, SmartMatchingAnalyticsService, MatchLearningService, SmartGroupMatchingService, GroupRecommendationEngine, SmartGroupRankingService, SmartSegmentSuggestionService |
-| AI (subdirectory) | 7 | AIServiceFactory, AIProviderInterface, BaseProvider, OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider |
 | Authentication | 6 | TokenService, TotpService, WebAuthnChallengeStore, TwoFactorChallengeManager, SocialAuthService, CookieConsentService |
 | Email/Newsletter | 5 | NewsletterService, NewsletterTemplates, MailchimpService, EmailTemplateBuilder, DeliverabilityTrackingService |
 | Ranking/Scoring | 5 | RankingService, ListingRankingService, MemberRankingService, NexusScoreService, NexusScoreCacheService |
@@ -362,7 +361,6 @@ AdminAuth, ApiAuth, ApiErrorCodes, AudioUploader, Auth, Csrf, Database, Database
 | Google Gemini | AI (default) | Optional |
 | OpenAI | AI (alternative) | Optional |
 | Anthropic | AI (alternative) | Optional |
-| Ollama | AI (self-hosted) | Optional |
 | Gmail API | Email (primary) | Yes |
 | SMTP | Email (fallback) | Yes |
 | Mailchimp | Newsletter sync | Optional |
