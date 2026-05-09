@@ -201,12 +201,15 @@ builder.Services.AddCors(options =>
                 // - X-Requested-With: Required by SignalR client
                 // - X-SignalR-User-Agent: SignalR connection metadata
                 .WithHeaders("Authorization", "Content-Type", "X-Api-Version", "X-Tenant-ID", "X-Requested-With", "X-SignalR-User-Agent")
+                // The React frontend uses fetch with credentials: 'include' for some
+                // public endpoints (bootstrap, tenant chooser, menus) so the browser
+                // will attach session cookies if present. Spec-compliant because we
+                // use explicit origins (not "*").
+                .AllowCredentials()
                 // Performance: Cache preflight responses for 30 minutes
                 // Reduces OPTIONS requests from browsers
                 .SetPreflightMaxAge(TimeSpan.FromMinutes(30));
         }
-        // Note: Do NOT use AllowCredentials() with JWT Bearer auth
-        // AllowCredentials() is only needed for cookie-based auth
     });
 });
 
