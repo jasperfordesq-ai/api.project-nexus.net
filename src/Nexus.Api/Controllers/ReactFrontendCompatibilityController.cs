@@ -1605,41 +1605,10 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return Ok(new { success = true, queued = 0, message = "Inactive member notifications are not enabled in local compatibility mode." });
     }
 
-    [HttpGet("api/admin/safeguarding/dashboard")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> AdminSafeguardingDashboard()
-    {
-        var data = new
-        {
-            open_reports = await _db.ContentReports.CountAsync(r => r.Status == ReportStatus.Pending),
-            flagged_messages = await _db.Messages.CountAsync(m => m.Content != null && (m.Content.Contains("urgent") || m.Content.Contains("unsafe"))),
-            assignments = 0
-        };
-
-        return Ok(new { data });
-    }
-
-    [HttpGet("api/admin/safeguarding/flagged-messages")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> AdminSafeguardingFlaggedMessages()
-    {
-        var messages = await _db.Messages
-            .Include(m => m.Sender)
-            .Where(m => m.Content != null && (m.Content.Contains("urgent") || m.Content.Contains("unsafe")))
-            .OrderByDescending(m => m.CreatedAt)
-            .Take(100)
-            .Select(m => new { id = m.Id, sender_id = m.SenderId, sender_name = m.Sender == null ? null : (m.Sender.FirstName + " " + m.Sender.LastName).Trim(), content = m.Content, created_at = m.CreatedAt })
-            .ToListAsync();
-
-        return Ok(new { data = messages, messages });
-    }
-
-    [HttpGet("api/admin/safeguarding/assignments")]
-    [Authorize(Policy = "AdminOnly")]
-    public IActionResult AdminSafeguardingAssignments()
-    {
-        return Ok(new { data = Array.Empty<object>(), assignments = Array.Empty<object>() });
-    }
+    // Safeguarding admin routes (dashboard / flagged-messages / assignments) are
+    // owned by AdminSafeguardingController. Duplicate compat handlers were
+    // removed because they collided with the canonical implementations and
+    // produced AmbiguousMatchException -> 500 -> CORS errors at the browser.
 
     [HttpPost("api/feed/polls/{id:int}/vote")]
     [Authorize]

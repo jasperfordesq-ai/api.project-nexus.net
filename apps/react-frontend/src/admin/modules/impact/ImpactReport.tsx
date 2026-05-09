@@ -417,7 +417,7 @@ export function ImpactReport() {
           Social Return on Investment
         </h2>
         <p className="text-sm text-default-500 mt-0.5">
-          Based on {data?.sroi.period_months ?? months} month period
+          Based on {data?.sroi?.period_months ?? months} month period
         </p>
       </div>
 
