@@ -545,13 +545,42 @@ public class PushNotificationService
             MarkPushFailed(log, "vapid_public_key_missing");
             return false;
         }
+        var vapidPrivate = _configuration["Vapid:PrivateKey"];
+        var vapidSubject = _configuration["Vapid:Subject"] ?? "mailto:noreply@project-nexus.net";
 
         using var request = new HttpRequestMessage(HttpMethod.Post, subscriptionEndpoint);
         // No payload — service worker pulls payload via a separate authenticated fetch.
         request.Content = new ByteArrayContent(Array.Empty<byte>());
         request.Headers.TryAddWithoutValidation("TTL", "86400");
-        request.Headers.TryAddWithoutValidation("Crypto-Key", $"p256ecdsa={vapidPublic}");
         request.Headers.TryAddWithoutValidation("Urgency", "normal");
+
+        // Phase 73 — RFC 8292 VAPID auth. If private key is configured, sign
+        // an ES256 JWT and send the proper Authorization header. Otherwise
+        // fall back to the legacy Crypto-Key-only header (browsers will still
+        // route the push but stricter push services may reject it).
+        if (!string.IsNullOrWhiteSpace(vapidPrivate))
+        {
+            try
+            {
+                var audience = VapidJwtSigner.DeriveAudience(subscriptionEndpoint);
+                var authHeader = VapidJwtSigner.BuildAuthorizationHeader(
+                    audience: audience,
+                    subject: vapidSubject,
+                    privateKeyBase64Url: vapidPrivate,
+                    publicKeyBase64Url: vapidPublic);
+                request.Headers.TryAddWithoutValidation("Authorization", authHeader);
+            }
+            catch (Exception ex) when (ex is ArgumentException or FormatException or System.Security.Cryptography.CryptographicException)
+            {
+                _logger.LogWarning(ex, "VAPID JWT signing failed; falling back to Crypto-Key header only");
+                request.Headers.TryAddWithoutValidation("Crypto-Key", $"p256ecdsa={vapidPublic}");
+            }
+        }
+        else
+        {
+            // Legacy compatibility — VAPID private key not configured.
+            request.Headers.TryAddWithoutValidation("Crypto-Key", $"p256ecdsa={vapidPublic}");
+        }
 
         var client = _httpClientFactory!.CreateClient("NexusPushProvider");
         using var response = await client.SendAsync(request, ct);
