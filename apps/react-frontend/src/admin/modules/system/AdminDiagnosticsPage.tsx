@@ -19,7 +19,7 @@ import {
   Card, CardBody, CardHeader, Chip, Button, Spinner,
   Table, TableBody, TableCell, TableColumn, TableHeader, TableRow,
 } from '@heroui/react';
-import { Activity, RefreshCw, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Activity, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Zap, Bug } from 'lucide-react';
 import { usePageTitle } from '@/hooks';
 import { useToast } from '@/contexts';
 import { api } from '@/lib/api';
@@ -108,11 +108,35 @@ function VerdictBanner({ verdict }: { verdict: Verdict }) {
   );
 }
 
+interface ProbeResult {
+  name: string;
+  ok: boolean;
+  latency_ms: number;
+  error: string | null;
+}
+
+interface ProbeResponse {
+  generated_at: string;
+  probes: ProbeResult[];
+}
+
+interface SentryTestResponse {
+  ok: boolean;
+  event_id?: string;
+  message?: string;
+  error?: string;
+  hint?: string;
+}
+
 export default function AdminDiagnosticsPage() {
   usePageTitle('Admin - System Diagnostics');
   const toast = useToast();
   const [data, setData] = useState<Diagnostics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [probing, setProbing] = useState(false);
+  const [probeResults, setProbeResults] = useState<ProbeResult[] | null>(null);
+  const [sentryTesting, setSentryTesting] = useState(false);
+  const [sentryResult, setSentryResult] = useState<SentryTestResponse | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +145,39 @@ export default function AdminDiagnosticsPage() {
       if (res.success && res.data) setData((res.data as unknown) as Diagnostics);
     } catch { toast.error('Failed to load diagnostics'); }
     finally { setLoading(false); }
+  }, [toast]);
+
+  const runProbes = useCallback(async () => {
+    setProbing(true);
+    setProbeResults(null);
+    try {
+      const res = await api.get<ProbeResponse>('/v2/admin/system/diagnostics/probe');
+      if (res.success && res.data) {
+        const payload = (res.data as unknown) as ProbeResponse;
+        setProbeResults(payload.probes);
+        const failed = payload.probes.filter((p) => !p.ok).length;
+        if (failed === 0) toast.success(`All ${payload.probes.length} probes passed`);
+        else toast.error(`${failed} of ${payload.probes.length} probes failed`);
+      }
+    } catch { toast.error('Probe run failed'); }
+    finally { setProbing(false); }
+  }, [toast]);
+
+  const testSentry = useCallback(async () => {
+    setSentryTesting(true);
+    setSentryResult(null);
+    try {
+      const res = await api.post<SentryTestResponse>(
+        `/v2/admin/system/diagnostics/sentry-test?message=${encodeURIComponent('manual deploy verification ' + new Date().toISOString())}`,
+        {});
+      if (res.success && res.data) {
+        const payload = (res.data as unknown) as SentryTestResponse;
+        setSentryResult(payload);
+        if (payload.ok) toast.success('Sentry event sent — check your project dashboard');
+        else toast.error(payload.error ?? 'Sentry test failed');
+      }
+    } catch { toast.error('Sentry test failed'); }
+    finally { setSentryTesting(false); }
   }, [toast]);
 
   useEffect(() => {
@@ -154,10 +211,80 @@ export default function AdminDiagnosticsPage() {
         title="System Diagnostics"
         description="Comprehensive operational status. Auto-refreshes every 30 seconds."
         actions={
-          <Button variant="flat" size="sm" startContent={<RefreshCw size={16} />}
-            onPress={load} isLoading={loading}>Refresh</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="flat" size="sm" startContent={<Zap size={16} />}
+              onPress={runProbes} isLoading={probing}
+              title="Live round-trip probes against Stripe / AI / SendGrid / DB">
+              Run live probes
+            </Button>
+            <Button variant="flat" size="sm" startContent={<Bug size={16} />}
+              onPress={testSentry} isLoading={sentryTesting}
+              title="Fire a controlled test exception to verify Sentry integration">
+              Test Sentry
+            </Button>
+            <Button variant="flat" size="sm" startContent={<RefreshCw size={16} />}
+              onPress={load} isLoading={loading}>Refresh</Button>
+          </div>
         }
       />
+
+      {/* Live probe results */}
+      {probeResults && (
+        <Card shadow="sm" className="mb-4">
+          <CardHeader className="flex items-center gap-2">
+            <Zap size={18} className="text-warning" />
+            <h3 className="text-lg font-semibold">Live probe results</h3>
+          </CardHeader>
+          <CardBody>
+            <Table aria-label="Probe results" isStriped>
+              <TableHeader>
+                <TableColumn>Probe</TableColumn>
+                <TableColumn>Status</TableColumn>
+                <TableColumn>Latency</TableColumn>
+                <TableColumn>Error</TableColumn>
+              </TableHeader>
+              <TableBody emptyContent="No probes run">
+                {probeResults.map((p) => (
+                  <TableRow key={p.name}>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell>
+                      <Chip color={p.ok ? 'success' : 'danger'} variant="flat" size="sm">
+                        {p.ok ? 'OK' : 'FAIL'}
+                      </Chip>
+                    </TableCell>
+                    <TableCell className="text-xs">{p.latency_ms}ms</TableCell>
+                    <TableCell className="text-xs text-danger max-w-md truncate">{p.error ?? '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Sentry test result */}
+      {sentryResult && (
+        <Card shadow="sm" className={`mb-4 ${sentryResult.ok ? 'border-success' : 'border-danger'} border`}>
+          <CardHeader className="flex items-center gap-2">
+            <Bug size={18} className={sentryResult.ok ? 'text-success' : 'text-danger'} />
+            <h3 className="text-lg font-semibold">Sentry test {sentryResult.ok ? 'sent' : 'failed'}</h3>
+          </CardHeader>
+          <CardBody className="text-sm space-y-2">
+            {sentryResult.ok ? (
+              <>
+                <p>Event id: <code className="text-xs">{sentryResult.event_id}</code></p>
+                <p>{sentryResult.message}</p>
+                <p className="text-default-500 text-xs">{sentryResult.hint}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-danger">{sentryResult.error}</p>
+                {sentryResult.hint && <p className="text-default-500 text-xs">{sentryResult.hint}</p>}
+              </>
+            )}
+          </CardBody>
+        </Card>
+      )}
 
       <VerdictBanner verdict={data.verdict} />
 

@@ -144,4 +144,42 @@ public class RequestCorrelationAndDiagnosticsTests : IntegrationTestBase
         entry.Status.Should().Be("idle");
         entry.ConsecutiveFailures.Should().Be(0, "success must reset the consecutive failure counter");
     }
+
+    // ─── /diagnostics/probe + /sentry-test ─────────────────────────────────
+
+    [Fact]
+    public async Task Probe_AsAdmin_ReturnsResultPerExternalService()
+    {
+        await AuthenticateAsAdminAsync();
+        var resp = await Client.GetAsync("/api/admin/system/diagnostics/probe");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadAsStringAsync();
+        body.Should().Contain("\"probes\"");
+        // Each probe row carries the exact contract the page renders.
+        body.Should().Contain("\"name\":\"database\"");
+        body.Should().Contain("\"name\":\"stripe\"");
+        body.Should().Contain("\"name\":\"ai_active_provider\"");
+        body.Should().Contain("\"name\":\"sendgrid_reachable\"");
+        body.Should().Contain("\"latency_ms\"");
+    }
+
+    [Fact]
+    public async Task Probe_Member_Returns403()
+    {
+        await AuthenticateAsMemberAsync();
+        var resp = await Client.GetAsync("/api/admin/system/diagnostics/probe");
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task SentryTest_AsAdminWithoutDsn_Returns400WithGuidance()
+    {
+        // Test fixture doesn't configure Sentry:Dsn → endpoint should refuse
+        // gracefully with a hint rather than silently no-op.
+        await AuthenticateAsAdminAsync();
+        var resp = await Client.PostAsync("/api/admin/system/diagnostics/sentry-test", new StringContent(""));
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await resp.Content.ReadAsStringAsync();
+        body.Should().Contain("sentry_dsn_not_configured");
+    }
 }
