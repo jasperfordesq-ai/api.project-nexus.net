@@ -292,6 +292,12 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 // Sentry performance tracing
 app.UseSentryTracing();
 
+// Request correlation — runs FIRST in our pipeline (after Sentry tracing) so
+// every log entry + every error response carries the same request_id.
+// Reads X-Request-Id / X-Correlation-Id from upstream and falls back to a
+// fresh GUID. Always sets the same id on the response header.
+app.UseRequestCorrelation();
+
 // Global exception handling - MUST be early in pipeline
 // In Development: returns full exception details
 // In Production: returns generic error message (no sensitive details)

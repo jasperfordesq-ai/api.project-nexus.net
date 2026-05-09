@@ -81,7 +81,7 @@ public class ExchangeConcurrencyTests : IntegrationTestBase
             TenantId = TestData.Tenant1.Id,
             ListingId = listing.Id,
             ListingOwnerId = TestData.AdminUser.Id,
-            RequesterId = TestData.MemberUser.Id,
+            InitiatorId = TestData.MemberUser.Id,
             ReceiverId = TestData.MemberUser.Id,
             ProviderId = TestData.AdminUser.Id,
             AgreedHours = agreedHours,
