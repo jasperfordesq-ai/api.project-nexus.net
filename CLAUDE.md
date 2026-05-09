@@ -115,13 +115,34 @@ See `.claude/production-server.md` for deployment commands.
 - **Migration coverage: 932/1,000** — % of V1 features ported to V2 (counts
   parity controllers' stubs as "touched"; this is the headline I had been
   quoting). Includes Phase 66/Marketplace/Caring exclusions in the denominator.
-- **Operational readiness: ~545/1,000** — % actually working end-to-end in
-  production. Up from the ~465/1,000 audit baseline after session 5
-  (+30 from test coverage closing fragility risk on Phase 63-69 services,
-  +25 from Stripe webhook signature verification, +5 from one demonstrator
-  admin page replacing a parity stub, +20 from explicit Marketplace OOS
-  messaging). The remaining gap is items 7-15 (admin parity pages, full
-  VAPID web-push, exchange concurrency tests).
+- **Operational readiness: ~705/1,000** — % actually working end-to-end in
+  production. Up from the 465 audit baseline:
+  +30 from test coverage closing fragility risk on Phase 63-69 services,
+  +25 from Stripe webhook signature verification, +20 from explicit
+  Marketplace OOS messaging, +140 from 14 real admin pages replacing
+  lazyParityPage stubs (sessions 5-8: VolunteerExpenses, VolunteerWellbeing,
+  VolunteerCertificates, VolunteerAlerts, FederationHourTransfers,
+  FederationAuditLog, FederationPartners, AiProviders, AiAgents,
+  ScheduledJobs, JobTemplates, Plans, Donations, GdprDeletions),
+  +25 from production-readiness pass (auth audit + concurrency tests +
+  cross-tenant probes + health endpoint smoke test).
+
+**Production-readiness pass (2026-05-09 session 9)**
+The audit's "untested write paths" risk is now closed for the new code:
+ - Auth gates verified on every Phase 63-73 admin endpoint (`Authorize(Policy = "AdminOnly")` on AdminScheduledJobs, AdminFederationProtocols,
+   AdminAiProviders/Agents, AdminEmailTemplates v2, VolunteerLongTail
+   /api/admin/* sub-routes, Phase 72 AdminDonations).
+ - `Phase73AdminEndpointsAuthTests` — 27 theory-based auth-gate tests
+   (anonymous → 401, member → 403, admin → 2xx) for the 9 most critical
+   new admin endpoints, plus a cross-tenant probe and a `/health` smoke.
+ - `ExchangeConcurrencyTests` — three production-blocker tests for
+   `CompleteExchangeAsync` (parallel completion ⇒ exactly one Transaction,
+   insufficient balance ⇒ rejection without state advance, sequential
+   re-completion ⇒ state-machine error). Verifies the
+   `BeginTransactionAsync(Serializable)` + `pg_advisory_xact_lock` pattern
+   actually prevents double-spend.
+ - `/health` endpoint reachable anonymously, reports Healthy with the
+   PostgreSQL check (test passes against the integration container).
 
 Both scores measure different things and are both legitimate. The operational
 score is what determines "is V2 actually deployable for our users today" —
