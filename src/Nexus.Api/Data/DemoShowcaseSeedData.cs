@@ -45,7 +45,6 @@ public static class DemoShowcaseSeedData
             t => t.Slug == MainTenantSlug,
             () => new Tenant
             {
-                Id = MainTenantId,
                 Slug = MainTenantSlug,
                 Name = "ACME Community Timebank",
                 Tagline = "A full Project NEXUS V2 demo tenant",

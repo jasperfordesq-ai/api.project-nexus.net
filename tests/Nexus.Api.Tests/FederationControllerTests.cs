@@ -7,6 +7,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -96,6 +100,21 @@ public class FederationControllerTests : IntegrationTestBase
     {
         // Arrange
         await AuthenticateAsAdminAsync();
+
+        // The shared TestDataSeeder pre-seeds an Active Tenant1↔Tenant2 partnership
+        // for other federation tests; clear it for this case so the request can succeed.
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var existing = await db.Set<FederationPartner>()
+                .IgnoreQueryFilters()
+                .Where(fp =>
+                    (fp.TenantId == TestData.Tenant1.Id && fp.PartnerTenantId == TestData.Tenant2.Id) ||
+                    (fp.TenantId == TestData.Tenant2.Id && fp.PartnerTenantId == TestData.Tenant1.Id))
+                .ToListAsync();
+            db.Set<FederationPartner>().RemoveRange(existing);
+            await db.SaveChangesAsync();
+        }
 
         // Act
         var response = await Client.PostAsJsonAsync("/api/admin/federation/partners", new
