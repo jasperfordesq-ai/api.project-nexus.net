@@ -1485,10 +1485,14 @@ public class CompatibilityController : ControllerBase
 
         if (tenant == null)
         {
-            // Fall back to first active non-master tenant
+            // Fall back to the first active tenant. Including Id=1 here is
+            // important: in single-tenant deployments and on platform.* the
+            // master tenant is the default home, and excluding it leaves the
+            // bootstrap returning the wrong tenant (or 404) for super-admins
+            // who live there.
             tenant = await _db.Tenants
                 .IgnoreQueryFilters()
-                .Where(t => t.IsActive && t.Id != 1)
+                .Where(t => t.IsActive)
                 .OrderBy(t => t.Id)
                 .FirstOrDefaultAsync();
         }
