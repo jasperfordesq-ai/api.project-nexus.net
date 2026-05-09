@@ -98,7 +98,6 @@ import {
   ShoppingBag,
   Store,
   Languages,
-  Landmark,
   X,
   BellRing,
   type LucideIcon,

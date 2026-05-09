@@ -12,7 +12,7 @@
  * /broker/* URLs inside the BrokerLayout shell.
  */
 
-import { lazy, Suspense, type ComponentType } from 'react';
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AdminRoute } from '@/admin/AdminRoute';
 import { BrokerLayout } from './BrokerLayout';

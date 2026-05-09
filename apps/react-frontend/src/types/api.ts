@@ -1047,6 +1047,12 @@ export interface TenantFeatures {
   group_exchanges: boolean;
   search: boolean;
   ai_chat: boolean;
+  member_premium: boolean;
+  ai_agents: boolean;
+  marketplace: boolean;
+  local_advertising: boolean;
+  newsletter: boolean;
+  partner_api: boolean;
 }
 
 export interface TenantModules {
