@@ -103,7 +103,7 @@ export default function AdminGdprDeletionsPage() {
         <CardHeader className="flex items-center gap-2">
           <ShieldOff size={18} className="text-warning" />
           <h3 className="text-lg font-semibold">
-            {filter} ({data?.pagination.total ?? 0})
+            {filter} ({data?.pagination?.total ?? 0})
           </h3>
         </CardHeader>
         <CardBody>

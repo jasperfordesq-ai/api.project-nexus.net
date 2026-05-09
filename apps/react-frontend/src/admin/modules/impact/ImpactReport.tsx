@@ -167,11 +167,15 @@ export function ImpactReport() {
     setLoading(true);
     try {
       const res = await api.get(`/v2/admin/impact-report?months=${months}`);
-      if (res.data) {
-        const reportData = res.data as ImpactReportData;
-        setData(reportData);
+      const reportData = res.data as Partial<ImpactReportData> | undefined;
+      // Backend may return a stub shape ({data:[],items:[]}) when the canonical
+      // endpoint isn't implemented. Only treat as real when sroi+config exist.
+      if (reportData && reportData.sroi && reportData.config) {
+        setData(reportData as ImpactReportData);
         setHourlyValue(String(reportData.config.hourly_value));
         setSocialMultiplier(String(reportData.config.social_multiplier));
+      } else {
+        setData(null);
       }
     } catch {
       // Silently handle — cards will show loading/empty state
@@ -465,7 +469,7 @@ export function ImpactReport() {
                 <div className="mt-1 h-6 w-16 animate-pulse rounded bg-default-200" />
               ) : (
                 <p className="text-xl font-bold text-foreground">
-                  {data?.sroi.total_transactions.toLocaleString() ?? '\u2014'}
+                  {data?.sroi?.total_transactions.toLocaleString() ?? '\u2014'}
                 </p>
               )}
             </div>
@@ -482,7 +486,7 @@ export function ImpactReport() {
                 <div className="mt-1 h-6 w-16 animate-pulse rounded bg-default-200" />
               ) : (
                 <p className="text-xl font-bold text-foreground">
-                  {data?.sroi.unique_givers.toLocaleString() ?? '\u2014'}
+                  {data?.sroi?.unique_givers.toLocaleString() ?? '\u2014'}
                 </p>
               )}
             </div>
@@ -499,7 +503,7 @@ export function ImpactReport() {
                 <div className="mt-1 h-6 w-16 animate-pulse rounded bg-default-200" />
               ) : (
                 <p className="text-xl font-bold text-foreground">
-                  {data?.sroi.unique_receivers.toLocaleString() ?? '\u2014'}
+                  {data?.sroi?.unique_receivers.toLocaleString() ?? '\u2014'}
                 </p>
               )}
             </div>
@@ -563,7 +567,7 @@ export function ImpactReport() {
               <div className="mt-1 h-7 w-20 animate-pulse rounded bg-default-200" />
             ) : (
               <p className="text-2xl font-bold text-foreground">
-                {data?.health.total_users.toLocaleString() ?? '\u2014'}
+                {data?.health?.total_users.toLocaleString() ?? '\u2014'}
               </p>
             )}
           </CardBody>
@@ -575,7 +579,7 @@ export function ImpactReport() {
               <div className="mt-1 h-7 w-20 animate-pulse rounded bg-default-200" />
             ) : (
               <p className="text-2xl font-bold text-foreground">
-                {data?.health.active_users_90d.toLocaleString() ?? '\u2014'}
+                {data?.health?.active_users_90d.toLocaleString() ?? '\u2014'}
               </p>
             )}
           </CardBody>
@@ -587,7 +591,7 @@ export function ImpactReport() {
               <div className="mt-1 h-7 w-20 animate-pulse rounded bg-default-200" />
             ) : (
               <p className="text-2xl font-bold text-foreground">
-                {data?.health.new_users_30d.toLocaleString() ?? '\u2014'}
+                {data?.health?.new_users_30d.toLocaleString() ?? '\u2014'}
               </p>
             )}
           </CardBody>
@@ -599,11 +603,11 @@ export function ImpactReport() {
               <div className="mt-1 h-7 w-20 animate-pulse rounded bg-default-200" />
             ) : (
               <p className="text-2xl font-bold text-foreground">
-                {data?.health.network_density.toFixed(4) ?? '\u2014'}
+                {data?.health?.network_density.toFixed(4) ?? '\u2014'}
               </p>
             )}
             <p className="text-xs text-default-400 mt-1">
-              {data?.health.total_connections.toLocaleString() ?? 0} connections
+              {data?.health?.total_connections.toLocaleString() ?? 0} connections
             </p>
           </CardBody>
         </Card>

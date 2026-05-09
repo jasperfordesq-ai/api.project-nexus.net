@@ -222,13 +222,17 @@ export function SocialValuePage() {
       if (dateTo) params.append('date_to', dateTo);
       const qs = params.toString();
       const res = await api.get(`/v2/admin/reports/social-value${qs ? `?${qs}` : ''}`);
-      if (res.data) {
-        const d = res.data as SocialValueData;
-        setData(d);
+      // Backend may return a stub shape ({data:[],items:[]}) when the canonical
+      // endpoint isn't implemented; only treat it as real data when config exists.
+      const d = res.data as Partial<SocialValueData> | undefined;
+      if (d && d.config) {
+        setData(d as SocialValueData);
         setConfigCurrency(d.config.currency);
         setConfigHourValue(String(d.config.hour_value));
         setConfigMultiplier(String(d.config.social_multiplier));
         setConfigPeriod(d.config.reporting_period);
+      } else {
+        setData(null);
       }
     } catch {
       toast.error('Failed to load social value data');
@@ -264,7 +268,7 @@ export function SocialValuePage() {
     label: formatMonth(entry.month),
   }));
 
-  const currency = data?.config.currency || 'GBP';
+  const currency = data?.config?.currency || 'GBP';
 
   return (
     <div>

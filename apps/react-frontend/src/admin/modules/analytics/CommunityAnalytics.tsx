@@ -220,14 +220,14 @@ export function CommunityAnalytics() {
         />
         <StatCard
           label="Active Traders (30d)"
-          value={data?.overview.active_traders_30d ?? '—'}
+          value={data?.overview?.active_traders_30d ?? '—'}
           icon={Users}
           color="primary"
           loading={loading}
         />
         <StatCard
           label="New Users (30d)"
-          value={data?.overview.new_users_30d ?? '—'}
+          value={data?.overview?.new_users_30d ?? '—'}
           icon={TrendingUp}
           color="success"
           loading={loading}
