@@ -1654,35 +1654,243 @@ public class AdminCompatibilityController : ControllerBase
     [HttpGet("community-analytics")]
     public async Task<IActionResult> GetCommunityAnalytics()
     {
+        var now = DateTime.UtcNow;
+        var thirtyDaysAgo = now.AddDays(-30);
+        var twelveMonthsAgo = now.AddMonths(-12);
+        var twelveWeeksAgo = now.AddDays(-7 * 12);
+
+        var completedTx = _db.Transactions.Where(t => t.Status == TransactionStatus.Completed);
+        var completedTx30d = completedTx.Where(t => t.CreatedAt >= thirtyDaysAgo);
+
+        var totalCreditsCirculation = await completedTx.SumAsync(t => (decimal?)t.Amount) ?? 0m;
+        var transactionVolume30d = await completedTx30d.SumAsync(t => (decimal?)t.Amount) ?? 0m;
+        var transactionCount30d = await completedTx30d.CountAsync();
+        var newUsers30d = await _db.Users.CountAsync(u => u.CreatedAt >= thirtyDaysAgo);
         var totalUsers = await _db.Users.CountAsync();
-        var activeUsers = await _db.Users.CountAsync(u => u.IsActive);
-        var totalGroups = await _db.Groups.CountAsync();
-        var totalEvents = await _db.Events.CountAsync();
-        var totalExchanges = await _db.Exchanges.CountAsync();
+
+        var senders30d = completedTx30d.Select(t => t.SenderId);
+        var receivers30d = completedTx30d.Select(t => t.ReceiverId);
+        var activeTraders30d = await senders30d.Concat(receivers30d).Distinct().CountAsync();
+        var avgTxSize = transactionCount30d > 0 ? transactionVolume30d / transactionCount30d : 0m;
+
+        var monthlyRaw = await completedTx
+            .Where(t => t.CreatedAt >= twelveMonthsAgo)
+            .GroupBy(t => new { t.CreatedAt.Year, t.CreatedAt.Month })
+            .Select(g => new
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                TransactionCount = g.Count(),
+                TotalVolume = g.Sum(t => (decimal?)t.Amount) ?? 0m
+            })
+            .ToListAsync();
+
+        var monthlyUsers = await _db.Users
+            .Where(u => u.CreatedAt >= twelveMonthsAgo)
+            .GroupBy(u => new { u.CreatedAt.Year, u.CreatedAt.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, NewUsers = g.Count() })
+            .ToListAsync();
+
+        var monthly_trends = Enumerable.Range(0, 12)
+            .Select(i => now.AddMonths(-(11 - i)))
+            .Select(d =>
+            {
+                var tx = monthlyRaw.FirstOrDefault(m => m.Year == d.Year && m.Month == d.Month);
+                var u = monthlyUsers.FirstOrDefault(m => m.Year == d.Year && m.Month == d.Month);
+                return new
+                {
+                    month = d.ToString("yyyy-MM"),
+                    transaction_count = tx?.TransactionCount ?? 0,
+                    total_volume = tx?.TotalVolume ?? 0m,
+                    new_users = u?.NewUsers ?? 0
+                };
+            })
+            .ToList();
+
+        var weeklyRaw = (await completedTx
+            .Where(t => t.CreatedAt >= twelveWeeksAgo)
+            .Select(t => new { t.CreatedAt, t.Amount })
+            .ToListAsync())
+            .GroupBy(t => StartOfWeek(t.CreatedAt))
+            .Select(g => new
+            {
+                Week = g.Key,
+                TransactionCount = g.Count(),
+                TotalVolume = g.Sum(x => x.Amount)
+            })
+            .ToList();
+
+        var weekly_trends = Enumerable.Range(0, 12)
+            .Select(i => StartOfWeek(now.AddDays(-7 * (11 - i))))
+            .Select(weekStart =>
+            {
+                var w = weeklyRaw.FirstOrDefault(x => x.Week == weekStart);
+                return new
+                {
+                    week = weekStart.ToString("yyyy-MM-dd"),
+                    transaction_count = w?.TransactionCount ?? 0,
+                    total_volume = w?.TotalVolume ?? 0m
+                };
+            })
+            .ToList();
+
+        var top_earners = await completedTx30d
+            .GroupBy(t => t.ReceiverId)
+            .Select(g => new { Id = g.Key, Total = g.Sum(t => t.Amount) })
+            .OrderByDescending(x => x.Total)
+            .Take(10)
+            .Join(_db.Users, t => t.Id, u => u.Id, (t, u) => new
+            {
+                id = u.Id,
+                name = (u.FirstName + " " + u.LastName).Trim(),
+                total = t.Total
+            })
+            .ToListAsync();
+
+        var top_spenders = await completedTx30d
+            .GroupBy(t => t.SenderId)
+            .Select(g => new { Id = g.Key, Total = g.Sum(t => t.Amount) })
+            .OrderByDescending(x => x.Total)
+            .Take(10)
+            .Join(_db.Users, t => t.Id, u => u.Id, (t, u) => new
+            {
+                id = u.Id,
+                name = (u.FirstName + " " + u.LastName).Trim(),
+                total = t.Total
+            })
+            .ToListAsync();
+
+        var category_demand = await _db.Listings
+            .GroupBy(l => l.Category != null ? l.Category.Name : "Uncategorized")
+            .Select(g => new
+            {
+                name = g.Key,
+                listing_count = g.Count(),
+                active_count = g.Count(l => l.Status == ListingStatus.Active)
+            })
+            .OrderByDescending(x => x.listing_count)
+            .Take(12)
+            .ToListAsync();
+
+        var totalXp = await _db.Users.SumAsync(u => (long?)u.TotalXp) ?? 0;
+        var totalBadges = await _db.UserBadges.CountAsync();
+        var engagementRate = totalUsers > 0 ? (double)activeTraders30d / totalUsers : 0;
+
+        var totalMatches = await _db.MatchResults.CountAsync();
+        var convertedMatches = await _db.MatchResults.CountAsync(m => m.Status == MatchStatus.Accepted);
+        var conversionRate = totalMatches > 0 ? (double)convertedMatches / totalMatches : 0;
 
         return Ok(new
         {
             overview = new
             {
-                total_users = totalUsers,
-                active_users = activeUsers,
-                total_groups = totalGroups,
-                total_events = totalEvents,
-                total_exchanges = totalExchanges
+                total_credits_circulation = totalCreditsCirculation,
+                transaction_volume_30d = transactionVolume30d,
+                transaction_count_30d = transactionCount30d,
+                active_traders_30d = activeTraders30d,
+                new_users_30d = newUsers30d,
+                avg_transaction_size = avgTxSize
             },
-            engagement = new
+            monthly_trends,
+            weekly_trends,
+            top_earners,
+            top_spenders,
+            gamification = new
             {
-                avg_sessions_per_user = 0,
-                avg_exchanges_per_user = totalUsers > 0 ? (double)totalExchanges / totalUsers : 0
-            }
+                total_xp = totalXp,
+                total_badges = totalBadges,
+                engagement_rate = engagementRate
+            },
+            matching = new
+            {
+                total_matches = totalMatches,
+                conversion_rate = conversionRate
+            },
+            category_demand,
+            engagement_rate = engagementRate
+        });
+    }
+
+    private static DateTime StartOfWeek(DateTime dt)
+    {
+        var diff = (7 + (int)dt.DayOfWeek - (int)DayOfWeek.Monday) % 7;
+        return dt.Date.AddDays(-diff);
+    }
+
+    [HttpGet("community-analytics/geography")]
+    public async Task<IActionResult> GetCommunityAnalyticsGeography()
+    {
+        var locations = await _db.UserLocations
+            .Select(l => new { l.Latitude, l.Longitude, l.City })
+            .ToListAsync();
+        var totalMembers = await _db.Users.CountAsync();
+        var totalWithLocation = locations.Count;
+
+        var clusters = locations
+            .GroupBy(l => new
+            {
+                Lat = Math.Round(l.Latitude, 2),
+                Lng = Math.Round(l.Longitude, 2),
+                Area = string.IsNullOrWhiteSpace(l.City) ? "Unknown" : l.City
+            })
+            .Select(g => new
+            {
+                lat = g.Key.Lat,
+                lng = g.Key.Lng,
+                count = g.Count(),
+                area = g.Key.Area
+            })
+            .ToList();
+
+        var topAreas = locations
+            .Where(l => !string.IsNullOrWhiteSpace(l.City))
+            .GroupBy(l => l.City!)
+            .Select(g => new
+            {
+                area = g.Key,
+                count = g.Count(),
+                percentage = totalWithLocation > 0 ? Math.Round(100.0 * g.Count() / totalWithLocation, 1) : 0
+            })
+            .OrderByDescending(x => x.count)
+            .Take(10)
+            .ToList();
+
+        return Ok(new
+        {
+            member_locations = clusters,
+            total_with_location = totalWithLocation,
+            total_members = totalMembers,
+            coverage_percentage = totalMembers > 0 ? Math.Round(100.0 * totalWithLocation / totalMembers, 1) : 0,
+            top_areas = topAreas
         });
     }
 
     [HttpGet("community-analytics/export")]
-    public IActionResult ExportCommunityAnalytics()
+    public async Task<IActionResult> ExportCommunityAnalytics()
     {
-        var csv = "metric,value\ntotal_users,0\nactive_users,0\ntotal_groups,0\ntotal_events,0\n";
-        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "community-analytics.csv");
+        var now = DateTime.UtcNow;
+        var thirtyDaysAgo = now.AddDays(-30);
+        var totalUsers = await _db.Users.CountAsync();
+        var activeUsers = await _db.Users.CountAsync(u => u.IsActive);
+        var newUsers30d = await _db.Users.CountAsync(u => u.CreatedAt >= thirtyDaysAgo);
+        var completedTx30d = _db.Transactions.Where(t => t.Status == TransactionStatus.Completed && t.CreatedAt >= thirtyDaysAgo);
+        var txCount = await completedTx30d.CountAsync();
+        var txVolume = await completedTx30d.SumAsync(t => (decimal?)t.Amount) ?? 0m;
+        var totalGroups = await _db.Groups.CountAsync();
+        var totalEvents = await _db.Events.CountAsync();
+
+        var csv = new StringBuilder();
+        csv.AppendLine("metric,value");
+        csv.AppendLine($"total_users,{totalUsers}");
+        csv.AppendLine($"active_users,{activeUsers}");
+        csv.AppendLine($"new_users_30d,{newUsers30d}");
+        csv.AppendLine($"transaction_count_30d,{txCount}");
+        csv.AppendLine($"transaction_volume_30d,{txVolume}");
+        csv.AppendLine($"total_groups,{totalGroups}");
+        csv.AppendLine($"total_events,{totalEvents}");
+        csv.AppendLine($"generated_at,{now:O}");
+
+        return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "community-analytics.csv");
     }
 
     // ──────────────────────────────────────────────

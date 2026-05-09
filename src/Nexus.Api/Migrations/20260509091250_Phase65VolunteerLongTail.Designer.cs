@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nexus.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Nexus.Api.Migrations
 {
     [DbContext(typeof(NexusDbContext))]
-    partial class NexusDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260509091250_Phase65VolunteerLongTail")]
+    partial class Phase65VolunteerLongTail
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -573,98 +576,6 @@ namespace Nexus.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("blog_posts", (string)null);
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.Bookmark", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CollectionId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ContentId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CollectionId");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("ContentType", "ContentId");
-
-                    b.HasIndex("TenantId", "UserId", "ContentType", "ContentId")
-                        .IsUnique();
-
-                    b.ToTable("bookmarks", (string)null);
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.BookmarkCollection", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsPublic")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("bookmark_collections", (string)null);
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.BrokerAssignment", b =>
@@ -2567,95 +2478,6 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("TenantId");
 
                     b.ToTable("federated_exchanges", (string)null);
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.FederatedHourTransfer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Direction")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("ExternalReference")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("FailureReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime?>("LastReconcileAttemptAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("LocalTransactionId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("LocalUserId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("PartnerId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Protocol")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime?>("ReconciledAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RemoteUserDisplayName")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<string>("RemoteUserExternalId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("RetryCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExternalReference");
-
-                    b.HasIndex("PartnerId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("Status", "LastReconcileAttemptAt");
-
-                    b.ToTable("federated_hour_transfers", (string)null);
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.FederatedListing", b =>
@@ -7411,81 +7233,6 @@ namespace Nexus.Api.Migrations
                     b.ToTable("message_attachments", (string)null);
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.MoneyDonation", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<long>("AmountMinorUnits")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)");
-
-                    b.Property<string>("DonorDisplayName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("DonorEmail")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<int?>("DonorUserId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("FailureReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Message")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("StripeCheckoutSessionId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("StripePaymentIntentId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DonorUserId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("StripeCheckoutSessionId");
-
-                    b.HasIndex("StripePaymentIntentId");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("money_donations", (string)null);
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.MutedUser", b =>
                 {
                     b.Property<int>("Id")
@@ -8310,59 +8057,6 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("password_reset_tokens", (string)null);
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.PeerEndorsement", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Comment")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("EndorsedUserId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EndorserId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("IsHidden")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Relationship")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("Strength")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EndorsedUserId");
-
-                    b.HasIndex("EndorserId");
-
-                    b.HasIndex("IsHidden");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("TenantId", "EndorserId", "EndorsedUserId")
-                        .IsUnique();
-
-                    b.ToTable("peer_endorsements", (string)null);
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.PersonalInsight", b =>
@@ -11333,52 +11027,6 @@ namespace Nexus.Api.Migrations
                     b.ToTable("user_preferences", (string)null);
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.UserPresence", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("LastSeenAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Platform")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LastSeenAt");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("TenantId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("user_presence", (string)null);
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.UserSession", b =>
                 {
                     b.Property<int>("Id")
@@ -12781,51 +12429,6 @@ namespace Nexus.Api.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.Bookmark", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.BookmarkCollection", "Collection")
-                        .WithMany("Bookmarks")
-                        .HasForeignKey("CollectionId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Nexus.Api.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Collection");
-
-                    b.Navigation("Tenant");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.BookmarkCollection", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Nexus.Api.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.BrokerAssignment", b =>
                 {
                     b.HasOne("Nexus.Api.Entities.User", "Broker")
@@ -13660,25 +13263,6 @@ namespace Nexus.Api.Migrations
                     b.Navigation("LocalUser");
 
                     b.Navigation("PartnerTenant");
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.FederatedHourTransfer", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.FederationPartner", "Partner")
-                        .WithMany()
-                        .HasForeignKey("PartnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Partner");
 
                     b.Navigation("Tenant");
                 });
@@ -14965,17 +14549,6 @@ namespace Nexus.Api.Migrations
                     b.Navigation("UploadedBy");
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.MoneyDonation", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.MutedUser", b =>
                 {
                     b.HasOne("Nexus.Api.Entities.User", "MutedUserNav")
@@ -15329,17 +14902,6 @@ namespace Nexus.Api.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.PeerEndorsement", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.PersonalInsight", b =>
@@ -16467,25 +16029,6 @@ namespace Nexus.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.UserPresence", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Nexus.Api.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.UserSession", b =>
                 {
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
@@ -16992,11 +16535,6 @@ namespace Nexus.Api.Migrations
             modelBuilder.Entity("Nexus.Api.Entities.BlogCategory", b =>
                 {
                     b.Navigation("Posts");
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.BookmarkCollection", b =>
-                {
-                    b.Navigation("Bookmarks");
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.Category", b =>

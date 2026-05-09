@@ -441,39 +441,16 @@ public class PushNotificationService
             return false;
         }
 
+        // Phase 64 — provider-aware dispatch. Detection already happens in
+        // GetProviderStatusInternal; here we route to the right transport.
         try
         {
-            var payload = new
+            return provider.Provider switch
             {
-                tenantId = log.TenantId,
-                userId = log.UserId,
-                subscriptionId = log.SubscriptionId,
-                deviceToken = log.Subscription.DeviceToken,
-                platform = log.Subscription.Platform,
-                title = log.Title,
-                body = log.Body,
-                data = log.Data
+                "fcm" => await DispatchFcmAsync(log, ct),
+                "web-push" => await DispatchWebPushAsync(log, ct),
+                _ => await DispatchGenericHttpAsync(log, provider, ct)
             };
-
-            using var request = new HttpRequestMessage(HttpMethod.Post, provider.Endpoint);
-            request.Content = JsonContent.Create(payload, options: ProviderJsonOptions);
-            ApplyConfiguredAuthHeaders(request, provider);
-
-            var client = _httpClientFactory.CreateClient("NexusPushProvider");
-            using var response = await client.SendAsync(request, ct);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                MarkPushFailed(log, $"provider_http_{(int)response.StatusCode}");
-                return false;
-            }
-
-            log.Status = PushStatus.Sent;
-            log.ErrorMessage = null;
-            log.SentAt = DateTime.UtcNow;
-            log.Subscription.LastUsedAt = DateTime.UtcNow;
-            log.Subscription.UpdatedAt = DateTime.UtcNow;
-            return true;
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
         {
@@ -481,6 +458,164 @@ public class PushNotificationService
             _logger.LogWarning(ex, "Push notification log {PushLogId} failed during provider dispatch", log.Id);
             return false;
         }
+    }
+
+    /// <summary>
+    /// FCM legacy HTTP API dispatch. Requires <c>Firebase:ServerKey</c> (or
+    /// <c>Fcm:ServerKey</c>) in configuration. Returns true on 2xx.
+    /// </summary>
+    private async Task<bool> DispatchFcmAsync(PushNotificationLog log, CancellationToken ct)
+    {
+        var serverKey = FirstConfiguredValue("Firebase:ServerKey", "Fcm:ServerKey");
+        if (string.IsNullOrWhiteSpace(serverKey))
+        {
+            MarkPushFailed(log, "fcm_server_key_missing");
+            return false;
+        }
+
+        var endpoint = new Uri(_configuration["Firebase:Endpoint"] ?? "https://fcm.googleapis.com/fcm/send");
+        // FCM legacy payload: { to, notification: { title, body }, data: {...} }
+        var fcmPayload = new
+        {
+            to = log.Subscription!.DeviceToken,
+            notification = new { title = log.Title, body = log.Body },
+            data = string.IsNullOrWhiteSpace(log.Data) ? null : (object?)JsonSerializer.Deserialize<JsonElement>(log.Data!)
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        request.Content = JsonContent.Create(fcmPayload, options: ProviderJsonOptions);
+        request.Headers.TryAddWithoutValidation("Authorization", $"key={serverKey}");
+
+        var client = _httpClientFactory!.CreateClient("NexusPushProvider");
+        using var response = await client.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            MarkPushFailed(log, $"fcm_http_{(int)response.StatusCode}");
+            return false;
+        }
+
+        // FCM body: {"success":1,"failure":0,"results":[{...}]} — if results[0]
+        // contains "error", the token is bad. Mark subscription inactive so we
+        // don't keep dispatching.
+        var body = await response.Content.ReadAsStringAsync(ct);
+        if (body.Contains("\"error\"", StringComparison.OrdinalIgnoreCase) &&
+            body.Contains("NotRegistered", StringComparison.OrdinalIgnoreCase))
+        {
+            log.Subscription!.IsActive = false;
+            log.Subscription.UpdatedAt = DateTime.UtcNow;
+            MarkPushFailed(log, "fcm_token_not_registered");
+            return false;
+        }
+
+        log.Status = PushStatus.Sent;
+        log.ErrorMessage = null;
+        log.SentAt = DateTime.UtcNow;
+        log.Subscription!.LastUsedAt = DateTime.UtcNow;
+        log.Subscription.UpdatedAt = DateTime.UtcNow;
+        return true;
+    }
+
+    /// <summary>
+    /// Web Push (RFC 8030) dispatch. Posts an empty body (notification fetched
+    /// by service worker via separate fetch) to the subscription endpoint URL
+    /// stored in <see cref="PushSubscription.DeviceToken"/>.
+    ///
+    /// VAPID signing is intentionally minimal: we send the configured VAPID
+    /// public key as the <c>Crypto-Key</c> header so the push service can
+    /// associate the request, but full JWT signing + payload AES-128-GCM
+    /// encryption requires a NuGet (WebPush 1.x) which is intentionally not
+    /// added in this phase to avoid pulling System.Net cryptography wrappers.
+    /// Configure your service worker to fetch the payload from
+    /// <c>/api/push/payload/:logId</c> (a thin endpoint that returns the
+    /// title/body/data for the log row) so unencrypted notifications still work.
+    /// </summary>
+    private async Task<bool> DispatchWebPushAsync(PushNotificationLog log, CancellationToken ct)
+    {
+        var endpointUrl = log.Subscription!.DeviceToken;
+        if (!Uri.TryCreate(endpointUrl, UriKind.Absolute, out var subscriptionEndpoint))
+        {
+            MarkPushFailed(log, "web_push_invalid_endpoint");
+            return false;
+        }
+
+        var vapidPublic = _configuration["Vapid:PublicKey"];
+        if (string.IsNullOrWhiteSpace(vapidPublic))
+        {
+            MarkPushFailed(log, "vapid_public_key_missing");
+            return false;
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, subscriptionEndpoint);
+        // No payload — service worker pulls payload via a separate authenticated fetch.
+        request.Content = new ByteArrayContent(Array.Empty<byte>());
+        request.Headers.TryAddWithoutValidation("TTL", "86400");
+        request.Headers.TryAddWithoutValidation("Crypto-Key", $"p256ecdsa={vapidPublic}");
+        request.Headers.TryAddWithoutValidation("Urgency", "normal");
+
+        var client = _httpClientFactory!.CreateClient("NexusPushProvider");
+        using var response = await client.SendAsync(request, ct);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Gone ||
+            response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Subscription expired — deactivate.
+            log.Subscription.IsActive = false;
+            log.Subscription.UpdatedAt = DateTime.UtcNow;
+            MarkPushFailed(log, $"web_push_subscription_{(int)response.StatusCode}");
+            return false;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            MarkPushFailed(log, $"web_push_http_{(int)response.StatusCode}");
+            return false;
+        }
+
+        log.Status = PushStatus.Sent;
+        log.ErrorMessage = null;
+        log.SentAt = DateTime.UtcNow;
+        log.Subscription.LastUsedAt = DateTime.UtcNow;
+        log.Subscription.UpdatedAt = DateTime.UtcNow;
+        return true;
+    }
+
+    private async Task<bool> DispatchGenericHttpAsync(
+        PushNotificationLog log,
+        PushProviderStatus provider,
+        CancellationToken ct)
+    {
+        var payload = new
+        {
+            tenantId = log.TenantId,
+            userId = log.UserId,
+            subscriptionId = log.SubscriptionId,
+            deviceToken = log.Subscription!.DeviceToken,
+            platform = log.Subscription.Platform,
+            title = log.Title,
+            body = log.Body,
+            data = log.Data
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, provider.Endpoint);
+        request.Content = JsonContent.Create(payload, options: ProviderJsonOptions);
+        ApplyConfiguredAuthHeaders(request, provider);
+
+        var client = _httpClientFactory!.CreateClient("NexusPushProvider");
+        using var response = await client.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            MarkPushFailed(log, $"provider_http_{(int)response.StatusCode}");
+            return false;
+        }
+
+        log.Status = PushStatus.Sent;
+        log.ErrorMessage = null;
+        log.SentAt = DateTime.UtcNow;
+        log.Subscription.LastUsedAt = DateTime.UtcNow;
+        log.Subscription.UpdatedAt = DateTime.UtcNow;
+        return true;
     }
 
     private static void ApplyConfiguredAuthHeaders(HttpRequestMessage request, PushProviderStatus provider)
@@ -529,7 +664,12 @@ public class PushNotificationService
         public string Provider { get; init; } = "none";
         public bool Configured { get; init; }
         public Uri? Endpoint { get; init; }
-        public bool CanDispatch => Endpoint != null;
+        // FCM and Web-Push dispatch without a generic relay endpoint — FCM has its
+        // own well-known URL, Web-Push uses per-subscription endpoint URLs.
+        public bool CanDispatch =>
+            Endpoint != null ||
+            Provider == "fcm" ||
+            Provider == "web-push";
         public string? FailureReason { get; init; }
         public string? AuthHeaderName { get; init; }
         public string? AuthHeaderValue { get; init; }

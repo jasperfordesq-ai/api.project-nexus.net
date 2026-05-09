@@ -128,6 +128,9 @@ const AuthCallbackPage = lazyWithRetry(() => import('./pages/auth/AuthCallbackPa
 // Admin Panel (lazy-loaded — keeps recharts, jsPDF, admin sidebar/header out of main bundle)
 const AdminApp = lazyWithRetry(() => import('@/admin/AdminApp'));
 
+// Broker Panel — V1 redesign parity, separate /broker/* app with its own sidebar
+const BrokerApp = lazyWithRetry(() => import('@/broker/BrokerApp'));
+
 // Lazy-loaded Pages (all use lazyWithRetry to handle stale chunk errors after deploys)
 const HomePage = lazyWithRetry(() => import('@/pages/public/HomePage'));
 const DashboardPage = lazyWithRetry(() => import('@/pages/dashboard/DashboardPage'));
@@ -1107,6 +1110,9 @@ function AppRoutes() {
 
       {/* Admin Panel (separate layout, no main navbar/footer) — fully lazy-loaded */}
       <Route path="admin/*" element={<AdminApp />} />
+
+      {/* Broker Panel — V1 parity: dedicated /broker/* sub-app */}
+      <Route path="broker/*" element={<BrokerApp />} />
 
       {/* 404 Fallback (must be after admin to avoid catching /admin paths) */}
       <Route element={<Layout />}>

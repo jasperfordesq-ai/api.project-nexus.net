@@ -882,13 +882,143 @@ public class AdminCompatibility2Controller : ControllerBase
 
     /// <summary>GET /api/admin/federation/settings - Federation settings.</summary>
     [HttpGet("federation/settings")]
-    public IActionResult FederationSettings()
-        => Ok(new { data = new { enabled = false, auto_accept = false, require_approval = true, max_partners = 10 } });
+    public async Task<IActionResult> FederationSettings()
+    {
+        var (enabled, settings) = await LoadFederationSettingsAsync();
+        return Ok(new
+        {
+            data = new
+            {
+                federation_enabled = enabled,
+                tenant_id = _tenantContext.GetTenantIdOrThrow(),
+                settings
+            }
+        });
+    }
 
     /// <summary>PUT /api/admin/federation/settings - Update federation settings.</summary>
     [HttpPut("federation/settings")]
-    public IActionResult UpdateFederationSettings([FromBody] object body)
-        => Ok(new { message = "Federation settings updated" });
+    public async Task<IActionResult> UpdateFederationSettings([FromBody] JsonElement body)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var (currentEnabled, currentSettings) = await LoadFederationSettingsAsync();
+
+        var enabled = body.TryGetProperty("federation_enabled", out var enabledEl)
+            ? ReadBool(enabledEl) ?? currentEnabled
+            : currentEnabled;
+
+        var settings = currentSettings;
+        if (body.TryGetProperty("settings", out var settingsEl) && settingsEl.ValueKind == JsonValueKind.Object)
+        {
+            if (settingsEl.TryGetProperty("allow_inbound_partnerships", out var aip))
+                settings.allow_inbound_partnerships = ReadBool(aip) ?? settings.allow_inbound_partnerships;
+            if (settingsEl.TryGetProperty("auto_approve_partners", out var aap))
+                settings.auto_approve_partners = ReadBool(aap) ?? settings.auto_approve_partners;
+            if (settingsEl.TryGetProperty("max_partnerships", out var mp) && mp.TryGetInt32(out var mpi))
+                settings.max_partnerships = Math.Clamp(mpi, 1, 100);
+            if (settingsEl.TryGetProperty("shared_categories", out var sc) && sc.ValueKind == JsonValueKind.Array)
+                settings.shared_categories = sc.EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String)
+                    .Select(e => e.GetString()!)
+                    .ToArray();
+        }
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            federation_enabled = enabled,
+            settings.allow_inbound_partnerships,
+            settings.auto_approve_partners,
+            settings.max_partnerships,
+            settings.shared_categories
+        });
+
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.Key == FederationConfigKey);
+        if (existing != null)
+        {
+            existing.Value = payload;
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = FederationConfigKey,
+                Value = payload,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Tenant {TenantId} federation settings updated (enabled={Enabled})", tenantId, enabled);
+
+        return Ok(new
+        {
+            success = true,
+            message = "Federation settings updated",
+            data = new
+            {
+                federation_enabled = enabled,
+                tenant_id = tenantId,
+                settings
+            }
+        });
+    }
+
+    private const string FederationConfigKey = "config.federation";
+
+    private async Task<(bool Enabled, FederationSettingsDto Settings)> LoadFederationSettingsAsync()
+    {
+        var defaults = new FederationSettingsDto
+        {
+            allow_inbound_partnerships = true,
+            auto_approve_partners = false,
+            max_partnerships = 10,
+            shared_categories = Array.Empty<string>()
+        };
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.Key == FederationConfigKey);
+        if (existing == null || string.IsNullOrWhiteSpace(existing.Value))
+            return (false, defaults);
+        try
+        {
+            using var doc = JsonDocument.Parse(existing.Value);
+            var root = doc.RootElement;
+            var enabled = root.TryGetProperty("federation_enabled", out var fe) && (ReadBool(fe) ?? false);
+            if (root.TryGetProperty("allow_inbound_partnerships", out var aip))
+                defaults.allow_inbound_partnerships = ReadBool(aip) ?? defaults.allow_inbound_partnerships;
+            if (root.TryGetProperty("auto_approve_partners", out var aap))
+                defaults.auto_approve_partners = ReadBool(aap) ?? defaults.auto_approve_partners;
+            if (root.TryGetProperty("max_partnerships", out var mp) && mp.TryGetInt32(out var mpi))
+                defaults.max_partnerships = mpi;
+            if (root.TryGetProperty("shared_categories", out var sc) && sc.ValueKind == JsonValueKind.Array)
+                defaults.shared_categories = sc.EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String)
+                    .Select(e => e.GetString()!)
+                    .ToArray();
+            return (enabled, defaults);
+        }
+        catch (JsonException)
+        {
+            return (false, defaults);
+        }
+    }
+
+    private static bool? ReadBool(JsonElement el) => el.ValueKind switch
+    {
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        JsonValueKind.String when bool.TryParse(el.GetString(), out var b) => b,
+        _ => null
+    };
+
+    private class FederationSettingsDto
+    {
+        public bool allow_inbound_partnerships { get; set; }
+        public bool auto_approve_partners { get; set; }
+        public int max_partnerships { get; set; }
+        public string[] shared_categories { get; set; } = Array.Empty<string>();
+    }
 
     /// <summary>GET /api/admin/federation/partnerships - List partnerships.</summary>
     [HttpGet("federation/partnerships")]
@@ -932,13 +1062,64 @@ public class AdminCompatibility2Controller : ControllerBase
 
     /// <summary>GET /api/admin/federation/analytics - Federation analytics.</summary>
     [HttpGet("federation/analytics")]
-    public IActionResult FederationAnalytics()
-        => Ok(new { data = new { total_partners = 0, shared_listings = 0, shared_events = 0, cross_tenant_exchanges = 0 } });
+    public async Task<IActionResult> FederationAnalytics()
+    {
+        var totalPartners = await _db.FederationPartners.CountAsync();
+        var activePartners = await _db.FederationPartners.CountAsync(p => p.Status == PartnerStatus.Active);
+        var sharedListings = await _db.FederatedListings.CountAsync();
+        var crossTenantExchanges = await _db.FederatedExchanges.CountAsync();
+        var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+        var recentExchanges = await _db.FederatedExchanges.CountAsync(e => e.CreatedAt >= thirtyDaysAgo);
+        var apiCalls30d = await _db.FederationApiLogs.CountAsync(l => l.CreatedAt >= thirtyDaysAgo);
+        var auditEvents30d = await _db.FederationAuditLogs.CountAsync(l => l.CreatedAt >= thirtyDaysAgo);
+
+        return Ok(new
+        {
+            data = new
+            {
+                total_partners = totalPartners,
+                active_partners = activePartners,
+                shared_listings = sharedListings,
+                shared_events = 0,
+                cross_tenant_exchanges = crossTenantExchanges,
+                recent_exchanges_30d = recentExchanges,
+                api_calls_30d = apiCalls30d,
+                audit_events_30d = auditEvents30d
+            }
+        });
+    }
 
     /// <summary>GET /api/admin/federation/data - Federation data management.</summary>
     [HttpGet("federation/data")]
-    public IActionResult FederationData()
-        => Ok(new { data = new { synced_listings = 0, synced_events = 0, synced_members = 0, last_sync_at = (DateTime?)null } });
+    public async Task<IActionResult> FederationData()
+    {
+        var syncedListings = await _db.FederatedListings.CountAsync();
+        var syncedExchanges = await _db.FederatedExchanges.CountAsync();
+        var lastListingSync = await _db.FederatedListings.MaxAsync(l => (DateTime?)l.CreatedAt);
+        var lastExchangeSync = await _db.FederatedExchanges
+            .Select(e => e.UpdatedAt ?? e.CreatedAt)
+            .Cast<DateTime?>()
+            .MaxAsync();
+        DateTime? lastSync = (lastListingSync, lastExchangeSync) switch
+        {
+            (null, null) => null,
+            (DateTime a, null) => a,
+            (null, DateTime b) => b,
+            (DateTime a, DateTime b) => a > b ? a : b
+        };
+
+        return Ok(new
+        {
+            data = new
+            {
+                synced_listings = syncedListings,
+                synced_events = 0,
+                synced_exchanges = syncedExchanges,
+                synced_members = 0,
+                last_sync_at = lastSync
+            }
+        });
+    }
 
     // =====================================================================
     // Helpers & DTOs

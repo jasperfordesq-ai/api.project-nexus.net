@@ -52,10 +52,16 @@ public static class ServiceExtensions
         services.AddScoped<AuditLogService>();
         services.Configure<GmailOptions>(
             configuration.GetSection(GmailOptions.SectionName));
+        // 2026-05-09 — SendGrid primary + Gmail SMTP fallback per project
+        // owner directive. Both transports are registered as concrete classes
+        // and FallbackEmailService is wired as the IEmailService consumers see.
+        // If SendGrid is disabled, we still want Gmail registered for direct use.
+        services.AddScoped<SendGridEmailService>();
+        services.AddHttpClient<GmailEmailService>();
         if (configuration.GetValue("SendGrid:Enabled", false))
-            services.AddScoped<IEmailService, SendGridEmailService>();
+            services.AddScoped<IEmailService, FallbackEmailService>();
         else
-            services.AddHttpClient<IEmailService, GmailEmailService>();
+            services.AddScoped<IEmailService>(sp => sp.GetRequiredService<GmailEmailService>());
         services.AddScoped<EmailNotificationService>();
 
         // Phase 26-37
@@ -133,9 +139,61 @@ public static class ServiceExtensions
         services.AddScoped<FederationAdminService>();
         services.AddScoped<SecretsVaultService>();
         services.AddScoped<MarketplaceService>();
+        services.AddScoped<EmailTemplateService>();
+        services.AddScoped<VolunteerLongTailService>();
+
+        // Phase 68 — federation protocol services
+        services.AddHttpClient("NexusFederationProtocol", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(20);
+        });
+        services.AddScoped<Nexus.Api.Services.Federation.CreditCommonsClient>();
+        services.AddScoped<Nexus.Api.Services.Federation.KomunitinClient>();
+        services.AddScoped<Nexus.Api.Services.Federation.NativeIngestService>();
+        services.AddScoped<Nexus.Api.Services.Federation.HourTransferReconciliationService>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.ReconcileFederatedHourTransfersJob>();
+
+        // Phase 69 — AI multi-provider abstraction. Each concrete provider is
+        // registered as a scoped service; AiProviderFactory picks one based on
+        // the Ai:Provider config key. Existing AiService continues to use the
+        // Ollama client directly for backwards compatibility; new callers
+        // should depend on IAiProviderFactory.
+        services.AddHttpClient("NexusAiProvider", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(60);
+        });
+        services.AddScoped<Nexus.Api.Services.Ai.OllamaAiProvider>();
+        services.AddScoped<Nexus.Api.Services.Ai.AnthropicAiProvider>();
+        services.AddScoped<Nexus.Api.Services.Ai.OpenAiAiProvider>();
+        services.AddScoped<Nexus.Api.Services.Ai.GeminiAiProvider>();
+        services.AddScoped<Nexus.Api.Services.Ai.IAiProviderFactory, Nexus.Api.Services.Ai.AiProviderFactory>();
+        services.AddScoped<Nexus.Api.Services.Ai.ActivitySummariserAgent>();
+        services.AddScoped<Nexus.Api.Services.Ai.NudgeDrafterAgent>();
+
+        // Phase 72 — long-tail services (donations/bookmarks/endorsements/presence)
+        services.AddHttpClient("NexusStripe", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(30);
+            c.DefaultRequestHeaders.TryAddWithoutValidation("Stripe-Version", "2024-06-20");
+        });
+        services.AddScoped<MoneyDonationService>();
+        services.AddScoped<BookmarkService>();
+        services.AddScoped<PeerEndorsementService>();
+        services.AddScoped<PresenceService>();
 
         // Background services
         services.AddHostedService<SavedSearchAlertService>();
+
+        // Phase 63 — V1 cron task port (8 hosted services). Each can be disabled
+        // individually via Scheduled:{JobName}:Enabled=false in appsettings.
+        services.AddHostedService<Nexus.Api.Services.Scheduled.SyncFederationPartnersJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.PruneFederationLogsJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.CheckInactiveGroupsJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.PollStuckIdentityVerificationsJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.SafeguardingSlaEscalateJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.MarkOverdueDuesJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.PruneLogsJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.GenerateMonthlyReportsJob>();
 
         // Meilisearch (semantic search — optional, falls back to ILIKE)
         services.Configure<MeilisearchOptions>(

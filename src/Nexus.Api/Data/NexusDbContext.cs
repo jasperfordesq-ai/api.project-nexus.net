@@ -192,6 +192,22 @@ public class NexusDbContext : DbContext
     public DbSet<StaffingPrediction> StaffingPredictions => Set<StaffingPrediction>();
     public DbSet<VolunteerAvailability> VolunteerAvailabilities => Set<VolunteerAvailability>();
 
+    // Phase 65: Volunteering long-tail
+    // Phase 68: Federation protocol extensions
+    public DbSet<FederatedHourTransfer> FederatedHourTransfers => Set<FederatedHourTransfer>();
+
+    // Phase 72: Long-tail (donations, bookmarks, peer endorsements, presence)
+    public DbSet<MoneyDonation> MoneyDonations => Set<MoneyDonation>();
+    public DbSet<Bookmark> Bookmarks => Set<Bookmark>();
+    public DbSet<BookmarkCollection> BookmarkCollections => Set<BookmarkCollection>();
+    public DbSet<PeerEndorsement> PeerEndorsements => Set<PeerEndorsement>();
+    public DbSet<UserPresence> UserPresences => Set<UserPresence>();
+
+    public DbSet<VolunteerExpense> VolunteerExpenses => Set<VolunteerExpense>();
+    public DbSet<VolunteerWellbeing> VolunteerWellbeings => Set<VolunteerWellbeing>();
+    public DbSet<VolunteerCertificate> VolunteerCertificates => Set<VolunteerCertificate>();
+    public DbSet<VolunteerEmergencyAlert> VolunteerEmergencyAlerts => Set<VolunteerEmergencyAlert>();
+
     // Phase 37: Advanced Admin
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<ScheduledTask> ScheduledTasks => Set<ScheduledTask>();
@@ -451,6 +467,9 @@ public class NexusDbContext : DbContext
             new OrganisationConfiguration(_tenantContext),
             new OrgWalletConfiguration(_tenantContext),
             new VolunteerConfiguration(_tenantContext),
+            new VolunteerLongTailConfiguration(_tenantContext),
+            new FederationProtocolsConfiguration(_tenantContext),
+            new Phase72Configuration(_tenantContext),
             new MatchingConfiguration(_tenantContext),
             new LocationConfiguration(_tenantContext),
             new NewsletterConfiguration(_tenantContext),

@@ -1130,14 +1130,64 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/deliverability/analytics - Deliverability analytics.</summary>
     [HttpGet("deliverability/analytics")]
-    public IActionResult GetDeliverabilityAnalytics()
+    public async Task<IActionResult> GetDeliverabilityAnalytics()
     {
+        var now = DateTime.UtcNow;
+        var thirtyDaysAgo = now.AddDays(-30);
+
+        var recentLogs = await _db.EmailLogs
+            .Where(l => l.CreatedAt >= thirtyDaysAgo)
+            .Select(l => new { l.CreatedAt, l.Status, l.ToEmail })
+            .ToListAsync();
+
+        var dailyStats = Enumerable.Range(0, 30)
+            .Select(i => now.Date.AddDays(-i))
+            .Select(date =>
+            {
+                var dayLogs = recentLogs.Where(l => l.CreatedAt.Date == date).ToList();
+                return new
+                {
+                    date = date.ToString("yyyy-MM-dd"),
+                    sent = dayLogs.Count(l => l.Status == EmailSendStatus.Sent),
+                    failed = dayLogs.Count(l => l.Status == EmailSendStatus.Failed),
+                    bounced = dayLogs.Count(l => l.Status == EmailSendStatus.Bounced),
+                    pending = dayLogs.Count(l => l.Status == EmailSendStatus.Pending)
+                };
+            })
+            .OrderBy(d => d.date)
+            .ToList();
+
+        var topBouncedDomains = recentLogs
+            .Where(l => l.Status == EmailSendStatus.Bounced)
+            .Select(l =>
+            {
+                var at = l.ToEmail.IndexOf('@');
+                return at >= 0 && at < l.ToEmail.Length - 1 ? l.ToEmail[(at + 1)..].ToLowerInvariant() : "(unknown)";
+            })
+            .GroupBy(d => d)
+            .Select(g => new { domain = g.Key, count = g.Count() })
+            .OrderByDescending(x => x.count)
+            .Take(10)
+            .ToList();
+
+        var totalSent = recentLogs.Count(l => l.Status == EmailSendStatus.Sent || l.Status == EmailSendStatus.Bounced || l.Status == EmailSendStatus.Failed);
+        var totalBounced = recentLogs.Count(l => l.Status == EmailSendStatus.Bounced);
+        var totalFailed = recentLogs.Count(l => l.Status == EmailSendStatus.Failed);
+        var bounceRate = totalSent > 0 ? Math.Round((double)totalBounced / totalSent, 4) : 0.0;
+        var failRate = totalSent > 0 ? Math.Round((double)totalFailed / totalSent, 4) : 0.0;
+        var complaintRate = bounceRate + failRate;
+
         return Ok(new
         {
-            daily_stats = Array.Empty<object>(),
-            top_bounced_domains = Array.Empty<object>(),
-            complaint_rate = 0.0,
-            generated_at = DateTime.UtcNow
+            daily_stats = dailyStats,
+            top_bounced_domains = topBouncedDomains,
+            bounce_rate = bounceRate,
+            fail_rate = failRate,
+            complaint_rate = complaintRate,
+            total_sent_30d = totalSent,
+            total_bounced_30d = totalBounced,
+            total_failed_30d = totalFailed,
+            generated_at = now
         });
     }
 

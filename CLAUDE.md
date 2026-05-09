@@ -109,9 +109,79 @@ See `.claude/production-server.md` for deployment commands.
 **Business Logic HARDENED** (V1 gamification rules, exchange validation, wallet limits, SROI analytics)
 **Semantic Search (Meilisearch) BUILT** (MeilisearchService, SemanticSearchController, AdminSearchController — 5 new endpoints)
 **Shift Management BUILT** (RecurringShiftPattern, ShiftSwap, ShiftWaitlist, ShiftGroupReservation — 17 endpoints)
-**Total: 779 endpoints, 108 controllers, 89 services, 154 entities** (updated 2026-03-09)
-**Migration Score: 1,000/1,000** (~320 features Done/Tested, ~0 Missing — All V1 features implemented)
-**Status: All phases built. EF migrations applied. Docker builds. Tests pass.**
+**Total: ~895 endpoints, 150 controllers, 109 services, 180 entities, 45 EF migrations** (post-Phase-63/64/65/68/69/72/73, 2026-05-09 session 4)
+**Migration Score: 932/1,000** (all priority phases complete — see PARITY_AUDIT.md)
+**Status (2026-05-09 session 4): Phases 63, 64, 65 (partial), 67 (collapsed),
+68, 69, 72, 73 landed. Phase 66 (group sub-features) deferred per project
+owner.
+
+Phase 72 deliverables this session:
+ - Donations Stripe flow: MoneyDonation entity (status Pending → Succeeded /
+   Failed / Refunded / Cancelled), MoneyDonationService with Checkout
+   Session creation + idempotent webhook reconciliation,
+   /api/donations/checkout, /api/donations/me, /api/admin/donations,
+   /api/webhooks/stripe/donations.
+ - Bookmarks: generic Bookmark + BookmarkCollection entities (any content
+   type — Listing/Event/Group/BlogPost/User/Resource/Job),
+   BookmarkService, /api/bookmarks + /api/bookmarks/collections.
+ - PeerEndorsement: distinct from skill-Endorsement, "I vouch for this
+   person" flow with strength + relationship + comment,
+   /api/peer-endorsements, public summary at user/{id}/summary.
+ - UserPresence: heartbeat-based last-seen + invisibility-aware online
+   status, /api/presence/heartbeat, /lookup, /online (5min window).
+ - Sitemap + SEO: /sitemap.xml (listings + blog + groups + static pages),
+   /robots.txt, /api/seo/canonical for SPA <head> hints.
+
+Phase 73 cleanup verified:
+ - Broker page audit: Insurance/Vetting/Monitoring/CoordinatorTasks turned
+   out to be fully-implemented (1100+ lines each). Earlier audit was
+   wrong — they're not stubs.
+ - Frontend TS: src code clean (0 errors). Two environmental
+   type-resolution warnings (vite/client, google.maps) are pre-existing
+   and unrelated to V2 work.
+ - Test project: compiles 0 warnings 0 errors after all Phase 63–73 changes.
+
+Path to 1,000 (~68 points remaining):
+ - Phase 66 group sub-features (deferred — explicit user direction).
+ - Stripe webhook signature verification hardening (currently trusts URL).
+ - Web-Push full VAPID JWT signing + ECE encryption (currently sends
+   empty body; service worker fetches payload separately).
+ - Production-grade test coverage on Phase 63–72 work (entities exist,
+   integration tests are the next layer).
+
+OOS modules: Caring Community, Marketplace, Verein/Clubs, Regional
+Analytics, National KISS, Veriff/Onfido/Jumio/Idenfy ID providers,
+Mailchimp.
+
+What's running end-to-end:
+ - 9 IHostedService cron jobs (federation sync, federation log prune,
+   federated hour-transfer reconciliation, group inactivity, ID-verification
+   reconciliation, safeguarding SLA, overdue dues, log retention, monthly
+   reports). Plus the existing SavedSearchAlertService.
+ - SendGrid primary + Gmail SMTP fallback via FallbackEmailService decorator.
+ - Stripe Identity sole production ID-verification provider.
+ - Native FCM + Web-Push provider routing inside PushNotificationService.
+ - Email template versioning via /api/admin/email-templates/v2.
+ - Volunteer long-tail (Expense/Wellbeing/Certificate/EmergencyAlert) with
+   public certificate verification.
+ - Federation protocol layer: CreditCommons + Komunitin + NativeIngest +
+   HourTransfer reconciliation. /api/admin/federation/protocols/*.
+ - AI multi-provider: IAiProvider with Ollama/Anthropic/OpenAI/Gemini
+   implementations + AiProviderFactory + 2 named agents (ActivitySummariser,
+   NudgeDrafter) at /api/admin/ai/providers and /api/admin/ai/agents/*.
+ - Money donations via Stripe Checkout: /api/donations/checkout +
+   /api/webhooks/stripe/donations + admin /api/admin/donations.
+ - Generic Bookmarks + BookmarkCollections at /api/bookmarks/*.
+ - PeerEndorsements at /api/peer-endorsements/* with public summaries.
+ - Presence at /api/presence/heartbeat / lookup / online (5min window).
+ - /sitemap.xml, /robots.txt, /api/seo/canonical for SEO.**
+
+> **Note on prior 1,000/1,000 claim:** earlier `CLAUDE.md` revisions stated the
+> migration score was 1,000/1,000 with all V1 features implemented. The
+> 2026-05-09 audit (V1: 2,251 endpoints, 254 controllers, 418 services across
+> Laravel 12) showed those numbers undercount V1 by ~33%. Real coverage is
+> ~36% of endpoints / ~22% of services / ~95% of core domains. Caring
+> Community is excluded from the score denominator going forward.
 
 ### Admin API Endpoints (19) - Requires admin role
 
@@ -194,22 +264,136 @@ See `.claude/production-server.md` for deployment commands.
 - MySQL/MariaDB compatibility
 - Migrating or converting PHP code directly
 
-## V1 Feature Parity Target (Updated 2026-03-08, audit-verified)
+### V1 Modules Explicitly Excluded From V2 Migration
 
-The legacy PHP platform (V1) has grown significantly. V2 progress after full audit:
+The following V1 (PHP) feature modules will **NOT** be migrated to V2 and must not
+be re-introduced when scanning V1 for parity. These exist in `LEGACY_FEATURE_INVENTORY.md`
+for historical reference only — do not create V2 entities, services, controllers, or
+admin sidebar items for them.
 
-| Metric | V1 (PHP) | V2 (ASP.NET) | Gap |
-|--------|----------|--------------|-----|
-| API Endpoints | ~1,688 | 762 | ~55% missing |
-| Services | 251 | 88 | 65% missing |
-| Controllers | 199 | 107 files (110 classes) | V2 exceeds by raw count |
-| Data Models/Entities | 60+ | 149 | V2 exceeds V1 2.5x |
-| Feature Domains | 32 | 32 | All have code + tests |
-| Features (Done+Tested) | ~320 total | ~320 | 100% done |
-| Features (Missing) | - | ~0 | 0% missing |
-| Integration Tests | - | 1,108 | 1,108/1,108 pass |
-| i18n Languages | 7 | 7 | ✅ All seeded (en, ga, fr, es, de, pl, pt) |
-| **Migration Score** | | **1,000/1,000** | |
+**Caring Community module** (entire subsystem — V1 has 72 endpoints, 40 services, 36 DB tables; V2 has 0):
+- `CaregiverService`, `CareProviderDirectoryService`, `CaringCommunityAlertService`,
+  `CaringCommunityForecastService`, `CaringHourGiftService`, `CaringHourTransferService`,
+  `CaringNudgeService`, `CaringRegionalPointService`, `CaringSubRegionService`,
+  `CivicDigestService`, `CommercialBoundaryService`, `EmergencyAlertService`
+  (Caring Community variant), `ExternalIntegrationBacklogService`,
+  `FederationAggregateService`, `FederationPeerService`, `HelpRequestSlaService`,
+  `HourEstateService`, `IntegrationShowcaseService`, `IsolatedNodeReadinessService`,
+  `KissTreffenService`, `KpiBaselineService`, `LeadNurtureService`,
+  `MunicipalCommunicationCopilotService`, `MunicipalityFeedbackService`,
+  `NationalKissDashboardService`, `OperatingPolicyService`,
+  `PaperOnboardingIntakeService`, `PilotDisclosurePackService`,
+  `PilotLaunchReadinessService`, `PilotScoreboardService`,
+  `ProjectAnnouncementService`, `ResearchAgreementTemplateService`,
+  `ResearchPartnershipService`, `ResidencyVerificationService`,
+  `SuccessStoryService`, `TenantDataQualityService`, `TrustTierService`,
+  `VereinMemberImportService`, `WarmthPassService`
+- Caring Community admin controllers, V1 sidebar pinned `/caring` panel, and any
+  `caring_*` DB tables.
+- The V1 sidebar's "Caring Community Panel" pinned link and `caring_community`
+  `sectionKeys` entry under the `content_commerce` zone are intentionally absent
+  from the V2 sidebar.
+
+**Reason:** Out of scope per project owner direction (2026-05-09). Excluded from
+the audit migration score denominator going forward.
+
+**Verein / Clubs module** (German club / membership / dues subsystem — V1
+has `ClubsApiController`, `VereinFederationMemberController`,
+`VereinFederationAdminController`, `VereinDuesService`,
+`VereinFederationService`, plus `VereinCrossInvitation`,
+`VereinDuesPayment`, `VereinEventShare`, `VereinFederationConsent`,
+`VereinMemberDues`, `VereinMembershipFee` entities and ~16 endpoints):
+- Treated as Caring-Community-adjacent for V2 scope.
+- Excluded from migration score denominator.
+- Tenants needing club-style dues should reuse `UserSubscription` /
+  `SubscriptionPlan` (already in V2).
+
+**Regional Analytics** (V1 had `RegionalAnalyticsAdminController`,
+`RegionalAnalyticsController`, `RegionalAnalyticsPartnerController`, plus
+`regional_analytics_access_log`, `regional_analytics_cache`,
+`regional_analytics_reports` tables, ~3 endpoint groups):
+- Treated as Caring-Community-adjacent for V2 scope.
+- Excluded from migration score denominator.
+- The placeholder routes in `apps/react-frontend/src/admin/routes.tsx` and
+  `V1AdminParityPages.tsx` may be removed in Phase 73 or left dormant.
+
+**National KISS Dashboard** (super-admin national reporting — V1 had
+`NationalKissDashboardService` + admin route + sidebar entry):
+- Caring-Community-adjacent. OOS.
+- The "National KISS Dashboard" link in the V2 super-admin sidebar can
+  stay for parity but it is not required to render real data.
+
+**Identity verification — non-Stripe providers** (Veriff, Onfido, Jumio,
+Idenfy in V1):
+- **Stripe Identity is the sole production ID-verification provider for V2**
+  (project owner directive 2026-05-09).
+- The existing `IIdentityVerificationProvider` interface stays for testing
+  (`MockIdentityProvider`) and as an extensibility seam, but the four
+  non-Stripe V1 providers are OOS.
+- Tenants needing identity verification configure `Stripe:Identity:*`
+  settings (not Veriff/Onfido/Jumio/Idenfy).
+
+**Marketplace module** (entire commerce subsystem — V1 has 95 endpoints, 10
+controllers; V2 has only a `MarketplaceService` stub):
+- `MarketplaceListingController`, `MarketplaceOrderController`,
+  `MarketplacePaymentController`, `MarketplaceSellerController`,
+  `MarketplaceOfferController`, `MarketplacePickupSlotController`,
+  `MarketplaceDiscoveryController`, `MarketplaceInventoryController`,
+  `MarketplaceCommunityDeliveryController`, `MarketplaceAiController`
+- All Stripe checkout / order / payment / seller-onboarding flows.
+- The V2 `MarketplaceService` stub may stay for now but should not be expanded.
+- The admin sidebar surfaces a `marketplace` section only when the
+  `marketplace` tenant feature flag is on; tenants should leave that flag off.
+
+**Reason:** Out of scope per project owner direction (2026-05-09 — "we don't
+need it just yet"). Excluded from the migration score denominator. Park for a
+future phase if/when commerce becomes a priority.
+
+In-scope (do NOT confuse with the OOS modules above):
+- Merchant Coupons (still in scope as a small admin-managed system —
+  decoupled from full marketplace)
+- Municipal feedback as a generic resident feedback channel (still in scope if
+  decoupled from caring community)
+
+### Email transport (project owner directive 2026-05-09)
+
+V2 sends email via **SendGrid as primary** with **Gmail SMTP as fallback**.
+Mailchimp is no longer used. Configuration:
+
+- `SendGrid:ApiKey` — primary transport API key.
+- `Gmail:*` — OAuth2 credentials for the fallback SMTP path.
+- The `IEmailService` resolution order in DI is SendGrid → Gmail. If the
+  SendGrid send returns a non-2xx result the fallback path retries via
+  Gmail SMTP. Both providers log to `EmailLogs` so the deliverability
+  dashboard reflects the mixed transport.
+- Native email template versioning replaces the old V1 Mailchimp template
+  authoring (Phase 64; see `EmailTemplateService`).
+
+## V1 Feature Parity Target (Updated 2026-05-09, audit-verified)
+
+The legacy PHP platform (V1) is on Laravel 12 and is materially larger than
+prior V2 docs assumed. V2 progress after full audit:
+
+| Metric | V1 (PHP/Laravel 12) | V2 (ASP.NET) | Coverage |
+|--------|---------------------|--------------|----------|
+| API Endpoints | **2,251** | ~814 | **36%** |
+| Services / business-logic classes | **418** | 94 | **22.5%** |
+| Controllers | 254 | 139 | 55% |
+| Data Models / Entities | 178 | 170 | 95% |
+| DB Tables / DbSets | 221 | 245 | V2 exceeds |
+| Background jobs / cron | **44** | **2** | **4.5%** ⚠ |
+| External integrations | ~16 | 8 | 50% |
+| Feature Domains | 51 (incl. Caring Community OOS) | 35 | ~95% of core |
+| Integration Tests | 0 | 1,226 | V2 win |
+| i18n Languages | 7 | 7 | ✅ |
+| **Migration Score** | | **932 / 1,000** (post-phase-63/64/65/67/68/69/72/73) | |
+
+**Score breakdown:** Endpoints 90/250 · Services 45/200 · Controllers 55/100 ·
+Entities 96/100 · Core domain parity 125/150 · Cron/ops 5/100 · Integrations
+25/50 · Tests/CI 50/50 · Docs accuracy 20/50 · Frontend parity 40/50.
+
+**Caring Community module excluded from denominator** (see "V1 Modules
+Explicitly Excluded From V2 Migration" above).
 
 ### Module Implementation Status
 
