@@ -43,7 +43,7 @@ public class PushNotificationService
     /// Register a device for push notifications. If the token already exists for the user,
     /// reactivates it and updates metadata.
     /// </summary>
-    public async Task<PushSubscription> RegisterDeviceAsync(int userId, string deviceToken, string platform, string? deviceName = null)
+    public async Task<PushSubscription> RegisterDeviceAsync(int userId, string deviceToken, string platform, string? deviceName = null, string? p256dh = null, string? auth = null)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
 
@@ -59,6 +59,9 @@ public class PushNotificationService
             existing.DeviceName = deviceName ?? existing.DeviceName;
             existing.IsActive = true;
             existing.UpdatedAt = DateTime.UtcNow;
+            // Update web-push browser keys if the new registration provides them.
+            if (!string.IsNullOrWhiteSpace(p256dh)) existing.P256dh = p256dh;
+            if (!string.IsNullOrWhiteSpace(auth)) existing.Auth = auth;
 
             await _db.SaveChangesAsync();
 
@@ -76,6 +79,8 @@ public class PushNotificationService
             DeviceToken = deviceToken,
             Platform = platform,
             DeviceName = deviceName,
+            P256dh = p256dh,
+            Auth = auth,
             IsActive = true
         };
 
@@ -549,10 +554,46 @@ public class PushNotificationService
         var vapidSubject = _configuration["Vapid:Subject"] ?? "mailto:noreply@project-nexus.net";
 
         using var request = new HttpRequestMessage(HttpMethod.Post, subscriptionEndpoint);
-        // No payload — service worker pulls payload via a separate authenticated fetch.
-        request.Content = new ByteArrayContent(Array.Empty<byte>());
         request.Headers.TryAddWithoutValidation("TTL", "86400");
         request.Headers.TryAddWithoutValidation("Urgency", "normal");
+
+        // Phase 73 — RFC 8291 payload encryption when the browser-side
+        // subscription keys are stored. The browser ships p256dh + auth
+        // when registering; older registrations without them fall back to
+        // the empty-body pattern (service worker fetches payload from a
+        // separate authenticated route).
+        if (WebPushPayloadEncryptor.CanEncrypt(log.Subscription.P256dh, log.Subscription.Auth))
+        {
+            try
+            {
+                // Body shape the service worker will receive. Keep it small
+                // — Web-Push services cap at ~4KB pre-encryption.
+                var payloadJson = JsonSerializer.Serialize(new
+                {
+                    title = log.Title,
+                    body = log.Body,
+                    data = string.IsNullOrWhiteSpace(log.Data) ? null : (object?)JsonDocument.Parse(log.Data!).RootElement
+                }, ProviderJsonOptions);
+
+                var encrypted = WebPushPayloadEncryptor.Encrypt(
+                    payloadJson, log.Subscription.P256dh!, log.Subscription.Auth!);
+
+                request.Content = new ByteArrayContent(encrypted);
+                request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                request.Content.Headers.ContentLength = encrypted.Length;
+                request.Headers.TryAddWithoutValidation("Content-Encoding", "aes128gcm");
+            }
+            catch (Exception ex) when (ex is ArgumentException or FormatException or System.Security.Cryptography.CryptographicException)
+            {
+                _logger.LogWarning(ex, "Web-Push payload encryption failed; sending empty body instead");
+                request.Content = new ByteArrayContent(Array.Empty<byte>());
+            }
+        }
+        else
+        {
+            // Empty-body pattern — service worker fetches payload separately.
+            request.Content = new ByteArrayContent(Array.Empty<byte>());
+        }
 
         // Phase 73 — RFC 8292 VAPID auth. If private key is configured, sign
         // an ES256 JWT and send the proper Authorization header. Otherwise

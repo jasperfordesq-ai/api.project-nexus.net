@@ -47,6 +47,23 @@ public class PushSubscription : ITenantEntity
     /// </summary>
     public DateTime? LastUsedAt { get; set; }
 
+    /// <summary>
+    /// Web-Push only — base64url-encoded NIST P-256 public key the browser
+    /// generates (browser <c>PushSubscription.getKey('p256dh')</c>).
+    /// Used by the server to perform ECDH key agreement when encrypting
+    /// payloads per RFC 8291. Null for FCM / native subscriptions.
+    /// </summary>
+    [MaxLength(200)]
+    public string? P256dh { get; set; }
+
+    /// <summary>
+    /// Web-Push only — base64url-encoded 16-byte auth secret the browser
+    /// generates (browser <c>PushSubscription.getKey('auth')</c>).
+    /// Mixed into the HKDF derivation. Null for FCM / native subscriptions.
+    /// </summary>
+    [MaxLength(64)]
+    public string? Auth { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
