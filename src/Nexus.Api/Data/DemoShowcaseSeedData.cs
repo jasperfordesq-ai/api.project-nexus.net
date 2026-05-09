@@ -139,9 +139,8 @@ public static class DemoShowcaseSeedData
         await SeedFederationAndAutomationAsync(db, mainTenant.Id, globexTenant.Id, admin.Id, globexAdmin.Id, member.Id, repairListing.Id, now);
 
         logger.LogInformation(
-            "Project NEXUS V2 demo showcase seed complete for tenant {TenantSlug}. Demo users share strong local password {Password}.",
-            mainTenant.Slug,
-            DemoPassword);
+            "Project NEXUS V2 demo showcase seed complete for tenant {TenantSlug}. Demo users share a shared local password (see DemoShowcaseSeedData source).",
+            mainTenant.Slug);
     }
 
     private static async Task<Dictionary<string, Category>> SeedCategoriesAndRolesAsync(NexusDbContext db, int tenantId, DateTime now)

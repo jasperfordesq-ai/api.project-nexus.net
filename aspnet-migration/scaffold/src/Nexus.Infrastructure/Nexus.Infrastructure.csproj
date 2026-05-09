@@ -33,7 +33,7 @@
     <PackageReference Include="WebPush" Version="1.0.9" />
 
     <!-- Email -->
-    <PackageReference Include="MailKit" Version="4.3.0" />
+    <PackageReference Include="MailKit" Version="4.16.0" />
   </ItemGroup>
 
   <ItemGroup>
