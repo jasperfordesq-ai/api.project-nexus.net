@@ -1,5 +1,7 @@
 # Project NEXUS - Backend
 
+> **Status: Development Alpha** — under active development. APIs, schemas, and behaviour may change without notice. Not recommended for production use.
+
 A timebanking/community platform backend built with ASP.NET Core 8.
 
 ## Credits and Origins

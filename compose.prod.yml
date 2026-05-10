@@ -20,8 +20,31 @@ services:
       - RateLimiting__General__PermitLimit=500
       - RateLimiting__General__WindowSeconds=60
       - FileUpload__UploadsRoot=/app/uploads
+      # Sentry — DSN read from production .env (Sentry__Dsn). Empty = disabled.
+      - Sentry__Dsn=${Sentry__Dsn:-}
+      - Sentry__Environment=${Sentry__Environment:-production}
+      - Sentry__TracesSampleRate=${Sentry__TracesSampleRate:-0.1}
     volumes:
       - nexus-backend-uploads:/app/uploads
+
+  # React Frontend - production build (nginx, baked-in env vars)
+  react-frontend:
+    build:
+      context: ./apps/react-frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_URL: https://api.project-nexus.net
+        VITE_API_BASE: /api
+        VITE_DEFAULT_TENANT_ID: 1
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_SENTRY_ENVIRONMENT: ${VITE_SENTRY_ENVIRONMENT:-production}
+        VITE_SENTRY_TRACES_SAMPLE_RATE: ${VITE_SENTRY_TRACES_SAMPLE_RATE:-0.1}
+    ports: !override
+      - "127.0.0.1:5173:80"
+    volumes: !override []
+    environment:
+      - NODE_ENV=production
 
   # Admin Panel - production build (nginx, no hot-reload, no volume mounts)
   admin:

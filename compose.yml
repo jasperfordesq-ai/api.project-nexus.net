@@ -59,6 +59,10 @@ services:
       - Fido2__Origins__1=http://localhost:5173
       - Fido2__Origins__2=http://localhost:5180
       - FileUpload__UploadsRoot=/app/uploads
+      # Sentry — DSN read from .env (Sentry__Dsn). Empty = disabled.
+      - Sentry__Dsn=${Sentry__Dsn:-}
+      - Sentry__Environment=${Sentry__Environment:-development}
+      - Sentry__TracesSampleRate=${Sentry__TracesSampleRate:-0.1}
     volumes:
       - nexus-backend-uploads:/app/uploads
     depends_on:
