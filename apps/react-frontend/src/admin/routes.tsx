@@ -104,7 +104,7 @@ const GdprConsentTypes = lazy(() => import('./modules/enterprise/GdprConsentType
 const GdprBreachDetail = lazy(() => import('./modules/enterprise/GdprBreachDetailAdmin'));
 const LogFiles = lazy(() => import('./modules/enterprise/LogFilesPage'));
 const LogFileViewer = lazy(() => import('./modules/enterprise/LogFileViewerPage'));
-const SystemRequirements = lazyParityPage('SystemRequirementsPage');
+const SystemRequirements = lazy(() => import('./modules/enterprise/SystemRequirementsPage'));
 const FeatureFlags = lazy(() => import('./modules/enterprise/EnterpriseFeatureFlagsAdmin'));
 
 // Performance module
