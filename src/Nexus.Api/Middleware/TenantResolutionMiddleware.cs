@@ -59,7 +59,8 @@ public class TenantResolutionMiddleware
         "/api/announcements",                  // Handles optional tenant context itself
         "/api/realtime/config",                // Static config, no tenant-scoped data
         "/api/tenants",                         // Public tenant list for login page dropdown
-        "/api/webhooks/volunteering"             // HMAC-authenticated webhook; sets tenant from payload
+        "/api/webhooks/volunteering",             // HMAC-authenticated webhook; sets tenant from payload
+        "/api/provisioning/requests"              // Public new-tenant provisioning submissions; service assigns platform tenant
     };
 
     public TenantResolutionMiddleware(

@@ -205,6 +205,7 @@ public static class ServiceExtensions
 
         // Audit follow-up: typed Provisioning backend
         services.AddScoped<Nexus.Api.Services.Provisioning.ProvisioningRequestService>();
+        services.AddScoped<Nexus.Api.Services.ApiPartners.ApiPartnerService>();
 
         // Background services
         services.AddHostedService<SavedSearchAlertService>();

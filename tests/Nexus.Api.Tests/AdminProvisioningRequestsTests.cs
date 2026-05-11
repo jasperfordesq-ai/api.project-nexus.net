@@ -110,6 +110,7 @@ public class AdminProvisioningRequestsTests : IntegrationTestBase
     {
         await AuthenticateAsAdminAsync();
         var created = await Client.PostAsJsonAsync(AdminPath, SampleBody("flowtest"));
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
         var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
         var approve = await Client.PostAsync($"{AdminPath}/{id}/approve", null);
