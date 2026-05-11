@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Observability;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -445,6 +446,9 @@ public class WalletController : ControllerBase
             {
                 return StatusCode(500, new { error = "Sender data unavailable" });
             }
+
+            NexusMetrics.WalletTransfers.Add(1,
+                new KeyValuePair<string, object?>("tenant_id", _tenantContext.TenantId ?? 0));
 
             _logger.LogInformation("Transfer of {Amount} hours from user {SenderId} to user {ReceiverId} completed (transaction {TransactionId})",
                 request.Amount, senderId, request.ReceiverId, transaction.Id);

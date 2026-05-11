@@ -13,6 +13,10 @@ using Nexus.Api.Data;
 using Nexus.Api.Extensions;
 using Nexus.Api.Hubs;
 using Nexus.Api.Middleware;
+using Nexus.Api.Observability;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Sentry.AspNetCore;
 using Serilog;
 
@@ -215,6 +219,59 @@ builder.Services.AddCors(options =>
 });
 
 // =============================================================================
+// OPENTELEMETRY (metrics + traces)
+// =============================================================================
+// Default ON, except in Testing (avoids double-registering Meters across
+// WebApplicationFactory instances). Disable explicitly via Otel:Enabled=false.
+// If Otel:Endpoint is set we export OTLP; otherwise we expose Prometheus
+// scrape at /metrics.
+var otelEnabled = builder.Configuration.GetValue("Otel:Enabled", !isTestEnvironment);
+var otelEndpoint = builder.Configuration["Otel:Endpoint"];
+var useOtlp = !string.IsNullOrWhiteSpace(otelEndpoint);
+if (otelEnabled)
+{
+    var serviceVersion = typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0";
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(r => r
+            .AddService(serviceName: "nexus-api", serviceVersion: serviceVersion))
+        .WithMetrics(metrics =>
+        {
+            metrics
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddRuntimeInstrumentation()
+                .AddMeter(NexusMetrics.MeterName)
+                .AddView(
+                    instrumentName: "nexus.exchange.completion.duration",
+                    metricStreamConfiguration: new ExplicitBucketHistogramConfiguration
+                    {
+                        Boundaries = NexusMetrics.DurationBucketsSeconds
+                    });
+
+            if (useOtlp)
+            {
+                metrics.AddOtlpExporter(o => o.Endpoint = new Uri(otelEndpoint!));
+            }
+            else
+            {
+                metrics.AddPrometheusExporter();
+            }
+        })
+        .WithTracing(tracing =>
+        {
+            tracing
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddEntityFrameworkCoreInstrumentation();
+
+            if (useOtlp)
+            {
+                tracing.AddOtlpExporter(o => o.Endpoint = new Uri(otelEndpoint!));
+            }
+        });
+}
+
+// =============================================================================
 // PRODUCTION SECRET GUARD
 // =============================================================================
 // Fails fast in Production if required secrets are unset or placeholder-like.
@@ -370,6 +427,13 @@ app.UseMiddleware<FederationApiMiddleware>();
 // Tenant resolution - MUST come after UseAuthentication()
 // Reads tenant_id from JWT claims and sets TenantContext
 app.UseMiddleware<TenantResolutionMiddleware>();
+
+// Prometheus scrape endpoint (no auth — standard for Prometheus pull).
+// Only mapped when OTel is enabled AND no OTLP endpoint is configured.
+if (otelEnabled && !useOtlp)
+{
+    app.MapPrometheusScrapingEndpoint("/metrics");
+}
 
 // Map controllers and health checks
 app.MapControllers();

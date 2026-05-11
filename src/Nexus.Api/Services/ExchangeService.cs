@@ -3,9 +3,11 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Observability;
 
 namespace Nexus.Api.Services;
 
@@ -229,6 +231,8 @@ public class ExchangeService
         if (hours <= 0)
             return (null, "Hours must be greater than zero");
 
+        var stopwatch = Stopwatch.StartNew();
+
         // Transfer credits atomically
         await using var dbTransaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
         try
@@ -278,6 +282,11 @@ public class ExchangeService
 
             await _db.SaveChangesAsync();
             await dbTransaction.CommitAsync();
+
+            stopwatch.Stop();
+            var tenantTag = new KeyValuePair<string, object?>("tenant_id", exchange.TenantId);
+            NexusMetrics.ExchangesCompleted.Add(1, tenantTag);
+            NexusMetrics.ExchangeCompletionDuration.Record(stopwatch.Elapsed.TotalSeconds, tenantTag);
 
             _logger.LogInformation(
                 "Exchange {ExchangeId} completed: {Hours}h transferred from user {ReceiverId} to user {ProviderId}",
