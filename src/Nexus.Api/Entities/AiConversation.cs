@@ -37,6 +37,19 @@ public class AiConversation : ITenantEntity
     /// </summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Rolling AI-generated summary of older messages. ConversationSummariser
+    /// compresses the oldest turns into this field once the live tail crosses
+    /// the token budget, and trims them from the live history.
+    /// </summary>
+    public string? Summary { get; set; }
+
+    /// <summary>
+    /// Highest AiMessage.Id covered by <see cref="Summary"/>. Messages with
+    /// Id &lt;= this watermark are not replayed verbatim — only the summary is.
+    /// </summary>
+    public int? SummaryWatermarkMessageId { get; set; }
+
     // Navigation properties
     public User? User { get; set; }
     public Tenant? Tenant { get; set; }

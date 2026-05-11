@@ -211,5 +211,35 @@ public class FederationConfiguration : TenantScopedConfiguration
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
+
+        // FederationWebhookSubscription - typed registry replacing TenantConfig JSON blob.
+        modelBuilder.Entity<FederationWebhookSubscription>(entity =>
+        {
+            entity.ToTable("federation_webhook_subscriptions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.TargetUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.EventTypes).HasMaxLength(1000);
+            entity.Property(e => e.Direction).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Secret).HasMaxLength(500);
+            entity.Property(e => e.LastFailureReason).HasMaxLength(2000);
+            entity.HasIndex(e => new { e.TenantId, e.Direction, e.Status });
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<FederationWebhookDeliveryLog>(entity =>
+        {
+            entity.ToTable("federation_webhook_delivery_logs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Reason).HasMaxLength(2000);
+            entity.Property(e => e.Action).HasMaxLength(20);
+            entity.Property(e => e.PayloadJson).HasColumnType("text");
+            entity.HasIndex(e => new { e.TenantId, e.SubscriptionId, e.CreatedAt });
+            entity.HasOne(e => e.Subscription).WithMany().HasForeignKey(e => e.SubscriptionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
     }
 }
