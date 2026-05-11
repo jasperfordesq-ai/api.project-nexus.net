@@ -199,7 +199,7 @@ const JobTemplatesAdmin = AdminJobTemplatesPageReal;
 
 // Marketplace module — OOS per CLAUDE.md; routes removed.
 // Coupons remain in scope (decoupled from marketplace).
-const AdminCouponsPage = lazyParityPage('AdminCouponsPage');
+const AdminCouponsPage = lazy(() => import('./modules/content/AdminCouponsPage'));
 
 // Ideation / Challenges module
 const IdeationAdmin = lazy(() => import('./modules/ideation/IdeationAdmin'));
