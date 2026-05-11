@@ -428,6 +428,10 @@ app.UseMiddleware<FederationApiMiddleware>();
 // Reads tenant_id from JWT claims and sets TenantContext
 app.UseMiddleware<TenantResolutionMiddleware>();
 
+// Log enrichment - pushes tenant_id + user_id onto Serilog LogContext.
+// MUST run after authentication AND tenant resolution so both values are set.
+app.UseMiddleware<IdentityLogEnrichmentMiddleware>();
+
 // Prometheus scrape endpoint (no auth — standard for Prometheus pull).
 // Only mapped when OTel is enabled AND no OTLP endpoint is configured.
 if (otelEnabled && !useOtlp)
