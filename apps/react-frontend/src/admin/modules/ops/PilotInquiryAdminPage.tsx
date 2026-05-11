@@ -90,7 +90,7 @@ export default function PilotInquiryAdminPage() {
   const stageModal = useDisclosure();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [working, setWorking] = useState<number | null>(null);
+  const [working] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [countryFilter, setCountryFilter] = useState<string>('');
   const [target, setTarget] = useState<InquiryRow | null>(null);
