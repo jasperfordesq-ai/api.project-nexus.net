@@ -94,7 +94,8 @@
       "Bash(scp -i /c/ssh-keys/project-nexus.pem src/Nexus.Api/Nexus.Api.csproj azureuser@20.224.171.253:/opt/nexus-backend/src/Nexus.Api/)",
       "Bash(scp -i /c/ssh-keys/project-nexus.pem src/Nexus.Api/Dtos/*.cs azureuser@20.224.171.253:/opt/nexus-backend/src/Nexus.Api/Dtos/)",
       "Bash(scp -i /c/ssh-keys/project-nexus.pem src/Nexus.Api/Services/Registration/*.cs azureuser@20.224.171.253:/opt/nexus-backend/src/Nexus.Api/Services/Registration/)",
-      "Bash(scp -i /c/ssh-keys/project-nexus.pem src/Nexus.Api/Services/PasskeyService.cs azureuser@20.224.171.253:/opt/nexus-backend/src/Nexus.Api/Services/PasskeyService.cs)"
+      "Bash(scp -i /c/ssh-keys/project-nexus.pem src/Nexus.Api/Services/PasskeyService.cs azureuser@20.224.171.253:/opt/nexus-backend/src/Nexus.Api/Services/PasskeyService.cs)",
+      "Bash(git push *)"
     ]
   }
 }

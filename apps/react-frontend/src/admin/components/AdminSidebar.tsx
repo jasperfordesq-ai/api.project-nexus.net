@@ -95,7 +95,6 @@ import {
   Webhook,
   Puzzle,
   Palette,
-  ShoppingBag,
   Languages,
   X,
   BellRing,

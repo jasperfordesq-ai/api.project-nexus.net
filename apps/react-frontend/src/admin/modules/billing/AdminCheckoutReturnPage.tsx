@@ -5,13 +5,15 @@
 
 /**
  * Checkout Return (Admin) — diagnostic view of recent Stripe checkout
- * sessions surfaced via the donations table (Phase 72).
+ * sessions.
  *
- * Backend gap: there is no dedicated /api/admin/billing/checkout-sessions
- * endpoint. We approximate by listing recent MoneyDonation rows (which
- * are 1:1 with Stripe Checkout Sessions created via
- * /api/donations/checkout). Pending rows surface checkout sessions that
- * never returned a webhook — useful for debugging stuck flows.
+ * Source: /api/admin/billing/checkout-sessions (AdminBillingController).
+ * The endpoint reads from MoneyDonation rows (which are 1:1 with Stripe
+ * Checkout Sessions created via /api/donations/checkout) and returns
+ * Stripe-shaped metadata including stripe_checkout_session_id,
+ * stripe_payment_intent_id, updated_at, and a computed is_stuck flag
+ * (Pending + CreatedAt > 30min old) so the UI can highlight stuck rows
+ * without recomputing client-side.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -28,21 +30,23 @@ import { PageHeader } from '../../components';
 type DonationStatus = 'Pending' | 'Succeeded' | 'Failed' | 'Refunded' | 'Cancelled';
 type Filter = DonationStatus | 'All' | 'Stuck';
 
-interface Donation {
+interface CheckoutSession {
   id: number;
-  donor_user_id: number | null;
-  donor_display_name: string | null;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  status: DonationStatus;
   amount_minor_units: number;
   currency: string;
-  message: string | null;
-  status: DonationStatus;
-  completed_at: string | null;
+  donor_email: string | null;
+  donor_display_name: string | null;
   failure_reason: string | null;
   created_at: string;
+  updated_at: string | null;
+  completed_at: string | null;
+  is_stuck: boolean;
 }
 
 const FILTERS: Filter[] = ['All', 'Pending', 'Stuck', 'Succeeded', 'Failed', 'Cancelled', 'Refunded'];
-const STUCK_MS = 30 * 60 * 1000; // Pending > 30 min ⇒ likely abandoned
 
 function statusColor(s: DonationStatus): 'default' | 'primary' | 'success' | 'danger' | 'warning' {
   switch (s) {
@@ -62,7 +66,7 @@ export default function AdminCheckoutReturnPage() {
   usePageTitle('Admin - Checkout Sessions');
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>('All');
-  const [rows, setRows] = useState<Donation[]>([]);
+  const [rows, setRows] = useState<CheckoutSession[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -70,11 +74,11 @@ export default function AdminCheckoutReturnPage() {
     try {
       const statusParam = filter === 'All' || filter === 'Stuck' ? '' : filter;
       const url = statusParam
-        ? `/v2/admin/donations?status=${encodeURIComponent(statusParam)}`
-        : '/v2/admin/donations';
-      const res = await api.get<{ data: Donation[]; total: number }>(url);
+        ? `/v2/admin/billing/checkout-sessions?status=${encodeURIComponent(statusParam)}`
+        : '/v2/admin/billing/checkout-sessions';
+      const res = await api.get<{ data: CheckoutSession[]; total: number }>(url);
       if (res.success && res.data) {
-        const payload = (res.data as unknown) as { data?: Donation[] };
+        const payload = (res.data as unknown) as { data?: CheckoutSession[] };
         setRows(payload.data ?? []);
       }
     } catch { toast.error('Failed to load checkout sessions'); }
@@ -85,14 +89,13 @@ export default function AdminCheckoutReturnPage() {
 
   const filteredRows = useMemo(() => {
     if (filter !== 'Stuck') return rows;
-    const cutoff = Date.now() - STUCK_MS;
-    return rows.filter((d) => d.status === 'Pending' && new Date(d.created_at).getTime() < cutoff);
+    return rows.filter((d) => d.is_stuck);
   }, [rows, filter]);
 
-  const stuckCount = useMemo(() => {
-    const cutoff = Date.now() - STUCK_MS;
-    return rows.filter((d) => d.status === 'Pending' && new Date(d.created_at).getTime() < cutoff).length;
-  }, [rows]);
+  const stuckCount = useMemo(
+    () => rows.filter((d) => d.is_stuck).length,
+    [rows]
+  );
 
   return (
     <div>
@@ -147,12 +150,19 @@ export default function AdminCheckoutReturnPage() {
               {filteredRows.map((d) => {
                 const ageMs = Date.now() - new Date(d.created_at).getTime();
                 const ageMin = Math.floor(ageMs / 60000);
-                const stuck = d.status === 'Pending' && ageMs > STUCK_MS;
+                const stuck = d.is_stuck;
                 return (
                   <TableRow key={d.id}>
-                    <TableCell>#{d.id}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>#{d.id}</span>
+                        {d.stripe_checkout_session_id && (
+                          <code className="text-[10px] text-default-400">{d.stripe_checkout_session_id}</code>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm">
-                      {d.donor_display_name || (d.donor_user_id ? `User #${d.donor_user_id}` : '(anonymous)')}
+                      {d.donor_display_name || d.donor_email || '(anonymous)'}
                     </TableCell>
                     <TableCell className="text-right font-medium">{fmtAmount(d.amount_minor_units, d.currency)}</TableCell>
                     <TableCell>
