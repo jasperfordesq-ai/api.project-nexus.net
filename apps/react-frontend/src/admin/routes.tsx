@@ -224,7 +224,7 @@ const CreditCommonsConfig = lazyParityPage('FederationCreditCommonsPage');
 
 // Safeguarding module
 const SafeguardingDashboard = lazy(() => import('./modules/safeguarding/SafeguardingDashboard'));
-const SafeguardingOptionsAdmin = lazyParityPage('SafeguardingOptionsAdminPage');
+const SafeguardingOptionsAdmin = lazy(() => import('./modules/safeguarding/SafeguardingOptionsAdminPage'));
 
 // Regional / national analytics — OOS per CLAUDE.md (Caring-Community-adjacent).
 // Routes removed.
