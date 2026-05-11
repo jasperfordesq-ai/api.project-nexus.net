@@ -24,7 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Button, Card, CardBody, CardHeader, Chip, Input, Select, SelectItem,
-  Spinner, Switch, Textarea,
+  Spinner, Textarea,
 } from '@heroui/react';
 import { ArrowLeft, BookOpen, Eye, EyeOff, Save, Send } from 'lucide-react';
 import { usePageTitle } from '@/hooks';
