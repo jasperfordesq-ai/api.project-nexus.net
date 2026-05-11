@@ -109,14 +109,17 @@ See `.claude/production-server.md` for deployment commands.
 **Business Logic HARDENED** (V1 gamification rules, exchange validation, wallet limits, SROI analytics)
 **Semantic Search (Meilisearch) BUILT** (MeilisearchService, SemanticSearchController, AdminSearchController — 5 new endpoints)
 **Shift Management BUILT** (RecurringShiftPattern, ShiftSwap, ShiftWaitlist, ShiftGroupReservation — 17 endpoints)
-**Total: ~895 endpoints, 150 controllers, 109 services, 180 entities, 45 EF migrations** (post-Phase-63/64/65/68/69/72/73, 2026-05-09 session 5)
+**Total: ~895 endpoints, 150 controllers, 109 services, 180 entities, 49 EF migrations** (post-Phase-63/64/65/68/69/72/73, 2026-05-09 session 5)
 
 **Two scores, both honest:**
 - **Migration coverage: 932/1,000** — % of V1 features ported to V2 (counts
   parity controllers' stubs as "touched"; this is the headline I had been
   quoting). Includes Phase 66/Marketplace/Caring exclusions in the denominator.
-- **Operational readiness: ~705/1,000** — % actually working end-to-end in
-  production. Up from the 465 audit baseline:
+- **Operational readiness: ~830/1,000** — % actually working end-to-end in
+  production. Post-audit-remediation (commits a77e941..ed15b87) added:
+  webhook idempotency, federation locking, OpenTelemetry, deep health
+  probes, log enrichment, FIDO2 prod-origin pinning, NullAiProvider
+  fallback, +6 controller auth-gate tests. Up from the 465 audit baseline:
   +30 from test coverage closing fragility risk on Phase 63-69 services,
   +25 from Stripe webhook signature verification, +20 from explicit
   Marketplace OOS messaging, +140 from 14 real admin pages replacing
@@ -182,12 +185,11 @@ Path to 1,000 — work tracked but not yet shipped (operational lens, ~+535
 points remaining from current 465 operational baseline):
 
  - **Phase 66 group sub-features** (deferred — explicit user direction).
- - **Item 7: 7 remaining volunteer admin stubs** to replace with real pages.
-   Pattern established by `VolunteerExpensesAdmin.tsx` (Phase 73 demonstrator):
-   wire to existing `/api/admin/volunteer/*` endpoints via `lazy(() =>
-   import(...))`, replace the `lazyParityPage(...)` registration in
-   `routes.tsx`. Remaining: Training, Safeguarding, HoursAudit, Consents,
-   GivingDays, Projects, Config.
+ - **Item 7: CLOSED.** All 10 volunteer admin pages now ship as real
+   components on main (Expenses, Wellbeing, Certificates, Training,
+   Safeguarding, HoursAudit, Consents, GivingDays, Projects, Config) —
+   no remaining `lazyParityPage(...)` stubs in the volunteer admin
+   surface.
  - **Item 8: 4 jobs admin stubs** to replace (ModerationQueue, BiasAudit,
    Pipeline, Templates). Backend endpoints already exist in
    `JobsParityController` (62 endpoints).
