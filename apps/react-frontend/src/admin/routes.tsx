@@ -216,10 +216,10 @@ const CreateApiKey = lazy(() => import('./modules/federation/CreateApiKey'));
 const DataManagement = lazy(() => import('./modules/federation/DataManagement'));
 const CreditAgreements = lazy(() => import('./modules/federation/CreditAgreements'));
 const Neighborhoods = lazy(() => import('./modules/federation/Neighborhoods'));
-const ExternalPartners = lazyParityPage('FederationExternalPartnersPage');
-const Webhooks = lazyParityPage('FederationWebhooksPage');
+const ExternalPartners = lazy(() => import('./modules/federation/AdminFederationExternalPartnersPage'));
+const Webhooks = lazy(() => import('./modules/federation/AdminFederationWebhooksPage'));
 const ApiDocumentation = lazyParityPage('FederationApiDocsPage');
-const FederationActivityFeed = lazyParityPage('FederationActivityPage');
+const FederationActivityFeed = lazy(() => import('./modules/federation/AdminFederationActivityPage'));
 const CreditCommonsConfig = lazyParityPage('FederationCreditCommonsPage');
 
 // Safeguarding module
