@@ -57,7 +57,11 @@ public class HealthControllerTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("status").GetString().Should().Be("healthy");
-        content.GetProperty("checks").GetProperty("database").GetString().Should().Be("healthy");
+        // Updated contract (2026-05-11 observability fix): status is capitalized
+        // (Healthy|Degraded|Unhealthy) and postgres replaces the old `database` key.
+        // Optional probes (sendgrid, stripe) are "skipped" when keys are unset, so
+        // the overall status is "Healthy" in the integration test environment.
+        content.GetProperty("status").GetString().Should().Be("Healthy");
+        content.GetProperty("checks").GetProperty("postgres").GetString().Should().Be("healthy");
     }
 }
