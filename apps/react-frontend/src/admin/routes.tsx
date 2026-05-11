@@ -170,7 +170,7 @@ const AgentRunsPage = lazy(() => import('./modules/ai/AgentRunsPage'));
 const BillingPage = AdminPlansPageReal;
 const PlanSelector = AdminPlansPageReal;
 const InvoiceHistory = lazy(() => import('./modules/billing/AdminInvoiceHistoryPage'));
-const CheckoutReturn = lazyParityPage('CheckoutReturnPage');
+const CheckoutReturn = lazy(() => import('./modules/billing/AdminCheckoutReturnPage'));
 const BillingControl = lazy(() => import('./modules/billing/AdminBillingControlPage'));
 const RevenueDashboard = lazy(() => import('./modules/billing/AdminRevenueDashboardPage'));
 const MemberPremiumAdminPage = lazy(() => import('./modules/billing/AdminMemberPremiumPage'));
