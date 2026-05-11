@@ -275,6 +275,8 @@ public class FederationWebhookSubscriptionService : IFederationWebhookSubscripti
     private static DateTime? TryDate(JsonElement el, string name)
     {
         var s = TryString(el, name);
-        return DateTime.TryParse(s, out var dt) ? dt : (DateTime?)null;
+        if (!DateTime.TryParse(s, null, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt))
+            return null;
+        return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
     }
 }
