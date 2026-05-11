@@ -192,47 +192,20 @@ Providers support three integration patterns:
 - **SDK**: Frontend embeds provider's SDK using `SdkToken`
 - **Webhook**: Provider calls back to `/api/registration/webhook/{tenantId}?provider=X`
 
-## Phase F — Provider Pilot Recommendation
+## Production Notes
 
-**Recommended first provider: Stripe Identity**
+- The `users.registration_status` column defaults to `Active`, so existing users
+  are unaffected when a tenant has no `TenantRegistrationPolicy` row.
+- Tenants with no policy fall through to Standard behavior.
+- The `/api/auth/register` response contract is additive (`registration_status`
+  field, conditional tokens) — no breaking changes.
+- Provider API keys are stored encrypted via `ProviderConfigEncryption.cs`
+  (see `src/Nexus.Api/Services/Registration/`).
+- Webhook signature verification is required for Stripe Identity
+  (`StripeIdentityProvider.VerifyWebhookSignature`).
+- The webhook endpoint is rate-limited; no raw provider payloads are persisted.
 
-Rationale:
-1. **Global coverage** — available in 30+ countries, growing
-2. **Simple integration** — well-documented API, redirect-based flow
-3. **Low volume friendly** — pay-per-verification pricing suits community organizations
-4. **Existing ecosystem** — many NEXUS tenants may already use Stripe for payments
-5. **Webhook support** — standard Stripe webhook signing (HMAC SHA256)
-6. **Extensible** — supports document, selfie, and data-match verification levels
-7. **Trust framework** — Stripe handles regulatory compliance per jurisdiction
+## Future Work
 
-Alternative candidates for specific markets:
-- **Yoti** — strong in UK, good for GOV.UK frontend alignment
-- **Veriff** — best for European coverage, fast integration
-- **Persona** — most configurable, best for custom verification flows
-
-## Risks & Production Rollout Notes
-
-### Migration Risk
-- The `users.registration_status` column defaults to `Active`, so all existing users are unaffected
-- The system returns Standard behavior when no `TenantRegistrationPolicy` exists for a tenant
-- **No breaking changes** to the existing `/api/auth/register` contract — new fields are additive
-
-### Security Considerations
-- Provider API keys stored in `ProviderConfigEncrypted` — **TODO**: implement AES encryption before production with real providers
-- Webhook signature verification is provider-specific and mandatory for real providers
-- Rate limiting applied to webhook endpoint
-- No raw provider payloads stored in the database
-
-### Future Work
-- Encrypt `ProviderConfigEncrypted` field with AES-256 (currently stores plaintext for Mock)
-- Implement Stripe Identity provider adapter
-- Add email notifications for status changes (PendingAdminReview, Approved, Rejected)
-- Add EUDI wallet / verifiable credential support when standards stabilize
-- Add re-verification flow for expired/revoked verifications
-- Add EF Core migration (currently schema changes need `dotnet ef migrations add RegistrationPolicyEngine`)
-
-### EF Migration Command
-```bash
-docker compose exec api dotnet ef migrations add RegistrationPolicyEngine
-docker compose exec api dotnet ef database update
-```
+- EUDI wallet / verifiable-credential support when standards stabilize.
+- Re-verification flow for expired/revoked verifications.

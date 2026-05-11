@@ -328,9 +328,8 @@ What's running end-to-end:
 ### V1 Modules Explicitly Excluded From V2 Migration
 
 The following V1 (PHP) feature modules will **NOT** be migrated to V2 and must not
-be re-introduced when scanning V1 for parity. These exist in `LEGACY_FEATURE_INVENTORY.md`
-for historical reference only — do not create V2 entities, services, controllers, or
-admin sidebar items for them.
+be re-introduced when scanning V1 for parity. Do not create V2 entities, services,
+controllers, or admin sidebar items for them.
 
 **Caring Community module** (entire subsystem — V1 has 72 endpoints, 40 services, 36 DB tables; V2 has 0):
 - `CaregiverService`, `CareProviderDirectoryService`, `CaringCommunityAlertService`,
@@ -497,9 +496,6 @@ Explicitly Excluded From V2 Migration" above).
 | Insurance Certs | 1 service | Done (InsuranceService, 9 endpoints: CRUD, admin verify/reject, expiring) |
 | Voice Messages | 1 service | Done (VoiceMessageService, 5 endpoints: list, get, create, read, delete) |
 | Enterprise/Governance | 8 services | Missing (Phase 57, 20 endpoints) |
-
-See MIGRATION_GAP_MAP.md for the complete feature-by-feature breakdown.
-See ROADMAP.md for the planned implementation phases.
 
 ## Non-Negotiable Invariants
 
@@ -689,8 +685,6 @@ dotnet test
    - `admin@acme.test` / `Test123!` / tenant_slug: `acme`
    - `member@acme.test` / `Test123!` / tenant_slug: `acme`
    - `admin@globex.test` / `Test123!` / tenant_slug: `globex`
-
-5. **See [DOCKER_CONTRACT.md](DOCKER_CONTRACT.md)** for full Docker documentation
 
 ## API Endpoints
 
