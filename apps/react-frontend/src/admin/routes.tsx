@@ -217,7 +217,7 @@ const DataManagement = lazy(() => import('./modules/federation/DataManagement'))
 const CreditAgreements = lazy(() => import('./modules/federation/CreditAgreements'));
 const Neighborhoods = lazy(() => import('./modules/federation/Neighborhoods'));
 const ExternalPartners = lazy(() => import('./modules/federation/AdminFederationExternalPartnersPage'));
-const Webhooks = lazyParityPage('FederationWebhooksPage');
+const Webhooks = lazy(() => import('./modules/federation/AdminFederationWebhooksPage'));
 const ApiDocumentation = lazyParityPage('FederationApiDocsPage');
 const FederationActivityFeed = lazyParityPage('FederationActivityPage');
 const CreditCommonsConfig = lazyParityPage('FederationCreditCommonsPage');
