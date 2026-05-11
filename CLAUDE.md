@@ -115,11 +115,17 @@ See `.claude/production-server.md` for deployment commands.
 - **Migration coverage: 932/1,000** — % of V1 features ported to V2 (counts
   parity controllers' stubs as "touched"; this is the headline I had been
   quoting). Includes Phase 66/Marketplace/Caring exclusions in the denominator.
-- **Operational readiness: ~830/1,000** — % actually working end-to-end in
-  production. Post-audit-remediation (commits a77e941..ed15b87) added:
-  webhook idempotency, federation locking, OpenTelemetry, deep health
-  probes, log enrichment, FIDO2 prod-origin pinning, NullAiProvider
-  fallback, +6 controller auth-gate tests. Up from the 465 audit baseline:
+- **Operational readiness: ~870/1,000** — % actually working end-to-end in
+  production. Audit-followup-2 (chore/audit-followup-2) adds +40:
+  +20 from the 34 new auth-gate tests landed in c5d2aec, +15 from the
+  first-class `/api/admin/billing/checkout-sessions` endpoint (replaces
+  the admin UI's previous workaround of proxying through
+  `/api/admin/donations`), +5 from resolving the `/api/bookmarks`
+  ambiguous-route collision before it could throw at request time.
+  Post-audit-remediation (commits a77e941..ed15b87) added: webhook
+  idempotency, federation locking, OpenTelemetry, deep health probes,
+  log enrichment, FIDO2 prod-origin pinning, NullAiProvider fallback,
+  +6 controller auth-gate tests. Up from the 465 audit baseline:
   +30 from test coverage closing fragility risk on Phase 63-69 services,
   +25 from Stripe webhook signature verification, +20 from explicit
   Marketplace OOS messaging, +140 from 14 real admin pages replacing
@@ -190,25 +196,58 @@ points remaining from current 465 operational baseline):
    Safeguarding, HoursAudit, Consents, GivingDays, Projects, Config) —
    no remaining `lazyParityPage(...)` stubs in the volunteer admin
    surface.
- - **Item 8: 4 jobs admin stubs** to replace (ModerationQueue, BiasAudit,
-   Pipeline, Templates). Backend endpoints already exist in
-   `JobsParityController` (62 endpoints).
- - **Item 9: 7 billing admin stubs** to replace (BillingPage, PlanSelector,
-   InvoiceHistory, CheckoutReturn, BillingControl, RevenueDashboard,
-   MemberPremium*). Backend has `UserSubscription` + `SubscriptionPlan`
-   entities — only UI is missing.
- - **Item 10: 4 federation/agent admin stubs** to replace (FederationAggregates,
-   KiAgent, Agents, AgentProposals/Runs).
- - **Item 11: Web-Push full VAPID JWT signing + ECE encryption**. Currently
-   sends empty body; service worker fetches payload separately.
- - **Item 12: Real audit trail** for parity controllers'
-   `PersistCompatibilityWrite` path (currently writes JSON to TenantConfig
-   instead of typed entities).
+ - **Items 8–10: CLOSED.** The May-2026 admin-audit found all 22 jobs /
+   billing / federation/agent pages flagged in the original list are
+   already shipping as real components on main (audit revisited — earlier
+   numbers were wrong; the pages matched a stub heuristic that returned
+   false positives). The actual remaining stub set is 25 pages,
+   categorized below as Items 7a–7e.
+ - **Item 7a: Enterprise/Compliance (6 stubs).**
+   - `/admin/module-configuration` (ModuleConfigurationPage)
+   - `/admin/enterprise/fadp` (FadpAdminPage)
+   - `/admin/enterprise/gdpr/requests/create` (GdprRequestCreatePage)
+   - `/admin/enterprise/gdpr/requests/:id` (GdprRequestDetailPage)
+   - `/admin/enterprise/monitoring/log-files` +
+     `/admin/enterprise/monitoring/log-files/:filename` (LogFilesPage,
+     LogFileViewerPage)
+   - `/admin/enterprise/monitoring/requirements` (SystemRequirementsPage)
+ - **Item 7b: Federation / AI (5 stubs).**
+   - `/admin/federation/external-partners` (FederationExternalPartnersPage)
+   - `/admin/federation/webhooks` (FederationWebhooksPage)
+   - `/admin/federation/api-docs` (FederationApiDocsPage)
+   - `/admin/federation/activity` (FederationActivityPage)
+   - `/admin/federation/cc-config` (FederationCreditCommonsPage)
+ - **Item 7c: Resources / CMS (4 stubs).**
+   - `/admin/resources/create` + `/admin/resources/edit/:id`
+     (ResourceEditorPage)
+   - `/admin/resources/categories` (ResourceCategoriesPage)
+   - `/admin/landing-page` (LandingPageBuilderPage)
+   - `/admin/marketplace/coupons` (AdminCouponsPage)
+ - **Item 7d: Configuration / Settings (4 stubs).**
+   - `/admin/safeguarding-options` (SafeguardingOptionsAdminPage)
+   - `/admin/onboarding-settings` (OnboardingSettingsPage)
+   - `/admin/translation-config` (TranslationConfigPage)
+   - `/admin/help` (AdminHelpCenterPage)
+ - **Item 7e: Operations / Provisioning (5 stubs).**
+   - `/admin/advertising/campaigns` (AdvertisingCampaignsPage)
+   - `/admin/advertising/push-campaigns` (PushCampaignsPage)
+   - `/admin/platform/pilot-inquiries` (PilotInquiryAdminPage)
+   - `/admin/provisioning-requests` (ProvisioningRequestsPage)
+   - `/admin/api-partners` (ApiPartnersAdminPage)
+ - **Item 11: CLOSED.** Web-Push full VAPID JWT signing + ECE payload
+   encryption now ships in `PushNotificationService` (RFC 8291/8292;
+   confirmed in production-state corrections 2026-05-11).
+ - **Item 12: CLOSED** (commit a1a840b). Parity controllers'
+   `PersistCompatibilityWrite` path now writes typed audit entities
+   instead of stuffing JSON into TenantConfig.
  - **Item 13: Member-facing smart-match page**. No real UI today — just a
-   redirect.
+   redirect. Still open.
  - **Item 14: Federation onboarding flow**. Page exists, setup minimal.
- - **Item 15: Integration tests for write paths** — exchange state machine
-   concurrency, transaction rollback under contention.
+   Still open.
+ - **Item 15: CLOSED.** Integration tests for write paths landed in
+   session 9 (`ExchangeConcurrencyTests` — parallel completion +
+   insufficient balance + sequential re-completion — plus the
+   `Phase73AdminEndpointsAuthTests` 27-theory auth-gate sweep).
 
 OOS modules: Caring Community, Marketplace, Verein/Clubs, Regional
 Analytics, National KISS, Veriff/Onfido/Jumio/Idenfy ID providers,
