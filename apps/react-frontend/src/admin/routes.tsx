@@ -250,7 +250,7 @@ const ActivityTimeline = lazy(() => import('./modules/crm/ActivityTimeline'));
 // System tools
 const AdminSettings = lazy(() => import('./modules/system/AdminSettings'));
 const RegistrationPolicySettings = lazy(() => import('./modules/system/RegistrationPolicySettings'));
-const OnboardingSettings = lazyParityPage('OnboardingSettingsPage');
+const OnboardingSettings = lazy(() => import('./modules/system/OnboardingSettingsPage'));
 const TranslationConfig = lazyParityPage('TranslationConfigPage');
 const TestRunner = lazy(() => import('./modules/system/TestRunner'));
 const SeedGenerator = lazy(() => import('./modules/system/SeedGenerator'));
