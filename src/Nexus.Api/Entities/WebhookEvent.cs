@@ -24,6 +24,18 @@ public class WebhookEvent : ITenantEntity
     [MaxLength(50)]
     public string Source { get; set; } = "php-platform";
 
+    /// <summary>Provider name (for the unique-index dedup key). Defaults to <see cref="Source"/>.</summary>
+    [MaxLength(50)]
+    public string? Provider { get; set; }
+
+    /// <summary>
+    /// External event id from the sender (e.g. PHP platform's
+    /// <c>X-Nexus-Webhook-Id</c> header value). Used for idempotent dedup
+    /// of retried deliveries. Filtered-unique on (TenantId, Provider, ExternalEventId).
+    /// </summary>
+    [MaxLength(200)]
+    public string? ExternalEventId { get; set; }
+
     /// <summary>Raw JSON payload for audit/debugging.</summary>
     public string PayloadJson { get; set; } = "{}";
 

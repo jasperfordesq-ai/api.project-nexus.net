@@ -6,6 +6,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 
@@ -73,16 +74,48 @@ public class VolunteerWebhookService
     /// Processes a webhook event envelope and dispatches to the appropriate handler.
     /// Logs every event to the WebhookEvent table for audit.
     /// </summary>
-    public async Task<(bool Success, string? Error)> ProcessEventAsync(string eventType, JsonElement payload)
+    /// <param name="externalEventId">
+    /// Sender's event id (e.g. PHP <c>X-Nexus-Webhook-Id</c>) used for
+    /// idempotent dedup. If a prior delivery with the same
+    /// (TenantId, Provider, ExternalEventId) was already processed, this
+    /// returns success without re-dispatching the side effects (CRM
+    /// notes / tasks / tags).
+    /// </param>
+    public async Task<(bool Success, string? Error)> ProcessEventAsync(string eventType, JsonElement payload, string? externalEventId = null)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
         var systemAdminId = _configuration.GetValue("Webhooks:SystemAdminId", 1);
+        const string provider = "php-platform";
+
+        // Idempotency check (HIGH audit fix): if the sender stamps an event id
+        // and we've already processed it for this tenant + provider, treat as
+        // a duplicate delivery and return success without re-running CRM side
+        // effects.
+        if (!string.IsNullOrWhiteSpace(externalEventId))
+        {
+            var existing = await _db.Set<WebhookEvent>()
+                .IgnoreQueryFilters()
+                .Where(w => w.TenantId == tenantId
+                    && w.Provider == provider
+                    && w.ExternalEventId == externalEventId)
+                .Select(w => new { w.Id, w.Status })
+                .FirstOrDefaultAsync();
+            if (existing != null)
+            {
+                _logger.LogInformation(
+                    "Duplicate webhook delivery for tenant {TenantId} event {EventType} external id {ExternalId} (prior row {Id}, status {Status}) — returning idempotent success",
+                    tenantId, eventType, externalEventId, existing.Id, existing.Status);
+                return (true, null);
+            }
+        }
 
         var webhookEvent = new WebhookEvent
         {
             TenantId = tenantId,
             EventType = eventType,
-            Source = "php-platform",
+            Source = provider,
+            Provider = provider,
+            ExternalEventId = externalEventId,
             PayloadJson = payload.GetRawText(),
             Status = "processed",
             ReceivedAt = DateTime.UtcNow
@@ -93,7 +126,19 @@ public class VolunteerWebhookService
             await DispatchEventAsync(eventType, payload, tenantId, systemAdminId);
 
             _db.Set<WebhookEvent>().Add(webhookEvent);
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+            {
+                // Concurrent duplicate delivery won the race — the other writer
+                // already inserted the dedup row. Treat as idempotent success.
+                _logger.LogInformation(
+                    "Concurrent duplicate webhook delivery detected for tenant {TenantId} external id {ExternalId}",
+                    tenantId, externalEventId);
+                return (true, null);
+            }
 
             _logger.LogInformation(
                 "Webhook event {EventType} processed successfully for tenant {TenantId}",
@@ -107,7 +152,14 @@ public class VolunteerWebhookService
             webhookEvent.ErrorMessage = ex.Message;
 
             _db.Set<WebhookEvent>().Add(webhookEvent);
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException uex) when (IsUniqueViolation(uex))
+            {
+                // Same dedup race as above, but on the failed-path audit write.
+            }
 
             _logger.LogError(ex,
                 "Failed to process webhook event {EventType} for tenant {TenantId}",
@@ -115,6 +167,22 @@ public class VolunteerWebhookService
 
             return (false, ex.Message);
         }
+    }
+
+    private static bool IsUniqueViolation(DbUpdateException ex)
+    {
+        var inner = ex.InnerException;
+        while (inner != null)
+        {
+            if (inner.GetType().Name == "PostgresException")
+            {
+                var sqlStateProp = inner.GetType().GetProperty("SqlState");
+                var sqlState = sqlStateProp?.GetValue(inner) as string;
+                if (sqlState == "23505") return true;
+            }
+            inner = inner.InnerException;
+        }
+        return false;
     }
 
     private async Task DispatchEventAsync(string eventType, JsonElement payload, int tenantId, int systemAdminId)

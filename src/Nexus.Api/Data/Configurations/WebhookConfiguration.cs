@@ -26,10 +26,17 @@ public class WebhookConfiguration : TenantScopedConfiguration
             entity.Property(e => e.PayloadJson).HasColumnType("text");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("processed");
             entity.Property(e => e.ErrorMessage).HasColumnType("text");
+            entity.Property(e => e.Provider).HasMaxLength(50);
+            entity.Property(e => e.ExternalEventId).HasMaxLength(200);
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.EventType);
             entity.HasIndex(e => e.ReceivedAt);
             entity.HasIndex(e => e.Status);
+            // Filtered-unique index on (TenantId, Provider, ExternalEventId)
+            // for idempotent dedup of inbound webhook retries (HIGH audit fix).
+            entity.HasIndex(e => new { e.TenantId, e.Provider, e.ExternalEventId })
+                .IsUnique()
+                .HasFilter("\"ExternalEventId\" IS NOT NULL");
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
