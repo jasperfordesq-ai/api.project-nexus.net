@@ -324,7 +324,7 @@ const SubscriptionsAdmin = lazy(() => import('./modules/content/Subscriptions'))
 const LandingPageBuilder = lazyParityPage('LandingPageBuilderPage');
 
 // Platform / provisioning / integrations
-const PilotInquiryAdminPage = lazyParityPage('PilotInquiryAdminPage');
+const PilotInquiryAdminPage = lazy(() => import('./modules/ops/PilotInquiryAdminPage'));
 const ProvisioningRequestsPage = lazyParityPage('ProvisioningRequestsPage');
 const ApiPartnersAdminPage = lazyParityPage('ApiPartnersAdminPage');
 const AdminHelpCenterPage = lazyParityPage('AdminHelpCenterPage');
