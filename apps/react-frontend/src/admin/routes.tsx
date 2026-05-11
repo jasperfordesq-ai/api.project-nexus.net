@@ -321,7 +321,7 @@ const AttributesAdmin = lazy(() => import('./modules/content/AttributesAdmin'));
 const PlansAdmin = lazy(() => import('./modules/content/PlansAdmin'));
 const PlanForm = lazy(() => import('./modules/content/PlanForm'));
 const SubscriptionsAdmin = lazy(() => import('./modules/content/Subscriptions'));
-const LandingPageBuilder = lazyParityPage('LandingPageBuilderPage');
+const LandingPageBuilder = lazy(() => import('./modules/content/LandingPageBuilderPage'));
 
 // Platform / provisioning / integrations
 const PilotInquiryAdminPage = lazyParityPage('PilotInquiryAdminPage');
