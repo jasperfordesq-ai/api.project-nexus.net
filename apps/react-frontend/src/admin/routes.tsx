@@ -98,7 +98,7 @@ const LegalDocList = lazy(() => import('./modules/enterprise/LegalDocList'));
 const LegalDocForm = lazy(() => import('./modules/enterprise/LegalDocForm'));
 const LegalDocVersionList = lazy(() => import('./modules/enterprise/LegalDocVersionList'));
 const LegalDocComplianceDashboard = lazy(() => import('./modules/enterprise/LegalDocComplianceDashboard'));
-const GdprRequestDetail = lazyParityPage('GdprRequestDetailPage');
+const GdprRequestDetail = lazy(() => import('./modules/enterprise/GdprRequestDetailPage'));
 const GdprRequestCreate = lazy(() => import('./modules/enterprise/GdprRequestCreatePage'));
 const GdprConsentTypes = lazy(() => import('./modules/enterprise/GdprConsentTypesAdmin'));
 const GdprBreachDetail = lazy(() => import('./modules/enterprise/GdprBreachDetailAdmin'));
