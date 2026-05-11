@@ -84,7 +84,7 @@ const RoleList = lazy(() => import('./modules/enterprise/RoleList'));
 const RoleForm = lazy(() => import('./modules/enterprise/RoleForm'));
 const PermissionBrowser = lazy(() => import('./modules/enterprise/PermissionBrowser'));
 const GdprDashboard = lazy(() => import('./modules/enterprise/GdprDashboard'));
-const FadpAdminPage = lazyParityPage('FadpAdminPage');
+const FadpAdminPage = lazy(() => import('./modules/enterprise/FadpAdminPage'));
 const GdprRequests = lazy(() => import('./modules/enterprise/GdprRequests'));
 const GdprConsents = lazy(() => import('./modules/enterprise/GdprConsents'));
 const GdprBreaches = lazy(() => import('./modules/enterprise/GdprBreaches'));
