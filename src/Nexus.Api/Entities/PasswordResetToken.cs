@@ -21,7 +21,7 @@ public class PasswordResetToken : ITenantEntity
     public string TokenHash { get; set; } = string.Empty;
 
     /// <summary>
-    /// When this token expires (typically 1 hour).
+    /// When this token expires (typically 30 minutes — see PasswordResetExpiryMinutes).
     /// </summary>
     public DateTime ExpiresAt { get; set; }
 

@@ -110,6 +110,7 @@ public class RegistrationPolicyController : ControllerBase
     /// </summary>
     [HttpPost("verify/start")]
     [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

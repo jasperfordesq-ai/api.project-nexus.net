@@ -28,7 +28,7 @@ namespace Nexus.Api.Controllers;
 [Authorize(Policy = "AdminOnly")]
 public class AdminCompatibilityController : ControllerBase
 {
-    private const int PasswordResetExpiryMinutes = 60;
+    private const int PasswordResetExpiryMinutes = 30;
     private const string MenuDefinitionsConfigKey = "menus.definitions";
 
     private static readonly (int Id, string Name, string Location)[] MenuDefinitions =

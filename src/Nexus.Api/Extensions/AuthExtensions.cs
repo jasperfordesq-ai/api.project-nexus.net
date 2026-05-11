@@ -5,6 +5,8 @@
 
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Nexus.Api.Extensions;
@@ -88,6 +90,45 @@ public static class AuthExtensions
                         if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
                             context.Token = accessToken;
                         return Task.CompletedTask;
+                    },
+                    // 2026-05-11 audit finding: AdminOnly policy validates the
+                    // role claim from the JWT only, so demoting a user has no
+                    // effect until their token expires (up to 120 min). For
+                    // tokens claiming admin/super_admin we re-read the User
+                    // row and reject if the DB role no longer matches —
+                    // closing the stale-JWT admin escalation window. The
+                    // DB hit is bounded to admin requests (low volume) so
+                    // this does not move the hot-path latency.
+                    OnTokenValidated = async context =>
+                    {
+                        var principal = context.Principal;
+                        if (principal == null) return;
+                        var tokenRole = principal.FindFirst("role")?.Value
+                            ?? principal.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+                        if (tokenRole != "admin" && tokenRole != "super_admin") return;
+
+                        var sub = principal.FindFirst("sub")?.Value
+                            ?? principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                        if (!int.TryParse(sub, out var userId)) return;
+
+                        var db = context.HttpContext.RequestServices
+                            .GetRequiredService<Nexus.Api.Data.NexusDbContext>();
+                        var current = await db.Users
+                            .IgnoreQueryFilters()
+                            .Where(u => u.Id == userId)
+                            .Select(u => new { u.Role, u.IsActive })
+                            .FirstOrDefaultAsync();
+                        if (current is null || !current.IsActive)
+                        {
+                            context.Fail("user_not_found_or_inactive");
+                            return;
+                        }
+                        if (current.Role != tokenRole)
+                        {
+                            // Role demoted (or promoted to a different tier) since
+                            // token was issued — reject so the client must re-auth.
+                            context.Fail("role_changed_since_token_issue");
+                        }
                     }
                 };
             });

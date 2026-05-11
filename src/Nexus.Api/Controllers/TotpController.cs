@@ -6,7 +6,9 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -96,6 +98,7 @@ public class TotpController : ControllerBase
     /// Verify a TOTP code during login (called after password verification).
     /// </summary>
     [HttpPost("verify")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     public async Task<IActionResult> Verify([FromBody] TotpCodeRequest request)
     {
         var userId = User.GetUserId();
@@ -135,6 +138,7 @@ public class TotpController : ControllerBase
     /// Verify a backup code during login (alternative to TOTP code).
     /// </summary>
     [HttpPost("verify-backup")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     public async Task<IActionResult> VerifyBackup([FromBody] TotpCodeRequest request)
     {
         var userId = User.GetUserId();

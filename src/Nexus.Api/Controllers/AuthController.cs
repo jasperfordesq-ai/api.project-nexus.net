@@ -41,8 +41,9 @@ public class AuthController : ControllerBase
 
     // Refresh token validity (7 days default)
     private const int RefreshTokenExpiryDays = 7;
-    // Password reset token validity (1 hour)
-    private const int PasswordResetExpiryMinutes = 60;
+    // Password reset token validity. Shortened from 60 → 30 min on 2026-05-11
+    // (audit finding) — industry baseline for password-reset windows.
+    private const int PasswordResetExpiryMinutes = 30;
 
     public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator, IEmailService emailService, TokenService tokenService)
     {
@@ -317,7 +318,31 @@ public class AuthController : ControllerBase
 
         if (!refreshToken.IsValid)
         {
-            _logger.LogWarning("Refresh failed: token expired or revoked for user {UserId}", refreshToken.UserId);
+            // Refresh-token reuse detection (2026-05-11 audit, OAuth2 best practice).
+            // If the presented token has been revoked (e.g. used once already
+            // and rotated), that's a strong signal the token was stolen and a
+            // replay is in flight. Revoke the entire token family for this
+            // user so the attacker — and the legitimate session — both lose
+            // access immediately.
+            if (refreshToken.RevokedAt != null)
+            {
+                var revokedCount = await _db.RefreshTokens
+                    .IgnoreQueryFilters()
+                    .Where(t => t.UserId == refreshToken.UserId
+                        && t.TenantId == refreshToken.TenantId
+                        && t.RevokedAt == null)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(t => t.RevokedAt, DateTime.UtcNow)
+                        .SetProperty(t => t.RevokedReason, "reuse_detected"));
+                _logger.LogWarning(
+                    "Refresh-token reuse detected for user {UserId} — revoked {Count} sibling token(s). " +
+                    "Possible token theft.",
+                    refreshToken.UserId, revokedCount);
+            }
+            else
+            {
+                _logger.LogWarning("Refresh failed: token expired for user {UserId}", refreshToken.UserId);
+            }
             return Unauthorized(new { error = "Refresh token expired or revoked" });
         }
 

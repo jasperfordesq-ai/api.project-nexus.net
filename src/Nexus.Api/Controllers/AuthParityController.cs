@@ -35,13 +35,19 @@ public class AuthParityController : ControllerBase
     [Authorize]
     public IActionResult RefreshSession() => Ok(new { refreshed = true, user_id = User.GetUserId() });
 
+    // Retired 2026-05-11 (audit finding): the previous anonymous stubs returned
+    // {restored:true}/{refreshed:true} unconditionally, advertising a working
+    // auth surface without verification. Now return 410 Gone so misbehaving
+    // clients fail loudly instead of believing they have a session.
     [HttpPost("restore-session")]
     [AllowAnonymous]
-    public IActionResult RestoreSession([FromBody] JsonElement body) => Ok(new { restored = body.ValueKind != JsonValueKind.Undefined });
+    public IActionResult RestoreSession() =>
+        StatusCode(StatusCodes.Status410Gone, new { error = "endpoint_retired", message = "Use POST /api/auth/refresh." });
 
     [HttpPost("refresh-token")]
     [AllowAnonymous]
-    public IActionResult LegacyRefreshToken([FromBody] JsonElement body) => Ok(new { refreshed = true });
+    public IActionResult LegacyRefreshToken() =>
+        StatusCode(StatusCodes.Status410Gone, new { error = "endpoint_retired", message = "Use POST /api/auth/refresh." });
 
     [HttpPost("revoke")]
     [Authorize]
@@ -55,9 +61,13 @@ public class AuthParityController : ControllerBase
     [Authorize]
     public IActionResult ValidateTokenGet() => Ok(new { valid = true, user_id = User.GetUserId() });
 
+    // Retired 2026-05-11 (audit finding): previously returned {valid:true}
+    // unconditionally without checking the token. Now requires the standard
+    // JWT [Authorize] flow — clients that need to validate should call
+    // GET /api/auth/validate-token (which uses [Authorize]).
     [HttpPost("validate-token")]
-    [AllowAnonymous]
-    public IActionResult ValidateTokenPost([FromBody] JsonElement body) => Ok(new { valid = true });
+    [Authorize]
+    public IActionResult ValidateTokenPost() => Ok(new { valid = true, user_id = User.GetUserId() });
 
     [HttpGet("oauth/enabled-providers")]
     [AllowAnonymous]

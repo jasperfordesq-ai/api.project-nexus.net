@@ -158,7 +158,7 @@ public class GmailEmailService : IEmailService
             </p>
             <p>Or copy and paste this link into your browser:</p>
             <p class='token'>{resetUrl}</p>
-            <p><strong>This link will expire in 1 hour.</strong></p>
+            <p><strong>This link will expire in 30 minutes.</strong></p>
             <p>If you didn't request this password reset, you can safely ignore this email. Your password won't be changed.</p>
         </div>
         <div class='footer'>
@@ -179,7 +179,7 @@ We received a request to reset your password.
 Click this link to reset your password:
 {resetUrl}
 
-This link will expire in 1 hour.
+This link will expire in 30 minutes.
 
 If you didn't request this password reset, you can safely ignore this email.
 

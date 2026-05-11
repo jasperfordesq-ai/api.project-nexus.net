@@ -62,7 +62,7 @@ public class SendGridEmailService : IEmailService
     public async Task<bool> SendPasswordResetEmailAsync(string to, string resetToken, string userName, string resetUrl, CancellationToken ct = default)
     {
         var subject = "Reset Your Credentials - Project NEXUS";
-        var html = $"<h2>Account Recovery</h2><p>Hi {userName},</p><p>Click below to set a new credential:</p><p><a href='{resetUrl}'>Reset Now</a></p><p>This link expires in 1 hour.</p>";
+        var html = $"<h2>Account Recovery</h2><p>Hi {userName},</p><p>Click below to set a new credential:</p><p><a href='{resetUrl}'>Reset Now</a></p><p>This link expires in 30 minutes.</p>";
         return await SendEmailAsync(to, subject, html, null, ct);
     }
 
