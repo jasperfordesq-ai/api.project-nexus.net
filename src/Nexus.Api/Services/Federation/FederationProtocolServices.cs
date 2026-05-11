@@ -33,10 +33,12 @@
  * token via FederationApiKeyService.
  */
 
+using System.Data;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -608,23 +610,78 @@ public class HourTransferReconciliationService
             if (sender == 0) sender = admin.Id;
             if (receiver == 0) receiver = admin.Id;
         }
-        var tx = new Transaction
+
+        // Real money crossing tenants — mirror the ExchangeService.CompleteExchangeAsync
+        // safety contract: Serializable transaction + pg_advisory_xact_lock on the
+        // affected local user(s) so concurrent reconciliation ticks (or admin
+        // manual triggers running alongside the cron) cannot double-spend.
+        var hasOuterTx = _db.Database.CurrentTransaction != null;
+        IDbContextTransaction? localTx = null;
+        if (!hasOuterTx)
+            localTx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        try
         {
-            TenantId = t.TenantId,
-            SenderId = sender,
-            ReceiverId = receiver,
-            Amount = t.Amount,
-            Status = TransactionStatus.Completed,
-            Description = $"Federated {t.Protocol} transfer #{t.Id}: {t.Description}",
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.Transactions.Add(tx);
-        await _db.SaveChangesAsync(ct);
-        t.LocalTransactionId = tx.Id;
-        t.Status = FederatedTransferStatus.Reconciled;
-        t.ReconciledAt = DateTime.UtcNow;
-        t.FailureReason = null;
-        _logger.LogInformation("Federated transfer {Id} reconciled — local tx={TxId}", t.Id, tx.Id);
+            // Take the advisory lock(s). When both sides are local users, lock
+            // the lower id first to avoid deadlocks against another path that
+            // happens to take them in the opposite order.
+            var lockKeys = new List<int>();
+            if (sender == receiver) lockKeys.Add(sender);
+            else { lockKeys.Add(Math.Min(sender, receiver)); lockKeys.Add(Math.Max(sender, receiver)); }
+            foreach (var key in lockKeys)
+            {
+                await _db.Database.ExecuteSqlRawAsync(
+                    "SELECT pg_advisory_xact_lock({0})", new object[] { key }, ct);
+            }
+
+            // For Outbound, the local user is spending credits — verify they
+            // have the balance before writing the ledger row.
+            if (t.Direction == FederatedTransferDirection.Outbound)
+            {
+                var received = await _db.Transactions
+                    .Where(x => x.ReceiverId == t.LocalUserId && x.Status == TransactionStatus.Completed)
+                    .SumAsync(x => x.Amount, ct);
+                var sent = await _db.Transactions
+                    .Where(x => x.SenderId == t.LocalUserId && x.Status == TransactionStatus.Completed)
+                    .SumAsync(x => x.Amount, ct);
+                var balance = received - sent;
+                if (balance < t.Amount)
+                {
+                    if (localTx != null) await localTx.RollbackAsync(ct);
+                    t.FailureReason = $"insufficient_balance: have {balance:F2}, need {t.Amount:F2}";
+                    return;
+                }
+            }
+
+            var tx = new Transaction
+            {
+                TenantId = t.TenantId,
+                SenderId = sender,
+                ReceiverId = receiver,
+                Amount = t.Amount,
+                Status = TransactionStatus.Completed,
+                Description = $"Federated {t.Protocol} transfer #{t.Id}: {t.Description}",
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Transactions.Add(tx);
+            await _db.SaveChangesAsync(ct);
+            t.LocalTransactionId = tx.Id;
+            t.Status = FederatedTransferStatus.Reconciled;
+            t.ReconciledAt = DateTime.UtcNow;
+            t.FailureReason = null;
+            await _db.SaveChangesAsync(ct);
+
+            if (localTx != null) await localTx.CommitAsync(ct);
+            _logger.LogInformation("Federated transfer {Id} reconciled — local tx={TxId}", t.Id, tx.Id);
+        }
+        catch
+        {
+            if (localTx != null) await localTx.RollbackAsync(ct);
+            throw;
+        }
+        finally
+        {
+            if (localTx != null) await localTx.DisposeAsync();
+        }
     }
 
     private async Task<string?> ResolvePartnerSettingAsync(int tenantId, int partnerId, string suffix)
