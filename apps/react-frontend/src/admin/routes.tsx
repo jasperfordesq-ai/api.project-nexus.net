@@ -224,7 +224,7 @@ const CreditCommonsConfig = lazy(() => import('./modules/federation/AdminFederat
 
 // Safeguarding module
 const SafeguardingDashboard = lazy(() => import('./modules/safeguarding/SafeguardingDashboard'));
-const SafeguardingOptionsAdmin = lazyParityPage('SafeguardingOptionsAdminPage');
+const SafeguardingOptionsAdmin = lazy(() => import('./modules/safeguarding/SafeguardingOptionsAdminPage'));
 
 // Regional / national analytics — OOS per CLAUDE.md (Caring-Community-adjacent).
 // Routes removed.
@@ -250,8 +250,8 @@ const ActivityTimeline = lazy(() => import('./modules/crm/ActivityTimeline'));
 // System tools
 const AdminSettings = lazy(() => import('./modules/system/AdminSettings'));
 const RegistrationPolicySettings = lazy(() => import('./modules/system/RegistrationPolicySettings'));
-const OnboardingSettings = lazyParityPage('OnboardingSettingsPage');
-const TranslationConfig = lazyParityPage('TranslationConfigPage');
+const OnboardingSettings = lazy(() => import('./modules/system/OnboardingSettingsPage'));
+const TranslationConfig = lazy(() => import('./modules/system/TranslationConfigPage'));
 const TestRunner = lazy(() => import('./modules/system/TestRunner'));
 const SeedGenerator = lazy(() => import('./modules/system/SeedGenerator'));
 const WebpConverter = lazy(() => import('./modules/system/WebpConverter'));
@@ -327,7 +327,7 @@ const LandingPageBuilder = lazy(() => import('./modules/content/LandingPageBuild
 const PilotInquiryAdminPage = lazy(() => import('./modules/ops/PilotInquiryAdminPage'));
 const ProvisioningRequestsPage = lazy(() => import('./modules/ops/ProvisioningRequestsPage'));
 const ApiPartnersAdminPage = lazy(() => import('./modules/ops/ApiPartnersAdminPage'));
-const AdminHelpCenterPage = lazyParityPage('AdminHelpCenterPage');
+const AdminHelpCenterPage = lazy(() => import('./modules/system/AdminHelpCenterPage'));
 
 // Wrap lazy components in Suspense
 function Lazy({ children }: { children: React.ReactNode }) {
