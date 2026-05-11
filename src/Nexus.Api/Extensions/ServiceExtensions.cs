@@ -154,6 +154,7 @@ public static class ServiceExtensions
         services.AddScoped<Nexus.Api.Services.Federation.KomunitinClient>();
         services.AddScoped<Nexus.Api.Services.Federation.NativeIngestService>();
         services.AddScoped<Nexus.Api.Services.Federation.HourTransferReconciliationService>();
+        services.AddScoped<Nexus.Api.Services.Federation.IFederationWebhookSubscriptionService, Nexus.Api.Services.Federation.FederationWebhookSubscriptionService>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.ReconcileFederatedHourTransfersJob>();
 
         // Phase 69 — AI multi-provider abstraction. Each concrete provider is

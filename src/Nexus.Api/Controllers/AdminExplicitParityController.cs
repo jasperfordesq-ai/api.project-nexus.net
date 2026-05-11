@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services.Federation;
 using System.Text;
 using System.Text.Json;
 
@@ -18,6 +19,7 @@ namespace Nexus.Api.Controllers;
 public class AdminExplicitParityController : ControllerBase
 {
     private readonly NexusDbContext _db;
+    private readonly IFederationWebhookSubscriptionService _webhookService;
     private const string BillingInvoicesKey = "admin_explicit.billing.invoices";
     private const string FederationTopicsKey = "admin_explicit.federation.topics";
     private const string FederationTopicSubscriptionsKey = "admin_explicit.federation.topic_subscriptions";
@@ -30,9 +32,10 @@ public class AdminExplicitParityController : ControllerBase
         PropertyNameCaseInsensitive = true
     };
 
-    public AdminExplicitParityController(NexusDbContext db)
+    public AdminExplicitParityController(NexusDbContext db, IFederationWebhookSubscriptionService webhookService)
     {
         _db = db;
+        _webhookService = webhookService;
     }
 
     [HttpDelete("/api/v2/admin/enterprise/config/secrets/{key}")]
@@ -58,7 +61,7 @@ public class AdminExplicitParityController : ControllerBase
 
         return path switch
         {
-            _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await DeleteStoredRecord(FederationWebhooksKey, webhookId, "federation_webhook"),
+            _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await DeleteFederationWebhook(webhookId),
             _ => await PersistCompatibilityWrite("delete")
         };
     }
@@ -403,7 +406,7 @@ public class AdminExplicitParityController : ControllerBase
 
         return path switch
         {
-            "/api/v2/admin/federation/webhooks" => await CreateStoredRecord(FederationWebhooksKey, "federation_webhook"),
+            "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/test", out var webhookId) => await TestFederationWebhook(webhookId),
             _ => await PersistCompatibilityWrite("post")
         };
@@ -463,7 +466,7 @@ public class AdminExplicitParityController : ControllerBase
         return path switch
         {
             "/api/v2/admin/federation/topics/mine" => await PutFederationTopicSubscriptions(),
-            _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpsertStoredRecord(FederationWebhooksKey, webhookId, "federation_webhook"),
+            _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpdateFederationWebhook(webhookId),
             _ => await PersistCompatibilityWrite("put")
         };
     }
@@ -1093,27 +1096,121 @@ public class AdminExplicitParityController : ControllerBase
 
     private async Task<IActionResult> GetFederationWebhooks()
     {
-        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
 
-        var records = await LoadStoredRecordsAsync(FederationWebhooksKey);
+        var subs = await _webhookService.ListAsync(tenantId);
         return Ok(new
         {
-            data = records.Select(ToResponseRecord).ToList(),
-            meta = new { source = "tenant_config", total = records.Count }
+            data = subs.Select(WebhookSubscriptionToResponse).ToList(),
+            meta = new { source = "typed_entity", total = subs.Count }
         });
     }
 
     private async Task<IActionResult> GetFederationWebhookLogs(int webhookId)
     {
-        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
 
-        var records = await LoadStoredRecordsAsync(FederationWebhookLogsKey(webhookId));
+        var logs = await _webhookService.GetLogsAsync(tenantId, webhookId);
         return Ok(new
         {
-            data = records.Select(ToResponseRecord).ToList(),
-            meta = new { source = "tenant_config", webhook_id = webhookId, total = records.Count }
+            data = logs.Select(l => new
+            {
+                id = l.Id,
+                subscription_id = l.SubscriptionId,
+                success = l.Success,
+                reason = l.Reason,
+                action = l.Action,
+                payload = ParseStoredPayload(l.PayloadJson),
+                created_at = l.CreatedAt
+            }).ToList(),
+            meta = new { source = "typed_entity", webhook_id = webhookId, total = logs.Count }
         });
     }
+
+    private async Task<IActionResult> CreateFederationWebhook()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        var input = ParseWebhookInput(payloadJson);
+        var created = await _webhookService.CreateAsync(tenantId, GetCurrentAdminUserId(), input);
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            success = true,
+            data = WebhookSubscriptionToResponse(created)
+        });
+    }
+
+    private async Task<IActionResult> UpdateFederationWebhook(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        var input = ParseWebhookInput(payloadJson);
+        var updated = await _webhookService.UpdateAsync(tenantId, id, input);
+        if (updated == null) return NotFound(new { error = "webhook_not_found", id });
+        return Ok(new { success = true, data = WebhookSubscriptionToResponse(updated) });
+    }
+
+    private async Task<IActionResult> DeleteFederationWebhook(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+        var deleted = await _webhookService.DeleteAsync(tenantId, id);
+        if (!deleted) return NotFound(new { error = "webhook_not_found", id });
+        return Ok(new { success = true, id });
+    }
+
+    private static FederationWebhookSubscription ParseWebhookInput(string payloadJson)
+    {
+        var sub = new FederationWebhookSubscription();
+        if (string.IsNullOrWhiteSpace(payloadJson)) return sub;
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return sub;
+            if (TryFindProperty(doc.RootElement, "name", out var n)) sub.Name = JsonElementToString(n) ?? string.Empty;
+            if (TryFindProperty(doc.RootElement, "target_url", out var t) ||
+                TryFindProperty(doc.RootElement, "url", out t)) sub.TargetUrl = JsonElementToString(t) ?? string.Empty;
+            if (TryFindProperty(doc.RootElement, "event_types", out var ev)) sub.EventTypes = JsonElementToString(ev) ?? string.Empty;
+            if (TryFindProperty(doc.RootElement, "secret", out var s)) sub.Secret = JsonElementToString(s);
+            if (TryFindProperty(doc.RootElement, "direction", out var d))
+            {
+                var dv = (JsonElementToString(d) ?? "outbound").ToLowerInvariant();
+                sub.Direction = dv == "inbound" ? FederationWebhookDirection.Inbound : FederationWebhookDirection.Outbound;
+            }
+            if (TryFindProperty(doc.RootElement, "status", out var st))
+            {
+                var sv = (JsonElementToString(st) ?? "active").ToLowerInvariant();
+                sub.Status = sv switch
+                {
+                    "paused" or "disabled" or "inactive" => FederationWebhookStatus.Paused,
+                    "failed" or "error" => FederationWebhookStatus.Failed,
+                    _ => FederationWebhookStatus.Active
+                };
+            }
+        }
+        catch (JsonException) { }
+        return sub;
+    }
+
+    private static object WebhookSubscriptionToResponse(FederationWebhookSubscription s) => new Dictionary<string, object?>
+    {
+        ["id"] = s.Id,
+        ["tenant_id"] = s.TenantId,
+        ["name"] = s.Name,
+        ["target_url"] = s.TargetUrl,
+        ["event_types"] = s.EventTypes,
+        ["direction"] = s.Direction.ToString().ToLowerInvariant(),
+        ["status"] = s.Status.ToString().ToLowerInvariant(),
+        ["secret"] = string.IsNullOrEmpty(s.Secret) ? null : "***",
+        ["last_delivered_at"] = s.LastDeliveredAt,
+        ["last_failure_at"] = s.LastFailureAt,
+        ["last_failure_reason"] = s.LastFailureReason,
+        ["retry_count"] = s.RetryCount,
+        ["created_at"] = s.CreatedAt,
+        ["updated_at"] = s.UpdatedAt,
+        ["created_by"] = s.CreatedBy
+    };
 
     private async Task<IActionResult> CreateStoredRecord(string key, string kind)
     {
@@ -1202,24 +1299,17 @@ public class AdminExplicitParityController : ControllerBase
 
     private async Task<IActionResult> TestFederationWebhook(int webhookId)
     {
-        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
 
         var payloadJson = await ReadRequestPayloadJsonAsync();
-        var key = FederationWebhookLogsKey(webhookId);
-        var records = await LoadStoredRecordsAsync(key, includeDeleted: true);
-        var now = DateTime.UtcNow;
-        var record = BuildStoredRecord(NextStoredRecordId(records), "federation_webhook_log", "test", payloadJson, now);
-        record.Name = $"Webhook {webhookId} test";
-        record.Status = "recorded";
-        records.Add(record);
-        await SaveStoredRecordsAsync(key, records);
+        if (string.IsNullOrWhiteSpace(payloadJson)) payloadJson = "{}";
+        var (success, reason) = await _webhookService.DeliverAsync(tenantId, webhookId, payloadJson, "test");
 
         return Ok(new
         {
-            success = true,
-            data = ToResponseRecord(record),
-            delivery_status = "recorded",
-            compatibility = CompatibilityMetadata(key)
+            success,
+            delivery_status = success ? "delivered" : "failed",
+            reason
         });
     }
 

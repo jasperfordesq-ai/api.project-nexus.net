@@ -188,6 +188,8 @@ public class NexusDbContext : DbContext
     public DbSet<FederationSystemControl> FederationSystemControls => Set<FederationSystemControl>();
     public DbSet<FederationTenantWhitelist> FederationTenantWhitelists => Set<FederationTenantWhitelist>();
     public DbSet<FederationTenantFeature> FederationTenantFeatures => Set<FederationTenantFeature>();
+    public DbSet<FederationWebhookSubscription> FederationWebhookSubscriptions => Set<FederationWebhookSubscription>();
+    public DbSet<FederationWebhookDeliveryLog> FederationWebhookDeliveryLogs => Set<FederationWebhookDeliveryLog>();
 
     // Phase 36: Predictive Staffing
     public DbSet<StaffingPrediction> StaffingPredictions => Set<StaffingPrediction>();
