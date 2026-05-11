@@ -442,6 +442,9 @@ public class NexusDbContext : DbContext
     // Provisioning Requests (new-tenant onboarding queue)
     public DbSet<ProvisioningRequest> ProvisioningRequests => Set<ProvisioningRequest>();
 
+    // API Partners (third-party API consumers)
+    public DbSet<ApiPartner> ApiPartners => Set<ApiPartner>();
+
     // Jobs parity
     public DbSet<JobSavedProfile> JobSavedProfiles => Set<JobSavedProfile>();
     public DbSet<JobTemplate> JobTemplates => Set<JobTemplate>();
@@ -504,6 +507,7 @@ public class NexusDbContext : DbContext
             new DiscoveryConfiguration(_tenantContext),
             new ContactEmergencyConfiguration(_tenantContext),
             new ProvisioningRequestConfiguration(_tenantContext),
+            new ApiPartnerConfiguration(_tenantContext),
             new FeedModerationGamificationConfiguration(_tenantContext),
             new WebhookConfiguration(_tenantContext),
             new ScheduledJobRunConfiguration(),
