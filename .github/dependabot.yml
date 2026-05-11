@@ -1,5 +1,15 @@
 # Copyright © 2024–2026 Jasper Ford
 # SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Policy: Dependabot is restricted to security-only updates.
+# Routine version-bump PRs are disabled via `open-pull-requests-limit: 0`.
+# GitHub continues to file PRs for security advisories regardless of this
+# setting — see
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#open-pull-requests-limit
+#
+# Rationale: blind dependency bumps without CI cause production incidents.
+# Until a CI pipeline runs the full test suite on each bump, only real
+# security advisories (with a CVE / GHSA id) should generate PRs.
 
 version: 2
 updates:
@@ -11,32 +21,10 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Dublin"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "jasperfordesq-ai"
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
-      - "nuget"
-    groups:
-      ef-core:
-        patterns:
-          - "Microsoft.EntityFrameworkCore*"
-          - "Npgsql.EntityFrameworkCore*"
-      aspnet:
-        patterns:
-          - "Microsoft.AspNetCore*"
-          - "Microsoft.Extensions*"
-      testing:
-        patterns:
-          - "xunit*"
-          - "coverlet*"
-          - "Moq"
-          - "FluentAssertions"
-          - "Microsoft.NET.Test.Sdk"
-          - "Testcontainers*"
-      serilog:
-        patterns:
-          - "Serilog*"
+      - "security"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -46,10 +34,10 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Dublin"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
-      - "github-actions"
+      - "security"
 
   # Docker base images
   - package-ecosystem: "docker"
@@ -59,12 +47,12 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Dublin"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
-      - "docker"
+      - "security"
 
-  # npm — V1 parity React SPA (primary frontend; where the 37 alerts concentrate)
+  # npm — V1 parity React SPA
   - package-ecosystem: "npm"
     directory: "/apps/react-frontend"
     schedule:
@@ -72,38 +60,12 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Dublin"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
-      - "npm"
-      - "react-frontend"
-    groups:
-      heroui:
-        patterns:
-          - "@heroui/*"
-      react:
-        patterns:
-          - "react"
-          - "react-dom"
-          - "@types/react"
-          - "@types/react-dom"
-      vite:
-        patterns:
-          - "vite"
-          - "@vitejs/*"
-          - "vitest"
-      eslint:
-        patterns:
-          - "eslint*"
-          - "@typescript-eslint/*"
-      types:
-        patterns:
-          - "@types/*"
-        exclude-patterns:
-          - "@types/react"
-          - "@types/react-dom"
+      - "security"
 
-  # npm — standalone admin (Refine app, secondary surface)
+  # npm — standalone admin (Refine app)
   - package-ecosystem: "npm"
     directory: "/apps/admin"
     schedule:
@@ -111,19 +73,10 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Dublin"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
-      - "npm"
-      - "admin"
-    groups:
-      refine:
-        patterns:
-          - "@refinedev/*"
-      antd:
-        patterns:
-          - "antd"
-          - "@ant-design/*"
+      - "security"
 
   # npm — UK GOV.UK Express frontend
   - package-ecosystem: "npm"
@@ -133,8 +86,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Dublin"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
-      - "npm"
-      - "web-uk"
+      - "security"
