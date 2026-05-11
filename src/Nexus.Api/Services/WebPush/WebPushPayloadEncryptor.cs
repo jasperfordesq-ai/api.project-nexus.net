@@ -49,6 +49,12 @@ public static class WebPushPayloadEncryptor
     private const int SaltLength = 16;
     private const int AuthSecretLength = 16;
     private const int P256UncompressedLength = 65;
+    // Maximum plaintext that fits in one record once you account for:
+    //   - 1 byte 0x02 record-end marker (added before encryption)
+    //   - 16 byte AES-GCM auth tag (added by Encrypt)
+    // → RecordSize - 17 = 4079. We use 3993 to match common Web-Push library
+    // limits which leave headroom for browser-side framing variation.
+    private const int MaxPlaintextLength = 3993;
 
     /// <summary>
     /// Encrypt a UTF-8 string payload for a Web-Push subscription.
@@ -67,7 +73,9 @@ public static class WebPushPayloadEncryptor
     }
 
     /// <summary>
-    /// Encrypt arbitrary bytes for a Web-Push subscription.
+    /// Encrypt arbitrary bytes for a Web-Push subscription, using
+    /// base64url-encoded subscription keys (the format browsers expose via
+    /// <c>PushSubscription.getKey('p256dh' | 'auth')</c>).
     /// </summary>
     public static byte[] Encrypt(byte[] plaintext, string userAgentPublicKeyBase64Url, string userAgentAuthSecretBase64Url)
     {
@@ -79,11 +87,36 @@ public static class WebPushPayloadEncryptor
 
         var uaPub = VapidJwtSigner.Base64UrlDecode(userAgentPublicKeyBase64Url);
         var authSecret = VapidJwtSigner.Base64UrlDecode(userAgentAuthSecretBase64Url);
+        return Encrypt(plaintext, uaPub, authSecret);
+    }
 
-        if (uaPub.Length != P256UncompressedLength || uaPub[0] != 0x04)
-            throw new ArgumentException($"p256dh must be 65 bytes uncompressed (0x04 || X || Y) — was {uaPub.Length} bytes", nameof(userAgentPublicKeyBase64Url));
-        if (authSecret.Length != AuthSecretLength)
-            throw new ArgumentException($"auth must be 16 bytes — was {authSecret.Length} bytes", nameof(userAgentAuthSecretBase64Url));
+    /// <summary>
+    /// Encrypt arbitrary bytes for a Web-Push subscription, using raw
+    /// subscription key bytes. Spec-aligned overload (RFC 8291 §3).
+    /// </summary>
+    /// <param name="payload">Plaintext bytes (max ~3993 bytes after padding +
+    /// 16-byte tag overhead).</param>
+    /// <param name="subscriptionP256dh">65-byte uncompressed P-256 public key
+    /// (0x04 || X(32) || Y(32)).</param>
+    /// <param name="subscriptionAuth">16-byte auth secret.</param>
+    public static byte[] Encrypt(byte[] payload, byte[] subscriptionP256dh, byte[] subscriptionAuth)
+    {
+        if (payload == null) throw new ArgumentNullException(nameof(payload));
+        if (subscriptionP256dh == null) throw new ArgumentNullException(nameof(subscriptionP256dh));
+        if (subscriptionAuth == null) throw new ArgumentNullException(nameof(subscriptionAuth));
+
+        if (subscriptionP256dh.Length != P256UncompressedLength || subscriptionP256dh[0] != 0x04)
+            throw new ArgumentException($"p256dh must be 65 bytes uncompressed (0x04 || X || Y) — was {subscriptionP256dh.Length} bytes", nameof(subscriptionP256dh));
+        if (subscriptionAuth.Length != AuthSecretLength)
+            throw new ArgumentException($"auth must be 16 bytes — was {subscriptionAuth.Length} bytes", nameof(subscriptionAuth));
+        if (payload.Length > MaxPlaintextLength)
+            throw new ArgumentException(
+                $"payload too large: {payload.Length} bytes > {MaxPlaintextLength} byte limit (rs={RecordSize} minus padding/tag overhead)",
+                nameof(payload));
+
+        var uaPub = subscriptionP256dh;
+        var authSecret = subscriptionAuth;
+        var plaintext = payload;
 
         // Step 1 — ephemeral key pair.
         using var asKey = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);

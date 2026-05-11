@@ -152,9 +152,16 @@ public class MoneyDonationService
         //   payment_intent.payment_failed → Pending → Failed
         //   charge.refunded               → Succeeded → Refunded
 
-        string? sessionId = dataObject.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
+        string? eventObjectId = dataObject.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
         string? paymentIntent = dataObject.TryGetProperty("payment_intent", out var piEl) ? piEl.GetString() : null;
         string? clientReferenceId = dataObject.TryGetProperty("client_reference_id", out var cr) ? cr.GetString() : null;
+
+        // For payment_intent.* events the data.object.id IS the payment intent.
+        // For checkout.session.* events the data.object.id is the session id and
+        // data.object.payment_intent (if present) is the related PI.
+        bool eventIsPaymentIntent = eventType.StartsWith("payment_intent.", StringComparison.Ordinal);
+        string? sessionId = eventIsPaymentIntent ? null : eventObjectId;
+        if (eventIsPaymentIntent && paymentIntent == null) paymentIntent = eventObjectId;
 
         MoneyDonation? donation = null;
         if (clientReferenceId != null && int.TryParse(clientReferenceId, out var donationId))

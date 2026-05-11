@@ -10,7 +10,7 @@ namespace Nexus.Api.Data.Configurations;
 
 /// <summary>
 /// Entity configurations for admin/moderation entities:
-/// AuditLog, AdminNote, ContentReport, UserWarning.
+/// AuditLog, AdminNote, ContentReport, UserWarning, CompatibilityAuditEntry.
 /// </summary>
 public class AdminConfiguration : TenantScopedConfiguration
 {
@@ -90,6 +90,25 @@ public class AdminConfiguration : TenantScopedConfiguration
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.IssuedBy).WithMany().HasForeignKey(e => e.IssuedById).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Report).WithMany().HasForeignKey(e => e.ReportId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        // CompatibilityAuditEntry — typed replacement for the legacy
+        // TenantConfig-blob audit trail used by parity controllers.
+        modelBuilder.Entity<CompatibilityAuditEntry>(entity =>
+        {
+            entity.ToTable("compatibility_audit_entries");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Endpoint).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.HttpMethod).HasMaxLength(10).IsRequired();
+            entity.Property(e => e.Action).HasMaxLength(20);
+            entity.Property(e => e.RequestBody).HasColumnType("jsonb").IsRequired();
+            entity.Property(e => e.ResponseBody).HasColumnType("jsonb").IsRequired();
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Endpoint });
+            entity.HasIndex(e => e.OccurredAt);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
     }

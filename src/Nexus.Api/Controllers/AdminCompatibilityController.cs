@@ -1529,6 +1529,8 @@ public class AdminCompatibilityController : ControllerBase
             Severity = AuditSeverity.Info,
             CreatedAt = DateTime.UtcNow
         });
+        // Dual-write: TenantConfig key preserved as the documented integration contract.
+        await UpsertTenantConfigAsync("tools.webp_conversion.last", JsonSerializer.Serialize(result));
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} recorded WebP conversion compatibility run; {Pending} images pending", GetCurrentUserId(), pending);
@@ -1560,6 +1562,8 @@ public class AdminCompatibilityController : ControllerBase
             Severity = AuditSeverity.Info,
             CreatedAt = DateTime.UtcNow
         });
+        // Dual-write: TenantConfig key preserved as the documented integration contract.
+        await UpsertTenantConfigAsync("tools.seed.last", JsonSerializer.Serialize(result));
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} recorded seed-generation compatibility run", GetCurrentUserId());
@@ -1599,6 +1603,10 @@ public class AdminCompatibilityController : ControllerBase
             Severity = AuditSeverity.Info,
             CreatedAt = DateTime.UtcNow
         });
+        // Dual-write: TenantConfig key preserved as the documented integration contract.
+        // Backup IDs are user-supplied; normalize separators so they're valid config-key suffixes.
+        var backupKeySuffix = backupId.Replace('-', '_').Replace('.', '_').ToLowerInvariant();
+        await UpsertTenantConfigAsync($"tools.blog_backup_restore.{backupKeySuffix}", JsonSerializer.Serialize(result));
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} recorded blog backup restore compatibility request {BackupId}", GetCurrentUserId(), backupId);
@@ -1648,6 +1656,8 @@ public class AdminCompatibilityController : ControllerBase
             Severity = AuditSeverity.Info,
             CreatedAt = DateTime.UtcNow
         });
+        // Dual-write: TenantConfig key preserved as the documented integration contract.
+        await UpsertTenantConfigAsync("tools.seo_audit.latest", JsonSerializer.Serialize(result));
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} ran SEO audit with score {Score}", GetCurrentUserId(), score);

@@ -147,7 +147,7 @@ public class ExchangeConcurrencyTests : IntegrationTestBase
         err.Should().NotBeNull().And.StartWith("Insufficient balance");
 
         using var assertScope = Factory.Services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
+        assertScope.ServiceProvider.GetRequiredService<TenantContext>().SetTenant(TestData.Tenant1.Id);
         var db = assertScope.ServiceProvider.GetRequiredService<NexusDbContext>();
         var refreshed = await db.Exchanges.IgnoreQueryFilters().FirstAsync(e => e.Id == exchangeId);
         refreshed.Status.Should().Be(ExchangeStatus.InProgress, "rejection must not advance the state machine");

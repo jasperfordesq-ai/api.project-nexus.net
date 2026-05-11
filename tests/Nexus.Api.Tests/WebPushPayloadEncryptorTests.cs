@@ -181,6 +181,64 @@ public class WebPushPayloadEncryptorTests
     }
 
     [Fact]
+    public void Encrypt_ByteOverload_RoundTrips()
+    {
+        var ua = MakeUserAgent();
+        var p256dh = VapidJwtSigner.Base64UrlDecode(ua.P256dh);
+        var auth = VapidJwtSigner.Base64UrlDecode(ua.Auth);
+        var payload = Encoding.UTF8.GetBytes("""{"hello":"bytes"}""");
+
+        var encrypted = WebPushPayloadEncryptor.Encrypt(payload, p256dh, auth);
+
+        var decrypted = DecryptAsUserAgent(encrypted, ua.Private, ua.Auth);
+        decrypted.Should().BeEquivalentTo(payload);
+    }
+
+    [Fact]
+    public void Encrypt_ByteOverload_RejectsWrongLengthP256dh()
+    {
+        var auth = new byte[16];
+        var act = () => WebPushPayloadEncryptor.Encrypt(new byte[]{ 1 }, new byte[33], auth);
+        act.Should().Throw<ArgumentException>().Where(e => e.Message.Contains("65 bytes"));
+    }
+
+    [Fact]
+    public void Encrypt_ByteOverload_RejectsWrongLengthAuth()
+    {
+        var ua = MakeUserAgent();
+        var p256dh = VapidJwtSigner.Base64UrlDecode(ua.P256dh);
+        var act = () => WebPushPayloadEncryptor.Encrypt(new byte[]{ 1 }, p256dh, new byte[8]);
+        act.Should().Throw<ArgumentException>().Where(e => e.Message.Contains("16 bytes"));
+    }
+
+    [Fact]
+    public void Encrypt_RejectsPayloadTooLarge()
+    {
+        var ua = MakeUserAgent();
+        var p256dh = VapidJwtSigner.Base64UrlDecode(ua.P256dh);
+        var auth = VapidJwtSigner.Base64UrlDecode(ua.Auth);
+        var huge = new byte[5000]; // > 3993 byte cap
+
+        var act = () => WebPushPayloadEncryptor.Encrypt(huge, p256dh, auth);
+        act.Should().Throw<ArgumentException>().Where(e => e.Message.Contains("too large"));
+    }
+
+    [Fact]
+    public void Encrypt_OutputHeader_HasCorrectShape()
+    {
+        var ua = MakeUserAgent();
+        var encrypted = WebPushPayloadEncryptor.Encrypt("x", ua.P256dh, ua.Auth);
+
+        // RFC 8188 header: salt(16) || rs(4 BE) || idlen(1) || keyid(idlen)
+        // rs must equal 4096 (RecordSize).
+        var rs = (encrypted[16] << 24) | (encrypted[17] << 16) | (encrypted[18] << 8) | encrypted[19];
+        rs.Should().Be(4096, "record size is fixed at 4096");
+        encrypted[20].Should().Be(65, "idlen for P-256 uncompressed key is 65");
+        encrypted[21].Should().Be(0x04, "keyid (as_pub) leading byte is uncompressed-point marker");
+        encrypted.Length.Should().BeGreaterThan(16 + 4 + 1 + 65 + 16, "must include header + tag + ciphertext");
+    }
+
+    [Fact]
     public void CanEncrypt_BothKeysPresent_ReturnsTrue()
     {
         WebPushPayloadEncryptor.CanEncrypt("p256", "auth").Should().BeTrue();

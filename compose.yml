@@ -47,8 +47,8 @@ services:
       # RabbitMQ configuration
       - RabbitMq__Host=rabbitmq
       - RabbitMq__Port=5672
-      - RabbitMq__Username=guest
-      - RabbitMq__Password=guest
+      - RabbitMq__Username=${RABBITMQ_USER:-guest}
+      - RabbitMq__Password=${RABBITMQ_PASS:-guest}
       - RabbitMq__VirtualHost=/
       - RabbitMq__ExchangeName=nexus.events
       - RabbitMq__Enabled=true
@@ -121,8 +121,8 @@ services:
       - "5672:5672"   # AMQP protocol
       - "15672:15672" # Management UI (http://localhost:15672)
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
     volumes:
       - nexus-backend-rabbitmq-data:/var/lib/rabbitmq
     networks:

@@ -1297,8 +1297,44 @@ public class AdminExplicitParityController : ControllerBase
 
     private async Task<IActionResult> GetPersistedCompatibilityRead(string path)
     {
-        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
 
+        // Primary read path — typed CompatibilityAuditEntry rows.
+        // CLAUDE.md path-to-1000 item 12: replace TenantConfig JSON blob audit
+        // with a real audit trail. Kept the legacy JSON-blob fallback below
+        // until existing test fixtures stop asserting on the TenantConfig key
+        // shape (see AdminExplicitParityControllerTests).
+        var typedEntries = await _db.CompatibilityAuditEntries
+            .AsNoTracking()
+            .Where(e => e.TenantId == tenantId && e.Endpoint == path)
+            .OrderByDescending(e => e.OccurredAt)
+            .Take(50)
+            .ToListAsync();
+
+        if (typedEntries.Count > 0)
+        {
+            return Ok(new
+            {
+                data = typedEntries.Select(ToCompatibilityAuditResponse).ToList(),
+                meta = new
+                {
+                    total = typedEntries.Count,
+                    source = "compatibility_audit_entries",
+                    path
+                },
+                // The "tenant_config_record" mode label is preserved as a
+                // compatibility contract for existing parity tests; the
+                // underlying storage is now a typed audit entity.
+                compatibility = new
+                {
+                    mode = "tenant_config_record",
+                    side_effect = "read_recorded_writes_only"
+                }
+            });
+        }
+
+        // Legacy fallback — TenantConfig JSON blob. Kept temporarily so old
+        // rows recorded before the typed table existed remain readable.
         var records = await LoadStoredRecordsAsync(CompatibilityWritesKey);
         var matching = records
             .Where(r => string.Equals(r.Path, path, StringComparison.OrdinalIgnoreCase))
@@ -1325,19 +1361,21 @@ public class AdminExplicitParityController : ControllerBase
 
     private async Task<IActionResult> PersistCompatibilityWrite(string action)
     {
-        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
 
         var payloadJson = await ReadRequestPayloadJsonAsync();
-        var records = await LoadStoredRecordsAsync(CompatibilityWritesKey, includeDeleted: true);
         var now = DateTime.UtcNow;
+
+        // Legacy storage — JSON blob into TenantConfig. Retained until the
+        // existing parity tests are updated to assert on the typed table.
+        var records = await LoadStoredRecordsAsync(CompatibilityWritesKey, includeDeleted: true);
         var record = BuildStoredRecord(NextStoredRecordId(records), "admin_explicit_parity_write", action, payloadJson, now);
         record.Name = $"{Request.Method} {Request.Path.Value}";
         record.Status = "recorded";
-
         records.Add(record);
         await SaveStoredRecordsAsync(CompatibilityWritesKey, records);
 
-        return Accepted(new
+        var responseBody = new
         {
             success = true,
             data = ToResponseRecord(record),
@@ -1347,7 +1385,52 @@ public class AdminExplicitParityController : ControllerBase
                 key = CompatibilityWritesKey,
                 side_effect = "recorded_only"
             }
-        });
+        };
+
+        // Primary audit trail — typed CompatibilityAuditEntry row.
+        // CLAUDE.md path-to-1000 item 12.
+        var auditEntry = new CompatibilityAuditEntry
+        {
+            TenantId = tenantId,
+            UserId = GetCurrentAdminUserId(),
+            Endpoint = Request.Path.Value ?? string.Empty,
+            HttpMethod = Request.Method ?? string.Empty,
+            Action = action,
+            RequestBody = payloadJson,
+            ResponseBody = JsonSerializer.Serialize(responseBody, StoreJsonOptions),
+            StatusCode = StatusCodes.Status202Accepted,
+            OccurredAt = now
+        };
+        _db.CompatibilityAuditEntries.Add(auditEntry);
+
+        await _db.SaveChangesAsync();
+
+        return Accepted(responseBody);
+    }
+
+    /// <summary>
+    /// Maps a typed <see cref="CompatibilityAuditEntry"/> row to the
+    /// dictionary shape returned by the legacy
+    /// <see cref="GetPersistedCompatibilityRead"/> path so existing parity
+    /// consumers do not see a shape change.
+    /// </summary>
+    private static object ToCompatibilityAuditResponse(CompatibilityAuditEntry entry)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["id"] = entry.Id,
+            ["kind"] = "admin_explicit_parity_write",
+            ["name"] = $"{entry.HttpMethod} {entry.Endpoint}",
+            ["status"] = "recorded",
+            ["payload"] = ParseStoredPayload(entry.RequestBody),
+            ["path"] = entry.Endpoint,
+            ["method"] = entry.HttpMethod,
+            ["action"] = entry.Action,
+            ["admin_user_id"] = entry.UserId,
+            ["created_at"] = entry.OccurredAt,
+            ["updated_at"] = entry.OccurredAt,
+            ["deleted_at"] = (DateTime?)null
+        };
     }
 
     private bool TryRequireTenant(out int tenantId, out IActionResult? error)

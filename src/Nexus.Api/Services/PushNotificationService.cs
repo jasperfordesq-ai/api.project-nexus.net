@@ -8,6 +8,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services.WebPush;
 
 namespace Nexus.Api.Services;
 
@@ -22,6 +23,7 @@ public class PushNotificationService
     private readonly IConfiguration _configuration;
     private readonly ILogger<PushNotificationService> _logger;
     private readonly IHttpClientFactory? _httpClientFactory;
+    private readonly WebPushSender? _webPushSender;
 
     private static readonly JsonSerializerOptions ProviderJsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -30,13 +32,15 @@ public class PushNotificationService
         TenantContext tenantContext,
         IConfiguration configuration,
         ILogger<PushNotificationService> logger,
-        IHttpClientFactory? httpClientFactory = null)
+        IHttpClientFactory? httpClientFactory = null,
+        WebPushSender? webPushSender = null)
     {
         _db = db;
         _tenantContext = tenantContext;
         _configuration = configuration;
         _logger = logger;
         _httpClientFactory = httpClientFactory;
+        _webPushSender = webPushSender;
     }
 
     /// <summary>
@@ -552,6 +556,44 @@ public class PushNotificationService
         }
         var vapidPrivate = _configuration["Vapid:PrivateKey"];
         var vapidSubject = _configuration["Vapid:Subject"] ?? "mailto:noreply@project-nexus.net";
+
+        // Phase 73 path-to-1000 #11 — when the subscription carries the
+        // browser's p256dh + auth keys AND we have a VAPID private key, use
+        // the dedicated WebPushSender to handle RFC 8291 encryption + RFC
+        // 8292 VAPID signing in one place.
+        if (_webPushSender != null
+            && !string.IsNullOrWhiteSpace(vapidPrivate)
+            && WebPushPayloadEncryptor.CanEncrypt(log.Subscription.P256dh, log.Subscription.Auth))
+        {
+            var payloadJson = JsonSerializer.Serialize(new
+            {
+                title = log.Title,
+                body = log.Body,
+                data = string.IsNullOrWhiteSpace(log.Data) ? null : (object?)JsonDocument.Parse(log.Data!).RootElement
+            }, ProviderJsonOptions);
+
+            var ok = await _webPushSender.SendAsync(
+                log.Subscription,
+                vapidPrivateKey: vapidPrivate!,
+                vapidPublicKey: vapidPublic!,
+                payload: System.Text.Encoding.UTF8.GetBytes(payloadJson),
+                ct: ct);
+
+            if (ok)
+            {
+                log.Status = PushStatus.Sent;
+                log.ErrorMessage = null;
+                log.SentAt = DateTime.UtcNow;
+                log.Subscription.LastUsedAt = DateTime.UtcNow;
+                log.Subscription.UpdatedAt = DateTime.UtcNow;
+                return true;
+            }
+
+            // WebPushSender already logs + (if relevant) marks the
+            // subscription inactive. Surface a stable failure reason.
+            MarkPushFailed(log, log.Subscription.IsActive ? "web_push_send_failed" : "web_push_subscription_gone");
+            return false;
+        }
 
         using var request = new HttpRequestMessage(HttpMethod.Post, subscriptionEndpoint);
         request.Headers.TryAddWithoutValidation("TTL", "86400");

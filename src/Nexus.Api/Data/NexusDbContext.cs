@@ -127,6 +127,7 @@ public class NexusDbContext : DbContext
 
     // Phase 24: Audit Logging
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<CompatibilityAuditEntry> CompatibilityAuditEntries => Set<CompatibilityAuditEntry>();
 
     // Phase 25: Email Notifications
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
@@ -207,10 +208,15 @@ public class NexusDbContext : DbContext
     public DbSet<VolunteerWellbeing> VolunteerWellbeings => Set<VolunteerWellbeing>();
     public DbSet<VolunteerCertificate> VolunteerCertificates => Set<VolunteerCertificate>();
     public DbSet<VolunteerEmergencyAlert> VolunteerEmergencyAlerts => Set<VolunteerEmergencyAlert>();
+    public DbSet<VolunteerTrainingCourse> VolunteerTrainingCourses => Set<VolunteerTrainingCourse>();
+    public DbSet<VolunteerTrainingCompletion> VolunteerTrainingCompletions => Set<VolunteerTrainingCompletion>();
+    public DbSet<VolunteerGuardianConsent> VolunteerGuardianConsents => Set<VolunteerGuardianConsent>();
+    public DbSet<VolunteerTenantPolicy> VolunteerTenantPolicies => Set<VolunteerTenantPolicy>();
 
     // Phase 37: Advanced Admin
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<ScheduledTask> ScheduledTasks => Set<ScheduledTask>();
+    public DbSet<ScheduledJobRun> ScheduledJobRuns => Set<ScheduledJobRun>();
     public DbSet<PlatformAnnouncement> PlatformAnnouncements => Set<PlatformAnnouncement>();
 
     // WebAuthn/Passkeys
@@ -468,6 +474,7 @@ public class NexusDbContext : DbContext
             new OrgWalletConfiguration(_tenantContext),
             new VolunteerConfiguration(_tenantContext),
             new VolunteerLongTailConfiguration(_tenantContext),
+            new VolunteerAdminConfiguration(_tenantContext),
             new FederationProtocolsConfiguration(_tenantContext),
             new Phase72Configuration(_tenantContext),
             new MatchingConfiguration(_tenantContext),
@@ -489,6 +496,7 @@ public class NexusDbContext : DbContext
             new ContactEmergencyConfiguration(_tenantContext),
             new FeedModerationGamificationConfiguration(_tenantContext),
             new WebhookConfiguration(_tenantContext),
+            new ScheduledJobRunConfiguration(),
         };
 
         foreach (var config in configurations)

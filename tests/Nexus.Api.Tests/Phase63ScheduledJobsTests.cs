@@ -83,6 +83,9 @@ public class Phase63ScheduledJobsTests : IntegrationTestBase
     {
         using var arrange = Factory.Services.CreateScope();
         var arrangeDb = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
+        await arrangeDb.FederationPartners.IgnoreQueryFilters()
+            .Where(p => p.TenantId == TestData.Tenant1.Id && p.PartnerTenantId == TestData.Tenant2.Id)
+            .ExecuteDeleteAsync();
         var partner = new FederationPartner
         {
             TenantId = TestData.Tenant1.Id,
@@ -110,6 +113,9 @@ public class Phase63ScheduledJobsTests : IntegrationTestBase
     {
         using var arrange = Factory.Services.CreateScope();
         var arrangeDb = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
+        await arrangeDb.FederationPartners.IgnoreQueryFilters()
+            .Where(p => p.TenantId == TestData.Tenant1.Id && p.PartnerTenantId == TestData.Tenant2.Id)
+            .ExecuteDeleteAsync();
         var partner = new FederationPartner
         {
             TenantId = TestData.Tenant1.Id,
@@ -381,6 +387,9 @@ public class Phase63ScheduledJobsTests : IntegrationTestBase
     {
         using var arrange = Factory.Services.CreateScope();
         var arrangeDb = arrange.ServiceProvider.GetRequiredService<NexusDbContext>();
+        await arrangeDb.FederationPartners.IgnoreQueryFilters()
+            .Where(p => p.TenantId == TestData.Tenant1.Id && p.PartnerTenantId == TestData.Tenant2.Id)
+            .ExecuteDeleteAsync();
         var partner = new FederationPartner
         {
             TenantId = TestData.Tenant1.Id,

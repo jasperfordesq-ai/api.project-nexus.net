@@ -29,8 +29,10 @@ public class RequestCorrelationAndDiagnosticsTests : IntegrationTestBase
     {
         ClearAuthToken();
         var resp = await Client.GetAsync("/health");
-        resp.Headers.Should().ContainKey("X-Request-Id");
-        var id = resp.Headers.GetValues("X-Request-Id").FirstOrDefault();
+        // HTTP header names are case-insensitive (RFC 7230 §3.2). Use TryGetValues
+        // rather than ContainKey on the underlying dictionary.
+        resp.Headers.TryGetValues("X-Request-Id", out var values).Should().BeTrue();
+        var id = values?.FirstOrDefault();
         id.Should().NotBeNullOrEmpty();
         // Server-generated ids are GUID-N (32 hex chars).
         id!.Length.Should().Be(32);

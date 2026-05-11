@@ -202,6 +202,7 @@ const GroupExchangesPage = lazyWithRetry(() => import('@/pages/group-exchanges/G
 const CreateGroupExchangePage = lazyWithRetry(() => import('@/pages/group-exchanges/CreateGroupExchangePage'));
 const GroupExchangeDetailPage = lazyWithRetry(() => import('@/pages/group-exchanges/GroupExchangeDetailPage'));
 const MatchesPage = lazyWithRetry(() => import('@/pages/matches/MatchesPage'));
+const SmartMatchPage = lazyWithRetry(() => import('@/pages/matches/SmartMatchPage'));
 const NewsletterUnsubscribePage = lazyWithRetry(() => import('@/pages/newsletter/NewsletterUnsubscribePage'));
 const AiChatPage = lazyWithRetry(() => import('@/pages/chat/AiChatPage'));
 const ConnectionsPage = lazyWithRetry(() => import('@/pages/connections/ConnectionsPage'));
@@ -323,6 +324,8 @@ function AppRoutes() {
         {/* Matches — cross-module matches page (MA1) */}
         <Route path="matches" element={<ErrorBoundary><MatchesPage /></ErrorBoundary>} />
         <Route path="matches/preferences" element={<Navigate to="settings" replace />} />
+        {/* Item 13 — native /api/matching wrapper distinct from /matches */}
+        <Route path="smart-match" element={<ErrorBoundary><SmartMatchPage /></ErrorBoundary>} />
         <Route path="broker/*" element={<ErrorBoundary><BrokerParityPage /></ErrorBoundary>} />
 
         {/* Tenant 2 (hOUR Timebank) specific pages — redirect other tenants to /about */}

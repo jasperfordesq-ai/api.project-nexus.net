@@ -136,6 +136,7 @@ const VolunteerExpenses = lazy(() => import('./modules/volunteering/VolunteerExp
 const VolunteerWellbeingAdmin = lazy(() => import('./modules/volunteering/VolunteerWellbeingAdmin'));
 const VolunteerCertificatesAdmin = lazy(() => import('./modules/volunteering/VolunteerCertificatesAdmin'));
 const FederationHourTransfersAdmin = lazy(() => import('./modules/federation/FederationHourTransfersAdmin'));
+const FederationOnboardingWizard = lazy(() => import('./modules/federation/FederationOnboardingWizard'));
 const AdminAiProvidersPageReal = lazy(() => import('./modules/ai/AdminAiProvidersPage'));
 const AdminPlansPageReal = lazy(() => import('./modules/billing/AdminPlansPage'));
 const AdminJobTemplatesPageReal = lazy(() => import('./modules/jobs/AdminJobTemplatesPage'));
@@ -147,33 +148,33 @@ const FederationAuditLogPage = lazy(() => import('./modules/federation/Federatio
 const AdminFederationPartnersPage = lazy(() => import('./modules/federation/AdminFederationPartnersPage'));
 const AdminGdprDeletionsPage = lazy(() => import('./modules/enterprise/AdminGdprDeletionsPage'));
 const AdminDiagnosticsPage = lazy(() => import('./modules/system/AdminDiagnosticsPage'));
-const VolunteerTraining = lazyParityPage('VolunteerTrainingPage');
-const VolunteerSafeguarding = lazyParityPage('VolunteerSafeguardingPage');
-const VolunteerHoursAudit = lazyParityPage('VolunteerHoursAuditPage');
-const VolunteerGivingDays = lazyParityPage('VolunteerGivingDaysPage');
-const VolunteerConsents = lazyParityPage('VolunteerConsentsPage');
-const VolunteerProjects = lazyParityPage('VolunteerProjectsPage');
-const VolunteerConfig = lazyParityPage('VolunteerConfigPage');
+const VolunteerTraining = lazy(() => import('./modules/volunteering/VolunteerTrainingAdmin'));
+const VolunteerSafeguarding = lazy(() => import('./modules/volunteering/VolunteerSafeguardingAdmin'));
+const VolunteerHoursAudit = lazy(() => import('./modules/volunteering/VolunteerHoursAuditAdmin'));
+const VolunteerGivingDays = lazy(() => import('./modules/volunteering/VolunteerGivingDaysAdmin'));
+const VolunteerConsents = lazy(() => import('./modules/volunteering/VolunteerConsentsAdmin'));
+const VolunteerProjects = lazy(() => import('./modules/volunteering/VolunteerProjectsAdmin'));
+const VolunteerConfig = lazy(() => import('./modules/volunteering/VolunteerConfigAdmin'));
 
 // Advertising module
 const AdCampaignAdminPage = lazyParityPage('AdvertisingCampaignsPage');
 const PushCampaignAdminPage = lazyParityPage('PushCampaignsPage');
 
 // AI / Agents module
-const KiAgentAdminPage = lazyParityPage('KiAgentAdminPage');
-const AgentsAdminPage = lazyParityPage('AgentsAdminPage');
-const AgentProposalsPage = lazyParityPage('AgentProposalsPage');
-const AgentRunsPage = lazyParityPage('AgentRunsPage');
+const KiAgentAdminPage = lazy(() => import('./modules/ai/KiAgentAdminPage'));
+const AgentsAdminPage = lazy(() => import('./modules/ai/AgentsAdminPage'));
+const AgentProposalsPage = lazy(() => import('./modules/ai/AgentProposalsPage'));
+const AgentRunsPage = lazy(() => import('./modules/ai/AgentRunsPage'));
 
 // Billing / paid products
 const BillingPage = AdminPlansPageReal;
 const PlanSelector = AdminPlansPageReal;
-const InvoiceHistory = lazyParityPage('InvoiceHistoryPage');
+const InvoiceHistory = lazy(() => import('./modules/billing/AdminInvoiceHistoryPage'));
 const CheckoutReturn = lazyParityPage('CheckoutReturnPage');
-const BillingControl = lazyParityPage('BillingControlPage');
-const RevenueDashboard = lazyParityPage('RevenueDashboardPage');
-const MemberPremiumAdminPage = lazyParityPage('MemberPremiumAdminPage');
-const MemberPremiumSubscribersPage = lazyParityPage('MemberPremiumSubscribersPage');
+const BillingControl = lazy(() => import('./modules/billing/AdminBillingControlPage'));
+const RevenueDashboard = lazy(() => import('./modules/billing/AdminRevenueDashboardPage'));
+const MemberPremiumAdminPage = lazy(() => import('./modules/billing/AdminMemberPremiumPage'));
+const MemberPremiumSubscribersPage = lazy(() => import('./modules/billing/AdminMemberPremiumSubscribersPage'));
 
 // Events module
 const EventsAdmin = lazy(() => import('./modules/events/EventsAdmin'));
@@ -191,9 +192,9 @@ const ResourceCategoriesAdmin = lazyParityPage('ResourceCategoriesPage');
 
 // Jobs module
 const JobsAdmin = lazy(() => import('./modules/jobs/JobsAdmin'));
-const JobModerationQueue = lazyParityPage('JobModerationQueuePage');
-const JobBiasAudit = lazyParityPage('JobBiasAuditPage');
-const JobPipelineOverview = lazyParityPage('JobPipelineOverviewPage');
+const JobModerationQueue = lazy(() => import('./modules/jobs/JobsModerationQueueAdmin'));
+const JobBiasAudit = lazy(() => import('./modules/jobs/JobsBiasAuditAdmin'));
+const JobPipelineOverview = lazy(() => import('./modules/jobs/JobsPipelineAdmin'));
 const JobTemplatesAdmin = AdminJobTemplatesPageReal;
 
 // Marketplace module
@@ -207,7 +208,7 @@ const IdeationAdmin = lazy(() => import('./modules/ideation/IdeationAdmin'));
 
 // Federation module
 const FederationSettings = lazy(() => import('./modules/federation/FederationSettings'));
-const FederationAggregatesPage = lazyParityPage('FederationAggregatesPage');
+const FederationAggregatesPage = lazy(() => import('./modules/federation/FederationAggregatesAdmin'));
 const Partnerships = lazy(() => import('./modules/federation/Partnerships'));
 const PartnerDirectory = lazy(() => import('./modules/federation/PartnerDirectory'));
 const MyProfile = lazy(() => import('./modules/federation/MyProfile'));
@@ -534,6 +535,7 @@ export function AdminRoutes() {
       <Route path="federation/aggregates" element={<Lazy><FederationAggregatesPage /></Lazy>} />
       {/* Phase 73 — real Phase 68 protocol-layer transfer admin */}
       <Route path="federation/transfers" element={<Lazy><FederationHourTransfersAdmin /></Lazy>} />
+      <Route path="federation/onboarding" element={<Lazy><FederationOnboardingWizard /></Lazy>} />
 
       {/* ─── SAFEGUARDING ─── */}
       <Route path="safeguarding" element={<Lazy><SafeguardingDashboard /></Lazy>} />

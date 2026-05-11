@@ -73,6 +73,7 @@ public class PublicCompatibilityEndpointsTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("necessary_cookies").GetBoolean().Should().BeTrue();
+        content.TryGetProperty("consented", out var consented).Should().BeTrue();
+        consented.GetBoolean().Should().BeFalse();
     }
 }

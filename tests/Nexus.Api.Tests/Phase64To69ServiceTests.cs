@@ -47,15 +47,16 @@ public class Phase64To69ServiceTests : IntegrationTestBase
         tenant.SetTenant(TestData.Tenant1.Id);
         var svc = scope.ServiceProvider.GetRequiredService<EmailTemplateService>();
 
-        var v1 = await svc.CreateVersionAsync("welcome_phase64", "Hi {{ user.name }}", "<p>v1</p>", null, "v1", null, activate: true);
-        var v2 = await svc.CreateVersionAsync("welcome_phase64", "Hi {{ user.name }}", "<p>v2</p>", null, "v2", null, activate: true);
-        var v3 = await svc.CreateVersionAsync("welcome_phase64", "Hi {{ user.name }}", "<p>v3</p>", null, "v3", null, activate: false);
+        var key = $"welcome_phase64_{Guid.NewGuid():N}";
+        var v1 = await svc.CreateVersionAsync(key, "Hi {{ user.name }}", "<p>v1</p>", null, "v1", null, activate: true);
+        var v2 = await svc.CreateVersionAsync(key, "Hi {{ user.name }}", "<p>v2</p>", null, "v2", null, activate: true);
+        var v3 = await svc.CreateVersionAsync(key, "Hi {{ user.name }}", "<p>v3</p>", null, "v3", null, activate: false);
 
         v1.Version.Should().Be(1);
         v2.Version.Should().Be(2);
         v3.Version.Should().Be(3);
 
-        var all = await svc.ListAllVersionsAsync("welcome_phase64");
+        var all = await svc.ListAllVersionsAsync(key);
         all.Should().HaveCount(3);
         all.Where(t => t.IsActive).Should().ContainSingle().Which.Version.Should().Be(2);
     }
@@ -68,13 +69,14 @@ public class Phase64To69ServiceTests : IntegrationTestBase
         tenant.SetTenant(TestData.Tenant1.Id);
         var svc = scope.ServiceProvider.GetRequiredService<EmailTemplateService>();
 
-        var v1 = await svc.CreateVersionAsync("rollback_test", "subject v1", "<p>v1</p>", null, null, null, activate: true);
-        var v2 = await svc.CreateVersionAsync("rollback_test", "subject v2", "<p>v2</p>", null, null, null, activate: true);
+        var key = $"rollback_test_{Guid.NewGuid():N}";
+        var v1 = await svc.CreateVersionAsync(key, "subject v1", "<p>v1</p>", null, null, null, activate: true);
+        var v2 = await svc.CreateVersionAsync(key, "subject v2", "<p>v2</p>", null, null, null, activate: true);
 
         var rolled = await svc.ActivateVersionAsync(v1.Id);
         rolled!.IsActive.Should().BeTrue();
 
-        var active = await svc.GetActiveAsync("rollback_test");
+        var active = await svc.GetActiveAsync(key);
         active!.Id.Should().Be(v1.Id);
     }
 
@@ -226,6 +228,9 @@ public class Phase64To69ServiceTests : IntegrationTestBase
         tenant.SetTenant(TestData.Tenant1.Id);
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
 
+        await db.FederationPartners.IgnoreQueryFilters()
+            .Where(p => p.TenantId == TestData.Tenant1.Id && p.PartnerTenantId == TestData.Tenant2.Id)
+            .ExecuteDeleteAsync();
         var partner = new FederationPartner
         {
             TenantId = TestData.Tenant1.Id,

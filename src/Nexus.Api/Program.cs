@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Nexus.Api.Configuration;
 using Nexus.Api.Data;
 using Nexus.Api.Extensions;
 using Nexus.Api.Hubs;
@@ -213,6 +214,18 @@ builder.Services.AddCors(options =>
     });
 });
 
+// =============================================================================
+// PRODUCTION SECRET GUARD
+// =============================================================================
+// Fails fast in Production if required secrets are unset or placeholder-like.
+// In Development, logs warnings only. Skipped during integration tests.
+if (!isTestEnvironment)
+{
+    using var guardLoggerFactory = LoggerFactory.Create(b => b.AddConsole());
+    var guardLogger = guardLoggerFactory.CreateLogger("ProductionSecretGuard");
+    ProductionSecretGuard.Validate(builder.Configuration, builder.Environment, guardLogger);
+}
+
 var app = builder.Build();
 
 // =============================================================================
@@ -343,6 +356,12 @@ app.UseAuthorization();
 // Emergency Lockdown check - blocks non-admin, non-health requests when lockdown is active
 // MUST be after Authentication/Authorization so admin role can be checked
 app.UseMiddleware<LockdownCheckMiddleware>();
+
+// Out-of-scope feature guard — returns 404 for V1 modules excluded from V2
+// (Marketplace, Caring Community, Verein/Clubs, Regional Analytics,
+// National KISS) unless the per-tenant flag is on. MUST be before
+// MapControllers so unmatched OOS routes never hit the controller.
+app.UseMiddleware<OutOfScopeFeatureGuardMiddleware>();
 
 // Federation API middleware - authenticates external federation API calls
 // Uses API Key or Federation JWT, separate from standard auth

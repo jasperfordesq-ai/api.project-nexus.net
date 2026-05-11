@@ -20,14 +20,37 @@ namespace Nexus.Api.Controllers;
 public class JobsAdminController : ControllerBase
 {
     private readonly JobService _jobService;
+    private readonly JobsBiasAuditService _biasAuditService;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<JobsAdminController> _logger;
 
-    public JobsAdminController(JobService jobService, TenantContext tenantContext, ILogger<JobsAdminController> logger)
+    public JobsAdminController(
+        JobService jobService,
+        JobsBiasAuditService biasAuditService,
+        TenantContext tenantContext,
+        ILogger<JobsAdminController> logger)
     {
         _jobService = jobService;
+        _biasAuditService = biasAuditService;
         _tenantContext = tenantContext;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Run a fairness ("four-fifths rule") audit across job applications.
+    /// </summary>
+    [HttpGet("bias-audit")]
+    public async Task<IActionResult> BiasAudit(
+        [FromQuery] int? jobId = null,
+        [FromQuery] DateTime? since = null,
+        CancellationToken ct = default)
+    {
+        if (!_tenantContext.TenantId.HasValue)
+            return BadRequest(new { error = "Tenant context not resolved" });
+
+        var sinceUtc = (since ?? DateTime.UtcNow.AddDays(-90)).ToUniversalTime();
+        var report = await _biasAuditService.RunAuditAsync(jobId, sinceUtc, ct);
+        return Ok(report);
     }
 
     /// <summary>

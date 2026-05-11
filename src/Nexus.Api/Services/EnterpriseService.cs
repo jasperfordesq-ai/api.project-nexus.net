@@ -12,6 +12,26 @@ namespace Nexus.Api.Services;
 /// <summary>
 /// Service for enterprise configuration and dashboard metrics.
 /// Phase 57: Enterprise/Governance.
+///
+/// <para>
+/// <b>CROSS-TENANT BY DESIGN.</b> This service intentionally bypasses the
+/// EF Core global tenant query filters via <c>.IgnoreQueryFilters()</c>
+/// because it powers system-wide configuration, governance, and
+/// enterprise-tier admin views (security posture, compliance overviews,
+/// governance dashboards). Tenant scoping is applied explicitly via
+/// <c>Where(x =&gt; x.TenantId == tenantId)</c> on every query — the filter
+/// bypass exists so administrators acting in a system/super-admin context
+/// can resolve metrics for an arbitrary tenant id passed by the caller,
+/// not so this service is exempt from isolation.
+/// </para>
+/// <para>
+/// <b>Caller contract:</b> every endpoint that calls into this service
+/// MUST be admin-gated (e.g. <c>[Authorize(Policy = "AdminOnly")]</c>) and
+/// MUST validate that the supplied <c>tenantId</c> is one the caller is
+/// authorised to view. Do NOT copy this <c>IgnoreQueryFilters()</c>
+/// pattern into tenant-scoped services — regular controllers should rely
+/// on the global filters and the resolved <c>TenantContext</c>.
+/// </para>
 /// </summary>
 public class EnterpriseService
 {
@@ -29,6 +49,7 @@ public class EnterpriseService
     /// </summary>
     public async Task<List<EnterpriseConfig>> GetConfigsAsync(int tenantId, string? category = null)
     {
+        // CROSS-TENANT READ: admin lookup of arbitrary tenant's enterprise config (caller-supplied tenantId, admin-gated).
         var query = _db.EnterpriseConfigs
             .IgnoreQueryFilters()
             .Where(c => c.TenantId == tenantId);
@@ -49,6 +70,7 @@ public class EnterpriseService
         string? category = null,
         string? description = null)
     {
+        // CROSS-TENANT READ: admin upsert against caller-supplied tenantId (admin-gated).
         var existing = await _db.EnterpriseConfigs
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
@@ -85,6 +107,7 @@ public class EnterpriseService
     /// </summary>
     public async Task<bool> DeleteConfigAsync(int tenantId, string key)
     {
+        // CROSS-TENANT READ: admin delete against caller-supplied tenantId (admin-gated).
         var config = await _db.EnterpriseConfigs
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
@@ -106,6 +129,7 @@ public class EnterpriseService
         var now = DateTime.UtcNow;
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
+        // CROSS-TENANT READ: enterprise dashboard aggregates for caller-supplied tenantId (admin-gated).
         var activeUsers = await _db.Users
             .IgnoreQueryFilters()
             .CountAsync(u => u.TenantId == tenantId && u.IsActive);
@@ -156,6 +180,7 @@ public class EnterpriseService
     /// </summary>
     public async Task<ComplianceOverview> GetComplianceOverviewAsync(int tenantId)
     {
+        // CROSS-TENANT READ: GDPR compliance overview for caller-supplied tenantId (admin-gated).
         var totalConsents = await _db.ConsentRecords
             .IgnoreQueryFilters()
             .CountAsync(c => c.TenantId == tenantId);
@@ -217,6 +242,7 @@ public class EnterpriseService
         var now = DateTime.UtcNow;
         var thirtyDaysAgo = now.AddDays(-30);
 
+        // CROSS-TENANT READ: governance/security dashboard for caller-supplied tenantId (admin-gated).
         var activeUsers30d = await _db.Users
             .IgnoreQueryFilters()
             .CountAsync(u => u.TenantId == tenantId && u.LastLoginAt != null && u.LastLoginAt > thirtyDaysAgo);
@@ -295,6 +321,7 @@ public class EnterpriseService
         var breakdown = new List<object>();
         var totalScore = 0;
 
+        // CROSS-TENANT READ: security posture score (multi-table aggregate) for caller-supplied tenantId (admin-gated).
         // 1. 2FA adoption > 50% => +20
         var totalActiveUsers = await _db.Users
             .IgnoreQueryFilters()

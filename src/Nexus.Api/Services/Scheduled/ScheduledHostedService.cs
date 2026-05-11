@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 
 namespace Nexus.Api.Services.Scheduled;
 
@@ -42,6 +43,28 @@ public abstract class ScheduledHostedService : BackgroundService
 
     /// <summary>Short, log-safe identifier (e.g. "SyncFederationPartners").</summary>
     protected abstract string JobName { get; }
+
+    /// <summary>
+    /// Public accessor so the admin observability endpoint can enumerate the
+    /// registered job set without using reflection on a protected member.
+    /// </summary>
+    public string Name => JobName;
+
+    /// <summary>Public accessor for the configured/default interval.</summary>
+    public TimeSpan ResolvedInterval
+    {
+        get
+        {
+            var configuredMinutes = Configuration.GetValue<double?>($"Scheduled:{JobName}:IntervalMinutes");
+            return configuredMinutes.HasValue && configuredMinutes.Value > 0
+                ? TimeSpan.FromMinutes(configuredMinutes.Value)
+                : DefaultInterval;
+        }
+    }
+
+    /// <summary>True if the job is enabled (kill-switch off).</summary>
+    public bool IsEnabled =>
+        Configuration.GetValue<bool?>($"Scheduled:{JobName}:Enabled") ?? true;
 
     /// <summary>Default interval if none configured. Pick something sensible per job.</summary>
     protected abstract TimeSpan DefaultInterval { get; }
@@ -102,6 +125,7 @@ public abstract class ScheduledHostedService : BackgroundService
         {
             var startedAt = DateTime.UtcNow;
             registry?.RecordStart(JobName);
+            var runId = await BeginRunRecordAsync(startedAt, stoppingToken);
             try
             {
                 await RunOnceAsync(stoppingToken);
@@ -110,6 +134,7 @@ public abstract class ScheduledHostedService : BackgroundService
                     "Scheduled job {JobName} completed in {ElapsedMs}ms",
                     JobName, elapsed.TotalMilliseconds);
                 registry?.RecordSuccess(JobName, elapsed);
+                await CompleteRunRecordAsync(runId, ScheduledJobRunStatus.Success, elapsed, null, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -119,6 +144,8 @@ public abstract class ScheduledHostedService : BackgroundService
             {
                 Logger.LogError(ex, "Scheduled job {JobName} failed", JobName);
                 registry?.RecordFailure(JobName, ex);
+                await CompleteRunRecordAsync(runId, ScheduledJobRunStatus.Failed, DateTime.UtcNow - startedAt, ex, CancellationToken.None);
+                // Match existing base-class behavior: do NOT rethrow — the loop continues.
             }
 
             try
@@ -177,6 +204,61 @@ public abstract class ScheduledHostedService : BackgroundService
         // Tenants are not tenant-scoped themselves — read directly.
         return await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
             db.Tenants.Select(t => t.Id), ct);
+    }
+
+    /// <summary>
+    /// Insert a Running row at the start of a tick. Returns the row id so the
+    /// completion handler can update the same row. Returns null if the write
+    /// fails (e.g. DB unavailable) — observability must never block job work.
+    /// </summary>
+    private async Task<int?> BeginRunRecordAsync(DateTime startedAt, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var run = new ScheduledJobRun
+            {
+                JobName = JobName,
+                StartedAt = startedAt,
+                Status = ScheduledJobRunStatus.Running
+            };
+            db.ScheduledJobRuns.Add(run);
+            await db.SaveChangesAsync(ct);
+            return run.Id;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not write start row for scheduled job {JobName}", JobName);
+            return null;
+        }
+    }
+
+    private async Task CompleteRunRecordAsync(int? runId, ScheduledJobRunStatus status, TimeSpan elapsed, Exception? error, CancellationToken ct)
+    {
+        if (runId is null) return;
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var run = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .FirstOrDefaultAsync(db.ScheduledJobRuns, r => r.Id == runId.Value, ct);
+            if (run is null) return;
+            run.Status = status;
+            run.CompletedAt = DateTime.UtcNow;
+            run.DurationMs = elapsed.TotalMilliseconds;
+            if (error is not null)
+            {
+                var msg = error.Message;
+                run.ErrorMessage = msg.Length <= 2000 ? msg : msg[..2000];
+                run.ErrorType = error.GetType().Name;
+            }
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not write completion row for scheduled job {JobName}", JobName);
+        }
     }
 
     /// <summary>

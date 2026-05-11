@@ -28,7 +28,10 @@ public class EmailConfiguration : TenantScopedConfiguration
             entity.Property(e => e.BodyHtml).HasColumnType("text").IsRequired();
             entity.Property(e => e.BodyText).HasColumnType("text");
             entity.HasIndex(e => e.TenantId);
-            entity.HasIndex(e => new { e.TenantId, e.Key }).IsUnique();
+            // Multi-version templates: unique on (tenant, key, version). Active flag picks
+            // which version is current. Without Version in the index, CreateVersionAsync's
+            // maxVersion+1 insert violates the constraint and rolls back.
+            entity.HasIndex(e => new { e.TenantId, e.Key, e.Version }).IsUnique();
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });

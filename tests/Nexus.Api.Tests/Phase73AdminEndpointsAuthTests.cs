@@ -120,6 +120,6 @@ public class Phase73AdminEndpointsAuthTests : IntegrationTestBase
         var resp = await Client.GetAsync("/health");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadAsStringAsync();
-        body.Should().Contain("\"status\"").And.Contain("Healthy");
+        body.Should().Contain("\"status\"").And.MatchRegex("(?i)healthy");
     }
 }

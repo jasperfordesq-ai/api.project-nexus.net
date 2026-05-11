@@ -76,6 +76,7 @@ public static class ServiceExtensions
         services.AddScoped<CookieConsentService>();
         services.AddScoped<LegalDocumentService>();
         services.AddScoped<PushNotificationService>();
+        services.AddScoped<Nexus.Api.Services.WebPush.WebPushSender>();
         services.AddScoped<TranslationService>();
         services.AddScoped<FederationService>();
         services.AddSingleton<FederationJwtService>();
@@ -87,6 +88,7 @@ public static class ServiceExtensions
         services.AddScoped<SystemAdminService>();
         services.AddScoped<LockdownService>();
         services.AddScoped<JobService>();
+        services.AddScoped<JobsBiasAuditService>();
         services.AddScoped<IdeationService>();
         services.AddScoped<SubscriptionService>();
         services.AddScoped<DeliverableService>();
@@ -141,6 +143,7 @@ public static class ServiceExtensions
         services.AddScoped<MarketplaceService>();
         services.AddScoped<EmailTemplateService>();
         services.AddScoped<VolunteerLongTailService>();
+        services.AddScoped<VolunteerAdminService>();
 
         // Phase 68 — federation protocol services
         services.AddHttpClient("NexusFederationProtocol", c =>

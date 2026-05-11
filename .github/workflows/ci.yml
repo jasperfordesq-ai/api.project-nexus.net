@@ -94,6 +94,35 @@ jobs:
           path: coverage-merged/Cobertura.xml
           retention-days: 30
 
+  integration-test:
+    # Full integration suite via Testcontainers. Ryuk (the Testcontainers
+    # reaper) is disabled because the same workflow needs to run on
+    # Docker-on-Windows where Ryuk fails to attach; it is harmless on
+    # Linux runners since the GitHub-hosted VM is torn down per job.
+    name: Integration Tests (Testcontainers)
+    runs-on: ubuntu-latest
+    env:
+      TESTCONTAINERS_RYUK_DISABLED: 'true'
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run tests
+        run: dotnet test --nologo --verbosity minimal --logger trx
+
+      - name: Upload TRX artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: "**/TestResults/*.trx"
+          retention-days: 30
+
   frontend:
     name: Frontend (react-frontend)
     runs-on: ubuntu-latest

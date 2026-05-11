@@ -87,6 +87,11 @@ public static class VapidJwtSigner
         string publicKeyBase64Url,
         int expirySeconds = 12 * 3600)
     {
+        if (string.IsNullOrWhiteSpace(audience)) throw new ArgumentException("audience required", nameof(audience));
+        if (string.IsNullOrWhiteSpace(subject)) throw new ArgumentException("subject required", nameof(subject));
+        if (expirySeconds <= 0 || expirySeconds > 24 * 3600)
+            throw new ArgumentOutOfRangeException(nameof(expirySeconds), "must be 1..86400 seconds (RFC 8292)");
+
         // Header: { "typ": "JWT", "alg": "ES256" }
         var header = new { typ = "JWT", alg = "ES256" };
         var headerJson = JsonSerializer.Serialize(header);
