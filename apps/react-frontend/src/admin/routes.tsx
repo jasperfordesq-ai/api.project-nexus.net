@@ -219,7 +219,7 @@ const Neighborhoods = lazy(() => import('./modules/federation/Neighborhoods'));
 const ExternalPartners = lazy(() => import('./modules/federation/AdminFederationExternalPartnersPage'));
 const Webhooks = lazy(() => import('./modules/federation/AdminFederationWebhooksPage'));
 const ApiDocumentation = lazyParityPage('FederationApiDocsPage');
-const FederationActivityFeed = lazyParityPage('FederationActivityPage');
+const FederationActivityFeed = lazy(() => import('./modules/federation/AdminFederationActivityPage'));
 const CreditCommonsConfig = lazyParityPage('FederationCreditCommonsPage');
 
 // Safeguarding module
