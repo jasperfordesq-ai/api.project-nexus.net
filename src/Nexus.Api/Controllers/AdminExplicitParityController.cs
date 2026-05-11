@@ -968,19 +968,134 @@ public class AdminExplicitParityController : ControllerBase
 
     private async Task<IActionResult> GetFederationActivity()
     {
-        var audit = await _db.FederationAuditLogs.AsNoTracking()
-            .OrderByDescending(l => l.CreatedAt)
-            .Take(50)
-            .Select(l => new { source = "audit", l.Id, l.Action, l.EntityType, l.EntityId, l.PartnerTenantId, l.CreatedAt })
-            .ToListAsync();
+        // Server-side filtering + pagination.
+        var q = Request.Query;
+        var partner = q["partner"].FirstOrDefault();
+        var source = (q["source"].FirstOrDefault() ?? string.Empty).ToLowerInvariant();
+        var severityFilter = (q["severity"].FirstOrDefault() ?? string.Empty).ToLowerInvariant();
+        var eventType = q["event_type"].FirstOrDefault();
+        var search = q["q"].FirstOrDefault();
+        var sinceStr = q["since"].FirstOrDefault();
+        var untilStr = q["until"].FirstOrDefault();
+        DateTime? since = DateTime.TryParse(sinceStr, out var sParsed) ? sParsed.ToUniversalTime() : (DateTime?)null;
+        DateTime? until = DateTime.TryParse(untilStr, out var uParsed) ? uParsed.ToUniversalTime() : (DateTime?)null;
+        int page = int.TryParse(q["page"].FirstOrDefault(), out var p) && p >= 1 ? p : 1;
+        int pageSize = int.TryParse(q["page_size"].FirstOrDefault(), out var ps) ? ps : 50;
+        if (pageSize < 1) pageSize = 1;
+        if (pageSize > 200) pageSize = 200;
+        int? partnerId = int.TryParse(partner, out var pid) ? pid : (int?)null;
 
-        var api = await _db.FederationApiLogs.AsNoTracking()
-            .OrderByDescending(l => l.CreatedAt)
-            .Take(50)
-            .Select(l => new { source = "api", l.Id, action = l.HttpMethod + " " + l.Path, entityType = (string?)null, entityId = (int?)null, partnerTenantId = (int?)null, l.CreatedAt })
-            .ToListAsync();
+        var includeAudit = string.IsNullOrEmpty(source) || source == "audit";
+        var includeApi = string.IsNullOrEmpty(source) || source == "api";
 
-        return Ok(new { data = audit.Cast<object>().Concat(api).Take(100), meta = new { total = audit.Count + api.Count } });
+        IQueryable<ActivityRow> auditQuery = _db.FederationAuditLogs.AsNoTracking()
+            .Select(l => new ActivityRow
+            {
+                Source = "audit",
+                Id = l.Id,
+                Action = l.Action,
+                EntityType = l.EntityType,
+                EntityId = l.EntityId,
+                PartnerTenantId = l.PartnerTenantId,
+                CreatedAt = l.CreatedAt,
+                StatusCode = (int?)null
+            });
+
+        if (partnerId.HasValue) auditQuery = auditQuery.Where(r => r.PartnerTenantId == partnerId);
+        if (!string.IsNullOrWhiteSpace(eventType)) auditQuery = auditQuery.Where(r => r.Action != null && r.Action.Contains(eventType));
+        if (!string.IsNullOrWhiteSpace(search)) auditQuery = auditQuery.Where(r =>
+            (r.Action != null && r.Action.Contains(search)) ||
+            (r.EntityType != null && r.EntityType.Contains(search)));
+        if (since.HasValue) auditQuery = auditQuery.Where(r => r.CreatedAt >= since.Value);
+        if (until.HasValue) auditQuery = auditQuery.Where(r => r.CreatedAt <= until.Value);
+
+        IQueryable<ActivityRow> apiQuery = _db.FederationApiLogs.AsNoTracking()
+            .Select(l => new ActivityRow
+            {
+                Source = "api",
+                Id = l.Id,
+                Action = l.HttpMethod + " " + l.Path,
+                EntityType = (string?)null,
+                EntityId = (int?)null,
+                PartnerTenantId = l.TenantId,
+                CreatedAt = l.CreatedAt,
+                StatusCode = l.StatusCode
+            });
+
+        if (partnerId.HasValue) apiQuery = apiQuery.Where(r => r.PartnerTenantId == partnerId);
+        if (!string.IsNullOrWhiteSpace(eventType)) apiQuery = apiQuery.Where(r => r.Action != null && r.Action.Contains(eventType));
+        if (!string.IsNullOrWhiteSpace(search)) apiQuery = apiQuery.Where(r => r.Action != null && r.Action.Contains(search));
+        if (since.HasValue) apiQuery = apiQuery.Where(r => r.CreatedAt >= since.Value);
+        if (until.HasValue) apiQuery = apiQuery.Where(r => r.CreatedAt <= until.Value);
+
+        var auditRows = includeAudit ? await auditQuery.OrderByDescending(r => r.CreatedAt).Take(2000).ToListAsync() : new List<ActivityRow>();
+        var apiRows = includeApi ? await apiQuery.OrderByDescending(r => r.CreatedAt).Take(2000).ToListAsync() : new List<ActivityRow>();
+
+        IEnumerable<ActivityRow> merged = auditRows.Concat(apiRows);
+
+        if (!string.IsNullOrWhiteSpace(severityFilter) && severityFilter != "all")
+        {
+            merged = merged.Where(r => ClassifyActivitySeverity(r) == severityFilter);
+        }
+
+        var ordered = merged.OrderByDescending(r => r.CreatedAt).ToList();
+        var total = ordered.Count;
+        var totalPages = total == 0 ? 0 : (int)Math.Ceiling(total / (double)pageSize);
+        var pageItems = ordered.Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(r => new
+            {
+                source = r.Source,
+                id = r.Id,
+                action = r.Action,
+                entityType = r.EntityType,
+                entityId = r.EntityId,
+                partnerTenantId = r.PartnerTenantId,
+                createdAt = r.CreatedAt,
+                severity = ClassifyActivitySeverity(r),
+                statusCode = r.StatusCode
+            })
+            .ToList();
+
+        return Ok(new
+        {
+            data = pageItems,
+            items = pageItems,
+            total,
+            page,
+            page_size = pageSize,
+            total_pages = totalPages,
+            meta = new { total, page, page_size = pageSize, total_pages = totalPages }
+        });
+    }
+
+    private sealed class ActivityRow
+    {
+        public string Source { get; set; } = string.Empty;
+        public int Id { get; set; }
+        public string? Action { get; set; }
+        public string? EntityType { get; set; }
+        public int? EntityId { get; set; }
+        public int? PartnerTenantId { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public int? StatusCode { get; set; }
+    }
+
+    /// <summary>
+    /// Mirrors the client-side severity classifier previously in
+    /// AdminFederationActivityPage.tsx — error/warning/info inferred from
+    /// action text + HTTP status code.
+    /// </summary>
+    private static string ClassifyActivitySeverity(ActivityRow r)
+    {
+        if (r.StatusCode.HasValue)
+        {
+            if (r.StatusCode.Value >= 500) return "error";
+            if (r.StatusCode.Value >= 400) return "warning";
+        }
+        var lower = (r.Action ?? string.Empty).ToLowerInvariant();
+        if (lower.Contains("fail") || lower.Contains("error") || lower.Contains("reject")) return "error";
+        if (lower.Contains("warn") || lower.Contains("retry") || lower.Contains("cancel")) return "warning";
+        return "info";
     }
 
     private async Task<IActionResult> GetFederationAnalyticsOverview()

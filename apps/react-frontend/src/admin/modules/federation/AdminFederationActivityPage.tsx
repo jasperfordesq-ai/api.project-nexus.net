@@ -7,19 +7,18 @@
  * Federation Activity (Admin) — recent federation event feed combining
  * the cross-tenant audit log + federation HTTP API call log.
  *
- * Endpoint (real, AdminExplicitParityController.GetFederationActivity):
- *   GET /api/v2/admin/federation/activity
+ * Endpoint: GET /api/v2/admin/federation/activity
  *
- * Returns up to 100 most-recent events from FederationAuditLogs +
- * FederationApiLogs. Server-side filtering is not currently exposed by
- * this endpoint, so partner / severity / search filters are applied
- * client-side over the returned page.
+ * Filtering and pagination are now applied SERVER-SIDE (Fix 2). The page
+ * forwards the user's filter state via query params and renders the
+ * pre-paginated response. Severity is also classified server-side and
+ * returned as a field on each row.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Button, Card, CardBody, CardHeader, Chip, Input, Modal, ModalBody, ModalContent,
-  ModalFooter, ModalHeader, Select, SelectItem, Spinner, Switch,
+  ModalFooter, ModalHeader, Pagination, Select, SelectItem, Spinner, Switch,
   Table, TableBody, TableCell, TableColumn, TableHeader, TableRow,
 } from '@heroui/react';
 import { Activity, Pause, Play, RefreshCw, Search } from 'lucide-react';
@@ -28,58 +27,32 @@ import { useToast } from '@/contexts';
 import { api } from '@/lib/api';
 import { PageHeader } from '../../components';
 
-interface ActivityEvent {
+interface ActivityItem {
   source: 'audit' | 'api';
   id: number;
-  action?: string | null;
-  Action?: string | null;
-  entityType?: string | null;
-  EntityType?: string | null;
-  entityId?: number | null;
-  EntityId?: number | null;
-  partnerTenantId?: number | null;
-  PartnerTenantId?: number | null;
-  createdAt?: string;
-  CreatedAt?: string;
-  [k: string]: unknown;
-}
-
-interface NormalizedEvent {
-  source: 'audit' | 'api';
-  id: number;
-  action: string;
+  action: string | null;
   entityType: string | null;
   entityId: number | null;
   partnerTenantId: number | null;
   createdAt: string;
-  raw: ActivityEvent;
   severity: 'info' | 'warning' | 'error';
+  statusCode: number | null;
+}
+
+interface ActivityResponse {
+  items: ActivityItem[];
+  data?: ActivityItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 const SOURCE_OPTIONS: Array<'All' | 'audit' | 'api'> = ['All', 'audit', 'api'];
 const SEVERITY_OPTIONS: Array<'All' | 'info' | 'warning' | 'error'> = ['All', 'info', 'warning', 'error'];
+const PAGE_SIZE = 50;
 
-function normalize(e: ActivityEvent): NormalizedEvent {
-  const action = (e.action ?? e.Action ?? '') as string;
-  const lower = action.toLowerCase();
-  let severity: 'info' | 'warning' | 'error' = 'info';
-  if (lower.includes('fail') || lower.includes('error') || lower.includes('reject') || lower.includes(' 5')) severity = 'error';
-  else if (lower.includes('warn') || lower.includes('retry') || lower.includes('cancel') || lower.includes(' 4')) severity = 'warning';
-
-  return {
-    source: e.source,
-    id: e.id,
-    action,
-    entityType: (e.entityType ?? e.EntityType ?? null) as string | null,
-    entityId: (e.entityId ?? e.EntityId ?? null) as number | null,
-    partnerTenantId: (e.partnerTenantId ?? e.PartnerTenantId ?? null) as number | null,
-    createdAt: (e.createdAt ?? e.CreatedAt ?? '') as string,
-    raw: e,
-    severity,
-  };
-}
-
-function severityColor(s: NormalizedEvent['severity']): 'default' | 'primary' | 'warning' | 'danger' {
+function severityColor(s: ActivityItem['severity']): 'default' | 'primary' | 'warning' | 'danger' {
   switch (s) {
     case 'info': return 'primary';
     case 'warning': return 'warning';
@@ -90,30 +63,43 @@ function severityColor(s: NormalizedEvent['severity']): 'default' | 'primary' | 
 export default function AdminFederationActivityPage() {
   usePageTitle('Admin - Federation Activity');
   const toast = useToast();
-  const [rows, setRows] = useState<NormalizedEvent[]>([]);
+  const [rows, setRows] = useState<ActivityItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [page, setPage] = useState(1);
   const [partnerFilter, setPartnerFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'All' | 'audit' | 'api'>('All');
   const [severityFilter, setSeverityFilter] = useState<'All' | 'info' | 'warning' | 'error'>('All');
   const [search, setSearch] = useState('');
-  const [detail, setDetail] = useState<NormalizedEvent | null>(null);
+  const [detail, setDetail] = useState<ActivityItem | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await api.get<{ data: ActivityEvent[] }>('/v2/admin/federation/activity');
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('page_size', String(PAGE_SIZE));
+      if (sourceFilter !== 'All') params.set('source', sourceFilter);
+      if (severityFilter !== 'All') params.set('severity', severityFilter);
+      if (partnerFilter.trim()) params.set('partner', partnerFilter.trim());
+      if (search.trim()) params.set('q', search.trim());
+
+      const res = await api.get<ActivityResponse>(`/v2/admin/federation/activity?${params.toString()}`);
       if (res.success && res.data) {
-        const payload = (res.data as unknown) as { data?: ActivityEvent[] };
-        const arr = payload.data ?? [];
-        setRows(arr.map(normalize));
+        const payload = (res.data as unknown) as ActivityResponse;
+        const arr = payload.items ?? payload.data ?? [];
+        setRows(arr);
+        setTotal(payload.total ?? arr.length);
+        setTotalPages(payload.total_pages ?? 0);
       }
     } catch {
       if (!silent) toast.error('Failed to load federation activity');
     }
     finally { if (!silent) setLoading(false); }
-  }, [toast]);
+  }, [page, sourceFilter, severityFilter, partnerFilter, search, toast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -127,26 +113,14 @@ export default function AdminFederationActivityPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [autoRefresh, load]);
 
-  const filtered = rows.filter((r) => {
-    if (sourceFilter !== 'All' && r.source !== sourceFilter) return false;
-    if (severityFilter !== 'All' && r.severity !== severityFilter) return false;
-    if (partnerFilter.trim()) {
-      const want = Number(partnerFilter.trim());
-      if (Number.isFinite(want) && r.partnerTenantId !== want) return false;
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      const haystack = `${r.action} ${r.entityType ?? ''} ${r.entityId ?? ''} ${r.partnerTenantId ?? ''}`.toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
-    return true;
-  });
+  // Reset to page 1 whenever a filter changes.
+  useEffect(() => { setPage(1); }, [sourceFilter, severityFilter, partnerFilter, search]);
 
   return (
     <div>
       <PageHeader
         title="Federation Activity"
-        description="Recent cross-tenant federation events combining audit-log writes and HTTP API calls. Up to 100 most-recent events; use auto-refresh for live debugging. Severity is inferred from action text (fail/error/reject → error; warn/retry/cancel → warning)."
+        description="Recent cross-tenant federation events combining audit-log writes and HTTP API calls. Filters and pagination are applied server-side. Severity is classified server-side (HTTP 5xx + fail/error/reject → error; HTTP 4xx + warn/retry/cancel → warning)."
         actions={
           <div className="flex items-center gap-2">
             <Switch size="sm" isSelected={autoRefresh} onValueChange={setAutoRefresh}>
@@ -185,12 +159,12 @@ export default function AdminFederationActivityPage() {
       <Card shadow="sm">
         <CardHeader className="flex items-center gap-2">
           <Activity size={18} className="text-primary" />
-          <h3 className="text-lg font-semibold">Events ({filtered.length}{filtered.length !== rows.length ? ` of ${rows.length}` : ''})</h3>
+          <h3 className="text-lg font-semibold">Events (page {page} of {Math.max(totalPages, 1)} — {total} total)</h3>
         </CardHeader>
         <CardBody>
           <Table aria-label="Federation activity feed" isStriped
             onRowAction={(key) => {
-              const found = filtered.find((r) => `${r.source}-${r.id}` === String(key));
+              const found = rows.find((r) => `${r.source}-${r.id}` === String(key));
               if (found) setDetail(found);
             }}>
             <TableHeader>
@@ -203,7 +177,7 @@ export default function AdminFederationActivityPage() {
               <TableColumn>ID</TableColumn>
             </TableHeader>
             <TableBody emptyContent="No federation events recorded yet." isLoading={loading} loadingContent={<Spinner />}>
-              {filtered.map((r) => (
+              {rows.map((r) => (
                 <TableRow key={`${r.source}-${r.id}`} className="cursor-pointer">
                   <TableCell className="text-xs text-default-500">
                     {r.createdAt ? new Date(r.createdAt).toLocaleString() : '—'}
@@ -227,6 +201,17 @@ export default function AdminFederationActivityPage() {
               ))}
             </TableBody>
           </Table>
+          {totalPages > 1 ? (
+            <div className="flex justify-center mt-3">
+              <Pagination
+                total={totalPages}
+                page={page}
+                onChange={setPage}
+                size="sm"
+                showControls
+              />
+            </div>
+          ) : null}
         </CardBody>
       </Card>
 
@@ -237,7 +222,7 @@ export default function AdminFederationActivityPage() {
           </ModalHeader>
           <ModalBody>
             <pre className="text-xs bg-default-100 rounded p-3 overflow-auto max-h-96">
-              {detail ? JSON.stringify(detail.raw, null, 2) : ''}
+              {detail ? JSON.stringify(detail, null, 2) : ''}
             </pre>
           </ModalBody>
           <ModalFooter>
