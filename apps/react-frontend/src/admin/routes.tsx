@@ -187,8 +187,8 @@ const GoalsAdmin = lazy(() => import('./modules/goals/GoalsAdmin'));
 
 // Resources / Knowledge Base module
 const ResourcesAdmin = lazy(() => import('./modules/resources/ResourcesAdmin'));
-const KBArticleForm = lazyParityPage('ResourceEditorPage');
-const ResourceCategoriesAdmin = lazyParityPage('ResourceCategoriesPage');
+const KBArticleForm = lazy(() => import('./modules/resources/ResourceEditorPage'));
+const ResourceCategoriesAdmin = lazy(() => import('./modules/resources/ResourceCategoriesPage'));
 
 // Jobs module
 const JobsAdmin = lazy(() => import('./modules/jobs/JobsAdmin'));
@@ -199,7 +199,7 @@ const JobTemplatesAdmin = AdminJobTemplatesPageReal;
 
 // Marketplace module — OOS per CLAUDE.md; routes removed.
 // Coupons remain in scope (decoupled from marketplace).
-const AdminCouponsPage = lazyParityPage('AdminCouponsPage');
+const AdminCouponsPage = lazy(() => import('./modules/content/AdminCouponsPage'));
 
 // Ideation / Challenges module
 const IdeationAdmin = lazy(() => import('./modules/ideation/IdeationAdmin'));
@@ -218,9 +218,9 @@ const CreditAgreements = lazy(() => import('./modules/federation/CreditAgreement
 const Neighborhoods = lazy(() => import('./modules/federation/Neighborhoods'));
 const ExternalPartners = lazy(() => import('./modules/federation/AdminFederationExternalPartnersPage'));
 const Webhooks = lazy(() => import('./modules/federation/AdminFederationWebhooksPage'));
-const ApiDocumentation = lazyParityPage('FederationApiDocsPage');
+const ApiDocumentation = lazy(() => import('./modules/federation/AdminFederationApiDocsPage'));
 const FederationActivityFeed = lazy(() => import('./modules/federation/AdminFederationActivityPage'));
-const CreditCommonsConfig = lazyParityPage('FederationCreditCommonsPage');
+const CreditCommonsConfig = lazy(() => import('./modules/federation/AdminFederationCreditCommonsPage'));
 
 // Safeguarding module
 const SafeguardingDashboard = lazy(() => import('./modules/safeguarding/SafeguardingDashboard'));
@@ -321,7 +321,7 @@ const AttributesAdmin = lazy(() => import('./modules/content/AttributesAdmin'));
 const PlansAdmin = lazy(() => import('./modules/content/PlansAdmin'));
 const PlanForm = lazy(() => import('./modules/content/PlanForm'));
 const SubscriptionsAdmin = lazy(() => import('./modules/content/Subscriptions'));
-const LandingPageBuilder = lazyParityPage('LandingPageBuilderPage');
+const LandingPageBuilder = lazy(() => import('./modules/content/LandingPageBuilderPage'));
 
 // Platform / provisioning / integrations
 const PilotInquiryAdminPage = lazyParityPage('PilotInquiryAdminPage');
