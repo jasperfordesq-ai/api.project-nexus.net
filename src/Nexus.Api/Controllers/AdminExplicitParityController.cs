@@ -1366,29 +1366,11 @@ public class AdminExplicitParityController : ControllerBase
         var payloadJson = await ReadRequestPayloadJsonAsync();
         var now = DateTime.UtcNow;
 
-        // Legacy storage — JSON blob into TenantConfig. Retained until the
-        // existing parity tests are updated to assert on the typed table.
-        var records = await LoadStoredRecordsAsync(CompatibilityWritesKey, includeDeleted: true);
-        var record = BuildStoredRecord(NextStoredRecordId(records), "admin_explicit_parity_write", action, payloadJson, now);
-        record.Name = $"{Request.Method} {Request.Path.Value}";
-        record.Status = "recorded";
-        records.Add(record);
-        await SaveStoredRecordsAsync(CompatibilityWritesKey, records);
-
-        var responseBody = new
-        {
-            success = true,
-            data = ToResponseRecord(record),
-            compatibility = new
-            {
-                mode = "tenant_config_record",
-                key = CompatibilityWritesKey,
-                side_effect = "recorded_only"
-            }
-        };
-
-        // Primary audit trail — typed CompatibilityAuditEntry row.
-        // CLAUDE.md path-to-1000 item 12.
+        // Primary (and now only) audit trail — typed CompatibilityAuditEntry row.
+        // The legacy TenantConfig JSON dual-write was removed as part of the
+        // audit cleanup (CLAUDE.md path-to-1000 item 12). The read endpoint
+        // still falls back to the legacy storage for rows recorded before
+        // the typed table existed, but new writes only land in the typed table.
         var auditEntry = new CompatibilityAuditEntry
         {
             TenantId = tenantId,
@@ -1397,12 +1379,28 @@ public class AdminExplicitParityController : ControllerBase
             HttpMethod = Request.Method ?? string.Empty,
             Action = action,
             RequestBody = payloadJson,
-            ResponseBody = JsonSerializer.Serialize(responseBody, StoreJsonOptions),
+            // Response body is filled in below once the audit row has an Id
+            // (so the response can echo the persisted Id back to the client).
+            ResponseBody = "{}",
             StatusCode = StatusCodes.Status202Accepted,
             OccurredAt = now
         };
         _db.CompatibilityAuditEntries.Add(auditEntry);
+        await _db.SaveChangesAsync();
 
+        var responseBody = new
+        {
+            success = true,
+            data = ToCompatibilityAuditResponse(auditEntry),
+            compatibility = new
+            {
+                mode = "tenant_config_record",
+                side_effect = "recorded_only"
+            }
+        };
+
+        // Backfill the persisted response payload for replay by the read path.
+        auditEntry.ResponseBody = JsonSerializer.Serialize(responseBody, StoreJsonOptions);
         await _db.SaveChangesAsync();
 
         return Accepted(responseBody);
