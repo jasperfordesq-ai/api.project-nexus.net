@@ -28,7 +28,7 @@ function lazyParityPage(name: keyof V1ParityModule) {
 const AdminDashboard = lazy(() => import('./modules/dashboard/AdminDashboard'));
 const UserList = lazy(() => import('./modules/users/UserList'));
 const TenantFeatures = lazy(() => import('./modules/config/TenantFeatures'));
-const ModuleConfiguration = lazyParityPage('ModuleConfigurationPage');
+const ModuleConfiguration = lazy(() => import('./modules/config/ModuleConfigurationPage'));
 const UserCreate = lazy(() => import('./modules/users/UserCreate'));
 const UserEdit = lazy(() => import('./modules/users/UserEdit'));
 const ListingsAdmin = lazy(() => import('./modules/listings/ListingsAdmin'));
@@ -84,7 +84,7 @@ const RoleList = lazy(() => import('./modules/enterprise/RoleList'));
 const RoleForm = lazy(() => import('./modules/enterprise/RoleForm'));
 const PermissionBrowser = lazy(() => import('./modules/enterprise/PermissionBrowser'));
 const GdprDashboard = lazy(() => import('./modules/enterprise/GdprDashboard'));
-const FadpAdminPage = lazyParityPage('FadpAdminPage');
+const FadpAdminPage = lazy(() => import('./modules/enterprise/FadpAdminPage'));
 const GdprRequests = lazy(() => import('./modules/enterprise/GdprRequests'));
 const GdprConsents = lazy(() => import('./modules/enterprise/GdprConsents'));
 const GdprBreaches = lazy(() => import('./modules/enterprise/GdprBreaches'));
@@ -98,13 +98,13 @@ const LegalDocList = lazy(() => import('./modules/enterprise/LegalDocList'));
 const LegalDocForm = lazy(() => import('./modules/enterprise/LegalDocForm'));
 const LegalDocVersionList = lazy(() => import('./modules/enterprise/LegalDocVersionList'));
 const LegalDocComplianceDashboard = lazy(() => import('./modules/enterprise/LegalDocComplianceDashboard'));
-const GdprRequestDetail = lazyParityPage('GdprRequestDetailPage');
-const GdprRequestCreate = lazyParityPage('GdprRequestCreatePage');
+const GdprRequestDetail = lazy(() => import('./modules/enterprise/GdprRequestDetailPage'));
+const GdprRequestCreate = lazy(() => import('./modules/enterprise/GdprRequestCreatePage'));
 const GdprConsentTypes = lazy(() => import('./modules/enterprise/GdprConsentTypesAdmin'));
 const GdprBreachDetail = lazy(() => import('./modules/enterprise/GdprBreachDetailAdmin'));
-const LogFiles = lazyParityPage('LogFilesPage');
-const LogFileViewer = lazyParityPage('LogFileViewerPage');
-const SystemRequirements = lazyParityPage('SystemRequirementsPage');
+const LogFiles = lazy(() => import('./modules/enterprise/LogFilesPage'));
+const LogFileViewer = lazy(() => import('./modules/enterprise/LogFileViewerPage'));
+const SystemRequirements = lazy(() => import('./modules/enterprise/SystemRequirementsPage'));
 const FeatureFlags = lazy(() => import('./modules/enterprise/EnterpriseFeatureFlagsAdmin'));
 
 // Performance module
