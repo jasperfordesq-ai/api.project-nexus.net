@@ -9,20 +9,10 @@
  * Uses lazy loading for all module pages.
  */
 
-import { Suspense, lazy, type ComponentType } from 'react';
+import { Suspense, lazy } from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { LoadingScreen } from '@/components/feedback';
 import { SuperAdminRoute } from './SuperAdminRoute';
-
-type V1ParityModule = typeof import('./modules/parity/V1AdminParityPages');
-
-function lazyParityPage(name: keyof V1ParityModule) {
-  return lazy(() =>
-    import('./modules/parity/V1AdminParityPages').then((module) => ({
-      default: module[name] as ComponentType,
-    }))
-  );
-}
 
 // Lazy-loaded admin pages
 const AdminDashboard = lazy(() => import('./modules/dashboard/AdminDashboard'));

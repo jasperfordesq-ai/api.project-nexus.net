@@ -162,7 +162,7 @@ export default function GdprRequestCreatePage() {
                     onClick={() => { setSelectedUser(u); setUserHits([]); setUserQuery(''); }}
                     className="rounded px-2 py-1 text-left text-xs hover:bg-default-100"
                   >
-                    #{u.id} — {u.full_name ?? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email}
+                    #{u.id} — {u.full_name ?? (`${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email)}
                     <span className="ml-2 text-default-500">{u.email}</span>
                   </button>
                 ))}
