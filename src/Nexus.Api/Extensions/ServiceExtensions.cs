@@ -202,6 +202,14 @@ public static class ServiceExtensions
         services.AddHostedService<Nexus.Api.Services.Scheduled.MarkOverdueDuesJob>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.PruneLogsJob>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.GenerateMonthlyReportsJob>();
+        // Phase 73 — 5 additional high-impact cron ports closing operational
+        // gaps vs V1 (job expiry, featured expiry, listing expiry, onboarding
+        // nurture, refresh-token cleanup).
+        services.AddHostedService<Nexus.Api.Services.Scheduled.JobVacancyExpiryJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.FeaturedExpiryJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.ListingExpiryJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.OnboardingNurtureJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.ExpiredTokenCleanupJob>();
 
         // Meilisearch (semantic search — optional, falls back to ILIKE)
         services.Configure<MeilisearchOptions>(

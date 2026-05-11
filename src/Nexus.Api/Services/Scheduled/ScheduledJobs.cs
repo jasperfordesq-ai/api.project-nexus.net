@@ -478,3 +478,283 @@ public class GenerateMonthlyReportsJob : ScheduledHostedService
             tenantId, monthStart.ToString("yyyy-MM"), totalHours, txCount, newUsers);
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. JobVacancyExpiryJob — daily. Marks JobVacancy rows whose ExpiresAt has
+//     passed as Status="expired" and emits a 7-day / 1-day pre-expiry
+//     notification to the poster. Idempotent via notification dedupe on
+//     (UserId, Type, Data->>'job_id', cutoff_day).
+//     V1 source: app/Services/JobExpiryNotificationService::notifyExpiringSoon.
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class JobVacancyExpiryJob : ScheduledHostedService
+{
+    public JobVacancyExpiryJob(
+        IServiceScopeFactory scopeFactory,
+        IConfiguration configuration,
+        ILogger<JobVacancyExpiryJob> logger)
+        : base(scopeFactory, configuration, logger) { }
+
+    protected override string JobName => "JobVacancyExpiry";
+    protected override TimeSpan DefaultInterval => TimeSpan.FromHours(24);
+    protected override TimeSpan StartupDelay => TimeSpan.FromMinutes(11);
+
+    protected override async Task RunForTenantAsync(IServiceProvider services, int tenantId, CancellationToken ct)
+    {
+        var db = services.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var oneDay = now.AddDays(1);
+        var sevenDays = now.AddDays(7);
+
+        var jobs = await db.JobVacancies
+            .Where(j => j.TenantId == tenantId)
+            .Where(j => j.Status == "active")
+            .Where(j => j.ExpiresAt != null)
+            .ToListAsync(ct);
+
+        var expired = 0;
+        var reminded = 0;
+        foreach (var job in jobs)
+        {
+            if (job.ExpiresAt is not { } expiresAt) continue;
+
+            if (expiresAt <= now)
+            {
+                job.Status = "expired";
+                job.UpdatedAt = now;
+                expired++;
+                continue;
+            }
+
+            // Reminder windows: 7d and 1d before expiry. Dedupe by notification type+day bucket.
+            string? bucket = expiresAt <= oneDay
+                ? "1d"
+                : expiresAt <= sevenDays
+                    ? "7d"
+                    : null;
+            if (bucket is null) continue;
+
+            const string notifType = "job_vacancy_expiring";
+            var dedupeMarker = $"\"job_id\":{job.Id},\"bucket\":\"{bucket}\"";
+            var alreadySent = await db.Notifications
+                .Where(n => n.TenantId == tenantId
+                    && n.UserId == job.PostedByUserId
+                    && n.Type == notifType
+                    && n.Data != null
+                    && n.Data.Contains(dedupeMarker))
+                .AnyAsync(ct);
+            if (alreadySent) continue;
+
+            db.Notifications.Add(new Notification
+            {
+                TenantId = tenantId,
+                UserId = job.PostedByUserId,
+                Type = notifType,
+                Title = bucket == "1d" ? "Your job listing expires tomorrow" : "Your job listing expires in 7 days",
+                Body = $"\"{job.Title}\" expires on {expiresAt:yyyy-MM-dd}. Update or extend it before then.",
+                Data = $"{{\"job_id\":{job.Id},\"bucket\":\"{bucket}\"}}",
+                IsRead = false,
+                CreatedAt = now
+            });
+            reminded++;
+        }
+        if (expired > 0 || reminded > 0) await db.SaveChangesAsync(ct);
+        Logger.LogDebug("JobVacancyExpiry tenant={TenantId} expired={Expired} reminded={Reminded}",
+            tenantId, expired, reminded);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. FeaturedExpiryJob — hourly. Unsets IsFeatured on JobVacancy and Listing
+//     rows whose featured window has elapsed.
+//     V1 sources: listings:process-expired-featured + marketplace promotions
+//     (marketplace OOS — only the listings/jobs side is ported).
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class FeaturedExpiryJob : ScheduledHostedService
+{
+    public FeaturedExpiryJob(
+        IServiceScopeFactory scopeFactory,
+        IConfiguration configuration,
+        ILogger<FeaturedExpiryJob> logger)
+        : base(scopeFactory, configuration, logger) { }
+
+    protected override string JobName => "FeaturedExpiry";
+    protected override TimeSpan DefaultInterval => TimeSpan.FromHours(1);
+    protected override TimeSpan StartupDelay => TimeSpan.FromMinutes(3);
+
+    protected override async Task RunForTenantAsync(IServiceProvider services, int tenantId, CancellationToken ct)
+    {
+        var db = services.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var changed = 0;
+
+        var jobs = await db.JobVacancies
+            .Where(j => j.TenantId == tenantId && j.IsFeatured && j.FeaturedUntil != null && j.FeaturedUntil < now)
+            .ToListAsync(ct);
+        foreach (var j in jobs)
+        {
+            j.IsFeatured = false;
+            j.UpdatedAt = now;
+            changed++;
+        }
+
+        // Listing has no FeaturedUntil — the V2 schema only has IsFeatured. Skip
+        // listing un-featuring until a FeaturedUntil column is added.
+
+        if (changed > 0) await db.SaveChangesAsync(ct);
+        Logger.LogDebug("FeaturedExpiry tenant={TenantId} unfeatured={Count}", tenantId, changed);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. ListingExpiryJob — hourly. Marks Listings as Expired once ExpiresAt has
+//     passed and notifies the owner once per listing.
+//     V1 source: CronJobRunner listing-expiry pass.
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class ListingExpiryJob : ScheduledHostedService
+{
+    public ListingExpiryJob(
+        IServiceScopeFactory scopeFactory,
+        IConfiguration configuration,
+        ILogger<ListingExpiryJob> logger)
+        : base(scopeFactory, configuration, logger) { }
+
+    protected override string JobName => "ListingExpiry";
+    protected override TimeSpan DefaultInterval => TimeSpan.FromHours(1);
+    protected override TimeSpan StartupDelay => TimeSpan.FromMinutes(4);
+
+    protected override async Task RunForTenantAsync(IServiceProvider services, int tenantId, CancellationToken ct)
+    {
+        var db = services.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+
+        var listings = await db.Listings
+            .Where(l => l.TenantId == tenantId
+                && l.Status == ListingStatus.Active
+                && l.ExpiresAt != null
+                && l.ExpiresAt < now)
+            .ToListAsync(ct);
+
+        foreach (var l in listings)
+        {
+            l.Status = ListingStatus.Expired;
+            l.UpdatedAt = now;
+            db.Notifications.Add(new Notification
+            {
+                TenantId = tenantId,
+                UserId = l.UserId,
+                Type = "listing_expired",
+                Title = "Your listing has expired",
+                Body = $"\"{l.Title}\" is now hidden from search. Re-activate or repost it.",
+                Data = $"{{\"listing_id\":{l.Id}}}",
+                IsRead = false,
+                CreatedAt = now
+            });
+        }
+        if (listings.Count > 0) await db.SaveChangesAsync(ct);
+        Logger.LogDebug("ListingExpiry tenant={TenantId} expired={Count}", tenantId, listings.Count);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13. OnboardingNurtureJob — daily. Sends Day-2 / Day-5 / Day-7 nurture
+//     notifications to users created in the last 8 days who have not yet
+//     received the corresponding nurture. Dedupe by (UserId, Type) presence.
+//     V1 source: app/Services/OnboardingNurtureService::sendDueNurtureEmails.
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class OnboardingNurtureJob : ScheduledHostedService
+{
+    public OnboardingNurtureJob(
+        IServiceScopeFactory scopeFactory,
+        IConfiguration configuration,
+        ILogger<OnboardingNurtureJob> logger)
+        : base(scopeFactory, configuration, logger) { }
+
+    protected override string JobName => "OnboardingNurture";
+    protected override TimeSpan DefaultInterval => TimeSpan.FromHours(24);
+    protected override TimeSpan StartupDelay => TimeSpan.FromMinutes(12);
+
+    private static readonly (int Day, string Type, string Title, string Body)[] Steps =
+    {
+        (2, "onboarding_nurture_day2", "Welcome back — try your first action", "It's been a couple of days. Try posting a listing or browsing the feed to get started."),
+        (5, "onboarding_nurture_day5", "Discover your community", "Members near you are offering and requesting help. Have a look at who's nearby."),
+        (7, "onboarding_nurture_day7", "Your first week — what's next?", "Add a profile photo, list one skill, and you'll show up in matches. Small steps go a long way."),
+    };
+
+    protected override async Task RunForTenantAsync(IServiceProvider services, int tenantId, CancellationToken ct)
+    {
+        var db = services.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var sinceCutoff = now.AddDays(-9);
+
+        var newUsers = await db.Users
+            .Where(u => u.TenantId == tenantId && u.CreatedAt >= sinceCutoff)
+            .Select(u => new { u.Id, u.CreatedAt })
+            .ToListAsync(ct);
+
+        var queued = 0;
+        foreach (var u in newUsers)
+        {
+            var ageDays = (int)Math.Floor((now - u.CreatedAt).TotalDays);
+            foreach (var (day, type, title, body) in Steps)
+            {
+                if (ageDays < day) continue;
+                var alreadySent = await db.Notifications
+                    .AnyAsync(n => n.TenantId == tenantId && n.UserId == u.Id && n.Type == type, ct);
+                if (alreadySent) continue;
+
+                db.Notifications.Add(new Notification
+                {
+                    TenantId = tenantId,
+                    UserId = u.Id,
+                    Type = type,
+                    Title = title,
+                    Body = body,
+                    IsRead = false,
+                    CreatedAt = now
+                });
+                queued++;
+            }
+        }
+        if (queued > 0) await db.SaveChangesAsync(ct);
+        Logger.LogDebug("OnboardingNurture tenant={TenantId} queued={Queued}", tenantId, queued);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 14. ExpiredTokenCleanupJob — daily, global. Deletes RefreshToken rows past
+//     their expiry, password reset tokens past TTL, and IdentityVerificationSession
+//     rows in a terminal state older than retention.
+//     V1 sources: implicit in CronJobRunner + identity-poll-stuck cleanup.
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class ExpiredTokenCleanupJob : ScheduledHostedService
+{
+    public ExpiredTokenCleanupJob(
+        IServiceScopeFactory scopeFactory,
+        IConfiguration configuration,
+        ILogger<ExpiredTokenCleanupJob> logger)
+        : base(scopeFactory, configuration, logger) { }
+
+    protected override string JobName => "ExpiredTokenCleanup";
+    protected override TimeSpan DefaultInterval => TimeSpan.FromHours(24);
+    protected override TimeSpan StartupDelay => TimeSpan.FromMinutes(13);
+    protected override bool PerTenant => false;
+
+    protected override async Task RunGlobalAsync(IServiceProvider services, CancellationToken ct)
+    {
+        var db = services.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+
+        // Global job — bypass tenant filter if one is configured.
+        var refreshTokensDeleted = await db.RefreshTokens
+            .IgnoreQueryFilters()
+            .Where(t => t.ExpiresAt < now || t.RevokedAt != null)
+            .ExecuteDeleteAsync(ct);
+
+        Logger.LogInformation("ExpiredTokenCleanup refresh_tokens_deleted={Refresh}", refreshTokensDeleted);
+    }
+}

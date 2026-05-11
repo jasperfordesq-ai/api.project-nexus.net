@@ -143,6 +143,24 @@ public abstract class ScheduledHostedService : BackgroundService
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Scheduled job {JobName} failed", JobName);
+                // Tag the Sentry event with the cron job name so ops can
+                // filter the dashboard by "which cron is failing." Without
+                // this tag, cron exceptions look identical to request-handler
+                // exceptions in the Sentry UI. The SentrySdk call is a no-op
+                // when Sentry isn't configured.
+                try
+                {
+                    Sentry.SentrySdk.CaptureException(ex, scope =>
+                    {
+                        scope.SetTag("job_name", JobName);
+                        scope.SetTag("source", "scheduled_hosted_service");
+                    });
+                }
+                catch
+                {
+                    // Sentry can throw if not initialized; swallow so we
+                    // never let observability take down the worker loop.
+                }
                 registry?.RecordFailure(JobName, ex);
                 await CompleteRunRecordAsync(runId, ScheduledJobRunStatus.Failed, DateTime.UtcNow - startedAt, ex, CancellationToken.None);
                 // Match existing base-class behavior: do NOT rethrow — the loop continues.
