@@ -435,6 +435,9 @@ public class NexusDbContext : DbContext
     public DbSet<MerchantCoupon> MerchantCoupons => Set<MerchantCoupon>();
     public DbSet<MerchantCouponRedemption> MerchantCouponRedemptions => Set<MerchantCouponRedemption>();
 
+    // Provisioning Requests (new-tenant onboarding queue)
+    public DbSet<ProvisioningRequest> ProvisioningRequests => Set<ProvisioningRequest>();
+
     // Jobs parity
     public DbSet<JobSavedProfile> JobSavedProfiles => Set<JobSavedProfile>();
     public DbSet<JobTemplate> JobTemplates => Set<JobTemplate>();
@@ -496,6 +499,7 @@ public class NexusDbContext : DbContext
             new BrokerEnterpriseConfiguration(_tenantContext),
             new DiscoveryConfiguration(_tenantContext),
             new ContactEmergencyConfiguration(_tenantContext),
+            new ProvisioningRequestConfiguration(_tenantContext),
             new FeedModerationGamificationConfiguration(_tenantContext),
             new WebhookConfiguration(_tenantContext),
             new ScheduledJobRunConfiguration(),

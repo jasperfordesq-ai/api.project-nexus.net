@@ -336,6 +336,8 @@ public static class TestDataSeeder
             END $$;
 
             TRUNCATE TABLE
+                -- Audit follow-up tables
+                provisioning_requests,
                 -- Phase 16-37 tables (scaffolded)
                 file_uploads,
                 totp_backup_codes,

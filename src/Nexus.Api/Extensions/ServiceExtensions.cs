@@ -186,6 +186,9 @@ public static class ServiceExtensions
         services.AddScoped<PeerEndorsementService>();
         services.AddScoped<PresenceService>();
 
+        // Audit follow-up: typed Provisioning backend
+        services.AddScoped<Nexus.Api.Services.Provisioning.ProvisioningRequestService>();
+
         // Background services
         services.AddHostedService<SavedSearchAlertService>();
 
