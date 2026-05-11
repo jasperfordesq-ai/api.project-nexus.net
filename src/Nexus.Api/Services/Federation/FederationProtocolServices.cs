@@ -33,10 +33,12 @@
  * token via FederationApiKeyService.
  */
 
+using System.Data;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -486,15 +488,141 @@ public class HourTransferReconciliationService
             }
             if (transfer.RetryCount >= MaxRetries && transfer.Status != FederatedTransferStatus.Reconciled)
             {
+                var previousStatus = transfer.Status;
                 transfer.Status = FederatedTransferStatus.Failed;
                 if (string.IsNullOrEmpty(transfer.FailureReason))
                     transfer.FailureReason = "max_retries_exceeded";
                 result.GivenUp++;
+                await RecordFailedTransferAlertAsync(transfer, previousStatus, ct);
             }
             transfer.UpdatedAt = DateTime.UtcNow;
         }
         await _db.SaveChangesAsync(ct);
         return result;
+    }
+
+    /// <summary>
+    /// Surface a stuck/failed federated hour transfer to ops:
+    ///  - LogError with structured properties (picked up by Sentry).
+    ///  - Append a redacted record to TenantConfig key
+    ///    "federation.alerts.failed_transfers" (JSON array, capped at 50)
+    ///    so the admin federation dashboard can surface it without needing
+    ///    a synthetic Notification.UserId.
+    /// </summary>
+    private async Task RecordFailedTransferAlertAsync(
+        FederatedHourTransfer transfer,
+        FederatedTransferStatus previousStatus,
+        CancellationToken ct)
+    {
+        var endpoint = await ResolvePartnerSettingAsync(transfer.TenantId, transfer.PartnerId, "endpoint");
+        var redactedEndpoint = string.IsNullOrWhiteSpace(endpoint) ? null : RedactSecretsInUrl(endpoint!);
+
+        _logger.LogError(
+            "Federated hour transfer failed — tenant={TenantId} transfer_id={TransferId} direction={Direction} previous_status={PreviousStatus} partner_endpoint={PartnerEndpoint} amount={Amount} failure_reason={FailureReason}",
+            transfer.TenantId,
+            transfer.Id,
+            transfer.Direction.ToString(),
+            previousStatus.ToString(),
+            redactedEndpoint,
+            transfer.Amount,
+            transfer.FailureReason ?? "unknown");
+
+        var alertRecord = new
+        {
+            tenant_id = transfer.TenantId,
+            transfer_id = transfer.Id,
+            direction = transfer.Direction.ToString(),
+            previous_status = previousStatus.ToString(),
+            partner_id = transfer.PartnerId,
+            partner_endpoint = redactedEndpoint,
+            amount = transfer.Amount,
+            failure_reason = transfer.FailureReason ?? "unknown",
+            timestamp = DateTime.UtcNow
+        };
+
+        const string key = "federation.alerts.failed_transfers";
+        try
+        {
+            var row = await _db.TenantConfigs
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.TenantId == transfer.TenantId && c.Key == key, ct);
+
+            List<JsonElement> existing;
+            if (row == null || string.IsNullOrWhiteSpace(row.Value))
+            {
+                existing = new List<JsonElement>();
+            }
+            else
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(row.Value);
+                    existing = doc.RootElement.ValueKind == JsonValueKind.Array
+                        ? doc.RootElement.EnumerateArray().Select(e => e.Clone()).ToList()
+                        : new List<JsonElement>();
+                }
+                catch (JsonException)
+                {
+                    existing = new List<JsonElement>();
+                }
+            }
+
+            // Append, then cap to the most recent 50.
+            using var newDoc = JsonDocument.Parse(JsonSerializer.Serialize(alertRecord));
+            existing.Add(newDoc.RootElement.Clone());
+            if (existing.Count > 50)
+                existing = existing.Skip(existing.Count - 50).ToList();
+
+            var payload = JsonSerializer.Serialize(existing);
+            if (row == null)
+            {
+                _db.TenantConfigs.Add(new TenantConfig
+                {
+                    TenantId = transfer.TenantId,
+                    Key = key,
+                    Value = payload,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                row.Value = payload;
+                row.UpdatedAt = DateTime.UtcNow;
+            }
+            // Save handled by the outer ReconcileTenantAsync SaveChangesAsync.
+        }
+        catch (Exception ex)
+        {
+            // Don't let the alert path mask the underlying failure.
+            _logger.LogWarning(ex, "Failed to persist failed-transfer alert for transfer {Id}", transfer.Id);
+        }
+    }
+
+    private static string RedactSecretsInUrl(string url)
+    {
+        // Strip query-string credentials (api_key=..., token=..., key=...) and
+        // userinfo (user:pass@) without depending on the URL being well-formed.
+        try
+        {
+            var u = new Uri(url, UriKind.Absolute);
+            var builder = new UriBuilder(u) { UserName = string.Empty, Password = string.Empty };
+            if (!string.IsNullOrEmpty(u.Query))
+            {
+                var parts = u.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+                var safe = parts.Where(p =>
+                {
+                    var name = p.Split('=', 2)[0].ToLowerInvariant();
+                    return name is not ("api_key" or "apikey" or "token" or "key" or "secret" or "access_token");
+                });
+                builder.Query = string.Join('&', safe);
+            }
+            return builder.Uri.ToString();
+        }
+        catch
+        {
+            return "[redacted]";
+        }
     }
 
     private async Task AdvanceTransferAsync(FederatedHourTransfer transfer, CancellationToken ct)
@@ -608,23 +736,78 @@ public class HourTransferReconciliationService
             if (sender == 0) sender = admin.Id;
             if (receiver == 0) receiver = admin.Id;
         }
-        var tx = new Transaction
+
+        // Real money crossing tenants — mirror the ExchangeService.CompleteExchangeAsync
+        // safety contract: Serializable transaction + pg_advisory_xact_lock on the
+        // affected local user(s) so concurrent reconciliation ticks (or admin
+        // manual triggers running alongside the cron) cannot double-spend.
+        var hasOuterTx = _db.Database.CurrentTransaction != null;
+        IDbContextTransaction? localTx = null;
+        if (!hasOuterTx)
+            localTx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        try
         {
-            TenantId = t.TenantId,
-            SenderId = sender,
-            ReceiverId = receiver,
-            Amount = t.Amount,
-            Status = TransactionStatus.Completed,
-            Description = $"Federated {t.Protocol} transfer #{t.Id}: {t.Description}",
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.Transactions.Add(tx);
-        await _db.SaveChangesAsync(ct);
-        t.LocalTransactionId = tx.Id;
-        t.Status = FederatedTransferStatus.Reconciled;
-        t.ReconciledAt = DateTime.UtcNow;
-        t.FailureReason = null;
-        _logger.LogInformation("Federated transfer {Id} reconciled — local tx={TxId}", t.Id, tx.Id);
+            // Take the advisory lock(s). When both sides are local users, lock
+            // the lower id first to avoid deadlocks against another path that
+            // happens to take them in the opposite order.
+            var lockKeys = new List<int>();
+            if (sender == receiver) lockKeys.Add(sender);
+            else { lockKeys.Add(Math.Min(sender, receiver)); lockKeys.Add(Math.Max(sender, receiver)); }
+            foreach (var key in lockKeys)
+            {
+                await _db.Database.ExecuteSqlRawAsync(
+                    "SELECT pg_advisory_xact_lock({0})", new object[] { key }, ct);
+            }
+
+            // For Outbound, the local user is spending credits — verify they
+            // have the balance before writing the ledger row.
+            if (t.Direction == FederatedTransferDirection.Outbound)
+            {
+                var received = await _db.Transactions
+                    .Where(x => x.ReceiverId == t.LocalUserId && x.Status == TransactionStatus.Completed)
+                    .SumAsync(x => x.Amount, ct);
+                var sent = await _db.Transactions
+                    .Where(x => x.SenderId == t.LocalUserId && x.Status == TransactionStatus.Completed)
+                    .SumAsync(x => x.Amount, ct);
+                var balance = received - sent;
+                if (balance < t.Amount)
+                {
+                    if (localTx != null) await localTx.RollbackAsync(ct);
+                    t.FailureReason = $"insufficient_balance: have {balance:F2}, need {t.Amount:F2}";
+                    return;
+                }
+            }
+
+            var tx = new Transaction
+            {
+                TenantId = t.TenantId,
+                SenderId = sender,
+                ReceiverId = receiver,
+                Amount = t.Amount,
+                Status = TransactionStatus.Completed,
+                Description = $"Federated {t.Protocol} transfer #{t.Id}: {t.Description}",
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Transactions.Add(tx);
+            await _db.SaveChangesAsync(ct);
+            t.LocalTransactionId = tx.Id;
+            t.Status = FederatedTransferStatus.Reconciled;
+            t.ReconciledAt = DateTime.UtcNow;
+            t.FailureReason = null;
+            await _db.SaveChangesAsync(ct);
+
+            if (localTx != null) await localTx.CommitAsync(ct);
+            _logger.LogInformation("Federated transfer {Id} reconciled — local tx={TxId}", t.Id, tx.Id);
+        }
+        catch
+        {
+            if (localTx != null) await localTx.RollbackAsync(ct);
+            throw;
+        }
+        finally
+        {
+            if (localTx != null) await localTx.DisposeAsync();
+        }
     }
 
     private async Task<string?> ResolvePartnerSettingAsync(int tenantId, int partnerId, string suffix)

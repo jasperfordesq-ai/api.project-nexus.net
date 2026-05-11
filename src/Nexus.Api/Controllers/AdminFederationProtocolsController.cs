@@ -112,6 +112,22 @@ public class AdminFederationProtocolsController : ControllerBase
         return Ok(new { data = rows.Select(MapTransfer), total = rows.Count });
     }
 
+    /// <summary>
+    /// GET .../transfers/failed — last 100 transfers in terminal Failed state,
+    /// ordered by most-recent UpdatedAt. Gives ops a surface for the
+    /// max-retries-exceeded path that previously only logged a warning.
+    /// </summary>
+    [HttpGet("transfers/failed")]
+    public async Task<IActionResult> ListFailedTransfers(CancellationToken ct)
+    {
+        var rows = await _db.FederatedHourTransfers
+            .Where(t => t.Status == FederatedTransferStatus.Failed)
+            .OrderByDescending(t => t.UpdatedAt ?? t.CreatedAt)
+            .Take(100)
+            .ToListAsync(ct);
+        return Ok(new { data = rows.Select(MapTransfer), total = rows.Count });
+    }
+
     /// <summary>GET .../transfers/{id} — single transfer detail.</summary>
     [HttpGet("transfers/{id:int}")]
     public async Task<IActionResult> GetTransfer(int id)
