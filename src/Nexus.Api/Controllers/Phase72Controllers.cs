@@ -179,11 +179,12 @@ public class StripeWebhookController : ControllerBase
             using var doc = JsonDocument.Parse(raw);
             var root = doc.RootElement;
             var type = root.TryGetProperty("type", out var t) ? t.GetString() ?? "" : "";
+            var eventId = root.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
             if (!root.TryGetProperty("data", out var data) ||
                 !data.TryGetProperty("object", out var obj))
                 return BadRequest(new { error = "missing_data_object" });
 
-            var ok = await _service.ApplyWebhookAsync(type, obj, ct);
+            var ok = await _service.ApplyWebhookAsync(type, obj, eventId, ct);
             return Ok(new { received = true, applied = ok });
         }
         catch (JsonException ex)

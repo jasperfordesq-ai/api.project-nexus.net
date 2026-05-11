@@ -103,8 +103,15 @@ public class VolunteerWebhookController : ControllerBase
             // Set tenant context manually (no JWT in webhook requests)
             _tenantContext.SetTenant(tenantId);
 
+            // External event id for idempotent dedup. The PHP staging platform
+            // sends X-Nexus-Webhook-Id on outbound deliveries (verified in
+            // AdminFederationWebhooksController.php). Fall back to a generic
+            // X-Webhook-Event-Id header if the PHP-specific one is absent.
+            var externalEventId = Request.Headers["X-Nexus-Webhook-Id"].FirstOrDefault()
+                ?? Request.Headers["X-Webhook-Event-Id"].FirstOrDefault();
+
             // Process the event
-            var (success, error) = await _webhookService.ProcessEventAsync(eventType, payloadProp);
+            var (success, error) = await _webhookService.ProcessEventAsync(eventType, payloadProp, externalEventId);
 
             if (!success)
             {

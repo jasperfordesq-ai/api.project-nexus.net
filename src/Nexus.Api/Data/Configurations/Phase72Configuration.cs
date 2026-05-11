@@ -28,6 +28,13 @@ public class Phase72Configuration : TenantScopedConfiguration
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StripeCheckoutSessionId);
             entity.HasIndex(e => e.StripePaymentIntentId);
+            // Filtered-unique index on Stripe top-level event id for idempotent
+            // webhook dedup. Stripe retries the same evt_ id on delivery failure;
+            // the unique constraint makes the second delivery a no-op via the
+            // catch-on-unique-violation path in MoneyDonationService.ApplyWebhookAsync.
+            entity.HasIndex(e => e.StripeWebhookEventId)
+                .IsUnique()
+                .HasFilter("\"StripeWebhookEventId\" IS NOT NULL");
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
