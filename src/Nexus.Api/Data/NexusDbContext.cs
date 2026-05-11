@@ -52,6 +52,10 @@ public class NexusDbContext : DbContext
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
     public DbSet<AiMessage> AiMessages => Set<AiMessage>();
+    public DbSet<KnowledgeChunk> KnowledgeChunks => Set<KnowledgeChunk>();
+    public DbSet<AiMessageFeedback> AiMessageFeedbacks => Set<AiMessageFeedback>();
+    public DbSet<AiRequestAuditLog> AiRequestAuditLogs => Set<AiRequestAuditLog>();
+    public DbSet<AiConversationLongMemory> AiConversationLongMemories => Set<AiConversationLongMemory>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<TenantConfig> TenantConfigs => Set<TenantConfig>();
     public DbSet<Role> Roles => Set<Role>();
