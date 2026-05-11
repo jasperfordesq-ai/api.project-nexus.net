@@ -96,7 +96,6 @@ import {
   Puzzle,
   Palette,
   ShoppingBag,
-  Store,
   Languages,
   X,
   BellRing,
@@ -397,16 +396,8 @@ function useAdminNav(): NavSection[] {
           { label: 'Job Templates', href: '/admin/jobs/templates', icon: FileText },
         ],
       }] as NavSection[] : []),
-      ...(hasFeature('marketplace') ? [{
-        key: 'marketplace',
-        label: 'Marketplace',
-        icon: ShoppingBag,
-        items: [
-          { label: 'Dashboard', href: '/admin/marketplace', icon: ShoppingBag },
-          { label: 'Moderation', href: '/admin/marketplace/moderation', icon: ShieldCheck },
-          { label: 'Sellers', href: '/admin/marketplace/sellers', icon: Store },
-        ],
-      }] as NavSection[] : []),
+      // Marketplace OOS per CLAUDE.md — sidebar section removed.
+      // Coupons remain accessible at /admin/marketplace/coupons via a direct link if needed.
       ...(hasFeature('local_advertising') ? [{
         key: 'advertising',
         label: 'Advertising',

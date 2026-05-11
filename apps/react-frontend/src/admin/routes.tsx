@@ -197,10 +197,8 @@ const JobBiasAudit = lazy(() => import('./modules/jobs/JobsBiasAuditAdmin'));
 const JobPipelineOverview = lazy(() => import('./modules/jobs/JobsPipelineAdmin'));
 const JobTemplatesAdmin = AdminJobTemplatesPageReal;
 
-// Marketplace module
-const MarketplaceAdmin = lazyParityPage('MarketplaceAdminPage');
-const MarketplaceModerationPage = lazyParityPage('MarketplaceModerationPage');
-const MarketplaceSellerAdmin = lazyParityPage('MarketplaceSellerAdminPage');
+// Marketplace module — OOS per CLAUDE.md; routes removed.
+// Coupons remain in scope (decoupled from marketplace).
 const AdminCouponsPage = lazyParityPage('AdminCouponsPage');
 
 // Ideation / Challenges module
@@ -228,10 +226,8 @@ const CreditCommonsConfig = lazyParityPage('FederationCreditCommonsPage');
 const SafeguardingDashboard = lazy(() => import('./modules/safeguarding/SafeguardingDashboard'));
 const SafeguardingOptionsAdmin = lazyParityPage('SafeguardingOptionsAdminPage');
 
-// Regional / national analytics
-const RegionalAnalyticsPage = lazyParityPage('RegionalAnalyticsPage');
-const RegionalAnalyticsAdminPage = lazyParityPage('RegionalAnalyticsAdminPage');
-const NationalKissDashboardPage = lazyParityPage('NationalKissDashboardPage');
+// Regional / national analytics — OOS per CLAUDE.md (Caring-Community-adjacent).
+// Routes removed.
 
 // Advanced/SEO module
 const AiSettings = lazy(() => import('./modules/advanced/AiSettings'));
@@ -613,10 +609,7 @@ export function AdminRoutes() {
       <Route path="jobs/pipeline" element={<Lazy><JobPipelineOverview /></Lazy>} />
       <Route path="jobs/templates" element={<Lazy><JobTemplatesAdmin /></Lazy>} />
 
-      {/* ─── MARKETPLACE ─── */}
-      <Route path="marketplace" element={<Lazy><MarketplaceAdmin /></Lazy>} />
-      <Route path="marketplace/moderation" element={<Lazy><MarketplaceModerationPage /></Lazy>} />
-      <Route path="marketplace/sellers" element={<Lazy><MarketplaceSellerAdmin /></Lazy>} />
+      {/* ─── COUPONS (Marketplace itself is OOS) ─── */}
       <Route path="marketplace/coupons" element={<Lazy><AdminCouponsPage /></Lazy>} />
 
       {/* ─── IDEATION / CHALLENGES ─── */}
@@ -673,8 +666,7 @@ export function AdminRoutes() {
         <Route path="provisioning-requests" element={<Lazy><ProvisioningRequestsPage /></Lazy>} />
       </Route>
 
-      {/* ─── NATIONAL KISS FOUNDATION DASHBOARD ─── */}
-      <Route path="national/kiss" element={<Lazy><NationalKissDashboardPage /></Lazy>} />
+      {/* National KISS + Regional Analytics OOS per CLAUDE.md — routes removed */}
 
       {/* ─── ANALYTICS & REPORTING ─── */}
       <Route path="community-analytics" element={<Lazy><CommunityAnalytics /></Lazy>} />
@@ -684,8 +676,6 @@ export function AdminRoutes() {
       <Route path="reports/hours" element={<Lazy><HoursReportsPage /></Lazy>} />
       <Route path="reports/inactive-members" element={<Lazy><InactiveMembersPage /></Lazy>} />
       <Route path="moderation/queue" element={<Lazy><ModerationQueuePage /></Lazy>} />
-      <Route path="analytics/regional" element={<Lazy><RegionalAnalyticsPage /></Lazy>} />
-      <Route path="regional-analytics/subscriptions" element={<Lazy><RegionalAnalyticsAdminPage /></Lazy>} />
       <Route path="platform/pilot-inquiries" element={<Lazy><PilotInquiryAdminPage /></Lazy>} />
       <Route path="api-partners" element={<Lazy><ApiPartnersAdminPage /></Lazy>} />
       <Route path="help" element={<Lazy><AdminHelpCenterPage /></Lazy>} />
