@@ -105,15 +105,18 @@ public class StripeWebhookController : ControllerBase
 {
     private readonly MoneyDonationService _service;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
+    private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _env;
     private readonly ILogger<StripeWebhookController> _logger;
 
     public StripeWebhookController(
         MoneyDonationService service,
         Microsoft.Extensions.Configuration.IConfiguration config,
+        Microsoft.AspNetCore.Hosting.IWebHostEnvironment env,
         ILogger<StripeWebhookController> logger)
     {
         _service = service;
         _config = config;
+        _env = env;
         _logger = logger;
     }
 
@@ -156,10 +159,19 @@ public class StripeWebhookController : ControllerBase
                 return Unauthorized(new { error = "signature_invalid", reason });
             }
         }
+        else if (_env.IsProduction())
+        {
+            // Production must never accept unsigned webhook payloads — that
+            // would let anyone forge a "donation succeeded" event. Fail closed.
+            _logger.LogError(
+                "Stripe webhook secret unset in Production. Refusing payload. " +
+                "Set Stripe:WebhookSecret (or Stripe:WebhookSecret_Donations) to enable the endpoint.");
+            return StatusCode(503, new { error = "webhook_secret_unconfigured" });
+        }
         else
         {
             _logger.LogWarning(
-                "Stripe webhook received without configured secret — accepting payload (set Stripe:WebhookSecret to enforce).");
+                "Stripe webhook received without configured secret — accepting payload (non-Production environment). Set Stripe:WebhookSecret to enforce.");
         }
 
         try
