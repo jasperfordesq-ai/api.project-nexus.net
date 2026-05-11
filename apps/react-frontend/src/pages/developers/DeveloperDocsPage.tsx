@@ -100,16 +100,16 @@ export function DeveloperDocsPage() {
   const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>([]);
   const [openApi, setOpenApi] = useState<unknown>(null);
   const [newKey, setNewKey] = useState({
-    name: 'Frontend parity console',
-    scopes: 'federation:read marketplace:read',
+    name: 'Partner timebank',
+    scopes: 'federation:read federation:write',
     rateLimit: '120',
     expiresAt: '',
   });
   const [createdKey, setCreatedKey] = useState<ApiKeyRecord | null>(null);
   const [consoleForm, setConsoleForm] = useState<ConsoleState>({
     method: 'GET',
-    path: '/marketplace/categories',
-    body: '{\n  "code": "WELCOME"\n}',
+    path: '/api/listings',
+    body: '{\n  "title": "Example listing",\n  "type": "offer"\n}',
   });
   const [consoleResult, setConsoleResult] = useState<unknown>(null);
   const [consoleStatus, setConsoleStatus] = useState<'idle' | 'ok' | 'error'>('idle');
@@ -119,53 +119,70 @@ export function DeveloperDocsPage() {
   const endpointGroups = useMemo<EndpointGroup[]>(() => [
     {
       title: 'Authentication',
-      description: 'JWT bearer auth is the member API contract; tenant context is resolved from the request host, selected tenant, or X-Tenant-ID.',
+      description: 'HS256 JWT bearer is the API contract. Tokens are interoperable with the legacy PHP platform — same secret, same claim shape (sub, tenant_id, role, email). Tenant context is resolved from the JWT, request host, or X-Tenant-ID header.',
       items: [
-        { method: 'POST', path: '/api/auth/login', auth: 'Public', note: 'Returns access and refresh tokens.' },
-        { method: 'POST', path: '/api/auth/refresh', auth: 'Public', note: 'Refreshes access tokens.' },
-        { method: 'GET', path: '/api/auth/validate', auth: 'Bearer', note: 'Validates the current token.' },
-        { method: 'POST', path: '/api/passkeys/authenticate/begin', auth: 'Public', note: 'Begins passwordless login.' },
-        { method: 'GET', path: '/api/docs/openapi.json', auth: 'Public', note: 'OpenAPI-compatible machine contract.' },
+        { method: 'POST', path: '/api/auth/login', auth: 'Public', note: 'Email + password + tenant_slug, returns access + refresh tokens.' },
+        { method: 'POST', path: '/api/auth/refresh', auth: 'Public', note: 'Exchange refresh token for a new access token.' },
+        { method: 'POST', path: '/api/auth/logout', auth: 'Bearer', note: 'Revokes the active refresh token.' },
+        { method: 'GET', path: '/api/auth/validate', auth: 'Bearer', note: 'Validates the current access token.' },
+        { method: 'POST', path: '/api/auth/2fa/verify', auth: 'Bearer', note: 'TOTP gate during login when 2FA is enabled.' },
+        { method: 'POST', path: '/api/passkeys/authenticate/begin', auth: 'Public', note: 'Begins WebAuthn/FIDO2 passwordless login.' },
+        { method: 'GET', path: '/swagger/v1/swagger.json', auth: 'Public (dev)', note: 'Swashbuckle OpenAPI document, exposed only in Development.' },
       ],
     },
     {
-      title: 'Marketplace',
-      description: 'Marketplace V2 routes cover browse, seller profile, orders, offers, coupons, pickup slots, and collections.',
+      title: 'Core member APIs',
+      description: 'Tenant-isolated CRUD for the primary member surface. Every read is filtered to the caller’s tenant via EF Core global query filters; writes inject the tenant id automatically.',
       items: [
-        { method: 'GET', path: '/api/marketplace/listings', auth: 'Public', note: 'Search and category-filter marketplace listings.' },
-        { method: 'GET', path: '/api/marketplace/categories', auth: 'Public', note: 'List marketplace categories.' },
-        { method: 'GET', path: '/api/marketplace/orders/purchases', auth: 'Bearer', note: 'Buyer order history.' },
-        { method: 'GET', path: '/api/marketplace/seller/coupons', auth: 'Bearer', note: 'Seller coupon management.' },
-        { method: 'POST', path: '/api/marketplace/payments/create-intent', auth: 'Bearer', note: 'Creates local/Stripe-compatible payment intents.' },
+        { method: 'GET', path: '/api/users/me', auth: 'Bearer', note: 'Current user profile.' },
+        { method: 'GET', path: '/api/listings', auth: 'Bearer', note: 'Browse listings (offers + requests).' },
+        { method: 'POST', path: '/api/listings', auth: 'Bearer', note: 'Create a listing.' },
+        { method: 'GET', path: '/api/wallet/balance', auth: 'Bearer', note: 'Time-credit balance for the current user.' },
+        { method: 'POST', path: '/api/wallet/transfer', auth: 'Bearer', note: 'Transfer credits to another member.' },
+        { method: 'GET', path: '/api/messages', auth: 'Bearer', note: 'List conversations.' },
       ],
     },
     {
-      title: 'API keys',
-      description: 'Admin-scoped federation API keys are the currently implemented credential surface for integrations and parity testing.',
+      title: 'Real-time & notifications',
+      description: 'Live updates use SignalR (WebSocket). Mobile push is FCM; browser push uses VAPID web-push. Tokens are scoped per-user, per-tenant.',
       items: [
-        { method: 'GET', path: '/api/admin/federation/api-keys', auth: 'Admin', note: 'List tenant API keys.' },
-        { method: 'POST', path: '/api/admin/federation/api-keys', auth: 'Admin', note: 'Create a scoped key, returned once.' },
-        { method: 'DELETE', path: '/api/admin/federation/api-keys/{id}', auth: 'Admin', note: 'Revoke an API key.' },
-        { method: 'GET', path: '/api/admin/federation/api-keys/usage', auth: 'Admin', note: 'Review key usage totals.' },
+        { method: 'WS', path: '/hubs/messages', auth: 'Bearer', note: 'SignalR hub for chat, typing indicators, and message-read receipts.' },
+        { method: 'GET', path: '/api/notifications', auth: 'Bearer', note: 'In-app notification list.' },
+        { method: 'GET', path: '/api/notifications/unread-count', auth: 'Bearer', note: 'Unread badge count.' },
+        { method: 'POST', path: '/api/push/register', auth: 'Bearer', note: 'Register an FCM or web-push subscription.' },
       ],
     },
     {
-      title: 'Jobs',
-      description: 'Jobs APIs include browse, applications, alerts, employer tools, saved profiles, talent search, feeds, and bias-supporting salary benchmarks.',
+      title: 'Federation',
+      description: 'Timebank-to-timebank protocol layer (CreditCommons + Komunitin + native ingest + hour-transfer reconciliation). API keys here are the credential surface for partner timebanks integrating with this tenant.',
       items: [
-        { method: 'GET', path: '/api/jobs', auth: 'Bearer', note: 'List vacancies.' },
-        { method: 'GET', path: '/api/jobs/{id}/applications', auth: 'Owner', note: 'Review application pipeline.' },
-        { method: 'GET', path: '/api/jobs/talent-search', auth: 'Bearer', note: 'Find visible candidate profiles.' },
-        { method: 'GET', path: '/api/jobs/feed.json', auth: 'Public', note: 'Syndication feed.' },
+        { method: 'GET', path: '/api/admin/federation/api-keys', auth: 'Admin', note: 'List tenant API keys for partner timebanks.' },
+        { method: 'POST', path: '/api/admin/federation/api-keys', auth: 'Admin', note: 'Create a scoped key (full value returned once).' },
+        { method: 'DELETE', path: '/api/admin/federation/api-keys/{id}', auth: 'Admin', note: 'Revoke a key.' },
+        { method: 'POST', path: '/api/admin/federation/protocols/transfer', auth: 'Admin', note: 'Propose a federated hour transfer.' },
+        { method: 'POST', path: '/api/admin/federation/protocols/reconcile', auth: 'Admin', note: 'Force reconciliation pass (cron runs every 5 min).' },
+        { method: 'GET', path: '/api/federation/listings', auth: 'ApiKey', note: 'Public listings exposed to partner timebanks.' },
       ],
     },
     {
-      title: 'Partner webhooks',
-      description: 'Partner webhook routes preserve V1-compatible subscription paths while federation and external API endpoints remain separate.',
+      title: 'AI assistant',
+      description: 'Multi-provider AI (Ollama, Anthropic, OpenAI, Gemini) selected by tenant config Ai:Provider. Activity summaries and re-engagement nudges run via the named-agent endpoints.',
       items: [
-        { method: 'GET', path: '/api/partner/v1/webhooks/subscriptions', auth: 'Bearer', note: 'List partner webhook subscriptions.' },
-        { method: 'POST', path: '/api/partner/v1/webhooks/subscriptions', auth: 'Bearer', note: 'Create subscription.' },
-        { method: 'POST', path: '/api/marketplace/webhooks/stripe', auth: 'Public', note: 'Marketplace payment event receiver.' },
+        { method: 'GET', path: '/api/ai/status', auth: 'Bearer', note: 'Provider availability + model name.' },
+        { method: 'POST', path: '/api/ai/chat', auth: 'Bearer', note: 'Single-turn chat completion.' },
+        { method: 'POST', path: '/api/ai/conversations', auth: 'Bearer', note: 'Start a multi-turn conversation.' },
+        { method: 'POST', path: '/api/admin/ai/agents/activity-summary', auth: 'Admin', note: 'ActivitySummariserAgent run.' },
+        { method: 'POST', path: '/api/admin/ai/agents/nudge', auth: 'Admin', note: 'NudgeDrafterAgent run.' },
+      ],
+    },
+    {
+      title: 'Webhooks',
+      description: 'V2 exposes a small set of receiver endpoints. Stripe webhooks verify signatures; the identity-verification webhook validates per-tenant secrets resolved from TenantConfig.',
+      items: [
+        { method: 'POST', path: '/api/webhooks/stripe/donations', auth: 'Stripe sig', note: 'Money donations: checkout.session.completed, payment_intent.payment_failed, charge.refunded.' },
+        { method: 'POST', path: '/api/registration/webhook/{tenantId}', auth: 'Provider secret', note: 'Stripe Identity verification callback.' },
+        { method: 'GET', path: '/sitemap.xml', auth: 'Public', note: 'Static + dynamic SEO sitemap (listings, blog, groups).' },
+        { method: 'GET', path: '/robots.txt', auth: 'Public', note: 'Disallows /admin and /api; points to sitemap.' },
       ],
     },
   ], []);
@@ -173,20 +190,26 @@ export function DeveloperDocsPage() {
   const loadProbes = useCallback(async () => {
     setIsLoading(true);
     const next: Probe[] = [
-      { label: 'OpenAPI document', endpoint: '/api/docs/openapi.json', status: 'checking' },
-      { label: 'Marketplace categories', endpoint: '/api/marketplace/categories', status: 'checking' },
-      { label: 'Jobs JSON feed', endpoint: '/api/jobs/feed.json', status: 'checking' },
-      { label: 'Webhook subscriptions', endpoint: '/api/partner/v1/webhooks/subscriptions', status: isAuthenticated ? 'checking' : 'skipped' },
+      { label: 'Health check', endpoint: '/health', status: 'checking' },
+      { label: 'OpenAPI document', endpoint: '/swagger/v1/swagger.json', status: 'checking' },
+      { label: 'Token validation', endpoint: '/api/auth/validate', status: isAuthenticated ? 'checking' : 'skipped' },
+      { label: 'Listings', endpoint: '/api/listings', status: isAuthenticated ? 'checking' : 'skipped' },
+      { label: 'Wallet balance', endpoint: '/api/wallet/balance', status: isAuthenticated ? 'checking' : 'skipped' },
       { label: 'Admin API keys', endpoint: '/api/admin/federation/api-keys', status: isAuthenticated ? 'checking' : 'skipped' },
     ];
     setProbes(next);
 
     try {
-      const [openApiRes, categoriesRes, jobsFeedRes, webhooksRes, keysRes] = await Promise.all([
-        api.get<unknown>('/docs/openapi.json', { skipAuth: true }).catch(() => null),
-        api.get<unknown[]>('/v2/marketplace/categories', { skipAuth: true }).catch(() => null),
-        api.get<unknown[]>('/jobs/feed.json', { skipAuth: true }).catch(() => null),
-        isAuthenticated ? api.get<unknown[]>('/partner/v1/webhooks/subscriptions').catch(() => null) : Promise.resolve(null),
+      const fetchJson = (url: string) => fetch(url)
+        .then((res) => res.ok ? res.json().then((data) => ({ success: true, data })).catch(() => ({ success: true, data: null })) : { success: false, data: null })
+        .catch(() => ({ success: false, data: null }));
+
+      const [healthRes, openApiRes, validateRes, listingsRes, walletRes, keysRes] = await Promise.all([
+        fetchJson('/health'),
+        fetchJson('/swagger/v1/swagger.json'),
+        isAuthenticated ? api.get<unknown>('/auth/validate').catch(() => null) : Promise.resolve(null),
+        isAuthenticated ? api.get<unknown[]>('/listings').catch(() => null) : Promise.resolve(null),
+        isAuthenticated ? api.get<unknown>('/wallet/balance').catch(() => null) : Promise.resolve(null),
         isAuthenticated ? api.get<ApiKeyRecord[]>('/admin/federation/api-keys').catch(() => null) : Promise.resolve(null),
       ]);
 
@@ -194,28 +217,31 @@ export function DeveloperDocsPage() {
       setApiKeys(asArray(keysRes?.data) as ApiKeyRecord[]);
       setProbes([
         {
+          label: 'Health check',
+          endpoint: '/health',
+          status: healthRes?.success ? 'ok' : 'error',
+        },
+        {
           label: 'OpenAPI document',
-          endpoint: '/api/docs/openapi.json',
+          endpoint: '/swagger/v1/swagger.json',
           status: openApiRes?.success ? 'ok' : 'error',
           count: openApiPathCount(openApiRes?.data),
         },
         {
-          label: 'Marketplace categories',
-          endpoint: '/api/marketplace/categories',
-          status: categoriesRes?.success ? 'ok' : 'error',
-          count: asArray(categoriesRes?.data).length,
+          label: 'Token validation',
+          endpoint: '/api/auth/validate',
+          status: isAuthenticated ? (validateRes?.success ? 'ok' : 'error') : 'skipped',
         },
         {
-          label: 'Jobs JSON feed',
-          endpoint: '/api/jobs/feed.json',
-          status: jobsFeedRes?.success ? 'ok' : 'error',
-          count: asArray(jobsFeedRes?.data).length,
+          label: 'Listings',
+          endpoint: '/api/listings',
+          status: isAuthenticated ? (listingsRes?.success ? 'ok' : 'error') : 'skipped',
+          count: asArray(listingsRes?.data).length,
         },
         {
-          label: 'Webhook subscriptions',
-          endpoint: '/api/partner/v1/webhooks/subscriptions',
-          status: isAuthenticated ? (webhooksRes?.success ? 'ok' : 'error') : 'skipped',
-          count: asArray(webhooksRes?.data).length,
+          label: 'Wallet balance',
+          endpoint: '/api/wallet/balance',
+          status: isAuthenticated ? (walletRes?.success ? 'ok' : 'error') : 'skipped',
         },
         {
           label: 'Admin API keys',
@@ -303,8 +329,8 @@ export function DeveloperDocsPage() {
   const visibleGroups = endpointGroups.filter((group) => {
     if (mode === 'overview') return true;
     if (mode === 'auth') return group.title === 'Authentication';
-    if (mode === 'webhooks') return group.title === 'Partner webhooks';
-    return group.title !== 'Partner webhooks';
+    if (mode === 'webhooks') return group.title === 'Webhooks';
+    return group.title !== 'Webhooks';
   });
 
   return (
@@ -315,13 +341,16 @@ export function DeveloperDocsPage() {
             <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center">
               <Code2 className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
-            <Chip variant="flat" color="primary">Partner API</Chip>
+            <Chip variant="flat" color="primary">ASP.NET Core 8 · JWT · Tenant-isolated</Chip>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-theme-primary tracking-normal">
             Developer documentation
           </h1>
           <p className="text-theme-muted mt-1 max-w-3xl">
-            Public docs, auth notes, endpoint inventory, and webhook paths are connected to the ASP.NET API surface used by the member frontend.
+            This is the V2 Project NEXUS API — an ASP.NET Core 8 backend serving the React member frontend and the embedded admin panel. Authentication is HS256 JWT, fully interoperable with the legacy PHP platform during the migration. Every read and write is scoped to a tenant via EF Core global query filters; the tenant is resolved from the JWT, request host, or the <code className="font-mono text-xs">X-Tenant-ID</code> header.
+          </p>
+          <p className="text-theme-subtle text-sm mt-2 max-w-3xl">
+            Use the probes panel to verify the API is reachable, browse the endpoint catalog for the routes that ship today, and the console to exercise them with your current session. The Marketplace and Caring Community modules from V1 are intentionally out of scope for V2 and are not documented here.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -349,7 +378,7 @@ export function DeveloperDocsPage() {
             <GlassCard key={group.title} className="p-5">
               <div className="flex items-start gap-3 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-theme-elevated flex items-center justify-center">
-                  {group.title === 'Authentication' ? <KeyRound className="w-5 h-5 text-primary" /> : group.title === 'Partner webhooks' ? <Webhook className="w-5 h-5 text-primary" /> : <Braces className="w-5 h-5 text-primary" />}
+                  {group.title === 'Authentication' ? <KeyRound className="w-5 h-5 text-primary" /> : group.title === 'Webhooks' ? <Webhook className="w-5 h-5 text-primary" /> : <Braces className="w-5 h-5 text-primary" />}
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-theme-primary">{group.title}</h2>
@@ -414,8 +443,11 @@ export function DeveloperDocsPage() {
             </div>
             <div className="flex flex-wrap gap-2 mt-3">
               <Button size="sm" variant="flat" startContent={<RefreshCw className="w-4 h-4" />} onPress={loadProbes}>Refresh spec</Button>
-              <a href="/api/docs/openapi.json" target="_blank" rel="noreferrer">
+              <a href="/swagger/v1/swagger.json" target="_blank" rel="noreferrer">
                 <Button size="sm" variant="flat" endContent={<ExternalLink className="w-4 h-4" />}>JSON</Button>
+              </a>
+              <a href="/swagger" target="_blank" rel="noreferrer">
+                <Button size="sm" variant="flat" endContent={<ExternalLink className="w-4 h-4" />}>Swagger UI</Button>
               </a>
             </div>
           </GlassCard>
