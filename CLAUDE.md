@@ -956,9 +956,6 @@ cd apps/admin && docker compose up -d  # dev on :5190, prod on :5191
 - [MIGRATION_GAP_MAP.md](./MIGRATION_GAP_MAP.md) - V1 vs V2 feature comparison (~250 features mapped)
 - [LEGACY_FEATURE_INVENTORY.md](./LEGACY_FEATURE_INVENTORY.md) - Full V1 feature inventory (251 services, 1,300+ endpoints)
 
-### Phase Execution Guides
-- PHASE0_EXECUTION.md through PHASE15_EXECUTION.md - Test scripts for each completed phase
-
 ### Deployment & Operations
 - **[PHASE63_73_DEPLOY_NOTES.md](./PHASE63_73_DEPLOY_NOTES.md)** — required reading
   before deploying any commit from `fb4fcce` onward (2026-05-09 production
@@ -971,16 +968,6 @@ cd apps/admin && docker compose up -d  # dev on :5190, prod on :5191
   version table, frontend `overrides` pattern. Required reading before
   bumping any dependency outside CI.
 - FRONTEND_INTEGRATION.md - Frontend integration guide (API reference, CORS, architecture)
-- [ADMIN_INTEGRATION.md](./ADMIN_INTEGRATION.md) - Admin panel API integration guide (144+ admin endpoints, response examples, UI suggestions)
-- PLESK_DEPLOYMENT.md - Plesk deployment guide (concepts, theory, troubleshooting)
-- PLESK_QUICKSTART.md - Step-by-step Plesk setup checklist
-- PLESK_EXECUTION.md - Verb-first execution guide for Plesk setup
-- DEPLOYMENT_CHECKLIST.md - Full deployment order checklist (fresh server to production)
 - MASTER_DEPLOYMENT_CHECKLIST.md - Single source of truth for deployment
 - RECOVERY_GUIDE.md - How to verify and recover when things break
 - DOCKER_CONTRACT.md - Docker Compose specification
-
-### AI & Security
-- AI_FEATURES_ROADMAP.md - AI feature roadmap
-- AI_FRONTEND_INTEGRATION.md - Frontend AI integration
-- AI_DEPLOYMENT_PLESK_UBUNTU.md - Ubuntu/Plesk AI deployment

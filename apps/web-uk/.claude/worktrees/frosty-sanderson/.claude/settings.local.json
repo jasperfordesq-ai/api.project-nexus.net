@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(head -5 C:xampphtdocsnexus-uk-frontend.claudeworktreesfrosty-sandersonsrcroutes*.js)"
-    ]
-  }
-}
