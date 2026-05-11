@@ -327,7 +327,7 @@ const LandingPageBuilder = lazyParityPage('LandingPageBuilderPage');
 const PilotInquiryAdminPage = lazyParityPage('PilotInquiryAdminPage');
 const ProvisioningRequestsPage = lazyParityPage('ProvisioningRequestsPage');
 const ApiPartnersAdminPage = lazyParityPage('ApiPartnersAdminPage');
-const AdminHelpCenterPage = lazyParityPage('AdminHelpCenterPage');
+const AdminHelpCenterPage = lazy(() => import('./modules/system/AdminHelpCenterPage'));
 
 // Wrap lazy components in Suspense
 function Lazy({ children }: { children: React.ReactNode }) {
