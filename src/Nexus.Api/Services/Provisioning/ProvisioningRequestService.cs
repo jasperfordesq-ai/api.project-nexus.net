@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
@@ -206,12 +207,12 @@ public class ProvisioningRequestService
 
 public class CreateProvisioningRequestDto
 {
-    public string OrgName { get; set; } = string.Empty;
-    public string RequestedSubdomain { get; set; } = string.Empty;
-    public string ContactName { get; set; } = string.Empty;
-    public string ContactEmail { get; set; } = string.Empty;
-    public string? ContactPhone { get; set; }
-    public string? Plan { get; set; }
-    public string? Country { get; set; }
-    public string? Notes { get; set; }
+    [JsonPropertyName("org_name")] public string OrgName { get; set; } = string.Empty;
+    [JsonPropertyName("requested_subdomain")] public string RequestedSubdomain { get; set; } = string.Empty;
+    [JsonPropertyName("contact_name")] public string ContactName { get; set; } = string.Empty;
+    [JsonPropertyName("contact_email")] public string ContactEmail { get; set; } = string.Empty;
+    [JsonPropertyName("contact_phone")] public string? ContactPhone { get; set; }
+    [JsonPropertyName("plan")] public string? Plan { get; set; }
+    [JsonPropertyName("country")] public string? Country { get; set; }
+    [JsonPropertyName("notes")] public string? Notes { get; set; }
 }
