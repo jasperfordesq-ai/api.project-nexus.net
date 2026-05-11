@@ -95,11 +95,16 @@ public class MiscParityController : ControllerBase
     [AllowAnonymous]
     public IActionResult BillingPlans() => Ok(new { data = new[] { new { id = "free", price = 0 }, new { id = "premium", price = 10 } } });
 
-    [HttpGet("bookmark-collections")]
+    // V1 marketplace-bookmark parity shim. Moved from /api/bookmark-collections
+    // and /api/bookmarks to /api/parity/* to avoid ambiguous-route collision
+    // with the canonical generic-content-type BookmarksController (Phase 72).
+    // These actions operate on MarketplaceCollection / MarketplaceSavedListing
+    // entities (legacy V1 shape), NOT the canonical Bookmark entity.
+    [HttpGet("parity/bookmark-collections")]
     [Authorize]
     public async Task<IActionResult> BookmarkCollections() => Ok(new { data = await _db.MarketplaceCollections.Where(c => c.UserId == UserId()).ToListAsync() });
 
-    [HttpPost("bookmark-collections")]
+    [HttpPost("parity/bookmark-collections")]
     [Authorize]
     public async Task<IActionResult> CreateBookmarkCollection([FromBody] JsonElement body)
     {
@@ -109,7 +114,7 @@ public class MiscParityController : ControllerBase
         return Ok(new { data = collection });
     }
 
-    [HttpDelete("bookmark-collections/{id:int}")]
+    [HttpDelete("parity/bookmark-collections/{id:int}")]
     [Authorize]
     public async Task<IActionResult> DeleteBookmarkCollection(int id)
     {
@@ -119,11 +124,11 @@ public class MiscParityController : ControllerBase
         return NoContent();
     }
 
-    [HttpGet("bookmarks")]
+    [HttpGet("parity/bookmarks")]
     [Authorize]
     public async Task<IActionResult> Bookmarks() => Ok(new { data = await _db.MarketplaceSavedListings.Where(s => s.UserId == UserId()).ToListAsync() });
 
-    [HttpPost("bookmarks")]
+    [HttpPost("parity/bookmarks")]
     [Authorize]
     public async Task<IActionResult> CreateBookmark([FromBody] JsonElement body)
     {
@@ -134,11 +139,11 @@ public class MiscParityController : ControllerBase
         return Ok(new { saved = true });
     }
 
-    [HttpGet("bookmarks/status")]
+    [HttpGet("parity/bookmarks/status")]
     [Authorize]
     public IActionResult BookmarkStatus([FromQuery] int? item_id = null) => Ok(new { data = new { item_id, saved = false } });
 
-    [HttpPost("bookmarks/{id:int}/move")]
+    [HttpPost("parity/bookmarks/{id:int}/move")]
     [Authorize]
     public IActionResult MoveBookmark(int id, [FromBody] JsonElement body) => Ok(new { data = new { id, collection_id = Int(body, "collection_id") } });
 
