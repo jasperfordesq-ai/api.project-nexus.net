@@ -11,18 +11,10 @@ namespace Nexus.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Summary",
-                table: "ai_conversations",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "SummaryWatermarkMessageId",
-                table: "ai_conversations",
-                type: "integer",
-                nullable: true);
-
+            // NOTE: Summary + SummaryWatermarkMessageId columns on ai_conversations
+            // are added by the earlier 20260511162622_AiPlatformKnowledge migration.
+            // Originally duplicated here due to concurrent-migration generation; removed
+            // post-deploy to fix the 42701 column-already-exists crash on production startup.
             migrationBuilder.CreateTable(
                 name: "provisioning_requests",
                 columns: table => new
@@ -77,13 +69,8 @@ namespace Nexus.Api.Migrations
             migrationBuilder.DropTable(
                 name: "provisioning_requests");
 
-            migrationBuilder.DropColumn(
-                name: "Summary",
-                table: "ai_conversations");
-
-            migrationBuilder.DropColumn(
-                name: "SummaryWatermarkMessageId",
-                table: "ai_conversations");
+            // Summary + SummaryWatermarkMessageId are owned by 20260511162622_AiPlatformKnowledge;
+            // its Down handles them. Don't drop them here.
         }
     }
 }
