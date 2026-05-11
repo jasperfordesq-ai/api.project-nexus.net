@@ -220,7 +220,7 @@ const ExternalPartners = lazy(() => import('./modules/federation/AdminFederation
 const Webhooks = lazy(() => import('./modules/federation/AdminFederationWebhooksPage'));
 const ApiDocumentation = lazyParityPage('FederationApiDocsPage');
 const FederationActivityFeed = lazy(() => import('./modules/federation/AdminFederationActivityPage'));
-const CreditCommonsConfig = lazyParityPage('FederationCreditCommonsPage');
+const CreditCommonsConfig = lazy(() => import('./modules/federation/AdminFederationCreditCommonsPage'));
 
 // Safeguarding module
 const SafeguardingDashboard = lazy(() => import('./modules/safeguarding/SafeguardingDashboard'));
