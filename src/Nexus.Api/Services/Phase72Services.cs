@@ -145,7 +145,14 @@ public class MoneyDonationService
     /// Caller is responsible for verifying the webhook signature; this method
     /// only mutates state.
     /// </summary>
-    public async Task<bool> ApplyWebhookAsync(string eventType, JsonElement dataObject, CancellationToken ct = default)
+    /// <param name="stripeEventId">
+    /// Optional top-level Stripe event id (evt_...) for idempotent dedup.
+    /// If the same event id has already advanced this donation, the call
+    /// returns true without re-applying the transition. Catches the unique
+    /// constraint violation on StripeWebhookEventId so concurrent deliveries
+    /// race safely.
+    /// </param>
+    public async Task<bool> ApplyWebhookAsync(string eventType, JsonElement dataObject, string? stripeEventId = null, CancellationToken ct = default)
     {
         // Stripe events of interest:
         //   checkout.session.completed   → Pending → Succeeded (payment_intent populated)
@@ -180,6 +187,15 @@ public class MoneyDonationService
         }
         if (donation == null) return false;
 
+        // Idempotency: if this exact Stripe event has already been applied to
+        // this donation, return success without re-mutating. Stripe retries the
+        // same evt_id on delivery failure; without this, a 'charge.refunded'
+        // retry would re-apply, etc. (HIGH audit fix).
+        if (!string.IsNullOrEmpty(stripeEventId) && donation.StripeWebhookEventId == stripeEventId)
+        {
+            return true;
+        }
+
         switch (eventType)
         {
             case "checkout.session.completed":
@@ -204,8 +220,38 @@ public class MoneyDonationService
                 break;
         }
         donation.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync(ct);
+        if (!string.IsNullOrEmpty(stripeEventId))
+        {
+            donation.StripeWebhookEventId = stripeEventId;
+        }
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        {
+            // Concurrent delivery of the same Stripe event id — the other writer
+            // already applied the transition. Treat as idempotent success.
+            return true;
+        }
         return true;
+    }
+
+    private static bool IsUniqueViolation(DbUpdateException ex)
+    {
+        // Npgsql wraps 23505 (unique_violation) in PostgresException.
+        var inner = ex.InnerException;
+        while (inner != null)
+        {
+            if (inner.GetType().Name == "PostgresException")
+            {
+                var sqlStateProp = inner.GetType().GetProperty("SqlState");
+                var sqlState = sqlStateProp?.GetValue(inner) as string;
+                if (sqlState == "23505") return true;
+            }
+            inner = inner.InnerException;
+        }
+        return false;
     }
 
     public Task<List<MoneyDonation>> ListAsync(MoneyDonationStatus? status = null) =>

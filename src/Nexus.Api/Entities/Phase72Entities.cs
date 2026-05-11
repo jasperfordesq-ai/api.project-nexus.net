@@ -68,6 +68,15 @@ public class MoneyDonation : ITenantEntity
     [MaxLength(200)]
     public string? StripePaymentIntentId { get; set; }
 
+    /// <summary>
+    /// Top-level Stripe event id (evt_...) of the webhook that last advanced
+    /// this donation. Used for idempotent webhook dedup — Stripe retries the
+    /// same evt_ id on delivery failure, and our handler must not double-apply.
+    /// Filtered-unique index ensures the second delivery is a no-op.
+    /// </summary>
+    [MaxLength(200)]
+    public string? StripeWebhookEventId { get; set; }
+
     public MoneyDonationStatus Status { get; set; } = MoneyDonationStatus.Pending;
 
     [MaxLength(500)]
