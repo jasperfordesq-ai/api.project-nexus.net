@@ -14,6 +14,13 @@ services:
       - Cors__AllowedOrigins__1=https://uk.project-nexus.net
       - Cors__AllowedOrigins__2=https://api.project-nexus.net
       - Cors__AllowedOrigins__3=https://admin.project-nexus.net
+      # WebAuthn / FIDO2 - production origins (HTTPS required)
+      - Fido2__ServerDomain=project-nexus.net
+      - Fido2__ServerName=Project NEXUS
+      - Fido2__Origins__0=https://platform.project-nexus.net
+      - Fido2__Origins__1=https://uk.project-nexus.net
+      - Fido2__Origins__2=https://admin.project-nexus.net
+      - Fido2__Origins__3=https://api.project-nexus.net
       # Rate limiting - production values
       - RateLimiting__Auth__PermitLimit=10
       - RateLimiting__Auth__WindowSeconds=60
