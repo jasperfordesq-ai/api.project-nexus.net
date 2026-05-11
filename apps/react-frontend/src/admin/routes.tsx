@@ -187,7 +187,7 @@ const GoalsAdmin = lazy(() => import('./modules/goals/GoalsAdmin'));
 
 // Resources / Knowledge Base module
 const ResourcesAdmin = lazy(() => import('./modules/resources/ResourcesAdmin'));
-const KBArticleForm = lazyParityPage('ResourceEditorPage');
+const KBArticleForm = lazy(() => import('./modules/resources/ResourceEditorPage'));
 const ResourceCategoriesAdmin = lazyParityPage('ResourceCategoriesPage');
 
 // Jobs module
