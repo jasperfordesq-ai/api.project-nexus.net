@@ -175,6 +175,23 @@ public static class ServiceExtensions
         services.AddScoped<Nexus.Api.Services.Ai.ActivitySummariserAgent>();
         services.AddScoped<Nexus.Api.Services.Ai.NudgeDrafterAgent>();
 
+        // AI platform-aware knowledge + tool calling.
+        services.AddScoped<Nexus.Api.Services.Ai.OllamaEmbeddingProvider>();
+        services.AddScoped<Nexus.Api.Services.Ai.OpenAiEmbeddingProvider>();
+        services.AddScoped<Nexus.Api.Services.Ai.IEmbeddingProviderFactory, Nexus.Api.Services.Ai.EmbeddingProviderFactory>();
+        services.AddScoped<Nexus.Api.Services.Ai.AiKnowledgeService>();
+        services.AddScoped<Nexus.Api.Services.Ai.KnowledgeIndexerService>();
+        services.AddScoped<Nexus.Api.Services.Ai.OpenAiToolClient>();
+        services.AddScoped<Nexus.Api.Services.Ai.AnthropicToolClient>();
+        services.AddScoped<Nexus.Api.Services.Ai.FallbackPlatformToolClient>();
+        services.AddScoped<Nexus.Api.Services.Ai.IPlatformToolClientFactory, Nexus.Api.Services.Ai.PlatformToolClientFactory>();
+        services.AddScoped<Nexus.Api.Services.Ai.PlatformTools>();
+        services.AddScoped<Nexus.Api.Services.Ai.ConversationSummariser>();
+        services.AddScoped<Nexus.Api.Services.Ai.AiSafetyGuard>();
+        services.AddSingleton<Nexus.Api.Services.Ai.IAiRateLimiter, Nexus.Api.Services.Ai.AiRateLimiter>();
+        services.AddScoped<Nexus.Api.Services.Ai.PlatformChatAgent>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.KnowledgeIndexBackfillJob>();
+
         // Phase 72 — long-tail services (donations/bookmarks/endorsements/presence)
         services.AddHttpClient("NexusStripe", c =>
         {
