@@ -949,25 +949,21 @@ cd apps/admin && docker compose up -d  # dev on :5190, prod on :5191
 
 ## Documentation
 
-### Core References
-- [MONOREPO_MAP.md](./MONOREPO_MAP.md) - **All apps, ports, Docker service names, deployment commands** (monorepo map)
-- [NOTES.md](./NOTES.md) - Decision log and phase checklists
-- [ROADMAP.md](./ROADMAP.md) - Migration roadmap with all planned phases (16-37)
-- [MIGRATION_GAP_MAP.md](./MIGRATION_GAP_MAP.md) - V1 vs V2 feature comparison (~250 features mapped)
-- [LEGACY_FEATURE_INVENTORY.md](./LEGACY_FEATURE_INVENTORY.md) - Full V1 feature inventory (251 services, 1,300+ endpoints)
+This CLAUDE.md is the source of truth for project status, module
+implementation, scoring, OOS scope, and architectural invariants. Standalone
+roadmap / inventory / gap-map / deployment-checklist / recovery /
+docker-contract / frontend-integration / parity-audit / phase-execution docs
+were removed 2026-05-11 — their content was either stale or already
+duplicated here.
 
-### Deployment & Operations
-- **[PHASE63_73_DEPLOY_NOTES.md](./PHASE63_73_DEPLOY_NOTES.md)** — required reading
-  before deploying any commit from `fb4fcce` onward (2026-05-09 production
-  pass). Lists every new env var, the 4 new EF migrations, post-deploy
-  verification steps, and rollback procedure. The diagnostics page at
-  `/admin/system/diagnostics` is the deploy ground-truth view.
-- **[DEPENDABOT_TRIAGE.md](./DEPENDABOT_TRIAGE.md)** — manual playbook for
-  working through the 37 open Dependabot alerts safely. Per-alert procedure,
-  tier-based prioritization (auth/DB/crypto first, devDeps last), known-good
-  version table, frontend `overrides` pattern. Required reading before
-  bumping any dependency outside CI.
-- FRONTEND_INTEGRATION.md - Frontend integration guide (API reference, CORS, architecture)
-- MASTER_DEPLOYMENT_CHECKLIST.md - Single source of truth for deployment
-- RECOVERY_GUIDE.md - How to verify and recover when things break
-- DOCKER_CONTRACT.md - Docker Compose specification
+Surviving docs:
+
+- **[PHASE63_73_DEPLOY_NOTES.md](./PHASE63_73_DEPLOY_NOTES.md)** — required
+  reading before deploying any commit from `fb4fcce` onward (2026-05-09
+  production pass). Lists every new env var, the 4 new EF migrations,
+  post-deploy verification steps, and rollback procedure. The diagnostics
+  page at `/admin/system/diagnostics` is the deploy ground-truth view.
+- [docs/database-migrations.md](./docs/database-migrations.md) — EF Core
+  migration workflow (`make migrate`, drift checks, rollback).
+- [docs/REGISTRATION_POLICY_ENGINE.md](./docs/REGISTRATION_POLICY_ENGINE.md) —
+  Registration Policy Engine architecture and state machine.

@@ -1,14 +1,12 @@
 # Phase 63-73 Deploy Notes
 
-Operator addendum to `MASTER_DEPLOYMENT_CHECKLIST.md`. Read this **before**
-deploying any commit from `fb4fcce` onward (2026-05-09 production-readiness
-push). Lists everything that changed from a fresh-deploy perspective: new
-env vars, new database migrations, new endpoints to verify, and rollback
-notes.
+Read this **before** deploying any commit from `fb4fcce` onward (2026-05-09
+production-readiness push). Lists everything that changed from a fresh-deploy
+perspective: new env vars, new database migrations, new endpoints to verify,
+and rollback notes.
 
 If you're upgrading an existing deploy, run through the **Pre-deploy** and
-**Verify post-deploy** sections. If you're doing a fresh deploy, follow
-`MASTER_DEPLOYMENT_CHECKLIST.md` first, then this doc.
+**Verify post-deploy** sections.
 
 ---
 

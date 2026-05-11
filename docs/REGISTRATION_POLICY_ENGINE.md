@@ -27,11 +27,17 @@ The Registration Policy Engine provides tenant-configurable identity-aware regis
                                 │
               ┌─────────────────┼─────────────────┐
               │                 │                  │
-    ┌─────────▼──────┐ ┌───────▼───────┐ ┌────────▼───────┐
-    │  Mock Provider  │ │ Veriff/Jumio  │ │ EUDI/Gov (fut) │
-    │ (development)   │ │ (Phase F)     │ │ (placeholder)  │
-    └────────────────┘ └───────────────┘ └────────────────┘
+    ┌─────────▼──────┐ ┌───────▼────────┐ ┌────────▼───────┐
+    │  Mock Provider  │ │ Stripe Identity │ │ EUDI/Gov (fut) │
+    │ (development)   │ │ (production)    │ │ (placeholder)  │
+    └────────────────┘ └────────────────┘ └────────────────┘
 ```
+
+> **Provider scope (2026-05-09):** Stripe Identity is the sole production
+> identity-verification provider. Veriff, Onfido, Jumio, and Idenfy are out
+> of scope per project owner directive. The `IIdentityVerificationProvider`
+> interface remains as an extensibility seam (used by `MockProvider` in
+> tests).
 
 ## User Registration State Machine
 
