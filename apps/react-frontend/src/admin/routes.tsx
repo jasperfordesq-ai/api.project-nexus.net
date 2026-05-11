@@ -157,7 +157,7 @@ const VolunteerProjects = lazy(() => import('./modules/volunteering/VolunteerPro
 const VolunteerConfig = lazy(() => import('./modules/volunteering/VolunteerConfigAdmin'));
 
 // Advertising module
-const AdCampaignAdminPage = lazyParityPage('AdvertisingCampaignsPage');
+const AdCampaignAdminPage = lazy(() => import('./modules/ops/AdvertisingCampaignsPage'));
 const PushCampaignAdminPage = lazyParityPage('PushCampaignsPage');
 
 // AI / Agents module
