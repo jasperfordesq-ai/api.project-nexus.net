@@ -157,8 +157,8 @@ const VolunteerProjects = lazy(() => import('./modules/volunteering/VolunteerPro
 const VolunteerConfig = lazy(() => import('./modules/volunteering/VolunteerConfigAdmin'));
 
 // Advertising module
-const AdCampaignAdminPage = lazyParityPage('AdvertisingCampaignsPage');
-const PushCampaignAdminPage = lazyParityPage('PushCampaignsPage');
+const AdCampaignAdminPage = lazy(() => import('./modules/ops/AdvertisingCampaignsPage'));
+const PushCampaignAdminPage = lazy(() => import('./modules/ops/PushCampaignsPage'));
 
 // AI / Agents module
 const KiAgentAdminPage = lazy(() => import('./modules/ai/KiAgentAdminPage'));
@@ -324,9 +324,9 @@ const SubscriptionsAdmin = lazy(() => import('./modules/content/Subscriptions'))
 const LandingPageBuilder = lazy(() => import('./modules/content/LandingPageBuilderPage'));
 
 // Platform / provisioning / integrations
-const PilotInquiryAdminPage = lazyParityPage('PilotInquiryAdminPage');
-const ProvisioningRequestsPage = lazyParityPage('ProvisioningRequestsPage');
-const ApiPartnersAdminPage = lazyParityPage('ApiPartnersAdminPage');
+const PilotInquiryAdminPage = lazy(() => import('./modules/ops/PilotInquiryAdminPage'));
+const ProvisioningRequestsPage = lazy(() => import('./modules/ops/ProvisioningRequestsPage'));
+const ApiPartnersAdminPage = lazy(() => import('./modules/ops/ApiPartnersAdminPage'));
 const AdminHelpCenterPage = lazyParityPage('AdminHelpCenterPage');
 
 // Wrap lazy components in Suspense
