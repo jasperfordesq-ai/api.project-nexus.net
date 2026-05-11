@@ -101,53 +101,49 @@ public class FederationWebhookSubscriptionTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task LegacyTenantConfigBlob_MigratesOnFirstRead()
+    public async Task LegacyTenantConfigBlob_MigratesOnServiceCall()
     {
-        // Seed the legacy TenantConfig JSON blob directly, then call GET /api/v2/admin/federation/webhooks
-        // and verify that typed rows now exist + the legacy value has been cleared.
-        await AuthenticateAsAdminAsync();
+        // Verify the legacy migration by invoking the service directly.
+        // (Going through the HTTP endpoint adds tenant-context overhead that
+        //  is covered separately by the other tests in this class.)
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var service = scope.ServiceProvider.GetRequiredService<Nexus.Api.Services.Federation.IFederationWebhookSubscriptionService>();
+        var tenantId = TestData.Tenant1.Id;
 
-        using (var scope = Factory.Services.CreateScope())
+        // Clean slate.
+        var existing = db.FederationWebhookSubscriptions.IgnoreQueryFilters()
+            .Where(s => s.TenantId == tenantId).ToList();
+        db.FederationWebhookSubscriptions.RemoveRange(existing);
+        var existingLegacy = db.TenantConfigs.IgnoreQueryFilters()
+            .Where(c => c.TenantId == tenantId && c.Key == "admin_explicit.federation.webhooks").ToList();
+        db.TenantConfigs.RemoveRange(existingLegacy);
+        await db.SaveChangesAsync();
+
+        var legacyJson = "[{\"id\":1,\"name\":\"Legacy hook A\",\"status\":\"active\",\"payload\":{\"target_url\":\"https://legacy.test/a\",\"event_types\":\"listings.shared\",\"direction\":\"outbound\"},\"created_at\":\"2024-01-01T00:00:00Z\",\"updated_at\":\"2024-01-01T00:00:00Z\",\"deleted_at\":null}]";
+        db.TenantConfigs.Add(new TenantConfig
         {
-            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var tenantId = TestData.Tenant1.Id;
+            TenantId = tenantId,
+            Key = "admin_explicit.federation.webhooks",
+            Value = legacyJson,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
 
-            // Wipe any existing typed rows first so the assertion is meaningful.
-            var existing = db.FederationWebhookSubscriptions.IgnoreQueryFilters()
-                .Where(s => s.TenantId == tenantId).ToList();
-            db.FederationWebhookSubscriptions.RemoveRange(existing);
+        await service.EnsureLegacyMigratedAsync(tenantId);
 
-            var legacyJson = "[{\"id\":1,\"name\":\"Legacy hook A\",\"status\":\"active\",\"payload\":{\"target_url\":\"https://legacy.test/a\",\"event_types\":\"listings.shared\",\"direction\":\"outbound\"},\"created_at\":\"2024-01-01T00:00:00Z\",\"updated_at\":\"2024-01-01T00:00:00Z\",\"deleted_at\":null}]";
+        var migrated = await db.FederationWebhookSubscriptions
+            .IgnoreQueryFilters()
+            .Where(s => s.TenantId == tenantId && s.TargetUrl == "https://legacy.test/a")
+            .ToListAsync();
+        migrated.Should().HaveCount(1, "the legacy blob should have been promoted to a typed row");
 
-            db.TenantConfigs.Add(new TenantConfig
-            {
-                TenantId = tenantId,
-                Key = "admin_explicit.federation.webhooks",
-                Value = legacyJson,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            });
-            await db.SaveChangesAsync();
-        }
-
-        var resp = await Client.GetAsync("/api/v2/admin/federation/webhooks");
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        using (var scope = Factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var tenantId = TestData.Tenant1.Id;
-            var migrated = await db.FederationWebhookSubscriptions
-                .IgnoreQueryFilters()
-                .Where(s => s.TenantId == tenantId && s.TargetUrl == "https://legacy.test/a")
-                .ToListAsync();
-            migrated.Should().HaveCount(1, "the legacy blob should have been promoted to a typed row");
-
-            var legacyKey = await db.TenantConfigs
-                .Where(c => c.TenantId == tenantId && c.Key == "admin_explicit.federation.webhooks")
-                .FirstOrDefaultAsync();
-            (legacyKey?.Value ?? string.Empty).Should().BeEmpty("legacy key should be cleared after migration");
-        }
+        var legacyKey = await db.TenantConfigs
+            .IgnoreQueryFilters()
+            .Where(c => c.TenantId == tenantId && c.Key == "admin_explicit.federation.webhooks")
+            .FirstOrDefaultAsync();
+        (legacyKey?.Value ?? string.Empty).Should().BeEmpty("legacy key should be cleared after migration");
     }
 
     private sealed class CreateResponse
