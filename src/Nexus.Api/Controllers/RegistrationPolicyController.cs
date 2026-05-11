@@ -4,12 +4,17 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Middleware;
@@ -31,19 +36,25 @@ public class RegistrationPolicyController : ControllerBase
     private readonly ProviderConfigEncryption _encryption;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<RegistrationPolicyController> _logger;
+    private readonly IConfiguration _config;
+    private readonly IHostEnvironment _env;
 
     public RegistrationPolicyController(
         NexusDbContext db,
         RegistrationOrchestrator orchestrator,
         ProviderConfigEncryption encryption,
         TenantContext tenantContext,
-        ILogger<RegistrationPolicyController> logger)
+        ILogger<RegistrationPolicyController> logger,
+        IConfiguration config,
+        IHostEnvironment env)
     {
         _db = db;
         _orchestrator = orchestrator;
         _encryption = encryption;
         _tenantContext = tenantContext;
         _logger = logger;
+        _config = config;
+        _env = env;
     }
 
     // ─── PUBLIC ENDPOINTS (for registration UI) ───
@@ -228,9 +239,49 @@ public class RegistrationPolicyController : ControllerBase
             return BadRequest(new { error = "Invalid provider" });
         }
 
-        // Read raw body for signature verification
-        using var reader = new StreamReader(Request.Body);
+        // Read raw body for signature verification (exact bytes required for HMAC).
+        Request.EnableBuffering();
+        Request.Body.Position = 0;
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true);
         var rawBody = await reader.ReadToEndAsync();
+        Request.Body.Position = 0;
+
+        // HMAC-SHA256 verification of identity-provider webhook (CRITICAL audit fix).
+        // Mirrors the Stripe pattern in Phase72Controllers.ReceiveDonationEvent.
+        var signatureHeader = _config["Registration:WebhookSignatureHeader"] ?? "X-Provider-Signature";
+        var perTenantSecret = _config[$"Registration:WebhookSecret:{tenantId}"];
+        var fallbackSecret = _config["Registration:WebhookSecret"];
+        var secret = !string.IsNullOrWhiteSpace(perTenantSecret) ? perTenantSecret : fallbackSecret;
+
+        if (!string.IsNullOrWhiteSpace(secret))
+        {
+            var sig = Request.Headers[signatureHeader].FirstOrDefault();
+            var (ok, reason) = VerifyProviderSignature(rawBody, sig, secret!);
+            if (!ok)
+            {
+                _logger.LogWarning(
+                    "Registration webhook signature rejected for tenant {TenantId} provider {Provider}: {Reason}",
+                    tenantId, providerType, reason);
+                return Unauthorized(new { error = "signature_invalid", reason });
+            }
+        }
+        else if (_env.IsProduction())
+        {
+            // Production must never accept unsigned identity-provider webhooks — a
+            // forged "verified" event would bypass KYC. Fail closed.
+            _logger.LogError(
+                "Registration webhook secret unset in Production for tenant {TenantId}. " +
+                "Refusing payload. Set Registration:WebhookSecret:{TenantId} or Registration:WebhookSecret.",
+                tenantId, tenantId);
+            return StatusCode(503, new { error = "webhook_secret_unconfigured" });
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Registration webhook received without configured secret for tenant {TenantId} — " +
+                "accepting payload (non-Production). Set Registration:WebhookSecret to enforce.",
+                tenantId);
+        }
 
         var headers = Request.Headers.ToDictionary(
             h => h.Key,
@@ -248,6 +299,71 @@ public class RegistrationPolicyController : ControllerBase
             return BadRequest(new { error = "Webhook processing failed" });
 
         return Ok(new { success = true });
+    }
+
+    /// <summary>
+    /// Verify a provider webhook signature. Supports two formats:
+    /// (1) Stripe-style <c>t=&lt;unix-ts&gt;,v1=&lt;hex&gt;</c> with 5-min replay window.
+    /// (2) Plain hex HMAC-SHA256 of the raw body (no replay protection).
+    /// Returns (true, null) on success, (false, reason) on failure.
+    /// </summary>
+    public static (bool Ok, string? Reason) VerifyProviderSignature(string rawBody, string? signatureHeader, string secret)
+    {
+        if (string.IsNullOrWhiteSpace(signatureHeader)) return (false, "missing_signature_header");
+
+        // Stripe-style header detection: contains "t=" and "v1="
+        if (signatureHeader.Contains("t=", StringComparison.Ordinal) &&
+            signatureHeader.Contains("v1=", StringComparison.Ordinal))
+        {
+            long? timestamp = null;
+            var v1Sigs = new List<string>();
+            foreach (var pair in signatureHeader.Split(','))
+            {
+                var eq = pair.IndexOf('=');
+                if (eq <= 0) continue;
+                var k = pair[..eq].Trim();
+                var v = pair[(eq + 1)..].Trim();
+                if (k == "t" && long.TryParse(v, out var ts)) timestamp = ts;
+                else if (k == "v1") v1Sigs.Add(v);
+            }
+            if (timestamp is null) return (false, "missing_timestamp");
+            if (v1Sigs.Count == 0) return (false, "missing_v1_signature");
+
+            const int toleranceSeconds = 300;
+            var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            if (Math.Abs(nowUnix - timestamp.Value) > toleranceSeconds) return (false, "timestamp_outside_tolerance");
+
+            var signedPayload = $"{timestamp.Value}.{rawBody}";
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+            var expectedBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(signedPayload));
+            var expectedHex = Convert.ToHexString(expectedBytes).ToLowerInvariant();
+
+            foreach (var candidate in v1Sigs)
+            {
+                if (candidate.Length != expectedHex.Length) continue;
+                var candidateBytes = Encoding.ASCII.GetBytes(candidate.ToLowerInvariant());
+                var expectedHexBytes = Encoding.ASCII.GetBytes(expectedHex);
+                if (CryptographicOperations.FixedTimeEquals(candidateBytes, expectedHexBytes))
+                    return (true, null);
+            }
+            return (false, "no_v1_signature_match");
+        }
+
+        // Plain hex HMAC-SHA256 of the raw body.
+        var candidateHex = signatureHeader.Trim();
+        if (candidateHex.StartsWith("sha256=", StringComparison.OrdinalIgnoreCase))
+            candidateHex = candidateHex["sha256=".Length..];
+
+        using var hmacPlain = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var expected = hmacPlain.ComputeHash(Encoding.UTF8.GetBytes(rawBody));
+        var expectedHexPlain = Convert.ToHexString(expected).ToLowerInvariant();
+
+        if (candidateHex.Length != expectedHexPlain.Length) return (false, "signature_length_mismatch");
+        var lhs = Encoding.ASCII.GetBytes(candidateHex.ToLowerInvariant());
+        var rhs = Encoding.ASCII.GetBytes(expectedHexPlain);
+        return CryptographicOperations.FixedTimeEquals(lhs, rhs)
+            ? (true, null)
+            : (false, "signature_mismatch");
     }
 
     // ─── ADMIN ENDPOINTS ───
