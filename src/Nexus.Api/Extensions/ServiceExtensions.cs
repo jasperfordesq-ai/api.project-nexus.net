@@ -169,6 +169,7 @@ public static class ServiceExtensions
         services.AddScoped<Nexus.Api.Services.Ai.AnthropicAiProvider>();
         services.AddScoped<Nexus.Api.Services.Ai.OpenAiAiProvider>();
         services.AddScoped<Nexus.Api.Services.Ai.GeminiAiProvider>();
+        services.AddScoped<Nexus.Api.Services.Ai.NullAiProvider>();
         services.AddScoped<Nexus.Api.Services.Ai.IAiProviderFactory, Nexus.Api.Services.Ai.AiProviderFactory>();
         services.AddScoped<Nexus.Api.Services.Ai.ActivitySummariserAgent>();
         services.AddScoped<Nexus.Api.Services.Ai.NudgeDrafterAgent>();

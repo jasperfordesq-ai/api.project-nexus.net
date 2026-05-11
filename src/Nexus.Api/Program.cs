@@ -186,6 +186,32 @@ if (allowedOrigins.Length == 0)
     }
 }
 
+// Fido2 origins - fail-fast in Production if missing or insecure
+// Mirrors the CORS pattern: WebAuthn requires HTTPS in production
+var fido2Origins = builder.Configuration.GetSection("Fido2:Origins").Get<string[]>()
+    ?? Array.Empty<string>();
+fido2Origins = fido2Origins
+    .Where(o => !string.IsNullOrWhiteSpace(o))
+    .Select(o => o.TrimEnd('/'))
+    .ToArray();
+
+if (builder.Environment.IsProduction())
+{
+    if (fido2Origins.Length == 0)
+    {
+        throw new InvalidOperationException(
+            "Fido2:Origins must be configured in Production. " +
+            "Check appsettings.Production.json");
+    }
+    var insecure = fido2Origins.FirstOrDefault(o => o.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
+    if (insecure != null)
+    {
+        throw new InvalidOperationException(
+            $"Fido2:Origins contains insecure (http://) origin '{insecure}' in Production. " +
+            "WebAuthn requires HTTPS.");
+    }
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Default", policy =>

@@ -299,22 +299,48 @@ public class GeminiAiProvider : IAiProvider
     }
 }
 
+// ─── Null fallback (returns safe defaults, never throws) ─────────────────────
+
+/// <summary>
+/// Safety-net provider used when Ollama is unavailable and no paid provider
+/// has been configured. Returns benign defaults instead of throwing, so AI
+/// features degrade gracefully rather than crashing user-facing requests.
+/// Gated by <c>Ai:NullFallbackEnabled</c> (default true).
+/// </summary>
+public class NullAiProvider : IAiProvider
+{
+    public string Name => "null";
+    public bool IsConfigured => true;
+
+    public Task<string> ChatAsync(string systemPrompt, string userPrompt, CancellationToken ct = default)
+        => Task.FromResult("AI service unavailable");
+}
+
 // ─── Factory ─────────────────────────────────────────────────────────────────
 
 public class AiProviderFactory : IAiProviderFactory
 {
+    private static readonly string[] PaidProviders = { "anthropic", "openai", "gemini" };
+
     private readonly IConfiguration _config;
+    private readonly ILogger<AiProviderFactory> _logger;
     private readonly IReadOnlyList<IAiProvider> _all;
+    private readonly NullAiProvider _nullProvider;
+    private bool _nullFallbackLogged;
 
     public AiProviderFactory(
         IConfiguration config,
+        ILogger<AiProviderFactory> logger,
         OllamaAiProvider ollama,
         AnthropicAiProvider anthropic,
         OpenAiAiProvider openai,
-        GeminiAiProvider gemini)
+        GeminiAiProvider gemini,
+        NullAiProvider nullProvider)
     {
         _config = config;
+        _logger = logger;
         _all = new IAiProvider[] { ollama, anthropic, openai, gemini };
+        _nullProvider = nullProvider;
     }
 
     public IReadOnlyList<IAiProvider> All => _all;
@@ -323,11 +349,31 @@ public class AiProviderFactory : IAiProviderFactory
     {
         var requested = (_config["Ai:Provider"] ?? "ollama").ToLowerInvariant();
         var match = _all.FirstOrDefault(p => string.Equals(p.Name, requested, StringComparison.OrdinalIgnoreCase));
+
+        // If a paid provider was explicitly requested, return it as-is.
+        // Misconfiguration must surface (silent fallback could mask billing).
+        if (PaidProviders.Contains(requested))
+        {
+            return match ?? _all.First(p => p.Name == "ollama");
+        }
+
         if (match != null && match.IsConfigured) return match;
 
-        // Fallbacks: try the requested provider even if unconfigured (it'll
-        // surface a clear error), or fall back to Ollama as the historical
-        // default (it has no API key, just a local URL).
-        return match ?? _all.First(p => p.Name == "ollama");
+        // Default Ollama path: if unconfigured and null-fallback is enabled,
+        // return NullAiProvider so callers degrade gracefully rather than
+        // throwing AiProviderException on every AI request.
+        var nullFallbackEnabled = _config.GetValue<bool?>("Ai:NullFallbackEnabled") ?? true;
+        var ollamaProvider = _all.First(p => p.Name == "ollama");
+        if (!ollamaProvider.IsConfigured && nullFallbackEnabled)
+        {
+            if (!_nullFallbackLogged)
+            {
+                _logger.LogInformation("Ollama not configured; using NullAiProvider fallback (Ai:NullFallbackEnabled=true). AI features will return safe defaults.");
+                _nullFallbackLogged = true;
+            }
+            return _nullProvider;
+        }
+
+        return match ?? ollamaProvider;
     }
 }
