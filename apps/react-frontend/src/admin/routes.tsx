@@ -251,7 +251,7 @@ const ActivityTimeline = lazy(() => import('./modules/crm/ActivityTimeline'));
 const AdminSettings = lazy(() => import('./modules/system/AdminSettings'));
 const RegistrationPolicySettings = lazy(() => import('./modules/system/RegistrationPolicySettings'));
 const OnboardingSettings = lazy(() => import('./modules/system/OnboardingSettingsPage'));
-const TranslationConfig = lazyParityPage('TranslationConfigPage');
+const TranslationConfig = lazy(() => import('./modules/system/TranslationConfigPage'));
 const TestRunner = lazy(() => import('./modules/system/TestRunner'));
 const SeedGenerator = lazy(() => import('./modules/system/SeedGenerator'));
 const WebpConverter = lazy(() => import('./modules/system/WebpConverter'));
