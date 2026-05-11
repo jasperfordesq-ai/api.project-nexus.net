@@ -28,7 +28,7 @@ function lazyParityPage(name: keyof V1ParityModule) {
 const AdminDashboard = lazy(() => import('./modules/dashboard/AdminDashboard'));
 const UserList = lazy(() => import('./modules/users/UserList'));
 const TenantFeatures = lazy(() => import('./modules/config/TenantFeatures'));
-const ModuleConfiguration = lazyParityPage('ModuleConfigurationPage');
+const ModuleConfiguration = lazy(() => import('./modules/config/ModuleConfigurationPage'));
 const UserCreate = lazy(() => import('./modules/users/UserCreate'));
 const UserEdit = lazy(() => import('./modules/users/UserEdit'));
 const ListingsAdmin = lazy(() => import('./modules/listings/ListingsAdmin'));
