@@ -49,6 +49,10 @@ sudo docker run -d \
   -p 127.0.0.1:5210:80 \
   --restart unless-stopped \
   nexus-react-frontend:prod
+
+# Purge Cloudflare cache (platform.project-nexus.net is CF-proxied).
+# Reads /opt/nexus-backend/.cloudflare-api-token; safe to skip if absent.
+sudo bash /opt/nexus-backend/scripts/purge-cloudflare-cache.sh
 ```
 
 Verify from your workstation:
@@ -56,6 +60,8 @@ Verify from your workstation:
 ```bash
 curl -sI https://platform.project-nexus.net/ | head -5
 ```
+
+A hard refresh (Ctrl+Shift+R) in the browser is still needed to bust the service-worker cache on already-open sessions.
 
 After deploying, a hard refresh (Ctrl+Shift+R) is needed in the browser to bypass the service-worker cache.
 
