@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar, Tooltip } from '@heroui/react';
 import { motion } from 'framer-motion';
@@ -63,6 +64,7 @@ export function TenantLogo({
   className = '',
 }: TenantLogoProps) {
   const { branding, tenantPath } = useTenant();
+  const [logoFailed, setLogoFailed] = useState(false);
 
   const primaryColor = branding.primaryColor || '#6366f1';
   const darkText = shouldUseDarkText(primaryColor);
@@ -72,12 +74,13 @@ export function TenantLogo({
   const effectiveSize = compact ? 'sm' : size;
 
   /* ── icon / image ────────────────────────────────────────── */
-  const iconElement = branding.logo ? (
+  const iconElement = branding.logo && !logoFailed ? (
     <img
       src={branding.logo}
       alt={branding.name}
       className={`${imgClassMap[effectiveSize]} transition-all duration-200`}
       loading={size === 'sm' ? 'lazy' : 'eager'}
+      onError={() => setLogoFailed(true)}
     />
   ) : (
     <Avatar
