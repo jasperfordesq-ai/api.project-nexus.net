@@ -80,7 +80,7 @@ The V1 stack is a separate codebase that lives in a different working tree (`C:\
 | `nexus-blue-sales` | 3003 | V1 sales site (`project-nexus.ie` apex) |
 | `nexus-blue-php-queue` | — | V1 PHP queue worker |
 | `nexus-blue-php-scheduler` | — | V1 PHP cron scheduler |
-| `nexus-crm` | 8081 | CRM (serves `crm.*` 4 aliases + `exchangemembers.com`) |
+| `nexus-crm` | 8081 | Nexus CRM (serves `crm.project-nexus.ie` + 3 aliases: `crm.hour-timebank.ie`, `crm.timebank.global`, `crm.nexuscivic.ie`). The CRM is NOT a V1 PHP/Laravel app — it's a standalone Docker service unrelated to the blue/green pair, and is safe to redeploy independently. The `exchangemembers.com` vhost still proxies here on the server but the domain is dead (was the previous CRM URL, superseded by `crm.project-nexus.ie`); do not rely on it. |
 
 ### Standby pair (green — accepts new builds, does NOT serve traffic)
 
