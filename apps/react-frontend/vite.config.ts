@@ -31,7 +31,6 @@ export default defineConfig(({ command }) => ({
       manifest: false, // We use our own public/manifest.json
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Don't cache API calls — always network first
         runtimeCaching: [
           {
             urlPattern: /^https?.*\/api\//,
@@ -43,6 +42,21 @@ export default defineConfig(({ command }) => ({
             options: {
               cacheName: 'nexus-locales',
               expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
+            },
+          },
+          // Network-first for HTML navigations so phones don't launch on a
+          // stale shell. 3s timeout falls back to cache so offline still works.
+          // Without this, mobile PWAs get pinned to old index.html (and old
+          // hashed bundle refs) until the user actively engages an update
+          // banner — which on Android rarely fires before the user closes the
+          // app. See V1 stale-mobile-shell incident.
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'nexus-navigation',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 10, maxAgeSeconds: 86400 },
             },
           },
         ],
