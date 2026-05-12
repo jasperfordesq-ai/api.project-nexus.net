@@ -388,7 +388,7 @@
     "title": "Stádas forbartha: {{stage}}",
     "where_we_are": {
       "title": "Cá bhfuilimid anois",
-      "paragraph1": "Tá Project NEXUS faoi láthair in Iarrthóir Eisiúna (RC) — an chéim dheireanach roimh Infhaighteacht Ghinearálta a fhógairt. Tá an t-ardán iomlán ó thaobh gnéithe de do V1 agus tá sé ar siúl i measc il-phobail ghníomhacha ar fud an domhain. Tá ár bhfócas anois ar chrua-dhaingniú cobhsaíochta, tiúnadh feidhmíochta, agus saincheisteanna cás-imeallach a réiteach roimh an seoladh poiblí iomlán.",
+      "paragraph1": "Tá Project NEXUS faoi láthair in Alpha — luath-chéim den fhorbairt phoiblí. Tá na croí-ghnéithe i bhfeidhm agus tá an t-ardán ag rith i bpobail bheo, ach is féidir leat go mbeidh roinnt imill gharbha, athruithe comhéadain agus fadhbanna ó am go chéile ann le linn dúinn a bheith ag iteráil. Tá fáilte roimh aiseolas agus tuairiscí ar fhabhtanna.",
       "paragraph2": "Tá gach rud a fheiceann tú anseo ag rith ar bhonneagar táirgthe (Azure, Cloudflare, MariaDB, Redis). Tá do shonraí fíor agus caitear leo le cúram mar aon chóras beo. Ní timpeallacht taispeána nó bosca gainimh é seo."
     },
     "whats_stable": {

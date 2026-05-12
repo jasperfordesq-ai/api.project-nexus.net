@@ -8,8 +8,9 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@heroui/react';
 import { useTenant, useFeature, useCookieConsent } from '@/contexts';
-import { Mail, Phone, MapPin, Cookie, Bug } from 'lucide-react';
+import { Mail, Phone, MapPin, Cookie, Bug, FlaskConical } from 'lucide-react';
 import { TenantLogo } from '@/components/branding';
+import { RELEASE_STATUS } from '@/config/releaseStatus';
 
 export interface FooterProps {
   /** Footer content/links */
@@ -145,6 +146,17 @@ export function Footer({ children, copyright }: FooterProps) {
                 </div>
               </div>
             ) : null}
+
+            {/* Alpha development notice */}
+            <div className="border-t border-theme-default pt-4 flex items-center justify-center gap-1.5 text-xs text-theme-subtle">
+              <FlaskConical className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden="true" />
+              <span>
+                <span className="font-semibold">{RELEASE_STATUS.stageLabel} build</span> — {RELEASE_STATUS.stageSummary}
+              </span>
+              <Link to={RELEASE_STATUS.readMorePath} className="underline hover:text-theme-primary transition-colors whitespace-nowrap">
+                Read more
+              </Link>
+            </div>
 
             {/* Tenant Copyright */}
             <div className="border-t border-theme-default pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">

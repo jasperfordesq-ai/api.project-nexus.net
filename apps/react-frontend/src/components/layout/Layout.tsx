@@ -9,7 +9,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
+import { RELEASE_STATUS } from '@/config/releaseStatus';
 import { useTranslation } from 'react-i18next';
 import { Navbar } from './Navbar';
 import { MobileDrawer } from './MobileDrawer';
@@ -18,7 +19,6 @@ import { Footer } from './Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { OfflineIndicator } from '@/components/feedback/OfflineIndicator';
 import { UpdateAvailableBanner } from '@/components/feedback/UpdateAvailableBanner';
-import { DevelopmentStatusBanner } from './DevelopmentStatusBanner';
 import { SessionExpiredModal } from '@/components/feedback';
 import { AppUpdateModal } from '@/components/feedback/AppUpdateModal';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
@@ -155,9 +155,6 @@ export function AuthLayout() {
         <div className="blob blob-cyan" />
       </div>
 
-      {/* Development status banner */}
-      <DevelopmentStatusBanner />
-
       {/* Service worker update banner — user-controlled, never auto-reloads */}
       <UpdateAvailableBanner />
 
@@ -172,7 +169,13 @@ export function AuthLayout() {
       </main>
 
       {/* Attribution (AGPL Section 7(b) — required on all pages) */}
-      <footer className="relative z-10 py-4 text-center">
+      <footer className="relative z-10 py-4 text-center space-y-1">
+        <div className="text-xs text-white/40">
+          <span className="font-semibold">{RELEASE_STATUS.stageLabel} build</span> —{' '}
+          <Link to={RELEASE_STATUS.readMorePath} className="underline hover:text-white/70 transition-colors">
+            Read more
+          </Link>
+        </div>
         <a
           href="https://github.com/jasperfordesq-ai/nexus-v1"
           target="_blank"

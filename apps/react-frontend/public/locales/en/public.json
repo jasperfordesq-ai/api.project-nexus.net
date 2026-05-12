@@ -388,7 +388,7 @@
     "title": "Development status: {{stage}}",
     "where_we_are": {
       "title": "Where we are now",
-      "paragraph1": "Project NEXUS is currently in Release Candidate (RC) — the final stage before declaring General Availability. The platform is feature-complete for V1 and is running live across multiple active communities worldwide. Our focus is now on stability hardening, performance tuning, and resolving edge-case issues before the full public launch.",
+      "paragraph1": "Project NEXUS is currently in Alpha — an early stage of public development. Core features are in place and the platform is running live across active communities, but you should expect rough edges, evolving UI, and occasional issues as we iterate. Feedback and bug reports are very welcome.",
       "paragraph2": "Everything you see here runs on production infrastructure (Azure, Cloudflare, MariaDB, Redis). Your data is real and treated with the same care as any live system. This is not a demo or sandbox environment."
     },
     "whats_stable": {

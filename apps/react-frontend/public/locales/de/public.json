@@ -388,7 +388,7 @@
     "title": "Entwicklungsstatus: {{stage}}",
     "where_we_are": {
       "title": "Wo wir jetzt stehen",
-      "paragraph1": "Project NEXUS befindet sich derzeit im Release Candidate (RC) — der letzten Phase vor der Erklärung der allgemeinen Verfügbarkeit. Die Plattform ist funktionsvollständig für V1 und läuft aktiv bei mehreren Gemeinschaften weltweit. Unser Fokus liegt nun auf Stabilitätshärtung, Leistungsoptimierung und der Behebung von Grenzfall-Problemen vor dem vollständigen öffentlichen Start.",
+      "paragraph1": "Project NEXUS befindet sich derzeit in Alpha — einer frühen Phase der öffentlichen Entwicklung. Die Kernfunktionen sind vorhanden und die Plattform läuft in echten Gemeinschaften, aber Sie sollten mit rauen Kanten, sich entwickelnder Oberfläche und gelegentlichen Problemen rechnen, während wir iterieren. Rückmeldungen und Fehlerberichte sind sehr willkommen.",
       "paragraph2": "Alles, was Sie hier sehen, läuft auf Produktionsinfrastruktur (Azure, Cloudflare, MariaDB, Redis). Ihre Daten sind echt und werden mit der gleichen Sorgfalt wie jedes Live-System behandelt. Dies ist keine Demo- oder Sandbox-Umgebung."
     },
     "whats_stable": {

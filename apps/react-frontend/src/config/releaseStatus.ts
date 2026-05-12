@@ -14,9 +14,9 @@
  *   if desired.
  */
 export const RELEASE_STATUS = {
-  stageKey: 'rc' as const,
-  stageLabel: 'Release Candidate (RC)',
-  stageSummary: "Core features are working. We're in final hardening and would love help testing.",
+  stageKey: 'alpha' as const,
+  stageLabel: 'Alpha',
+  stageSummary: "This is an early alpha build. Features are evolving and rough edges are expected — bug reports welcome.",
   readMorePath: '/development-status',
 } as const;
 

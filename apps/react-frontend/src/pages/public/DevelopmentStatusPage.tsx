@@ -18,7 +18,7 @@ import { RELEASE_STATUS } from '@/config/releaseStatus';
 
 export function DevelopmentStatusPage() {
   const { t } = useTranslation('public');
-  usePageTitle('Development Status — Release Candidate (RC)');
+  usePageTitle(`Development Status — ${RELEASE_STATUS.stageLabel}`);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 py-4">

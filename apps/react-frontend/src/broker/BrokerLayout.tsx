@@ -14,7 +14,6 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { BrokerSidebar } from './BrokerSidebar';
 import { AdminHeader } from '@/admin/components/AdminHeader';
-import { DevelopmentStatusBanner } from '@/components/layout/DevelopmentStatusBanner';
 
 export function BrokerLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -22,8 +21,6 @@ export function BrokerLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <DevelopmentStatusBanner />
-
       <div className="hidden md:block">
         <BrokerSidebar
           collapsed={sidebarCollapsed}

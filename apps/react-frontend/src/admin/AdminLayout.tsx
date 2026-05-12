@@ -16,7 +16,6 @@ import { AlertTriangle } from 'lucide-react';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminHeader } from './components/AdminHeader';
 import { AdminBreadcrumbs } from './components/AdminBreadcrumbs';
-import { DevelopmentStatusBanner } from '@/components/layout/DevelopmentStatusBanner';
 import { ErrorBoundary } from '@/components/feedback/ErrorBoundary';
 
 // Per-page admin fallback: shows a friendly empty-state when an admin module
@@ -53,9 +52,6 @@ export function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Development status banner — always visible, non-dismissible */}
-      <DevelopmentStatusBanner />
-
       {/* Sidebar — hidden on mobile, shown on md+ */}
       <div className="hidden md:block">
         <AdminSidebar
