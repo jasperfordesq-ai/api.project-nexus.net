@@ -23,6 +23,14 @@ export function UpdateAvailableBanner() {
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
+    // Mobile gets fresh shell via NetworkFirst nav caching (vite.config.ts).
+    // The banner relies on a 30-min poll + SW lifecycle that Android suspends
+    // aggressively, so it rarely fires before the user closes the app.
+    // Showing a control that doesn't reliably work is worse than hiding it —
+    // restrict the banner to desktop-class devices (mouse + hover).
+    const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if (!isDesktop) return;
+
     // Fix race condition: if onNeedRefresh fired before React mounted,
     // the custom event was missed. Check the global flag set by main.tsx.
     if ((window as NexusWindow).__nexus_updatePending) {
