@@ -94,7 +94,13 @@ class SidebarErrorBoundary extends Component<{ children: ReactNode }, { hasError
   static getDerivedStateFromError() { return { hasError: true }; }
   componentDidCatch(error: Error, info: ErrorInfo) { logError('Sidebar crash', { error, info }); }
   render() {
-    if (this.state.hasError) return null; // Silently hide broken sidebar
+    if (this.state.hasError) {
+      return (
+        <div className="text-xs text-[var(--text-muted)] p-3">
+          Sidebar unavailable.
+        </div>
+      );
+    }
     return this.props.children;
   }
 }

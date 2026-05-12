@@ -25,7 +25,7 @@ interface TopEndorsedMember {
   name: string;
   avatar_url?: string;
   total_endorsements: number;
-  top_skills: string[];
+  top_skills?: string[];
 }
 
 export function TopEndorsedWidget({ limit = 5 }: { limit?: number }) {
@@ -102,7 +102,7 @@ export function TopEndorsedWidget({ limit = 5 }: { limit?: number }) {
             {/* Info */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-theme-primary truncate">{member.name}</p>
-              {member.top_skills.length > 0 && (
+              {member.top_skills && member.top_skills.length > 0 && (
                 <p className="text-xs text-theme-subtle truncate">
                   {member.top_skills.slice(0, 2).join(', ')}
                 </p>
