@@ -1,6 +1,6 @@
 # Agent Instructions
 
-> 🚨 **Before deploying or touching any production container**, read [docs/PRODUCTION_CONTAINER_MAP.md](./docs/PRODUCTION_CONTAINER_MAP.md).
+> 🚨 **Before deploying or touching any production container**, read [.claude/production-containers.md](./.claude/production-containers.md).
 > V2 user-facing SPA = `nexus-react-frontend` container on port `5210`, image `nexus-react-frontend:prod`, built from `apps/react-frontend/Dockerfile.prod`. Raw `docker run` — **not** `docker compose`. Never touch V1 (blue/green PHP) containers from this repo.
 
 This file exists for agentic tools (OpenAI Codex, etc.) that read `AGENTS.md` by convention.

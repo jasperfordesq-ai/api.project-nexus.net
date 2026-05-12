@@ -1,6 +1,6 @@
 # Project NEXUS - ASP.NET Core Backend
 
-> 🚨 **Before deploying or touching any production container**, read [docs/PRODUCTION_CONTAINER_MAP.md](./docs/PRODUCTION_CONTAINER_MAP.md).
+> 🚨 **Before deploying or touching any production container**, read [.claude/production-containers.md](./.claude/production-containers.md).
 > The V2 user-facing SPA is the **`nexus-react-frontend`** container on **port 5210** (built from `apps/react-frontend/Dockerfile.prod`, image `nexus-react-frontend:prod`). It is **not** managed by `docker compose`. Do not deploy via `docker compose build/up react-frontend` — that rebuilds an unrelated image with no vhost. The full domain → container map and the correct deploy commands are in that file. V1 (blue/green PHP) containers must never be touched from this repo.
 
 ## What This Project Is
