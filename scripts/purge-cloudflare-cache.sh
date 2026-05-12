@@ -3,14 +3,19 @@
 # Project NEXUS V2 - Cloudflare Cache Purge (All Domains)
 # =============================================================================
 # Purges the Cloudflare cache for all project domains.
-# Called automatically after every deployment by safe-deploy.sh.
+# Called automatically after every deployment by scripts/deploy.sh (Step 6)
+# and after the V2 SPA swap documented in .claude/production-containers.md.
 #
 # Usage:
 #   bash scripts/purge-cloudflare-cache.sh
 #
 # API Token:
 #   Reads from /opt/nexus-backend/.cloudflare-api-token (production)
-#   or CLOUDFLARE_API_TOKEN env var
+#   or CLOUDFLARE_API_TOKEN env var.
+#
+# Note: a zone returning HTTP 401 here means the token is not scoped to that
+# zone (token-permission issue, not a script bug). Re-scope at
+# https://dash.cloudflare.com/profile/api-tokens.
 # =============================================================================
 
 # --- Configuration ---
