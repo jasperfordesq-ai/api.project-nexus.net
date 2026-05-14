@@ -36,7 +36,7 @@ services:
       - Jwt__Issuer=
       - Jwt__Audience=
       - Cors__AllowedOrigins__0=http://localhost:5080
-      - Cors__AllowedOrigins__1=http://localhost:5173
+      - Cors__AllowedOrigins__1=http://localhost:5273
       - Cors__AllowedOrigins__2=http://localhost:5180
       - Cors__AllowedOrigins__3=http://localhost:5190
       # Rate limiting (relaxed for development)
@@ -56,7 +56,7 @@ services:
       - Fido2__ServerDomain=localhost
       - Fido2__ServerName=Project NEXUS
       - Fido2__Origins__0=http://localhost:5080
-      - Fido2__Origins__1=http://localhost:5173
+      - Fido2__Origins__1=http://localhost:5273
       - Fido2__Origins__2=http://localhost:5180
       - FileUpload__UploadsRoot=/app/uploads
       # Sentry — DSN read from .env (Sentry__Dsn). Empty = disabled.
@@ -145,7 +145,7 @@ services:
       target: dev
     container_name: nexus-react-frontend-dev
     ports:
-      - "5173:5173"
+      - "5273:5173"
     volumes:
       - ./apps/react-frontend:/app
       - /app/node_modules
