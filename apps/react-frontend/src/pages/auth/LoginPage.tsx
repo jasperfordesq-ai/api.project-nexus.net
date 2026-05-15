@@ -232,6 +232,12 @@ export function LoginPage() {
         : { tenant_id: parseInt(selectedTenantId, 10) }),
       turnstile_token: turnstileToken || undefined,
     });
+    // Admin without 2FA — backend has issued a setup-scoped token; route
+    // them straight into the first-time 2FA setup flow.
+    if (!result.success && (result as { requires2FASetup?: boolean }).requires2FASetup) {
+      navigate(tenantPath('/settings/security?force_2fa_setup=1'), { replace: true });
+      return;
+    }
     if (!result.success && result.errorCode) {
       setLoginErrorCode(result.errorCode);
     }

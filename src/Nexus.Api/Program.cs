@@ -68,8 +68,15 @@ if (!builder.Environment.IsDevelopment())
 // SERVICES
 // =============================================================================
 
-// Add controllers with request body size limit
-builder.Services.AddControllers();
+// Add controllers with request body size limit.
+// TwoFactorSetupGate runs globally — when a JWT carries scope=2fa_setup
+// (issued by AuthController.Login for admins without 2FA), every
+// non-2FA endpoint returns 403 requires_2fa_setup. See
+// Middleware/TwoFactorSetupGate.cs.
+builder.Services.AddControllers(opt =>
+{
+    opt.Filters.Add<Nexus.Api.Middleware.TwoFactorSetupGate>();
+});
 
 // Global request body size limit (5MB) to prevent abuse
 // Individual endpoints can override with [RequestSizeLimit] attribute

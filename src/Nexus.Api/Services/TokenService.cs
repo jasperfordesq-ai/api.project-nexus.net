@@ -58,6 +58,43 @@ public class TokenService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    /// <summary>
+    /// Mint a SETUP-scoped JWT that only authorizes the 2FA setup endpoints.
+    /// Issued by AuthController.Login when an admin user without 2FA enabled
+    /// attempts to log in. The TwoFactorSetupGate filter (registered in
+    /// Program.cs) blocks every non-2FA-setup endpoint when this scope is
+    /// present. Short expiry (10 min) to bound the setup window.
+    /// </summary>
+    public string GenerateSetupJwt(User user)
+    {
+        var secret = _config["Jwt:Secret"]
+            ?? throw new InvalidOperationException("JWT secret not configured");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var expires = DateTime.UtcNow.AddMinutes(10);
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim("tenant_id", user.TenantId.ToString()),
+            new Claim("role", user.Role),
+            new Claim("email", user.Email),
+            new Claim("scope", "2fa_setup"),
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: _config["Jwt:Audience"],
+            claims: claims,
+            expires: expires,
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
     public int AccessTokenExpirySeconds =>
         _config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 120) * 60;
 

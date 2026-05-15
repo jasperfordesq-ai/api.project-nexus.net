@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Extensions;
 using Nexus.Api.Middleware;
 using Nexus.Api.Services;
@@ -24,12 +25,21 @@ public class TotpController : ControllerBase
 {
     private readonly TotpService _totpService;
     private readonly ILogger<TotpController> _logger;
+    private readonly Data.NexusDbContext _db;
+    private readonly TokenService _tokenService;
 
-    public TotpController(TotpService totpService, ILogger<TotpController> logger)
+    public TotpController(TotpService totpService, ILogger<TotpController> logger, Data.NexusDbContext db, TokenService tokenService)
     {
         _totpService = totpService;
         _logger = logger;
+        _db = db;
+        _tokenService = tokenService;
     }
+
+    /// <summary>True if the calling JWT carries scope=2fa_setup (the limited
+    /// token AuthController.Login issues for admins without 2FA).</summary>
+    private bool IsSetupScopedRequest() =>
+        string.Equals(User.FindFirst("scope")?.Value, "2fa_setup", StringComparison.Ordinal);
 
     /// <summary>
     /// Get current 2FA status for the authenticated user.
@@ -85,6 +95,43 @@ public class TotpController : ControllerBase
 
         if (!success)
             return BadRequest(new { error });
+
+        // If the caller came in via a setup-scoped JWT (admin first-time
+        // setup flow), promote them to a full access token now. After this
+        // response, the client uses the new access_token everywhere.
+        if (IsSetupScopedRequest())
+        {
+            var fullUser = await _db.Users
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.Id == userId.Value);
+            if (fullUser != null)
+            {
+                var accessToken = _tokenService.GenerateJwt(fullUser);
+                var (refreshToken, refreshTokenHash) = TokenService.GenerateRefreshToken();
+                _db.RefreshTokens.Add(new Entities.RefreshToken
+                {
+                    UserId = fullUser.Id,
+                    TenantId = fullUser.TenantId,
+                    TokenHash = refreshTokenHash,
+                    ExpiresAt = DateTime.UtcNow.AddDays(7),
+                });
+                fullUser.LastLoginAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("Admin {UserId} completed first-time 2FA setup — full tokens issued.", fullUser.Id);
+
+                return Ok(new
+                {
+                    success = true,
+                    login_complete = true,
+                    message = "Two-factor authentication enabled. You are now signed in.",
+                    backup_codes = backupCodes,
+                    access_token = accessToken,
+                    refresh_token = refreshToken,
+                    token_type = "Bearer",
+                    expires_in = _tokenService.AccessTokenExpirySeconds,
+                });
+            }
+        }
 
         return Ok(new
         {

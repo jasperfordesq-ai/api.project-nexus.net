@@ -21,16 +21,20 @@ public class NewsletterController : ControllerBase
 {
     private readonly NewsletterService _newsletterService;
     private readonly ILogger<NewsletterController> _logger;
+    private readonly Services.ITurnstileVerifier _turnstile;
 
     public NewsletterController(
         NewsletterService newsletterService,
-        ILogger<NewsletterController> logger)
+        ILogger<NewsletterController> logger,
+        Services.ITurnstileVerifier turnstile)
     {
         _newsletterService = newsletterService;
         _logger = logger;
+        _turnstile = turnstile;
     }
 
     private int? GetCurrentUserId() => User.GetUserId();
+    private string? GetClientIp() => HttpContext?.Connection?.RemoteIpAddress?.ToString();
 
     #region Public Endpoints
 
@@ -42,6 +46,19 @@ public class NewsletterController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Subscribe([FromBody] SubscribeRequest request)
     {
+        // Cloudflare Turnstile bot challenge — newsletter subscribe was a
+        // bot target (spam-subscribe attacks). Server-side verifier short-
+        // circuits when Turnstile:SecretKey is unset (dev mode).
+        var token = request.CfTurnstileResponse ?? request.TurnstileToken;
+        if (!await _turnstile.VerifyAsync(token, GetClientIp()))
+        {
+            return BadRequest(new
+            {
+                error = "Bot verification failed. Please retry the challenge and submit again.",
+                error_code = "turnstile_failed",
+            });
+        }
+
         if (string.IsNullOrWhiteSpace(request.Email))
         {
             return BadRequest(new { error = "Email is required" });
@@ -384,6 +401,12 @@ public class SubscribeRequest
 
     [JsonPropertyName("source")]
     public string? Source { get; set; }
+
+    [JsonPropertyName("cf-turnstile-response")]
+    public string? CfTurnstileResponse { get; set; }
+
+    [JsonPropertyName("turnstile_token")]
+    public string? TurnstileToken { get; set; }
 }
 
 public class UnsubscribeRequest

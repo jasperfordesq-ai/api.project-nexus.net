@@ -154,6 +154,39 @@ public class AuthController : ControllerBase
             return Unauthorized(new { error = "Invalid credentials" });
         }
 
+        // Step 3b: HARD-ENFORCE 2FA SETUP for admin / super-admin accounts.
+        // They cannot get a normal access token without 2FA enabled. Instead
+        // they receive a setup-scoped JWT (scope=2fa_setup) which the global
+        // TwoFactorSetupGate filter restricts to /api/auth/2fa/* endpoints
+        // only. After they complete setup via verify-setup, that endpoint
+        // issues full access tokens.
+        var isAdminAccount = string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(user.Role, "super_admin", StringComparison.OrdinalIgnoreCase);
+        if (isAdminAccount && !user.TwoFactorEnabled)
+        {
+            user.LastLoginAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            var setupJwt = _tokenService.GenerateSetupJwt(user);
+            var emailPartsX = user.Email.Split('@');
+            var localPartX = emailPartsX[0];
+            var maskedLocalX = localPartX.Length <= 2 ? localPartX + "***" : localPartX[..2] + "***";
+            var emailMaskedX = maskedLocalX + "@" + emailPartsX[1];
+
+            _logger.LogInformation("Admin {UserId} blocked at login — 2FA setup required (tenant {TenantId})", user.Id, tenant.Id);
+
+            return Ok(new
+            {
+                success = false,
+                requires_2fa_setup = true,
+                error_code = "AUTH_2FA_SETUP_REQUIRED",
+                setup_token = setupJwt,
+                token_type = "Bearer",
+                user = new { id = user.Id, first_name = user.FirstName, email_masked = emailMaskedX },
+                message = "Two-factor authentication is required for administrator accounts. Please set up 2FA to continue.",
+            });
+        }
+
         // Step 4: Check if 2FA is required
         if (user.TwoFactorEnabled)
         {
