@@ -42,6 +42,19 @@ public sealed class SurnamePrivacyMiddleware
         "id", "user_id", "userId", "Id", "UserId"
     };
 
+    // Secondary signals that an object represents a user (in addition to
+    // first_name/last_name). Many endpoints emit pre-composed `name` strings
+    // on objects that only carry an avatar/email/handle alongside the id, so
+    // we widen detection to catch those.
+    private static readonly string[] UserShapeSignalKeys =
+    {
+        "avatar_url", "avatarUrl", "AvatarUrl",
+        "email", "Email",
+        "username", "userName", "UserName",
+        "handle", "Handle",
+        "user_id", "userId", "UserId"
+    };
+
     private readonly RequestDelegate _next;
     private readonly ILogger<SurnamePrivacyMiddleware> _logger;
 
@@ -146,11 +159,19 @@ public sealed class SurnamePrivacyMiddleware
 
     private static void ScrubObject(JsonObject obj, int? currentUserId)
     {
-        // Only treat objects that look like a "user-shaped" payload as targets.
-        // A user-shaped object has a first_name (in any casing) OR a surname key.
         var hasFirstName = FirstNameKeys.Any(k => obj.ContainsKey(k));
         var hasSurname = SurnameKeys.Any(k => obj.ContainsKey(k));
-        if (!hasFirstName && !hasSurname)
+        var hasUserSignal = UserShapeSignalKeys.Any(k => obj.ContainsKey(k));
+        var hasComposite = CompositeNameKeys.Any(k => obj.ContainsKey(k));
+
+        // An object is "user-shaped" if it carries any of: an explicit
+        // first/last name, or a composite name field alongside a user-signal
+        // (avatar/email/handle/user_id). Plain composite names without any
+        // user signal (e.g. group.name, listing.title) are left alone.
+        var isUserShaped = hasFirstName || hasSurname
+            || (hasComposite && hasUserSignal);
+
+        if (!isUserShaped)
         {
             return;
         }
@@ -160,6 +181,7 @@ public sealed class SurnamePrivacyMiddleware
             return;
         }
 
+        // Blank any explicit surname field.
         foreach (var key in SurnameKeys)
         {
             if (obj.ContainsKey(key))
@@ -168,25 +190,39 @@ public sealed class SurnamePrivacyMiddleware
             }
         }
 
-        // Rewrite composite display names to first-name-only when both exist,
-        // so server-side `${first} ${last}` concatenations don't leak.
-        if (hasFirstName)
+        // Determine the first name to use for rewriting composite fields.
+        // Prefer an explicit first_name sibling; otherwise derive from the
+        // composite by splitting on the first run of whitespace.
+        string? firstName = null;
+        foreach (var k in FirstNameKeys)
         {
-            string? firstName = null;
-            foreach (var k in FirstNameKeys)
+            if (obj.TryGetPropertyValue(k, out var v) && v is JsonValue fv)
             {
-                if (obj.TryGetPropertyValue(k, out var v) && v is JsonValue fv)
-                {
-                    firstName = fv.ToString();
-                    break;
-                }
+                firstName = fv.ToString();
+                break;
+            }
+        }
+
+        foreach (var k in CompositeNameKeys)
+        {
+            if (!obj.TryGetPropertyValue(k, out var v) || v is not JsonValue cv) continue;
+            var current = cv.ToString();
+            if (string.IsNullOrWhiteSpace(current)) continue;
+
+            string replacement;
+            if (!string.IsNullOrWhiteSpace(firstName))
+            {
+                replacement = firstName!;
+            }
+            else
+            {
+                // Split on first whitespace run; keep the leading token.
+                var trimmed = current.TrimStart();
+                var spaceIdx = trimmed.IndexOfAny(new[] { ' ', '\t', '\n' });
+                replacement = spaceIdx > 0 ? trimmed[..spaceIdx] : trimmed;
             }
 
-            foreach (var k in CompositeNameKeys)
-            {
-                if (!obj.ContainsKey(k)) continue;
-                obj[k] = firstName is null ? null : JsonValue.Create(firstName);
-            }
+            obj[k] = JsonValue.Create(replacement);
         }
     }
 
