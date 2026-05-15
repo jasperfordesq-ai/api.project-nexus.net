@@ -76,17 +76,15 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = "Email and password are required" });
         }
 
-        // Cloudflare Turnstile gate (credential-stuffing defence). Verifier
-        // short-circuits to true when Turnstile:SecretKey is unset.
-        var loginTurnstileToken = request.CfTurnstileResponse ?? request.TurnstileToken;
-        if (!await _turnstile.VerifyAsync(loginTurnstileToken, GetClientIp()))
-        {
-            return BadRequest(new
-            {
-                error = "Bot verification failed. Please retry the challenge and submit again.",
-                error_code = "turnstile_failed",
-            });
-        }
+        // Turnstile is intentionally NOT gated here. It was added 2026-05-15
+        // after a registration/contact-form email-flood attack, but on the
+        // login surface it was blocking legitimate members whose browsers
+        // couldn't load challenges.cloudflare.com (ad blockers, slow CDN,
+        // corporate DNS). The AuthPolicy rate limiter is the active defence
+        // for credential stuffing here. Token field still accepted for
+        // backward compatibility with already-deployed frontends.
+        _ = request.CfTurnstileResponse;
+        _ = request.TurnstileToken;
 
         // Tenant identifier is required (slug preferred, id as fallback)
         if (string.IsNullOrEmpty(request.TenantSlug) && !request.TenantId.HasValue)
@@ -706,15 +704,15 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = "Email is required" });
         }
 
-        // Cloudflare Turnstile — prevents bots from enumerating email
-        // addresses via the reset flow. Mirror the standard success
-        // response on failure to avoid leaking the difference between
-        // "Turnstile failed" and "email exists".
-        var forgotTurnstileToken = request.CfTurnstileResponse ?? request.TurnstileToken;
-        if (!await _turnstile.VerifyAsync(forgotTurnstileToken, GetClientIp()))
-        {
-            return Ok(successResponse);
-        }
+        // Turnstile was previously gated here. It was silently rejecting
+        // legitimate reset requests (legit users whose browser couldn't load
+        // the Turnstile widget got a fake-success response and never received
+        // an email — exactly the symptom reported by a member 2026-05-15).
+        // Email enumeration is already mitigated by the always-200 response
+        // and by the AuthPolicy rate limiter. Token field still accepted for
+        // backward compatibility with already-deployed frontends.
+        _ = request.CfTurnstileResponse;
+        _ = request.TurnstileToken;
 
         if (string.IsNullOrEmpty(request.TenantSlug) && !request.TenantId.HasValue)
         {

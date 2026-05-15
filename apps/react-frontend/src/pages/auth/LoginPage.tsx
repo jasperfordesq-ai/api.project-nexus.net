@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth, useTenant, useToast } from '@/contexts';
 import { GlassCard } from '@/components/ui';
 import { PageMeta } from '@/components/seo';
-import { usePageTitle, useTurnstile } from '@/hooks';
+import { usePageTitle } from '@/hooks';
 import { api, tokenManager } from '@/lib/api';
 import {
   isBiometricAvailable,
@@ -68,9 +68,6 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  // Cloudflare Turnstile — explicit render via shared hook.
-  const { token: turnstileToken, siteKey: turnstileSiteKey, containerRef: turnstileRef } = useTurnstile();
 
   // 2FA state
   const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -221,16 +218,12 @@ export function LoginPage() {
     const selectedTenant = tenants.find((t) => String(t.id) === selectedTenantId);
     const tenantSlug = selectedTenant?.slug || tenant?.slug;
 
-    // Turnstile gate — bail if widget configured but not yet solved
-    if (turnstileSiteKey && !turnstileToken) return;
-
     const result = await login({
       email,
       password,
       ...(tenantSlug
         ? { tenant_slug: tenantSlug }
         : { tenant_id: parseInt(selectedTenantId, 10) }),
-      turnstile_token: turnstileToken || undefined,
     });
     // Admin without 2FA — backend has issued a setup-scoped token; route
     // them straight into the first-time 2FA setup flow.
@@ -556,12 +549,10 @@ export function LoginPage() {
                       </Link>
                     </div>
 
-                    {turnstileSiteKey && <div ref={turnstileRef} className="my-2" />}
-
                     <Button
                       type="submit"
                       isLoading={isLoading}
-                      isDisabled={!canSubmit || (!!turnstileSiteKey && !turnstileToken)}
+                      isDisabled={!canSubmit}
                       className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium"
                       size="lg"
                       spinner={<Loader2 className="w-4 h-4 animate-spin" />}

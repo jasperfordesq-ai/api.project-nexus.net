@@ -117,12 +117,7 @@
             }
           }) }}
 
-          {% if turnstileSiteKey %}
-          <div class="govuk-form-group">
-            <div class="cf-turnstile" data-sitekey="{{ turnstileSiteKey }}" data-theme="auto"></div>
-          </div>
-          <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-          {% endif %}
+          {# Turnstile widget removed from login 2026-05-15 — rate-limit is the active defence #}
 
           {{ govukButton({
             text: "Sign in"

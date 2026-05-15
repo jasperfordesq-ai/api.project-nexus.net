@@ -8,7 +8,6 @@
  */
 
 import { useState } from 'react';
-import { useTurnstile } from '@/hooks/useTurnstile';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button, Input } from '@heroui/react';
@@ -26,20 +25,14 @@ export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  // Cloudflare Turnstile — explicit render via shared hook.
-  const { token: turnstileToken, siteKey: turnstileSiteKey, containerRef: turnstileRef } = useTurnstile();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
-    if (turnstileSiteKey && !turnstileToken) return;
 
     try {
       setIsLoading(true);
-      await api.post('/auth/forgot-password', {
-        email,
-        turnstile_token: turnstileToken || undefined,
-      });
+      await api.post('/auth/forgot-password', { email });
       setIsSubmitted(true);
     } catch {
       // Don't reveal if email exists or not for security
@@ -134,13 +127,11 @@ export function ForgotPasswordPage() {
               isRequired
             />
 
-            {turnstileSiteKey && <div ref={turnstileRef} className="my-2" />}
-
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
               isLoading={isLoading}
-              isDisabled={!email.trim() || (!!turnstileSiteKey && !turnstileToken)}
+              isDisabled={!email.trim()}
             >
               {t('forgot_password.send_button')}
             </Button>

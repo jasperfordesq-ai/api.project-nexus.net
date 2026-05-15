@@ -32,17 +32,10 @@ router.post('/login', asyncRoute(async (req, res) => {
     });
   }
 
-  // Cloudflare Turnstile — credential-stuffing defence on login.
-  const loginTurnstileToken = (req.body && req.body['cf-turnstile-response']) || '';
-  if (!(await verifyTurnstile(loginTurnstileToken, req.ip))) {
-    return res.render('login', {
-      title: 'Sign in',
-      error: 'Bot verification failed. Please retry the challenge and submit again.',
-      values: { email, tenant_slug },
-      csrfToken: req.csrfToken ? req.csrfToken() : '',
-      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
-    });
-  }
+  // Turnstile gate intentionally removed from login (2026-05-15). It was
+  // blocking legitimate members on browsers that couldn't reach
+  // challenges.cloudflare.com. Express-rate-limit (10/15min on auth routes)
+  // is the active defence here. Registration + contact keep Turnstile.
 
   try {
     const result = await login(email.toLowerCase(), password, tenant_slug);
@@ -371,16 +364,10 @@ router.get('/forgot-password', redirectIfAuthenticated, (req, res) => {
 router.post('/forgot-password', asyncRoute(async (req, res) => {
   const { email, tenant_slug } = req.body;
 
-  // Cloudflare Turnstile — prevents bot-driven email enumeration via the
-  // reset flow. Render the same "success" page on rejection so a bot can't
-  // distinguish "Turnstile failed" from "email exists".
-  const fpTurnstileToken = (req.body && req.body['cf-turnstile-response']) || '';
-  if (!(await verifyTurnstile(fpTurnstileToken, req.ip))) {
-    if (req.flash) {
-      req.flash('success', 'If that email is registered, a reset link is on its way.');
-    }
-    return res.redirect('/forgot-password');
-  }
+  // Turnstile gate intentionally removed from forgot-password (2026-05-15).
+  // It was silently rejecting legitimate reset requests, so users saw the
+  // success page but never received an email. Always-200 + rate-limit
+  // (10/15min on auth routes) remain as defences against enumeration.
 
   const errors = [];
   const fieldErrors = {};
