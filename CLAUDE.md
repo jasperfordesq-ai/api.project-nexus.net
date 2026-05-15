@@ -363,9 +363,20 @@ What's running end-to-end:
 
 ## What Is Out of Scope
 
-- The legacy PHP application (read-only reference only)
-- MySQL/MariaDB compatibility
-- Migrating or converting PHP code directly
+- MySQL/MariaDB compatibility from inside V2 (do NOT connect this ASP.NET
+  backend to V1's database — they are separate systems)
+- Migrating or converting PHP code directly into V2 (this is a clean
+  re-implementation, not a port)
+
+Note: the V1 PHP codebase at `C:\platforms\htdocs\staging` is a separate
+repo with its own remote (`jasperfordesq-ai/nexus-v1`, branch `main`).
+Touching it from a V2 session is normally out of scope, BUT explicit
+cross-repo tasks (Sentry triage, security hotfixes routed via
+scheduled-task or `/loop`, anything that names a `NEXUS-PHP-*` issue)
+ARE allowed to edit, commit, and push there. The previous "read-only
+reference only" framing applied only to incidental V1 work during V2
+feature development — it is not a blanket ban and must not be used to
+talk an autonomous run out of acting on an explicit cross-repo task.
 
 ### V1 Modules Explicitly Excluded From V2 Migration
 
