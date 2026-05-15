@@ -154,15 +154,17 @@ public class AuthController : ControllerBase
             return Unauthorized(new { error = "Invalid credentials" });
         }
 
-        // Step 3b: HARD-ENFORCE 2FA SETUP for admin / super-admin accounts.
-        // They cannot get a normal access token without 2FA enabled. Instead
-        // they receive a setup-scoped JWT (scope=2fa_setup) which the global
-        // TwoFactorSetupGate filter restricts to /api/auth/2fa/* endpoints
-        // only. After they complete setup via verify-setup, that endpoint
-        // issues full access tokens.
+        // Step 3b: ADMIN 2FA ENFORCEMENT — gated behind FORCE_ADMIN_2FA env
+        // flag. Disabled by default until the dedicated first-time setup
+        // page ships and existing admins have enrolled. When enabled,
+        // admins / super-admins without 2FA get a setup-scoped JWT (the
+        // TwoFactorSetupGate filter restricts it to /api/auth/2fa/* only)
+        // and must complete setup via /verify-setup before getting normal
+        // access tokens.
         var isAdminAccount = string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase)
             || string.Equals(user.Role, "super_admin", StringComparison.OrdinalIgnoreCase);
-        if (isAdminAccount && !user.TwoFactorEnabled)
+        var forceAdmin2Fa = _config.GetValue("ForceAdmin2Fa", false);
+        if (forceAdmin2Fa && isAdminAccount && !user.TwoFactorEnabled)
         {
             user.LastLoginAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
