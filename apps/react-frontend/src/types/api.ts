@@ -173,6 +173,8 @@ export interface RegisterRequest {
   terms_accepted: boolean;
   newsletter_opt_in?: boolean;
   invite_code?: string;
+  /** Cloudflare Turnstile challenge token (when widget configured). */
+  turnstile_token?: string;
 }
 
 export interface RegisterResponse {

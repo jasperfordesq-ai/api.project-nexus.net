@@ -38,6 +38,7 @@ public class AuthController : ControllerBase
     private readonly RegistrationOrchestrator _registrationOrchestrator;
     private readonly IEmailService _emailService;
     private readonly TokenService _tokenService;
+    private readonly ITurnstileVerifier _turnstile;
 
     // Refresh token validity (7 days default)
     private const int RefreshTokenExpiryDays = 7;
@@ -45,7 +46,7 @@ public class AuthController : ControllerBase
     // (audit finding) — industry baseline for password-reset windows.
     private const int PasswordResetExpiryMinutes = 30;
 
-    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator, IEmailService emailService, TokenService tokenService)
+    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator, IEmailService emailService, TokenService tokenService, ITurnstileVerifier turnstile)
     {
         _db = db;
         _config = config;
@@ -54,6 +55,7 @@ public class AuthController : ControllerBase
         _registrationOrchestrator = registrationOrchestrator;
         _emailService = emailService;
         _tokenService = tokenService;
+        _turnstile = turnstile;
     }
 
     /// <summary>
@@ -412,6 +414,19 @@ public class AuthController : ControllerBase
                 success = true,
                 message = "Registration successful. Please check your email to verify your account.",
                 requires_verification = true,
+            });
+        }
+
+        // Cloudflare Turnstile verification. Reads cf-turnstile-response from
+        // either of the documented field names (form-style or JSON-style).
+        // Verifier short-circuits to true when Turnstile:SecretKey is unset.
+        var turnstileToken = request.CfTurnstileResponse ?? request.TurnstileToken;
+        if (!await _turnstile.VerifyAsync(turnstileToken, GetClientIp()))
+        {
+            return BadRequest(new
+            {
+                error = "Bot verification failed. Please retry the challenge and submit again.",
+                error_code = "turnstile_failed",
             });
         }
 
@@ -1057,6 +1072,16 @@ public record RegisterRequest
 
     [System.Text.Json.Serialization.JsonPropertyName("honeypot")]
     public string? Honeypot { get; init; }
+
+    // Cloudflare Turnstile token. The widget emits this as
+    // `cf-turnstile-response` (form-style) when posted from a Blade/Nunjucks
+    // form; the React frontend posts JSON, so we accept the camelCase variant
+    // `turnstileToken` too.
+    [System.Text.Json.Serialization.JsonPropertyName("cf-turnstile-response")]
+    public string? CfTurnstileResponse { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("turnstile_token")]
+    public string? TurnstileToken { get; init; }
 }
 
 public record ForgotPasswordRequest

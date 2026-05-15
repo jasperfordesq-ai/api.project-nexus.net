@@ -118,11 +118,43 @@ router.post('/verify-2fa', asyncRoute(async (req, res) => {
   }
 }));
 
+// Cloudflare Turnstile siteverify. Returns true when the env secret is
+// unset (dev mode) so local dev keeps working without Cloudflare.
+async function verifyTurnstile(token, remoteIp) {
+  const secret = process.env.TURNSTILE_SECRET_KEY || '';
+  if (!secret || secret === '1x0000000000000000000000000000000AA') {
+    return true;
+  }
+  if (!token) return false;
+
+  const form = new URLSearchParams({ secret, response: token });
+  if (remoteIp) form.set('remoteip', remoteIp);
+
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    if (!resp.ok) return false;
+    const body = await resp.json();
+    return !!body.success;
+  } catch (err) {
+    console.info('[security] turnstile.network_error', { error: err.message });
+    return false;
+  }
+}
+
 // Registration
 router.get('/register', redirectIfAuthenticated, (req, res) => {
   res.render('register', {
     title: 'Create an account',
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
+    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
 });
 
@@ -141,6 +173,21 @@ router.post('/register', asyncRoute(async (req, res) => {
     return res.render('register-success', {
       title: 'Check your email',
       email: (req.body.email || '').trim(),
+    });
+  }
+
+  // Cloudflare Turnstile. Rejecting here saves a backend round-trip when
+  // the user's challenge has expired or wasn't completed. The .NET API
+  // will also verify independently as a defence-in-depth backstop.
+  const turnstileToken = (req.body && req.body['cf-turnstile-response']) || '';
+  if (!(await verifyTurnstile(turnstileToken, req.ip))) {
+    return res.render('register', {
+      title: 'Create an account',
+      errors: [{ text: 'Bot verification failed. Please retry the challenge and submit again.', href: '#' }],
+      fieldErrors: {},
+      values: req.body || {},
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
 
@@ -191,7 +238,8 @@ router.post('/register', asyncRoute(async (req, res) => {
       errors,
       fieldErrors,
       values: { email, first_name, last_name, tenant_slug },
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
 
@@ -240,7 +288,8 @@ router.post('/register', asyncRoute(async (req, res) => {
       errors: [{ text: errorMessage }],
       fieldErrors: error.data?.errors || {},
       values: { email, first_name, last_name, tenant_slug },
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
 }));

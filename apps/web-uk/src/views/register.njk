@@ -30,6 +30,17 @@
           <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" value="">
         </div>
 
+        {# Cloudflare Turnstile — only rendered when TURNSTILE_SITE_KEY is configured.
+           Without it the widget is omitted and the Express route's verifier short-
+           circuits to true (dev mode). The widget emits a hidden cf-turnstile-response
+           input that posts back with the form. #}
+        {% if turnstileSiteKey %}
+        <div class="govuk-form-group">
+          <div class="cf-turnstile" data-sitekey="{{ turnstileSiteKey }}" data-theme="auto"></div>
+        </div>
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+        {% endif %}
+
         {{ govukInput({
           label: {
             text: "First name",

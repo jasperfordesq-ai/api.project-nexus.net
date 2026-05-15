@@ -81,6 +81,8 @@ export function RegisterPage() {
   // Bot protection
   const [formStartTime] = useState(() => Date.now());
   const honeypotRef = useRef<HTMLInputElement>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ?? '';
 
   // Tenant state
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -132,6 +134,32 @@ export function RegisterPage() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Cloudflare Turnstile — load the script once, render the widget into the
+  // div with id "turnstile-mount" via the global callback, and capture the
+  // token. Site key comes from VITE_TURNSTILE_SITE_KEY; without it the
+  // effect no-ops and the server-side verifier short-circuits to true.
+  useEffect(() => {
+    if (!turnstileSiteKey) return;
+    const SCRIPT_ID = 'cf-turnstile-script';
+    const CALLBACK_NAME = '__nexusTurnstileCb';
+    (window as unknown as Record<string, (t: string) => void>)[CALLBACK_NAME] = (token: string) => {
+      setTurnstileToken(token);
+    };
+    if (!document.getElementById(SCRIPT_ID)) {
+      const s = document.createElement('script');
+      s.id = SCRIPT_ID;
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      s.async = true;
+      s.defer = true;
+      document.head.appendChild(s);
+    }
+    return () => {
+      // Reset token if the component re-mounts; do not remove the script
+      // because the widget div will re-render and pick it up again.
+      setTurnstileToken('');
+    };
+  }, [turnstileSiteKey]);
 
   // Fetch available tenants on mount, with ?tenant= hint support (TRS-001 Phase 0)
   useEffect(() => {
@@ -314,6 +342,15 @@ export function RegisterPage() {
     const selectedTenant = tenants.find((t) => String(t.id) === selectedTenantId);
     const tenantId = selectedTenant?.id || parseInt(selectedTenantId) || tenant?.id || undefined;
 
+    // Turnstile gate — only enforced when the widget is configured. If no
+    // site key was provided at build time, the server-side verifier will
+    // also short-circuit, so dev/CI works without Cloudflare.
+    if (turnstileSiteKey && !turnstileToken) {
+      // Quietly bail; the user can re-submit once the widget settles. Most
+      // legit users won't hit this — managed mode resolves in ~200ms.
+      return;
+    }
+
     const result = await register({
       first_name: firstName,
       last_name: lastName,
@@ -330,6 +367,8 @@ export function RegisterPage() {
       terms_accepted: termsAccepted,
       newsletter_opt_in: newsletterOptIn,
       invite_code: requiresInviteCode ? inviteCode.trim().toUpperCase() : undefined,
+      // Backend reads from either `turnstile_token` or `cf-turnstile-response`.
+      turnstile_token: turnstileToken || undefined,
     });
 
     if (result.success) {
@@ -841,10 +880,23 @@ export function RegisterPage() {
           {renderStepContent(3)}
           {renderStepContent(4)}
 
+          {/* Cloudflare Turnstile — rendered only when VITE_TURNSTILE_SITE_KEY
+              is configured. The widget mounts via the official api.js script
+              loaded in the useEffect above and writes the token via the
+              __nexusTurnstileCb global. */}
+          {turnstileSiteKey && (
+            <div
+              className="cf-turnstile"
+              data-sitekey={turnstileSiteKey}
+              data-callback="__nexusTurnstileCb"
+              data-theme="auto"
+            />
+          )}
+
           <Button
             type="submit"
             isLoading={isLoading}
-            isDisabled={!isFormValid}
+            isDisabled={!isFormValid || (!!turnstileSiteKey && !turnstileToken)}
             className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium"
             size="lg"
             spinner={<Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
@@ -959,7 +1011,7 @@ export function RegisterPage() {
             <Button
               type="submit"
               isLoading={isLoading}
-              isDisabled={!isFormValid}
+              isDisabled={!isFormValid || (!!turnstileSiteKey && !turnstileToken)}
               className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium"
               spinner={<Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
             >
@@ -967,6 +1019,20 @@ export function RegisterPage() {
             </Button>
           )}
         </div>
+
+        {/* Cloudflare Turnstile — only rendered on the final step so the
+            challenge resolves close to submission and doesn't expire while
+            the user fills earlier steps. */}
+        {turnstileSiteKey && currentStep === 4 && (
+          <div className="pt-2">
+            <div
+              className="cf-turnstile"
+              data-sitekey={turnstileSiteKey}
+              data-callback="__nexusTurnstileCb"
+              data-theme="auto"
+            />
+          </div>
+        )}
       </form>
     );
   };

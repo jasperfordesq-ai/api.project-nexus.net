@@ -207,6 +207,14 @@ public static class ServiceExtensions
         services.AddScoped<Nexus.Api.Services.Provisioning.ProvisioningRequestService>();
         services.AddScoped<Nexus.Api.Services.ApiPartners.ApiPartnerService>();
 
+        // Cloudflare Turnstile (bot challenge on public registration paths).
+        // 4-second timeout; verifier short-circuits when Turnstile:SecretKey
+        // is unset, so dev/CI works without a key.
+        services.AddHttpClient<ITurnstileVerifier, TurnstileVerifier>(c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(4);
+        });
+
         // Background services
         services.AddHostedService<SavedSearchAlertService>();
 
