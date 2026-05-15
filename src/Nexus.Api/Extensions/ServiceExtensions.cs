@@ -215,6 +215,14 @@ public static class ServiceExtensions
             c.Timeout = TimeSpan.FromSeconds(4);
         });
 
+        // Have I Been Pwned k-anonymity password check. 3-second timeout;
+        // fails open on network errors so a HIBP outage can't block all
+        // registrations. Config: Hibp:Enabled, Hibp:Threshold.
+        services.AddHttpClient<IPwnedPasswordChecker, PwnedPasswordChecker>(c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(3);
+        });
+
         // Background services
         services.AddHostedService<SavedSearchAlertService>();
 

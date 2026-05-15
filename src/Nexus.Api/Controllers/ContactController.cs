@@ -21,19 +21,34 @@ public class ContactController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenant;
     private readonly ILogger<ContactController> _logger;
+    private readonly Services.ITurnstileVerifier _turnstile;
 
-    public ContactController(NexusDbContext db, TenantContext tenant, ILogger<ContactController> logger)
+    public ContactController(NexusDbContext db, TenantContext tenant, ILogger<ContactController> logger, Services.ITurnstileVerifier turnstile)
     {
         _db = db;
         _tenant = tenant;
         _logger = logger;
+        _turnstile = turnstile;
     }
+
+    private string? GetClientIp() => HttpContext?.Connection?.RemoteIpAddress?.ToString();
 
     /// <summary>POST /api/contact - Submit a contact form (public or authenticated).</summary>
     [HttpPost("contact")]
     [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     public async Task<IActionResult> Submit([FromBody] ContactRequest request)
     {
+        // Cloudflare Turnstile — bot challenge on contact submissions.
+        var token = request.CfTurnstileResponse ?? request.TurnstileToken;
+        if (!await _turnstile.VerifyAsync(token, GetClientIp()))
+        {
+            return BadRequest(new
+            {
+                error = "Bot verification failed. Please retry the challenge and submit again.",
+                error_code = "turnstile_failed",
+            });
+        }
+
         if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Subject) || string.IsNullOrWhiteSpace(request.Message))
             return BadRequest(new { error = "Name, email, subject, and message are required" });
@@ -156,6 +171,12 @@ public class ContactRequest
     public string Subject { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public string? Category { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("cf-turnstile-response")]
+    public string? CfTurnstileResponse { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("turnstile_token")]
+    public string? TurnstileToken { get; set; }
 }
 
 public class ResolveContactRequest

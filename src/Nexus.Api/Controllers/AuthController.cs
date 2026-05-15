@@ -39,6 +39,7 @@ public class AuthController : ControllerBase
     private readonly IEmailService _emailService;
     private readonly TokenService _tokenService;
     private readonly ITurnstileVerifier _turnstile;
+    private readonly IPwnedPasswordChecker _pwnedPassword;
 
     // Refresh token validity (7 days default)
     private const int RefreshTokenExpiryDays = 7;
@@ -46,7 +47,7 @@ public class AuthController : ControllerBase
     // (audit finding) — industry baseline for password-reset windows.
     private const int PasswordResetExpiryMinutes = 30;
 
-    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator, IEmailService emailService, TokenService tokenService, ITurnstileVerifier turnstile)
+    public AuthController(NexusDbContext db, IConfiguration config, ILogger<AuthController> logger, IEventPublisher eventPublisher, RegistrationOrchestrator registrationOrchestrator, IEmailService emailService, TokenService tokenService, ITurnstileVerifier turnstile, IPwnedPasswordChecker pwnedPassword)
     {
         _db = db;
         _config = config;
@@ -56,6 +57,7 @@ public class AuthController : ControllerBase
         _emailService = emailService;
         _tokenService = tokenService;
         _turnstile = turnstile;
+        _pwnedPassword = pwnedPassword;
     }
 
     /// <summary>
@@ -466,6 +468,11 @@ public class AuthController : ControllerBase
                 errors.Add("Password must contain at least one lowercase letter");
             if (!request.Password.Any(char.IsDigit))
                 errors.Add("Password must contain at least one digit");
+
+            // HIBP k-anonymity check — only checked when complexity rules pass
+            // (no point hitting the API for a password we're about to reject).
+            if (errors.Count == 0 && await _pwnedPassword.IsPwnedAsync(request.Password))
+                errors.Add("This password appears in a known data breach and cannot be used. Please choose a different password.");
         }
 
         if (string.IsNullOrWhiteSpace(request.FirstName))
@@ -791,9 +798,25 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = "New password is required" });
         }
 
+        // Match registration password rules so a user can't escape the
+        // complexity gate via the reset flow.
         if (request.NewPassword.Length < 8)
-        {
             return BadRequest(new { error = "Password must be at least 8 characters" });
+        if (!request.NewPassword.Any(char.IsUpper))
+            return BadRequest(new { error = "Password must contain at least one uppercase letter" });
+        if (!request.NewPassword.Any(char.IsLower))
+            return BadRequest(new { error = "Password must contain at least one lowercase letter" });
+        if (!request.NewPassword.Any(char.IsDigit))
+            return BadRequest(new { error = "Password must contain at least one digit" });
+
+        // HIBP k-anonymity — same rule as Register.
+        if (await _pwnedPassword.IsPwnedAsync(request.NewPassword))
+        {
+            return BadRequest(new
+            {
+                error = "This password appears in a known data breach and cannot be used. Please choose a different password.",
+                error_code = "password_pwned",
+            });
         }
 
         var tokenHash = TokenService.HashToken(request.Token);
