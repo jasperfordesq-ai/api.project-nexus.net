@@ -69,6 +69,26 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  // Cloudflare Turnstile — credential-stuffing defence on login.
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ?? '';
+  useEffect(() => {
+    if (!turnstileSiteKey) return;
+    const CB = '__nexusTurnstileLoginCb';
+    (window as unknown as Record<string, (t: string) => void>)[CB] = (token: string) => {
+      setTurnstileToken(token);
+    };
+    if (!document.getElementById('cf-turnstile-script')) {
+      const s = document.createElement('script');
+      s.id = 'cf-turnstile-script';
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      s.async = true;
+      s.defer = true;
+      document.head.appendChild(s);
+    }
+    return () => { setTurnstileToken(''); };
+  }, [turnstileSiteKey]);
+
   // 2FA state
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [useBackupCode, setUseBackupCode] = useState(false);
@@ -218,12 +238,16 @@ export function LoginPage() {
     const selectedTenant = tenants.find((t) => String(t.id) === selectedTenantId);
     const tenantSlug = selectedTenant?.slug || tenant?.slug;
 
+    // Turnstile gate — bail if widget configured but not yet solved
+    if (turnstileSiteKey && !turnstileToken) return;
+
     const result = await login({
       email,
       password,
       ...(tenantSlug
         ? { tenant_slug: tenantSlug }
         : { tenant_id: parseInt(selectedTenantId, 10) }),
+      turnstile_token: turnstileToken || undefined,
     });
     if (!result.success && result.errorCode) {
       setLoginErrorCode(result.errorCode);
@@ -543,10 +567,19 @@ export function LoginPage() {
                       </Link>
                     </div>
 
+                    {turnstileSiteKey && (
+                      <div
+                        className="cf-turnstile"
+                        data-sitekey={turnstileSiteKey}
+                        data-callback="__nexusTurnstileLoginCb"
+                        data-theme="auto"
+                      />
+                    )}
+
                     <Button
                       type="submit"
                       isLoading={isLoading}
-                      isDisabled={!canSubmit}
+                      isDisabled={!canSubmit || (!!turnstileSiteKey && !turnstileToken)}
                       className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium"
                       size="lg"
                       spinner={<Loader2 className="w-4 h-4 animate-spin" />}

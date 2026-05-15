@@ -14,7 +14,8 @@ router.get('/login', redirectIfAuthenticated, (req, res) => {
   res.render('login', {
     title: 'Sign in',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null
+    successMessage: req.flash ? req.flash('success')[0] : null,
+    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
 });
 
@@ -26,7 +27,20 @@ router.post('/login', asyncRoute(async (req, res) => {
       title: 'Sign in',
       error: 'Enter your email, password and tenant',
       values: { email, tenant_slug },
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
+    });
+  }
+
+  // Cloudflare Turnstile — credential-stuffing defence on login.
+  const loginTurnstileToken = (req.body && req.body['cf-turnstile-response']) || '';
+  if (!(await verifyTurnstile(loginTurnstileToken, req.ip))) {
+    return res.render('login', {
+      title: 'Sign in',
+      error: 'Bot verification failed. Please retry the challenge and submit again.',
+      values: { email, tenant_slug },
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
 
@@ -71,7 +85,8 @@ router.post('/login', asyncRoute(async (req, res) => {
       title: 'Sign in',
       error: errorMessage,
       values: { email, tenant_slug },
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
 }));
@@ -113,7 +128,8 @@ router.post('/verify-2fa', asyncRoute(async (req, res) => {
       title: 'Sign in',
       show2fa: true,
       error: 'Invalid code. Please try again.',
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
 }));
@@ -347,12 +363,24 @@ router.get('/forgot-password', redirectIfAuthenticated, (req, res) => {
   res.render('forgot-password', {
     title: 'Reset your password',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null
+    successMessage: req.flash ? req.flash('success')[0] : null,
+    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
 });
 
 router.post('/forgot-password', asyncRoute(async (req, res) => {
   const { email, tenant_slug } = req.body;
+
+  // Cloudflare Turnstile — prevents bot-driven email enumeration via the
+  // reset flow. Render the same "success" page on rejection so a bot can't
+  // distinguish "Turnstile failed" from "email exists".
+  const fpTurnstileToken = (req.body && req.body['cf-turnstile-response']) || '';
+  if (!(await verifyTurnstile(fpTurnstileToken, req.ip))) {
+    if (req.flash) {
+      req.flash('success', 'If that email is registered, a reset link is on its way.');
+    }
+    return res.redirect('/forgot-password');
+  }
 
   const errors = [];
   const fieldErrors = {};
@@ -373,7 +401,8 @@ router.post('/forgot-password', asyncRoute(async (req, res) => {
       errors,
       fieldErrors,
       values: { email, tenant_slug },
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
 
@@ -465,7 +494,8 @@ router.post('/reset-password', asyncRoute(async (req, res) => {
       errors: [{ text: errorMessage }],
       fieldErrors: {},
       resetToken: token,
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
 }));

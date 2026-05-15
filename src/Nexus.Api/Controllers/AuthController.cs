@@ -74,6 +74,18 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = "Email and password are required" });
         }
 
+        // Cloudflare Turnstile gate (credential-stuffing defence). Verifier
+        // short-circuits to true when Turnstile:SecretKey is unset.
+        var loginTurnstileToken = request.CfTurnstileResponse ?? request.TurnstileToken;
+        if (!await _turnstile.VerifyAsync(loginTurnstileToken, GetClientIp()))
+        {
+            return BadRequest(new
+            {
+                error = "Bot verification failed. Please retry the challenge and submit again.",
+                error_code = "turnstile_failed",
+            });
+        }
+
         // Tenant identifier is required (slug preferred, id as fallback)
         if (string.IsNullOrEmpty(request.TenantSlug) && !request.TenantId.HasValue)
         {
@@ -439,9 +451,22 @@ public class AuthController : ControllerBase
             errors.Add("Invalid email format");
 
         if (string.IsNullOrWhiteSpace(request.Password))
+        {
             errors.Add("Password is required");
-        else if (request.Password.Length < 8)
-            errors.Add("Password must be at least 8 characters");
+        }
+        else
+        {
+            // Match V1's Password::min(8)->mixedCase()->numbers() rule so
+            // server-side validation is symmetric across V1 PHP and V2 .NET.
+            if (request.Password.Length < 8)
+                errors.Add("Password must be at least 8 characters");
+            if (!request.Password.Any(char.IsUpper))
+                errors.Add("Password must contain at least one uppercase letter");
+            if (!request.Password.Any(char.IsLower))
+                errors.Add("Password must contain at least one lowercase letter");
+            if (!request.Password.Any(char.IsDigit))
+                errors.Add("Password must contain at least one digit");
+        }
 
         if (string.IsNullOrWhiteSpace(request.FirstName))
             errors.Add("First name is required");
@@ -640,6 +665,16 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Email))
         {
             return BadRequest(new { error = "Email is required" });
+        }
+
+        // Cloudflare Turnstile — prevents bots from enumerating email
+        // addresses via the reset flow. Mirror the standard success
+        // response on failure to avoid leaking the difference between
+        // "Turnstile failed" and "email exists".
+        var forgotTurnstileToken = request.CfTurnstileResponse ?? request.TurnstileToken;
+        if (!await _turnstile.VerifyAsync(forgotTurnstileToken, GetClientIp()))
+        {
+            return Ok(successResponse);
         }
 
         if (string.IsNullOrEmpty(request.TenantSlug) && !request.TenantId.HasValue)
@@ -1024,6 +1059,12 @@ public record LoginRequest
 
     [System.Text.Json.Serialization.JsonPropertyName("client_type")]
     public string? ClientType { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("cf-turnstile-response")]
+    public string? CfTurnstileResponse { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("turnstile_token")]
+    public string? TurnstileToken { get; init; }
 }
 
 public record LogoutRequest
@@ -1094,6 +1135,12 @@ public record ForgotPasswordRequest
 
     [System.Text.Json.Serialization.JsonPropertyName("tenant_id")]
     public int? TenantId { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("cf-turnstile-response")]
+    public string? CfTurnstileResponse { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("turnstile_token")]
+    public string? TurnstileToken { get; init; }
 }
 
 public record VerifyEmailRequest

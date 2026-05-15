@@ -117,6 +117,13 @@
             }
           }) }}
 
+          {% if turnstileSiteKey %}
+          <div class="govuk-form-group">
+            <div class="cf-turnstile" data-sitekey="{{ turnstileSiteKey }}" data-theme="auto"></div>
+          </div>
+          <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+          {% endif %}
+
           {{ govukButton({
             text: "Sign in"
           }) }}

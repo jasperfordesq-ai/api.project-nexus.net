@@ -101,6 +101,8 @@ export interface LoginRequest {
   tenant_slug?: string;
   tenant_id?: number;
   platform?: 'web' | 'mobile' | 'pwa';
+  /** Cloudflare Turnstile challenge token (when widget configured). */
+  turnstile_token?: string;
 }
 
 export interface LoginSuccessResponse {
