@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth, useTenant, useToast } from '@/contexts';
 import { GlassCard } from '@/components/ui';
 import { PageMeta } from '@/components/seo';
-import { usePageTitle } from '@/hooks';
+import { usePageTitle, useTurnstile } from '@/hooks';
 import { api, tokenManager } from '@/lib/api';
 import {
   isBiometricAvailable,
@@ -69,25 +69,8 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Cloudflare Turnstile — credential-stuffing defence on login.
-  const [turnstileToken, setTurnstileToken] = useState<string>('');
-  const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ?? '';
-  useEffect(() => {
-    if (!turnstileSiteKey) return;
-    const CB = '__nexusTurnstileLoginCb';
-    (window as unknown as Record<string, (t: string) => void>)[CB] = (token: string) => {
-      setTurnstileToken(token);
-    };
-    if (!document.getElementById('cf-turnstile-script')) {
-      const s = document.createElement('script');
-      s.id = 'cf-turnstile-script';
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-      s.async = true;
-      s.defer = true;
-      document.head.appendChild(s);
-    }
-    return () => { setTurnstileToken(''); };
-  }, [turnstileSiteKey]);
+  // Cloudflare Turnstile — explicit render via shared hook.
+  const { token: turnstileToken, siteKey: turnstileSiteKey, containerRef: turnstileRef } = useTurnstile();
 
   // 2FA state
   const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -567,14 +550,7 @@ export function LoginPage() {
                       </Link>
                     </div>
 
-                    {turnstileSiteKey && (
-                      <div
-                        className="cf-turnstile"
-                        data-sitekey={turnstileSiteKey}
-                        data-callback="__nexusTurnstileLoginCb"
-                        data-theme="auto"
-                      />
-                    )}
+                    {turnstileSiteKey && <div ref={turnstileRef} className="my-2" />}
 
                     <Button
                       type="submit"

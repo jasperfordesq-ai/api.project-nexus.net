@@ -7,7 +7,8 @@
  * Forgot Password Page - Request password reset
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useTurnstile } from '@/hooks/useTurnstile';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button, Input } from '@heroui/react';
@@ -25,25 +26,8 @@ export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string>('');
-  const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ?? '';
-
-  useEffect(() => {
-    if (!turnstileSiteKey) return;
-    const CB = '__nexusTurnstileForgotCb';
-    (window as unknown as Record<string, (t: string) => void>)[CB] = (token: string) => {
-      setTurnstileToken(token);
-    };
-    if (!document.getElementById('cf-turnstile-script')) {
-      const s = document.createElement('script');
-      s.id = 'cf-turnstile-script';
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-      s.async = true;
-      s.defer = true;
-      document.head.appendChild(s);
-    }
-    return () => { setTurnstileToken(''); };
-  }, [turnstileSiteKey]);
+  // Cloudflare Turnstile — explicit render via shared hook.
+  const { token: turnstileToken, siteKey: turnstileSiteKey, containerRef: turnstileRef } = useTurnstile();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -150,14 +134,7 @@ export function ForgotPasswordPage() {
               isRequired
             />
 
-            {turnstileSiteKey && (
-              <div
-                className="cf-turnstile"
-                data-sitekey={turnstileSiteKey}
-                data-callback="__nexusTurnstileForgotCb"
-                data-theme="auto"
-              />
-            )}
+            {turnstileSiteKey && <div ref={turnstileRef} className="my-2" />}
 
             <Button
               type="submit"
