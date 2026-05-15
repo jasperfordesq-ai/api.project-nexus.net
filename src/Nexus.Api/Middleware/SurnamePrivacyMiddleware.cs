@@ -24,12 +24,50 @@ public sealed class SurnamePrivacyMiddleware
 {
     private static readonly string[] SurnameKeys =
     {
-        "last_name", "lastName", "LastName", "surname", "Surname"
+        "last_name", "lastName", "LastName", "Lastname", "lastname",
+        "surname", "Surname",
+        "family_name", "familyName", "FamilyName",
+        "lname", "LName"
     };
 
+    // Composite name fields: rewritten to first-name-only on user-shaped
+    // objects. The string-only gate in ScrubObject means we never mangle
+    // integer-valued keys (e.g. created_by: 42).
     private static readonly string[] CompositeNameKeys =
     {
-        "name", "full_name", "fullName", "display_name", "displayName"
+        "name", "Name",
+        "full_name", "fullName", "FullName",
+        "display_name", "displayName", "DisplayName",
+        "OwnerDisplayName", "owner_display_name",
+        "author_name", "authorName", "AuthorName",
+        "creator_name", "creatorName", "CreatorName",
+        "owner_name", "ownerName", "OwnerName",
+        "host_name", "hostName", "HostName",
+        "organizer_name", "organizerName", "OrganizerName",
+        "recipient_name", "recipientName", "RecipientName",
+        "sender_name", "senderName", "SenderName",
+        "from_name", "fromName", "FromName",
+        "to_name", "toName", "ToName",
+        "reviewer_name", "reviewerName", "ReviewerName",
+        "member_name", "memberName", "MemberName",
+        "user_name", "UserName", // userName intentionally omitted — that's the handle, no spaces
+        "posted_by_name", "postedByName", "PostedByName",
+        "posted_by", "postedBy", "PostedBy",
+        "created_by_name", "createdByName", "CreatedByName",
+        "created_by", "createdBy", "CreatedBy",
+        "updated_by_name", "updatedByName", "UpdatedByName",
+        "verifier_name", "verifierName", "VerifierName",
+        "rejector_name", "rejectorName", "RejectorName",
+        "nominee_name", "nomineeName",
+        "participant_name", "participantName",
+        "commenter_name", "commenterName",
+        "endorser_name", "endorserName",
+        "inviter_name", "inviterName",
+        "invitee_name", "inviteeName",
+        "granted_by_name", "grantedByName",
+        "approved_by_name", "approvedByName",
+        "assigned_to_name", "assignedToName",
+        "counterparty", "Counterparty", "counterparty_name"
     };
 
     private static readonly string[] FirstNameKeys =
@@ -206,8 +244,21 @@ public sealed class SurnamePrivacyMiddleware
         foreach (var k in CompositeNameKeys)
         {
             if (!obj.TryGetPropertyValue(k, out var v) || v is not JsonValue cv) continue;
-            var current = cv.ToString();
+
+            // STRING-ONLY GATE: only rewrite when the existing value is a
+            // string. Many of these key names (created_by, posted_by) are
+            // commonly integer foreign keys — mangling those would break the
+            // frontend's type expectations.
+            if (cv.GetValueKind() != System.Text.Json.JsonValueKind.String) continue;
+
+            var current = cv.GetValue<string>();
             if (string.IsNullOrWhiteSpace(current)) continue;
+            if (!current.Contains(' ') && string.IsNullOrWhiteSpace(firstName))
+            {
+                // Single-token string with no first_name to copy from — likely
+                // already a first name or a handle. Leave it.
+                continue;
+            }
 
             string replacement;
             if (!string.IsNullOrWhiteSpace(firstName))
@@ -216,7 +267,6 @@ public sealed class SurnamePrivacyMiddleware
             }
             else
             {
-                // Split on first whitespace run; keep the leading token.
                 var trimmed = current.TrimStart();
                 var spaceIdx = trimmed.IndexOfAny(new[] { ' ', '\t', '\n' });
                 replacement = spaceIdx > 0 ? trimmed[..spaceIdx] : trimmed;

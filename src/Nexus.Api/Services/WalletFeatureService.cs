@@ -267,9 +267,11 @@ public class WalletFeatureService
         foreach (var t in transactions)
         {
             var type = t.SenderId == userId ? "sent" : "received";
+            // Surnames are admin-only on this platform; CSV exports are
+            // member-accessible so we emit first name only here.
             var counterparty = t.SenderId == userId
-                ? $"{t.Receiver?.FirstName} {t.Receiver?.LastName}"
-                : $"{t.Sender?.FirstName} {t.Sender?.LastName}";
+                ? (t.Receiver?.FirstName ?? string.Empty)
+                : (t.Sender?.FirstName ?? string.Empty);
 
             // CSV-escape all user-controlled fields to prevent CSV injection
             // (formulae starting with =, +, -, @, tab, CR can be exploited)

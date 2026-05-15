@@ -45,7 +45,9 @@ public class EmergencyAlertsController : ControllerBase
             {
                 a.Id, a.Title, a.Description, a.Urgency, a.ContactInfo,
                 a.IsActive, a.CreatedAt, a.ResolvedAt,
-                created_by = a.CreatedBy != null ? a.CreatedBy.FirstName + " " + a.CreatedBy.LastName : null
+                created_by = a.CreatedBy != null
+                    ? new { id = a.CreatedBy.Id, first_name = a.CreatedBy.FirstName, last_name = a.CreatedBy.LastName }
+                    : null
             })
             .ToListAsync();
 

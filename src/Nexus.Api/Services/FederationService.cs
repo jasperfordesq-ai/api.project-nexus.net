@@ -254,7 +254,7 @@ public class FederationService
                 existing.Description = listing.Description;
                 existing.ListingType = listing.Type.ToString().ToLowerInvariant();
                 existing.OwnerDisplayName = listing.User != null
-                    ? $"{listing.User.FirstName} {listing.User.LastName}"
+                    ? (listing.User.FirstName ?? "Unknown")
                     : "Unknown";
                 existing.Status = FederatedListingStatus.Active;
                 existing.SyncedAt = DateTime.UtcNow;
