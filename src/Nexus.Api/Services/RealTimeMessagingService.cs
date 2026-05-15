@@ -50,12 +50,14 @@ public class MessageNotification
 
 /// <summary>
 /// DTO for sender information in notifications.
+/// Surname is intentionally omitted — surnames are admin-only on this platform
+/// (see SurnamePrivacyMiddleware). SignalR bypasses HTTP middleware, so the
+/// privacy boundary is enforced at the DTO level here.
 /// </summary>
 public class SenderInfo
 {
     public int Id { get; set; }
     public string? FirstName { get; set; }
-    public string? LastName { get; set; }
 }
 
 /// <summary>

@@ -368,8 +368,7 @@ public class MessagesController : ControllerBase
             Sender = new SenderInfo
             {
                 Id = sender.Id,
-                FirstName = sender.FirstName,
-                LastName = sender.LastName
+                FirstName = sender.FirstName
             },
             IsRead = message.IsRead,
             CreatedAt = message.CreatedAt

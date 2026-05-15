@@ -443,6 +443,12 @@ app.UseAuthentication();
 // Authorization - enforces [Authorize] attributes
 app.UseAuthorization();
 
+// Surname privacy — strips last_name / surname from /api/* JSON responses
+// for non-admin viewers. A member always sees their own surname (object's
+// id matches current user). MUST run after Authentication so role + user_id
+// are populated, and before any feature middleware that may short-circuit.
+app.UseMiddleware<Nexus.Api.Middleware.SurnamePrivacyMiddleware>();
+
 // Emergency Lockdown check - blocks non-admin, non-health requests when lockdown is active
 // MUST be after Authentication/Authorization so admin role can be checked
 app.UseMiddleware<LockdownCheckMiddleware>();
