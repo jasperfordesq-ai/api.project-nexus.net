@@ -46,7 +46,8 @@ import { usePageTitle, useTurnstile } from '@/hooks';
 import { GlassCard } from '@/components/ui';
 import { PlaceAutocompleteInput } from '@/components/location';
 import { api, tokenManager } from '@/lib/api';
-import { PASSWORD_REQUIREMENTS, isPasswordValid, getPasswordStrength } from '@/lib/validation';
+import { usePasswordCheck } from '@/hooks/usePasswordCheck';
+import { PasswordStrength } from '@/components/auth/PasswordStrength';
 
 interface Tenant {
   id: number;
@@ -95,6 +96,7 @@ export function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const passwordCheck = usePasswordCheck(password);
   const [showPassword, setShowPassword] = useState(false);
 
   // Form state - Profile
@@ -256,7 +258,7 @@ export function RegisterPage() {
     email.trim() &&
     password.trim() &&
     passwordConfirm.trim() &&
-    isPasswordValid(password) &&
+    passwordCheck.isAcceptable &&
     password === passwordConfirm;
   const isStep4Valid = termsAccepted;
 
@@ -305,8 +307,8 @@ export function RegisterPage() {
       return;
     }
 
-    // Password validation
-    if (!isPasswordValid(password)) {
+    // Password gate — length + HIBP breach check (see usePasswordCheck).
+    if (!passwordCheck.isAcceptable) {
       return;
     }
 
@@ -363,7 +365,7 @@ export function RegisterPage() {
     requiresInviteCode, inviteCode, navigate, tenantPath,
   ]);
 
-  const passwordValid = isPasswordValid(password);
+  const passwordValid = passwordCheck.isAcceptable;
   const passwordsMatch = password === passwordConfirm;
 
   const isFormValid =
@@ -705,45 +707,10 @@ export function RegisterPage() {
                 }}
               />
 
-              {/* Password strength indicator */}
-              {password && (
-                <div className="mt-2 space-y-2">
-                  <Progress
-                    value={getPasswordStrength(password)}
-                    color={
-                      getPasswordStrength(password) < 40
-                        ? 'danger'
-                        : getPasswordStrength(password) < 80
-                          ? 'warning'
-                          : 'success'
-                    }
-                    size="sm"
-                    aria-label="Password strength"
-                  />
-                  <ul className="space-y-1 text-xs">
-                    {PASSWORD_REQUIREMENTS.map((req) => {
-                      const passed = req.test(password);
-                      return (
-                        <li
-                          key={req.id}
-                          className={`flex items-center gap-1.5 ${
-                            passed
-                              ? 'text-emerald-500 dark:text-emerald-400'
-                              : 'text-theme-subtle'
-                          }`}
-                        >
-                          {passed ? (
-                            <Check className="w-3 h-3" aria-hidden="true" />
-                          ) : (
-                            <X className="w-3 h-3" aria-hidden="true" />
-                          )}
-                          {req.label}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
+              {/* Password strength — NIST 800-63B aligned: length + HIBP live check */}
+              <div className="mt-2">
+                <PasswordStrength state={passwordCheck} />
+              </div>
             </div>
 
             {/* Confirm Password */}

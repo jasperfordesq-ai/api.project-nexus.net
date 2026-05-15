@@ -164,7 +164,9 @@ app.use(helmet({
       fontSrc: ["'self'"],
       // challenges.cloudflare.com — Turnstile siteverify (server-side) +
       // browser-side widget telemetry posts back to its own origin.
-      connectSrc: ["'self'", "https://challenges.cloudflare.com"],
+      // api.pwnedpasswords.com — client-side HIBP k-anonymity check on the
+      // register / reset-password forms.
+      connectSrc: ["'self'", "https://challenges.cloudflare.com", "https://api.pwnedpasswords.com"],
       // frameSrc: Turnstile renders an iframe to challenges.cloudflare.com
       // to host the bot challenge UI. Was 'none' — that blocked the widget.
       frameSrc: ["https://challenges.cloudflare.com"],

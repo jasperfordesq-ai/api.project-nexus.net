@@ -458,21 +458,18 @@ public class AuthController : ControllerBase
         }
         else
         {
-            // Match V1's Password::min(8)->mixedCase()->numbers() rule so
-            // server-side validation is symmetric across V1 PHP and V2 .NET.
-            if (request.Password.Length < 8)
-                errors.Add("Password must be at least 8 characters");
-            if (!request.Password.Any(char.IsUpper))
-                errors.Add("Password must contain at least one uppercase letter");
-            if (!request.Password.Any(char.IsLower))
-                errors.Add("Password must contain at least one lowercase letter");
-            if (!request.Password.Any(char.IsDigit))
-                errors.Add("Password must contain at least one digit");
+            // NIST SP 800-63B aligned: 12-char minimum, NO mandatory
+            // character classes. Real defence is the HIBP breach check
+            // below — complexity rules without breach checks just push
+            // users to predictable patterns like "P@ssw0rd1!".
+            if (request.Password.Length < 12)
+                errors.Add("Password must be at least 12 characters. A memorable passphrase is stronger than a short complex one.");
 
-            // HIBP k-anonymity check — only checked when complexity rules pass
-            // (no point hitting the API for a password we're about to reject).
+            // HIBP k-anonymity check — gates submission against known breach
+            // corpora. Only checked when length is OK (no point hitting the
+            // API for a password we're about to reject).
             if (errors.Count == 0 && await _pwnedPassword.IsPwnedAsync(request.Password))
-                errors.Add("This password appears in a known data breach and cannot be used. Please choose a different password.");
+                errors.Add("This password appears in a known data breach. Please choose a different password.");
         }
 
         if (string.IsNullOrWhiteSpace(request.FirstName))
@@ -798,16 +795,9 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = "New password is required" });
         }
 
-        // Match registration password rules so a user can't escape the
-        // complexity gate via the reset flow.
-        if (request.NewPassword.Length < 8)
-            return BadRequest(new { error = "Password must be at least 8 characters" });
-        if (!request.NewPassword.Any(char.IsUpper))
-            return BadRequest(new { error = "Password must contain at least one uppercase letter" });
-        if (!request.NewPassword.Any(char.IsLower))
-            return BadRequest(new { error = "Password must contain at least one lowercase letter" });
-        if (!request.NewPassword.Any(char.IsDigit))
-            return BadRequest(new { error = "Password must contain at least one digit" });
+        // NIST 800-63B aligned (mirror of Register rule above): length only.
+        if (request.NewPassword.Length < 12)
+            return BadRequest(new { error = "Password must be at least 12 characters. A memorable passphrase is stronger than a short complex one." });
 
         // HIBP k-anonymity — same rule as Register.
         if (await _pwnedPassword.IsPwnedAsync(request.NewPassword))
