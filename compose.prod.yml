@@ -31,6 +31,10 @@ services:
       - Sentry__Dsn=${Sentry__Dsn:-}
       - Sentry__Environment=${Sentry__Environment:-production}
       - Sentry__TracesSampleRate=${Sentry__TracesSampleRate:-0.1}
+      # Cloudflare Turnstile — secret-key verification on registration paths.
+      # Site key is public and goes to the React/UK frontends only. Empty
+      # secret disables verification (dev/CI mode).
+      - Turnstile__SecretKey=${TURNSTILE_SECRET_KEY:-}
     volumes:
       - nexus-backend-uploads:/app/uploads
 
@@ -47,6 +51,7 @@ services:
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
         VITE_SENTRY_ENVIRONMENT: ${VITE_SENTRY_ENVIRONMENT:-production}
         VITE_SENTRY_TRACES_SAMPLE_RATE: ${VITE_SENTRY_TRACES_SAMPLE_RATE:-0.1}
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
     ports: !override
       - "127.0.0.1:5173:80"
     volumes: !override []
@@ -87,3 +92,7 @@ services:
       - COOKIE_SECRET=${COOKIE_SECRET:?COOKIE_SECRET environment variable is required}
       - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET environment variable is required}
       - TENANT_ID=${TENANT_ID:-1}
+      # Cloudflare Turnstile — site key renders the widget; secret key verifies
+      # the token server-side before forwarding to the .NET API.
+      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
