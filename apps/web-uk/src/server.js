@@ -157,12 +157,17 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       // GOV.UK Frontend requires an inline script to detect JS support
       // Hash is for: document.body.className += ' js-enabled' + ('noModule' in HTMLScriptElement.prototype ? ' govuk-frontend-supported' : '');
-      scriptSrc: ["'self'", "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='"],
+      // challenges.cloudflare.com — Cloudflare Turnstile widget script.
+      scriptSrc: ["'self'", "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='", "https://challenges.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:"],
       fontSrc: ["'self'"],
-      connectSrc: ["'self'"],
-      frameSrc: ["'none'"],
+      // challenges.cloudflare.com — Turnstile siteverify (server-side) +
+      // browser-side widget telemetry posts back to its own origin.
+      connectSrc: ["'self'", "https://challenges.cloudflare.com"],
+      // frameSrc: Turnstile renders an iframe to challenges.cloudflare.com
+      // to host the bot challenge UI. Was 'none' — that blocked the widget.
+      frameSrc: ["https://challenges.cloudflare.com"],
       objectSrc: ["'none'"]
     }
   },
