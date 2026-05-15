@@ -127,6 +127,23 @@ router.get('/register', redirectIfAuthenticated, (req, res) => {
 });
 
 router.post('/register', asyncRoute(async (req, res) => {
+  // Bot honeypot — `website` is a hidden field in register.njk that real
+  // users never see or fill. Bots auto-fill every input and give themselves
+  // away. Render the same "check your email" success page so the bot
+  // can't distinguish rejection from real registration.
+  const honeypotValue = req.body && (req.body.website || req.body.honeypot);
+  if (honeypotValue && String(honeypotValue).trim() !== '') {
+    console.info('[security] registration.honeypot_triggered', {
+      ip: req.ip,
+      ua: (req.headers['user-agent'] || '').slice(0, 200),
+      value: String(honeypotValue).slice(0, 100),
+    });
+    return res.render('register-success', {
+      title: 'Check your email',
+      email: (req.body.email || '').trim(),
+    });
+  }
+
   const { email, password, confirm_password, first_name, last_name, tenant_slug } = req.body;
 
   const errors = [];

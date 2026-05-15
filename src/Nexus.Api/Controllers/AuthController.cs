@@ -394,6 +394,27 @@ public class AuthController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
+        // Bot honeypot — if a value came back in the hidden `website` or
+        // explicit `honeypot` field, this is form-spam. Mirror the success
+        // response shape so the attacker can't distinguish bot-rejection
+        // from genuine registration, and log for telemetry. No DB write,
+        // no welcome email, no user row.
+        var honeypotValue = request.Honeypot ?? request.Website;
+        if (!string.IsNullOrWhiteSpace(honeypotValue))
+        {
+            _logger.LogInformation(
+                "registration.honeypot_triggered tenant={TenantSlug} ip={Ip} value={Value}",
+                request.TenantSlug,
+                GetClientIp(),
+                honeypotValue.Length > 100 ? honeypotValue[..100] : honeypotValue);
+            return Ok(new
+            {
+                success = true,
+                message = "Registration successful. Please check your email to verify your account.",
+                requires_verification = true,
+            });
+        }
+
         // Validate required fields
         var errors = new List<string>();
 
@@ -1027,6 +1048,15 @@ public record RegisterRequest
 
     [System.Text.Json.Serialization.JsonPropertyName("invite_code")]
     public string? InviteCode { get; init; }
+
+    // Bot honeypot — hidden field on the frontend form. Real users never
+    // fill it; form-spam bots auto-fill every input. Accepted under either
+    // `website` or `honeypot` to align with V1's field name.
+    [System.Text.Json.Serialization.JsonPropertyName("website")]
+    public string? Website { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("honeypot")]
+    public string? Honeypot { get; init; }
 }
 
 public record ForgotPasswordRequest

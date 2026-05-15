@@ -20,6 +20,16 @@
       <form method="post" action="/register" novalidate data-validate-form data-loading="Creating account...">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
+        {# Honeypot — hidden from real users (off-screen + aria-hidden + tabindex=-1)
+           but auto-filled by form-spam bots. The Express route should drop submissions
+           where `website` is non-empty and return the success page anyway so the bot
+           can't tell it was rejected. Off-screen rather than display:none because many
+           bots skip display:none fields. #}
+        <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+          <label for="website">Website (leave blank)</label>
+          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" value="">
+        </div>
+
         {{ govukInput({
           label: {
             text: "First name",
