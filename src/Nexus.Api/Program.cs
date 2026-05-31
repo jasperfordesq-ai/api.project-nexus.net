@@ -29,6 +29,29 @@ builder.WebHost.UseSentry(o =>
     o.Environment = builder.Configuration["Sentry:Environment"] ?? builder.Environment.EnvironmentName;
     o.TracesSampleRate = builder.Configuration.GetValue("Sentry:TracesSampleRate", 0.1);
     o.SendDefaultPii = builder.Configuration.GetValue("Sentry:SendDefaultPii", false);
+
+    // Drop EF Core's "Failed executing DbCommand" error logs from Sentry.
+    //
+    // EF Core logs every failed command at Error level under the
+    // "Microsoft.EntityFrameworkCore.Database.Command" category. Sentry's
+    // logging integration turns those Error logs into standalone issues — but
+    // they are pure duplicate noise:
+    //   - When a query fails inside a request, the exception propagates and is
+    //     already captured (with a full stack trace + request context) by the
+    //     ASP.NET Core integration / global exception handler.
+    //   - When a scheduled job's DB write fails, the failure is deliberately
+    //     swallowed (observability writes in ScheduledHostedService must never
+    //     block job work) and any genuine job failure is captured explicitly
+    //     via SentrySdk.CaptureException with a `job_name` tag.
+    // In both cases the raw EF command-error log adds nothing and only creates
+    // stack-trace-less, "system-only" issues (e.g. DOTNET-ASPNETCORE-9).
+    // Dropping log-derived events from this category here suppresses the noise
+    // without affecting captured exceptions or console/Serilog logging — the
+    // logging integration stamps SentryEvent.Logger with the category name.
+    o.SetBeforeSend((@event, _) =>
+        @event.Logger == "Microsoft.EntityFrameworkCore.Database.Command"
+            ? null
+            : @event);
 });
 
 // =============================================================================
