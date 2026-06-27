@@ -1,8 +1,8 @@
-# Project NEXUS - Backend
+# Project NEXUS — .NET Edition
 
-> **Status: Development Alpha** — under active development. APIs, schemas, and behaviour may change without notice. Not recommended for production use.
+> **Status: Experimental / Development Alpha** — under active development. APIs, schemas, and behaviour may change without notice. Not recommended for production use.
 
-A timebanking/community platform backend built with ASP.NET Core 8.
+The **experimental ASP.NET Core 8 backend** for Project NEXUS, a timebanking/community platform. It is a next-gen build that shares the same React frontend as the canonical **[Laravel Edition](https://github.com/jasperfordesq-ai/nexus-v1)** — the in-production platform — and is not a replacement for it.
 
 ## Credits and Origins
 

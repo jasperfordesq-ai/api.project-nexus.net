@@ -144,14 +144,14 @@ INCLUDING LOSS OF DATA, BUSINESS INTERRUPTION, OR REGULATORY PENALTIES.
 COMMERCIAL LICENSING & DUAL-LICENSING RESERVATION
 ================================================================================
 
-Project NEXUS V2 is published under AGPL-3.0-or-later. Separately, Jasper Ford,
+Project NEXUS .NET Edition is published under AGPL-3.0-or-later. Separately, Jasper Ford,
 or an entity authorised by Jasper Ford, may offer commercial licences,
 proprietary licences, source-available licences, hosted services, support,
 maintenance, warranty, implementation, training, or other commercial
 arrangements covering this same code.
 
 Nothing in this NOTICE, in the AGPL licence, or in any contribution accepted
-into this repository transfers ownership of Project NEXUS V2, grants any
+into this repository transfers ownership of Project NEXUS .NET Edition, grants any
 trademark licence, removes any right granted by AGPL-3.0-or-later, or prevents
 Jasper Ford from offering the same code under separate commercial, proprietary,
 support, hosting, warranty, or service terms to customers who receive such
@@ -166,30 +166,32 @@ Contributions to this repository are governed by `CONTRIBUTOR_TERMS.md`.
 Submitting a contribution requires an explicit acknowledgement of those terms,
 which include a broad relicensing grant to Jasper Ford (and any future Project
 Steward Jasper Ford designates). This grant is what preserves the ability to
-offer Project NEXUS V2 under both AGPL-3.0-or-later and commercial terms.
+offer Project NEXUS .NET Edition under both AGPL-3.0-or-later and commercial terms.
 
 ================================================================================
 RELATED PROJECTS
 ================================================================================
 
-Project NEXUS is actively developed across two codebases:
+Project NEXUS is developed across two backend editions:
 
-  V1 (original platform):
+  Laravel Edition (canonical, in-production):
     PHP 8.2+ / React 18 / MariaDB
     https://github.com/jasperfordesq-ai/nexus-v1
 
-  V2 (this repository):
+  .NET Edition (this repository, experimental):
     ASP.NET Core 8 / React 18 / PostgreSQL
     https://github.com/jasperfordesq-ai/api.project-nexus.net
 
-V1 is the original platform — functional, in production, and the foundation
-of all Project NEXUS communities. V2 is a new backend being built alongside
-V1, progressively replacing the PHP API. Both share the same React frontend
-and design system.
+The Laravel Edition is the canonical, in-production platform and the
+foundation of all Project NEXUS communities. The .NET Edition is an
+experimental next-gen backend that re-implements the same API on ASP.NET
+Core 8 / PostgreSQL and shares the same React frontend and design system; it
+is not yet recommended for production.
 
 Note: This section is informational. The attribution requirements in
-Section 7(b) above apply to THIS repository only. References to V1 are
-provided for context and are not required for downstream compliance.
+Section 7(b) above apply to THIS repository only. References to the Laravel
+Edition are provided for context and are not required for downstream
+compliance.
 
 ================================================================================
 

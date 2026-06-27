@@ -151,14 +151,14 @@ INCLUDING LOSS OF DATA, BUSINESS INTERRUPTION, OR REGULATORY PENALTIES.
 COMMERCIAL LICENSING & DUAL-LICENSING RESERVATION
 ================================================================================
 
-This application (web-uk) is part of Project NEXUS V2 and is published under
+This application (web-uk) is part of Project NEXUS .NET Edition and is published under
 AGPL-3.0-or-later. Separately, Jasper Ford, or an entity authorised by Jasper
 Ford, may offer commercial licences, proprietary licences, source-available
 licences, hosted services, support, maintenance, warranty, implementation,
 training, or other commercial arrangements covering this same code.
 
 Nothing in this NOTICE, in the AGPL licence, or in any contribution accepted
-into this repository transfers ownership of Project NEXUS V2, grants any
+into this repository transfers ownership of Project NEXUS .NET Edition, grants any
 trademark licence, removes any right granted by AGPL-3.0-or-later, or prevents
 Jasper Ford from offering the same code under separate commercial, proprietary,
 support, hosting, warranty, or service terms to customers who receive such
@@ -168,7 +168,7 @@ Contributions are governed by `CONTRIBUTOR_TERMS.md` at the repository root.
 Submitting a contribution requires an explicit acknowledgement of those terms,
 which include a broad relicensing grant to Jasper Ford (and any future Project
 Steward Jasper Ford designates). This grant is what preserves the ability to
-offer Project NEXUS V2 under both AGPL-3.0-or-later and commercial terms.
+offer Project NEXUS .NET Edition under both AGPL-3.0-or-later and commercial terms.
 
 ================================================================================
 

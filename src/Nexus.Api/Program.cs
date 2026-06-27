@@ -385,7 +385,7 @@ if (allowedOrigins.Length > 0 && !app.Environment.IsProduction())
     }
     else if (runDemoShowcaseSeed)
     {
-        logger.LogWarning("Running explicitly requested Project NEXUS V2 demo showcase seed in {Environment}.", app.Environment.EnvironmentName);
+        logger.LogWarning("Running explicitly requested Project NEXUS .NET Edition demo showcase seed in {Environment}.", app.Environment.EnvironmentName);
         await DemoShowcaseSeedData.SeedAsync(db, logger, app.Environment, allowProduction: true);
 
         if (seedOnly)

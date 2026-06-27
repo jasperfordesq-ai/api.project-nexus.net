@@ -54,12 +54,12 @@ curl https://api.project-nexus.net/health
 ## Production Ports
 
 See [`production-containers.md`](./production-containers.md) for the full
-domain → container map and the V2 SPA deploy procedure.
+domain → container map and the .NET Edition SPA deploy procedure.
 
 | Service | Container | Container port | Host binding |
 |---|---|---:|---|
 | API | `nexus-backend-api` | 8080 | 127.0.0.1:5080 |
-| React frontend (V2) | `nexus-react-frontend` (manual `docker run`, NOT compose) | 80 | 127.0.0.1:**5210** |
+| React frontend (.NET Edition) | `nexus-react-frontend` (manual `docker run`, NOT compose) | 80 | 127.0.0.1:**5210** |
 | UK frontend | `nexus-uk-frontend-dev` | 3001 | 127.0.0.1:5180 |
 | Admin panel | `nexus-admin-dev` | 80 | 127.0.0.1:5191 |
 

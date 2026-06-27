@@ -67,7 +67,7 @@ EOSTATUS
 fi
 
 echo "============================================"
-echo "  Project NEXUS V2 - API Production Deploy"
+echo "  Project NEXUS .NET Edition - API Production Deploy"
 echo "  Mode: $MODE"
 echo "  Target: $SERVER:$REMOTE_DIR"
 echo "  Note: SPA deploys live in .claude/production-containers.md"

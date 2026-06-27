@@ -1,6 +1,6 @@
 @echo off
 REM =============================================================================
-REM Project NEXUS V2 - Cloudflare Cache Purge (All Domains) — Windows
+REM Project NEXUS .NET Edition - Cloudflare Cache Purge (All Domains) — Windows
 REM =============================================================================
 REM Purges the Cloudflare cache for all project domains after deployment.
 REM Can be run standalone or is called automatically by deploy.sh / deploy-production.bat.

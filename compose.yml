@@ -135,7 +135,7 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # React Frontend (apps/react-frontend) - V1 React SPA converted for V2 backend
+  # React Frontend (apps/react-frontend) - shared React SPA, wired to the .NET Edition backend
   # Production domain: platform.project-nexus.net
   # ---------------------------------------------------------------------------
   react-frontend:

@@ -16,7 +16,7 @@
 - [ ] I have disclosed meaningful AI-generated or AI-assisted contributions in this PR, or this PR contains no meaningful AI-generated or AI-assisted contribution.
 
 **Third-Party Material Disclosure:** None
-<!-- If this PR includes third-party material, list the source, licence, and why it is compatible with Project NEXUS V2 licensing. -->
+<!-- If this PR includes third-party material, list the source, licence, and why it is compatible with Project NEXUS .NET Edition licensing. -->
 
 **AI Contribution Disclosure:** None
 <!-- If AI tools materially generated, rewrote, translated, designed, or structured this PR, list the tool/model and what it was used for. -->

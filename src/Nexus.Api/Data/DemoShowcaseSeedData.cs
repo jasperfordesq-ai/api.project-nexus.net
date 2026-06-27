@@ -14,7 +14,7 @@ using Nexus.Api.Entities;
 namespace Nexus.Api.Data;
 
 /// <summary>
-/// Local-development showcase data for Project NEXUS V2.
+/// Local-development showcase data for Project NEXUS .NET Edition.
 /// This enriches the main tenant after the baseline seed has run and is hard-blocked in Production.
 /// </summary>
 public static class DemoShowcaseSeedData
@@ -35,7 +35,7 @@ public static class DemoShowcaseSeedData
             return;
         }
 
-        logger.LogInformation("Seeding Project NEXUS V2 demo showcase data...");
+        logger.LogInformation("Seeding Project NEXUS .NET Edition demo showcase data...");
 
         var now = DateTime.UtcNow;
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(DemoPassword);
@@ -47,7 +47,7 @@ public static class DemoShowcaseSeedData
             {
                 Slug = MainTenantSlug,
                 Name = "ACME Community Timebank",
-                Tagline = "A full Project NEXUS V2 demo tenant",
+                Tagline = "A full Project NEXUS .NET Edition demo tenant",
                 Domain = "acme.localhost",
                 LogoUrl = $"{AssetBaseUrl}/nexus-v2-community-hub.png",
                 IsActive = true,
@@ -56,7 +56,7 @@ public static class DemoShowcaseSeedData
             t =>
             {
                 t.Name = "ACME Community Timebank";
-                t.Tagline = "A full Project NEXUS V2 demo tenant";
+                t.Tagline = "A full Project NEXUS .NET Edition demo tenant";
                 t.Domain ??= "acme.localhost";
                 t.LogoUrl = $"{AssetBaseUrl}/nexus-v2-community-hub.png";
                 t.IsActive = true;
@@ -139,7 +139,7 @@ public static class DemoShowcaseSeedData
         await SeedFederationAndAutomationAsync(db, mainTenant.Id, globexTenant.Id, admin.Id, globexAdmin.Id, member.Id, repairListing.Id, now);
 
         logger.LogInformation(
-            "Project NEXUS V2 demo showcase seed complete for tenant {TenantSlug}. Demo users share a shared local password (see DemoShowcaseSeedData source).",
+            "Project NEXUS .NET Edition demo showcase seed complete for tenant {TenantSlug}. Demo users share a shared local password (see DemoShowcaseSeedData source).",
             mainTenant.Slug);
     }
 
@@ -258,7 +258,7 @@ public static class DemoShowcaseSeedData
             {
                 Key = "demo_showcase_enabled",
                 Value = "true",
-                Description = "Enables local Project NEXUS V2 showcase data.",
+                Description = "Enables local Project NEXUS .NET Edition showcase data.",
                 Category = "demo",
                 UpdatedById = adminId,
                 UpdatedAt = now,
@@ -875,13 +875,13 @@ public static class DemoShowcaseSeedData
 
         var eventItem = await EnsureAsync(
             db,
-            e => e.TenantId == tenantId && e.Title == "Project NEXUS V2 Demo Open Day",
+            e => e.TenantId == tenantId && e.Title == "Project NEXUS .NET Edition Demo Open Day",
             () => new Event
             {
                 TenantId = tenantId,
                 CreatedById = coordinatorId,
                 GroupId = group.Id,
-                Title = "Project NEXUS V2 Demo Open Day",
+                Title = "Project NEXUS .NET Edition Demo Open Day",
                 Description = "A full platform showcase: listings, exchanges, passkeys, groups, shifts, AI, safeguarding and impact analytics.",
                 Location = "ACME Community Hub",
                 StartsAt = now.Date.AddDays(14).AddHours(10),
@@ -1039,8 +1039,8 @@ public static class DemoShowcaseSeedData
             {
                 TenantId = tenantId,
                 Slug = "demo-v2-showcase",
-                Name = "V2 Showcase Explorer",
-                Description = "Explored the full Project NEXUS V2 demo tenant.",
+                Name = ".NET Edition Showcase Explorer",
+                Description = "Explored the full Project NEXUS .NET Edition demo tenant.",
                 Icon = "sparkles",
                 XpReward = 250,
                 SortOrder = 100,
@@ -1512,7 +1512,7 @@ public static class DemoShowcaseSeedData
 
     private static async Task SeedContentAndCommsAsync(NexusDbContext db, int tenantId, int adminId, int coordinatorId, int memberId, DateTime now)
     {
-        var blogCategory = await EnsureAsync(db, c => c.TenantId == tenantId && c.Slug == "showcase", () => new BlogCategory { TenantId = tenantId, Name = "Showcase", Slug = "showcase", Description = "Project NEXUS V2 demo stories and release notes.", Color = "#0F766E", SortOrder = 1, CreatedAt = now.AddDays(-30) });
+        var blogCategory = await EnsureAsync(db, c => c.TenantId == tenantId && c.Slug == "showcase", () => new BlogCategory { TenantId = tenantId, Name = "Showcase", Slug = "showcase", Description = "Project NEXUS .NET Edition demo stories and release notes.", Color = "#0F766E", SortOrder = 1, CreatedAt = now.AddDays(-30) });
 
         await EnsureAsync(
             db,
@@ -1520,10 +1520,10 @@ public static class DemoShowcaseSeedData
             () => new BlogPost
             {
                 TenantId = tenantId,
-                Title = "Project NEXUS V2 demo showcase",
+                Title = "Project NEXUS .NET Edition demo showcase",
                 Slug = "project-nexus-v2-demo-showcase",
-                Content = "This demo tenant shows every major V2 module with realistic community data: time credits, matching, groups, shifts, content, governance, AI and compliance.",
-                Excerpt = "A guided tour of the full Project NEXUS V2 platform.",
+                Content = "This demo tenant shows every major .NET Edition module with realistic community data: time credits, matching, groups, shifts, content, governance, AI and compliance.",
+                Excerpt = "A guided tour of the full Project NEXUS .NET Edition platform.",
                 FeaturedImageUrl = $"{AssetBaseUrl}/nexus-v2-community-hub.png",
                 Status = "published",
                 CategoryId = blogCategory.Id,
@@ -1533,8 +1533,8 @@ public static class DemoShowcaseSeedData
                 ViewCount = 420,
                 PublishedAt = now.AddDays(-12),
                 CreatedAt = now.AddDays(-14),
-                MetaTitle = "Project NEXUS V2 Demo Showcase",
-                MetaDescription = "Explore the full Project NEXUS V2 demo tenant.",
+                MetaTitle = "Project NEXUS .NET Edition Demo Showcase",
+                MetaDescription = "Explore the full Project NEXUS .NET Edition demo tenant.",
                 OgImageUrl = $"{AssetBaseUrl}/nexus-v2-community-hub.png"
             });
 
@@ -1544,9 +1544,9 @@ public static class DemoShowcaseSeedData
             () => new Page
             {
                 TenantId = tenantId,
-                Title = "About Project NEXUS V2",
+                Title = "About Project NEXUS .NET Edition",
                 Slug = "about-project-nexus-v2",
-                Content = "<h1>Project NEXUS V2</h1><p>A modern timebanking platform demo with full AGPL attribution, source availability and community impact modules.</p>",
+                Content = "<h1>Project NEXUS .NET Edition</h1><p>A modern timebanking platform demo with full AGPL attribution, source availability and community impact modules.</p>",
                 IsPublished = true,
                 SortOrder = 1,
                 ShowInMenu = true,
@@ -1554,7 +1554,7 @@ public static class DemoShowcaseSeedData
                 PublishAt = now.AddDays(-10),
                 CreatedById = adminId,
                 CurrentVersion = 1,
-                MetaTitle = "About Project NEXUS V2",
+                MetaTitle = "About Project NEXUS .NET Edition",
                 MetaDescription = "License, attribution, source code and demo tenant information.",
                 CreatedAt = now.AddDays(-10)
             });
@@ -1584,11 +1584,11 @@ public static class DemoShowcaseSeedData
         var legal = await db.LegalDocuments.FirstAsync(d => d.TenantId == tenantId && d.Slug == "terms-of-service" && d.Version == "2.0-demo");
         await EnsureAsync(db, a => a.TenantId == tenantId && a.UserId == memberId && a.LegalDocumentId == legal.Id, () => new LegalDocumentAcceptance { TenantId = tenantId, UserId = memberId, LegalDocumentId = legal.Id, AcceptedAt = now.AddDays(-12), IpAddress = "127.0.0.1", UserAgent = "Demo browser" });
 
-        await EnsureAsync(db, t => t.TenantId == tenantId && t.Key == "demo.showcase.title" && t.Locale == "en", () => new Translation { TenantId = tenantId, Locale = "en", Key = "demo.showcase.title", Value = "Project NEXUS V2 Showcase", Namespace = "demo", IsApproved = true, ApprovedById = adminId, CreatedAt = now.AddDays(-1) });
+        await EnsureAsync(db, t => t.TenantId == tenantId && t.Key == "demo.showcase.title" && t.Locale == "en", () => new Translation { TenantId = tenantId, Locale = "en", Key = "demo.showcase.title", Value = "Project NEXUS .NET Edition Showcase", Namespace = "demo", IsApproved = true, ApprovedById = adminId, CreatedAt = now.AddDays(-1) });
         await EnsureAsync(db, l => l.TenantId == tenantId && l.UserId == memberId, () => new UserLanguagePreference { TenantId = tenantId, UserId = memberId, PreferredLocale = "en", FallbackLocale = "ga", CreatedAt = now.AddDays(-20) });
 
-        await EnsureAsync(db, e => e.TenantId == tenantId && e.Key == "demo_welcome", () => new EmailTemplate { TenantId = tenantId, Key = "demo_welcome", Subject = "Welcome to the Project NEXUS V2 demo", BodyHtml = "<p>Hello {{user_name}}, explore every seeded module in the demo tenant.</p>", BodyText = "Hello {{user_name}}, explore every seeded module in the demo tenant.", IsActive = true, CreatedAt = now.AddDays(-30) });
-        await EnsureAsync(db, e => e.TenantId == tenantId && e.ToEmail == "member@acme.test" && e.TemplateKey == "demo_welcome", () => new EmailLog { TenantId = tenantId, UserId = memberId, ToEmail = "member@acme.test", Subject = "Welcome to the Project NEXUS V2 demo", TemplateKey = "demo_welcome", Status = EmailSendStatus.Sent, SentAt = now.AddDays(-1), CreatedAt = now.AddDays(-1) });
+        await EnsureAsync(db, e => e.TenantId == tenantId && e.Key == "demo_welcome", () => new EmailTemplate { TenantId = tenantId, Key = "demo_welcome", Subject = "Welcome to the Project NEXUS .NET Edition demo", BodyHtml = "<p>Hello {{user_name}}, explore every seeded module in the demo tenant.</p>", BodyText = "Hello {{user_name}}, explore every seeded module in the demo tenant.", IsActive = true, CreatedAt = now.AddDays(-30) });
+        await EnsureAsync(db, e => e.TenantId == tenantId && e.ToEmail == "member@acme.test" && e.TemplateKey == "demo_welcome", () => new EmailLog { TenantId = tenantId, UserId = memberId, ToEmail = "member@acme.test", Subject = "Welcome to the Project NEXUS .NET Edition demo", TemplateKey = "demo_welcome", Status = EmailSendStatus.Sent, SentAt = now.AddDays(-1), CreatedAt = now.AddDays(-1) });
 
         var newsletter = await EnsureAsync(db, n => n.TenantId == tenantId && n.Subject == "V2 showcase weekly digest", () => new Newsletter { TenantId = tenantId, Subject = "V2 showcase weekly digest", ContentHtml = "<h1>Demo highlights</h1><p>Repair cafe, garden planning and partner workflows are ready.</p>", ContentText = "Demo highlights: repair cafe, garden planning and partner workflows are ready.", Status = NewsletterStatus.Sent, SentAt = now.AddDays(-2), CreatedById = adminId, RecipientCount = 8, OpenCount = 6, ClickCount = 3, CreatedAt = now.AddDays(-3) });
         await EnsureAsync(db, s => s.TenantId == tenantId && s.Email == "member@acme.test", () => new NewsletterSubscription { TenantId = tenantId, UserId = memberId, Email = "member@acme.test", IsSubscribed = true, Source = "demo_seed", SubscribedAt = now.AddDays(-30), CreatedAt = now.AddDays(-30) });
@@ -1750,7 +1750,7 @@ public static class DemoShowcaseSeedData
         await EnsureAsync(db, l => l.ApiKeyId == apiKey.Id && l.Path == "/api/federation/listings", () => new FederationApiLog { TenantId = tenantId, ApiKeyId = apiKey.Id, HttpMethod = "GET", Path = "/api/federation/listings", StatusCode = 200, IpAddress = "127.0.0.1", DurationMs = 42, Direction = "inbound", CreatedAt = now.AddHours(-2) });
 
         await EnsureAsync(db, t => t.TenantId == tenantId && t.TaskName == "demo_compute_matches", () => new ScheduledTask { TenantId = tenantId, TaskName = "demo_compute_matches", Status = ScheduledTaskStatus.Completed, LastRunAt = now.AddHours(-1), NextRunAt = now.AddHours(23), CronExpression = "0 2 * * *", Parameters = "{\"demo\":true}", RunCount = 12, AverageDurationMs = 860, CreatedAt = now.AddDays(-20) });
-        await EnsureAsync(db, a => a.TenantId == tenantId && a.Title == "Project NEXUS V2 demo data loaded", () => new PlatformAnnouncement { TenantId = tenantId, Title = "Project NEXUS V2 demo data loaded", Content = "All major modules have local showcase data. Use the demo accounts to explore member, broker and admin paths.", Type = AnnouncementType.Info, IsActive = true, StartsAt = now.AddDays(-1), EndsAt = now.AddDays(30), CreatedById = adminId, CreatedAt = now.AddDays(-1) });
+        await EnsureAsync(db, a => a.TenantId == tenantId && a.Title == "Project NEXUS .NET Edition demo data loaded", () => new PlatformAnnouncement { TenantId = tenantId, Title = "Project NEXUS .NET Edition demo data loaded", Content = "All major modules have local showcase data. Use the demo accounts to explore member, broker and admin paths.", Type = AnnouncementType.Info, IsActive = true, StartsAt = now.AddDays(-1), EndsAt = now.AddDays(30), CreatedById = adminId, CreatedAt = now.AddDays(-1) });
         await EnsureAsync(db, w => w.TenantId == tenantId && w.EventType == "demo.seed.completed", () => new WebhookEvent { TenantId = tenantId, EventType = "demo.seed.completed", Source = "demo-showcase-seeder", PayloadJson = "{\"version\":2}", Status = "processed", ReceivedAt = now });
     }
 

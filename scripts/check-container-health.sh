@@ -68,7 +68,7 @@ run_remote() {
 FAIL=0
 WARN=0
 
-echo -e "${BOLD}Project NEXUS V2 — Container Health Check${NC}"
+echo -e "${BOLD}Project NEXUS .NET Edition — Container Health Check${NC}"
 MODE_LABEL=$([ "${LOCAL_MODE:-0}" = "1" ] && echo "local" || echo "ssh")
 echo "Host: ${SSH_HOST:-localhost}  |  Mode: ${MODE_LABEL}"
 echo "Mem threshold: ${MEM_THRESHOLD_PCT}%  |  OOM lookback: ${OOM_LOOKBACK}"
@@ -84,7 +84,7 @@ STATS_RAW=$(run_remote "sudo docker stats --no-stream --format '{{.Name}}|{{.Mem
 }
 
 if [ -z "$STATS_RAW" ]; then
-    log_err "No Project NEXUS V2 containers from the allowlist were found on host"
+    log_err "No Project NEXUS .NET Edition containers from the allowlist were found on host"
     exit 2
 fi
 

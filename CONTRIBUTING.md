@@ -1,14 +1,16 @@
-# Contributing to Project NEXUS V2
+# Contributing to Project NEXUS .NET Edition
 
-Thank you for your interest in contributing to Project NEXUS V2 — the
-ASP.NET Core 8 backend and React/TypeScript front-ends that form the second
-generation of the Project NEXUS community timebanking platform.
+Thank you for your interest in contributing to Project NEXUS .NET Edition — the
+experimental ASP.NET Core 8 backend (and the React/TypeScript front-ends under
+`apps/`) for the Project NEXUS community timebanking platform. The Laravel
+Edition remains the canonical, in-production platform; the .NET Edition is an
+experimental next-gen build that shares the same React frontend.
 
-Project NEXUS V2 is released under **AGPL-3.0-or-later**. By contributing,
+Project NEXUS .NET Edition is released under **AGPL-3.0-or-later**. By contributing,
 you agree that your contributions will be licensed under the same terms.
 
 By submitting a contribution, you also agree to the
-[Project NEXUS V2 Contributor Terms](CONTRIBUTOR_TERMS.md), including the
+[Project NEXUS .NET Edition Contributor Terms](CONTRIBUTOR_TERMS.md), including the
 licence, patent, ownership, third-party-code, and AI-disclosure terms
 described there.
 
@@ -19,8 +21,8 @@ described there.
 ## Contributor Terms (Required)
 
 All contributions are subject to the
-[Project NEXUS V2 Contributor Terms](CONTRIBUTOR_TERMS.md). These terms give
-Jasper Ford, and any entity he designates to steward Project NEXUS V2, the
+[Project NEXUS .NET Edition Contributor Terms](CONTRIBUTOR_TERMS.md). These terms give
+Jasper Ford, and any entity he designates to steward Project NEXUS .NET Edition, the
 right to use contributions under AGPL-3.0-or-later **and** under commercial or
 proprietary licence terms.
 
@@ -72,7 +74,7 @@ description.
 
 ## AGPL-3.0 Compliance
 
-Project NEXUS V2 is licensed under the **GNU Affero General Public License
+Project NEXUS .NET Edition is licensed under the **GNU Affero General Public License
 v3.0 or later (AGPL-3.0-or-later)**.
 
 Key obligations for contributors:

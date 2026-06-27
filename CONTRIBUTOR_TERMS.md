@@ -1,4 +1,4 @@
-# Project NEXUS V2 Contributor Terms
+# Project NEXUS .NET Edition Contributor Terms
 
 These Contributor Terms apply to any Contribution submitted to the Project
 NEXUS V2 repository (`https://github.com/jasperfordesq-ai/api.project-nexus.net`)
@@ -11,10 +11,10 @@ By submitting a Contribution after that point, you agree to these terms. For
 Contributions submitted before these terms were published, these terms apply
 only if the contributor separately confirms acceptance.
 
-These terms are intended to protect the long-term ability of Project NEXUS V2
+These terms are intended to protect the long-term ability of Project NEXUS .NET Edition
 to remain open source under AGPL-3.0-or-later while also allowing Jasper Ford,
 or a future entity chosen by Jasper Ford to steward, operate, commercialise, or
-license Project NEXUS V2, to offer commercial licensing, hosted services,
+license Project NEXUS .NET Edition, to offer commercial licensing, hosted services,
 support, and proprietary or commercial arrangements where appropriate.
 
 This document is a project legal policy and should be reviewed by qualified
@@ -22,7 +22,7 @@ legal counsel before relying on it for a material commercial transaction.
 
 ## 1. Definitions
 
-**Project** means Project NEXUS V2 and the software, documentation, data,
+**Project** means Project NEXUS .NET Edition and the software, documentation, data,
 designs, assets, tests, configuration, build scripts, and other materials
 maintained in or for this repository, including the ASP.NET Core API, the
 React/TypeScript front-ends under `apps/`, and any related tooling.
@@ -35,7 +35,7 @@ Project for inclusion, review, discussion, or use.
 **Project Steward** means Jasper Ford and any company, nonprofit, foundation,
 association, successor, assignee, or other legal entity that Jasper Ford
 designates in a signed writing or public project notice to own, steward,
-operate, commercialise, sublicense, or license Project NEXUS V2.
+operate, commercialise, sublicense, or license Project NEXUS .NET Edition.
 
 **You** means the person or legal entity submitting the Contribution.
 
@@ -51,7 +51,7 @@ or medium.
 This licence includes the right for each Project Steward to:
 
 - release your Contribution under AGPL-3.0-or-later;
-- include your Contribution in Project NEXUS V2 and related products,
+- include your Contribution in Project NEXUS .NET Edition and related products,
   services, forks, distributions, hosted services, and commercial offerings;
 - relicense your Contribution under commercial, proprietary, source-available,
   open-source, dual-licence, or other licence terms;
@@ -87,7 +87,7 @@ distributing, hosting, sublicensing, or relicensing your Contribution in
 accordance with these terms.
 
 If you or an entity on whose behalf you submit a Contribution initiates patent
-litigation alleging that Project NEXUS V2 or your Contribution infringes a
+litigation alleging that Project NEXUS .NET Edition or your Contribution infringes a
 patent, the patent licence you granted under this section terminates to the
 maximum extent permitted by law.
 
@@ -146,7 +146,7 @@ that:
   these terms;
 - if no protectable rights exist in any AI-generated part, you will not
   assert ownership or control over that part in a way that conflicts with
-  Project NEXUS V2 using, modifying, sublicensing, relicensing, or
+  Project NEXUS .NET Edition using, modifying, sublicensing, relicensing, or
   distributing the Contribution;
 - you did not knowingly prompt the AI tool with secrets, confidential
   information, personal data, or third-party proprietary material that you

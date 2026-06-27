@@ -1,13 +1,15 @@
-# Project NEXUS - ASP.NET Core Backend
+# Project NEXUS .NET Edition (ASP.NET Core Backend)
 
 > 🚨 **Before deploying or touching any production container**, read [.claude/production-containers.md](./.claude/production-containers.md).
-> The V2 user-facing SPA is the **`nexus-react-frontend`** container on **port 5210** (built from `apps/react-frontend/Dockerfile.prod`, image `nexus-react-frontend:prod`). It is **not** managed by `docker compose`. Do not deploy via `docker compose build/up react-frontend` — that rebuilds an unrelated image with no vhost. The full domain → container map and the correct deploy commands are in that file. V1 (blue/green PHP) containers must never be touched from this repo.
+> The .NET Edition user-facing SPA is the **`nexus-react-frontend`** container on **port 5210** (built from `apps/react-frontend/Dockerfile.prod`, image `nexus-react-frontend:prod`). It is **not** managed by `docker compose`. Do not deploy via `docker compose build/up react-frontend` — that rebuilds an unrelated image with no vhost. The full domain → container map and the correct deploy commands are in that file. The Laravel Edition (blue/green PHP) containers must never be touched from this repo.
 
 ## What This Project Is
 
-This is the **new** ASP.NET Core 8 backend for Project NEXUS, a timebanking/community platform. It is being built using the **Strangler Fig pattern** to incrementally replace functionality from a legacy PHP application.
+This is the **Project NEXUS .NET Edition** — an **experimental, next-gen** ASP.NET Core 8 backend for Project NEXUS, a timebanking/community platform. It re-implements the platform API on .NET as a **clean implementation** (not a migration of the PHP codebase), sharing the same React frontend as the canonical Laravel Edition.
 
-**This is NOT a migration of the PHP codebase. This is a clean implementation.**
+The **Laravel Edition** (`nexus-v1`, PHP/Laravel 12) remains the **canonical, in-production platform** and keeps its own version line (1.x). The .NET Edition is a parallel build and is **not yet recommended for production**; it does not currently replace the Laravel Edition.
+
+> **Naming note:** this backend was formerly branded "V2" and the Laravel platform "V1". Throughout this doc, ".NET Edition" = this repo (formerly "V2"); "Laravel Edition" / "V1" = the canonical PHP platform. The `/api/v2/...` route prefixes are unrelated API versioning and are unaffected by this naming.
 
 **Architecture Note:** The backend serves admin-only endpoints (`/api/admin/*`). The production parity admin UI is the embedded React admin under `apps/react-frontend/src/admin/`. The standalone `apps/admin/` project may still exist for separate admin-service work, but it is not the primary V1 parity target unless explicitly requested.
 
@@ -487,7 +489,7 @@ Mailchimp is no longer used. Configuration:
 The legacy PHP platform (V1) is on Laravel 12 and is materially larger than
 prior V2 docs assumed. V2 progress after full audit:
 
-| Metric | V1 (PHP/Laravel 12) | V2 (ASP.NET) | Coverage |
+| Metric | Laravel Edition (V1) | .NET Edition | Coverage |
 |--------|---------------------|--------------|----------|
 | API Endpoints | **2,251** | ~814 | **36%** |
 | Services / business-logic classes | **418** | 94 | **22.5%** |
@@ -510,7 +512,7 @@ Explicitly Excluded From V2 Migration" above).
 
 ### Module Implementation Status
 
-| Module | V1 Services | V2 Status |
+| Module | Laravel Edition Services | .NET Edition Status |
 |--------|-------------|-----------|
 | Auth & Security | 5 services | Done (AuthController, PasskeyService, RegistrationOrchestrator, GmailEmailService) |
 | Exchange Workflow | 3 services | Done (ExchangeService, 11 endpoints, 22 tests) |

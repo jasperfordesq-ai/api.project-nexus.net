@@ -8,24 +8,24 @@
 
 ---
 
-## V2 stack (this repo — `apps/`)
+## .NET Edition stack (this repo — `apps/`)
 
 | Domain | → Port | Container | Source | Stack |
 |---|---|---|---|---|
-| **`platform.project-nexus.net`** | **5210** | **`nexus-react-frontend`** | `apps/react-frontend/` | **Vite + React 18 + TS + HeroUI + Tailwind 4** — main V2 SPA |
+| **`platform.project-nexus.net`** | **5210** | **`nexus-react-frontend`** | `apps/react-frontend/` | **Vite + React 18 + TS + HeroUI + Tailwind 4** — main .NET Edition SPA |
 | `admin.project-nexus.net` | 5191 | `nexus-admin-dev` | `apps/admin/` | Vite + Refine + Ant Design |
 | `api.project-nexus.net` | 5080 | `nexus-backend-api` | `src/Nexus.Api/` | ASP.NET Core 8 |
 | `uk.project-nexus.net` | 5180 | `nexus-uk-frontend-dev` | `apps/web-uk/` | Vite + GOV.UK Design System |
 | `ie.project-nexus.net` | 5200 | `nexus-web-govie` | (deleted from repo; container is a frozen snapshot) | Vite SPA |
 
-### 🚨 V2 deploy rules
+### 🚨 .NET Edition deploy rules
 
-1. **The V2 user-facing SPA is `nexus-react-frontend` on port `5210`.** That is what `platform.project-nexus.net` serves. **It is NOT a `docker compose` service.** Apache's vhost proxies `/` to `127.0.0.1:5210`.
+1. **The .NET Edition user-facing SPA is `nexus-react-frontend` on port `5210`.** That is what `platform.project-nexus.net` serves. **It is NOT a `docker compose` service.** Apache's vhost proxies `/` to `127.0.0.1:5210`.
 2. The image is `nexus-react-frontend:prod`, built from **`apps/react-frontend/Dockerfile.prod`**.
 3. There is no `nexus-react-frontend-dev` anymore — the duplicate Vite container was deleted 2026-05-12. If you see one come back, something is wrong.
 4. `docker compose build react-frontend` rebuilds the **wrong image** (`nexus-backend-react-frontend:latest`) for an unrelated compose service that no longer has a vhost. **Do not use compose to deploy the prod SPA.**
 
-### V2 SPA deploy procedure (copy/paste)
+### .NET Edition SPA deploy procedure (copy/paste)
 
 > SSH host + key path are in `.claude/production-server.md`. Set `NEXUS_DEPLOY_HOST` and use `$SSH_KEY` from that doc. All commands run *on the server* after `ssh`-ing in.
 
@@ -67,9 +67,9 @@ After deploying, a hard refresh (Ctrl+Shift+R) is needed in the browser to bypas
 
 ---
 
-## V1 stack (legacy PHP/Laravel — **DO NOT TOUCH from this repo**)
+## Laravel Edition stack (canonical PHP/Laravel — **DO NOT TOUCH from this repo**)
 
-The V1 stack is a separate codebase that lives in a different working tree (`C:\platforms\htdocs\staging`). It is deployed on this same server via `scripts/deploy/bluegreen-deploy.sh`. **Never deploy V1 changes from `asp.net-backend/`. Never restart V1 containers without checking the active color.**
+The Laravel Edition stack is a separate codebase that lives in a different working tree (`C:\platforms\htdocs\staging`). It is the canonical, in-production platform, deployed on this same server via `scripts/deploy/bluegreen-deploy.sh`. **Never deploy Laravel Edition changes from `asp.net-backend/`. Never restart Laravel Edition containers without checking the active color.**
 
 ### Active pair (blue, serves all V1 traffic)
 
@@ -98,13 +98,13 @@ The V1 stack is a separate codebase that lives in a different working tree (`C:\
 
 | Container | Role |
 |---|---|
-| `nexus-backend-db` | V2 Postgres (used by `nexus-backend-api`) |
-| `nexus-backend-rabbitmq` | V2 message queue |
+| `nexus-backend-db` | .NET Edition Postgres (used by `nexus-backend-api`) |
+| `nexus-backend-rabbitmq` | .NET Edition message queue |
 | `nexus-postgres` | (verify usage before touching) |
-| `nexus-redis` | V2 Redis |
-| `nexus-meilisearch` | V2 semantic search |
-| `nexus-php-db` | V1 MariaDB |
-| `nexus-php-redis` | V1 Redis |
+| `nexus-redis` | .NET Edition Redis |
+| `nexus-meilisearch` | .NET Edition semantic search |
+| `nexus-php-db` | Laravel Edition MariaDB |
+| `nexus-php-redis` | Laravel Edition Redis |
 
 ## Independent stacks (not deployed from this repo)
 
