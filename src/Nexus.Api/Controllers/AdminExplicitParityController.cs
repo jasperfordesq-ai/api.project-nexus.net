@@ -1303,6 +1303,14 @@ public class AdminExplicitParityController : ControllerBase
                     _ => FederationWebhookStatus.Active
                 };
             }
+            // Also honour a boolean enabled/is_active flag (the catch-all parity
+            // path already reads "enabled"). false => Paused, true => Active.
+            if (TryFindProperty(doc.RootElement, "enabled", out var en) ||
+                TryFindProperty(doc.RootElement, "is_active", out en))
+            {
+                if (en.ValueKind == JsonValueKind.False) sub.Status = FederationWebhookStatus.Paused;
+                else if (en.ValueKind == JsonValueKind.True) sub.Status = FederationWebhookStatus.Active;
+            }
         }
         catch (JsonException) { }
         return sub;

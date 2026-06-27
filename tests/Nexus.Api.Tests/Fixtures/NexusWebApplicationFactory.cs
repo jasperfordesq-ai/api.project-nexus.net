@@ -54,7 +54,16 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
                 ["RateLimiting:General:PermitLimit"] = "10000",
                 ["RateLimiting:General:WindowSeconds"] = "1",
                 ["RabbitMq:Enabled"] = "false", // Disable RabbitMQ for tests
-                ["LlamaService:BaseUrl"] = "http://localhost:11434" // Mock URL
+                ["LlamaService:BaseUrl"] = "http://localhost:11434", // Mock URL
+                // Disable the outbound-network security gates in the test host.
+                // Otherwise registration hits live third-party APIs in CI: the
+                // HIBP k-anonymity check rejects the common test passwords
+                // (e.g. "TestPassword123!", "NewPassword123!") as breached and
+                // returns 400, breaking every Register_* integration test.
+                // Turnstile is explicitly unset so the verifier short-circuits
+                // to pass (it already does when no secret is configured).
+                ["Hibp:Enabled"] = "false",
+                ["Turnstile:SecretKey"] = ""
             });
         });
 

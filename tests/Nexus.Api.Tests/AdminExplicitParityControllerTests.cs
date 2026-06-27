@@ -230,7 +230,8 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         var webhook = listJson.GetProperty("data").EnumerateArray()
             .Single(item => item.GetProperty("id").GetInt32() == id);
         webhook.GetProperty("name").GetString().Should().Be("Updated parity federation webhook");
-        webhook.GetProperty("status").GetString().Should().Be("disabled");
+        // enabled:false maps to the Paused state, which renders as "paused".
+        webhook.GetProperty("status").GetString().Should().Be("paused");
 
         var test = await Client.PostAsJsonAsync($"/api/v2/admin/federation/webhooks/{id}/test", new { sample = true });
         test.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -267,9 +268,14 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-        var config = await db.TenantConfigs.IgnoreQueryFilters()
-            .SingleAsync(c => c.TenantId == TestData.Tenant1.Id && c.Key == "admin_explicit.compatibility_writes");
-        config.Value.Should().Contain("/api/v2/admin/ad-campaigns/42/approve");
-        config.Value.Should().Contain("explicit parity test");
+        // Compatibility writes now land in the typed CompatibilityAuditEntry
+        // table, not TenantConfig (CLAUDE.md path-to-1000 item 12 — the legacy
+        // TenantConfig JSON dual-write was removed).
+        var audit = await db.CompatibilityAuditEntries.IgnoreQueryFilters()
+            .Where(e => e.TenantId == TestData.Tenant1.Id
+                && e.Endpoint == "/api/v2/admin/ad-campaigns/42/approve")
+            .OrderByDescending(e => e.Id)
+            .FirstAsync();
+        audit.RequestBody.Should().Contain("explicit parity test");
     }
 }

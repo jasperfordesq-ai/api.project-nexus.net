@@ -744,7 +744,7 @@ public class HourTransferReconciliationService
         var hasOuterTx = _db.Database.CurrentTransaction != null;
         IDbContextTransaction? localTx = null;
         if (!hasOuterTx)
-            localTx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+            localTx = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
         try
         {
             // Take the advisory lock(s). When both sides are local users, lock
@@ -757,6 +757,31 @@ public class HourTransferReconciliationService
             {
                 await _db.Database.ExecuteSqlRawAsync(
                     "SELECT pg_advisory_xact_lock({0})", new object[] { key }, ct);
+            }
+
+            // Double-checked locking under READ COMMITTED. We hold the advisory
+            // lock, so a concurrent reconciliation tick has either not entered its
+            // critical section yet or has already committed and released. Re-read
+            // the transfer's current status (AsNoTracking, READ COMMITTED — so we
+            // see a sibling tick's committed write; a Serializable snapshot, taken
+            // at the lock statement *before* it blocks, would still show the stale
+            // Acknowledged value). If another tick already settled it, abort
+            // without writing a second ledger row. Without this, two parallel
+            // ticks (the cron tick and a manual admin trigger) both write a
+            // Transaction — a double-spend.
+            var settledStatus = await _db.FederatedHourTransfers
+                .AsNoTracking()
+                .Where(x => x.Id == t.Id)
+                .Select(x => x.Status)
+                .FirstOrDefaultAsync(ct);
+            if (settledStatus != FederatedTransferStatus.Acknowledged)
+            {
+                if (localTx != null) await localTx.RollbackAsync(ct);
+                // Refresh the stale tracked entity to the winner's committed state
+                // so the outer ReconcileTenantAsync SaveChanges does not revert its
+                // Status / LocalTransactionId / ReconciledAt back.
+                await _db.Entry(t).ReloadAsync(ct);
+                return;
             }
 
             // For Outbound, the local user is spending credits — verify they
