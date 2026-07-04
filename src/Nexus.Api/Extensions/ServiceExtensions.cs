@@ -181,6 +181,7 @@ public static class ServiceExtensions
         services.AddScoped<ResearchAgreementTemplateService>();
         services.AddScoped<CaringCommunityRolePresetService>();
         services.AddScoped<CaringCommunityWorkflowService>();
+        services.AddScoped<CaringCommunityDataExportService>();
         services.AddScoped<CaringSafeguardingService>();
         services.AddScoped<CaringHelpRequestSlaService>();
         services.AddScoped<CaringSupportRelationshipService>();

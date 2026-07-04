@@ -5,6 +5,7 @@
 
 using System.Reflection;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -37,6 +38,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("safeguarding/my-reports");
 
+        controller.GetMethod("MyDataExport")
+            ?.GetCustomAttribute<HttpGetAttribute>()?.Template
+            .Should().Be("me/data-export");
+
         controller.GetMethod("PauseRelationship")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("my-relationships/{id:int}/pause");
@@ -48,6 +53,253 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         controller.GetMethod("ResumeRelationship")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("my-relationships/{id:int}/resume");
+    }
+
+    [Fact]
+    public async Task MyDataExport_StreamsTenantScopedPortableJsonWithoutCredentialFields()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        var exporter = User(10, 42, "Ada", "Exporter", "/avatars/ada.png");
+        exporter.Bio = "Can help with forms";
+        exporter.TrustTier = 3;
+        exporter.UpdatedAt = new DateTime(2026, 7, 4, 9, 0, 0, DateTimeKind.Utc);
+        db.Users.AddRange(
+            exporter,
+            User(11, 42, "Grace", "Neighbour"),
+            User(70, 7, "Other", "Tenant"));
+
+        db.VolunteerLogs.AddRange(
+            Log(801, 42, 10, 301, 11, new DateOnly(2026, 7, 2), 2.5m, "approved"),
+            Log(802, 42, 11, 301, 10, new DateOnly(2026, 7, 3), 9m, "approved"),
+            Log(803, 7, 10, 301, 70, new DateOnly(2026, 7, 4), 7m, "approved"));
+        db.CaringSupportRelationships.AddRange(
+            Relationship(301, 42, supporterId: 10, recipientId: 11, "Forms", "Benefits paperwork",
+                "weekly", 2m, "active", new DateOnly(2026, 7, 1), null, DateTime.UtcNow.AddDays(-3)),
+            Relationship(302, 42, supporterId: 11, recipientId: 10, "Shopping", null,
+                "monthly", 1m, "paused", new DateOnly(2026, 6, 1), null, DateTime.UtcNow.AddDays(-2)),
+            Relationship(303, 7, supporterId: 10, recipientId: 70, "Other tenant", null,
+                "weekly", 1m, "active", new DateOnly(2026, 6, 1), null, DateTime.UtcNow.AddDays(-1)));
+        db.CaringHelpRequests.AddRange(
+            new CaringHelpRequest
+            {
+                Id = 401,
+                TenantId = 42,
+                UserId = 10,
+                What = "Need lift",
+                WhenNeeded = "tomorrow",
+                Status = "pending",
+                CreatedAt = new DateTime(2026, 7, 2, 8, 0, 0, DateTimeKind.Utc)
+            },
+            new CaringHelpRequest
+            {
+                Id = 402,
+                TenantId = 42,
+                UserId = 11,
+                What = "Other member",
+                WhenNeeded = "today",
+                Status = "pending"
+            });
+        db.CaringFavours.AddRange(
+            new CaringFavour
+            {
+                Id = 501,
+                TenantId = 42,
+                OfferedByUserId = 10,
+                ReceivedByUserId = 11,
+                Category = "shopping",
+                Description = "Picked up medicine",
+                FavourDate = new DateOnly(2026, 7, 1)
+            },
+            new CaringFavour
+            {
+                Id = 502,
+                TenantId = 42,
+                OfferedByUserId = 11,
+                ReceivedByUserId = 10,
+                Category = "admin",
+                Description = "Translated letter",
+                FavourDate = new DateOnly(2026, 7, 2)
+            });
+        db.CaringHourGifts.AddRange(
+            new CaringHourGift
+            {
+                Id = 601,
+                TenantId = 42,
+                SenderUserId = 10,
+                RecipientUserId = 11,
+                Hours = 1.5m,
+                Status = "accepted",
+                AcceptedAt = new DateTime(2026, 7, 3, 9, 0, 0, DateTimeKind.Utc)
+            },
+            new CaringHourGift
+            {
+                Id = 602,
+                TenantId = 7,
+                SenderUserId = 10,
+                RecipientUserId = 70,
+                Hours = 4m,
+                Status = "pending"
+            });
+        db.CaringHourTransfers.AddRange(
+            new CaringHourTransfer
+            {
+                Id = 701,
+                TenantId = 42,
+                MemberUserId = 10,
+                CounterpartTenantSlug = "zurich-west",
+                CounterpartMemberEmail = "remote@example.test",
+                HoursTransferred = 3m,
+                Status = "approved"
+            },
+            new CaringHourTransfer
+            {
+                Id = 702,
+                TenantId = 42,
+                MemberUserId = 11,
+                CounterpartTenantSlug = "other",
+                CounterpartMemberEmail = "other@example.test",
+                HoursTransferred = 9m,
+                Status = "approved"
+            });
+        db.CaringLoyaltyRedemptions.AddRange(
+            new CaringLoyaltyRedemption
+            {
+                Id = 901,
+                TenantId = 42,
+                MemberUserId = 10,
+                MerchantUserId = 11,
+                CreditsUsed = 2m,
+                ExchangeRateChf = 25m,
+                DiscountChf = 50m,
+                OrderTotalChf = 100m,
+                Status = "applied"
+            },
+            new CaringLoyaltyRedemption
+            {
+                Id = 902,
+                TenantId = 42,
+                MemberUserId = 11,
+                MerchantUserId = 10,
+                CreditsUsed = 8m,
+                ExchangeRateChf = 25m,
+                DiscountChf = 200m,
+                OrderTotalChf = 300m,
+                Status = "applied"
+            });
+        db.CaringRegionalPointAccounts.Add(new CaringRegionalPointAccount
+        {
+            Id = 1001,
+            TenantId = 42,
+            UserId = 10,
+            Balance = 120m,
+            LifetimeEarned = 150m,
+            LifetimeSpent = 30m
+        });
+        db.CaringRegionalPointTransactions.AddRange(
+            new CaringRegionalPointTransaction
+            {
+                Id = 1102,
+                TenantId = 42,
+                AccountId = 1001,
+                UserId = 10,
+                Type = "admin_issue",
+                Direction = "credit",
+                Points = 25m,
+                BalanceAfter = 120m,
+                Description = "Pilot credit"
+            },
+            new CaringRegionalPointTransaction
+            {
+                Id = 1101,
+                TenantId = 42,
+                AccountId = 1001,
+                UserId = 10,
+                Type = "marketplace_redeem",
+                Direction = "debit",
+                Points = 10m,
+                BalanceAfter = 95m
+            },
+            new CaringRegionalPointTransaction
+            {
+                Id = 1103,
+                TenantId = 42,
+                AccountId = 1001,
+                UserId = 11,
+                Type = "admin_issue",
+                Direction = "credit",
+                Points = 999m,
+                BalanceAfter = 999m
+            });
+        db.SafeguardingReports.AddRange(
+            Report(1201, 42, reporterId: 10, "other", "medium", "My report", "submitted",
+                dueAt: null,
+                createdAt: new DateTime(2026, 7, 4, 8, 0, 0, DateTimeKind.Utc)),
+            Report(1202, 42, reporterId: 11, "other", "medium", "Other report", "submitted",
+                dueAt: null,
+                createdAt: new DateTime(2026, 7, 4, 9, 0, 0, DateTimeKind.Utc)));
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = 42,
+            Key = "caring.civic_digest.user_prefs.10",
+            Value = "{\"enabled\":true,\"cadence\":\"daily\"}",
+            CreatedAt = new DateTime(2026, 7, 1, 8, 0, 0, DateTimeKind.Utc)
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var result = await Invoke(controller, "MyDataExport", CancellationToken.None);
+
+        var file = result.Should().BeOfType<FileContentResult>().Subject;
+        var controllerBase = controller.Should().BeAssignableTo<ControllerBase>().Subject;
+        file.ContentType.Should().Be("application/json; charset=utf-8");
+        file.FileDownloadName.Should().StartWith("my-data-10-");
+        controllerBase.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().Should().Be("nosniff");
+        controllerBase.HttpContext.Response.Headers["Cache-Control"].ToString().Should()
+            .Be("no-store, no-cache, must-revalidate, private");
+        controllerBase.HttpContext.Response.Headers["Pragma"].ToString().Should().Be("no-cache");
+
+        using var document = JsonDocument.Parse(Encoding.UTF8.GetString(file.FileContents));
+        var root = document.RootElement;
+        root.GetProperty("tenant_id").GetInt32().Should().Be(42);
+        root.GetProperty("user_id").GetInt32().Should().Be(10);
+        root.GetProperty("exported_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var data = root.GetProperty("data");
+        var profile = data.GetProperty("profile");
+        profile.GetProperty("id").GetInt32().Should().Be(10);
+        profile.GetProperty("tenant_id").GetInt32().Should().Be(42);
+        profile.GetProperty("email").GetString().Should().Be("user10@example.test");
+        profile.GetProperty("first_name").GetString().Should().Be("Ada");
+        profile.GetProperty("trust_tier").GetInt32().Should().Be(3);
+        profile.TryGetProperty("password_hash", out _).Should().BeFalse();
+        profile.TryGetProperty("role", out _).Should().BeFalse();
+        profile.TryGetProperty("is_active", out _).Should().BeFalse();
+
+        data.GetProperty("vol_logs").EnumerateArray().Select(row => row.GetProperty("id").GetInt32())
+            .Should().Equal(801);
+        data.GetProperty("caring_support_relationships").EnumerateArray().Select(row => row.GetProperty("id").GetInt32())
+            .Should().Equal(302, 301);
+        data.GetProperty("caring_help_requests").EnumerateArray().Select(row => row.GetProperty("id").GetInt32())
+            .Should().Equal(401);
+        data.GetProperty("caring_favours").EnumerateArray().Select(row => row.GetProperty("id").GetInt32())
+            .Should().Equal(502, 501);
+        data.GetProperty("caring_hour_gifts").EnumerateArray().Select(row => row.GetProperty("id").GetInt64())
+            .Should().Equal(601);
+        data.GetProperty("caring_hour_transfers").EnumerateArray().Select(row => row.GetProperty("id").GetInt64())
+            .Should().Equal(701);
+        data.GetProperty("caring_loyalty_redemptions").EnumerateArray().Select(row => row.GetProperty("id").GetInt32())
+            .Should().Equal(901);
+        data.GetProperty("caring_regional_point_transactions").EnumerateArray()
+            .Select(row => row.GetProperty("id").GetInt64())
+            .Should().Equal(1102, 1101);
+        data.GetProperty("caring_regional_point_account").GetProperty("id").GetInt64().Should().Be(1001);
+        data.GetProperty("safeguarding_reports").EnumerateArray().Select(row => row.GetProperty("id").GetInt64())
+            .Should().Equal(1201);
+        data.GetProperty("civic_digest_preferences").GetProperty("tenant_config").EnumerateArray()
+            .Select(row => row.GetProperty("key").GetString())
+            .Should().Equal("caring.civic_digest.user_prefs.10");
     }
 
     [Fact]
@@ -167,6 +419,9 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         AssertSingleError(await Invoke(controller, "SafeguardingMyReports", CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
+        AssertSingleError(await Invoke(controller, "MyDataExport", CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
     }
 
     [Fact]
@@ -273,10 +528,12 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
     {
         var relationships = new CaringSupportRelationshipService(db);
         var safeguarding = new CaringSafeguardingService(db);
+        var dataExport = new CaringCommunityDataExportService(db);
         var controller = (ControllerBase)Activator.CreateInstance(
             Resolve(ControllerTypeName),
             relationships,
             safeguarding,
+            dataExport,
             tenant)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;

@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Nexus.Api.Controllers;
@@ -19,15 +21,18 @@ public sealed class CaringCommunityMemberController : ControllerBase
 {
     private readonly CaringSupportRelationshipService _relationships;
     private readonly CaringSafeguardingService _safeguarding;
+    private readonly CaringCommunityDataExportService _dataExport;
     private readonly TenantContext _tenant;
 
     public CaringCommunityMemberController(
         CaringSupportRelationshipService relationships,
         CaringSafeguardingService safeguarding,
+        CaringCommunityDataExportService dataExport,
         TenantContext tenant)
     {
         _relationships = relationships;
         _safeguarding = safeguarding;
+        _dataExport = dataExport;
         _tenant = tenant;
     }
 
@@ -67,6 +72,36 @@ public sealed class CaringCommunityMemberController : ControllerBase
 
         var items = await _safeguarding.MyReportsAsync(_tenant.GetTenantIdOrThrow(), userId.Value, ct);
         return Ok(new { data = new { items } });
+    }
+
+    [HttpGet("me/data-export")]
+    public async Task<IActionResult> MyDataExport(CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var payload = await _dataExport.BuildAsync(
+            _tenant.GetTenantIdOrThrow(),
+            user.UserId!.Value,
+            ct);
+
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+        var fileName = $"my-data-{user.UserId.Value}-{DateTime.UtcNow:yyyy-MM-dd}.json";
+
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private";
+        Response.Headers["Pragma"] = "no-cache";
+
+        return File(
+            Encoding.UTF8.GetBytes(json),
+            "application/json; charset=utf-8",
+            fileName);
     }
 
     [HttpPost("my-relationships/{id:int}/pause")]
