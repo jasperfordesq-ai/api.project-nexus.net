@@ -23,6 +23,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
     private readonly CaringSafeguardingService _safeguarding;
     private readonly CaringCommunityDataExportService _dataExport;
     private readonly CaringCommunityAhvPensionExportService _ahvPensionExport;
+    private readonly CaringCommunityFutureCareFundService _futureCareFund;
     private readonly TenantContext _tenant;
 
     public CaringCommunityMemberController(
@@ -30,12 +31,14 @@ public sealed class CaringCommunityMemberController : ControllerBase
         CaringSafeguardingService safeguarding,
         CaringCommunityDataExportService dataExport,
         CaringCommunityAhvPensionExportService ahvPensionExport,
+        CaringCommunityFutureCareFundService futureCareFund,
         TenantContext tenant)
     {
         _relationships = relationships;
         _safeguarding = safeguarding;
         _dataExport = dataExport;
         _ahvPensionExport = ahvPensionExport;
+        _futureCareFund = futureCareFund;
         _tenant = tenant;
     }
 
@@ -124,6 +127,23 @@ public sealed class CaringCommunityMemberController : ControllerBase
             user.UserId!.Value,
             fromDate,
             toDate,
+            ct);
+
+        return Ok(new { data });
+    }
+
+    [HttpGet("my-future-care-fund")]
+    public async Task<IActionResult> MyFutureCareFund(CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var data = await _futureCareFund.SummaryAsync(
+            _tenant.GetTenantIdOrThrow(),
+            user.UserId!.Value,
             ct);
 
         return Ok(new { data });

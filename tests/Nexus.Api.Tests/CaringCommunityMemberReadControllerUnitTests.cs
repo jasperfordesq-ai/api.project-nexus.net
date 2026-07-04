@@ -46,6 +46,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("my-ahv-pension-export");
 
+        controller.GetMethod("MyFutureCareFund")
+            ?.GetCustomAttribute<HttpGetAttribute>()?.Template
+            .Should().Be("my-future-care-fund");
+
         controller.GetMethod("PauseRelationship")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("my-relationships/{id:int}/pause");
@@ -373,6 +377,79 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
     }
 
     [Fact]
+    public async Task MyFutureCareFund_ReturnsLaravelZeitvorsorgeSummaryForMember()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = 42,
+            Key = "caring_community.workflow.default_hour_value_chf",
+            Value = "40"
+        });
+        db.Users.AddRange(
+            User(10, 42, "Ada", "Member"),
+            User(11, 42, "Grace", "Helper"),
+            User(70, 7, "Other", "Tenant"));
+
+        var currentMonthStart = new DateOnly(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var currentMonthLogDate = currentMonthStart.AddDays(1);
+        var currentMonthReceiveDate = currentMonthStart.AddDays(2);
+        var currentMonthTransactionDate = currentMonthStart.AddDays(3);
+
+        db.CaringSupportRelationships.AddRange(
+            Relationship(100, 42, supporterId: 11, recipientId: 10, "Care received", "Recipient relationship",
+                "weekly", 2m, "active", new DateOnly(2025, 12, 1), null, new DateTime(2025, 12, 1, 9, 0, 0)),
+            Relationship(102, 42, supporterId: 10, recipientId: 11, "Care given", "Supporter relationship",
+                "weekly", 2m, "active", new DateOnly(2025, 12, 1), null, new DateTime(2025, 12, 1, 9, 0, 0)),
+            Relationship(101, 42, supporterId: 11, recipientId: 70, "Other recipient", null,
+                "weekly", 2m, "active", new DateOnly(2025, 12, 1), null, new DateTime(2025, 12, 1, 9, 0, 0)));
+        db.VolunteerLogs.AddRange(
+            Log(1001, 42, 10, 102, 11, new DateOnly(2025, 12, 20), 1.25m, "approved", organizationId: 501),
+            Log(1002, 42, 10, 102, 11, currentMonthLogDate, 2.50m, "approved", organizationId: 502),
+            Log(1003, 42, 10, 102, 11, currentMonthLogDate, 99m, "pending", organizationId: 503),
+            Log(1004, 42, 11, 100, 10, new DateOnly(2025, 12, 22), 2.00m, "approved"),
+            Log(1005, 42, 11, 100, 10, currentMonthReceiveDate, 3.75m, "approved"),
+            Log(1006, 42, 11, 101, 70, currentMonthReceiveDate, 8.00m, "approved"),
+            Log(1007, 7, 10, 100, 70, currentMonthReceiveDate, 7.00m, "approved"));
+        db.Transactions.AddRange(
+            Transaction(2001, 42, senderId: 10, receiverId: 11, 4.00m, TransactionStatus.Completed,
+                currentMonthTransactionDate.ToDateTime(new TimeOnly(9, 0))),
+            Transaction(2002, 42, senderId: 10, receiverId: 11, 9.00m, TransactionStatus.Pending,
+                currentMonthTransactionDate.ToDateTime(new TimeOnly(10, 0))),
+            Transaction(2003, 7, senderId: 10, receiverId: 70, 12.00m, TransactionStatus.Completed,
+                currentMonthTransactionDate.ToDateTime(new TimeOnly(11, 0))));
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadData(await Invoke(controller, "MyFutureCareFund", CancellationToken.None));
+
+        data.GetProperty("total_banked_hours").GetDecimal().Should().Be(3.75m);
+        data.GetProperty("hours_received").GetDecimal().Should().Be(9.75m);
+        data.GetProperty("net_balance").GetDecimal().Should().Be(-6.00m);
+        data.GetProperty("chf_value_estimate").GetDecimal().Should().Be(-240.00m);
+        data.GetProperty("hour_value_chf").GetInt32().Should().Be(40);
+        data.GetProperty("lifetime_given").GetDecimal().Should().Be(3.75m);
+        data.GetProperty("lifetime_received").GetDecimal().Should().Be(9.75m);
+        data.GetProperty("reciprocity_ratio").GetDecimal().Should().Be(2.0m);
+        data.GetProperty("first_contribution_date").GetString().Should().Be("2025-12-20");
+        data.GetProperty("active_months").GetInt32().Should().Be(ExpectedActiveMonths(new DateOnly(2025, 12, 20)));
+        data.GetProperty("partner_organisations_helped").GetInt32().Should().Be(2);
+        data.GetProperty("this_month_hours_given").GetDecimal().Should().Be(2.50m);
+        data.GetProperty("this_month_hours_received").GetDecimal().Should().Be(7.75m);
+
+        var byYear = data.GetProperty("by_year").EnumerateArray().ToArray();
+        byYear.Select(row => row.GetProperty("year").GetInt32())
+            .Should().Equal(DateTime.UtcNow.Year, 2025);
+        byYear[0].GetProperty("hours_given").GetDecimal().Should().Be(2.50m);
+        byYear[0].GetProperty("hours_received").GetDecimal().Should().Be(7.75m);
+        byYear[1].GetProperty("hours_given").GetDecimal().Should().Be(1.25m);
+        byYear[1].GetProperty("hours_received").GetDecimal().Should().Be(2.00m);
+    }
+
+    [Fact]
     public async Task MyRelationships_ReturnsLaravelMemberRowsWithRecentLogs()
     {
         var tenant = CreateTenantContext(42);
@@ -496,6 +573,9 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             await Invoke(controller, "MyAhvPensionExport", null, null, CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
+        AssertSingleError(await Invoke(controller, "MyFutureCareFund", CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
     }
 
     [Fact]
@@ -604,12 +684,14 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         var safeguarding = new CaringSafeguardingService(db);
         var dataExport = new CaringCommunityDataExportService(db);
         var ahvPensionExport = new CaringCommunityAhvPensionExportService(db);
+        var futureCareFund = new CaringCommunityFutureCareFundService(db);
         var controller = (ControllerBase)Activator.CreateInstance(
             Resolve(ControllerTypeName),
             relationships,
             safeguarding,
             dataExport,
             ahvPensionExport,
+            futureCareFund,
             tenant)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;
@@ -730,13 +812,15 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         int recipientId,
         DateOnly date,
         decimal hours,
-        string status)
+        string status,
+        int? organizationId = null)
     {
         return new VolunteerLog
         {
             Id = id,
             TenantId = tenantId,
             UserId = userId,
+            OrganizationId = organizationId,
             CaringSupportRelationshipId = relationshipId,
             SupportRecipientId = recipientId,
             DateLogged = date,
@@ -744,6 +828,34 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             Status = status,
             CreatedAt = date.ToDateTime(TimeOnly.FromTimeSpan(TimeSpan.FromHours(12)))
         };
+    }
+
+    private static Transaction Transaction(
+        int id,
+        int tenantId,
+        int senderId,
+        int receiverId,
+        decimal amount,
+        TransactionStatus status,
+        DateTime createdAt)
+    {
+        return new Transaction
+        {
+            Id = id,
+            TenantId = tenantId,
+            SenderId = senderId,
+            ReceiverId = receiverId,
+            Amount = amount,
+            Status = status,
+            CreatedAt = createdAt
+        };
+    }
+
+    private static int ExpectedActiveMonths(DateOnly firstContribution)
+    {
+        var start = firstContribution.ToDateTime(TimeOnly.MinValue);
+        var months = (int)Math.Floor((DateTime.UtcNow - start).TotalDays / 30.4375);
+        return Math.Max(0, months);
     }
 
     private static SafeguardingReport Report(
