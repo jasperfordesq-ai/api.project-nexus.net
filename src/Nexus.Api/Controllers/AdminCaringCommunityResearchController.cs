@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
 using Nexus.Api.Services;
+using System.Text.Json;
 
 namespace Nexus.Api.Controllers;
 
@@ -45,6 +46,29 @@ public sealed class AdminCaringCommunityResearchController : ControllerBase
                 templates = _templates.ListTemplates()
             }
         });
+    }
+
+    [HttpPost("agreement-templates/{key}/render")]
+    public async Task<IActionResult> RenderAgreementTemplate(string key, [FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var guard = await GuardResearchAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        try
+        {
+            return Ok(new
+            {
+                data = _templates.Render(key, ExtractTemplateValues(request))
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status404NotFound,
+                LaravelError("TEMPLATE_NOT_FOUND", ex.Message));
+        }
     }
 
     [HttpGet("partners")]
@@ -97,5 +121,73 @@ public sealed class AdminCaringCommunityResearchController : ControllerBase
         }
 
         return new { errors = new[] { error } };
+    }
+
+    private static IReadOnlyDictionary<string, string> ExtractTemplateValues(Dictionary<string, object?>? request)
+    {
+        if (request is null || !request.TryGetValue("values", out var values) || values is null)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        if (values is JsonElement json)
+        {
+            return ExtractTemplateValues(json);
+        }
+
+        if (values is not IDictionary<string, object?> dictionary)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        return dictionary
+            .Select(item => (item.Key, Value: CoerceScalar(item.Value)))
+            .Where(item => item.Value is not null)
+            .ToDictionary(item => item.Key, item => item.Value!);
+    }
+
+    private static IReadOnlyDictionary<string, string> ExtractTemplateValues(JsonElement values)
+    {
+        if (values.ValueKind != JsonValueKind.Object)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        var result = new Dictionary<string, string>();
+        foreach (var property in values.EnumerateObject())
+        {
+            var value = CoerceScalar(property.Value);
+            if (value is not null)
+            {
+                result[property.Name] = value;
+            }
+        }
+
+        return result;
+    }
+
+    private static string? CoerceScalar(object? value)
+    {
+        return value switch
+        {
+            null => null,
+            JsonElement json => CoerceScalar(json),
+            string text => text,
+            bool flag => flag ? "true" : "false",
+            byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture),
+            _ => null
+        };
+    }
+
+    private static string? CoerceScalar(JsonElement value)
+    {
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number => value.GetRawText(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            _ => null
+        };
     }
 }

@@ -36,6 +36,9 @@ public class CaringCommunityResearchAdminControllerUnitTests
         researchController.GetMethod("AgreementTemplates")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("agreement-templates");
+        researchController.GetMethod("RenderAgreementTemplate")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("agreement-templates/{key}/render");
         researchController.GetMethod("Partners")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("partners");
@@ -83,6 +86,71 @@ public class CaringCommunityResearchAdminControllerUnitTests
         aggregate.GetProperty("placeholders").EnumerateArray()
             .Select(item => item.GetString())
             .Should().Contain("partner_name");
+    }
+
+    [Fact]
+    public async Task RenderAgreementTemplate_ReturnsLaravelRenderedShape()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateResearchController(db, tenant, userId: 9001);
+
+        var data = ReadDataObject(await Invoke(controller,
+            "RenderAgreementTemplate",
+            "aggregate_dataset_v1",
+            new Dictionary<string, object?>
+            {
+                ["values"] = new Dictionary<string, object?>
+                {
+                    ["partner_name"] = "Ageing Futures Lab",
+                    ["partner_institution"] = "FHNW",
+                    ["tenant_name"] = "KISS Zurich",
+                    ["jurisdiction"] = "Switzerland",
+                    ["dpo_name"] = "  ",
+                    ["period_start"] = "2026-01-01",
+                    ["ignored_array"] = new[] { "must", "be", "ignored" }
+                }
+            },
+            CancellationToken.None));
+
+        data.GetProperty("key").GetString().Should().Be("aggregate_dataset_v1");
+        data.GetProperty("title").GetString()
+            .Should().Be("Anonymised Aggregate Dataset Agreement (FADP/nDSG)");
+        data.GetProperty("markdown").GetString().Should()
+            .Contain("Ageing Futures Lab")
+            .And.Contain("FHNW")
+            .And.Contain("KISS Zurich")
+            .And.Contain("Switzerland")
+            .And.Contain("2026-01-01")
+            .And.Contain("{{dpo_name}}");
+        data.GetProperty("placeholders_used").EnumerateArray()
+            .Select(item => item.GetString())
+            .Should().Contain(new[] { "partner_name", "partner_institution", "tenant_name", "jurisdiction", "period_start" })
+            .And.NotContain("ignored_array");
+        data.GetProperty("placeholders_missing").EnumerateArray()
+            .Select(item => item.GetString())
+            .Should().Contain(new[] { "dpo_name", "dpo_email", "period_end" })
+            .And.NotContain("partner_name");
+    }
+
+    [Fact]
+    public async Task RenderAgreementTemplate_WhenUnknown_ReturnsLaravelTemplateNotFoundError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateResearchController(db, tenant, userId: 9001);
+
+        AssertSingleError(await Invoke(controller,
+                "RenderAgreementTemplate",
+                "missing_template",
+                new Dictionary<string, object?> { ["values"] = new Dictionary<string, object?>() },
+                CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "TEMPLATE_NOT_FOUND");
     }
 
     [Fact]
