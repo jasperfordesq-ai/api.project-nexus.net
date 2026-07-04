@@ -304,3 +304,36 @@ public class MerchantCouponRedemption : ITenantEntity
     public int? MarketplaceOrderId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public class MarketplaceSellerLoyaltySetting : ITenantEntity
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+    public int SellerUserId { get; set; }
+    public bool AcceptsTimeCredits { get; set; }
+    public decimal LoyaltyChfPerHour { get; set; } = 25m;
+    public int LoyaltyMaxDiscountPct { get; set; } = 50;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+}
+
+public class CaringLoyaltyRedemption : ITenantEntity
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+    public int MemberUserId { get; set; }
+    public int MerchantUserId { get; set; }
+    public int? MarketplaceListingId { get; set; }
+    public int? MarketplaceOrderId { get; set; }
+    public decimal CreditsUsed { get; set; }
+    public decimal ExchangeRateChf { get; set; }
+    public decimal DiscountChf { get; set; }
+    public decimal OrderTotalChf { get; set; }
+    public string Status { get; set; } = "applied";
+    public DateTime RedeemedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ReversedAt { get; set; }
+    public int? ReversedBy { get; set; }
+    public string? ReversalReason { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+}

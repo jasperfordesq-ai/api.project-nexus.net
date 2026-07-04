@@ -20,6 +20,9 @@ public class Listing : ITenantEntity
     public ListingStatus Status { get; set; } = ListingStatus.Active;
     public int? CategoryId { get; set; }
     public string? Location { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? ImageUrl { get; set; }
     public decimal? EstimatedHours { get; set; }
     public bool IsFeatured { get; set; }
     public int ViewCount { get; set; }

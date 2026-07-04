@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using Fido2NetLib;
+using Microsoft.AspNetCore.DataProtection;
 using Nexus.Api.Clients;
 using Nexus.Api.Configuration;
 using Nexus.Api.Services;
@@ -31,6 +32,7 @@ public static class ServiceExtensions
     {
         // Core infrastructure
         services.AddMemoryCache();
+        services.AddDataProtection();
         services.AddSingleton<CacheService>();
         services.AddScoped<GamificationService>();
         services.AddScoped<ExchangeService>();
@@ -140,6 +142,55 @@ public static class ServiceExtensions
         services.AddScoped<SubAccountService>();
         services.AddScoped<FederationAdminService>();
         services.AddScoped<SecretsVaultService>();
+        services.AddScoped<TenantSsoProviderService>();
+        services.AddScoped<CaringEmergencyAlertService>();
+        services.AddScoped<CaringFederationPeerService>();
+        services.AddScoped<CaringSubRegionService>();
+        services.AddScoped<CareProviderDirectoryService>();
+        services.AddScoped<ExternalIntegrationBacklogService>();
+        services.AddScoped<SuccessStoryService>();
+        services.AddScoped<CaregiverSupportService>();
+        services.AddScoped<ProjectAnnouncementService>();
+        services.AddScoped<CaringCategoryCoefficientService>();
+        services.AddScoped<CommercialBoundaryService>();
+        services.AddScoped<MunicipalCommunicationCopilotService>();
+        services.AddScoped<TenantDataQualityService>();
+        services.AddScoped<CivicDigestService>();
+        services.AddScoped<PilotDisclosurePackService>();
+        services.AddScoped<OperatingPolicyService>();
+        services.AddScoped<CaringCommunityMemberStatementService>();
+        services.AddScoped<MunicipalRoiService>();
+        services.AddScoped<CaringNudgeAnalyticsService>();
+        services.AddScoped<PaperOnboardingIntakeService>();
+        services.AddScoped<CaringFavourService>();
+        services.AddScoped<MunicipalityFeedbackService>();
+        services.AddScoped<MunicipalSurveyService>();
+        services.AddScoped<TrustTierService>();
+        services.AddScoped<WarmthPassService>();
+        services.AddScoped<LeadNurtureService>();
+        services.AddScoped<CaringLoyaltyService>();
+        services.AddScoped<CaringCommunityForecastService>();
+        services.AddScoped<IsolatedNodeReadinessService>();
+        services.AddScoped<CaringInviteCodeService>();
+        services.AddScoped<CaringKpiBaselineService>();
+        services.AddScoped<PilotLaunchReadinessService>();
+        services.AddScoped<PilotScoreboardService>();
+        services.AddScoped<CaringRecipientCircleService>();
+        services.AddScoped<CaringRegionalPointService>();
+        services.AddScoped<CaringResearchPartnershipService>();
+        services.AddScoped<ResearchAgreementTemplateService>();
+        services.AddScoped<CaringCommunityRolePresetService>();
+        services.AddScoped<CaringCommunityWorkflowService>();
+        services.AddScoped<CaringSafeguardingService>();
+        services.AddScoped<CaringHelpRequestSlaService>();
+        services.AddScoped<CaringSupportRelationshipService>();
+        services.AddScoped<CaringHourEstateService>();
+        services.AddScoped<CaringHourTransferService>();
+        services.AddScoped<CaringHourGiftService>();
+        services.AddScoped<KissTreffenService>();
+        services.AddScoped<CaringCommunityMarktService>();
+        services.AddScoped<CaringTandemMatchingService>();
+        services.AddScoped<IntegrationShowcaseService>();
         services.AddScoped<MarketplaceService>();
         services.AddScoped<EmailTemplateService>();
         services.AddScoped<VolunteerLongTailService>();
@@ -156,6 +207,12 @@ public static class ServiceExtensions
         services.AddScoped<Nexus.Api.Services.Federation.HourTransferReconciliationService>();
         services.AddScoped<Nexus.Api.Services.Federation.IFederationWebhookSubscriptionService, Nexus.Api.Services.Federation.FederationWebhookSubscriptionService>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.ReconcileFederatedHourTransfersJob>();
+
+        // Tenant SSO provider registry and OIDC discovery probes.
+        services.AddHttpClient("NexusSsoOidc", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(10);
+        });
 
         // Phase 69 — AI multi-provider abstraction. Each concrete provider is
         // registered as a scoped service; AiProviderFactory picks one based on
@@ -269,6 +326,10 @@ public static class ServiceExtensions
         // Registration Policy Engine
         services.AddSingleton<IIdentityVerificationProvider, MockIdentityVerificationProvider>();
         services.AddSingleton<IIdentityVerificationProvider, StripeIdentityProvider>();
+        services.AddSingleton<IIdentityVerificationProvider, VeriffIdentityProvider>();
+        services.AddSingleton<IIdentityVerificationProvider, OnfidoIdentityProvider>();
+        services.AddSingleton<IIdentityVerificationProvider, JumioIdentityProvider>();
+        services.AddSingleton<IIdentityVerificationProvider, IdenfyIdentityProvider>();
         services.AddSingleton<IdentityVerificationProviderFactory>();
         services.AddSingleton<ProviderConfigEncryption>();
         services.AddScoped<RegistrationOrchestrator>();

@@ -12,8 +12,8 @@
  * funnels through the AdminExplicitParityController persisted-write path
  * (TenantConfig JSON for now; typed EnterpriseConfig wiring is a follow-up).
  *
- * Modules surfaced as the default catalog mirror the OOS / in-scope list
- * documented in CLAUDE.md (Marketplace + Caring Community default off, etc).
+ * Modules surfaced as the default catalog mirror CLAUDE.md parity status
+ * (Marketplace + Caring Community default off until complete, etc).
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -46,8 +46,8 @@ interface ModuleEntry {
 // Default module catalog — describes what we expect tenants to toggle.
 // Values are merged with server-side EnterpriseConfig rows; server wins.
 const DEFAULT_MODULES: Array<{ key: string; name: string; description: string; defaultOn: boolean }> = [
-  { key: 'feature.marketplace', name: 'Marketplace', description: 'Buy/sell listings, orders, Stripe payments. OOS for V2 — leave off.', defaultOn: false },
-  { key: 'feature.caring_community', name: 'Caring Community', description: 'Caregiving, warmth pass, civic digest. OOS for V2.', defaultOn: false },
+  { key: 'feature.marketplace', name: 'Marketplace', description: 'Buy/sell listings, orders, Stripe payments. Tracked parity gap; leave off until complete.', defaultOn: false },
+  { key: 'feature.caring_community', name: 'Caring Community', description: 'Caregiving, warmth pass, civic digest. Tracked parity gap; leave off until complete.', defaultOn: false },
   { key: 'feature.federation', name: 'Federation', description: 'Cross-tenant timebank federation (CreditCommons + Komunitin).', defaultOn: true },
   { key: 'feature.ai', name: 'AI Assistants', description: 'Multi-provider AI (Ollama/Anthropic/OpenAI/Gemini) + named agents.', defaultOn: true },
   { key: 'feature.voice_messages', name: 'Voice Messages', description: 'Audio messages in conversations with transcription.', defaultOn: true },
@@ -142,7 +142,7 @@ export default function ModuleConfigurationPage() {
     <div>
       <PageHeader
         title="Module Configuration"
-        description="Toggle tenant feature modules on/off. Server-stored values override defaults. Marketplace and Caring Community are OOS for V2 — leave disabled."
+        description="Toggle tenant feature modules on/off. Server-stored values override defaults. Marketplace and Caring Community are tracked parity gaps; leave disabled until complete."
         actions={
           <Button variant="flat" size="sm" startContent={<RefreshCw size={16} />}
             onPress={load} isLoading={loading}>Refresh</Button>

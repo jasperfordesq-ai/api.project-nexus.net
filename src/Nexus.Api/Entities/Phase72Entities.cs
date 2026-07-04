@@ -100,7 +100,9 @@ public enum BookmarkContentType
     BlogPost = 3,
     User = 4,
     Resource = 5,
-    Job = 6
+    Job = 6,
+    Post = 7,
+    Discussion = 8
 }
 
 [Index(nameof(TenantId), nameof(UserId), nameof(ContentType), nameof(ContentId), IsUnique = true)]

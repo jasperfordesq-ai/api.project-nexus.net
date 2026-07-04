@@ -307,14 +307,14 @@ This document tracks the implementation progress of the NEXUS UK Frontend.
 
 | Feature | Reason | Backend Status |
 |---------|--------|----------------|
-| Avatar Upload | Backlog in FRONTEND_INTEGRATION.md | Endpoint exists |
-| File/Image Uploads | Backlog in FRONTEND_INTEGRATION.md | Endpoints exist |
-| Two-Factor Auth (TOTP) | Backlog in FRONTEND_INTEGRATION.md | Endpoints exist |
-| User Preferences | Backlog in FRONTEND_INTEGRATION.md | Endpoints exist |
-| Push Notifications | Backlog in FRONTEND_INTEGRATION.md | Not implemented |
-| Admin Dashboard | Backlog in FRONTEND_INTEGRATION.md | Endpoints exist |
-| Volunteering | Backlog in FRONTEND_INTEGRATION.md | Not implemented |
-| GDPR Data Export | Backlog in FRONTEND_INTEGRATION.md | Not implemented |
+| Avatar Upload | Tracked in root parity docs | Endpoint exists |
+| File/Image Uploads | Tracked in root parity docs | Endpoints exist |
+| Two-Factor Auth (TOTP) | Tracked in root parity docs | Endpoints exist |
+| User Preferences | Tracked in root parity docs | Endpoints exist |
+| Push Notifications | Tracked in root parity docs | Not implemented |
+| Admin Dashboard | Tracked in root parity docs | Endpoints exist |
+| Volunteering | Tracked in root parity docs | Not implemented |
+| GDPR Data Export | Tracked in root parity docs | Not implemented |
 
 ---
 

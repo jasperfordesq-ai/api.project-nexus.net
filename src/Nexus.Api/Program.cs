@@ -476,10 +476,10 @@ app.UseMiddleware<Nexus.Api.Middleware.SurnamePrivacyMiddleware>();
 // MUST be after Authentication/Authorization so admin role can be checked
 app.UseMiddleware<LockdownCheckMiddleware>();
 
-// Out-of-scope feature guard — returns 404 for V1 modules excluded from V2
-// (Marketplace, Caring Community, Verein/Clubs, Regional Analytics,
-// National KISS) unless the per-tenant flag is on. MUST be before
-// MapControllers so unmatched OOS routes never hit the controller.
+// Former parity-exclusion feature guard: returns 404 for legacy V1 module
+// surfaces (Marketplace, Caring Community, Verein/Clubs, Regional Analytics,
+// National KISS) unless the per-tenant feature flag is on. MUST be before
+// MapControllers so disabled gap routes never hit the controller.
 app.UseMiddleware<OutOfScopeFeatureGuardMiddleware>();
 
 // Federation API middleware - authenticates external federation API calls

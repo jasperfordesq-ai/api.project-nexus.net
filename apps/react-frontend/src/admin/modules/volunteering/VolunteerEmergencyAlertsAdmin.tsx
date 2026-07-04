@@ -9,8 +9,8 @@
  *   POST /api/admin/volunteer/alerts
  *   POST /api/admin/volunteer/alerts/{id}/acknowledge
  *
- * NOTE: this is the volunteer-coordination alert system, NOT the
- * Caring Community emergency alert flow (which is OOS).
+ * NOTE: this is the volunteer-coordination alert system, NOT the separate
+ * Caring Community emergency alert parity surface.
  */
 
 import { useCallback, useEffect, useState } from 'react';

@@ -325,9 +325,17 @@ public class BookmarkService
         return q.OrderByDescending(b => b.CreatedAt).ToListAsync();
     }
 
+    public Task<bool> IsBookmarkedAsync(int userId, BookmarkContentType contentType, int contentId) =>
+        _db.Bookmarks.AnyAsync(b => b.UserId == userId && b.ContentType == contentType && b.ContentId == contentId);
+
+    public Task<int> CountBookmarksAsync(BookmarkContentType contentType, int contentId) =>
+        _db.Bookmarks.CountAsync(b => b.ContentType == contentType && b.ContentId == contentId);
+
     public async Task<BookmarkCollection> CreateCollectionAsync(int userId, string name, string? description, bool isPublic)
     {
+        name = name.Trim();
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("name_required", nameof(name));
+        if (name.Length > 100) throw new ArgumentException("name_too_long", nameof(name));
         var entity = new BookmarkCollection
         {
             TenantId = _tenant.GetTenantIdOrThrow(),
@@ -346,16 +354,64 @@ public class BookmarkService
     public Task<List<BookmarkCollection>> ListCollectionsForUserAsync(int userId) =>
         _db.BookmarkCollections.Where(c => c.UserId == userId).OrderBy(c => c.Name).ToListAsync();
 
+    public async Task<List<BookmarkCollectionListItem>> ListCollectionItemsForUserAsync(int userId)
+    {
+        var collections = await _db.BookmarkCollections
+            .Where(c => c.UserId == userId)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+
+        var collectionIds = collections.Select(c => c.Id).ToArray();
+        var counts = await _db.Bookmarks
+            .Where(b => b.UserId == userId && b.CollectionId.HasValue && collectionIds.Contains(b.CollectionId.Value))
+            .GroupBy(b => b.CollectionId!.Value)
+            .Select(g => new { CollectionId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.CollectionId, g => g.Count);
+
+        return collections
+            .Select(c => new BookmarkCollectionListItem(c, counts.GetValueOrDefault(c.Id)))
+            .ToList();
+    }
+
     public async Task<bool> DeleteCollectionAsync(int userId, int collectionId)
     {
         var entity = await _db.BookmarkCollections.FirstOrDefaultAsync(c => c.Id == collectionId && c.UserId == userId);
         if (entity == null) return false;
-        // Bookmarks are cascaded to null Collection by EF config (DeleteBehavior.SetNull).
+
+        var bookmarks = await _db.Bookmarks
+            .Where(b => b.UserId == userId && b.CollectionId == collectionId)
+            .ToListAsync();
+        foreach (var bookmark in bookmarks)
+        {
+            bookmark.CollectionId = null;
+            bookmark.UpdatedAt = DateTime.UtcNow;
+        }
+
         _db.BookmarkCollections.Remove(entity);
         await _db.SaveChangesAsync();
         return true;
     }
+
+    public async Task<bool> MoveToCollectionAsync(int userId, int bookmarkId, int? collectionId)
+    {
+        var bookmark = await _db.Bookmarks.FirstOrDefaultAsync(b => b.Id == bookmarkId && b.UserId == userId);
+        if (bookmark is null) return false;
+
+        if (collectionId.HasValue)
+        {
+            var collectionOwned = await _db.BookmarkCollections
+                .AnyAsync(c => c.Id == collectionId.Value && c.UserId == userId);
+            if (!collectionOwned) return false;
+        }
+
+        bookmark.CollectionId = collectionId;
+        bookmark.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return true;
+    }
 }
+
+public sealed record BookmarkCollectionListItem(BookmarkCollection Collection, int BookmarksCount);
 
 // ─── PeerEndorsementService ─────────────────────────────────────────────────
 

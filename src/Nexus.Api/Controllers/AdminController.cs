@@ -4,8 +4,10 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
@@ -31,19 +33,22 @@ public class AdminController : ControllerBase
     private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<AdminController> _logger;
     private readonly CacheService _cache;
+    private readonly FileUploadService _fileUploadService;
 
     public AdminController(
         NexusDbContext db,
         TenantContext tenantContext,
         IEventPublisher eventPublisher,
         ILogger<AdminController> logger,
-        CacheService cache)
+        CacheService cache,
+        FileUploadService fileUploadService)
     {
         _db = db;
         _tenantContext = tenantContext;
         _eventPublisher = eventPublisher;
         _logger = logger;
         _cache = cache;
+        _fileUploadService = fileUploadService;
     }
 
     private int? GetCurrentUserId() => User.GetUserId();
@@ -996,6 +1001,209 @@ public class AdminController : ControllerBase
             created = created,
             updated = updated
         });
+    }
+
+    /// <summary>
+    /// Laravel parity: POST /api/v2/admin/settings/header-logo.
+    /// Uploads the tenant light header logo override.
+    /// </summary>
+    [HttpPost("settings/header-logo")]
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public Task<IActionResult> UploadHeaderLogo([FromForm] IFormFile? logo, CancellationToken ct = default)
+        => UploadHeaderLogoVariantAsync(logo, "logo_url", updateTenantLogoUrl: true, ct);
+
+    /// <summary>
+    /// Laravel parity: POST /api/v2/admin/settings/header-logo-dark.
+    /// Uploads the tenant dark header logo override.
+    /// </summary>
+    [HttpPost("settings/header-logo-dark")]
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public Task<IActionResult> UploadHeaderLogoDark([FromForm] IFormFile? logo, CancellationToken ct = default)
+        => UploadHeaderLogoVariantAsync(logo, "logo_dark_url", updateTenantLogoUrl: false, ct);
+
+    /// <summary>
+    /// Laravel parity: DELETE /api/v2/admin/settings/header-logo.
+    /// Clears the tenant light header logo override.
+    /// </summary>
+    [HttpDelete("settings/header-logo")]
+    public Task<IActionResult> RemoveHeaderLogo(CancellationToken ct = default)
+        => RemoveHeaderLogoVariantAsync("logo_url", clearTenantLogoUrl: true, ct);
+
+    /// <summary>
+    /// Laravel parity: DELETE /api/v2/admin/settings/header-logo-dark.
+    /// Clears the tenant dark header logo override.
+    /// </summary>
+    [HttpDelete("settings/header-logo-dark")]
+    public Task<IActionResult> RemoveHeaderLogoDark(CancellationToken ct = default)
+        => RemoveHeaderLogoVariantAsync("logo_dark_url", clearTenantLogoUrl: false, ct);
+
+    private async Task<IActionResult> RemoveHeaderLogoVariantAsync(
+        string configKey,
+        bool clearTenantLogoUrl,
+        CancellationToken ct)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
+        var config = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == configKey, ct);
+        if (config != null)
+        {
+            _db.TenantConfigs.Remove(config);
+        }
+
+        if (clearTenantLogoUrl)
+        {
+            var tenant = await _db.Tenants
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(t => t.Id == tenantId, ct);
+            if (tenant != null)
+            {
+                tenant.LogoUrl = null;
+                tenant.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        await _db.SaveChangesAsync(ct);
+        _cache.InvalidateConfig(tenantId);
+
+        return Ok(new { data = new { url = (string?)null } });
+    }
+
+    private async Task<IActionResult> UploadHeaderLogoVariantAsync(
+        IFormFile? logo,
+        string configKey,
+        bool updateTenantLogoUrl,
+        CancellationToken ct)
+    {
+        var adminUserId = GetCurrentUserId();
+        if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
+
+        if (logo == null || logo.Length == 0)
+        {
+            return BadRequest(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "No image uploaded.", field = "logo" } }
+            });
+        }
+
+        if (logo.Length > 2 * 1024 * 1024)
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Image must be 2 MB or smaller.", field = "logo" } }
+            });
+        }
+
+        var contentType = NormalizeLogoContentType(logo);
+        if (contentType == null)
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "File must be an image (JPEG, PNG, GIF, WebP, or SVG).", field = "logo" } }
+            });
+        }
+
+        if (contentType == "image/svg+xml" && !await IsAllowedSvgAsync(logo, ct))
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "SVG logo must be a valid image without scripts.", field = "logo" } }
+            });
+        }
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        await using var stream = logo.OpenReadStream();
+        var (upload, error) = await _fileUploadService.UploadAsync(
+            stream,
+            logo.FileName,
+            contentType,
+            logo.Length,
+            adminUserId.Value,
+            tenantId,
+            FileCategory.TenantLogo,
+            tenantId,
+            "tenant_logo");
+
+        if (error != null)
+        {
+            return UnprocessableEntity(new
+            {
+                errors = new[] { new { code = "VALIDATION_ERROR", message = error, field = "logo" } }
+            });
+        }
+
+        var url = _fileUploadService.GetDownloadUrl(upload!);
+        await SetTenantConfigValueAsync(tenantId, configKey, url, ct);
+
+        if (updateTenantLogoUrl)
+        {
+            var tenant = await _db.Tenants
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(t => t.Id == tenantId, ct);
+            if (tenant != null)
+            {
+                tenant.LogoUrl = url;
+                tenant.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        await _db.SaveChangesAsync(ct);
+        _cache.InvalidateConfig(tenantId);
+
+        return Ok(new { data = new { url } });
+    }
+
+    private async Task SetTenantConfigValueAsync(int tenantId, string key, string value, CancellationToken ct)
+    {
+        var existing = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key, ct);
+
+        if (existing == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = key,
+                Value = value
+            });
+            return;
+        }
+
+        existing.Value = value;
+        existing.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static string? NormalizeLogoContentType(IFormFile logo)
+    {
+        var contentType = logo.ContentType?.Trim().ToLowerInvariant();
+        var extension = Path.GetExtension(logo.FileName).ToLowerInvariant();
+
+        if (contentType == "image/jpeg" ||
+            contentType == "image/png" ||
+            contentType == "image/gif" ||
+            contentType == "image/webp")
+        {
+            return contentType;
+        }
+
+        if (contentType == "image/svg+xml" || extension == ".svg")
+        {
+            return "image/svg+xml";
+        }
+
+        return null;
+    }
+
+    private static async Task<bool> IsAllowedSvgAsync(IFormFile logo, CancellationToken ct)
+    {
+        await using var stream = logo.OpenReadStream();
+        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: false);
+        var content = await reader.ReadToEndAsync(ct);
+        return content.Contains("<svg", StringComparison.OrdinalIgnoreCase) &&
+               !content.Contains("<script", StringComparison.OrdinalIgnoreCase) &&
+               !content.Contains("javascript:", StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion

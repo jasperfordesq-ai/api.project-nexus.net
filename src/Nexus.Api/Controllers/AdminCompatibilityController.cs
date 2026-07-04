@@ -276,6 +276,38 @@ public class AdminCompatibilityController : ControllerBase
         return Ok(new { success = true, message = "2FA reset successfully", backup_codes_removed = backupCodes.Count });
     }
 
+    [HttpGet("users/{userId:int}/badges")]
+    public async Task<IActionResult> GetUserBadges(int userId)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var userExists = await _db.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Id == userId && u.TenantId == tenantId);
+
+        if (!userExists)
+            return NotFound(new { error = "User not found" });
+
+        var badges = await _db.UserBadges
+            .AsNoTracking()
+            .Include(ub => ub.Badge)
+            .Where(ub => ub.UserId == userId && ub.TenantId == tenantId)
+            .OrderByDescending(ub => ub.EarnedAt)
+            .Select(ub => new
+            {
+                id = ub.Id,
+                badge_id = ub.BadgeId,
+                user_id = ub.UserId,
+                slug = ub.Badge != null ? ub.Badge.Slug : string.Empty,
+                name = ub.Badge != null ? ub.Badge.Name : string.Empty,
+                description = ub.Badge != null ? ub.Badge.Description : string.Empty,
+                icon = ub.Badge != null ? ub.Badge.Icon : null,
+                awarded_at = ub.EarnedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = badges, badges });
+    }
+
     [HttpPost("users/{userId:int}/badges")]
     public async Task<IActionResult> AddUserBadge(int userId, [FromBody] AdminUserBadgeRequest request)
     {

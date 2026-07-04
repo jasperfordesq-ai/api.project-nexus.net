@@ -1,0 +1,658 @@
+// Copyright (c) 2024-2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Author: Jasper Ford
+// See NOTICE file for attribution and acknowledgements.
+
+using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
+
+namespace Nexus.Api.Services;
+
+public sealed class CaringRegionalPointService
+{
+    public const string KeyPrefix = "caring_community.regional_points.";
+
+    private static readonly RegionalPointConfig Defaults = new(
+        Enabled: false,
+        Label: "Regional Points",
+        Symbol: "pts",
+        AutoIssueEnabled: false,
+        PointsPerApprovedHour: 0m,
+        MemberTransfersEnabled: false,
+        MarketplaceRedemptionEnabled: false);
+
+    private readonly NexusDbContext _db;
+
+    public CaringRegionalPointService(NexusDbContext db)
+    {
+        _db = db;
+    }
+
+    public async Task<bool> IsCaringCommunityEnabledAsync(int tenantId, CancellationToken ct)
+    {
+        var raw = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .Where(c => c.TenantId == tenantId && c.Key == "features.caring_community")
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync(ct);
+
+        return ParseBool(raw) == true;
+    }
+
+    public async Task<RegionalPointConfig> GetConfigAsync(int tenantId, CancellationToken ct)
+    {
+        var rows = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(config => config.TenantId == tenantId && config.Key.StartsWith(KeyPrefix))
+            .ToDictionaryAsync(
+                config => config.Key[KeyPrefix.Length..],
+                config => config.Value,
+                StringComparer.Ordinal,
+                ct);
+
+        return Normalize(new RegionalPointConfig(
+            Enabled: ParseBoolOrDefault(rows.GetValueOrDefault("enabled"), Defaults.Enabled),
+            Label: rows.GetValueOrDefault("label") ?? Defaults.Label,
+            Symbol: rows.GetValueOrDefault("symbol") ?? Defaults.Symbol,
+            AutoIssueEnabled: ParseBoolOrDefault(rows.GetValueOrDefault("auto_issue_enabled"), Defaults.AutoIssueEnabled),
+            PointsPerApprovedHour: ParseDecimalOrDefault(rows.GetValueOrDefault("points_per_approved_hour"), Defaults.PointsPerApprovedHour),
+            MemberTransfersEnabled: ParseBoolOrDefault(rows.GetValueOrDefault("member_transfers_enabled"), Defaults.MemberTransfersEnabled),
+            MarketplaceRedemptionEnabled: ParseBoolOrDefault(rows.GetValueOrDefault("marketplace_redemption_enabled"), Defaults.MarketplaceRedemptionEnabled)));
+    }
+
+    public async Task<RegionalPointConfig> UpdateConfigAsync(
+        int tenantId,
+        JsonElement payload,
+        CancellationToken ct)
+    {
+        var current = await GetConfigAsync(tenantId, ct);
+        var draft = current;
+
+        if (payload.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in payload.EnumerateObject())
+            {
+                draft = Apply(draft, property.Name, property.Value);
+            }
+        }
+
+        var normalized = Normalize(draft);
+        var now = DateTime.UtcNow;
+        foreach (var (key, value) in Serialize(normalized))
+        {
+            await UpsertSettingAsync(tenantId, KeyPrefix + key, value, now, ct);
+        }
+
+        return await GetConfigAsync(tenantId, ct);
+    }
+
+    public async Task<bool> IsRegionalPointsEnabledAsync(int tenantId, CancellationToken ct)
+    {
+        return await IsCaringCommunityEnabledAsync(tenantId, ct)
+            && (await GetConfigAsync(tenantId, ct)).Enabled;
+    }
+
+    public async Task<RegionalPointLedgerResult> TenantLedgerAsync(
+        int tenantId,
+        int? limit,
+        CancellationToken ct)
+    {
+        await AssertRegionalPointsEnabledAsync(tenantId, ct);
+        var take = Math.Clamp(limit ?? 100, 1, 500);
+
+        var accounts = _db.CaringRegionalPointAccounts
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(account => account.TenantId == tenantId);
+        var transactions = _db.CaringRegionalPointTransactions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(transaction => transaction.TenantId == tenantId);
+
+        var stats = new RegionalPointStats(
+            AccountsCount: await accounts.CountAsync(ct),
+            CirculatingPoints: RoundPoints(await accounts.Select(account => (decimal?)account.Balance).SumAsync(ct) ?? 0m),
+            TotalIssued: RoundPoints(await transactions
+                .Where(transaction => transaction.Direction == "credit")
+                .Select(transaction => (decimal?)transaction.Points)
+                .SumAsync(ct) ?? 0m),
+            TotalSpent: RoundPoints(await transactions
+                .Where(transaction => transaction.Direction == "debit")
+                .Select(transaction => (decimal?)transaction.Points)
+                .SumAsync(ct) ?? 0m));
+
+        var rows = await transactions
+            .OrderByDescending(transaction => transaction.CreatedAt)
+            .ThenByDescending(transaction => transaction.Id)
+            .Take(take)
+            .ToListAsync(ct);
+
+        var userIds = rows
+            .Select(row => row.UserId)
+            .Concat(rows.Where(row => row.ActorUserId.HasValue).Select(row => row.ActorUserId!.Value))
+            .Distinct()
+            .ToArray();
+        var users = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user => user.TenantId == tenantId && userIds.Contains(user.Id))
+            .ToDictionaryAsync(user => user.Id, ct);
+
+        return new RegionalPointLedgerResult(
+            stats,
+            rows.Select(row => FormatTransaction(
+                row,
+                users.GetValueOrDefault(row.UserId),
+                row.ActorUserId.HasValue ? users.GetValueOrDefault(row.ActorUserId.Value) : null)).ToArray());
+    }
+
+    public Task<RegionalPointMutationResult> IssueAsync(
+        int tenantId,
+        int userId,
+        decimal points,
+        string description,
+        int actorId,
+        CancellationToken ct)
+    {
+        return CreditAsync(tenantId, userId, points, "admin_issue", description, actorId, ct);
+    }
+
+    public async Task<RegionalPointMutationResult> AdjustAsync(
+        int tenantId,
+        int userId,
+        decimal pointsDelta,
+        string description,
+        int actorId,
+        CancellationToken ct)
+    {
+        if (pointsDelta == 0m)
+        {
+            throw new RegionalPointValidationException("Point adjustment must not be zero.");
+        }
+
+        return pointsDelta > 0m
+            ? await CreditAsync(tenantId, userId, pointsDelta, "admin_adjustment", description, actorId, ct)
+            : await DebitAsync(tenantId, userId, Math.Abs(pointsDelta), "admin_adjustment", description, actorId, ct);
+    }
+
+    public async Task<RegionalPointSellerSettings> GetMarketplaceSellerSettingsAsync(
+        int tenantId,
+        int sellerId,
+        CancellationToken ct)
+    {
+        await AssertRegionalPointsEnabledAsync(tenantId, ct);
+
+        var row = await _db.MarketplaceSellerRegionalPointSettings
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(setting => setting.TenantId == tenantId && setting.SellerUserId == sellerId, ct);
+
+        return row is null
+            ? RegionalPointSellerSettings.Default(sellerId)
+            : new RegionalPointSellerSettings(
+                SellerUserId: row.SellerUserId,
+                AcceptsRegionalPoints: row.AcceptsRegionalPoints,
+                RegionalPointsPerChf: RoundPoints(row.RegionalPointsPerChf),
+                RegionalPointsMaxDiscountPct: row.RegionalPointsMaxDiscountPct);
+    }
+
+    public async Task<RegionalPointSellerSettings> UpdateMarketplaceSellerSettingsAsync(
+        int tenantId,
+        int sellerId,
+        bool acceptsRegionalPoints,
+        decimal pointsPerChf,
+        int maxDiscountPct,
+        CancellationToken ct)
+    {
+        await AssertRegionalPointsEnabledAsync(tenantId, ct);
+        await AssertTenantUserAsync(tenantId, sellerId, ct);
+
+        pointsPerChf = RoundPoints(pointsPerChf);
+        if (pointsPerChf <= 0m || pointsPerChf > 100000m)
+        {
+            throw new RegionalPointValidationException("Regional points per CHF must be greater than zero.");
+        }
+
+        if (maxDiscountPct < 1 || maxDiscountPct > 100)
+        {
+            throw new RegionalPointValidationException("Regional point maximum discount must be between 1 and 100 percent.");
+        }
+
+        var now = DateTime.UtcNow;
+        var row = await _db.MarketplaceSellerRegionalPointSettings
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(setting => setting.TenantId == tenantId && setting.SellerUserId == sellerId, ct);
+
+        if (row is null)
+        {
+            row = new MarketplaceSellerRegionalPointSetting
+            {
+                TenantId = tenantId,
+                SellerUserId = sellerId,
+                CreatedAt = now
+            };
+            _db.MarketplaceSellerRegionalPointSettings.Add(row);
+        }
+
+        row.AcceptsRegionalPoints = acceptsRegionalPoints;
+        row.RegionalPointsPerChf = pointsPerChf;
+        row.RegionalPointsMaxDiscountPct = maxDiscountPct;
+        row.UpdatedAt = now;
+        await _db.SaveChangesAsync(ct);
+
+        return await GetMarketplaceSellerSettingsAsync(tenantId, sellerId, ct);
+    }
+
+    private static RegionalPointConfig Apply(RegionalPointConfig config, string key, JsonElement value)
+    {
+        return key switch
+        {
+            "enabled" => config with { Enabled = ReadBool(value, config.Enabled) },
+            "label" => config with { Label = ReadString(value, config.Label) },
+            "symbol" => config with { Symbol = ReadString(value, config.Symbol) },
+            "auto_issue_enabled" => config with { AutoIssueEnabled = ReadBool(value, config.AutoIssueEnabled) },
+            "points_per_approved_hour" => config with { PointsPerApprovedHour = ReadDecimal(value, config.PointsPerApprovedHour) },
+            "member_transfers_enabled" => config with { MemberTransfersEnabled = ReadBool(value, config.MemberTransfersEnabled) },
+            "marketplace_redemption_enabled" => config with { MarketplaceRedemptionEnabled = ReadBool(value, config.MarketplaceRedemptionEnabled) },
+            _ => config
+        };
+    }
+
+    private async Task<RegionalPointMutationResult> CreditAsync(
+        int tenantId,
+        int userId,
+        decimal points,
+        string type,
+        string description,
+        int actorId,
+        CancellationToken ct)
+    {
+        await AssertRegionalPointsEnabledAsync(tenantId, ct);
+        points = NormalizePoints(points);
+        await AssertTenantUserAsync(tenantId, userId, ct);
+        var account = await EnsureAccountAsync(tenantId, userId, ct);
+        var now = DateTime.UtcNow;
+        var newBalance = RoundPoints(account.Balance + points);
+
+        account.Balance = newBalance;
+        account.LifetimeEarned = RoundPoints(account.LifetimeEarned + points);
+        account.UpdatedAt = now;
+        var transaction = new CaringRegionalPointTransaction
+        {
+            TenantId = tenantId,
+            AccountId = account.Id,
+            UserId = userId,
+            ActorUserId = actorId > 0 ? actorId : null,
+            Type = type,
+            Direction = "credit",
+            Points = points,
+            BalanceAfter = newBalance,
+            Description = NormalizeDescription(description),
+            CreatedAt = now
+        };
+        _db.CaringRegionalPointTransactions.Add(transaction);
+        await _db.SaveChangesAsync(ct);
+
+        return new RegionalPointMutationResult(transaction.Id, userId, points, newBalance);
+    }
+
+    private async Task<RegionalPointMutationResult> DebitAsync(
+        int tenantId,
+        int userId,
+        decimal points,
+        string type,
+        string description,
+        int actorId,
+        CancellationToken ct)
+    {
+        await AssertRegionalPointsEnabledAsync(tenantId, ct);
+        points = NormalizePoints(points);
+        await AssertTenantUserAsync(tenantId, userId, ct);
+        var account = await EnsureAccountAsync(tenantId, userId, ct);
+        if (account.Balance < points)
+        {
+            throw new RegionalPointOperationException("Not enough regional points.");
+        }
+
+        var now = DateTime.UtcNow;
+        var newBalance = RoundPoints(account.Balance - points);
+        account.Balance = newBalance;
+        account.LifetimeSpent = RoundPoints(account.LifetimeSpent + points);
+        account.UpdatedAt = now;
+        var transaction = new CaringRegionalPointTransaction
+        {
+            TenantId = tenantId,
+            AccountId = account.Id,
+            UserId = userId,
+            ActorUserId = actorId > 0 ? actorId : null,
+            Type = type,
+            Direction = "debit",
+            Points = points,
+            BalanceAfter = newBalance,
+            Description = NormalizeDescription(description),
+            CreatedAt = now
+        };
+        _db.CaringRegionalPointTransactions.Add(transaction);
+        await _db.SaveChangesAsync(ct);
+
+        return new RegionalPointMutationResult(transaction.Id, userId, -points, newBalance);
+    }
+
+    private async Task<CaringRegionalPointAccount> EnsureAccountAsync(
+        int tenantId,
+        int userId,
+        CancellationToken ct)
+    {
+        var account = await _db.CaringRegionalPointAccounts
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.UserId == userId, ct);
+
+        if (account is not null)
+        {
+            return account;
+        }
+
+        account = new CaringRegionalPointAccount
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            Balance = 0m,
+            LifetimeEarned = 0m,
+            LifetimeSpent = 0m,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.CaringRegionalPointAccounts.Add(account);
+        await _db.SaveChangesAsync(ct);
+
+        return account;
+    }
+
+    private async Task AssertRegionalPointsEnabledAsync(int tenantId, CancellationToken ct)
+    {
+        if (!await IsRegionalPointsEnabledAsync(tenantId, ct))
+        {
+            throw new RegionalPointFeatureDisabledException("Regional points are not enabled for this community.");
+        }
+    }
+
+    private async Task AssertTenantUserAsync(int tenantId, int userId, CancellationToken ct)
+    {
+        if (userId <= 0 || !await _db.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(user => user.TenantId == tenantId && user.Id == userId, ct))
+        {
+            throw new RegionalPointValidationException("User not found.");
+        }
+    }
+
+    private static RegionalPointTransactionDto FormatTransaction(
+        CaringRegionalPointTransaction row,
+        User? user,
+        User? actor)
+    {
+        return new RegionalPointTransactionDto(
+            Id: row.Id,
+            UserId: row.UserId,
+            ActorUserId: row.ActorUserId,
+            Type: row.Type,
+            Direction: row.Direction,
+            Points: RoundPoints(row.Points),
+            BalanceAfter: RoundPoints(row.BalanceAfter),
+            Description: row.Description,
+            CreatedAt: row.CreatedAt,
+            UserName: DisplayName(user),
+            UserEmail: user?.Email,
+            ActorName: DisplayName(actor));
+    }
+
+    private static string? DisplayName(User? user)
+    {
+        if (user is null)
+        {
+            return null;
+        }
+
+        var full = string.Join(' ', new[] { user.FirstName, user.LastName }
+            .Where(part => !string.IsNullOrWhiteSpace(part))
+            .Select(part => part.Trim()));
+        return full.Length > 0 ? full : null;
+    }
+
+    private static decimal NormalizePoints(decimal points)
+    {
+        points = RoundPoints(points);
+        if (points <= 0m)
+        {
+            throw new RegionalPointValidationException("Points must be greater than zero.");
+        }
+
+        if (points > 1000000m)
+        {
+            throw new RegionalPointValidationException("Point amount exceeds the maximum allowed value.");
+        }
+
+        return points;
+    }
+
+    private static decimal RoundPoints(decimal value)
+    {
+        return decimal.Round(value, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static string? NormalizeDescription(string? description)
+    {
+        var trimmed = description?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return null;
+        }
+
+        return trimmed.Length <= 500 ? trimmed : trimmed[..500];
+    }
+
+    private async Task UpsertSettingAsync(
+        int tenantId,
+        string key,
+        string value,
+        DateTime now,
+        CancellationToken ct)
+    {
+        var row = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(config => config.TenantId == tenantId && config.Key == key, ct);
+
+        if (row is null)
+        {
+            row = new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = key,
+                CreatedAt = now
+            };
+            _db.TenantConfigs.Add(row);
+        }
+
+        row.Value = value;
+        row.UpdatedAt = now;
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private static RegionalPointConfig Normalize(RegionalPointConfig config)
+    {
+        var normalized = config with
+        {
+            Label = NormalizeBoundedString(config.Label, Defaults.Label, 80),
+            Symbol = NormalizeBoundedString(config.Symbol, Defaults.Symbol, 12),
+            PointsPerApprovedHour = Math.Clamp(decimal.Round(config.PointsPerApprovedHour, 2, MidpointRounding.AwayFromZero), 0m, 10000m)
+        };
+
+        if (!normalized.Enabled)
+        {
+            normalized = normalized with
+            {
+                AutoIssueEnabled = false,
+                MemberTransfersEnabled = false,
+                MarketplaceRedemptionEnabled = false
+            };
+        }
+
+        return normalized;
+    }
+
+    private static string NormalizeBoundedString(string? value, string fallback, int maxLength)
+    {
+        var trimmed = value?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return fallback;
+        }
+
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private static IReadOnlyDictionary<string, string> Serialize(RegionalPointConfig config)
+    {
+        return new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["enabled"] = SerializeBool(config.Enabled),
+            ["label"] = config.Label,
+            ["symbol"] = config.Symbol,
+            ["auto_issue_enabled"] = SerializeBool(config.AutoIssueEnabled),
+            ["points_per_approved_hour"] = config.PointsPerApprovedHour.ToString("0.##", CultureInfo.InvariantCulture),
+            ["member_transfers_enabled"] = SerializeBool(config.MemberTransfersEnabled),
+            ["marketplace_redemption_enabled"] = SerializeBool(config.MarketplaceRedemptionEnabled)
+        };
+    }
+
+    private static bool ReadBool(JsonElement value, bool fallback)
+    {
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Number => value.TryGetDecimal(out var number) ? number != 0m : fallback,
+            JsonValueKind.String => ParseBool(value.GetString()) ?? fallback,
+            _ => fallback
+        };
+    }
+
+    private static decimal ReadDecimal(JsonElement value, decimal fallback)
+    {
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number => value.TryGetDecimal(out var number) ? number : fallback,
+            JsonValueKind.String => ParseDecimalOrDefault(value.GetString(), fallback),
+            _ => fallback
+        };
+    }
+
+    private static string ReadString(JsonElement value, string fallback)
+    {
+        return value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? fallback
+            : fallback;
+    }
+
+    private static bool ParseBoolOrDefault(string? raw, bool fallback)
+    {
+        return ParseBool(raw) ?? fallback;
+    }
+
+    private static decimal ParseDecimalOrDefault(string? raw, decimal fallback)
+    {
+        return decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : fallback;
+    }
+
+    private static bool? ParseBool(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        return raw.Trim().ToLowerInvariant() switch
+        {
+            "true" or "1" or "yes" or "on" or "enabled" => true,
+            "false" or "0" or "no" or "off" or "disabled" => false,
+            _ => null
+        };
+    }
+
+    private static string SerializeBool(bool value)
+    {
+        return value ? "1" : "0";
+    }
+}
+
+public sealed record RegionalPointConfig(
+    [property: JsonPropertyName("enabled")] bool Enabled,
+    [property: JsonPropertyName("label")] string Label,
+    [property: JsonPropertyName("symbol")] string Symbol,
+    [property: JsonPropertyName("auto_issue_enabled")] bool AutoIssueEnabled,
+    [property: JsonPropertyName("points_per_approved_hour")] decimal PointsPerApprovedHour,
+    [property: JsonPropertyName("member_transfers_enabled")] bool MemberTransfersEnabled,
+    [property: JsonPropertyName("marketplace_redemption_enabled")] bool MarketplaceRedemptionEnabled);
+
+public sealed record RegionalPointLedgerResult(
+    [property: JsonPropertyName("stats")] RegionalPointStats Stats,
+    [property: JsonPropertyName("items")] IReadOnlyList<RegionalPointTransactionDto> Items);
+
+public sealed record RegionalPointStats(
+    [property: JsonPropertyName("accounts_count")] int AccountsCount,
+    [property: JsonPropertyName("circulating_points")] decimal CirculatingPoints,
+    [property: JsonPropertyName("total_issued")] decimal TotalIssued,
+    [property: JsonPropertyName("total_spent")] decimal TotalSpent);
+
+public sealed record RegionalPointTransactionDto(
+    [property: JsonPropertyName("id")] long Id,
+    [property: JsonPropertyName("user_id")] int UserId,
+    [property: JsonPropertyName("actor_user_id")] int? ActorUserId,
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("direction")] string Direction,
+    [property: JsonPropertyName("points")] decimal Points,
+    [property: JsonPropertyName("balance_after")] decimal BalanceAfter,
+    [property: JsonPropertyName("description")] string? Description,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt,
+    [property: JsonPropertyName("user_name")] string? UserName,
+    [property: JsonPropertyName("user_email")] string? UserEmail,
+    [property: JsonPropertyName("actor_name")] string? ActorName);
+
+public sealed record RegionalPointMutationResult(
+    [property: JsonPropertyName("transaction_id")] long TransactionId,
+    [property: JsonPropertyName("user_id")] int UserId,
+    [property: JsonPropertyName("points")] decimal Points,
+    [property: JsonPropertyName("balance")] decimal Balance);
+
+public sealed record RegionalPointSellerSettings(
+    [property: JsonPropertyName("seller_user_id")] int SellerUserId,
+    [property: JsonPropertyName("accepts_regional_points")] bool AcceptsRegionalPoints,
+    [property: JsonPropertyName("regional_points_per_chf")] decimal RegionalPointsPerChf,
+    [property: JsonPropertyName("regional_points_max_discount_pct")] int RegionalPointsMaxDiscountPct)
+{
+    public static RegionalPointSellerSettings Default(int sellerId)
+    {
+        return new RegionalPointSellerSettings(sellerId, false, 10m, 25);
+    }
+}
+
+public sealed class RegionalPointFeatureDisabledException : Exception
+{
+    public RegionalPointFeatureDisabledException(string message) : base(message) { }
+}
+
+public sealed class RegionalPointValidationException : Exception
+{
+    public RegionalPointValidationException(string message) : base(message) { }
+}
+
+public sealed class RegionalPointOperationException : Exception
+{
+    public RegionalPointOperationException(string message) : base(message) { }
+}

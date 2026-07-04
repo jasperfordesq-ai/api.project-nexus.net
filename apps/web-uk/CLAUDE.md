@@ -157,7 +157,7 @@ We use the GOV.UK Design System (govuk-frontend) for its accessibility and usabi
 ## Backend API
 
 - Base URL: `http://localhost:5000` (configurable via `API_BASE_URL` env var)
-- See `FRONTEND_INTEGRATION.md` for full API documentation
+- See the root `docs/API_PARITY.md` for API parity status and this file's endpoint table for routes used by this frontend.
 
 ### Key Endpoints Used
 
@@ -267,7 +267,7 @@ docker compose down
 docker compose ps
 ```
 
-See [DOCKER_CONTRACT.md](DOCKER_CONTRACT.md) for full Docker documentation.
+See the root [agent instructions](../../CLAUDE.md) for the Docker-only project invariant and production-container warnings.
 
 ## Environment Variables
 

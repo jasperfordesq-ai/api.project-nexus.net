@@ -40,7 +40,7 @@ See the [NOTICE](NOTICE) file for attribution requirements.
 ## Prerequisites
 
 - **Docker and Docker Compose** (required)
-- ASP.NET Core API running (see [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md))
+- ASP.NET Core API running (see the root [API parity map](../../docs/API_PARITY.md))
 
 **Note:** Docker is the only supported development environment. Do not use native Node.js, XAMPP, or other local setups.
 
@@ -222,7 +222,6 @@ nexus-uk-frontend/
 ├── .env                          # Environment variables (not in git)
 ├── .env.example                  # Example environment file
 ├── CLAUDE.md                     # AI assistant instructions
-├── FRONTEND_INTEGRATION.md       # API integration guide
 ├── package.json
 └── README.md
 ```
@@ -289,7 +288,7 @@ nexus-uk-frontend/
 
 **Docker is the only supported way to run this project.**
 
-See [DOCKER_CONTRACT.md](DOCKER_CONTRACT.md) for full documentation including troubleshooting.
+See the root [agent instructions](../../CLAUDE.md) for the Docker-only project invariant and production-container warnings.
 
 ### Quick Commands
 
@@ -347,4 +346,4 @@ This project uses GOV.UK Frontend for accessibility and usability patterns only.
 
 ## Test Credentials
 
-See [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) for test credentials and API documentation.
+See this README's test credentials section and the root [API parity map](../../docs/API_PARITY.md) for API documentation status.

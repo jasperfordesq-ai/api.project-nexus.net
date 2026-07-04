@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -118,6 +119,36 @@ public class AuditController : ControllerBase
     }
 
     /// <summary>
+    /// Laravel-compatible tenant audit log CSV export.
+    /// </summary>
+    [HttpGet("/api/admin/audit-log/export.csv")]
+    public async Task<IActionResult> ExportCsv(
+        [FromQuery(Name = "log")] string? log,
+        [FromQuery(Name = "date_from")] DateTime? dateFrom,
+        [FromQuery(Name = "date_to")] DateTime? dateTo,
+        [FromQuery(Name = "user_id")] int? userId,
+        [FromQuery(Name = "action")] string? action)
+    {
+        var exportKind = string.Equals(log, "admin", StringComparison.OrdinalIgnoreCase)
+            ? "admin"
+            : "activity";
+
+        var rows = await _auditLogService.ExportLogsAsync(new AuditLogFilter
+        {
+            UserId = userId,
+            Action = action,
+            DateFrom = dateFrom,
+            DateTo = dateTo
+        });
+
+        var csv = BuildActivityCsv(rows);
+        var bytes = Encoding.UTF8.GetBytes('\uFEFF' + csv);
+        var filename = $"audit-log-{exportKind}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+
+        return File(bytes, "text/csv; charset=utf-8", filename);
+    }
+
+    /// <summary>
     /// Purge audit logs older than the specified number of days.
     /// </summary>
     [HttpDelete("purge")]
@@ -140,6 +171,61 @@ public class AuditController : ControllerBase
             DeletedCount = deleted,
             OlderThanDays = olderThanDays.Value
         });
+    }
+
+    private static string BuildActivityCsv(IEnumerable<AuditLogExportRow> rows)
+    {
+        var builder = new StringBuilder();
+        AppendCsvRow(builder, ["ID", "User ID", "User", "Action", "Action Type", "Entity Type", "Entity ID", "Details", "IP Address", "Date"]);
+
+        foreach (var row in rows)
+        {
+            AppendCsvRow(builder,
+            [
+                row.Id,
+                row.UserId,
+                row.UserName,
+                row.Action,
+                string.Empty,
+                row.EntityType,
+                row.EntityId,
+                row.Details,
+                row.IpAddress,
+                row.CreatedAt.ToString("O")
+            ]);
+        }
+
+        return builder.ToString();
+    }
+
+    private static void AppendCsvRow(StringBuilder builder, IReadOnlyList<object?> row)
+    {
+        for (var i = 0; i < row.Count; i++)
+        {
+            if (i > 0)
+                builder.Append(',');
+
+            builder.Append(EscapeCsvCell(row[i]));
+        }
+
+        builder.AppendLine();
+    }
+
+    private static string EscapeCsvCell(object? value)
+    {
+        var text = value switch
+        {
+            null => string.Empty,
+            DateTime dateTime => dateTime.ToString("O"),
+            _ => value.ToString() ?? string.Empty
+        };
+
+        if (text.Length > 0 && (text[0] == '=' || text[0] == '+' || text[0] == '-' || text[0] == '@' || text[0] == '\t' || text[0] == '\r'))
+            text = "'" + text;
+
+        return text.Contains('"') || text.Contains(',') || text.Contains('\n') || text.Contains('\r')
+            ? "\"" + text.Replace("\"", "\"\"") + "\""
+            : text;
     }
 }
 

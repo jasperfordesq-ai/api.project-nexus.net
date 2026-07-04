@@ -22,6 +22,7 @@ public class User : ITenantEntity
     public string LastName { get; set; } = string.Empty;
     public string Role { get; set; } = "member";
     public bool IsActive { get; set; } = true;
+    public int TrustTier { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }

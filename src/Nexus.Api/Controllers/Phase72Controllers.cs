@@ -314,6 +314,81 @@ public class BookmarksController : ControllerBase
         return await _service.DeleteCollectionAsync(userId, id) ? Ok(new { success = true }) : NotFound();
     }
 
+    [HttpGet("/api/bookmark-collections")]
+    public async Task<IActionResult> ListLaravelCollections()
+    {
+        var userId = User.GetUserId() ?? 0;
+        if (userId == 0) return Unauthorized();
+
+        var rows = await _service.ListCollectionItemsForUserAsync(userId);
+        return Ok(new { data = rows.Select(item => MapLaravelCollection(item.Collection, item.BookmarksCount)) });
+    }
+
+    [HttpPost("/api/bookmark-collections")]
+    public async Task<IActionResult> CreateLaravelCollection([FromBody] CreateCollectionRequest? req)
+    {
+        var userId = User.GetUserId() ?? 0;
+        if (userId == 0) return Unauthorized();
+
+        var name = req?.Name ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BadRequest(LaravelError("VALIDATION_ERROR", "Collection name is required.", "name"));
+        }
+
+        if (name.Trim().Length > 100)
+        {
+            return BadRequest(LaravelError("VALIDATION_ERROR", "Collection name must be 100 characters or less.", "name"));
+        }
+
+        var entity = await _service.CreateCollectionAsync(userId, name, req?.Description, isPublic: false);
+        return Created($"/api/bookmark-collections/{entity.Id}", new { data = MapLaravelCollection(entity, 0) });
+    }
+
+    [HttpDelete("/api/bookmark-collections/{id:int}")]
+    public async Task<IActionResult> DeleteLaravelCollection(int id)
+    {
+        var userId = User.GetUserId() ?? 0;
+        if (userId == 0) return Unauthorized();
+
+        return await _service.DeleteCollectionAsync(userId, id)
+            ? Ok(new { data = new { success = true } })
+            : NotFound(LaravelError("NOT_FOUND", "Collection not found."));
+    }
+
+    [HttpGet("/api/bookmarks/status")]
+    public async Task<IActionResult> LaravelBookmarkStatus([FromQuery(Name = "type")] string? type, [FromQuery(Name = "id")] int id)
+    {
+        var userId = User.GetUserId() ?? 0;
+        if (userId == 0) return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(type) || id <= 0)
+        {
+            return BadRequest(LaravelError("INVALID_INPUT", "Type and id are required."));
+        }
+
+        if (!TryLaravelContentType(type, out var contentType))
+        {
+            return BadRequest(LaravelError("INVALID_TYPE", "Invalid bookmarkable type."));
+        }
+
+        var bookmarked = await _service.IsBookmarkedAsync(userId, contentType, id);
+        var count = await _service.CountBookmarksAsync(contentType, id);
+        return Ok(new { data = new { bookmarked, count } });
+    }
+
+    [HttpPost("/api/bookmarks/{id:int}/move")]
+    public async Task<IActionResult> MoveLaravelBookmark(int id, [FromBody] JsonElement body)
+    {
+        var userId = User.GetUserId() ?? 0;
+        if (userId == 0) return Unauthorized();
+
+        var collectionId = NullableInt(body, "collection_id");
+        return await _service.MoveToCollectionAsync(userId, id, collectionId)
+            ? Ok(new { data = new { success = true } })
+            : NotFound(LaravelError("NOT_FOUND", "Bookmark or collection not found."));
+    }
+
     private static object MapBookmark(Bookmark b) => new
     {
         b.Id, content_type = b.ContentType.ToString(), content_id = b.ContentId,
@@ -326,6 +401,74 @@ public class BookmarksController : ControllerBase
         c.Id, c.Name, c.Description, is_public = c.IsPublic,
         created_at = c.CreatedAt, updated_at = c.UpdatedAt
     };
+
+    private static object MapLaravelCollection(BookmarkCollection c, int bookmarksCount) => new
+    {
+        id = c.Id,
+        tenant_id = c.TenantId,
+        user_id = c.UserId,
+        name = c.Name,
+        description = c.Description,
+        is_default = false,
+        is_public = c.IsPublic,
+        bookmarks_count = bookmarksCount,
+        created_at = c.CreatedAt,
+        updated_at = c.UpdatedAt
+    };
+
+    private static object LaravelError(string code, string message, string? field = null)
+    {
+        var error = new Dictionary<string, object?>
+        {
+            ["code"] = code,
+            ["message"] = message
+        };
+        if (field is not null) error["field"] = field;
+        return new { errors = new[] { error } };
+    }
+
+    private static bool TryLaravelContentType(string? type, out BookmarkContentType contentType)
+    {
+        switch (type?.Trim().ToLowerInvariant())
+        {
+            case "post":
+                contentType = BookmarkContentType.Post;
+                return true;
+            case "listing":
+                contentType = BookmarkContentType.Listing;
+                return true;
+            case "event":
+                contentType = BookmarkContentType.Event;
+                return true;
+            case "job":
+                contentType = BookmarkContentType.Job;
+                return true;
+            case "blog":
+                contentType = BookmarkContentType.BlogPost;
+                return true;
+            case "discussion":
+                contentType = BookmarkContentType.Discussion;
+                return true;
+            default:
+                contentType = default;
+                return false;
+        }
+    }
+
+    private static int? NullableInt(JsonElement body, string name)
+    {
+        if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty(name, out var value))
+        {
+            return null;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number when value.TryGetInt32(out var intValue) => intValue,
+            JsonValueKind.String when int.TryParse(value.GetString(), out var intValue) => intValue,
+            _ => null
+        };
+    }
 
     public class AddBookmarkRequest
     {

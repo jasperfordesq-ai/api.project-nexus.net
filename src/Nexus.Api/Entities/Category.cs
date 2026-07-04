@@ -18,6 +18,7 @@ public class Category : ITenantEntity
     public string Slug { get; set; } = string.Empty;
     public int? ParentCategoryId { get; set; }
     public int SortOrder { get; set; }
+    public decimal SubstitutionCoefficient { get; set; } = 1.00m;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

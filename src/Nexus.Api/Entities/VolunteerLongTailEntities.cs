@@ -13,9 +13,9 @@
  *   - VolunteerEmergencyAlert (emergency contact broadcast — NOT the
  *     Caring Community alert system; this is volunteer-coordination only)
  *
- * Note: Caring Community alerts (CaringCommunityAlertService etc.) are
- * out of scope per CLAUDE.md. VolunteerEmergencyAlert below covers ONLY
- * the volunteer-coordination flow (e.g. "Site closed today, do not show up").
+ * Note: Caring Community alerts (CaringCommunityAlertService etc.) are tracked
+ * parity gaps separately. VolunteerEmergencyAlert below covers ONLY the
+ * volunteer-coordination flow (e.g. "Site closed today, do not show up").
  */
 
 using System.ComponentModel.DataAnnotations;

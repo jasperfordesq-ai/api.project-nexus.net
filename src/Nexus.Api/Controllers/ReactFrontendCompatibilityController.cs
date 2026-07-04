@@ -12,6 +12,7 @@ using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
+using Nexus.Api.Services.Registration;
 
 namespace Nexus.Api.Controllers;
 
@@ -25,11 +26,16 @@ public class ReactFrontendCompatibilityController : ControllerBase
 {
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
+    private readonly ProviderConfigEncryption _encryption;
 
-    public ReactFrontendCompatibilityController(NexusDbContext db, TenantContext tenantContext)
+    public ReactFrontendCompatibilityController(
+        NexusDbContext db,
+        TenantContext tenantContext,
+        ProviderConfigEncryption encryption)
     {
         _db = db;
         _tenantContext = tenantContext;
+        _encryption = encryption;
     }
 
     [HttpGet("api/health/ready")]
@@ -778,24 +784,198 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminRegistrationPolicyAlias()
     {
-        var policy = await _db.TenantRegistrationPolicies.FirstOrDefaultAsync(p => p.IsActive);
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var policy = await _db.TenantRegistrationPolicies
+            .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.IsActive);
+        return Ok(new { data = RegistrationPolicySettingsPayload(policy) });
+    }
+
+    [HttpPut("api/admin/config/registration-policy")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminUpdateRegistrationPolicyAlias(
+        [FromBody] ReactRegistrationPolicyRequest request)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var policy = await _db.TenantRegistrationPolicies
+            .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.IsActive);
+
+        if (policy == null)
+        {
+            policy = new TenantRegistrationPolicy
+            {
+                TenantId = tenantId,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+            _db.TenantRegistrationPolicies.Add(policy);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.RegistrationMode))
+            policy.Mode = FromRegistrationModeKey(request.RegistrationMode);
+        if (request.VerificationProvider != null)
+            policy.Provider = FromVerificationProviderSlug(request.VerificationProvider);
+        if (!string.IsNullOrWhiteSpace(request.VerificationLevel))
+            policy.VerificationLevel = FromVerificationLevelKey(request.VerificationLevel);
+        if (!string.IsNullOrWhiteSpace(request.PostVerification))
+            policy.PostVerificationAction = FromPostVerificationKey(request.PostVerification);
+        if (!string.IsNullOrWhiteSpace(request.FallbackMode))
+            policy.FallbackMode = NormalizeFallbackMode(request.FallbackMode);
+        if (request.RequireEmailVerify.HasValue)
+            policy.RequireEmailVerify = request.RequireEmailVerify.Value;
+
+        policy.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
         return Ok(new
         {
-            data = policy == null ? null : new
-            {
-                id = policy.Id,
-                mode = policy.Mode.ToString(),
-                provider = policy.Provider.ToString(),
-                verification_level = policy.VerificationLevel.ToString(),
-                post_verification_action = policy.PostVerificationAction.ToString(),
-                registration_message = policy.RegistrationMessage,
-                invite_code = policy.InviteCode,
-                max_invite_uses = policy.MaxInviteUses,
-                invite_uses_count = policy.InviteUsesCount,
-                updated_at = policy.UpdatedAt
-            }
+            success = true,
+            data = RegistrationPolicySettingsPayload(policy)
         });
     }
+
+    private static object RegistrationPolicySettingsPayload(TenantRegistrationPolicy? policy)
+    {
+        if (policy == null)
+        {
+            return new
+            {
+                registration_mode = "open",
+                verification_provider = (string?)null,
+                verification_level = "none",
+                post_verification = "activate",
+                fallback_mode = "none",
+                require_email_verify = false,
+                has_policy = false,
+                is_closed = false
+            };
+        }
+
+        return new
+        {
+            id = policy.Id,
+            registration_mode = ToRegistrationModeKey(policy.Mode),
+            verification_provider = ToVerificationProviderSlug(policy.Provider),
+            verification_level = ToVerificationLevelKey(policy.VerificationLevel),
+            post_verification = ToPostVerificationKey(policy.PostVerificationAction),
+            fallback_mode = policy.FallbackMode,
+            require_email_verify = policy.RequireEmailVerify,
+            has_policy = true,
+            is_closed = false,
+            mode = policy.Mode.ToString(),
+            provider = policy.Provider.ToString(),
+            post_verification_action = policy.PostVerificationAction.ToString(),
+            registration_message = policy.RegistrationMessage,
+            invite_code = policy.InviteCode,
+            max_invite_uses = policy.MaxInviteUses,
+            invite_uses_count = policy.InviteUsesCount,
+            updated_at = policy.UpdatedAt
+        };
+    }
+
+    private static string ToRegistrationModeKey(RegistrationMode mode) => mode switch
+    {
+        RegistrationMode.Standard => "open",
+        RegistrationMode.StandardWithApproval => "open_with_approval",
+        RegistrationMode.VerifiedIdentity => "verified_identity",
+        RegistrationMode.GovernmentId => "government_id",
+        RegistrationMode.InviteOnly => "invite_only",
+        _ => "open"
+    };
+
+    private static RegistrationMode FromRegistrationModeKey(string mode) => mode.Trim().ToLowerInvariant() switch
+    {
+        "open" => RegistrationMode.Standard,
+        "standard" => RegistrationMode.Standard,
+        "open_with_approval" => RegistrationMode.StandardWithApproval,
+        "standard_with_approval" => RegistrationMode.StandardWithApproval,
+        "verified_identity" => RegistrationMode.VerifiedIdentity,
+        "government_id" => RegistrationMode.GovernmentId,
+        "invite_only" => RegistrationMode.InviteOnly,
+        _ => RegistrationMode.Standard
+    };
+
+    private static string? ToVerificationProviderSlug(VerificationProvider provider) => provider switch
+    {
+        VerificationProvider.None => null,
+        VerificationProvider.Mock => "mock",
+        VerificationProvider.StripeIdentity => "stripe_identity",
+        VerificationProvider.UkCertified => "uk_certified",
+        VerificationProvider.EudiWallet => "eudi_wallet",
+        VerificationProvider.Idenfy => "idenfy",
+        _ => provider.ToString().ToLowerInvariant()
+    };
+
+    private static VerificationProvider FromVerificationProviderSlug(string? provider)
+    {
+        if (string.IsNullOrWhiteSpace(provider)) return VerificationProvider.None;
+
+        return provider.Trim().ToLowerInvariant() switch
+        {
+            "mock" => VerificationProvider.Mock,
+            "stripe_identity" => VerificationProvider.StripeIdentity,
+            "veriff" => VerificationProvider.Veriff,
+            "jumio" => VerificationProvider.Jumio,
+            "onfido" => VerificationProvider.Onfido,
+            "idenfy" => VerificationProvider.Idenfy,
+            "uk_certified" => VerificationProvider.UkCertified,
+            "eudi_wallet" => VerificationProvider.EudiWallet,
+            "custom" => VerificationProvider.Custom,
+            _ => Enum.TryParse<VerificationProvider>(provider, true, out var parsed)
+                ? parsed
+                : VerificationProvider.None
+        };
+    }
+
+    private static string ToVerificationLevelKey(VerificationLevel level) => level switch
+    {
+        VerificationLevel.None => "none",
+        VerificationLevel.DocumentOnly => "document_only",
+        VerificationLevel.DocumentAndSelfie => "document_selfie",
+        VerificationLevel.ReusableDigitalId => "reusable_digital_id",
+        VerificationLevel.ManualReviewFallback => "manual_review",
+        VerificationLevel.AuthoritativeDataMatch => "document_selfie",
+        _ => "none"
+    };
+
+    private static VerificationLevel FromVerificationLevelKey(string level) => level.Trim().ToLowerInvariant() switch
+    {
+        "none" => VerificationLevel.None,
+        "document_only" => VerificationLevel.DocumentOnly,
+        "document_selfie" => VerificationLevel.DocumentAndSelfie,
+        "document_and_selfie" => VerificationLevel.DocumentAndSelfie,
+        "reusable_digital_id" => VerificationLevel.ReusableDigitalId,
+        "manual_review" => VerificationLevel.ManualReviewFallback,
+        _ => VerificationLevel.None
+    };
+
+    private static string ToPostVerificationKey(PostVerificationAction action) => action switch
+    {
+        PostVerificationAction.ActivateAutomatically => "activate",
+        PostVerificationAction.SendToAdminForApproval => "admin_approval",
+        PostVerificationAction.GrantLimitedAccess => "limited_access",
+        PostVerificationAction.RejectOnFailure => "reject_on_fail",
+        _ => "activate"
+    };
+
+    private static PostVerificationAction FromPostVerificationKey(string action) => action.Trim().ToLowerInvariant() switch
+    {
+        "activate" => PostVerificationAction.ActivateAutomatically,
+        "activate_automatically" => PostVerificationAction.ActivateAutomatically,
+        "admin_approval" => PostVerificationAction.SendToAdminForApproval,
+        "send_to_admin_for_approval" => PostVerificationAction.SendToAdminForApproval,
+        "limited_access" => PostVerificationAction.GrantLimitedAccess,
+        "grant_limited_access" => PostVerificationAction.GrantLimitedAccess,
+        "reject_on_fail" => PostVerificationAction.RejectOnFailure,
+        "reject_on_failure" => PostVerificationAction.RejectOnFailure,
+        _ => PostVerificationAction.ActivateAutomatically
+    };
+
+    private static string NormalizeFallbackMode(string fallbackMode) => fallbackMode.Trim().ToLowerInvariant() switch
+    {
+        "admin_review" => "admin_review",
+        "native_registration" => "native_registration",
+        _ => "none"
+    };
 
     [HttpGet("api/admin/cron")]
     [Authorize(Policy = "AdminOnly")]
@@ -1555,10 +1735,88 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public IActionResult AdminIdentityProviders()
     {
-        var providers = Enum.GetNames<VerificationProvider>()
-            .Select(name => new { id = name.ToLowerInvariant(), name, enabled = true })
-            .ToList();
-        return Ok(new { data = providers, providers });
+        var configured = GetConfiguredProviderSlugs();
+        var providers = ProviderCredentialOptions();
+
+        var payload = providers
+            .Select(p => p with
+            {
+                available = p.slug == "mock" || configured.Contains(p.slug),
+                has_credentials = configured.Contains(p.slug)
+            })
+            .ToArray();
+
+        return Ok(new { data = payload, providers = payload });
+    }
+
+    private static IdentityProviderOptionDto IdentityProviderOption(string slug, string name, params string[] levels)
+    {
+        return new IdentityProviderOptionDto(
+            id: slug,
+            slug: slug,
+            name: name,
+            levels: levels,
+            available: slug == "mock",
+            has_credentials: false,
+            enabled: true);
+    }
+
+    private static IdentityProviderOptionDto[] ProviderCredentialOptions() =>
+    [
+        IdentityProviderOption("mock", "Mock Provider (Testing)",
+            "document_only", "document_selfie", "reusable_digital_id", "manual_review"),
+        IdentityProviderOption("stripe_identity", "Stripe Identity",
+            "document_only", "document_selfie"),
+        IdentityProviderOption("veriff", "Veriff",
+            "document_only", "document_selfie", "manual_review"),
+        IdentityProviderOption("jumio", "Jumio",
+            "document_only", "document_selfie"),
+        IdentityProviderOption("onfido", "Onfido",
+            "document_only", "document_selfie"),
+        IdentityProviderOption("idenfy", "iDenfy",
+            "document_only", "document_selfie", "manual_review")
+    ];
+
+    private HashSet<string> GetConfiguredProviderSlugs()
+    {
+        if (_db == null)
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        return _db.TenantProviderCredentials
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.IsActive)
+            .Select(c => c.ProviderSlug)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool IsKnownProviderSlug(string slug)
+    {
+        var normalized = NormalizeProviderSlug(slug);
+        return ProviderCredentialOptions().Any(p => p.slug == normalized && normalized != "mock");
+    }
+
+    private static string NormalizeProviderSlug(string slug) => slug.Trim().ToLowerInvariant() switch
+    {
+        "stripeidentity" => "stripe_identity",
+        "stripe_identity" => "stripe_identity",
+        "idenfy" => "idenfy",
+        "idenfyidentity" => "idenfy",
+        _ => slug.Trim().ToLowerInvariant()
+    };
+
+    private Dictionary<string, string> DecryptCredentials(string encrypted)
+    {
+        try
+        {
+            var plaintext = _encryption.Decrypt(encrypted);
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(plaintext)
+                ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
     }
 
     [HttpGet("api/admin/identity/sessions")]
@@ -2248,9 +2506,135 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return Ok(new { success = true, data = Array.Empty<object>() });
     }
 
+    [HttpGet("api/admin/identity/provider-credentials")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminListProviderCredentials()
+    {
+        var configured = GetConfiguredProviderSlugs();
+        var credentials = ProviderCredentialOptions()
+            .Where(p => p.slug != "mock")
+            .Select(p => new
+            {
+                provider_slug = p.slug,
+                provider_name = p.name,
+                has_credentials = configured.Contains(p.slug),
+                required_fields = new[] { "api_key", "webhook_secret" }
+            })
+            .ToArray();
+
+        return Ok(new { success = true, data = credentials });
+    }
+
     [HttpGet("api/admin/identity/provider-credentials/{slug}")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult AdminGetProviderCredentials(string slug)
+    {
+        if (!IsKnownProviderSlug(slug))
+            return NotFound(new { success = false, error = "Unknown provider" });
+
+        var normalizedSlug = NormalizeProviderSlug(slug);
+        var hasCredentials = GetConfiguredProviderSlugs().Contains(normalizedSlug);
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                provider_slug = normalizedSlug,
+                configured = hasCredentials,
+                has_credentials = hasCredentials
+            }
+        });
+    }
+
     [HttpPut("api/admin/identity/provider-credentials/{slug}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminSaveProviderCredentials(
+        string slug,
+        [FromBody] ProviderCredentialRequest request)
+    {
+        if (!IsKnownProviderSlug(slug))
+            return NotFound(new { success = false, error = "Unknown provider" });
+
+        var normalizedSlug = NormalizeProviderSlug(slug);
+        var incoming = new Dictionary<string, string>();
+        if (!string.IsNullOrWhiteSpace(request.ApiKey))
+            incoming["api_key"] = request.ApiKey;
+        if (!string.IsNullOrWhiteSpace(request.WebhookSecret))
+            incoming["webhook_secret"] = request.WebhookSecret;
+
+        if (incoming.Count == 0)
+            return UnprocessableEntity(new { success = false, error = "At least one credential field is required" });
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var existing = await _db.TenantProviderCredentials
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.ProviderSlug == normalizedSlug);
+
+        var merged = existing == null
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : DecryptCredentials(existing.CredentialsEncrypted);
+
+        foreach (var pair in incoming)
+            merged[pair.Key] = pair.Value;
+
+        var encrypted = _encryption.Encrypt(JsonSerializer.Serialize(merged));
+
+        if (existing == null)
+        {
+            existing = new TenantProviderCredential
+            {
+                TenantId = tenantId,
+                ProviderSlug = normalizedSlug,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.TenantProviderCredentials.Add(existing);
+        }
+
+        existing.CredentialsEncrypted = encrypted;
+        existing.IsActive = true;
+        existing.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                saved = true,
+                provider_slug = normalizedSlug
+            }
+        });
+    }
+
     [HttpDelete("api/admin/identity/provider-credentials/{slug}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminDeleteProviderCredentials(string slug)
+    {
+        if (!IsKnownProviderSlug(slug))
+            return NotFound(new { success = false, error = "Unknown provider" });
+
+        var normalizedSlug = NormalizeProviderSlug(slug);
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var existing = await _db.TenantProviderCredentials
+            .Where(c => c.TenantId == tenantId && c.ProviderSlug == normalizedSlug)
+            .ToListAsync();
+        var deleted = existing.Count > 0;
+        if (deleted)
+        {
+            _db.TenantProviderCredentials.RemoveRange(existing);
+            await _db.SaveChangesAsync();
+        }
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                deleted,
+                provider_slug = normalizedSlug
+            }
+        });
+    }
+
     [HttpPost("api/admin/identity/sessions/{id:int}/{action}")]
     [Authorize(Policy = "AdminOnly")]
     public IActionResult AdminIdentityNestedCompatibility()
@@ -2445,6 +2829,45 @@ public class ReactFrontendCompatibilityController : ControllerBase
 
         return values;
     }
+}
+
+public sealed record IdentityProviderOptionDto(
+    string id,
+    string slug,
+    string name,
+    string[] levels,
+    bool available,
+    bool has_credentials,
+    bool enabled);
+
+public class ReactRegistrationPolicyRequest
+{
+    [JsonPropertyName("registration_mode")]
+    public string? RegistrationMode { get; set; }
+
+    [JsonPropertyName("verification_provider")]
+    public string? VerificationProvider { get; set; }
+
+    [JsonPropertyName("verification_level")]
+    public string? VerificationLevel { get; set; }
+
+    [JsonPropertyName("post_verification")]
+    public string? PostVerification { get; set; }
+
+    [JsonPropertyName("fallback_mode")]
+    public string? FallbackMode { get; set; }
+
+    [JsonPropertyName("require_email_verify")]
+    public bool? RequireEmailVerify { get; set; }
+}
+
+public class ProviderCredentialRequest
+{
+    [JsonPropertyName("api_key")]
+    public string? ApiKey { get; set; }
+
+    [JsonPropertyName("webhook_secret")]
+    public string? WebhookSecret { get; set; }
 }
 
 public class ValidateInviteRequest

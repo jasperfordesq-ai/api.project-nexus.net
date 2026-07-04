@@ -33,11 +33,16 @@ The Registration Policy Engine provides tenant-configurable identity-aware regis
     └────────────────┘ └────────────────┘ └────────────────┘
 ```
 
-> **Provider scope (2026-05-09):** Stripe Identity is the sole production
-> identity-verification provider. Veriff, Onfido, Jumio, and Idenfy are out
-> of scope per project owner directive. The `IIdentityVerificationProvider`
-> interface remains as an extensibility seam (used by `MockProvider` in
-> tests).
+> **Provider scope (2026-07-03):** .NET now has adapters for Mock, Stripe
+> Identity, Veriff, Onfido, Jumio, and iDenfy behind
+> `IIdentityVerificationProvider`. The non-Stripe adapters cover local session
+> shape, HMAC webhook verification, and Laravel-compatible webhook status
+> normalization. The React admin compatibility layer now exposes the Laravel
+> provider-list and registration-policy read/write payload shapes, stores
+> encrypted tenant provider credentials in `tenant_provider_credentials`, and
+> resolves those credentials when verification starts or webhooks are processed.
+> End-to-end sandbox/live HTTP contract checks, browser-level admin workflow
+> coverage, and full provider webhook parity remain open.
 
 ## User Registration State Machine
 
@@ -126,7 +131,15 @@ The Registration Policy Engine provides tenant-configurable identity-aware regis
 ## Database Entities
 
 ### tenant_registration_policies
-One active policy per tenant. Stores registration mode, provider config, verification level, and post-action behavior.
+One active policy per tenant. Stores registration mode, fallback mode, email
+verification requirement, provider config, verification level, and post-action
+behavior.
+
+### tenant_provider_credentials
+Stores encrypted per-tenant, per-provider API credentials using Laravel provider
+slugs such as `stripe_identity`, `veriff`, `onfido`, `jumio`, and `idenfy`.
+`RegistrationOrchestrator` resolves this store before falling back to the legacy
+policy-level provider config blob.
 
 ### identity_verification_sessions
 Tracks verification sessions between users and providers. Stores status, external IDs, and sanitized decisions. **No raw PII or provider payloads stored.**
@@ -201,8 +214,8 @@ Providers support three integration patterns:
   field, conditional tokens) — no breaking changes.
 - Provider API keys are stored encrypted via `ProviderConfigEncryption.cs`
   (see `src/Nexus.Api/Services/Registration/`).
-- Webhook signature verification is required for Stripe Identity
-  (`StripeIdentityProvider.VerifyWebhookSignature`).
+- Webhook signature verification is required for Stripe Identity and the
+  non-Stripe adapters registered behind `IIdentityVerificationProvider`.
 - The webhook endpoint is rate-limited; no raw provider payloads are persisted.
 
 ## Future Work

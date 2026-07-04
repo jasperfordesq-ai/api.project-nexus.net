@@ -26,6 +26,7 @@ public class ListingConfiguration : TenantScopedConfiguration
             entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Description).HasColumnType("text");
             entity.Property(e => e.Location).HasMaxLength(255);
+            entity.Property(e => e.ImageUrl).HasMaxLength(2000);
             entity.Property(e => e.EstimatedHours).HasPrecision(10, 2);
 
             // Enum conversions stored as strings for readability
@@ -41,6 +42,7 @@ public class ListingConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.TenantId, e.Latitude, e.Longitude });
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -79,6 +81,10 @@ public class ListingConfiguration : TenantScopedConfiguration
             entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.Slug).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.SubstitutionCoefficient)
+                .HasColumnName("substitution_coefficient")
+                .HasPrecision(3, 2)
+                .HasDefaultValue(1.00m);
 
             // Indexes
             entity.HasIndex(e => e.TenantId);

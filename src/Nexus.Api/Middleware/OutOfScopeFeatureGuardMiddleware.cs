@@ -10,12 +10,13 @@ using Nexus.Api.Data;
 namespace Nexus.Api.Middleware;
 
 /// <summary>
-/// Returns 404 for requests targeting V1 modules that are explicitly out-of-scope
-/// for V2 (Marketplace, Caring Community, Verein/Clubs, Regional Analytics,
+/// Returns 404 for requests targeting former parity-exclusion V1 modules that
+/// are still gaps (Marketplace, Caring Community, Verein/Clubs, Regional Analytics,
 /// National KISS), unless the corresponding tenant feature flag is enabled.
 ///
-/// Per CLAUDE.md ("V1 Modules Explicitly Excluded From V2 Migration"), these
-/// controllers may still exist in code but must not be reachable in production.
+/// Per CLAUDE.md, these modules are now tracked parity gaps. Controllers may
+/// exist incrementally, but disabled tenant features must not become reachable
+/// in production by accident.
 /// Flag lookup order: tenant <c>TenantConfig</c> entry
 /// <c>features.{flag}</c> (string "true"/"1"/"yes" enables) → falls back to
 /// global appsettings <c>OutOfScopeFeatures:{Flag}</c>.
@@ -74,7 +75,7 @@ public class OutOfScopeFeatureGuardMiddleware
             return;
         }
 
-        // Skip the guard in Testing environment — integration tests cover OOS
+        // Skip the guard in Testing environment — integration tests cover legacy
         // controllers that may still respond, and the gate would mask real
         // assertions. In Development we still log + 404 so devs notice.
         if (env.EnvironmentName.Equals("Testing", StringComparison.OrdinalIgnoreCase))
@@ -106,7 +107,7 @@ public class OutOfScopeFeatureGuardMiddleware
         }
 
         _logger.LogInformation(
-            "OOS feature gate blocked request: {Method} {Path} (flag={Flag} tenant={TenantId})",
+            "Parity-gap feature gate blocked request: {Method} {Path} (flag={Flag} tenant={TenantId})",
             context.Request.Method, path, flag, tenantId);
 
         context.Response.StatusCode = StatusCodes.Status404NotFound;

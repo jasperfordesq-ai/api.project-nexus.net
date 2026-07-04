@@ -197,9 +197,123 @@ public class AiKnowledgeController : ControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────────────
 
+    // Laravel parity: GET /api/v2/admin/ai-traces/metrics?days=30
+    [HttpGet("/api/admin/ai-traces/metrics")]
+    [HttpGet("/api/v2/admin/ai-traces/metrics")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> TraceMetrics([FromQuery] int days = 30, CancellationToken ct = default)
+    {
+        if (days < 1) days = 1;
+        if (days > 365) days = 365;
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var since = DateTime.UtcNow.AddDays(-days);
+
+        var traces = await _db.AiRequestAuditLogs.IgnoreQueryFilters()
+            .Where(a => a.TenantId == tenantId && a.CreatedAt >= since)
+            .Select(a => new
+            {
+                a.Id,
+                a.Model,
+                a.InputTokens,
+                a.OutputTokens,
+                a.LatencyMs,
+                a.ToolsInvoked,
+                a.CreatedAt
+            })
+            .ToListAsync(ct);
+
+        var feedback = await _db.AiMessageFeedbacks.IgnoreQueryFilters()
+            .Where(f => f.TenantId == tenantId && f.CreatedAt >= since)
+            .Select(f => new
+            {
+                f.Id,
+                f.Score,
+                f.Comment,
+                f.CreatedAt
+            })
+            .ToListAsync(ct);
+
+        var topTools = traces
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(2000)
+            .SelectMany(t => SplitToolNames(t.ToolsInvoked))
+            .GroupBy(name => name)
+            .Select(g => new { name = g.Key, calls = g.Count() })
+            .OrderByDescending(tool => tool.calls)
+            .ThenBy(tool => tool.name)
+            .Take(10)
+            .ToList();
+
+        var unanswered = feedback
+            .Where(f => f.Score == -1)
+            .OrderByDescending(f => f.CreatedAt)
+            .Take(20)
+            .Select(f => new
+            {
+                id = f.Id,
+                user_text = string.Empty,
+                assistant_text = string.Empty,
+                note = f.Comment,
+                at = f.CreatedAt,
+                model = (string?)null
+            })
+            .ToList();
+
+        var costUsd = traces.Sum(t => EstimateAiTraceCost(t.Model, t.InputTokens, t.OutputTokens));
+        var totalTokens = traces.Sum(t => (long)t.InputTokens + t.OutputTokens);
+        var avgLatency = traces.Count == 0 ? 0 : (int)Math.Round(traces.Average(t => t.LatencyMs));
+
+        return Ok(new
+        {
+            data = new
+            {
+                window_days = days,
+                turns = traces.Count,
+                tokens_total = totalTokens,
+                cost_usd = Math.Round(costUsd, 6),
+                avg_latency_ms = avgLatency,
+                thumbs_up = feedback.Count(f => f.Score == 1),
+                thumbs_down = feedback.Count(f => f.Score == -1),
+                top_tools = topTools,
+                unanswered
+            }
+        });
+    }
+
     private int GetUserId()
     {
         var idClaim = User.FindFirst("sub")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return int.TryParse(idClaim, out var id) ? id : 0;
+    }
+
+    private static IEnumerable<string> SplitToolNames(string? toolsInvoked)
+    {
+        if (string.IsNullOrWhiteSpace(toolsInvoked))
+            return [];
+
+        return toolsInvoked
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(name => name.Length > 0);
+    }
+
+    private static double EstimateAiTraceCost(string? model, int inputTokens, int outputTokens)
+    {
+        var pricing = model switch
+        {
+            "gpt-4o-mini" => (Input: 0.00015, Output: 0.0006),
+            "gpt-4o" => (Input: 0.0025, Output: 0.010),
+            "gpt-4-turbo" => (Input: 0.010, Output: 0.030),
+            "claude-3-5-sonnet-20241022" => (Input: 0.003, Output: 0.015),
+            "claude-sonnet-4-6" => (Input: 0.003, Output: 0.015),
+            "claude-haiku-4-5-20251001" => (Input: 0.0008, Output: 0.004),
+            "gemini-1.5-flash" => (Input: 0.000075, Output: 0.0003),
+            "gemini-1.5-pro" => (Input: 0.00125, Output: 0.005),
+            _ => (Input: 0.0, Output: 0.0)
+        };
+
+        return Math.Round(
+            inputTokens / 1000.0 * pricing.Input + outputTokens / 1000.0 * pricing.Output,
+            6);
     }
 }

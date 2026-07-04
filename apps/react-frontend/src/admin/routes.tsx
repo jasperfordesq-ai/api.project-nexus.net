@@ -187,7 +187,7 @@ const JobBiasAudit = lazy(() => import('./modules/jobs/JobsBiasAuditAdmin'));
 const JobPipelineOverview = lazy(() => import('./modules/jobs/JobsPipelineAdmin'));
 const JobTemplatesAdmin = AdminJobTemplatesPageReal;
 
-// Marketplace module — OOS per CLAUDE.md; routes removed.
+// Marketplace module -- tracked parity gap; only implemented routes are exposed.
 // Coupons remain in scope (decoupled from marketplace).
 const AdminCouponsPage = lazy(() => import('./modules/content/AdminCouponsPage'));
 
@@ -216,8 +216,8 @@ const CreditCommonsConfig = lazy(() => import('./modules/federation/AdminFederat
 const SafeguardingDashboard = lazy(() => import('./modules/safeguarding/SafeguardingDashboard'));
 const SafeguardingOptionsAdmin = lazy(() => import('./modules/safeguarding/SafeguardingOptionsAdminPage'));
 
-// Regional / national analytics — OOS per CLAUDE.md (Caring-Community-adjacent).
-// Routes removed.
+// Regional / national analytics -- tracked parity gaps; routes remain disabled
+// until .NET parity surfaces are implemented.
 
 // Advanced/SEO module
 const AiSettings = lazy(() => import('./modules/advanced/AiSettings'));
@@ -599,7 +599,7 @@ export function AdminRoutes() {
       <Route path="jobs/pipeline" element={<Lazy><JobPipelineOverview /></Lazy>} />
       <Route path="jobs/templates" element={<Lazy><JobTemplatesAdmin /></Lazy>} />
 
-      {/* ─── COUPONS (Marketplace itself is OOS) ─── */}
+      {/* ─── COUPONS (Marketplace parity gap slice) ─── */}
       <Route path="marketplace/coupons" element={<Lazy><AdminCouponsPage /></Lazy>} />
 
       {/* ─── IDEATION / CHALLENGES ─── */}
@@ -656,7 +656,7 @@ export function AdminRoutes() {
         <Route path="provisioning-requests" element={<Lazy><ProvisioningRequestsPage /></Lazy>} />
       </Route>
 
-      {/* National KISS + Regional Analytics OOS per CLAUDE.md — routes removed */}
+      {/* National KISS + Regional Analytics are tracked parity gaps */}
 
       {/* ─── ANALYTICS & REPORTING ─── */}
       <Route path="community-analytics" element={<Lazy><CommunityAnalytics /></Lazy>} />

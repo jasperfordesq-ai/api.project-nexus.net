@@ -52,6 +52,32 @@ public class TenantConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        // TenantSsoProvider configuration with tenant filter
+        modelBuilder.Entity<TenantSsoProvider>(entity =>
+        {
+            entity.ToTable("tenant_sso_providers");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProviderKey).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.DisplayName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Preset).HasMaxLength(32).HasDefaultValue("generic").IsRequired();
+            entity.Property(e => e.IssuerUrl).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.ClientId).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.ClientSecretEncrypted).HasColumnType("text");
+            entity.Property(e => e.Scopes).HasMaxLength(255).HasDefaultValue("openid profile email").IsRequired();
+            entity.Property(e => e.AllowedEmailDomains).HasColumnType("jsonb");
+            entity.HasIndex(e => e.TenantId).HasDatabaseName("sso_tenant_idx");
+            entity.HasIndex(e => new { e.TenantId, e.ProviderKey })
+                .IsUnique()
+                .HasDatabaseName("sso_tenant_provider_unique");
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         // TenantRegistrationPolicy configuration
         modelBuilder.Entity<TenantRegistrationPolicy>(entity =>
         {
@@ -74,10 +100,31 @@ public class TenantConfiguration : TenantScopedConfiguration
                 .HasConversion<string>()
                 .HasMaxLength(30);
 
+            entity.Property(e => e.FallbackMode)
+                .HasMaxLength(50)
+                .HasDefaultValue("none");
+
             // One active policy per tenant
             entity.HasIndex(e => new { e.TenantId, e.IsActive })
                 .HasFilter("\"IsActive\" = true")
                 .IsUnique();
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        // TenantProviderCredential configuration
+        modelBuilder.Entity<TenantProviderCredential>(entity =>
+        {
+            entity.ToTable("tenant_provider_credentials");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProviderSlug).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.CredentialsEncrypted).HasColumnType("text").IsRequired();
+            entity.HasIndex(e => new { e.TenantId, e.ProviderSlug }).IsUnique();
 
             entity.HasOne(e => e.Tenant)
                 .WithMany()

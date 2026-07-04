@@ -221,4 +221,4 @@ npm run lint             # TypeScript check (tsc --noEmit)
 
 ## 🔴 Deployment Warning
 
-**NEVER build locally and upload `dist/` to production!** Local builds use wrong environment variables. Always rebuild on the server. See [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md).
+**NEVER build locally and upload `dist/` to production!** Local builds use wrong environment variables. Always rebuild on the server. Before any production-container work, read [production-containers.md](../../.claude/production-containers.md).

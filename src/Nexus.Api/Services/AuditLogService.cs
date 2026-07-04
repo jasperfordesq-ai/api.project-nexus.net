@@ -156,6 +156,64 @@ public class AuditLogService
     }
 
     /// <summary>
+    /// Export tenant-scoped audit logs, ordered newest first, for CSV download.
+    /// </summary>
+    public async Task<List<AuditLogExportRow>> ExportLogsAsync(AuditLogFilter filter, int maxRows = 100000)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        maxRows = Math.Clamp(maxRows, 1, 100000);
+
+        var query = _db.Set<AuditLog>()
+            .AsNoTracking()
+            .Include(a => a.User)
+            .Where(a => a.TenantId == tenantId);
+
+        if (filter.UserId.HasValue)
+            query = query.Where(a => a.UserId == filter.UserId.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.Action))
+            query = query.Where(a => a.Action == filter.Action);
+
+        if (!string.IsNullOrWhiteSpace(filter.EntityType))
+            query = query.Where(a => a.EntityType == filter.EntityType);
+
+        if (filter.EntityId.HasValue)
+            query = query.Where(a => a.EntityId == filter.EntityId.Value);
+
+        if (filter.DateFrom.HasValue)
+            query = query.Where(a => a.CreatedAt >= filter.DateFrom.Value.Date);
+
+        if (filter.DateTo.HasValue)
+        {
+            var endOfDay = filter.DateTo.Value.Date.AddDays(1).AddTicks(-1);
+            query = query.Where(a => a.CreatedAt <= endOfDay);
+        }
+
+        if (filter.Severity.HasValue)
+            query = query.Where(a => a.Severity == filter.Severity.Value);
+
+        return await query
+            .OrderByDescending(a => a.CreatedAt)
+            .ThenByDescending(a => a.Id)
+            .Take(maxRows)
+            .Select(a => new AuditLogExportRow
+            {
+                Id = a.Id,
+                UserId = a.UserId,
+                UserName = a.User == null
+                    ? string.Empty
+                    : ((a.User.FirstName ?? string.Empty) + " " + (a.User.LastName ?? string.Empty)).Trim(),
+                Action = a.Action,
+                EntityType = a.EntityType,
+                EntityId = a.EntityId,
+                Details = a.Metadata ?? a.NewValues ?? a.OldValues,
+                IpAddress = a.IpAddress,
+                CreatedAt = a.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    /// <summary>
     /// Get recent critical audit events.
     /// </summary>
     public async Task<List<AuditLogDto>> GetRecentCriticalAsync(int limit = 50)
@@ -255,5 +313,18 @@ public class AuditLogDto
     public string? UserAgent { get; set; }
     public string? Metadata { get; set; }
     public string Severity { get; set; } = "info";
+    public DateTime CreatedAt { get; set; }
+}
+
+public class AuditLogExportRow
+{
+    public int Id { get; set; }
+    public int? UserId { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string? EntityType { get; set; }
+    public int? EntityId { get; set; }
+    public string? Details { get; set; }
+    public string? IpAddress { get; set; }
     public DateTime CreatedAt { get; set; }
 }

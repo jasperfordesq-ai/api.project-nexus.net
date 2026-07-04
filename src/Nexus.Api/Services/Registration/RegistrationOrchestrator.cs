@@ -200,9 +200,7 @@ public class RegistrationOrchestrator
         var provider = _providerFactory.GetProvider(policy.Provider);
         var callbackUrl = BuildWebhookCallbackUrl(tenantId);
 
-        var decryptedConfig = !string.IsNullOrEmpty(policy.ProviderConfigEncrypted)
-            ? _encryption.Decrypt(policy.ProviderConfigEncrypted)
-            : null;
+        var decryptedConfig = await ResolveProviderConfigAsync(policy, tenantId);
 
         var sessionResult = await provider.CreateSessionAsync(
             userId, tenantId, policy.VerificationLevel, callbackUrl, decryptedConfig);
@@ -304,15 +302,17 @@ public class RegistrationOrchestrator
 
         var provider = _providerFactory.GetProvider(providerType);
 
+        var providerConfig = await ResolveProviderConfigAsync(policy, tenantId);
+
         // Verify signature
-        if (!provider.VerifyWebhookSignature(payload, policy.ProviderConfigEncrypted))
+        if (!provider.VerifyWebhookSignature(payload, providerConfig))
         {
             _logger.LogWarning("Webhook signature verification failed for provider {Provider} in tenant {TenantId}",
                 providerType, tenantId);
             return false;
         }
 
-        var result = await provider.ProcessWebhookAsync(payload, policy.ProviderConfigEncrypted);
+        var result = await provider.ProcessWebhookAsync(payload, providerConfig);
         if (result == null)
         {
             _logger.LogWarning("Provider {Provider} could not process webhook payload", providerType);
@@ -560,6 +560,39 @@ public class RegistrationOrchestrator
         var baseUrl = _config["App:BaseUrl"] ?? "http://localhost:5080";
         return $"{baseUrl}/api/registration/webhook/{tenantId}";
     }
+
+    private async Task<string?> ResolveProviderConfigAsync(TenantRegistrationPolicy policy, int tenantId)
+    {
+        var providerSlug = ToProviderSlug(policy.Provider);
+        if (!string.IsNullOrWhiteSpace(providerSlug))
+        {
+            var credentials = await _db.TenantProviderCredentials
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c =>
+                    c.TenantId == tenantId
+                    && c.ProviderSlug == providerSlug
+                    && c.IsActive);
+
+            if (credentials != null)
+                return _encryption.Decrypt(credentials.CredentialsEncrypted);
+        }
+
+        return !string.IsNullOrEmpty(policy.ProviderConfigEncrypted)
+            ? _encryption.Decrypt(policy.ProviderConfigEncrypted)
+            : null;
+    }
+
+    private static string? ToProviderSlug(VerificationProvider provider) => provider switch
+    {
+        VerificationProvider.None => null,
+        VerificationProvider.Mock => "mock",
+        VerificationProvider.StripeIdentity => "stripe_identity",
+        VerificationProvider.UkCertified => "uk_certified",
+        VerificationProvider.EudiWallet => "eudi_wallet",
+        VerificationProvider.Idenfy => "idenfy",
+        _ => provider.ToString().ToLowerInvariant()
+    };
 
     #endregion
 }

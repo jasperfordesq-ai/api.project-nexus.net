@@ -10,11 +10,12 @@
  * from V1. Names mirror the V1 class for traceability. Disabled / interval
  * via appsettings: Scheduled:{JobName}:Enabled and Scheduled:{JobName}:IntervalMinutes.
  *
- * What is intentionally NOT ported here:
+ * What is not yet ported here:
  *   - DispatchCaringNudges, RetryCaringHourTransferDeliveries,
  *     ApplyCaringCommunityPreset, AuditAgorisCaringContent,
- *     CivicDigestDispatch — Caring Community module is out of scope.
- *   - Marketplace-specific cron tasks — Marketplace is out of scope.
+ *     CivicDigestDispatch -- Caring Community scheduled jobs are tracked
+ *     parity gaps.
+ *   - Marketplace-specific cron tasks -- tracked parity gaps.
  *   - Seed* and Test* commands — not real cron, dev-only utilities.
  *
  * Future ports (Phase 67+ infrastructure) — stubs ready in this file:
@@ -568,7 +569,8 @@ public class JobVacancyExpiryJob : ScheduledHostedService
 // 11. FeaturedExpiryJob — hourly. Unsets IsFeatured on JobVacancy and Listing
 //     rows whose featured window has elapsed.
 //     V1 sources: listings:process-expired-featured + marketplace promotions
-//     (marketplace OOS — only the listings/jobs side is ported).
+//     (marketplace promotions are tracked parity gaps; only listings/jobs side
+//     is ported here).
 // ─────────────────────────────────────────────────────────────────────────────
 
 public class FeaturedExpiryJob : ScheduledHostedService

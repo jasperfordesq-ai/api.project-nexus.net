@@ -15,8 +15,8 @@
  *     (zone label keys use V1 wording; visible labels are literal English)
  *   - Super Admin section at bottom (super-admin role only, unzoned)
  *
- * Caring Community module is intentionally excluded — see CLAUDE.md
- * "V1 Modules Explicitly Excluded From V2 Migration".
+ * Formerly excluded modules are now tracked parity gaps in CLAUDE.md. Sidebar
+ * entries stay feature-flagged until their .NET/admin surfaces are ready.
  */
 
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
@@ -395,7 +395,7 @@ function useAdminNav(): NavSection[] {
           { label: 'Job Templates', href: '/admin/jobs/templates', icon: FileText },
         ],
       }] as NavSection[] : []),
-      // Marketplace OOS per CLAUDE.md — sidebar section removed.
+      // Marketplace is a tracked parity gap; sidebar section remains disabled.
       // Coupons remain accessible at /admin/marketplace/coupons via a direct link if needed.
       ...(hasFeature('local_advertising') ? [{
         key: 'advertising',
@@ -532,7 +532,7 @@ function useAdminNav(): NavSection[] {
         icon: Crown,
         items: [
           { label: 'Super Dashboard', href: '/admin/super', icon: Crown },
-          // National KISS Dashboard intentionally omitted — Caring-Community-adjacent / OOS.
+          // National KISS dashboard remains hidden until the parity surface is ready.
           { label: 'Provisioning Queue', href: '/admin/provisioning-requests', icon: Building2 },
           { label: 'All Tenants', href: '/admin/super/tenants', icon: Building2 },
           { label: 'Tenant Hierarchy', href: '/admin/super/tenants/hierarchy', icon: Network },
@@ -543,7 +543,7 @@ function useAdminNav(): NavSection[] {
           { label: 'Super Federation Whitelist', href: '/admin/super/federation/whitelist', icon: Shield },
           { label: 'Super Federation Partnerships', href: '/admin/super/federation/partnerships', icon: Handshake },
           { label: 'Super Federation Audit', href: '/admin/super/federation/audit', icon: FileSearch },
-          // Regional Analytics intentionally omitted — Caring-Community-adjacent / OOS.
+          // Regional Analytics remains hidden until the parity surface is ready.
         ],
       });
     }

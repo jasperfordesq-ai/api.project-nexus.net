@@ -350,7 +350,7 @@ export function DeveloperDocsPage() {
             This is the V2 Project NEXUS API — an ASP.NET Core 8 backend serving the React member frontend and the embedded admin panel. Authentication is HS256 JWT, fully interoperable with the legacy PHP platform during the migration. Every read and write is scoped to a tenant via EF Core global query filters; the tenant is resolved from the JWT, request host, or the <code className="font-mono text-xs">X-Tenant-ID</code> header.
           </p>
           <p className="text-theme-subtle text-sm mt-2 max-w-3xl">
-            Use the probes panel to verify the API is reachable, browse the endpoint catalog for the routes that ship today, and the console to exercise them with your current session. The Marketplace and Caring Community modules from V1 are intentionally out of scope for V2 and are not documented here.
+            Use the probes panel to verify the API is reachable, browse the endpoint catalog for the routes that ship today, and the console to exercise them with your current session. Marketplace and Caring Community are tracked parity gaps, so only implemented .NET routes are documented here.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

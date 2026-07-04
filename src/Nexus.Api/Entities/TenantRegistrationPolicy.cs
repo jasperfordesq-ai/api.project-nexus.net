@@ -37,6 +37,17 @@ public class TenantRegistrationPolicy : ITenantEntity
     public PostVerificationAction PostVerificationAction { get; set; } = PostVerificationAction.ActivateAutomatically;
 
     /// <summary>
+    /// Laravel-style fallback mode when an identity provider is unavailable.
+    /// </summary>
+    [MaxLength(50)]
+    public string FallbackMode { get; set; } = "none";
+
+    /// <summary>
+    /// Whether email verification is required in addition to the registration mode.
+    /// </summary>
+    public bool RequireEmailVerify { get; set; }
+
+    /// <summary>
     /// Provider-specific configuration (API keys, webhook URLs, etc.) stored as encrypted JSON.
     /// Never exposed in public APIs.
     /// </summary>

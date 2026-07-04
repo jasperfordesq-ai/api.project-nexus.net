@@ -58,7 +58,25 @@ public class NexusDbContext : DbContext
     public DbSet<AiConversationLongMemory> AiConversationLongMemories => Set<AiConversationLongMemory>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<TenantConfig> TenantConfigs => Set<TenantConfig>();
+    public DbSet<TenantSsoProvider> TenantSsoProviders => Set<TenantSsoProvider>();
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<CaringEmergencyAlert> CaringEmergencyAlerts => Set<CaringEmergencyAlert>();
+    public DbSet<CaringFederationPeer> CaringFederationPeers => Set<CaringFederationPeer>();
+    public DbSet<CaringSubRegion> CaringSubRegions => Set<CaringSubRegion>();
+    public DbSet<CaringCareProvider> CaringCareProviders => Set<CaringCareProvider>();
+    public DbSet<CaringCaregiverLink> CaringCaregiverLinks => Set<CaringCaregiverLink>();
+    public DbSet<CaringCoverRequest> CaringCoverRequests => Set<CaringCoverRequest>();
+    public DbSet<CaringSupportRelationship> CaringSupportRelationships => Set<CaringSupportRelationship>();
+    public DbSet<CaringTandemSuggestionLog> CaringTandemSuggestionLogs => Set<CaringTandemSuggestionLog>();
+    public DbSet<CaringHelpRequest> CaringHelpRequests => Set<CaringHelpRequest>();
+    public DbSet<VolunteerLog> VolunteerLogs => Set<VolunteerLog>();
+    public DbSet<CaringProjectAnnouncement> CaringProjectAnnouncements => Set<CaringProjectAnnouncement>();
+    public DbSet<CaringProjectUpdate> CaringProjectUpdates => Set<CaringProjectUpdate>();
+    public DbSet<CaringProjectSubscription> CaringProjectSubscriptions => Set<CaringProjectSubscription>();
+    public DbSet<CaringSmartNudge> CaringSmartNudges => Set<CaringSmartNudge>();
+    public DbSet<CaringPaperOnboardingIntake> CaringPaperOnboardingIntakes => Set<CaringPaperOnboardingIntake>();
+    public DbSet<CaringInviteCode> CaringInviteCodes => Set<CaringInviteCode>();
+    public DbSet<CaringKpiBaseline> CaringKpiBaselines => Set<CaringKpiBaseline>();
     public DbSet<Exchange> Exchanges => Set<Exchange>();
     public DbSet<ExchangeRating> ExchangeRatings => Set<ExchangeRating>();
 
@@ -218,6 +236,21 @@ public class NexusDbContext : DbContext
     public DbSet<VolunteerTrainingCompletion> VolunteerTrainingCompletions => Set<VolunteerTrainingCompletion>();
     public DbSet<VolunteerGuardianConsent> VolunteerGuardianConsents => Set<VolunteerGuardianConsent>();
     public DbSet<VolunteerTenantPolicy> VolunteerTenantPolicies => Set<VolunteerTenantPolicy>();
+    public DbSet<CaringFavour> CaringFavours => Set<CaringFavour>();
+    public DbSet<CaringMunicipalityFeedback> CaringMunicipalityFeedback => Set<CaringMunicipalityFeedback>();
+    public DbSet<MunicipalitySurvey> MunicipalitySurveys => Set<MunicipalitySurvey>();
+    public DbSet<MunicipalitySurveyQuestion> MunicipalitySurveyQuestions => Set<MunicipalitySurveyQuestion>();
+    public DbSet<MunicipalitySurveyResponse> MunicipalitySurveyResponses => Set<MunicipalitySurveyResponse>();
+    public DbSet<CaringTrustTierConfig> CaringTrustTierConfigs => Set<CaringTrustTierConfig>();
+    public DbSet<CaringHourEstate> CaringHourEstates => Set<CaringHourEstate>();
+    public DbSet<CaringHourTransfer> CaringHourTransfers => Set<CaringHourTransfer>();
+    public DbSet<CaringHourGift> CaringHourGifts => Set<CaringHourGift>();
+    public DbSet<CaringKissTreffen> CaringKissTreffen => Set<CaringKissTreffen>();
+    public DbSet<CaringRegionalPointAccount> CaringRegionalPointAccounts => Set<CaringRegionalPointAccount>();
+    public DbSet<CaringRegionalPointTransaction> CaringRegionalPointTransactions => Set<CaringRegionalPointTransaction>();
+    public DbSet<CaringResearchPartner> CaringResearchPartners => Set<CaringResearchPartner>();
+    public DbSet<CaringResearchConsent> CaringResearchConsents => Set<CaringResearchConsent>();
+    public DbSet<CaringResearchDatasetExport> CaringResearchDatasetExports => Set<CaringResearchDatasetExport>();
 
     // Phase 37: Advanced Admin
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
@@ -230,6 +263,7 @@ public class NexusDbContext : DbContext
 
     // Registration Policy Engine
     public DbSet<TenantRegistrationPolicy> TenantRegistrationPolicies => Set<TenantRegistrationPolicy>();
+    public DbSet<TenantProviderCredential> TenantProviderCredentials => Set<TenantProviderCredential>();
     public DbSet<IdentityVerificationSession> IdentityVerificationSessions => Set<IdentityVerificationSession>();
     public DbSet<IdentityVerificationEvent> IdentityVerificationEvents => Set<IdentityVerificationEvent>();
 
@@ -348,6 +382,8 @@ public class NexusDbContext : DbContext
     public DbSet<SafeguardingOption> SafeguardingOptions => Set<SafeguardingOption>();
     public DbSet<SafeguardingAssignment> SafeguardingAssignments => Set<SafeguardingAssignment>();
     public DbSet<SafeguardingMessageReview> SafeguardingMessageReviews => Set<SafeguardingMessageReview>();
+    public DbSet<SafeguardingReport> SafeguardingReports => Set<SafeguardingReport>();
+    public DbSet<SafeguardingReportAction> SafeguardingReportActions => Set<SafeguardingReportAction>();
     public DbSet<BrokerRiskTag> BrokerRiskTags => Set<BrokerRiskTag>();
     public DbSet<UserMonitoringRestriction> UserMonitoringRestrictions => Set<UserMonitoringRestriction>();
 
@@ -438,6 +474,9 @@ public class NexusDbContext : DbContext
     public DbSet<MarketplaceSellerRating> MarketplaceSellerRatings => Set<MarketplaceSellerRating>();
     public DbSet<MerchantCoupon> MerchantCoupons => Set<MerchantCoupon>();
     public DbSet<MerchantCouponRedemption> MerchantCouponRedemptions => Set<MerchantCouponRedemption>();
+    public DbSet<MarketplaceSellerLoyaltySetting> MarketplaceSellerLoyaltySettings => Set<MarketplaceSellerLoyaltySetting>();
+    public DbSet<CaringLoyaltyRedemption> CaringLoyaltyRedemptions => Set<CaringLoyaltyRedemption>();
+    public DbSet<MarketplaceSellerRegionalPointSetting> MarketplaceSellerRegionalPointSettings => Set<MarketplaceSellerRegionalPointSetting>();
 
     // Provisioning Requests (new-tenant onboarding queue)
     public DbSet<ProvisioningRequest> ProvisioningRequests => Set<ProvisioningRequest>();
@@ -506,6 +545,7 @@ public class NexusDbContext : DbContext
             new BrokerEnterpriseConfiguration(_tenantContext),
             new DiscoveryConfiguration(_tenantContext),
             new ContactEmergencyConfiguration(_tenantContext),
+            new CaringCommunityConfiguration(_tenantContext),
             new ProvisioningRequestConfiguration(_tenantContext),
             new ApiPartnerConfiguration(_tenantContext),
             new FeedModerationGamificationConfiguration(_tenantContext),
@@ -610,6 +650,20 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
         });
         modelBuilder.Entity<MerchantCouponRedemption>().ToTable("merchant_coupon_redemptions");
+        modelBuilder.Entity<MarketplaceSellerLoyaltySetting>(entity =>
+        {
+            entity.ToTable("marketplace_seller_loyalty_settings");
+            entity.HasIndex(e => new { e.TenantId, e.SellerUserId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.AcceptsTimeCredits });
+        });
+        modelBuilder.Entity<CaringLoyaltyRedemption>(entity =>
+        {
+            entity.ToTable("caring_loyalty_redemptions");
+            entity.HasIndex(e => new { e.TenantId, e.MemberUserId });
+            entity.HasIndex(e => new { e.TenantId, e.MerchantUserId });
+            entity.HasIndex(e => new { e.TenantId, e.RedeemedAt });
+            entity.HasIndex(e => new { e.TenantId, e.MarketplaceListingId });
+        });
     }
 
     private static void ConfigureJobsParity(ModelBuilder modelBuilder)

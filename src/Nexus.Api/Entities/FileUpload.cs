@@ -69,5 +69,6 @@ public enum FileCategory
     Group,
     Event,
     Document,
-    Message
+    Message,
+    TenantLogo
 }

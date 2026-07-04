@@ -30,6 +30,9 @@ public class AuthConfiguration : TenantScopedConfiguration
             entity.Property(e => e.FirstName).HasMaxLength(100).IsRequired();
             entity.Property(e => e.LastName).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Role).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.TrustTier)
+                .HasColumnName("trust_tier")
+                .HasDefaultValue(0);
 
             // Composite unique: email per tenant
             entity.HasIndex(e => new { e.TenantId, e.Email }).IsUnique();

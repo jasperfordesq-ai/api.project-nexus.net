@@ -11,8 +11,8 @@
  *   POST   /api/admin/marketplace/coupons/{id}/suspend
  *   DELETE /api/admin/marketplace/coupons/{id}
  *
- * Coupons stay in scope per CLAUDE.md even though the full Marketplace
- * module is OOS — sellers create their own coupons via
+ * Coupons are an implemented slice while the full Marketplace module remains a
+ * tracked parity gap. Sellers create their own coupons via
  * /api/marketplace/coupons (MarketplaceController). This admin surface
  * exists to suspend abusive codes and prune expired ones.
  *
@@ -124,8 +124,8 @@ export default function AdminCouponsPage() {
         <CardBody className="flex flex-row gap-3 items-start">
           <AlertTriangle size={20} className="text-warning shrink-0 mt-0.5" />
           <div className="text-sm">
-            Marketplace module is OOS; coupons remain in scope as a small
-            admin-managed system. There is no admin <em>create</em>
+            Marketplace is still a tracked parity gap; coupons remain available
+            as a small admin-managed system. There is no admin <em>create</em>
             endpoint — sellers create coupons via the member-facing API.
           </div>
         </CardBody>

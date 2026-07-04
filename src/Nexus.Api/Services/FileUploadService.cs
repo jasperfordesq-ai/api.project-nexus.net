@@ -21,10 +21,16 @@ public class FileUploadService
 
     private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
     private const long MaxAvatarSizeBytes = 5 * 1024 * 1024; // 5 MB
+    private const long MaxTenantLogoSizeBytes = 2 * 1024 * 1024; // 2 MB
 
     private static readonly HashSet<string> AllowedImageTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg", "image/png", "image/gif", "image/webp"
+    };
+
+    private static readonly HashSet<string> AllowedTenantLogoTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"
     };
 
     private static readonly HashSet<string> AllowedDocumentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -51,14 +57,24 @@ public class FileUploadService
         int userId, int tenantId, FileCategory category, int? entityId = null, string? entityType = null)
     {
         // Validate
-        var maxSize = category == FileCategory.Avatar ? MaxAvatarSizeBytes : MaxFileSizeBytes;
+        var maxSize = category switch
+        {
+            FileCategory.Avatar => MaxAvatarSizeBytes,
+            FileCategory.TenantLogo => MaxTenantLogoSizeBytes,
+            _ => MaxFileSizeBytes
+        };
         if (fileSize > maxSize)
             return (null, $"File too large. Maximum size: {maxSize / 1024 / 1024} MB");
 
         if (fileSize == 0)
             return (null, "File is empty");
 
-        var allowedTypes = category == FileCategory.Document ? AllowedDocumentTypes : AllowedImageTypes;
+        var allowedTypes = category switch
+        {
+            FileCategory.Document => AllowedDocumentTypes,
+            FileCategory.TenantLogo => AllowedTenantLogoTypes,
+            _ => AllowedImageTypes
+        };
         if (!allowedTypes.Contains(contentType))
             return (null, $"File type '{contentType}' is not allowed for {category}");
 
@@ -183,6 +199,7 @@ public class FileUploadService
         "image/png" => ".png",
         "image/gif" => ".gif",
         "image/webp" => ".webp",
+        "image/svg+xml" => ".svg",
         "application/pdf" => ".pdf",
         _ => ".bin"
     };

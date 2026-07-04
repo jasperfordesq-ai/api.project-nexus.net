@@ -42,6 +42,8 @@ public enum VerificationProvider
     StripeIdentity = 16,
     UkCertified = 17,
     EudiWallet = 18,
+    Onfido = 19,
+    Idenfy = 20,
     Custom = 99
 }
 

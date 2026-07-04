@@ -95,6 +95,62 @@ public class SafeguardingMessageReview : ITenantEntity
     public User? ReviewedBy { get; set; }
 }
 
+public class SafeguardingReport : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int ReporterUserId { get; set; }
+    public int? SubjectUserId { get; set; }
+    public int? SubjectOrganisationId { get; set; }
+
+    [MaxLength(60)]
+    public string Category { get; set; } = "other";
+
+    [MaxLength(20)]
+    public string Severity { get; set; } = "medium";
+
+    public string Description { get; set; } = string.Empty;
+
+    [MaxLength(500)]
+    public string? EvidenceUrl { get; set; }
+
+    [MaxLength(30)]
+    public string Status { get; set; } = "submitted";
+
+    public int? AssignedToUserId { get; set; }
+    public DateTime? ReviewDueAt { get; set; }
+    public bool Escalated { get; set; }
+    public DateTime? EscalatedAt { get; set; }
+    public string? ResolutionNotes { get; set; }
+    public DateTime? ResolvedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    public Tenant? Tenant { get; set; }
+    public User? Reporter { get; set; }
+    public User? SubjectUser { get; set; }
+    public User? AssignedTo { get; set; }
+    public ICollection<SafeguardingReportAction> Actions { get; set; } = new List<SafeguardingReportAction>();
+}
+
+public class SafeguardingReportAction : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public long ReportId { get; set; }
+    public int ActorUserId { get; set; }
+
+    [MaxLength(30)]
+    public string Action { get; set; } = "created";
+
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public Tenant? Tenant { get; set; }
+    public SafeguardingReport? Report { get; set; }
+    public User? ActorUser { get; set; }
+}
+
 public class BrokerRiskTag : ITenantEntity
 {
     public int Id { get; set; }
