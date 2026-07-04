@@ -25,6 +25,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
     private readonly CaringCommunityAhvPensionExportService _ahvPensionExport;
     private readonly CaringCommunityFutureCareFundService _futureCareFund;
     private readonly CaringRegionalPointService _regionalPoints;
+    private readonly CaringResearchPartnershipService _research;
     private readonly TenantContext _tenant;
 
     public CaringCommunityMemberController(
@@ -34,6 +35,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
         CaringCommunityAhvPensionExportService ahvPensionExport,
         CaringCommunityFutureCareFundService futureCareFund,
         CaringRegionalPointService regionalPoints,
+        CaringResearchPartnershipService research,
         TenantContext tenant)
     {
         _relationships = relationships;
@@ -42,6 +44,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
         _ahvPensionExport = ahvPensionExport;
         _futureCareFund = futureCareFund;
         _regionalPoints = regionalPoints;
+        _research = research;
         _tenant = tenant;
     }
 
@@ -241,6 +244,52 @@ public sealed class CaringCommunityMemberController : ControllerBase
         return Ok(new { data });
     }
 
+    [HttpGet("research/consent")]
+    public async Task<IActionResult> ResearchConsent(CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var data = await _research.GetConsentAsync(
+            _tenant.GetTenantIdOrThrow(),
+            user.UserId!.Value,
+            ct);
+
+        return Ok(new { data });
+    }
+
+    [HttpPut("research/consent")]
+    public async Task<IActionResult> UpdateResearchConsent(
+        [FromBody] ResearchConsentRequest? request,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        try
+        {
+            var data = await _research.RecordConsentAsync(
+                _tenant.GetTenantIdOrThrow(),
+                user.UserId!.Value,
+                request?.ConsentStatus ?? string.Empty,
+                request?.Notes,
+                ct);
+
+            return Ok(new { data });
+        }
+        catch (CaringResearchValidationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", ex.Message, "consent_status"));
+        }
+    }
+
     [HttpPost("my-relationships/{id:int}/pause")]
     public async Task<IActionResult> PauseRelationship(
         int id,
@@ -387,4 +436,13 @@ public sealed class RelationshipLifecycleRequest
 
     [JsonPropertyName("resume_at")]
     public string? ResumeAt { get; set; }
+}
+
+public sealed class ResearchConsentRequest
+{
+    [JsonPropertyName("consent_status")]
+    public string? ConsentStatus { get; set; }
+
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
 }

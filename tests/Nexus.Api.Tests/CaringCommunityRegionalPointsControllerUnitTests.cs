@@ -588,6 +588,7 @@ public class CaringCommunityRegionalPointsControllerUnitTests
             new CaringCommunityAhvPensionExportService(db),
             new CaringCommunityFutureCareFundService(db),
             new CaringRegionalPointService(db),
+            new CaringResearchPartnershipService(db),
             tenant)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;

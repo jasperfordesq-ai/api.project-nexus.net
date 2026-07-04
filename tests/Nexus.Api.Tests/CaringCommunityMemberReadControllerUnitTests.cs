@@ -21,6 +21,7 @@ namespace Nexus.Api.Tests;
 public sealed class CaringCommunityMemberReadControllerUnitTests
 {
     private const string ControllerTypeName = "Nexus.Api.Controllers.CaringCommunityMemberController, Nexus.Api";
+    private const string ResearchConsentTypeName = "Nexus.Api.Entities.CaringResearchConsent, Nexus.Api";
 
     [Fact]
     public void Actions_ExposeLaravelMemberReadRoutes()
@@ -49,6 +50,14 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         controller.GetMethod("MyFutureCareFund")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("my-future-care-fund");
+
+        controller.GetMethod("ResearchConsent")
+            ?.GetCustomAttribute<HttpGetAttribute>()?.Template
+            .Should().Be("research/consent");
+
+        controller.GetMethod("UpdateResearchConsent")
+            ?.GetCustomAttribute<HttpPutAttribute>()?.Template
+            .Should().Be("research/consent");
 
         controller.GetMethod("PauseRelationship")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
@@ -450,6 +459,146 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
     }
 
     [Fact]
+    public async Task ResearchConsent_ReturnsDefaultOptedOutLaravelShapeWhenNoRecordExists()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadData(await Invoke(controller, "ResearchConsent", CancellationToken.None));
+
+        data.GetProperty("tenant_id").GetInt32().Should().Be(42);
+        data.GetProperty("user_id").GetInt32().Should().Be(10);
+        data.GetProperty("consent_status").GetString().Should().Be("opted_out");
+        data.GetProperty("consent_version").GetString().Should().Be("research-v1");
+        data.GetProperty("consented_at").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("revoked_at").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("notes").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task ResearchConsent_ReturnsTenantScopedStoredConsent()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Add(Entity(ResearchConsentTypeName,
+            ("Id", 1001L), ("TenantId", 42), ("UserId", 10), ("ConsentStatus", "opted_in"),
+            ("ConsentVersion", "research-v1"),
+            ("ConsentedAt", new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc)),
+            ("RevokedAt", null), ("Notes", "Share aggregate outcomes only"),
+            ("CreatedAt", new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc)),
+            ("UpdatedAt", new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc))));
+        db.Add(Entity(ResearchConsentTypeName,
+            ("Id", 9001L), ("TenantId", 7), ("UserId", 10), ("ConsentStatus", "revoked"),
+            ("ConsentVersion", "research-v1"), ("ConsentedAt", null),
+            ("RevokedAt", new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc)),
+            ("Notes", "Other tenant"), ("CreatedAt", DateTime.UtcNow), ("UpdatedAt", null)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadData(await Invoke(controller, "ResearchConsent", CancellationToken.None));
+
+        data.GetProperty("tenant_id").GetInt32().Should().Be(42);
+        data.GetProperty("user_id").GetInt32().Should().Be(10);
+        data.GetProperty("consent_status").GetString().Should().Be("opted_in");
+        data.GetProperty("consent_version").GetString().Should().Be("research-v1");
+        data.GetProperty("consented_at").GetDateTime().Should().Be(new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        data.GetProperty("revoked_at").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("notes").GetString().Should().Be("Share aggregate outcomes only");
+    }
+
+    [Fact]
+    public async Task UpdateResearchConsent_UpsertsLaravelConsentStatusAndNotes()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var optedIn = ReadData(await Invoke(
+            controller,
+            "UpdateResearchConsent",
+            new Dictionary<string, object?>
+            {
+                ["consent_status"] = "opted_in",
+                ["notes"] = "Aggregate research is OK"
+            },
+            CancellationToken.None));
+
+        optedIn.GetProperty("consent_status").GetString().Should().Be("opted_in");
+        optedIn.GetProperty("consent_version").GetString().Should().Be("research-v1");
+        optedIn.GetProperty("consented_at").ValueKind.Should().NotBe(JsonValueKind.Null);
+        optedIn.GetProperty("revoked_at").ValueKind.Should().Be(JsonValueKind.Null);
+        optedIn.GetProperty("notes").GetString().Should().Be("Aggregate research is OK");
+
+        var revoked = ReadData(await Invoke(
+            controller,
+            "UpdateResearchConsent",
+            new Dictionary<string, object?>
+            {
+                ["consent_status"] = "revoked",
+                ["notes"] = null
+            },
+            CancellationToken.None));
+
+        revoked.GetProperty("consent_status").GetString().Should().Be("revoked");
+        revoked.GetProperty("consented_at").ValueKind.Should().Be(JsonValueKind.Null);
+        revoked.GetProperty("revoked_at").ValueKind.Should().NotBe(JsonValueKind.Null);
+        revoked.GetProperty("notes").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var rows = db.CaringResearchConsents.IgnoreQueryFilters().ToArray();
+        rows.Should().ContainSingle();
+        rows[0].TenantId.Should().Be(42);
+        rows[0].UserId.Should().Be(10);
+        rows[0].ConsentStatus.Should().Be("revoked");
+    }
+
+    [Fact]
+    public async Task UpdateResearchConsent_WithInvalidStatus_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "UpdateResearchConsent",
+                new Dictionary<string, object?> { ["consent_status"] = "maybe" },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+    }
+
+    [Fact]
+    public async Task ResearchConsent_WhenCaringCommunityDisabled_ReturnsLaravelFeatureDisabledError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: false);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        AssertSingleError(await Invoke(controller, "ResearchConsent", CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "UpdateResearchConsent",
+                new Dictionary<string, object?> { ["consent_status"] = "opted_in" },
+                CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+    }
+
+    [Fact]
     public async Task MyRelationships_ReturnsLaravelMemberRowsWithRecentLogs()
     {
         var tenant = CreateTenantContext(42);
@@ -686,6 +835,7 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         var ahvPensionExport = new CaringCommunityAhvPensionExportService(db);
         var futureCareFund = new CaringCommunityFutureCareFundService(db);
         var regionalPoints = new CaringRegionalPointService(db);
+        var research = new CaringResearchPartnershipService(db);
         var controller = (ControllerBase)Activator.CreateInstance(
             Resolve(ControllerTypeName),
             relationships,
@@ -694,6 +844,7 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             ahvPensionExport,
             futureCareFund,
             regionalPoints,
+            research,
             tenant)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;
@@ -851,6 +1002,19 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             Status = status,
             CreatedAt = createdAt
         };
+    }
+
+    private static object Entity(string typeName, params (string Name, object? Value)[] values)
+    {
+        var type = Resolve(typeName);
+        var entity = Activator.CreateInstance(type)!;
+        foreach (var (name, value) in values)
+        {
+            type.GetProperty(name).Should().NotBeNull($"property {name} should exist on {typeName}");
+            type.GetProperty(name)!.SetValue(entity, value);
+        }
+
+        return entity;
     }
 
     private static int ExpectedActiveMonths(DateOnly firstContribution)
