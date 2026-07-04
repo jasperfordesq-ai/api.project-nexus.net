@@ -103,6 +103,47 @@ public sealed class KissTreffenService
         return Map(row, eventRow, users, quorum);
     }
 
+    public async Task<KissTreffenRow?> RecordMinutesAsync(
+        int tenantId,
+        int eventId,
+        int actorId,
+        string? minutesDocumentUrl,
+        string? coordinatorNotes,
+        CancellationToken ct)
+    {
+        var minutesUrl = OptionalString(minutesDocumentUrl, 512);
+        if (minutesUrl is null)
+        {
+            throw new ArgumentException("Minutes document URL is required.", nameof(minutesDocumentUrl));
+        }
+
+        var row = await _db.CaringKissTreffen
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item => item.TenantId == tenantId && item.EventId == eventId, ct);
+
+        if (row is null)
+        {
+            throw new InvalidOperationException("Caring Community Treffen meeting record not found.");
+        }
+
+        var now = DateTime.UtcNow;
+        row.MinutesDocumentUrl = minutesUrl;
+        row.MinutesUploadedAt = now;
+        row.MinutesUploadedBy = actorId;
+        row.CoordinatorNotes = OptionalString(coordinatorNotes, 2000);
+        row.UpdatedAt = now;
+
+        await _db.SaveChangesAsync(ct);
+
+        var mapped = await GetByEventIdAsync(tenantId, eventId, ct);
+        if (mapped is null)
+        {
+            throw new InvalidOperationException("Caring Community Treffen meeting record not found.");
+        }
+
+        return mapped;
+    }
+
     private async Task<IReadOnlyDictionary<int, User>> LoadUsersAsync(
         int tenantId,
         IEnumerable<int> userIds,
@@ -203,6 +244,22 @@ public sealed class KissTreffenService
             "false" or "0" or "no" or "off" or "disabled" => false,
             _ => null
         };
+    }
+
+    private static string? OptionalString(string? value, int maxLength)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0)
+        {
+            return null;
+        }
+
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 }
 

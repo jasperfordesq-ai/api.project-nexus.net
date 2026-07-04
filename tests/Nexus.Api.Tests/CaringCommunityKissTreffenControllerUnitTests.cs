@@ -10,6 +10,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -19,8 +20,10 @@ namespace Nexus.Api.Tests;
 public sealed class CaringCommunityKissTreffenControllerUnitTests
 {
     private const string ControllerTypeName = "Nexus.Api.Controllers.CaringCommunityKissTreffenController, Nexus.Api";
+    private const string AdminControllerTypeName = "Nexus.Api.Controllers.AdminCaringCommunityKissTreffenController, Nexus.Api";
     private const string ServiceTypeName = "Nexus.Api.Services.KissTreffenService, Nexus.Api";
     private const string EntityTypeName = "Nexus.Api.Entities.CaringKissTreffen, Nexus.Api";
+    private const string MinutesRequestTypeName = "Nexus.Api.Controllers.KissTreffenMinutesRequest, Nexus.Api";
 
     [Fact]
     public void Actions_ExposeLaravelKissTreffenReadRoutes()
@@ -33,6 +36,19 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().BeNull();
         controller.GetMethod("Show")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("{eventId}");
+    }
+
+    [Fact]
+    public void Actions_ExposeLaravelAdminMinutesRoute()
+    {
+        var controller = Resolve(AdminControllerTypeName);
+
+        controller.GetCustomAttribute<RouteAttribute>()?.Template
+            .Should().Be("api/admin/caring-community/kiss-treffen");
+        controller.GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .Should().Be("AdminOnly");
+        controller.GetMethod("RecordMinutes")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{eventId:int}/minutes");
     }
 
     [Fact]
@@ -116,6 +132,111 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(forbidden.Value));
         document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
             .Should().Be("FEATURE_DISABLED");
+    }
+
+    [Fact]
+    public async Task RecordMinutes_UpdatesTenantTreffenMinutesAndReturnsLaravelData()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedEvents(db);
+        db.Add(Treffen(42, id: 100, eventId: 10, type: "monthly_stamm", quorumRequired: 2, membersOnly: true));
+        db.EventRsvps.AddRange(
+            Rsvp(42, 10, 20, "going"),
+            Rsvp(42, 10, 21, "attended"));
+        await db.SaveChangesAsync();
+        var controller = CreateAdminController(db, tenant, userId: 9001);
+
+        var result = await Invoke(controller, "RecordMinutes", 10, MinutesRequest(
+            " https://cdn.example.test/kiss/treffen-minutes.pdf ",
+            " quorum met and minutes approved "), CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("event_id").GetInt32().Should().Be(10);
+        data.GetProperty("minutes_document_url").GetString()
+            .Should().Be("https://cdn.example.test/kiss/treffen-minutes.pdf");
+        data.GetProperty("minutes_uploaded_by").GetInt32().Should().Be(9001);
+        data.GetProperty("coordinator_notes").GetString().Should().Be("quorum met and minutes approved");
+        data.GetProperty("event").GetProperty("title").GetString().Should().Be("Monthly KISS circle");
+        data.GetProperty("quorum").GetProperty("current").GetInt32().Should().Be(2);
+
+        var saved = await db.CaringKissTreffen.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.EventId == 10);
+        saved.MinutesDocumentUrl.Should().Be("https://cdn.example.test/kiss/treffen-minutes.pdf");
+        saved.MinutesUploadedBy.Should().Be(9001);
+        saved.MinutesUploadedAt.Should().NotBeNull();
+        saved.CoordinatorNotes.Should().Be("quorum met and minutes approved");
+    }
+
+    [Fact]
+    public async Task RecordMinutes_ValidatesMinutesUrlAndFeatureFlagWithLaravelErrors()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedEvents(db);
+        db.Add(Treffen(42, id: 100, eventId: 10, type: "monthly_stamm", quorumRequired: 2, membersOnly: true));
+        await db.SaveChangesAsync();
+        var controller = CreateAdminController(db, tenant, userId: 9001);
+
+        AssertSingleError(
+            await Invoke(controller, "RecordMinutes", 10, MinutesRequest("   ", null), CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        var disabledTenant = CreateTenantContext(70);
+        await using var disabledDb = CreateDbContext(disabledTenant);
+        SeedFeature(disabledDb, 70, enabled: false);
+        await disabledDb.SaveChangesAsync();
+        var disabled = CreateAdminController(disabledDb, disabledTenant, userId: 9001);
+
+        AssertSingleError(
+            await Invoke(disabled, "RecordMinutes", 10, MinutesRequest("https://cdn.example.test/minutes.pdf", null), CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+    }
+
+    [Fact]
+    public async Task RecordMinutes_RequiresExistingTenantTreffen()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedEvents(db);
+        db.Add(Treffen(7, id: 900, eventId: 10, type: "monthly_stamm", quorumRequired: 1, membersOnly: true));
+        await db.SaveChangesAsync();
+        var controller = CreateAdminController(db, tenant, userId: 9001);
+
+        AssertSingleError(
+            await Invoke(controller, "RecordMinutes", 10, MinutesRequest("https://cdn.example.test/minutes.pdf", null), CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "KISS_TREFFEN_FAILED");
+
+        var otherTenant = await db.CaringKissTreffen.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 7 && row.EventId == 10);
+        otherTenant.MinutesUploadedBy.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RecordMinutes_WhenLinkedEventIsMissing_ReturnsLaravelFailure()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Add(Treffen(42, id: 100, eventId: 404, type: "monthly_stamm", quorumRequired: 1, membersOnly: true));
+        await db.SaveChangesAsync();
+        var controller = CreateAdminController(db, tenant, userId: 9001);
+
+        AssertSingleError(
+            await Invoke(controller, "RecordMinutes", 404, MinutesRequest("https://cdn.example.test/minutes.pdf", null), CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "KISS_TREFFEN_FAILED");
     }
 
     private static object Treffen(
@@ -222,6 +343,23 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
         return controller;
     }
 
+    private static ControllerBase CreateAdminController(NexusDbContext db, TenantContext tenant, int userId)
+    {
+        var service = Activator.CreateInstance(Resolve(ServiceTypeName), db, tenant);
+        var controller = Activator.CreateInstance(Resolve(AdminControllerTypeName), service, tenant)
+            .Should().BeAssignableTo<ControllerBase>().Subject;
+        controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow(), role: "admin");
+        return controller;
+    }
+
+    private static object MinutesRequest(string? minutesDocumentUrl, string? coordinatorNotes)
+    {
+        var request = Activator.CreateInstance(Resolve(MinutesRequestTypeName))!;
+        Set(request, "MinutesDocumentUrl", minutesDocumentUrl);
+        Set(request, "CoordinatorNotes", coordinatorNotes);
+        return request;
+    }
+
     private static async Task<IActionResult> Invoke(object controller, string actionName, params object?[] args)
     {
         var method = controller.GetType().GetMethod(actionName);
@@ -235,6 +373,15 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
         var type = Type.GetType(typeName);
         type.Should().NotBeNull();
         return type!;
+    }
+
+    private static void AssertSingleError(IActionResult result, int statusCode, string code)
+    {
+        var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(statusCode);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+        document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be(code);
     }
 
     private static void Set(object target, string propertyName, object? value)
@@ -260,7 +407,7 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
         return new NexusDbContext(options, tenant);
     }
 
-    private static ControllerContext ControllerContextFor(int userId, int tenantId)
+    private static ControllerContext ControllerContextFor(int userId, int tenantId, string role = "member")
     {
         return new ControllerContext
         {
@@ -270,8 +417,8 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
                 [
                     new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                     new Claim("tenant_id", tenantId.ToString()),
-                    new Claim(ClaimTypes.Role, "member"),
-                    new Claim("role", "member")
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("role", role)
                 ], "Test"))
             }
         };

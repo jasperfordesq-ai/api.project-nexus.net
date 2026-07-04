@@ -17,11 +17,11 @@ frontend and localization artifacts.
 
 | Metric | Count |
 | --- | ---: |
-| Total open backlog items | 6,716 |
-| P0 items | 282 |
+| Total open backlog items | 6,715 |
+| P0 items | 281 |
 | P1 items | 6,430 |
 | P2 items | 4 |
-| API items | 222 |
+| API items | 221 |
 | Schema items | 242 |
 | Frontend items | 750 |
 | Localization items | 5,502 |
@@ -37,7 +37,7 @@ derived from static comparison artifacts.
 | Verein / Clubs | 669 |
 | Accessible frontend | 466 |
 | Unclassified parity gap | 429 |
-| Caring Community / National KISS | 157 |
+| Caring Community / National KISS | 156 |
 | Mailchimp-like communications | 162 |
 | Marketplace / commerce | 76 |
 | Partner API / portal | 40 |
