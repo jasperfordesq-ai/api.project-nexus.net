@@ -13,12 +13,14 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Tests;
 
 public class CaringCommunityRegionalPointsControllerUnitTests
 {
     private const string ControllerTypeName = "Nexus.Api.Controllers.AdminCaringCommunityRegionalPointsController, Nexus.Api";
+    private const string MemberControllerTypeName = "Nexus.Api.Controllers.CaringCommunityMemberController, Nexus.Api";
     private const string ServiceTypeName = "Nexus.Api.Services.CaringRegionalPointService, Nexus.Api";
     private const string AccountTypeName = "Nexus.Api.Entities.CaringRegionalPointAccount, Nexus.Api";
     private const string TransactionTypeName = "Nexus.Api.Entities.CaringRegionalPointTransaction, Nexus.Api";
@@ -59,6 +61,27 @@ public class CaringCommunityRegionalPointsControllerUnitTests
         controllerType.GetMethod("UpdateSellerSettings")
             ?.GetCustomAttribute<HttpPutAttribute>()?.Template
             .Should().Be("seller-settings");
+    }
+
+    [Fact]
+    public void MemberActions_ExposeLaravelRegionalPointsRoutes()
+    {
+        var controllerType = Resolve(MemberControllerTypeName);
+
+        controllerType.GetCustomAttribute<RouteAttribute>()?.Template
+            .Should().Be("api/caring-community");
+
+        controllerType.GetMethod("RegionalPointsSummary")
+            ?.GetCustomAttribute<HttpGetAttribute>()?.Template
+            .Should().Be("regional-points/summary");
+
+        controllerType.GetMethod("RegionalPointsHistory")
+            ?.GetCustomAttribute<HttpGetAttribute>()?.Template
+            .Should().Be("regional-points/history");
+
+        controllerType.GetMethod("RegionalPointsMarketplaceQuote")
+            ?.GetCustomAttribute<HttpGetAttribute>()?.Template
+            .Should().Be("regional-points/marketplace/quote");
     }
 
     [Fact]
@@ -260,6 +283,139 @@ public class CaringCommunityRegionalPointsControllerUnitTests
     }
 
     [Fact]
+    public async Task MemberRegionalPointsSummaryAndHistory_ReturnLaravelMemberPayloads()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedRegionalPointsEnabled(db, 42);
+        db.TenantConfigs.AddRange(
+            Setting(42, "label", "Neighbour Credits"),
+            Setting(42, "symbol", "KISS"),
+            Setting(42, "member_transfers_enabled", "1"),
+            Setting(42, "marketplace_redemption_enabled", "1"));
+        SeedUser(db, 42, 10, "ada@example.test", "Ada", "Lovelace");
+        SeedUser(db, 42, 20, "grace@example.test", "Grace", "Hopper");
+        SeedUser(db, 7, 710, "other@example.test", "Other", "Tenant");
+        db.Add(Entity(AccountTypeName,
+            ("Id", 1001L), ("TenantId", 42), ("UserId", 10), ("Balance", 12.345m),
+            ("LifetimeEarned", 40m), ("LifetimeSpent", 27.655m)));
+        db.Add(Entity(AccountTypeName,
+            ("Id", 9001L), ("TenantId", 7), ("UserId", 710), ("Balance", 999m),
+            ("LifetimeEarned", 999m), ("LifetimeSpent", 0m)));
+        db.Add(Entity(TransactionTypeName,
+            ("Id", 501L), ("TenantId", 42), ("AccountId", 1001L), ("UserId", 10), ("ActorUserId", 20),
+            ("Type", "admin_issue"), ("Direction", "credit"), ("Points", 30.123m), ("BalanceAfter", 30.123m),
+            ("Description", "Issued"), ("CreatedAt", new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc))));
+        db.Add(Entity(TransactionTypeName,
+            ("Id", 502L), ("TenantId", 42), ("AccountId", 1001L), ("UserId", 10), ("ActorUserId", null),
+            ("Type", "redemption"), ("Direction", "debit"), ("Points", 17.778m), ("BalanceAfter", 12.345m),
+            ("Description", "Redeemed"), ("CreatedAt", new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc))));
+        db.Add(Entity(TransactionTypeName,
+            ("Id", 503L), ("TenantId", 42), ("AccountId", 1001L), ("UserId", 20), ("ActorUserId", null),
+            ("Type", "admin_issue"), ("Direction", "credit"), ("Points", 5m), ("BalanceAfter", 5m),
+            ("Description", "Other member"), ("CreatedAt", new DateTime(2026, 7, 3, 9, 0, 0, DateTimeKind.Utc))));
+        db.Add(Entity(TransactionTypeName,
+            ("Id", 990L), ("TenantId", 7), ("AccountId", 9001L), ("UserId", 710), ("ActorUserId", null),
+            ("Type", "admin_issue"), ("Direction", "credit"), ("Points", 999m), ("BalanceAfter", 999m),
+            ("Description", "Other tenant"), ("CreatedAt", new DateTime(2026, 7, 4, 9, 0, 0, DateTimeKind.Utc))));
+        await db.SaveChangesAsync();
+        var controller = CreateMemberController(db, tenant, userId: 10);
+
+        var summary = ReadDataObject(await InvokeMember(controller, "RegionalPointsSummary", CancellationToken.None));
+
+        summary.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        summary.GetProperty("config").GetProperty("label").GetString().Should().Be("Neighbour Credits");
+        summary.GetProperty("config").GetProperty("symbol").GetString().Should().Be("KISS");
+        summary.GetProperty("config").GetProperty("member_transfers_enabled").GetBoolean().Should().BeTrue();
+        summary.GetProperty("config").GetProperty("marketplace_redemption_enabled").GetBoolean().Should().BeTrue();
+        summary.GetProperty("config").TryGetProperty("auto_issue_enabled", out _).Should().BeFalse();
+        summary.GetProperty("account").GetProperty("user_id").GetInt32().Should().Be(10);
+        summary.GetProperty("account").GetProperty("balance").GetDecimal().Should().Be(12.35m);
+        summary.GetProperty("account").GetProperty("lifetime_earned").GetDecimal().Should().Be(40m);
+        summary.GetProperty("account").GetProperty("lifetime_spent").GetDecimal().Should().Be(27.66m);
+
+        var history = ReadDataObject(await InvokeMember(controller, "RegionalPointsHistory", 1, CancellationToken.None));
+        var items = history.GetProperty("items").EnumerateArray().ToArray();
+        items.Should().HaveCount(1);
+        items[0].GetProperty("id").GetInt64().Should().Be(502);
+        items[0].GetProperty("user_id").GetInt32().Should().Be(10);
+        items[0].GetProperty("actor_user_id").ValueKind.Should().Be(JsonValueKind.Null);
+        items[0].GetProperty("type").GetString().Should().Be("redemption");
+        items[0].GetProperty("direction").GetString().Should().Be("debit");
+        items[0].GetProperty("points").GetDecimal().Should().Be(17.78m);
+        items[0].GetProperty("balance_after").GetDecimal().Should().Be(12.35m);
+        items[0].GetProperty("description").GetString().Should().Be("Redeemed");
+        items[0].GetProperty("created_at").GetDateTime().Should().Be(new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc));
+        items[0].TryGetProperty("user_name", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MemberRegionalPointsMarketplaceQuote_ReturnsLaravelDiscountEnvelope()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedRegionalPointsEnabled(db, 42);
+        db.TenantConfigs.Add(Setting(42, "marketplace_redemption_enabled", "1"));
+        SeedUser(db, 42, 10, "ada@example.test", "Ada", "Member");
+        SeedUser(db, 42, 20, "seller@example.test", "Seller", "One");
+        db.Add(Entity(AccountTypeName,
+            ("Id", 1001L), ("TenantId", 42), ("UserId", 10), ("Balance", 80m),
+            ("LifetimeEarned", 80m), ("LifetimeSpent", 0m)));
+        db.Add(Entity(SellerSettingTypeName,
+            ("Id", 3001L), ("TenantId", 42), ("SellerUserId", 20), ("AcceptsRegionalPoints", true),
+            ("RegionalPointsPerChf", 10m), ("RegionalPointsMaxDiscountPct", 25)));
+        await db.SaveChangesAsync();
+        var controller = CreateMemberController(db, tenant, userId: 10);
+
+        var data = ReadDataObject(await InvokeMember(
+            controller,
+            "RegionalPointsMarketplaceQuote",
+            20,
+            null,
+            20m,
+            CancellationToken.None));
+
+        data.GetProperty("accepts").GetBoolean().Should().BeTrue();
+        data.GetProperty("member_points").GetDecimal().Should().Be(80m);
+        data.GetProperty("regional_points_per_chf").GetDecimal().Should().Be(10m);
+        data.GetProperty("max_discount_pct").GetInt32().Should().Be(25);
+        data.GetProperty("max_points_usable").GetDecimal().Should().Be(50m);
+        data.GetProperty("max_discount_chf").GetDecimal().Should().Be(5m);
+        data.TryGetProperty("reason", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MemberRegionalPointsRoutes_WhenRegionalPointsDisabled_ReturnFeatureDisabledOrDisabledQuote()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUser(db, 42, 10, "ada@example.test", "Ada", "Member");
+        SeedUser(db, 42, 20, "seller@example.test", "Seller", "One");
+        await db.SaveChangesAsync();
+        var controller = CreateMemberController(db, tenant, userId: 10);
+
+        AssertSingleError(await InvokeMember(controller, "RegionalPointsSummary", CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(await InvokeMember(controller, "RegionalPointsHistory", null, CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+
+        var quote = ReadDataObject(await InvokeMember(
+            controller,
+            "RegionalPointsMarketplaceQuote",
+            20,
+            null,
+            20m,
+            CancellationToken.None));
+        quote.GetProperty("accepts").GetBoolean().Should().BeFalse();
+        quote.GetProperty("reason").GetString().Should().Be("feature_disabled");
+    }
+
+    [Fact]
     public async Task Issue_CreatesAccountTransactionAndReturnsLaravelCreatedEnvelope()
     {
         var tenant = CreateTenantContext(42);
@@ -420,6 +576,29 @@ public class CaringCommunityRegionalPointsControllerUnitTests
         var controller = (ControllerBase)Activator.CreateInstance(Resolve(ControllerTypeName), service, tenant)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;
+    }
+
+    private static object CreateMemberController(NexusDbContext db, TenantContext tenant, int userId)
+    {
+        var controller = (ControllerBase)Activator.CreateInstance(
+            Resolve(MemberControllerTypeName),
+            new CaringSupportRelationshipService(db),
+            new CaringSafeguardingService(db),
+            new CaringCommunityDataExportService(db),
+            new CaringCommunityAhvPensionExportService(db),
+            new CaringCommunityFutureCareFundService(db),
+            new CaringRegionalPointService(db),
+            tenant)!;
+        controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
+        return controller;
+    }
+
+    private static async Task<IActionResult> InvokeMember(object controller, string method, params object?[] args)
+    {
+        var info = Resolve(MemberControllerTypeName).GetMethod(method);
+        info.Should().NotBeNull();
+        var task = (Task<IActionResult>)info!.Invoke(controller, args)!;
+        return await task;
     }
 
     private static async Task<IActionResult> InvokeConfig(object controller)

@@ -685,6 +685,7 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         var dataExport = new CaringCommunityDataExportService(db);
         var ahvPensionExport = new CaringCommunityAhvPensionExportService(db);
         var futureCareFund = new CaringCommunityFutureCareFundService(db);
+        var regionalPoints = new CaringRegionalPointService(db);
         var controller = (ControllerBase)Activator.CreateInstance(
             Resolve(ControllerTypeName),
             relationships,
@@ -692,6 +693,7 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             dataExport,
             ahvPensionExport,
             futureCareFund,
+            regionalPoints,
             tenant)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;

@@ -24,6 +24,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
     private readonly CaringCommunityDataExportService _dataExport;
     private readonly CaringCommunityAhvPensionExportService _ahvPensionExport;
     private readonly CaringCommunityFutureCareFundService _futureCareFund;
+    private readonly CaringRegionalPointService _regionalPoints;
     private readonly TenantContext _tenant;
 
     public CaringCommunityMemberController(
@@ -32,6 +33,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
         CaringCommunityDataExportService dataExport,
         CaringCommunityAhvPensionExportService ahvPensionExport,
         CaringCommunityFutureCareFundService futureCareFund,
+        CaringRegionalPointService regionalPoints,
         TenantContext tenant)
     {
         _relationships = relationships;
@@ -39,6 +41,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
         _dataExport = dataExport;
         _ahvPensionExport = ahvPensionExport;
         _futureCareFund = futureCareFund;
+        _regionalPoints = regionalPoints;
         _tenant = tenant;
     }
 
@@ -144,6 +147,95 @@ public sealed class CaringCommunityMemberController : ControllerBase
         var data = await _futureCareFund.SummaryAsync(
             _tenant.GetTenantIdOrThrow(),
             user.UserId!.Value,
+            ct);
+
+        return Ok(new { data });
+    }
+
+    [HttpGet("regional-points/summary")]
+    public async Task<IActionResult> RegionalPointsSummary(CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        try
+        {
+            var data = await _regionalPoints.MemberSummaryAsync(
+                _tenant.GetTenantIdOrThrow(),
+                user.UserId!.Value,
+                ct);
+
+            return Ok(new { data });
+        }
+        catch (RegionalPointFeatureDisabledException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", ex.Message));
+        }
+    }
+
+    [HttpGet("regional-points/history")]
+    public async Task<IActionResult> RegionalPointsHistory(
+        [FromQuery] int? limit,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        try
+        {
+            var items = await _regionalPoints.MemberHistoryAsync(
+                _tenant.GetTenantIdOrThrow(),
+                user.UserId!.Value,
+                limit,
+                ct);
+
+            return Ok(new { data = new { items } });
+        }
+        catch (RegionalPointFeatureDisabledException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", ex.Message));
+        }
+    }
+
+    [HttpGet("regional-points/marketplace/quote")]
+    public async Task<IActionResult> RegionalPointsMarketplaceQuote(
+        [FromQuery(Name = "seller_id")] int sellerId,
+        [FromQuery(Name = "listing_id")] int? listingId,
+        [FromQuery(Name = "order_total_chf")] decimal orderTotalChf,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        if (sellerId <= 0)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed.", "seller_id"));
+        }
+
+        if (orderTotalChf <= 0m)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed.", "order_total_chf"));
+        }
+
+        var data = await _regionalPoints.CalculateMarketplaceDiscountAsync(
+            _tenant.GetTenantIdOrThrow(),
+            user.UserId!.Value,
+            sellerId,
+            listingId,
+            orderTotalChf,
             ct);
 
         return Ok(new { data });

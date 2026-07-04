@@ -15,6 +15,7 @@ namespace Nexus.Api.Services;
 public sealed class CaringRegionalPointService
 {
     public const string KeyPrefix = "caring_community.regional_points.";
+    private const decimal MaxPointsPerRedemption = 100000m;
 
     private static readonly RegionalPointConfig Defaults = new(
         Enabled: false,
@@ -178,6 +179,114 @@ public sealed class CaringRegionalPointService
         return pointsDelta > 0m
             ? await CreditAsync(tenantId, userId, pointsDelta, "admin_adjustment", description, actorId, ct)
             : await DebitAsync(tenantId, userId, Math.Abs(pointsDelta), "admin_adjustment", description, actorId, ct);
+    }
+
+    public async Task<RegionalPointMemberSummary> MemberSummaryAsync(
+        int tenantId,
+        int userId,
+        CancellationToken ct)
+    {
+        await AssertRegionalPointsEnabledAsync(tenantId, ct);
+        var account = await EnsureAccountAsync(tenantId, userId, ct);
+
+        return new RegionalPointMemberSummary(
+            Enabled: true,
+            Config: PublicConfig(await GetConfigAsync(tenantId, ct)),
+            Account: new RegionalPointMemberAccount(
+                UserId: userId,
+                Balance: RoundPoints(account.Balance),
+                LifetimeEarned: RoundPoints(account.LifetimeEarned),
+                LifetimeSpent: RoundPoints(account.LifetimeSpent)));
+    }
+
+    public async Task<IReadOnlyList<RegionalPointMemberTransactionDto>> MemberHistoryAsync(
+        int tenantId,
+        int userId,
+        int? limit,
+        CancellationToken ct)
+    {
+        await AssertRegionalPointsEnabledAsync(tenantId, ct);
+        var take = Math.Clamp(limit ?? 50, 1, 200);
+        await EnsureAccountAsync(tenantId, userId, ct);
+
+        var rows = await _db.CaringRegionalPointTransactions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(transaction => transaction.TenantId == tenantId && transaction.UserId == userId)
+            .OrderByDescending(transaction => transaction.CreatedAt)
+            .ThenByDescending(transaction => transaction.Id)
+            .Take(take)
+            .ToListAsync(ct);
+
+        return rows.Select(FormatMemberTransaction).ToArray();
+    }
+
+    public async Task<RegionalPointMarketplaceQuote> CalculateMarketplaceDiscountAsync(
+        int tenantId,
+        int memberId,
+        int sellerId,
+        int? listingId,
+        decimal orderTotalChf,
+        CancellationToken ct)
+    {
+        var config = await GetConfigAsync(tenantId, ct);
+        if (!await IsCaringCommunityEnabledAsync(tenantId, ct)
+            || !config.Enabled
+            || !config.MarketplaceRedemptionEnabled)
+        {
+            return DisabledQuote("feature_disabled");
+        }
+
+        if (orderTotalChf <= 0m)
+        {
+            return DisabledQuote("invalid_order_total");
+        }
+
+        if (!await TenantUserExistsAsync(tenantId, memberId, ct)
+            || !await TenantUserExistsAsync(tenantId, sellerId, ct))
+        {
+            return DisabledQuote("member_or_seller_unavailable");
+        }
+
+        if (listingId.HasValue
+            && !await MarketplaceListingBelongsToSellerAsync(tenantId, listingId.Value, sellerId, ct))
+        {
+            return DisabledQuote("listing_unavailable");
+        }
+
+        var settings = await _db.MarketplaceSellerRegionalPointSettings
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(setting => setting.TenantId == tenantId && setting.SellerUserId == sellerId, ct);
+        if (settings is null || !settings.AcceptsRegionalPoints)
+        {
+            return DisabledQuote("merchant_disabled");
+        }
+
+        var pointsPerChf = RoundPoints(settings.RegionalPointsPerChf);
+        var maxDiscountPct = settings.RegionalPointsMaxDiscountPct;
+        if (pointsPerChf <= 0m || maxDiscountPct <= 0)
+        {
+            return DisabledQuote("merchant_misconfigured");
+        }
+
+        var account = await EnsureAccountAsync(tenantId, memberId, ct);
+        var memberPoints = RoundPoints(account.Balance);
+        var maxDiscountChf = RoundPoints(orderTotalChf * maxDiscountPct / 100m);
+        var maxPointsByPolicy = RoundPoints(maxDiscountChf * pointsPerChf);
+        var maxPointsUsable = Math.Max(
+            0m,
+            RoundPoints(Math.Min(memberPoints, Math.Min(maxPointsByPolicy, MaxPointsPerRedemption))));
+        var effectiveDiscountChf = RoundPoints(maxPointsUsable / pointsPerChf);
+
+        return new RegionalPointMarketplaceQuote(
+            Accepts: true,
+            MemberPoints: memberPoints,
+            RegionalPointsPerChf: pointsPerChf,
+            MaxDiscountPct: maxDiscountPct,
+            MaxPointsUsable: maxPointsUsable,
+            MaxDiscountChf: effectiveDiscountChf,
+            Reason: null);
     }
 
     public async Task<RegionalPointSellerSettings> GetMarketplaceSellerSettingsAsync(
@@ -390,6 +499,50 @@ public sealed class CaringRegionalPointService
         }
     }
 
+    private async Task<bool> TenantUserExistsAsync(int tenantId, int userId, CancellationToken ct)
+    {
+        return userId > 0 && await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(user => user.TenantId == tenantId && user.Id == userId, ct);
+    }
+
+    private async Task<bool> MarketplaceListingBelongsToSellerAsync(
+        int tenantId,
+        int listingId,
+        int sellerId,
+        CancellationToken ct)
+    {
+        return await _db.MarketplaceListings
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(listing => listing.TenantId == tenantId
+                && listing.Id == listingId
+                && listing.UserId == sellerId,
+                ct);
+    }
+
+    private static RegionalPointPublicConfig PublicConfig(RegionalPointConfig config)
+    {
+        return new RegionalPointPublicConfig(
+            Label: config.Label,
+            Symbol: config.Symbol,
+            MemberTransfersEnabled: config.MemberTransfersEnabled,
+            MarketplaceRedemptionEnabled: config.MarketplaceRedemptionEnabled);
+    }
+
+    private static RegionalPointMarketplaceQuote DisabledQuote(string reason)
+    {
+        return new RegionalPointMarketplaceQuote(
+            Accepts: false,
+            MemberPoints: 0m,
+            RegionalPointsPerChf: 0m,
+            MaxDiscountPct: 0,
+            MaxPointsUsable: 0m,
+            MaxDiscountChf: 0m,
+            Reason: reason);
+    }
+
     private static RegionalPointTransactionDto FormatTransaction(
         CaringRegionalPointTransaction row,
         User? user,
@@ -408,6 +561,20 @@ public sealed class CaringRegionalPointService
             UserName: DisplayName(user),
             UserEmail: user?.Email,
             ActorName: DisplayName(actor));
+    }
+
+    private static RegionalPointMemberTransactionDto FormatMemberTransaction(CaringRegionalPointTransaction row)
+    {
+        return new RegionalPointMemberTransactionDto(
+            Id: row.Id,
+            UserId: row.UserId,
+            ActorUserId: row.ActorUserId,
+            Type: row.Type,
+            Direction: row.Direction,
+            Points: RoundPoints(row.Points),
+            BalanceAfter: RoundPoints(row.BalanceAfter),
+            Description: row.Description,
+            CreatedAt: row.CreatedAt);
     }
 
     private static string? DisplayName(User? user)
@@ -609,6 +776,45 @@ public sealed record RegionalPointStats(
     [property: JsonPropertyName("circulating_points")] decimal CirculatingPoints,
     [property: JsonPropertyName("total_issued")] decimal TotalIssued,
     [property: JsonPropertyName("total_spent")] decimal TotalSpent);
+
+public sealed record RegionalPointPublicConfig(
+    [property: JsonPropertyName("label")] string Label,
+    [property: JsonPropertyName("symbol")] string Symbol,
+    [property: JsonPropertyName("member_transfers_enabled")] bool MemberTransfersEnabled,
+    [property: JsonPropertyName("marketplace_redemption_enabled")] bool MarketplaceRedemptionEnabled);
+
+public sealed record RegionalPointMemberAccount(
+    [property: JsonPropertyName("user_id")] int UserId,
+    [property: JsonPropertyName("balance")] decimal Balance,
+    [property: JsonPropertyName("lifetime_earned")] decimal LifetimeEarned,
+    [property: JsonPropertyName("lifetime_spent")] decimal LifetimeSpent);
+
+public sealed record RegionalPointMemberSummary(
+    [property: JsonPropertyName("enabled")] bool Enabled,
+    [property: JsonPropertyName("config")] RegionalPointPublicConfig Config,
+    [property: JsonPropertyName("account")] RegionalPointMemberAccount Account);
+
+public sealed record RegionalPointMemberTransactionDto(
+    [property: JsonPropertyName("id")] long Id,
+    [property: JsonPropertyName("user_id")] int UserId,
+    [property: JsonPropertyName("actor_user_id")] int? ActorUserId,
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("direction")] string Direction,
+    [property: JsonPropertyName("points")] decimal Points,
+    [property: JsonPropertyName("balance_after")] decimal BalanceAfter,
+    [property: JsonPropertyName("description")] string? Description,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt);
+
+public sealed record RegionalPointMarketplaceQuote(
+    [property: JsonPropertyName("accepts")] bool Accepts,
+    [property: JsonPropertyName("member_points")] decimal MemberPoints,
+    [property: JsonPropertyName("regional_points_per_chf")] decimal RegionalPointsPerChf,
+    [property: JsonPropertyName("max_discount_pct")] int MaxDiscountPct,
+    [property: JsonPropertyName("max_points_usable")] decimal MaxPointsUsable,
+    [property: JsonPropertyName("max_discount_chf")] decimal MaxDiscountChf,
+    [property: JsonPropertyName("reason")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Reason);
 
 public sealed record RegionalPointTransactionDto(
     [property: JsonPropertyName("id")] long Id,
