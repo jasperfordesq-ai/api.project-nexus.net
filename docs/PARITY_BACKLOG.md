@@ -17,11 +17,11 @@ frontend and localization artifacts.
 
 | Metric | Count |
 | --- | ---: |
-| Total open backlog items | 6,717 |
-| P0 items | 283 |
+| Total open backlog items | 6,716 |
+| P0 items | 282 |
 | P1 items | 6,430 |
 | P2 items | 4 |
-| API items | 223 |
+| API items | 222 |
 | Schema items | 242 |
 | Frontend items | 750 |
 | Localization items | 5,502 |
@@ -37,14 +37,14 @@ derived from static comparison artifacts.
 | Verein / Clubs | 669 |
 | Accessible frontend | 466 |
 | Unclassified parity gap | 429 |
-| Caring Community / National KISS | 158 |
+| Caring Community / National KISS | 157 |
 | Mailchimp-like communications | 162 |
 | Marketplace / commerce | 76 |
 | Partner API / portal | 40 |
 | Identity verification providers | 35 |
 | Regional Analytics | 10 |
 
-P0 currently contains 283 items, led by Caring Community/National KISS,
+P0 currently contains 282 items, led by Caring Community/National KISS,
 unclassified API contract gaps, Verein/Clubs, Regional Analytics, marketplace
 commerce, and Partner API. The P0 bucket means "implement or triage before admin
 polish"; it does not mean every item is ready for one-commit implementation.
