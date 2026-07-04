@@ -22,17 +22,20 @@ public sealed class CaringCommunityMemberController : ControllerBase
     private readonly CaringSupportRelationshipService _relationships;
     private readonly CaringSafeguardingService _safeguarding;
     private readonly CaringCommunityDataExportService _dataExport;
+    private readonly CaringCommunityAhvPensionExportService _ahvPensionExport;
     private readonly TenantContext _tenant;
 
     public CaringCommunityMemberController(
         CaringSupportRelationshipService relationships,
         CaringSafeguardingService safeguarding,
         CaringCommunityDataExportService dataExport,
+        CaringCommunityAhvPensionExportService ahvPensionExport,
         TenantContext tenant)
     {
         _relationships = relationships;
         _safeguarding = safeguarding;
         _dataExport = dataExport;
+        _ahvPensionExport = ahvPensionExport;
         _tenant = tenant;
     }
 
@@ -102,6 +105,28 @@ public sealed class CaringCommunityMemberController : ControllerBase
             Encoding.UTF8.GetBytes(json),
             "application/json; charset=utf-8",
             fileName);
+    }
+
+    [HttpGet("my-ahv-pension-export")]
+    public async Task<IActionResult> MyAhvPensionExport(
+        [FromQuery(Name = "from")] string? fromDate,
+        [FromQuery(Name = "to")] string? toDate,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var data = await _ahvPensionExport.BuildAsync(
+            _tenant.GetTenantIdOrThrow(),
+            user.UserId!.Value,
+            fromDate,
+            toDate,
+            ct);
+
+        return Ok(new { data });
     }
 
     [HttpPost("my-relationships/{id:int}/pause")]

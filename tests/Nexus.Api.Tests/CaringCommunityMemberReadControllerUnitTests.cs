@@ -42,6 +42,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("me/data-export");
 
+        controller.GetMethod("MyAhvPensionExport")
+            ?.GetCustomAttribute<HttpGetAttribute>()?.Template
+            .Should().Be("my-ahv-pension-export");
+
         controller.GetMethod("PauseRelationship")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("my-relationships/{id:int}/pause");
@@ -303,6 +307,72 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
     }
 
     [Fact]
+    public async Task MyAhvPensionExport_ReturnsApprovedTenantScopedEvidencePackForRequestedPeriod()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Tenants.Add(new Tenant { Id = 42, Slug = "kiss-basel", Name = "KISS Basel" });
+        db.Users.AddRange(
+            User(10, 42, "Ada", "Exporter"),
+            User(11, 42, "Grace", "Neighbour"),
+            User(70, 7, "Other", "Tenant"));
+        db.VolunteerLogs.AddRange(
+            Log(901, 42, 10, 301, 11, new DateOnly(2025, 12, 31), 4m, "approved"),
+            Log(902, 42, 10, 301, 11, new DateOnly(2026, 1, 15), 1.257m, "approved"),
+            Log(903, 42, 10, 301, 11, new DateOnly(2026, 2, 5), 2.5m, "pending"),
+            Log(904, 42, 10, 301, 11, new DateOnly(2026, 3, 1), 3.2m, "approved"),
+            Log(905, 42, 11, 301, 10, new DateOnly(2026, 3, 2), 8m, "approved"),
+            Log(906, 7, 10, 301, 70, new DateOnly(2026, 3, 3), 9m, "approved"),
+            Log(907, 42, 10, 301, 11, new DateOnly(2027, 1, 1), 6m, "approved"));
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadData(await Invoke(
+            controller,
+            "MyAhvPensionExport",
+            "2026-01-01",
+            "2026-12-31",
+            CancellationToken.None));
+
+        data.GetProperty("format_version").GetString().Should().Be("0.1-provisional");
+        data.GetProperty("generated_at").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("official_interface").GetProperty("status").GetString()
+            .Should().Be("pending_official_ahv_specification");
+        data.GetProperty("official_interface").GetProperty("official_submission_supported").GetBoolean()
+            .Should().BeFalse();
+        data.GetProperty("official_interface").GetProperty("export_type").GetString()
+            .Should().Be("evidence_pack");
+        data.GetProperty("tenant").GetProperty("id").GetInt32().Should().Be(42);
+        data.GetProperty("tenant").GetProperty("slug").GetString().Should().Be("kiss-basel");
+        data.GetProperty("tenant").GetProperty("name").GetString().Should().Be("KISS Basel");
+        data.GetProperty("member").GetProperty("id").GetInt32().Should().Be(10);
+        data.GetProperty("member").GetProperty("name").GetString().Should().Be("Ada Exporter");
+        data.GetProperty("period").GetProperty("from").GetString().Should().Be("2026-01-01");
+        data.GetProperty("period").GetProperty("to").GetString().Should().Be("2026-12-31");
+        data.GetProperty("summary").GetProperty("approved_hours").GetDecimal().Should().Be(4.46m);
+        data.GetProperty("summary").GetProperty("row_count").GetInt32().Should().Be(2);
+        data.GetProperty("summary").GetProperty("years")[0].GetProperty("year").GetInt32().Should().Be(2026);
+        data.GetProperty("summary").GetProperty("years")[0].GetProperty("approved_hours").GetDecimal().Should().Be(4.46m);
+        data.GetProperty("summary").GetProperty("years")[0].GetProperty("row_count").GetInt32().Should().Be(2);
+
+        var rows = data.GetProperty("contribution_rows").EnumerateArray().ToArray();
+        rows.Select(row => row.GetProperty("record_id").GetInt32()).Should().Equal(902, 904);
+        rows[0].GetProperty("source").GetString().Should().Be("vol_log");
+        rows[0].GetProperty("date").GetString().Should().Be("2026-01-15");
+        rows[0].GetProperty("year").GetInt32().Should().Be(2026);
+        rows[0].GetProperty("hours").GetDecimal().Should().Be(1.26m);
+        rows[0].GetProperty("status").GetString().Should().Be("approved");
+        rows[0].GetProperty("organization_id").ValueKind.Should().Be(JsonValueKind.Null);
+        rows[0].GetProperty("opportunity_id").ValueKind.Should().Be(JsonValueKind.Null);
+        rows[0].GetProperty("caring_support_relationship_id").GetInt32().Should().Be(301);
+        rows[0].GetProperty("support_recipient_id").GetInt32().Should().Be(11);
+        rows[0].GetProperty("recorded_at").GetDateTime().Should().Be(new DateTime(2026, 1, 15, 12, 0, 0));
+        rows[0].GetProperty("verified_at").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
     public async Task MyRelationships_ReturnsLaravelMemberRowsWithRecentLogs()
     {
         var tenant = CreateTenantContext(42);
@@ -422,6 +492,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         AssertSingleError(await Invoke(controller, "MyDataExport", CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
+        AssertSingleError(
+            await Invoke(controller, "MyAhvPensionExport", null, null, CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
     }
 
     [Fact]
@@ -529,11 +603,13 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         var relationships = new CaringSupportRelationshipService(db);
         var safeguarding = new CaringSafeguardingService(db);
         var dataExport = new CaringCommunityDataExportService(db);
+        var ahvPensionExport = new CaringCommunityAhvPensionExportService(db);
         var controller = (ControllerBase)Activator.CreateInstance(
             Resolve(ControllerTypeName),
             relationships,
             safeguarding,
             dataExport,
+            ahvPensionExport,
             tenant)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;

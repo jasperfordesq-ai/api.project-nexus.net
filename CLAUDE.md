@@ -36,10 +36,10 @@ from source on 2026-07-04.
 | Surface | Laravel Edition (`C:\platforms\htdocs\staging`) | .NET Edition (this repo) |
 | --- | ---: | ---: |
 | Controllers | 308 PHP controller files | 205 C# controller files |
-| Services | 478 PHP service files | 179 C# service files |
+| Services | 478 PHP service files | 180 C# service files |
 | Models/entities | 200 Laravel model files | 186 EF entity files |
 | Migrations | 317 Laravel migrations | 84 EF migration classes excluding designers/snapshot |
-| API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 3,340 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,195 static matches / 232 missing source operations |
+| API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 3,341 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,196 static matches / 231 missing source operations |
 | Schema tables | 361 Laravel source tables from `scripts/compare-laravel-schema-parity.ps1` | 308 static EF/migration table names; 118 exact matches |
 | Frontend routes | 589 React routes / 607 accessible routes from `scripts/compare-laravel-frontend-parity.ps1` | 462 React routes / 136 `apps/web-uk` routes; 393 React matches and 53 accessible matches |
 | Localization | 11 locales / 605 locale namespaces; English key scan has 17,280 Laravel keys | 7 locales / 280 locale namespaces; English key scan has 5,575 .NET keys and 157 matches |
