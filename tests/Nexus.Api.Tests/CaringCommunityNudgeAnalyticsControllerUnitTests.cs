@@ -31,6 +31,10 @@ public class CaringCommunityNudgeAnalyticsControllerUnitTests
             .GetMethod(nameof(AdminCaringCommunityNudgesController.Analytics))
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("nudges/analytics");
+        typeof(AdminCaringCommunityNudgesController)
+            .GetMethod("Dispatch")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("nudges/dispatch");
     }
 
     [Fact]
@@ -121,11 +125,150 @@ public class CaringCommunityNudgeAnalyticsControllerUnitTests
             "FEATURE_DISABLED");
     }
 
+    [Fact]
+    public async Task Dispatch_DryRunReturnsPreviewWithoutWritingNudges()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedTenants(db);
+        SeedFeature(db, 42, enabled: true);
+        db.TenantConfigs.AddRange(
+            new TenantConfig { TenantId = 42, Key = "caring_community.nudges.enabled", Value = "true" },
+            new TenantConfig { TenantId = 42, Key = "caring_community.nudges.min_score", Value = "0.4" },
+            new TenantConfig { TenantId = 42, Key = "caring_community.nudges.daily_limit", Value = "10" });
+        db.Users.AddRange(
+            User(10, 42, "Ada", "Helper"),
+            User(11, 42, "Grace", "Recipient"),
+            User(70, 7, "Other", "Tenant"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant);
+
+        var data = ReadData(await InvokeDispatch(controller, dryRun: true, limit: 5));
+
+        data.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        data.GetProperty("dry_run").GetBoolean().Should().BeTrue();
+        data.GetProperty("candidates").GetInt32().Should().Be(1);
+        data.GetProperty("sent").GetInt32().Should().Be(0);
+        data.GetProperty("skipped").GetInt32().Should().Be(1);
+        var item = data.GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+        item.GetProperty("status").GetString().Should().Be("preview");
+        item.GetProperty("source_type").GetString().Should().Be("tandem_candidate");
+        item.GetProperty("target_user").GetProperty("id").GetInt32().Should().Be(10);
+        item.GetProperty("related_user").GetProperty("id").GetInt32().Should().Be(11);
+
+        db.CaringSmartNudges.IgnoreQueryFilters().Should().BeEmpty();
+        db.Notifications.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Dispatch_LiveCreatesSentNudgeNotificationAndSkipsDuplicate()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedTenants(db);
+        SeedFeature(db, 42, enabled: true);
+        db.TenantConfigs.AddRange(
+            new TenantConfig { TenantId = 42, Key = "caring_community.nudges.enabled", Value = "true" },
+            new TenantConfig { TenantId = 42, Key = "caring_community.nudges.min_score", Value = "0.4" },
+            new TenantConfig { TenantId = 42, Key = "caring_community.nudges.cooldown_days", Value = "14" },
+            new TenantConfig { TenantId = 42, Key = "caring_community.nudges.daily_limit", Value = "10" });
+        db.Users.AddRange(
+            User(10, 42, "Ada", "Helper"),
+            User(11, 42, "Grace", "Recipient"),
+            User(70, 7, "Other", "Tenant"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant);
+
+        var created = await InvokeDispatch(controller, dryRun: false, limit: 5);
+
+        var objectResult = created.Should().BeOfType<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(StatusCodes.Status201Created);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        data.GetProperty("dry_run").GetBoolean().Should().BeFalse();
+        data.GetProperty("candidates").GetInt32().Should().Be(1);
+        data.GetProperty("sent").GetInt32().Should().Be(1);
+        data.GetProperty("skipped").GetInt32().Should().Be(0);
+        var item = data.GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+        item.GetProperty("status").GetString().Should().Be("sent");
+        item.GetProperty("nudge_id").GetInt64().Should().BeGreaterThan(0);
+        item.GetProperty("notification_id").GetInt32().Should().BeGreaterThan(0);
+
+        var nudge = await db.CaringSmartNudges.IgnoreQueryFilters().SingleAsync();
+        nudge.TenantId.Should().Be(42);
+        nudge.TargetUserId.Should().Be(10);
+        nudge.RelatedUserId.Should().Be(11);
+        nudge.SourceType.Should().Be("tandem_candidate");
+        nudge.Status.Should().Be("sent");
+        nudge.DispatchKey.Should().NotBeNullOrWhiteSpace();
+        nudge.NotificationId.Should().BeGreaterThan(0);
+
+        var notification = await db.Notifications.IgnoreQueryFilters().SingleAsync();
+        notification.TenantId.Should().Be(42);
+        notification.UserId.Should().Be(10);
+        notification.Type.Should().Be("caring_smart_nudge");
+        notification.Body.Should().Contain("Grace Recipient");
+
+        var duplicate = ReadData(await InvokeDispatch(controller, dryRun: false, limit: 5));
+        duplicate.GetProperty("candidates").GetInt32().Should().Be(0);
+        duplicate.GetProperty("sent").GetInt32().Should().Be(0);
+        duplicate.GetProperty("skipped").GetInt32().Should().Be(0);
+        duplicate.GetProperty("items").EnumerateArray().Should().BeEmpty();
+        db.CaringSmartNudges.IgnoreQueryFilters().Should().ContainSingle();
+        db.Notifications.IgnoreQueryFilters().Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Dispatch_WhenDisabledOrFeatureOff_ReturnsLaravelCompatibleResult()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant);
+
+        var data = ReadData(await InvokeDispatch(controller, dryRun: false, limit: 5));
+
+        data.GetProperty("enabled").GetBoolean().Should().BeFalse();
+        data.GetProperty("candidates").GetInt32().Should().Be(0);
+        data.GetProperty("sent").GetInt32().Should().Be(0);
+
+        var disabledTenant = CreateTenantContext(70);
+        await using var disabledDb = CreateDbContext(disabledTenant);
+        SeedFeature(disabledDb, 70, enabled: false);
+        await disabledDb.SaveChangesAsync();
+        var disabled = CreateController(disabledDb, disabledTenant);
+
+        AssertSingleError(
+            await InvokeDispatch(disabled, dryRun: false, limit: 5),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+    }
+
     private static JsonElement ReadData(IActionResult result)
     {
-        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
-        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
+        (objectResult.StatusCode is null
+            or StatusCodes.Status200OK
+            or StatusCodes.Status201Created).Should().BeTrue();
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
         return document.RootElement.GetProperty("data").Clone();
+    }
+
+    private static async Task<IActionResult> InvokeDispatch(
+        AdminCaringCommunityNudgesController controller,
+        bool dryRun,
+        int? limit)
+    {
+        var method = typeof(AdminCaringCommunityNudgesController).GetMethod("Dispatch");
+        method.Should().NotBeNull();
+        var requestType = method!.GetParameters()[0].ParameterType;
+        var request = Activator.CreateInstance(requestType)!;
+        requestType.GetProperty("DryRun")!.SetValue(request, dryRun);
+        requestType.GetProperty("Limit")!.SetValue(request, limit);
+        var result = method.Invoke(controller, [request, CancellationToken.None]);
+        return await result.Should().BeAssignableTo<Task<IActionResult>>().Subject;
     }
 
     private static void AssertSingleError(IActionResult result, int statusCode, string code)
@@ -285,11 +428,11 @@ public class CaringCommunityNudgeAnalyticsControllerUnitTests
         NexusDbContext db,
         TenantContext tenant)
     {
-        var service = new CaringNudgeAnalyticsService(db);
-        return new AdminCaringCommunityNudgesController(service, tenant)
-        {
-            ControllerContext = ControllerContextFor(userId: 9001, tenant.GetTenantIdOrThrow())
-        };
+        var tandems = new CaringTandemMatchingService(db);
+        var service = new CaringNudgeAnalyticsService(db, tandems);
+        var controller = new AdminCaringCommunityNudgesController(service, tenant);
+        controller.ControllerContext = ControllerContextFor(userId: 9001, tenant.GetTenantIdOrThrow());
+        return controller;
     }
 
     private static ControllerContext ControllerContextFor(int userId, int tenantId)

@@ -4,9 +4,13 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 
 namespace Nexus.Api.Services;
 
@@ -20,10 +24,12 @@ public sealed class CaringNudgeAnalyticsService
     private const string NudgeNotificationType = "caring_smart_nudges";
 
     private readonly NexusDbContext _db;
+    private readonly CaringTandemMatchingService _tandems;
 
-    public CaringNudgeAnalyticsService(NexusDbContext db)
+    public CaringNudgeAnalyticsService(NexusDbContext db, CaringTandemMatchingService tandems)
     {
         _db = db;
+        _tandems = tandems;
     }
 
     public async Task<bool> IsFeatureEnabledAsync(int tenantId, CancellationToken ct)
@@ -110,6 +116,101 @@ public sealed class CaringNudgeAnalyticsService
             0);
     }
 
+    public async Task<CaringNudgeDispatchResult> DispatchDueAsync(
+        int tenantId,
+        int? limit,
+        bool dryRun,
+        CancellationToken ct)
+    {
+        var config = await ConfigAsync(tenantId, ct);
+        if (!config.Enabled)
+        {
+            return new CaringNudgeDispatchResult(
+                Enabled: false,
+                DryRun: dryRun,
+                Candidates: 0,
+                Sent: 0,
+                Skipped: 0,
+                Items: Array.Empty<CaringNudgeDispatchItem>());
+        }
+
+        var candidates = await PreviewCandidatesAsync(tenantId, config, limit, ct);
+        var sent = 0;
+        var items = new List<CaringNudgeDispatchItem>();
+
+        foreach (var candidate in candidates)
+        {
+            if (dryRun)
+            {
+                items.Add(candidate.ToItem("preview", null, null));
+                continue;
+            }
+
+            var dispatchKey = DispatchKey(tenantId, candidate, config.CooldownDays);
+            var existing = await _db.CaringSmartNudges
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.DispatchKey == dispatchKey, ct);
+
+            if (existing is not null)
+            {
+                items.Add(candidate.ToItem("skipped_duplicate", existing.Id, existing.NotificationId));
+                continue;
+            }
+
+            var now = DateTime.UtcNow;
+            var nudge = new CaringSmartNudge
+            {
+                TenantId = tenantId,
+                TargetUserId = candidate.TargetUser.Id,
+                RelatedUserId = candidate.RelatedUser.Id > 0 ? candidate.RelatedUser.Id : null,
+                SourceType = candidate.SourceType,
+                DispatchKey = dispatchKey,
+                Score = candidate.Score,
+                Signals = JsonSerializer.Serialize(candidate.Signals),
+                Status = "sent",
+                SentAt = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            var notification = new Notification
+            {
+                TenantId = tenantId,
+                UserId = candidate.TargetUser.Id,
+                Type = "caring_smart_nudge",
+                Title = "Caring community nudge",
+                Body = candidate.NotificationMessage,
+                Data = JsonSerializer.Serialize(new
+                {
+                    source_type = candidate.SourceType,
+                    related_user_id = candidate.RelatedUser.Id > 0 ? candidate.RelatedUser.Id : (int?)null,
+                    url = candidate.NotificationUrl
+                }),
+                IsRead = false,
+                CreatedAt = now
+            };
+
+            _db.CaringSmartNudges.Add(nudge);
+            _db.Notifications.Add(notification);
+            await _db.SaveChangesAsync(ct);
+
+            nudge.NotificationId = notification.Id;
+            nudge.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+
+            sent++;
+            items.Add(candidate.ToItem("sent", nudge.Id, notification.Id));
+        }
+
+        return new CaringNudgeDispatchResult(
+            Enabled: true,
+            DryRun: dryRun,
+            Candidates: candidates.Count,
+            Sent: sent,
+            Skipped: Math.Max(0, candidates.Count - sent),
+            Items: items);
+    }
+
     private async Task<CaringNudgeConfig> ConfigAsync(int tenantId, CancellationToken ct)
     {
         var rows = await _db.TenantConfigs
@@ -127,6 +228,86 @@ public sealed class CaringNudgeAnalyticsService
             ParseDecimal(Setting(rows, "min_score"), DefaultMinScore, 0.4m, 0.95m),
             ParseInt(Setting(rows, "cooldown_days"), DefaultCooldownDays, 1, 90),
             ParseInt(Setting(rows, "daily_limit"), DefaultDailyLimit, 1, 250));
+    }
+
+    private async Task<IReadOnlyList<CaringNudgeCandidate>> PreviewCandidatesAsync(
+        int tenantId,
+        CaringNudgeConfig config,
+        int? limit,
+        CancellationToken ct)
+    {
+        var cap = Math.Max(1, Math.Min(250, limit ?? config.DailyLimit));
+        var suggestions = await _tandems.SuggestTandemsAsync(tenantId, 100, ct);
+        var candidates = new List<CaringNudgeCandidate>();
+
+        foreach (var suggestion in suggestions)
+        {
+            if (suggestion.Score < config.MinScore)
+            {
+                continue;
+            }
+
+            if (await MemberOptedOutAsync(tenantId, suggestion.Supporter.Id, ct)
+                || await MemberOptedOutAsync(tenantId, suggestion.Recipient.Id, ct))
+            {
+                continue;
+            }
+
+            var candidate = new CaringNudgeCandidate(
+                TargetUser: new CaringNudgeDispatchUser(suggestion.Supporter.Id, suggestion.Supporter.Name),
+                RelatedUser: new CaringNudgeDispatchUser(suggestion.Recipient.Id, suggestion.Recipient.Name),
+                Score: suggestion.Score,
+                Signals: suggestion.Signals,
+                Reason: suggestion.Reason,
+                SourceType: "tandem_candidate",
+                NotificationUrl: "/caring-community/request-help",
+                NotificationMessage: BuildTandemMessage(suggestion.Recipient.Name));
+
+            if (await RecentlyNudgedAsync(tenantId, candidate, config.CooldownDays, ct))
+            {
+                continue;
+            }
+
+            candidates.Add(candidate);
+            if (candidates.Count >= cap)
+            {
+                break;
+            }
+        }
+
+        return candidates;
+    }
+
+    private async Task<bool> MemberOptedOutAsync(int tenantId, int userId, CancellationToken ct)
+    {
+        return await _db.NotificationPreferences
+            .IgnoreQueryFilters()
+            .AnyAsync(pref =>
+                pref.TenantId == tenantId &&
+                pref.UserId == userId &&
+                pref.NotificationType == NudgeNotificationType &&
+                !pref.EnableInApp &&
+                !pref.EnablePush &&
+                !pref.EnableEmail,
+                ct);
+    }
+
+    private async Task<bool> RecentlyNudgedAsync(
+        int tenantId,
+        CaringNudgeCandidate candidate,
+        int cooldownDays,
+        CancellationToken ct)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-Math.Max(1, cooldownDays));
+        return await _db.CaringSmartNudges
+            .IgnoreQueryFilters()
+            .AnyAsync(row =>
+                row.TenantId == tenantId &&
+                row.TargetUserId == candidate.TargetUser.Id &&
+                row.RelatedUserId == candidate.RelatedUser.Id &&
+                row.SourceType == candidate.SourceType &&
+                row.SentAt >= cutoff,
+                ct);
     }
 
     private async Task MarkConversionsAsync(int tenantId, CancellationToken ct)
@@ -233,6 +414,29 @@ public sealed class CaringNudgeAnalyticsService
         return string.IsNullOrWhiteSpace(fullName) ? email : fullName;
     }
 
+    private static string BuildTandemMessage(string relatedName)
+    {
+        return string.IsNullOrWhiteSpace(relatedName)
+            ? "A Caring Community member may be a good match for support."
+            : $"Could you connect with {relatedName}?";
+    }
+
+    private static string DispatchKey(int tenantId, CaringNudgeCandidate candidate, int cooldownDays)
+    {
+        var bucket = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / (Math.Max(1, cooldownDays) * 86400L);
+        var identity = JsonSerializer.Serialize(new
+        {
+            tenant_id = tenantId,
+            source_type = candidate.SourceType,
+            target_user_id = candidate.TargetUser.Id,
+            related_user_id = candidate.RelatedUser.Id,
+            cooldown_bucket = bucket
+        });
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(identity));
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
     private static string FormatTimestamp(DateTime value)
     {
         return value.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
@@ -284,3 +488,55 @@ public sealed record CaringNudgeRecentRow(
 public sealed record CaringNudgeUser(
     [property: JsonPropertyName("id")] int Id,
     [property: JsonPropertyName("name")] string Name);
+
+public sealed record CaringNudgeDispatchResult(
+    [property: JsonPropertyName("enabled")] bool Enabled,
+    [property: JsonPropertyName("dry_run")] bool DryRun,
+    [property: JsonPropertyName("candidates")] int Candidates,
+    [property: JsonPropertyName("sent")] int Sent,
+    [property: JsonPropertyName("skipped")] int Skipped,
+    [property: JsonPropertyName("items")] IReadOnlyList<CaringNudgeDispatchItem> Items);
+
+public sealed record CaringNudgeDispatchItem(
+    [property: JsonPropertyName("target_user")] CaringNudgeDispatchUser TargetUser,
+    [property: JsonPropertyName("related_user")] CaringNudgeDispatchUser RelatedUser,
+    [property: JsonPropertyName("score")] decimal Score,
+    [property: JsonPropertyName("signals")] TandemSignals Signals,
+    [property: JsonPropertyName("reason")] string Reason,
+    [property: JsonPropertyName("source_type")] string SourceType,
+    [property: JsonPropertyName("notification_url")] string NotificationUrl,
+    [property: JsonPropertyName("notification_message")] string NotificationMessage,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("nudge_id")] long? NudgeId,
+    [property: JsonPropertyName("notification_id")] long? NotificationId);
+
+public sealed record CaringNudgeDispatchUser(
+    [property: JsonPropertyName("id")] int Id,
+    [property: JsonPropertyName("name")] string Name);
+
+internal sealed record CaringNudgeCandidate(
+    CaringNudgeDispatchUser TargetUser,
+    CaringNudgeDispatchUser RelatedUser,
+    decimal Score,
+    TandemSignals Signals,
+    string Reason,
+    string SourceType,
+    string NotificationUrl,
+    string NotificationMessage)
+{
+    public CaringNudgeDispatchItem ToItem(string status, long? nudgeId, long? notificationId)
+    {
+        return new CaringNudgeDispatchItem(
+            TargetUser,
+            RelatedUser,
+            Score,
+            Signals,
+            Reason,
+            SourceType,
+            NotificationUrl,
+            NotificationMessage,
+            status,
+            nudgeId,
+            notificationId);
+    }
+}

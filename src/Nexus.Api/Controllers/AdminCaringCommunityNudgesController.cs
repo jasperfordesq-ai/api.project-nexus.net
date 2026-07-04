@@ -5,6 +5,7 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
 using Nexus.Api.Data;
 using Nexus.Api.Services;
 
@@ -40,6 +41,30 @@ public sealed class AdminCaringCommunityNudgesController : ControllerBase
         return Ok(new { data });
     }
 
+    [HttpPost("nudges/dispatch")]
+    public async Task<IActionResult> Dispatch(
+        [FromBody] CaringNudgeDispatchRequest? request,
+        CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _nudges.IsFeatureEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var data = await _nudges.DispatchDueAsync(
+            tenantId,
+            request?.Limit,
+            request?.DryRun == true,
+            ct);
+
+        return StatusCode(request?.DryRun == true
+            ? StatusCodes.Status200OK
+            : StatusCodes.Status201Created,
+            new { data });
+    }
+
     private static object LaravelError(string code, string message, string? field = null)
     {
         var error = new Dictionary<string, object?>
@@ -55,4 +80,10 @@ public sealed class AdminCaringCommunityNudgesController : ControllerBase
 
         return new { errors = new[] { error } };
     }
+}
+
+public sealed class CaringNudgeDispatchRequest
+{
+    [JsonPropertyName("dry_run")] public bool? DryRun { get; set; }
+    [JsonPropertyName("limit")] public int? Limit { get; set; }
 }
