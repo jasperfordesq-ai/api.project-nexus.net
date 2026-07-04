@@ -1285,6 +1285,45 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<VereinFederationConsent>(entity =>
+        {
+            entity.ToTable("verein_federation_consents");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.OrganizationId).HasColumnName("organization_id");
+            entity.Property(e => e.SharingScope).HasColumnName("sharing_scope").HasMaxLength(20).HasDefaultValue("none").IsRequired();
+            entity.Property(e => e.MunicipalityCode).HasColumnName("municipality_code").HasMaxLength(64);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.OptedInByAdminId).HasColumnName("opted_in_by_admin_id");
+            entity.Property(e => e.OptedInAt).HasColumnName("opted_in_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasIndex(e => e.OrganizationId)
+                .IsUnique()
+                .HasDatabaseName("verein_fed_consent_org_unique");
+            entity.HasIndex(e => new { e.TenantId, e.MunicipalityCode, e.IsActive })
+                .HasDatabaseName("verein_fed_consent_lookup_idx");
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Organisation)
+                .WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.OptedInByAdmin)
+                .WithMany()
+                .HasForeignKey(e => e.OptedInByAdminId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         modelBuilder.Entity<CaringTrustTierConfig>(entity =>
         {
             entity.ToTable("caring_trust_tier_config");

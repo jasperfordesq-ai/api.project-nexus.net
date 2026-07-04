@@ -804,6 +804,28 @@ public class CaringResearchDatasetExport : ITenantEntity
 }
 
 /// <summary>
+/// Tenant-scoped Verein federation consent for municipal event sharing.
+/// Mirrors Laravel's verein_federation_consents table.
+/// </summary>
+public class VereinFederationConsent : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int OrganizationId { get; set; }
+    public string SharingScope { get; set; } = "none";
+    public string? MunicipalityCode { get; set; }
+    public bool IsActive { get; set; } = true;
+    public int? OptedInByAdminId { get; set; }
+    public DateTime? OptedInAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    public Tenant? Tenant { get; set; }
+    public Organisation? Organisation { get; set; }
+    public User? OptedInByAdmin { get; set; }
+}
+
+/// <summary>
 /// Tenant-scoped criteria JSON for the Caring Community trust-tier system.
 /// Mirrors Laravel's caring_trust_tier_config table.
 /// </summary>

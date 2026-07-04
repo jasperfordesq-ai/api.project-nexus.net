@@ -8,12 +8,12 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 | Surface | Laravel Edition | .NET Edition |
 | --- | ---: | ---: |
-| Controllers | 308 | 205 |
-| Services | 478 | 181 |
+| Controllers | 308 | 206 |
+| Services | 479 | 181 |
 | Models/entities | 200 Laravel models | 186 EF entity files |
-| Migrations | 317 | 84 EF migration classes excluding designers/snapshot |
-| OpenAPI operations | 891 | 3,347 static controller operations from parity script |
-| Schema tables | 361 Laravel source tables | 308 .NET static table names |
+| Migrations | 318 | 85 EF migration classes excluding designers/snapshot |
+| OpenAPI operations | 891 | 3,349 static controller operations from parity script |
+| Schema tables | 361 Laravel source tables | 309 .NET static table names |
 | Frontend routes | 589 React / 607 accessible | 462 React / 136 accessible |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
 | Module guides | 24 curated Laravel module guides | maintained .NET parity docs recreated in this pass |
@@ -23,15 +23,15 @@ These counts are directional. They are not a parity score.
 
 `scripts/compare-laravel-api-parity.ps1` generated
 `artifacts/parity/api/api-parity.json` on 2026-07-04 with 2,427 Laravel source
-operations after supplemental API route parsing and de-duplication, 2,202 static
-matches, and 225 missing operations. Laravel `govuk-alpha*` accessible page
+operations after supplemental API route parsing and de-duplication, 2,204 static
+matches, and 223 missing operations. Laravel `govuk-alpha*` accessible page
 routes are excluded from the API comparator and tracked in the frontend
 comparator. The artifact is ignored by git; regenerate it before using the
 numbers for implementation planning.
 
 `scripts/compare-laravel-schema-parity.ps1` generated
 `artifacts/parity/schema/schema-parity.json` on 2026-07-04 with 361 Laravel
-source tables, 308 .NET table names, 118 exact matches, 243 missing Laravel-side
+source tables, 309 .NET table names, 119 exact matches, 242 missing Laravel-side
 names, and 190 .NET-only names. The artifact is ignored by git; regenerate it
 before using the numbers for schema implementation planning.
 
@@ -52,7 +52,7 @@ matched namespaces. The artifact is ignored by git; regenerate it before using
 the numbers for localization implementation planning.
 
 `scripts/export-laravel-parity-backlog.ps1` generated
-`artifacts/parity/backlog/parity-backlog.json` on 2026-07-04 with 6,720 open
+`artifacts/parity/backlog/parity-backlog.json` on 2026-07-04 with 6,717 open
 implementation items across API, schema, frontend, and localization artifacts.
 The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 
@@ -60,7 +60,7 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 
 | Area | Laravel evidence | .NET evidence | Current gap |
 | --- | --- | --- | --- |
-| Caring Community | 260 matched files including `app/Services/CaringCommunity/*`, `CaringCommunityApiController.php`, `FutureCareFundService.php`, `AhvPensionExportService.php`, `AdminCaringCommunityController::workflow/tandemSuggestions/dismissTandemSuggestion`, `MunicipalSurveyController.php`, `TrustTierController.php`, `WarmthPassController.php`, `CaregiverApiController.php`, KISS/municipal/civic services, caring admin pages | Initial .NET parity now covers emergency alerts, external integration backlog, federation peers plus member federation-directory, sub-regions, care providers, success stories, caregiver links plus burnout/schedule and cover-request reads, admin workflow dashboard read route, admin tandem suggestions read/dismiss routes with suppression log, project announcements, category coefficients, commercial boundary, municipal copilot, data-quality reads, civic digest member digest/prefs plus admin cadence, disclosure packs, operating policy, member statements, municipal ROI, nudge analytics, paper onboarding, pilot scoreboard, recipient circle, regional-points admin plus member summary/history/marketplace quote, research reads plus member consent, role-preset status, trust-tier member/admin routes, warmth-pass member/admin reads, safeguarding reads, SLA/support reads, member relationship lifecycle, member GDPR/FADP data export, member Future Care Fund summary, member AHV pension evidence-pack export, integration showcase, favours, forecast dashboard, KPI baseline, launch readiness, lead nurture, loyalty, municipality feedback, municipality surveys, legacy hour estate, same-platform hour transfer, hour-gift inbox/sent reads, KISS Treffen member list/detail reads, Caring Community Markt member feed, invite codes, and isolated-node decision gates. Evidence includes represented tables/settings such as `caring_federation_peers`, `caring_cover_requests`, `caring_municipality_feedback`, `caring_tandem_suggestion_log`, `caring_trust_tier_config`, `caring_hour_gifts`, `caring_kiss_treffen`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, regional-points/research/loyalty tables, shared `categories.substitution_coefficient`, `users.trust_tier`, listing geo/image fields for the Markt feed, `TenantConfig` civic digest/user prefs and workflow policy keys, `MunicipalSurveyService`, `TrustTierService`, `WarmthPassService`, `CaregiverSupportService`, `CaringCommunityWorkflowService`, `CaringCommunityDataExportService`, `CaringCommunityFutureCareFundService`, `CaringCommunityAhvPensionExportService`, `CaringRegionalPointService`, `CaringResearchPartnershipService`, `CaringTandemMatchingService`, `CaringHourGiftService`, `KissTreffenService`, and `CaringCommunityMarktService`. | These tiers have initial parity only. Workflow policy update/review assignment/escalation/decision routes, KISS Treffen admin upsert/minutes mutations, research partner writes/dataset mutations/agreement-template render, role-preset install, safeguarding report submit/admin mutations, admin support-relationship writes/hour logging, hour-gift send/accept/decline/revert mutations, regional-points transfer/redeem mutations, caregiver on-behalf and cover-request create/assign mutations, frontend, accessible, nudge dispatch/config, civic digest email dispatch/delivery claims, remote federation transfer delivery, missing `caring_help_requests.category_id` category derivation for warmth pass, and broader caring backend/admin workflows still need parity. |
+| Caring Community | 260 matched files including `app/Services/CaringCommunity/*`, `CaringCommunityApiController.php`, `FutureCareFundService.php`, `AhvPensionExportService.php`, `AdminCaringCommunityController::workflow/tandemSuggestions/dismissTandemSuggestion`, `MunicipalSurveyController.php`, `TrustTierController.php`, `WarmthPassController.php`, `CaregiverApiController.php`, `VereinFederationMemberController.php`, KISS/municipal/civic services, caring admin pages | Initial .NET parity now covers emergency alerts, external integration backlog, federation peers plus member federation-directory, sub-regions, care providers, success stories, caregiver links plus burnout/schedule and cover-request reads, public municipality events-calendar default/code routes, admin workflow dashboard read route, admin tandem suggestions read/dismiss routes with suppression log, project announcements, category coefficients, commercial boundary, municipal copilot, data-quality reads, civic digest member digest/prefs plus admin cadence, disclosure packs, operating policy, member statements, municipal ROI, nudge analytics, paper onboarding, pilot scoreboard, recipient circle, regional-points admin plus member summary/history/marketplace quote, research reads plus member consent, role-preset status, trust-tier member/admin routes, warmth-pass member/admin reads, safeguarding reads, SLA/support reads, member relationship lifecycle, member GDPR/FADP data export, member Future Care Fund summary, member AHV pension evidence-pack export, integration showcase, favours, forecast dashboard, KPI baseline, launch readiness, lead nurture, loyalty, municipality feedback, municipality surveys, legacy hour estate, same-platform hour transfer, hour-gift inbox/sent reads, KISS Treffen member list/detail reads, Caring Community Markt member feed, invite codes, and isolated-node decision gates. Evidence includes represented tables/settings such as `caring_federation_peers`, `caring_cover_requests`, `caring_municipality_feedback`, `caring_tandem_suggestion_log`, `caring_trust_tier_config`, `caring_hour_gifts`, `caring_kiss_treffen`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, `verein_federation_consents`, regional-points/research/loyalty tables, shared `categories.substitution_coefficient`, `users.trust_tier`, listing geo/image fields for the Markt feed, `TenantConfig` civic digest/user prefs and workflow policy keys, `MunicipalSurveyService`, `TrustTierService`, `WarmthPassService`, `CaregiverSupportService`, `CaringCommunityWorkflowService`, `CaringCommunityDataExportService`, `CaringCommunityFutureCareFundService`, `CaringCommunityAhvPensionExportService`, `CaringRegionalPointService`, `CaringResearchPartnershipService`, `CaringTandemMatchingService`, `CaringHourGiftService`, `KissTreffenService`, `CaringCommunityMarktService`, and `MunicipalityEventsCalendarController`. | These tiers have initial parity only. Workflow policy update/review assignment/escalation/decision routes, KISS Treffen admin upsert/minutes mutations, research partner writes/dataset mutations/agreement-template render, role-preset install, safeguarding report submit/admin mutations, admin support-relationship writes/hour logging, hour-gift send/accept/decline/revert mutations, regional-points transfer/redeem mutations, caregiver on-behalf and cover-request create/assign mutations, frontend, accessible, nudge dispatch/config, civic digest email dispatch/delivery claims, remote federation transfer delivery, missing `caring_help_requests.category_id` category derivation for warmth pass, and broader caring backend/admin workflows still need parity. |
 | Marketplace / commerce | 244 matched files including `Marketplace*Controller.php`, `Marketplace*Service.php`, marketplace models, merchant/coupon/ads routes | 10 matched files including `MarketplaceController.cs`, `MarketplaceService.cs`, `MarketplaceEntities.cs`; `CaringCommunityMarktController.cs` now aggregates marketplace items into the caring-community feed | Deep workflow and contract parity needed |
 | Verein / Clubs | 47 matched Laravel files including `app/Http/Controllers/Api/Verein/*`, dues/federation services, club controller | `VereineParityController.cs` and auth tests | Mostly compatibility shell; domain model/workflows need audit |
 | Regional Analytics | route file, services, PDF generator, billing, admin pages | no matched backend implementation | Full module gap |

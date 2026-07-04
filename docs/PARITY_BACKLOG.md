@@ -12,16 +12,17 @@ localization parity artifacts.
 ## Current Generated Rollup
 
 Generated with `scripts/export-laravel-parity-backlog.ps1` on 2026-07-04 after
-refreshing the API, schema, frontend, and localization artifacts.
+refreshing the API and schema artifacts and reusing the current 2026-07-04
+frontend and localization artifacts.
 
 | Metric | Count |
 | --- | ---: |
-| Total open backlog items | 6,720 |
-| P0 items | 286 |
+| Total open backlog items | 6,717 |
+| P0 items | 283 |
 | P1 items | 6,430 |
 | P2 items | 4 |
-| API items | 225 |
-| Schema items | 243 |
+| API items | 223 |
+| Schema items | 242 |
 | Frontend items | 750 |
 | Localization items | 5,502 |
 
@@ -33,17 +34,17 @@ derived from static comparison artifacts.
 | Area | Items |
 | --- | ---: |
 | Localization | 4,672 |
-| Verein / Clubs | 670 |
+| Verein / Clubs | 669 |
 | Accessible frontend | 466 |
 | Unclassified parity gap | 429 |
-| Caring Community / National KISS | 160 |
+| Caring Community / National KISS | 158 |
 | Mailchimp-like communications | 162 |
 | Marketplace / commerce | 76 |
 | Partner API / portal | 40 |
 | Identity verification providers | 35 |
 | Regional Analytics | 10 |
 
-P0 currently contains 286 items, led by Caring Community/National KISS,
+P0 currently contains 283 items, led by Caring Community/National KISS,
 unclassified API contract gaps, Verein/Clubs, Regional Analytics, marketplace
 commerce, and Partner API. The P0 bucket means "implement or triage before admin
 polish"; it does not mean every item is ready for one-commit implementation.

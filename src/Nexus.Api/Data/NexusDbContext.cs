@@ -251,6 +251,7 @@ public class NexusDbContext : DbContext
     public DbSet<CaringResearchPartner> CaringResearchPartners => Set<CaringResearchPartner>();
     public DbSet<CaringResearchConsent> CaringResearchConsents => Set<CaringResearchConsent>();
     public DbSet<CaringResearchDatasetExport> CaringResearchDatasetExports => Set<CaringResearchDatasetExport>();
+    public DbSet<VereinFederationConsent> VereinFederationConsents => Set<VereinFederationConsent>();
 
     // Phase 37: Advanced Admin
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
