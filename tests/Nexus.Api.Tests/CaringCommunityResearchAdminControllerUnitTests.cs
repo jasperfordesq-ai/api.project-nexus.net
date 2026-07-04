@@ -45,6 +45,9 @@ public class CaringCommunityResearchAdminControllerUnitTests
         researchController.GetMethod("DatasetExports")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("dataset-exports");
+        researchController.GetMethod("RevokeDatasetExport")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("dataset-exports/{exportId}/revoke");
 
         var rolePresetController = Resolve(RolePresetControllerTypeName);
         rolePresetController.GetCustomAttribute<RouteAttribute>()?.Template
@@ -257,6 +260,66 @@ public class CaringCommunityResearchAdminControllerUnitTests
         export.GetProperty("metadata").GetProperty("suppression_threshold").GetInt32().Should().Be(5);
         export.GetProperty("partner_name").GetString().Should().Be("Ageing Futures Lab");
         export.GetProperty("partner_institution").GetString().Should().Be("FHNW");
+    }
+
+    [Fact]
+    public async Task RevokeDatasetExport_MarksTenantExportRevokedAndMergesAuditMetadata()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Add(Entity(PartnerTypeName,
+            ("Id", 100L), ("TenantId", 42), ("Name", "Ageing Futures Lab"), ("Institution", "FHNW"),
+            ("ContactEmail", null), ("AgreementReference", null), ("MethodologyUrl", null), ("Status", "active"),
+            ("DataScope", null), ("StartsAt", null), ("EndsAt", null), ("CreatedBy", null),
+            ("CreatedAt", new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)), ("UpdatedAt", null)));
+        db.Add(Entity(ExportTypeName,
+            ("Id", 500L), ("TenantId", 42), ("PartnerId", 100L), ("RequestedBy", 9001),
+            ("DatasetKey", "caring_community_aggregate_v1"), ("PeriodStart", new DateOnly(2026, 1, 1)),
+            ("PeriodEnd", new DateOnly(2026, 1, 31)), ("Status", "generated"), ("RowCount", 6),
+            ("AnonymizationVersion", "aggregate-v1"), ("DataHash", new string('a', 64)),
+            ("GeneratedAt", new DateTime(2026, 7, 1, 8, 0, 0, DateTimeKind.Utc)),
+            ("Metadata", """{"partner_name":"Ageing Futures Lab","suppression_threshold":5}"""),
+            ("CreatedAt", new DateTime(2026, 7, 1, 8, 0, 0, DateTimeKind.Utc)), ("UpdatedAt", null)));
+        await db.SaveChangesAsync();
+        var controller = CreateResearchController(db, tenant, userId: 9001);
+
+        var data = ReadDataObject(await Invoke(controller, "RevokeDatasetExport", 500L, CancellationToken.None));
+
+        data.GetProperty("id").GetInt64().Should().Be(500);
+        data.GetProperty("tenant_id").GetInt32().Should().Be(42);
+        data.GetProperty("status").GetString().Should().Be("revoked");
+        data.GetProperty("metadata").GetProperty("partner_name").GetString().Should().Be("Ageing Futures Lab");
+        data.GetProperty("metadata").GetProperty("suppression_threshold").GetInt32().Should().Be(5);
+        data.GetProperty("metadata").GetProperty("revoked_by").GetInt32().Should().Be(9001);
+        data.GetProperty("metadata").GetProperty("revoked_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var stored = await db.CaringResearchDatasetExports.IgnoreQueryFilters()
+            .SingleAsync(export => export.Id == 500);
+        stored.Status.Should().Be("revoked");
+        stored.UpdatedAt.Should().NotBeNull();
+        stored.Metadata.Should().Contain("\"revoked_by\":9001");
+    }
+
+    [Fact]
+    public async Task RevokeDatasetExport_WhenMissingOrOtherTenant_ReturnsLaravelNotFoundError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Add(Entity(ExportTypeName,
+            ("Id", 900L), ("TenantId", 7), ("PartnerId", 100L), ("RequestedBy", null),
+            ("DatasetKey", "hidden"), ("PeriodStart", new DateOnly(2026, 3, 1)),
+            ("PeriodEnd", new DateOnly(2026, 3, 31)), ("Status", "generated"), ("RowCount", 99),
+            ("AnonymizationVersion", "aggregate-v1"), ("DataHash", new string('c', 64)),
+            ("GeneratedAt", new DateTime(2026, 7, 3, 8, 0, 0, DateTimeKind.Utc)),
+            ("Metadata", null), ("CreatedAt", new DateTime(2026, 7, 3, 8, 0, 0, DateTimeKind.Utc)), ("UpdatedAt", null)));
+        await db.SaveChangesAsync();
+        var controller = CreateResearchController(db, tenant, userId: 9001);
+
+        AssertSingleError(await Invoke(controller, "RevokeDatasetExport", 900L, CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "RESEARCH_EXPORT_NOT_FOUND");
     }
 
     [Fact]

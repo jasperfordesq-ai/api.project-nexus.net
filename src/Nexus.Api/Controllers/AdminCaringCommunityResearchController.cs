@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
 using Nexus.Api.Services;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace Nexus.Api.Controllers;
@@ -95,6 +96,32 @@ public sealed class AdminCaringCommunityResearchController : ControllerBase
 
         var exports = await _research.ListDatasetExportsAsync(_tenant.GetTenantIdOrThrow(), partnerId, ct);
         return Ok(new { data = new { exports } });
+    }
+
+    [HttpPost("dataset-exports/{exportId}/revoke")]
+    public async Task<IActionResult> RevokeDatasetExport(long exportId, CancellationToken ct)
+    {
+        var guard = await GuardResearchAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        try
+        {
+            var export = await _research.RevokeDatasetExportAsync(
+                _tenant.GetTenantIdOrThrow(),
+                exportId,
+                CurrentUserId(),
+                ct);
+
+            return Ok(new { data = export });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return StatusCode(StatusCodes.Status404NotFound,
+                LaravelError("RESEARCH_EXPORT_NOT_FOUND", ex.Message));
+        }
     }
 
     private async Task<IActionResult?> GuardResearchAsync(CancellationToken ct)
@@ -189,5 +216,12 @@ public sealed class AdminCaringCommunityResearchController : ControllerBase
             JsonValueKind.False => "false",
             _ => null
         };
+    }
+
+    private int CurrentUserId()
+    {
+        return int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+            ? userId
+            : 0;
     }
 }

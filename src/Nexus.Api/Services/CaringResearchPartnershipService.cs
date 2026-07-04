@@ -70,6 +70,31 @@ public sealed class CaringResearchPartnershipService
         return rows.Select(row => ExportRow(row.export, row.partner)).Cast<object>().ToArray();
     }
 
+    public async Task<object> RevokeDatasetExportAsync(int tenantId, long exportId, int actorId, CancellationToken ct)
+    {
+        var row = await _db.CaringResearchDatasetExports
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(export => export.TenantId == tenantId && export.Id == exportId, ct);
+
+        if (row is null)
+        {
+            throw new KeyNotFoundException("Research dataset export not found.");
+        }
+
+        var now = DateTime.UtcNow;
+        var metadata = DecodeJsonObject(row.Metadata);
+        metadata["revoked_by"] = actorId;
+        metadata["revoked_at"] = now.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+
+        row.Status = "revoked";
+        row.Metadata = JsonSerializer.Serialize(metadata);
+        row.UpdatedAt = now;
+
+        await _db.SaveChangesAsync(ct);
+
+        return ExportRow(row, null);
+    }
+
     public async Task<object> GetConsentAsync(int tenantId, int userId, CancellationToken ct)
     {
         var row = await _db.CaringResearchConsents
@@ -202,6 +227,32 @@ public sealed class CaringResearchPartnershipService
         catch (JsonException)
         {
             return Array.Empty<object>();
+        }
+    }
+
+    private static Dictionary<string, object?> DecodeJsonObject(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new Dictionary<string, object?>();
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(raw);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return new Dictionary<string, object?>();
+            }
+
+            return document.RootElement.EnumerateObject()
+                .ToDictionary(
+                    property => property.Name,
+                    property => JsonSerializer.Deserialize<object?>(property.Value.GetRawText()));
+        }
+        catch (JsonException)
+        {
+            return new Dictionary<string, object?>();
         }
     }
 
