@@ -49,6 +49,10 @@ public class CaringCommunitySafeguardingControllerUnitTests
         controller.GetMethod("Escalate")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("reports/{id:long}/escalate");
+
+        controller.GetMethod("Note")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("reports/{id:long}/note");
     }
 
     [Fact]
@@ -366,6 +370,99 @@ public class CaringCommunitySafeguardingControllerUnitTests
     }
 
     [Fact]
+    public async Task Note_AppendsTenantActionAndTouchesReport()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        var createdAt = new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc);
+        SeedReport(db, 503, 42, reporterId: 10, subjectId: 11, assigneeId: 12,
+            category: "neglect", severity: "critical", status: "submitted",
+            dueAt: DateTime.UtcNow.AddHours(-2), createdAt: createdAt);
+        SeedReport(db, 901, 7, reporterId: 70, subjectId: null, assigneeId: null,
+            category: "other", severity: "critical", status: "submitted",
+            dueAt: null, createdAt: new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var originalUpdatedAt = db.SafeguardingReports.IgnoreQueryFilters()
+            .Single(row => row.TenantId == 42 && row.Id == 503)
+            .UpdatedAt;
+        var controller = CreateController(db, tenant, userId: 9);
+
+        var data = ReadData(await Invoke(controller,
+            "Note",
+            503L,
+            new Dictionary<string, object?> { ["note"] = "  Called member and opened safety plan.  " },
+            CancellationToken.None));
+
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var report = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Id == 503);
+        report.UpdatedAt.Should().NotBeNull();
+        originalUpdatedAt.Should().NotBeNull();
+        report.UpdatedAt!.Value.Should().BeAfter(originalUpdatedAt!.Value);
+
+        var action = await db.SafeguardingReportActions.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.ReportId == 503);
+        action.ActorUserId.Should().Be(9);
+        action.Action.Should().Be("note_added");
+        action.Notes.Should().Be("Called member and opened safety plan.");
+
+        var otherTenant = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 7 && row.Id == 901);
+        otherTenant.UpdatedAt.Should().Be(new DateTime(2026, 7, 2, 10, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public async Task Note_WhenBlank_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 504, 42, reporterId: 10, subjectId: null, assigneeId: null,
+            category: "other", severity: "high", status: "triaged",
+            dueAt: DateTime.UtcNow.AddHours(2), createdAt: new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(await Invoke(controller,
+                "Note",
+                504L,
+                new Dictionary<string, object?> { ["note"] = "   " },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        db.SafeguardingReportActions.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Note_WhenReportOutsideTenant_ReturnsLaravelNotFound()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 901, 7, reporterId: 70, subjectId: null, assigneeId: null,
+            category: "other", severity: "critical", status: "submitted",
+            dueAt: null, createdAt: new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(await Invoke(controller,
+                "Note",
+                901L,
+                new Dictionary<string, object?> { ["note"] = "hidden tenant" },
+                CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "NOT_FOUND");
+
+        db.SafeguardingReportActions.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AdminReads_WhenCaringCommunityDisabled_ReturnLaravelFeatureDisabledError()
     {
         var tenant = CreateTenantContext(42);
@@ -389,6 +486,13 @@ public class CaringCommunitySafeguardingControllerUnitTests
             "FEATURE_DISABLED");
         AssertSingleError(await Invoke(controller,
                 "Escalate",
+                404L,
+                new Dictionary<string, object?> { ["note"] = "x" },
+                CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(await Invoke(controller,
+                "Note",
                 404L,
                 new Dictionary<string, object?> { ["note"] = "x" },
                 CancellationToken.None),
