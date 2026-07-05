@@ -3,6 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Net;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -15,6 +17,28 @@ namespace Nexus.Api.Services;
 /// </summary>
 public class NewsletterService
 {
+    private static readonly Regex ScriptLikeBlockRegex = new(
+        "<(script|iframe|frame|frameset|object|embed|applet|form|select|textarea|button)\\b[^>]*>.*?</\\1\\s*>",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
+    private static readonly Regex ScriptLikeTagRegex = new(
+        "</?(script|iframe|frame|frameset|object|embed|applet|form|select|textarea|button|base|input)\\b[^>]*/?>",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex EventHandlerRegex = new(
+        "\\s+on[a-z]+\\s*=\\s*(\"[^\"]*\"|'[^']*'|[^\\s>]+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex DangerousHrefRegex = new(
+        "(href|src|action|background|poster|formaction|xlink:href)\\s*=\\s*([\"']?)\\s*(javascript:|vbscript:|data:text/html)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
+    private static readonly HashSet<string> PreviewContentFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "plaintext",
+        "richtext",
+        "html",
+        "builder"
+    };
+    private const int MaxPreviewContentBytes = 524_288;
+
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly IEmailService _emailService;
@@ -449,6 +473,143 @@ public class NewsletterService
         return await query.CountAsync();
     }
 
+    public async Task<NewsletterPreviewRenderResult> RenderPreviewAsync(
+        int? adminUserId,
+        string subject,
+        string previewText,
+        string content,
+        string contentFormat,
+        CancellationToken ct = default)
+    {
+        if (!PreviewContentFormats.Contains(contentFormat))
+            throw new ArgumentException("invalid_content_format", nameof(contentFormat));
+
+        if (System.Text.Encoding.UTF8.GetByteCount(content) > MaxPreviewContentBytes)
+            throw new ArgumentException("newsletter_content_too_large", nameof(content));
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var tenantName = await _db.Set<Tenant>()
+            .AsNoTracking()
+            .Where(t => t.Id == tenantId)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(ct) ?? "Community";
+
+        var admin = adminUserId.HasValue
+            ? await _db.Set<User>()
+                .AsNoTracking()
+                .Where(u => u.Id == adminUserId.Value && u.TenantId == tenantId)
+                .Select(u => new { u.Email, u.FirstName, u.LastName })
+                .FirstOrDefaultAsync(ct)
+            : null;
+
+        var firstName = string.IsNullOrWhiteSpace(admin?.FirstName) ? "there" : admin.FirstName;
+        var lastName = admin?.LastName ?? string.Empty;
+        var name = string.Join(' ', new[] { admin?.FirstName, admin?.LastName }.Where(v => !string.IsNullOrWhiteSpace(v)));
+        if (string.IsNullOrWhiteSpace(name)) name = "Member";
+
+        var sanitized = SanitizePreviewContent(content, contentFormat);
+        var personalized = PersonalizePreviewContent(sanitized, tenantName, firstName, lastName, name, contentFormat);
+        var htmlBody = contentFormat.Equals("plaintext", StringComparison.OrdinalIgnoreCase)
+            ? $"<p>{WebUtility.HtmlEncode(personalized).Replace("\n", "<br />", StringComparison.Ordinal)}</p>"
+            : personalized;
+
+        var html = RenderPreviewHtml(subject, previewText, tenantName, htmlBody);
+        var text = RenderPreviewText(subject, previewText, tenantName, personalized, contentFormat);
+
+        return new NewsletterPreviewRenderResult(html, text, subject);
+    }
+
+    private static string RenderPreviewHtml(string subject, string previewText, string tenantName, string htmlBody)
+    {
+        var preheader = string.IsNullOrWhiteSpace(previewText)
+            ? string.Empty
+            : $"<div style=\"display:none;max-height:0;overflow:hidden;mso-hide:all;\">{WebUtility.HtmlEncode(previewText)}</div>";
+
+        return $"""
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{WebUtility.HtmlEncode(subject)}</title>
+</head>
+<body>
+  {preheader}
+  <main>
+    {htmlBody}
+  </main>
+  <footer>
+    <p>{WebUtility.HtmlEncode(tenantName)}</p>
+    <p><a href="/newsletter/unsubscribe?token=preview-token">Unsubscribe</a></p>
+  </footer>
+</body>
+</html>
+""";
+    }
+
+    private static string RenderPreviewText(
+        string subject,
+        string previewText,
+        string tenantName,
+        string content,
+        string contentFormat)
+    {
+        var body = contentFormat.Equals("plaintext", StringComparison.OrdinalIgnoreCase)
+            ? content
+            : WebUtility.HtmlDecode(HtmlTagRegex.Replace(content, " "));
+
+        var lines = new[]
+        {
+            subject,
+            previewText,
+            NormalizeWhitespace(body),
+            tenantName,
+            "Unsubscribe: /newsletter/unsubscribe?token=preview-token"
+        };
+
+        return string.Join("\n\n", lines.Where(line => !string.IsNullOrWhiteSpace(line))).Trim();
+    }
+
+    private static string PersonalizePreviewContent(
+        string content,
+        string tenantName,
+        string firstName,
+        string lastName,
+        string name,
+        string contentFormat)
+    {
+        string Escape(string value) => contentFormat.Equals("plaintext", StringComparison.OrdinalIgnoreCase)
+            ? value
+            : WebUtility.HtmlEncode(value);
+
+        return content
+            .Replace("{{first_name}}", Escape(firstName), StringComparison.Ordinal)
+            .Replace("{{last_name}}", Escape(lastName), StringComparison.Ordinal)
+            .Replace("{{name}}", Escape(name), StringComparison.Ordinal)
+            .Replace("{{tenant_name}}", Escape(tenantName), StringComparison.Ordinal)
+            .Replace("{{unsubscribe_link}}", contentFormat.Equals("plaintext", StringComparison.OrdinalIgnoreCase)
+                ? "/newsletter/unsubscribe?token=preview-token"
+                : "<a href=\"/newsletter/unsubscribe?token=preview-token\">Unsubscribe</a>", StringComparison.Ordinal)
+            .Replace("{{unsubscribe_url}}", "/newsletter/unsubscribe?token=preview-token", StringComparison.Ordinal);
+    }
+
+    private static string SanitizePreviewContent(string content, string contentFormat)
+    {
+        if (contentFormat.Equals("plaintext", StringComparison.OrdinalIgnoreCase))
+            return content;
+
+        var sanitized = ScriptLikeBlockRegex.Replace(content, string.Empty);
+        sanitized = ScriptLikeTagRegex.Replace(sanitized, string.Empty);
+        sanitized = EventHandlerRegex.Replace(sanitized, string.Empty);
+        sanitized = DangerousHrefRegex.Replace(sanitized, "$1=$2#");
+        sanitized = Regex.Replace(sanitized, "expression\\s*\\(", "blocked(", RegexOptions.IgnoreCase);
+        return sanitized;
+    }
+
+    private static string NormalizeWhitespace(string value)
+    {
+        return Regex.Replace(value, "\\s+", " ").Trim();
+    }
+
     public async Task<NewsletterDispatchStatus?> GetDispatchStatusAsync(int newsletterId)
     {
         var newsletter = await _db.Set<Newsletter>()
@@ -798,6 +959,8 @@ public class SubscriptionStats
     public int Active { get; set; }
     public int Unsubscribed { get; set; }
 }
+
+public sealed record NewsletterPreviewRenderResult(string Html, string Text, string Subject);
 
 public class ImportSubscriberInput
 {

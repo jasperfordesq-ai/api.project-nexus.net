@@ -515,6 +515,40 @@ public class AdminCompatibility2Controller : ControllerBase
     public async Task<IActionResult> RecipientCount([FromBody] JsonElement body)
         => Ok(new { count = await _newsletter.CountRecipientsAsync(true), criteria_supported = new[] { "active_subscribers" } });
 
+    /// <summary>POST /api/admin/newsletters/preview - Render an unsaved draft preview.</summary>
+    [HttpPost("newsletters/preview")]
+    public async Task<IActionResult> PreviewNewsletter([FromBody] PreviewNewsletterRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var preview = await _newsletter.RenderPreviewAsync(
+                User.GetUserId(),
+                request.Subject ?? string.Empty,
+                request.PreviewText ?? string.Empty,
+                request.Content ?? string.Empty,
+                string.IsNullOrWhiteSpace(request.ContentFormat) ? "richtext" : request.ContentFormat!,
+                ct);
+
+            return Ok(new
+            {
+                data = new
+                {
+                    html = preview.Html,
+                    text = preview.Text,
+                    subject = preview.Subject
+                }
+            });
+        }
+        catch (ArgumentException ex) when (ex.ParamName == "contentFormat")
+        {
+            return BadRequest(new { error = "VALIDATION_ERROR", message = "Invalid content format.", field = "content_format" });
+        }
+        catch (ArgumentException ex) when (ex.ParamName == "content")
+        {
+            return BadRequest(new { error = "VALIDATION_ERROR", message = "Newsletter content is too large.", field = "content" });
+        }
+    }
+
     /// <summary>POST /api/admin/newsletters/{id}/duplicate - Duplicate newsletter.</summary>
     [HttpPost("newsletters/{id:int}/duplicate")]
     public IActionResult DuplicateNewsletter(int id)
@@ -1181,6 +1215,14 @@ public class AdminCompatibility2Controller : ControllerBase
     public class SendTestEmailRequest
     {
         [JsonPropertyName("email")] public string Email { get; set; } = string.Empty;
+    }
+
+    public class PreviewNewsletterRequest
+    {
+        [JsonPropertyName("subject")] public string? Subject { get; set; }
+        [JsonPropertyName("preview_text")] public string? PreviewText { get; set; }
+        [JsonPropertyName("content")] public string? Content { get; set; }
+        [JsonPropertyName("content_format")] public string? ContentFormat { get; set; }
     }
 
     public class GeocodeGroupRequest

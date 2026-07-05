@@ -39,7 +39,7 @@ from source on 2026-07-05.
 | Services | 479 PHP service files | 182 C# service files |
 | Models/entities | 200 Laravel model files | 186 EF entity files |
 | Migrations | 318 Laravel migrations | 88 EF migration classes excluding designers/snapshot |
-| API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 3,389 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,244 static matches / 185 missing source operations |
+| API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 3,390 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,245 static matches / 184 missing source operations |
 | Schema tables | 361 Laravel source tables from `scripts/compare-laravel-schema-parity.ps1` | 312 static EF/migration table names; 122 exact matches |
 | Frontend routes | 589 React routes / 607 accessible routes from `scripts/compare-laravel-frontend-parity.ps1` | 462 React routes / 136 `apps/web-uk` routes; 393 React matches and 53 accessible matches |
 | Localization | 11 locales / 605 locale namespaces; English key scan has 17,280 Laravel keys | 7 locales / 280 locale namespaces; English key scan has 5,575 .NET keys and 157 matches |
