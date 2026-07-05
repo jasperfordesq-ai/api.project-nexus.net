@@ -6,6 +6,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
+using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -53,6 +54,36 @@ public sealed class AdminCaringCommunitySupportController : ControllerBase
         }
 
         return Ok(new { data = await _relationships.ListAsync(tenantId, status, ct) });
+    }
+
+    [HttpPost("support-relationships")]
+    public async Task<IActionResult> CreateSupportRelationship(
+        [FromBody] Dictionary<string, object?>? request,
+        CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _relationships.IsFeatureEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var result = await _relationships.CreateAsync(
+            tenantId,
+            User.GetUserId() ?? 0,
+            request,
+            ct);
+
+        if (!result.Succeeded)
+        {
+            var code = result.ErrorCode ?? "VALIDATION_ERROR";
+            var message = code == "USER_NOT_FOUND"
+                ? "User not found"
+                : "Support relationship could not be created.";
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, LaravelError(code, message));
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new { data = result.Relationship });
     }
 
     private static object LaravelError(string code, string message, string? field = null)

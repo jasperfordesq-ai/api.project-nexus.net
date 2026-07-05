@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -15,8 +16,10 @@ namespace Nexus.Api.Services;
 /// </summary>
 public sealed class CaringSupportRelationshipService
 {
+    private static readonly string[] Frequencies = ["weekly", "fortnightly", "monthly", "ad_hoc"];
     private static readonly string[] Statuses = ["active", "paused", "completed", "cancelled"];
     private const string DateFormat = "yyyy-MM-dd";
+    private const string DefaultTitle = "Recurring support relationship";
 
     private readonly NexusDbContext _db;
 
@@ -86,6 +89,77 @@ public sealed class CaringSupportRelationshipService
             stats = Stats(relationships),
             items
         };
+    }
+
+    public async Task<SupportRelationshipCreateResult> CreateAsync(
+        int tenantId,
+        int coordinatorId,
+        IReadOnlyDictionary<string, object?>? input,
+        CancellationToken ct)
+    {
+        var supporterId = IntValue(input, "supporter_id");
+        var recipientId = IntValue(input, "recipient_id");
+        if (supporterId <= 0 || recipientId <= 0 || supporterId == recipientId)
+        {
+            return SupportRelationshipCreateResult.Fail("VALIDATION_ERROR");
+        }
+
+        var tenantUserIds = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user => user.TenantId == tenantId && (user.Id == supporterId || user.Id == recipientId))
+            .Select(user => user.Id)
+            .Distinct()
+            .ToArrayAsync(ct);
+        if (!tenantUserIds.Contains(supporterId) || !tenantUserIds.Contains(recipientId))
+        {
+            return SupportRelationshipCreateResult.Fail("USER_NOT_FOUND");
+        }
+
+        var frequency = NormalizeFrequency(StringValue(input, "frequency"));
+        var startDate = DateValue(StringValue(input, "start_date"))
+            ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTime.UtcNow;
+        var relationship = new CaringSupportRelationship
+        {
+            TenantId = tenantId,
+            SupporterId = supporterId,
+            RecipientId = recipientId,
+            CoordinatorId = coordinatorId > 0 ? coordinatorId : null,
+            OrganizationId = null,
+            CategoryId = await TenantCategoryIdAsync(tenantId, IntValue(input, "category_id"), ct),
+            Title = Truncate((StringValue(input, "title") ?? DefaultTitle).Trim(), 255),
+            Description = NullIfEmpty(StringValue(input, "description")?.Trim()),
+            Frequency = frequency,
+            ExpectedHours = Math.Clamp(DecimalValue(input, "expected_hours") ?? 1m, 0.25m, 24m),
+            StartDate = startDate,
+            EndDate = DateValue(StringValue(input, "end_date")),
+            Status = "active",
+            NextCheckInAt = NextCheckIn(startDate, frequency),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.CaringSupportRelationships.Add(relationship);
+        await UpsertSuggestionLogAsync(tenantId, supporterId, recipientId, coordinatorId, now, ct);
+        await _db.SaveChangesAsync(ct);
+
+        var users = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user =>
+                user.TenantId == tenantId
+                && (user.Id == supporterId || user.Id == recipientId || user.Id == relationship.CoordinatorId))
+            .ToDictionaryAsync(user => user.Id, ct);
+        var categories = relationship.CategoryId is null
+            ? new Dictionary<int, string>()
+            : await _db.Categories
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(category => category.TenantId == tenantId && category.Id == relationship.CategoryId.Value)
+                .ToDictionaryAsync(category => category.Id, category => category.Name, ct);
+
+        return SupportRelationshipCreateResult.Success(RelationshipRow(relationship, users, categories));
     }
 
     public async Task<IReadOnlyList<object>> ListForMemberAsync(int tenantId, int userId, CancellationToken ct)
@@ -239,6 +313,65 @@ public sealed class CaringSupportRelationshipService
         return RelationshipLifecycleResult.Success(targetStatus);
     }
 
+    private async Task UpsertSuggestionLogAsync(
+        int tenantId,
+        int supporterId,
+        int recipientId,
+        int coordinatorId,
+        DateTime now,
+        CancellationToken ct)
+    {
+        var low = Math.Min(supporterId, recipientId);
+        var high = Math.Max(supporterId, recipientId);
+        var existing = await _db.CaringTandemSuggestionLogs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row =>
+                row.TenantId == tenantId
+                && row.SupporterUserId == low
+                && row.RecipientUserId == high,
+                ct);
+
+        if (existing is null)
+        {
+            _db.CaringTandemSuggestionLogs.Add(new CaringTandemSuggestionLog
+            {
+                TenantId = tenantId,
+                SupporterUserId = low,
+                RecipientUserId = high,
+                Action = "created_relationship",
+                CreatedByUserId = coordinatorId > 0 ? coordinatorId : null,
+                CreatedAt = now
+            });
+            return;
+        }
+
+        existing.Action = "created_relationship";
+        existing.CreatedByUserId = coordinatorId > 0 ? coordinatorId : null;
+        existing.CreatedAt = now;
+    }
+
+    private async Task<int?> TenantCategoryIdAsync(int tenantId, int categoryId, CancellationToken ct)
+    {
+        if (categoryId <= 0)
+        {
+            return null;
+        }
+
+        return await _db.Categories
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(category => category.TenantId == tenantId && category.Id == categoryId, ct)
+            ? categoryId
+            : null;
+    }
+
+    private static string NormalizeFrequency(string? frequency)
+    {
+        return !string.IsNullOrWhiteSpace(frequency) && Frequencies.Contains(frequency)
+            ? frequency
+            : "weekly";
+    }
+
     private static string NormalizeStatus(string? status)
     {
         if (status == "all")
@@ -249,6 +382,41 @@ public sealed class CaringSupportRelationshipService
         return !string.IsNullOrWhiteSpace(status) && Statuses.Contains(status)
             ? status
             : "active";
+    }
+
+    private static DateOnly? DateValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (DateOnly.TryParseExact(
+                value,
+                DateFormat,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var date))
+        {
+            return date;
+        }
+
+        return DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? DateOnly.FromDateTime(parsed)
+            : null;
+    }
+
+    private static DateTime NextCheckIn(DateOnly startDate, string frequency)
+    {
+        var date = frequency switch
+        {
+            "fortnightly" => startDate.AddDays(14),
+            "monthly" => startDate.AddMonths(1),
+            "ad_hoc" => startDate.AddDays(30),
+            _ => startDate.AddDays(7)
+        };
+
+        return DateTime.SpecifyKind(date.ToDateTime(new TimeOnly(9, 0)), DateTimeKind.Utc);
     }
 
     private static object Stats(IReadOnlyList<CaringSupportRelationship> relationships)
@@ -405,9 +573,96 @@ public sealed class CaringSupportRelationshipService
         return value is null ? null : DbDateTime(value.Value);
     }
 
+    private static int IntValue(IReadOnlyDictionary<string, object?>? input, string key)
+    {
+        if (input is null || !input.TryGetValue(key, out var value) || value is null)
+        {
+            return 0;
+        }
+
+        return value switch
+        {
+            int i => i,
+            long l when l is >= int.MinValue and <= int.MaxValue => (int)l,
+            decimal d => (int)d,
+            double d => (int)d,
+            float f => (int)f,
+            string s when int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) => i,
+            JsonElement element when element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var i) => i,
+            JsonElement element when element.ValueKind == JsonValueKind.String
+                && int.TryParse(element.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) => i,
+            _ => 0
+        };
+    }
+
+    private static decimal? DecimalValue(IReadOnlyDictionary<string, object?>? input, string key)
+    {
+        if (input is null || !input.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            decimal d => d,
+            int i => i,
+            long l => l,
+            double d => (decimal)d,
+            float f => (decimal)f,
+            string s when decimal.TryParse(s, NumberStyles.Number, CultureInfo.InvariantCulture, out var d) => d,
+            JsonElement element when element.ValueKind == JsonValueKind.Number && element.TryGetDecimal(out var d) => d,
+            JsonElement element when element.ValueKind == JsonValueKind.String
+                && decimal.TryParse(element.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var d) => d,
+            _ => null
+        };
+    }
+
+    private static string? StringValue(IReadOnlyDictionary<string, object?>? input, string key)
+    {
+        if (input is null || !input.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            string s => s,
+            JsonElement element when element.ValueKind == JsonValueKind.String => element.GetString(),
+            JsonElement element when element.ValueKind == JsonValueKind.Number => element.ToString(),
+            JsonElement element when element.ValueKind is JsonValueKind.True or JsonValueKind.False => element.GetBoolean().ToString(CultureInfo.InvariantCulture),
+            _ => Convert.ToString(value, CultureInfo.InvariantCulture)
+        };
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        return value.Length <= maxLength ? value : value[..maxLength];
+    }
+
+    private static string? NullIfEmpty(string? value)
+    {
+        return string.IsNullOrEmpty(value) ? null : value;
+    }
+
     private static bool IsTruthy(string? value)
     {
         return value?.Trim().ToLowerInvariant() is "1" or "true" or "yes" or "on" or "enabled";
+    }
+}
+
+public sealed record SupportRelationshipCreateResult(
+    bool Succeeded,
+    object? Relationship,
+    string? ErrorCode)
+{
+    public static SupportRelationshipCreateResult Success(object relationship)
+    {
+        return new SupportRelationshipCreateResult(true, relationship, null);
+    }
+
+    public static SupportRelationshipCreateResult Fail(string code)
+    {
+        return new SupportRelationshipCreateResult(false, null, code);
     }
 }
 
