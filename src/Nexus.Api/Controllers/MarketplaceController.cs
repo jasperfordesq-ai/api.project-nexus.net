@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -865,6 +866,57 @@ public class MarketplaceController : ControllerBase
         return Ok(new { data = rows, meta = new { total = rows.Count } });
     }
 
+    [HttpGet("categories/{slug}/listings")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CategoryListings(
+        string slug,
+        [FromQuery] int limit = 20,
+        [FromQuery] int page = 1,
+        [FromQuery] string? cursor = null)
+    {
+        limit = Math.Clamp(limit, 1, 100);
+        page = Math.Max(1, page);
+
+        var category = await _db.MarketplaceCategories
+            .AsNoTracking()
+            .Where(c => c.Slug == slug && c.IsActive)
+            .OrderBy(c => c.SortOrder)
+            .ThenBy(c => c.Name)
+            .FirstOrDefaultAsync();
+
+        if (category == null)
+            return Ok(Collection(Array.Empty<object>(), limit, hasMore: false));
+
+        var cursorId = DecodeListingCursor(cursor);
+        var query = _db.MarketplaceListings
+            .Include(l => l.User)
+            .Include(l => l.Category)
+            .Include(l => l.Images)
+            .Where(l =>
+                l.CategoryId == category.Id
+                && l.Status == "active"
+                && l.ModerationStatus == "approved");
+
+        if (cursorId.HasValue)
+            query = query.Where(l => l.Id < cursorId.Value);
+
+        var listings = await query
+            .AsNoTracking()
+            .OrderByDescending(l => l.Id)
+            .Take(limit + 1)
+            .ToListAsync();
+
+        var hasMore = listings.Count > limit;
+        if (hasMore)
+            listings.RemoveAt(listings.Count - 1);
+
+        var nextCursor = hasMore && listings.Count > 0
+            ? EncodeListingCursor(listings[^1].Id)
+            : null;
+
+        return Ok(Collection(listings.Select(l => MapListing(l)), limit, hasMore, nextCursor));
+    }
+
     [HttpGet("categories/{id:int}/template")]
     [AllowAnonymous]
     public IActionResult CategoryTemplate(int id)
@@ -919,6 +971,30 @@ public class MarketplaceController : ControllerBase
 
     private static object Paged(IEnumerable<object> data, int page, int limit, int total)
         => new { data, meta = new { page, limit, total, pages = (int)Math.Ceiling((double)total / limit) } };
+
+    private static object Collection(IEnumerable<object> data, int perPage, bool hasMore, string? cursor = null)
+        => cursor == null
+            ? new { data, meta = new { per_page = perPage, has_more = hasMore } }
+            : new { data, meta = new { per_page = perPage, has_more = hasMore, cursor } };
+
+    private static int? DecodeListingCursor(string? cursor)
+    {
+        if (string.IsNullOrWhiteSpace(cursor))
+            return null;
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+            return int.TryParse(decoded, out var id) && id > 0 ? id : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    private static string EncodeListingCursor(int id)
+        => Convert.ToBase64String(Encoding.UTF8.GetBytes(id.ToString()));
 
     private static object MapListing(MarketplaceListing listing, bool detailed = false)
         => new
