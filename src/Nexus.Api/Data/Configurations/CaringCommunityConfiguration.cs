@@ -208,6 +208,40 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<CaringSupportCategory>(entity =>
+        {
+            entity.ToTable("caring_support_categories");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Slug).HasColumnName("slug").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description").HasColumnType("text");
+            entity.Property(e => e.Color).HasColumnName("color").HasMaxLength(32);
+            entity.Property(e => e.Icon).HasColumnName("icon").HasMaxLength(64);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.SortOrder).HasColumnName("sort_order").HasDefaultValue(0);
+            entity.Property(e => e.SubstitutionCoefficient)
+                .HasColumnName("substitution_coefficient")
+                .HasPrecision(3, 2)
+                .HasDefaultValue(1m);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasIndex(e => new { e.TenantId, e.Slug })
+                .IsUnique()
+                .HasDatabaseName("caring_support_categories_tenant_slug_unique");
+            entity.HasIndex(e => new { e.TenantId, e.IsActive, e.SortOrder })
+                .HasDatabaseName("caring_support_categories_tenant_active_sort_idx");
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         modelBuilder.Entity<CaringSupportRelationship>(entity =>
         {
             entity.ToTable("caring_support_relationships");

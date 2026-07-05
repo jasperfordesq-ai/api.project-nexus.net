@@ -66,6 +66,7 @@ public class NexusDbContext : DbContext
     public DbSet<CaringCareProvider> CaringCareProviders => Set<CaringCareProvider>();
     public DbSet<CaringCaregiverLink> CaringCaregiverLinks => Set<CaringCaregiverLink>();
     public DbSet<CaringCoverRequest> CaringCoverRequests => Set<CaringCoverRequest>();
+    public DbSet<CaringSupportCategory> CaringSupportCategories => Set<CaringSupportCategory>();
     public DbSet<CaringSupportRelationship> CaringSupportRelationships => Set<CaringSupportRelationship>();
     public DbSet<CaringTandemSuggestionLog> CaringTandemSuggestionLogs => Set<CaringTandemSuggestionLog>();
     public DbSet<CaringHelpRequest> CaringHelpRequests => Set<CaringHelpRequest>();

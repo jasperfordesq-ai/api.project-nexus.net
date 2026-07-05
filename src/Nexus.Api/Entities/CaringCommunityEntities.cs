@@ -162,6 +162,28 @@ public class CaringCoverRequest : ITenantEntity
 }
 
 /// <summary>
+/// Optional tenant-scoped Caring Community support taxonomy used by some Laravel pilots.
+/// Mirrors Laravel's caring_support_categories table reference.
+/// </summary>
+public class CaringSupportCategory : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Color { get; set; }
+    public string? Icon { get; set; }
+    public bool IsActive { get; set; } = true;
+    public int SortOrder { get; set; }
+    public decimal SubstitutionCoefficient { get; set; } = 1m;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    public Tenant? Tenant { get; set; }
+}
+
+/// <summary>
 /// Tenant-scoped KISS-style support relationship between a supporter and care recipient.
 /// Mirrors Laravel's caring_support_relationships table.
 /// </summary>
