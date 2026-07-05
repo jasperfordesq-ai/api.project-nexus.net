@@ -105,6 +105,31 @@ public sealed class AdminCaringCommunitySafeguardingController : ControllerBase
         return Ok(new { data = new { success = true } });
     }
 
+    [HttpPost("reports/{id:long}/escalate")]
+    public async Task<IActionResult> Escalate(long id, [FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var guard = await GuardAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        var note = StringValue(request, "note")?.Trim();
+        var escalated = await _safeguarding.EscalateReportAsync(
+            _tenant.GetTenantIdOrThrow(),
+            id,
+            CurrentUserId(),
+            string.IsNullOrWhiteSpace(note) ? null : note,
+            ct);
+        if (!escalated)
+        {
+            return StatusCode(StatusCodes.Status404NotFound,
+                LaravelError("NOT_FOUND", "Not found."));
+        }
+
+        return Ok(new { data = new { success = true } });
+    }
+
     private async Task<IActionResult?> GuardAsync(CancellationToken ct)
     {
         if (!await _safeguarding.IsCaringCommunityEnabledAsync(_tenant.GetTenantIdOrThrow(), ct))
@@ -143,6 +168,21 @@ public sealed class AdminCaringCommunitySafeguardingController : ControllerBase
         };
 
         return parsed >= min ? parsed : null;
+    }
+
+    private static string? StringValue(IReadOnlyDictionary<string, object?>? request, string key)
+    {
+        if (request is null || !request.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            string s => s,
+            JsonElement element when element.ValueKind == JsonValueKind.String => element.GetString(),
+            _ => null
+        };
     }
 
     private static object LaravelError(string code, string message, string? field = null)

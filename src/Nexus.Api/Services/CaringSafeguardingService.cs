@@ -155,6 +155,39 @@ public sealed class CaringSafeguardingService
         return true;
     }
 
+    public async Task<bool> EscalateReportAsync(
+        int tenantId,
+        long reportId,
+        int actorId,
+        string? note,
+        CancellationToken ct)
+    {
+        var report = await _db.SafeguardingReports
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.Id == reportId, ct);
+        if (report is null)
+        {
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        report.Escalated = true;
+        report.EscalatedAt = now;
+        report.UpdatedAt = now;
+        _db.SafeguardingReportActions.Add(new SafeguardingReportAction
+        {
+            TenantId = tenantId,
+            ReportId = reportId,
+            ActorUserId = actorId,
+            Action = "escalated",
+            Notes = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
+            CreatedAt = now
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<IReadOnlyList<object>> MyReportsAsync(int tenantId, int userId, CancellationToken ct)
     {
         var reports = await _db.SafeguardingReports

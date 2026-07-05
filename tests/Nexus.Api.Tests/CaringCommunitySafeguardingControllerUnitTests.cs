@@ -45,6 +45,10 @@ public class CaringCommunitySafeguardingControllerUnitTests
         controller.GetMethod("Assign")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("reports/{id:long}/assign");
+
+        controller.GetMethod("Escalate")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("reports/{id:long}/escalate");
     }
 
     [Fact]
@@ -272,6 +276,96 @@ public class CaringCommunitySafeguardingControllerUnitTests
     }
 
     [Fact]
+    public async Task Escalate_MarksTenantReportAndWritesLaravelAction()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 501, 42, reporterId: 10, subjectId: 11, assigneeId: 12,
+            category: "neglect", severity: "critical", status: "submitted",
+            dueAt: DateTime.UtcNow.AddHours(-2), createdAt: new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        SeedReport(db, 901, 7, reporterId: 70, subjectId: null, assigneeId: null,
+            category: "other", severity: "critical", status: "submitted",
+            dueAt: null, createdAt: new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        var data = ReadData(await Invoke(controller,
+            "Escalate",
+            501L,
+            new Dictionary<string, object?> { ["note"] = "  SLA breach, immediate review required.  " },
+            CancellationToken.None));
+
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var report = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Id == 501);
+        report.Escalated.Should().BeTrue();
+        report.EscalatedAt.Should().NotBeNull();
+        report.UpdatedAt.Should().NotBeNull();
+
+        var action = await db.SafeguardingReportActions.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.ReportId == 501);
+        action.ActorUserId.Should().Be(9);
+        action.Action.Should().Be("escalated");
+        action.Notes.Should().Be("SLA breach, immediate review required.");
+
+        var otherTenant = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 7 && row.Id == 901);
+        otherTenant.Escalated.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Escalate_WhenBlankNote_PersistsNullLaravelActionNote()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 502, 42, reporterId: 10, subjectId: null, assigneeId: null,
+            category: "other", severity: "high", status: "triaged",
+            dueAt: DateTime.UtcNow.AddHours(2), createdAt: new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        ReadData(await Invoke(controller,
+            "Escalate",
+            502L,
+            new Dictionary<string, object?> { ["note"] = "   " },
+            CancellationToken.None));
+
+        var action = await db.SafeguardingReportActions.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.ReportId == 502);
+        action.Action.Should().Be("escalated");
+        action.Notes.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Escalate_WhenReportOutsideTenant_ReturnsLaravelNotFound()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 901, 7, reporterId: 70, subjectId: null, assigneeId: null,
+            category: "other", severity: "critical", status: "submitted",
+            dueAt: null, createdAt: new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(await Invoke(controller,
+                "Escalate",
+                901L,
+                new Dictionary<string, object?> { ["note"] = "hidden tenant" },
+                CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "NOT_FOUND");
+
+        db.SafeguardingReportActions.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AdminReads_WhenCaringCommunityDisabled_ReturnLaravelFeatureDisabledError()
     {
         var tenant = CreateTenantContext(42);
@@ -290,6 +384,13 @@ public class CaringCommunitySafeguardingControllerUnitTests
                 "Assign",
                 404L,
                 new Dictionary<string, object?> { ["assignee_user_id"] = 12 },
+                CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(await Invoke(controller,
+                "Escalate",
+                404L,
+                new Dictionary<string, object?> { ["note"] = "x" },
                 CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
