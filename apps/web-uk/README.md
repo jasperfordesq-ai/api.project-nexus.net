@@ -22,24 +22,11 @@ C:\platforms\htdocs\staging\routes\govuk-alpha-parity
 See [docs/ACCESSIBLE_SHARED_FRONTEND.md](docs/ACCESSIBLE_SHARED_FRONTEND.md) and
 the root [docs/ACCESSIBLE_SHARED_FRONTEND.md](../../docs/ACCESSIBLE_SHARED_FRONTEND.md).
 
-`apps/web-uk` is configured as Laravel-first for backend targeting. The single
-configuration point is `src/lib/backend-config.js`; ASP.NET remains a future
-`pending_backend_parity` target, not a certified adapter.
-
-Laravel accessible Blade pages are web routes, not API endpoints. Shared-domain
-local work uses `/{tenantSlug}/alpha/...`; custom accessible domains use bare
-paths such as `/dashboard`.
-
 Preparation docs:
 
-- [docs/ACCESSIBLE_PREPARATION_SCORECARD.md](docs/ACCESSIBLE_PREPARATION_SCORECARD.md)
 - [docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md](docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md)
-- [docs/LARAVEL_ACCESSIBLE_ROUTE_INVENTORY.md](docs/LARAVEL_ACCESSIBLE_ROUTE_INVENTORY.md)
-- [docs/BLADE_VIEW_INVENTORY.md](docs/BLADE_VIEW_INVENTORY.md)
-- [docs/AUTH_FORM_CONTRACT_MATRIX.md](docs/AUTH_FORM_CONTRACT_MATRIX.md)
 - [docs/BLADE_COMPONENT_PORT_AUDIT.md](docs/BLADE_COMPONENT_PORT_AUDIT.md)
 - [docs/BACKEND_SWITCHING_CONTRACT.md](docs/BACKEND_SWITCHING_CONTRACT.md)
-- [docs/ACCESSIBLE_BACKEND_CONTRACT_MATRIX.md](docs/ACCESSIBLE_BACKEND_CONTRACT_MATRIX.md)
 
 ## Credits and Origins
 
@@ -107,24 +94,12 @@ The application will be available at **http://localhost:5180**
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3001` | Server port |
-| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Backend target. `aspnet` remains pending backend parity. |
-| `LARAVEL_BACKEND_URL` | `http://localhost` | Laravel backend URL for the accessible frontend candidate. |
-| `ASPNET_BACKEND_URL` | `http://localhost:5080` | Future ASP.NET backend URL; not certified for shared accessible use. |
-| `ACCESSIBLE_ROUTE_MODE` | `tenant-slug` | Laravel accessible route mode: `tenant-slug` or `custom-domain`. |
-| `ACCESSIBLE_TENANT_SLUG` | - | Required for Laravel shared-domain accessible paths. |
-| `API_BASE_URL` | - | Legacy fallback for older local commands/tests. Prefer `LARAVEL_BACKEND_URL`. |
+| `API_BASE_URL` | `http://localhost:5000` | Backend API URL |
 | `COOKIE_SECRET` | - | **Required.** Secret for signed cookies |
 | `SESSION_SECRET` | - | Secret for sessions (defaults to COOKIE_SECRET) |
 | `NODE_ENV` | `development` | Environment (development/production) |
 
 ## Available Routes
-
-Prepared public pages can also render locally through the Laravel shared-domain
-accessible alias `/{tenantSlug}/alpha/...`. For example,
-`/acme/alpha/explore` maps to the local `/explore` handler while header,
-footer, language, cookie, contact, and report-problem shell links/forms keep the
-`/acme/alpha` prefix. This is route-shape preparation only, not Laravel tenant
-lookup or backend workflow certification.
 
 ### Public Routes
 
@@ -143,16 +118,13 @@ lookup or backend workflow certification.
 | `POST /reset-password` | Process password reset |
 | `GET /privacy` | Privacy policy |
 | `GET /terms` | Terms and conditions |
-| `GET /contact` | Local no-JS accessible contact candidate page; Laravel Turnstile/backend delivery is not certified |
-| `POST /contact` | Local no-JS accessible contact candidate workflow; Laravel Turnstile/backend delivery is not certified |
+| `GET /contact` | Contact page |
 | `GET /explore` | Shared accessible frontend Explore skeleton |
-| `GET /cookies` | Local no-JS accessible cookie settings candidate page; Laravel backend/session parity is not certified |
-| `POST /cookie-consent` | Local no-JS accessible cookie banner/settings candidate workflow; Laravel backend/session parity is not certified |
-| `GET /report-a-problem` | Local no-JS accessible report-problem candidate page; Laravel backend persistence is not certified |
-| `POST /report-a-problem` | Local no-JS accessible report-problem candidate workflow; Laravel backend persistence is not certified |
 | `GET /help` | Shared accessible frontend preparation skeleton |
 | `GET /kb` | Shared accessible frontend preparation skeleton |
 | `GET /trust-and-safety` | Shared accessible frontend preparation skeleton |
+| `GET /cookies` | Shared accessible frontend preparation skeleton |
+| `GET /report-a-problem` | Shared accessible frontend preparation skeleton |
 | `GET /accessibility` | Shared accessible frontend preparation skeleton |
 | `GET /legal` | Shared accessible frontend preparation skeleton |
 | `GET /legal/*` | Shared accessible frontend preparation skeleton |
@@ -341,7 +313,6 @@ nexus-uk-frontend/
 | `npm run watch:css` | Watch Sass files |
 | `npm run watch:server` | Watch server with nodemon |
 | `npm run brand:check` | Verify no government branding exists |
-| `npm run audit:accessible-prep` | Regenerate Laravel accessible route/view/backend preparation inventories |
 | `npm test` | Run tests with Jest |
 | `npm run test:coverage` | Run tests with coverage report |
 | `npm run test:watch` | Run tests in watch mode |

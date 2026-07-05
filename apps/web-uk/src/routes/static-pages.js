@@ -24,66 +24,6 @@ const pages = {
     title: 'Trust and safety',
     body: 'Trust and safety content will follow the Laravel Blade accessible frontend structure.'
   },
-  '/faq': {
-    title: 'FAQ',
-    body: 'Frequently asked question content will be ported from the Laravel accessible frontend.'
-  },
-  '/verify-email': {
-    title: 'Verify email',
-    body: 'Email verification routing must match the Laravel accessible frontend before shared use.'
-  },
-  '/newsletter/unsubscribe': {
-    title: 'Unsubscribe from newsletter',
-    body: 'Newsletter unsubscribe routing must match the Laravel accessible frontend before shared use.'
-  },
-  '/onboarding': {
-    title: 'Onboarding',
-    body: 'The onboarding wizard must match the Laravel session-backed accessible workflow before shared use.'
-  },
-  '/group-exchanges': {
-    title: 'Group exchanges',
-    body: 'Group exchange workflows must match the Laravel accessible frontend before shared use.'
-  },
-  '/matches': {
-    title: 'Matches',
-    body: 'Match pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
-  '/achievements': {
-    title: 'Achievements',
-    body: 'Achievement pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
-  '/leaderboard': {
-    title: 'Leaderboard',
-    body: 'Leaderboard pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
-  '/nexus-score': {
-    title: 'NEXUS score',
-    body: 'NEXUS score pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
-  '/activity': {
-    title: 'Activity',
-    body: 'Activity pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
-  '/saved': {
-    title: 'Saved',
-    body: 'Saved items and collections must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
-  '/me': {
-    title: 'Personal data',
-    body: 'Personal account data routes must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
-  '/users': {
-    title: 'Users',
-    body: 'User-facing accessible routes must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
-  '/login/two-factor': {
-    title: 'Two-factor authentication',
-    body: 'Two-factor authentication pages must match the Laravel accessible frontend before shared use.'
-  },
-  '/password/reset': {
-    title: 'Reset password',
-    body: 'Password reset routing must match the Laravel accessible frontend before shared use.'
-  },
   '/blog': {
     title: 'Blog',
     body: 'Blog pages will follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
@@ -111,6 +51,14 @@ const pages = {
   '/accessibility': {
     title: 'Accessibility statement',
     body: 'The accessibility statement must match the production Laravel accessible frontend before shared use.'
+  },
+  '/cookies': {
+    title: 'Cookies',
+    body: 'Cookie settings and consent handling must match the Laravel accessible frontend before shared use.'
+  },
+  '/report-a-problem': {
+    title: 'Report a problem with this page',
+    body: 'Problem reporting must be wired to the shared accessible frontend reporting contract before production use.'
   },
   '/legal': {
     title: 'Legal',
@@ -204,4 +152,3 @@ router.get(Object.keys(pages), (req, res) => {
 });
 
 module.exports = router;
-module.exports.pages = pages;

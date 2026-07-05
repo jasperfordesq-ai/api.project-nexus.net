@@ -9,44 +9,6 @@ the future, but this pass does not implement real backend adapters or switch
 production traffic. The Laravel Blade accessible frontend remains the source of
 truth, and ASP.NET must become compatible with that behavior.
 
-## Laravel-First Backend Target
-
-`src/lib/backend-config.js` is the single configuration point for backend
-targeting in `apps/web-uk`. It defaults to the Laravel backend because the
-Laravel backend and Blade accessible frontend are the current source of truth.
-
-Use `LARAVEL_BACKEND_URL` for the Laravel backend base URL. `API_BASE_URL`
-remains a legacy fallback so older local commands and tests continue to work,
-but new accessible frontend work should prefer the Laravel-specific variable.
-
-ASP.NET remains pending backend parity. Setting `ACCESSIBLE_BACKEND_TARGET` to
-`aspnet` must not be treated as certification; it only records the intended
-future mode while ASP.NET continues to bend toward Laravel's accessible
-contracts.
-
-## Laravel Accessible Web Routes
-
-Laravel's Blade accessible frontend is not a JSON API frontend. It is a
-server-rendered web route set registered in two modes:
-
-| Mode | Laravel route shape | `apps/web-uk` env |
-| --- | --- | --- |
-| Shared platform domain | `/{tenantSlug}/alpha/...` | `ACCESSIBLE_ROUTE_MODE=tenant-slug` and `ACCESSIBLE_TENANT_SLUG=<slug>` |
-| Custom accessible domain | bare paths such as `/dashboard` | `ACCESSIBLE_ROUTE_MODE=custom-domain` |
-
-Use `buildLaravelAccessiblePath()` and `buildLaravelAccessibleUrl()` from
-`src/lib/backend-config.js` when documenting or testing Laravel accessible web
-routes. Use `buildBackendUrl()` for JSON API calls. Do not treat Blade routes as
-API endpoints.
-
-`apps/web-uk` also has a local preparation alias for shared-domain Laravel
-paths. Requests shaped like `/{tenantSlug}/alpha/...` are rewritten internally
-to the matching local Express path while shell links, cookie/report/contact form
-actions, local redirects, and the language form stay under the same prefix. This
-is only local route-shape preparation; it does not certify Laravel tenant
-lookup, custom accessible-domain resolution, feature gates, auth/session
-behavior, or backend persistence.
-
 ## Future Modes
 
 | Mode | Meaning | Current status |

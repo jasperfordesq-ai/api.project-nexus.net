@@ -49,15 +49,15 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Explore | `/explore` | `/explore` | Implemented skeleton. |
 | Sign in | `/login` | `/login` | Implemented local equivalent. |
 | Register | `/register` | `/register` | Implemented local equivalent. |
-| Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Implemented candidate workflow; backend persistence not certified. |
-| Cookies | `/cookies` | `/cookies` | Implemented candidate page; backend/session persistence not certified. |
+| Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Preparation skeleton. |
+| Cookies | `/cookies` | `/cookies` | Preparation skeleton. |
 
 ## Footer Column Contract
 
 | Column | Blade links | `apps/web-uk` current status |
 | --- | --- | --- |
 | Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering and Blog are preparation skeletons. |
-| Support | Help centre, Knowledge base, Trust and safety, Contact, About | Contact/About implemented; Contact has a local Blade-style form candidate but Laravel Turnstile/backend delivery is not certified. Help/Knowledge base/Trust and safety skeletons exist. |
+| Support | Help centre, Knowledge base, Trust and safety, Contact, About | Contact/About implemented; Help/Knowledge base/Trust and safety skeletons exist. |
 | Legal | Legal, Terms of service, Privacy policy, Community guidelines, Acceptable use, Cookie policy, Accessibility statement | Local skeletons exist for the Laravel footer destinations; old `/terms` and `/privacy` still exist as legacy local routes. |
 
 ## Explore Contract
@@ -91,8 +91,8 @@ runtime tests before `apps/web-uk` can be shared:
 
 | Family | Examples | Current status |
 | --- | --- | --- |
-| Tenant routing | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Local shared-domain alias started for `/{tenantSlug}/alpha/...` so prepared pages can render through the same Express handlers with prefixed shell links, no-JS form actions, and local redirects for contact/report/cookie workflows. Laravel tenant lookup, custom-domain resolution, feature gates, and backend workflow certification are not complete. |
-| Cookie/report POST workflows | `/cookie-consent`, `/report-a-problem` POST | Both have local no-JS candidate workflows. Laravel cookie/session persistence and `support_reports` persistence are not certified. |
+| Tenant routing | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Not implemented in `apps/web-uk`. |
+| Cookie/report POST workflows | `/cookie-consent`, `/report-a-problem` POST | Skeleton GET pages only. |
 | Legal document sourcing | `/legal/*` tenant documents | Skeleton GET pages only. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
 | Volunteering | opportunities, hours, organisations, expenses, wellbeing | Skeleton landing only. |
