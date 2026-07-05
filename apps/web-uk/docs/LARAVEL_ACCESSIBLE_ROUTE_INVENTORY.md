@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 31 |
+| ASP.NET static skeleton paths | 30 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 37 |
+| candidate-route | 38 |
 | candidate-workflow | 7 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 36 |
+| skeleton | 35 |
 
 ## Family Summary
 
@@ -85,7 +85,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | trust-and-safety | 1 | 1 |  | 1 |  |  |
 | users | 3 | 2 | 1 |  |  | 3 |
 | verify-email | 1 | 1 |  |  | 1 |  |
-| volunteering | 52 | 24 | 28 |  | 1 | 51 |
+| volunteering | 52 | 24 | 28 | 1 |  | 51 |
 | wallet | 6 | 4 | 2 | 6 |  |  |
 
 ## Full Route Inventory
@@ -152,7 +152,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | POST | /events/{id}/waitlist/leave | /{tenantSlug}/alpha/events/{id}/waitlist/leave | /events/{id}/waitlist/leave | events.waitlist.leave | leaveEventWaitlist | events | candidate-workflow-family | routes/govuk-alpha.php:98 |
 | POST | /events/{id}/polls/{pollId}/vote | /{tenantSlug}/alpha/events/{id}/polls/{pollId}/vote | /events/{id}/polls/{pollId}/vote | events.polls.vote | storeEventPollVote | events | candidate-workflow-family | routes/govuk-alpha.php:99 |
 | POST | /events/{id}/attendees/{attendeeId}/check-in | /{tenantSlug}/alpha/events/{id}/attendees/{attendeeId}/check-in | /events/{id}/attendees/{attendeeId}/check-in | events.checkin | storeEventCheckin | events | candidate-workflow-family | routes/govuk-alpha.php:101 |
-| GET | /volunteering | /{tenantSlug}/alpha/volunteering | /volunteering | volunteering.index | volunteering | volunteering | skeleton | routes/govuk-alpha.php:102 |
+| GET | /volunteering | /{tenantSlug}/alpha/volunteering | /volunteering | volunteering.index | volunteering | volunteering | candidate-route | routes/govuk-alpha.php:102 |
 | GET | /volunteering/hours | /{tenantSlug}/alpha/volunteering/hours | /volunteering/hours | volunteering.hours | volunteeringHours | volunteering | missing | routes/govuk-alpha.php:103 |
 | GET | /volunteering/accessibility | /{tenantSlug}/alpha/volunteering/accessibility | /volunteering/accessibility | volunteering.accessibility | volunteerAccessibility | volunteering | missing | routes/govuk-alpha.php:104 |
 | POST | /volunteering/accessibility | /{tenantSlug}/alpha/volunteering/accessibility | /volunteering/accessibility | volunteering.accessibility.update | updateVolunteerAccessibility | volunteering | missing | routes/govuk-alpha.php:105 |

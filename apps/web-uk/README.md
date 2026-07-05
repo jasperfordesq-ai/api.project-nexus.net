@@ -157,6 +157,7 @@ lookup or backend workflow certification.
 | `GET /help` | Local Blade-style help centre search/empty-state candidate; live FAQ data and backend behaviour are not certified |
 | `GET /kb` | Local Blade-style knowledge base search/empty-state candidate; live article data, article detail, and backend behaviour are not certified |
 | `GET /blog` | Local Blade-style blog search/empty-state candidate; live posts, categories, feed, post detail, comments/likes, and backend behaviour are not certified |
+| `GET /volunteering` | Local Blade-style volunteering index/search/empty-state candidate; live opportunities, applications, hours, organisations, shifts, and backend workflows are not certified |
 | `GET /accessibility` | Local Blade-style accessibility statement candidate; localization/runtime backend behaviour is not certified |
 | `GET /trust-and-safety` | Local Blade-style trust and safety candidate; localization/runtime backend behaviour is not certified |
 | `GET /legal` | Local Blade-style legal hub candidate; tenant-managed document data is not certified |

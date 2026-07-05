@@ -579,6 +579,24 @@ app.get('/blog', (req, res) => {
   });
 });
 
+app.get('/volunteering', (req, res) => {
+  res.render('volunteering', {
+    title: 'Volunteering',
+    activeNav: 'volunteering',
+    searchQuery: typeof req.query.q === 'string' ? req.query.q : '',
+    isRemote: req.query.is_remote === '1',
+    organisationsHref: prefixedLocalPath(req, '/organisations'),
+    hoursHref: prefixedLocalPath(req, '/volunteering/hours'),
+    accessibilityHref: prefixedLocalPath(req, '/volunteering/accessibility'),
+    certificatesHref: prefixedLocalPath(req, '/volunteering/certificates'),
+    waitlistHref: prefixedLocalPath(req, '/volunteering/waitlist'),
+    swapsHref: prefixedLocalPath(req, '/volunteering/swaps'),
+    groupSignupsHref: prefixedLocalPath(req, '/volunteering/group-signups'),
+    expensesHref: prefixedLocalPath(req, '/volunteering/expenses'),
+    donationsHref: prefixedLocalPath(req, '/volunteering/donations')
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

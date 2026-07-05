@@ -1,0 +1,140 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-l">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Volunteering</h1>
+  <p class="govuk-body-l">Find volunteering opportunities, track applications and log volunteering hours.</p>
+
+  <p class="govuk-body govuk-!-margin-bottom-6">
+    <a class="govuk-link govuk-link--no-visited-state" href="{{ organisationsHref }}">Browse organisations</a>
+  </p>
+
+  <div class="govuk-inset-text" role="note" aria-labelledby="how-it-works-heading">
+    <h2 class="govuk-heading-s govuk-!-margin-bottom-2" id="how-it-works-heading">How volunteering works</h2>
+    <ol class="govuk-list govuk-list--number govuk-!-margin-bottom-0">
+      <li>Find an opportunity that suits you.</li>
+      <li>Apply, and tell the organiser about yourself.</li>
+      <li>Once you are accepted, log the hours you give.</li>
+      <li>The organisation reviews and approves your hours.</li>
+      <li>You receive 1 time credit for every hour, added straight to your wallet.</li>
+    </ol>
+  </div>
+
+  <section class="nexus-alpha-card govuk-!-margin-bottom-6" aria-labelledby="vol-org-door-title">
+    <span class="govuk-caption-m">For organisations</span>
+    <h2 class="govuk-heading-m govuk-!-margin-bottom-2" id="vol-org-door-title">Run a volunteer organisation?</h2>
+    <p class="govuk-body">Register your organisation to post opportunities, review applications and approve volunteer hours. New organisations are reviewed by a community administrator before they go live.</p>
+    <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" role="button" draggable="false" href="{{ organisationsHref }}">Browse organisations</a>
+  </section>
+
+  <h2 class="govuk-heading-l">Your volunteering hours</h2>
+  <dl class="nexus-alpha-stat-grid">
+    <div class="nexus-alpha-stat">
+      <dt>Approved hours</dt>
+      <dd>0.0</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Pending hours</dt>
+      <dd>0.0</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>This month</dt>
+      <dd>0.0</dd>
+    </div>
+  </dl>
+
+  <h2 class="govuk-heading-m govuk-!-margin-top-6 govuk-!-margin-bottom-2">Your volunteering tools</h2>
+  <ul class="govuk-list govuk-list--inline govuk-!-margin-bottom-4">
+    <li><a class="govuk-link" href="{{ hoursHref }}">Log volunteering hours</a></li>
+    <li><a class="govuk-link" href="{{ accessibilityHref }}">Manage your accessibility needs</a></li>
+    <li><a class="govuk-link" href="{{ certificatesHref }}">Certificates</a></li>
+    <li><a class="govuk-link" href="{{ waitlistHref }}">Waitlist</a></li>
+    <li><a class="govuk-link" href="{{ swapsHref }}">Swaps</a></li>
+    <li><a class="govuk-link" href="{{ groupSignupsHref }}">Group sign-ups</a></li>
+    <li><a class="govuk-link" href="{{ expensesHref }}">Expenses</a></li>
+    <li><a class="govuk-link" href="{{ donationsHref }}">Donations</a></li>
+  </ul>
+
+  <div class="govuk-tabs govuk-!-margin-top-6">
+    <h2 class="govuk-tabs__title">Volunteering sections</h2>
+    <ul class="govuk-tabs__list">
+      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+        <a class="govuk-tabs__tab" href="{{ alphaRoutePrefix }}/volunteering" aria-current="page">Opportunities</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="{{ alphaRoutePrefix }}/volunteering?tab=applications">Applications</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="{{ alphaRoutePrefix }}/volunteering?tab=recommended">For you</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="{{ alphaRoutePrefix }}/volunteering?tab=community_projects">Community projects</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="{{ hoursHref }}">Hours</a>
+      </li>
+    </ul>
+  </div>
+
+  <form method="get" action="{{ alphaRoutePrefix }}/volunteering" class="govuk-!-margin-bottom-7 govuk-!-margin-top-7">
+    <fieldset class="govuk-fieldset" aria-describedby="volunteering-filter-hint">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">Search and filter opportunities</h2>
+      </legend>
+      <div id="volunteering-filter-hint" class="govuk-hint">Search by keyword, category or remote opportunities.</div>
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-one-half">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="q">Search opportunities</label>
+            <div id="q-hint" class="govuk-hint">Search by title, description or skills.</div>
+            <input class="govuk-input" id="q" name="q" type="search" value="{{ searchQuery }}" aria-describedby="q-hint">
+          </div>
+        </div>
+        <div class="govuk-grid-column-one-quarter">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="category_id">Category</label>
+            <select class="govuk-select" id="category_id" name="category_id">
+              <option value="">All categories</option>
+            </select>
+          </div>
+        </div>
+        <div class="govuk-grid-column-one-quarter">
+          <div class="govuk-form-group">
+            <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="is_remote" name="is_remote" type="checkbox" value="1"{% if isRemote %} checked{% endif %}>
+                <label class="govuk-label govuk-checkboxes__label" for="is_remote">Show remote opportunities only</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="govuk-button-group">
+        <button class="govuk-button" data-module="govuk-button">Search</button>
+        {% if searchQuery or isRemote %}
+          <a class="govuk-link" href="{{ alphaRoutePrefix }}/volunteering">Clear filters</a>
+        {% endif %}
+      </div>
+    </fieldset>
+  </form>
+
+  <h2 class="govuk-heading-l">Opportunities</h2>
+  <p class="govuk-body nexus-alpha-result-count" aria-live="polite">No opportunities shown</p>
+
+  <div class="govuk-inset-text">
+    <h2 class="govuk-heading-m">Nothing to show yet</h2>
+    <p class="govuk-body">No volunteering opportunities match your filters.</p>
+    <p class="govuk-body govuk-!-margin-bottom-0">
+      {% if searchQuery or isRemote %}
+        No opportunities match your filters. Try widening your search or <a class="govuk-link" href="{{ alphaRoutePrefix }}/volunteering">clear filters</a>.
+      {% else %}
+        There are no opportunities listed right now. Check back soon, or follow the community feed for new openings.
+      {% endif %}
+    </p>
+  </div>
+{% endblock %}

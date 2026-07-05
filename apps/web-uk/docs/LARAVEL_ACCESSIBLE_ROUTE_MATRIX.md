@@ -45,7 +45,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Listings | `/listings` | `/listings` | Implemented route; backend contract not certified. |
 | Members | `/members` | `/members` | Implemented route; backend contract not certified. |
 | Events | `/events` | `/events` | Implemented route; backend contract not certified. |
-| Volunteering | `/volunteering` | `/volunteering` | Preparation skeleton. |
+| Volunteering | `/volunteering` | `/volunteering` | Local Blade-style index candidate; live opportunities, applications, hours, organisations, shifts, and backend workflows are not certified. |
 | Explore | `/explore` | `/explore` | Implemented skeleton. |
 | Sign in | `/login` | `/login` | Implemented local equivalent. |
 | Register | `/register` | `/register` | Implemented local equivalent. |
@@ -56,7 +56,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 
 | Column | Blade links | `apps/web-uk` current status |
 | --- | --- | --- |
-| Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering is a preparation skeleton; Blog has a local Blade-style search/empty-state index candidate. |
+| Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering has a local Blade-style index/search/empty-state candidate; Blog has a local Blade-style search/empty-state index candidate. |
 | Support | Help centre, Knowledge base, Trust and safety, Contact, FAQ, About | Contact/About implemented; Help centre and Knowledge base have local Blade-style search/empty-state candidates; FAQ has a local Blade-style accordion candidate; Trust and safety has a local Blade-style guidance candidate; Contact has a local Blade-style form candidate but Laravel Turnstile/backend delivery is not certified. |
 | Legal | Legal, Terms of service, Privacy policy, Community guidelines, Acceptable use, Cookie policy, Accessibility statement | Legal hub and legal document routes have local Blade-style fallback candidates; tenant-managed document data, version metadata, sanitized rich content, localization persistence, and backend runtime behaviour are not certified. Old `/terms` and `/privacy` still exist as legacy local routes. |
 
@@ -104,7 +104,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Trust and safety | `/trust-and-safety` | Local Blade-style safety guidance candidate with warning text, guidance sections, tenant-prefixed contact CTA, and community guidelines link. Laravel localization persistence, safeguarding workflow handling, and runtime route certification are not complete. |
 | Legal document sourcing | `/legal`, `/legal/*` tenant documents | Local Blade-style legal hub and fallback document candidates. Tenant-managed document loading, version metadata, sanitized rich content, localization persistence, and runtime route certification are not complete. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
-| Volunteering | opportunities, hours, organisations, expenses, wellbeing | Skeleton landing only. |
+| Volunteering | opportunities, hours, organisations, expenses, wellbeing | Local Blade-style index/search/empty-state candidate for `/volunteering` only. Live opportunities, categories, applications, recommended shifts, community projects, hours logging, organisation management, accessibility needs, certificates, waitlist, swaps, group sign-ups, expenses, donations, POST workflows, feature gates, localization, and runtime certification are not complete. |
 | Exchanges | requests, accept/decline, ready/confirm/cancel | Skeleton landing only. |
 | Feed typed engagement | likes, comments, reactions, share, save, hide, report | Partial route equivalents only. |
 | Marketplace/commerce | marketplace, seller, orders, coupons, courses, podcasts | Mostly skeleton links only. |

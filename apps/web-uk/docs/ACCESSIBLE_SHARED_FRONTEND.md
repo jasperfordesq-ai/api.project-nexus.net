@@ -153,6 +153,18 @@ categories, cursor pagination, `/blog/{slug}` post detail, `/blog/feed.xml`,
 comments, likes, Laravel localization persistence, tenant-specific content,
 runtime web-route behaviour, or ASP.NET backend compatibility.
 
+The `/volunteering` page is a local Blade-style candidate copied from the
+Laravel Volunteering index shape. It includes the caption, lead copy,
+organisation browse link, "How volunteering works" inset, organisation gateway,
+hours summary shell, volunteering tools, tabs, search/filter form, result count,
+and empty/no-results inset state with tenant-prefixed links. It does not certify
+the Laravel volunteering feature gate, live opportunities, categories,
+applications, recommended shifts, community projects, hours logging,
+organisation management, accessibility needs, certificates, waitlist, swaps,
+group sign-ups, expenses, donations, post workflows, Laravel localization
+persistence, tenant-specific content, runtime web-route behaviour, or ASP.NET
+backend compatibility.
+
 The `/accessibility` page is a local Blade-style candidate copied from the
 Laravel accessibility statement shape. It uses the same back link, statement
 sections, WCAG 2.2 Level AA summary list, support feature sections, feedback

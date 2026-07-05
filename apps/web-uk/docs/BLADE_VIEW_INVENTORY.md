@@ -9,10 +9,10 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | Metric | Count |
 | --- | ---: |
 | Laravel Blade accessible views | 289 |
-| ASP.NET Nunjucks views | 107 |
-| candidate-exact-view | 22 |
+| ASP.NET Nunjucks views | 108 |
+| candidate-exact-view | 23 |
 | candidate-name-match | 6 |
-| missing-nunjucks-view | 261 |
+| missing-nunjucks-view | 260 |
 
 ## Family Summary
 
@@ -95,7 +95,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | trust | 1 | 1 |  |
 | two | 2 |  | 2 |
 | volunteer | 2 |  | 2 |
-| volunteering | 20 |  | 20 |
+| volunteering | 20 | 1 | 19 |
 | wallet | 2 |  | 2 |
 
 ## Full View Inventory
@@ -388,6 +388,6 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | volunteering-swaps.blade.php | volunteering | missing-nunjucks-view |
 | volunteering-waitlist.blade.php | volunteering | missing-nunjucks-view |
 | volunteering-wellbeing.blade.php | volunteering | missing-nunjucks-view |
-| volunteering.blade.php | volunteering | missing-nunjucks-view |
+| volunteering.blade.php | volunteering | candidate-exact-view |
 | wallet-manage.blade.php | wallet | missing-nunjucks-view |
 | wallet.blade.php | wallet | missing-nunjucks-view |

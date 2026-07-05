@@ -76,10 +76,6 @@ const pages = {
     title: 'Goals',
     body: 'Goal pages will follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
   },
-  '/volunteering': {
-    title: 'Volunteering',
-    body: 'Volunteering pages will be ported from the Laravel accessible frontend after ASP.NET backend workflow parity exists.'
-  },
   '/exchanges': {
     title: 'Exchanges',
     body: 'Exchange workflows are a core Laravel accessible frontend feature and need ASP.NET contract parity before use.'

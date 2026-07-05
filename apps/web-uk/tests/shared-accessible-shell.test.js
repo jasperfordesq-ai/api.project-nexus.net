@@ -555,6 +555,34 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Blade-style volunteering search and empty state under the tenant alpha route prefix', async () => {
+    const response = await request(app).get('/acme/alpha/volunteering?q=community&is_remote=1');
+
+    expect(staticPageRoutes.pages['/volunteering']).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Volunteering');
+    expect(response.text).toContain('Find volunteering opportunities, track applications and log volunteering hours.');
+    expect(response.text).toContain('href="/acme/alpha/organisations"');
+    expect(response.text).toContain('Browse organisations');
+    expect(response.text).toContain('How volunteering works');
+    expect(response.text).toContain('Find an opportunity that suits you.');
+    expect(response.text).toContain('Apply, and tell the organiser about yourself.');
+    expect(response.text).toContain('Your volunteering hours');
+    expect(response.text).toContain('Approved hours');
+    expect(response.text).toContain('Your volunteering tools');
+    expect(response.text).toContain('href="/acme/alpha/volunteering/hours"');
+    expect(response.text).toContain('Volunteering sections');
+    expect(response.text).toContain('Search and filter opportunities');
+    expect(response.text).toContain('form method="get" action="/acme/alpha/volunteering"');
+    expect(response.text).toContain('id="q" name="q" type="search" value="community"');
+    expect(response.text).toContain('id="is_remote" name="is_remote" type="checkbox" value="1" checked');
+    expect(response.text).toContain('Opportunities');
+    expect(response.text).toContain('No opportunities shown');
+    expect(response.text).toContain('No volunteering opportunities match your filters.');
+    expect(response.text).toContain('Try widening your search');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Blade-style legal hub under the tenant alpha route prefix', async () => {
     const response = await request(app).get('/acme/alpha/legal');
 
@@ -652,10 +680,10 @@ describe('shared accessible frontend shell', () => {
   });
 
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
-    const response = await request(app).get('/volunteering');
+    const response = await request(app).get('/exchanges');
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Volunteering');
+    expect(response.text).toContain('Exchanges');
     expect(response.text).toContain('shared accessible frontend preparation page');
     expect(response.text).toContain('does not certify ASP.NET route or workflow');
   });
@@ -722,7 +750,7 @@ describe('shared accessible frontend shell', () => {
     const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
 
     expect(matrix).toContain('Laravel `govuk-alpha*`');
-    expect(matrix).toContain('| Volunteering | `/volunteering` | `/volunteering` | Preparation skeleton. |');
+    expect(matrix).toContain('| Volunteering | `/volunteering` | `/volunteering` | Local Blade-style index candidate; live opportunities');
     expect(matrix).toContain('It does not certify route parity');
     expect(contract).toContain('this pass does not implement real backend adapters');
     expect(contract).toContain('ASP.NET must become compatible with that behavior');
@@ -733,7 +761,7 @@ describe('shared accessible frontend shell', () => {
     expect(contract).toContain('buildLaravelAccessiblePath()');
     expect(contract).toContain('Do not treat Blade routes as');
     expect(routeInventory).toContain('| Laravel accessible route declarations | 608 |');
-    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 31 |');
+    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 30 |');
     expect(routeInventory).toContain('Laravel shared-domain path');
     expect(routeInventory).toContain('Laravel custom-domain path');
     expect(routeInventory).toContain('| GET | /faq | /{tenantSlug}/alpha/faq | /faq |');
@@ -742,6 +770,8 @@ describe('shared accessible frontend shell', () => {
     expect(routeInventory).toContain('| GET | /kb/{id} | /{tenantSlug}/alpha/kb/{id} | /kb/{id} | kb.show | kbArticle | kb | missing |');
     expect(routeInventory).toContain('| GET | /blog | /{tenantSlug}/alpha/blog | /blog | blog.index | blog | blog | candidate-route |');
     expect(routeInventory).toContain('| GET | /blog/{slug} | /{tenantSlug}/alpha/blog/{slug} | /blog/{slug} | blog.show | blogPost | blog | missing |');
+    expect(routeInventory).toContain('| GET | /volunteering | /{tenantSlug}/alpha/volunteering | /volunteering | volunteering.index | volunteering | volunteering | candidate-route |');
+    expect(routeInventory).toContain('| GET | /volunteering/hours | /{tenantSlug}/alpha/volunteering/hours | /volunteering/hours | volunteering.hours | volunteeringHours | volunteering | missing |');
     expect(routeInventory).toContain('| GET | /legal | /{tenantSlug}/alpha/legal | /legal | legal.hub | legalHub | legal | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal/community-guidelines | /{tenantSlug}/alpha/legal/community-guidelines | /legal/community-guidelines | legal.community-guidelines | legalDocument | legal | candidate-route |');
     expect(routeInventory).toContain('| POST | /report-a-problem | /{tenantSlug}/alpha/report-a-problem | /report-a-problem | report-problem.store | storeReportProblem | report-a-problem | candidate-workflow |');
@@ -750,6 +780,8 @@ describe('shared accessible frontend shell', () => {
     expect(viewInventory).toContain('| kb-article.blade.php | kb | missing-nunjucks-view |');
     expect(viewInventory).toContain('| blog-index.blade.php | blog | candidate-exact-view |');
     expect(viewInventory).toContain('| blog-post.blade.php | blog | missing-nunjucks-view |');
+    expect(viewInventory).toContain('| volunteering.blade.php | volunteering | candidate-exact-view |');
+    expect(viewInventory).toContain('| volunteering-hours.blade.php | volunteering | missing-nunjucks-view |');
     expect(viewInventory).toContain('| legal-hub.blade.php | legal | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-document.blade.php | legal | candidate-exact-view |');
     expect(backendMatrix).toContain('| Family | GET routes | POST routes | Mutating routes | Tenant | Auth | CSRF | Feature/module gates |');
