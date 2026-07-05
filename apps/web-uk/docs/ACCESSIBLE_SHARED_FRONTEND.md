@@ -173,6 +173,15 @@ category drill-down tables, member search results, proficiency tags, profile
 links, Laravel localization persistence, tenant-specific content, runtime
 web-route behaviour, or ASP.NET backend compatibility.
 
+The `/exchanges` page is a local Blade-style candidate copied from the Laravel
+Exchanges index shape. It includes the caption, lead copy, disabled-workflow
+notification banner, tab filter, result count, and empty state with
+tenant-prefixed tab links. It does not certify Laravel auth enforcement,
+listings module gating, live exchange data, exchange detail pages,
+accept/decline/start/confirm/cancel actions, ratings, broker review,
+pagination, Laravel localization persistence, tenant-specific content, runtime
+web-route behaviour, or ASP.NET backend compatibility.
+
 The `/accessibility` page is a local Blade-style candidate copied from the
 Laravel accessibility statement shape. It uses the same back link, statement
 sections, WCAG 2.2 Level AA summary list, support feature sections, feedback

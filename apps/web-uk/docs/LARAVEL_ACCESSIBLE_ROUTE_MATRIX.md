@@ -64,7 +64,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 
 | Blade Explore card | Laravel route | `apps/web-uk` path | Current ASP.NET status |
 | --- | --- | --- | --- |
-| Exchanges | `/exchanges` | `/exchanges` | Preparation skeleton. |
+| Exchanges | `/exchanges` | `/exchanges` | Local Blade-style tab/empty-state candidate; auth enforcement, live exchange data, actions, ratings, broker review, and backend runtime are not certified. |
 | AI assistant | `/chat` | `/chat` | Preparation skeleton. |
 | Polls | `/polls` | `/polls` | Preparation skeleton. |
 | Search | `/search` | `/search` | Implemented route; backend contract not certified. |
@@ -105,7 +105,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Legal document sourcing | `/legal`, `/legal/*` tenant documents | Local Blade-style legal hub and fallback document candidates. Tenant-managed document loading, version metadata, sanitized rich content, localization persistence, and runtime route certification are not complete. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
 | Volunteering | opportunities, hours, organisations, expenses, wellbeing | Local Blade-style index/search/empty-state candidate for `/volunteering` only. Live opportunities, categories, applications, recommended shifts, community projects, hours logging, organisation management, accessibility needs, certificates, waitlist, swaps, group sign-ups, expenses, donations, POST workflows, feature gates, localization, and runtime certification are not complete. |
-| Exchanges | requests, accept/decline, ready/confirm/cancel | Skeleton landing only. |
+| Exchanges | requests, accept/decline, ready/confirm/cancel | Local Blade-style index candidate for `/exchanges` only. Auth enforcement, listings module gate, live exchange data, details, actions, ratings, broker review, pagination, localization, and runtime certification are not complete. |
 | Feed typed engagement | likes, comments, reactions, share, save, hide, report | Partial route equivalents only. |
 | Marketplace/commerce | marketplace, seller, orders, coupons, courses, podcasts | Mostly skeleton links only. |
 | Federation | members, listings, events, groups, messages, transfers | Skeleton landing only. |

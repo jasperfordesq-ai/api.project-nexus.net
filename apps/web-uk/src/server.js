@@ -605,6 +605,24 @@ app.get('/skills', (req, res) => {
   });
 });
 
+app.get('/exchanges', (req, res) => {
+  const allowedTabs = ['all', 'active', 'needs_confirmation', 'completed'];
+  const requestedTab = typeof req.query.tab === 'string' ? req.query.tab : '';
+  const activeTab = allowedTabs.includes(requestedTab) ? requestedTab : 'all';
+
+  res.render('exchanges', {
+    title: 'Exchanges',
+    activeNav: 'explore',
+    activeTab,
+    exchangeTabs: [
+      { key: 'all', label: 'All' },
+      { key: 'active', label: 'Active' },
+      { key: 'needs_confirmation', label: 'Needs confirmation' },
+      { key: 'completed', label: 'Completed' }
+    ]
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

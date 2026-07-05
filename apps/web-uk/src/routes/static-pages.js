@@ -76,10 +76,6 @@ const pages = {
     title: 'Goals',
     body: 'Goal pages will follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
   },
-  '/exchanges': {
-    title: 'Exchanges',
-    body: 'Exchange workflows are a core Laravel accessible frontend feature and need ASP.NET contract parity before use.'
-  },
   '/chat': {
     title: 'AI assistant',
     body: 'AI assistant pages will be wired after the backend contract and feature gates are compatible.'

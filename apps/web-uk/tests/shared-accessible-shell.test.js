@@ -602,6 +602,27 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Blade-style exchanges tab filter and empty state under the tenant alpha route prefix', async () => {
+    const response = await request(app).get('/acme/alpha/exchanges?tab=needs_confirmation');
+
+    expect(staticPageRoutes.pages['/exchanges']).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Exchanges');
+    expect(response.text).toContain('Review exchange requests, track accepted exchanges and confirm completed hours.');
+    expect(response.text).toContain('Exchange workflow is not enabled');
+    expect(response.text).toContain('This community has not enabled the structured exchange workflow yet.');
+    expect(response.text).toContain('aria-label="Filter exchanges"');
+    expect(response.text).toContain('href="/acme/alpha/exchanges?tab=all"');
+    expect(response.text).toContain('href="/acme/alpha/exchanges?tab=active"');
+    expect(response.text).toContain('href="/acme/alpha/exchanges?tab=needs_confirmation"');
+    expect(response.text).toContain('aria-current="true"');
+    expect(response.text).toContain('Needs confirmation');
+    expect(response.text).toContain('Exchange requests');
+    expect(response.text).toContain('No exchanges shown');
+    expect(response.text).toContain('There are no exchanges to show.');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Blade-style legal hub under the tenant alpha route prefix', async () => {
     const response = await request(app).get('/acme/alpha/legal');
 
@@ -698,11 +719,11 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('This page is a shared-accessible-frontend preparation skeleton');
   });
 
-  it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
-    const response = await request(app).get('/exchanges');
+  it('serves preparation skeletons for Blade destinations that are not certified yet', async () => {
+    const response = await request(app).get('/chat');
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Exchanges');
+    expect(response.text).toContain('AI assistant');
     expect(response.text).toContain('shared accessible frontend preparation page');
     expect(response.text).toContain('does not certify ASP.NET route or workflow');
   });
@@ -780,7 +801,7 @@ describe('shared accessible frontend shell', () => {
     expect(contract).toContain('buildLaravelAccessiblePath()');
     expect(contract).toContain('Do not treat Blade routes as');
     expect(routeInventory).toContain('| Laravel accessible route declarations | 608 |');
-    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 29 |');
+    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 28 |');
     expect(routeInventory).toContain('Laravel shared-domain path');
     expect(routeInventory).toContain('Laravel custom-domain path');
     expect(routeInventory).toContain('| GET | /faq | /{tenantSlug}/alpha/faq | /faq |');
@@ -792,6 +813,7 @@ describe('shared accessible frontend shell', () => {
     expect(routeInventory).toContain('| GET | /volunteering | /{tenantSlug}/alpha/volunteering | /volunteering | volunteering.index | volunteering | volunteering | candidate-route |');
     expect(routeInventory).toContain('| GET | /volunteering/hours | /{tenantSlug}/alpha/volunteering/hours | /volunteering/hours | volunteering.hours | volunteeringHours | volunteering | missing |');
     expect(routeInventory).toContain('| GET | /skills | /{tenantSlug}/alpha/skills | /skills | skills.index | skills | skills | candidate-route |');
+    expect(routeInventory).toContain('| GET | /exchanges | /{tenantSlug}/alpha/exchanges | /exchanges | exchanges.index | exchanges | exchanges | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal | /{tenantSlug}/alpha/legal | /legal | legal.hub | legalHub | legal | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal/community-guidelines | /{tenantSlug}/alpha/legal/community-guidelines | /legal/community-guidelines | legal.community-guidelines | legalDocument | legal | candidate-route |');
     expect(routeInventory).toContain('| POST | /report-a-problem | /{tenantSlug}/alpha/report-a-problem | /report-a-problem | report-problem.store | storeReportProblem | report-a-problem | candidate-workflow |');
@@ -803,6 +825,7 @@ describe('shared accessible frontend shell', () => {
     expect(viewInventory).toContain('| volunteering.blade.php | volunteering | candidate-exact-view |');
     expect(viewInventory).toContain('| volunteering-hours.blade.php | volunteering | missing-nunjucks-view |');
     expect(viewInventory).toContain('| skills.blade.php | skills | candidate-exact-view |');
+    expect(viewInventory).toContain('| exchanges.blade.php | exchanges | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-hub.blade.php | legal | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-document.blade.php | legal | candidate-exact-view |');
     expect(backendMatrix).toContain('| Family | GET routes | POST routes | Mutating routes | Tenant | Auth | CSRF | Feature/module gates |');

@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 29 |
+| ASP.NET static skeleton paths | 28 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 39 |
+| candidate-route | 40 |
 | candidate-workflow | 7 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 34 |
+| skeleton | 33 |
 
 ## Family Summary
 
@@ -39,7 +39,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | courses | 26 | 10 | 16 |  | 1 | 25 |
 | dashboard | 1 | 1 |  | 1 |  |  |
 | events | 21 | 9 | 12 | 21 |  |  |
-| exchanges | 4 | 2 | 2 |  | 1 | 3 |
+| exchanges | 4 | 2 | 2 | 1 |  | 3 |
 | explore | 1 | 1 |  | 1 |  |  |
 | faq | 1 | 1 |  | 1 |  |  |
 | features | 1 | 1 |  | 1 |  |  |
@@ -191,7 +191,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | GET | /listings/{listingId}/exchange-request | /{tenantSlug}/alpha/listings/{listingId}/exchange-request | /listings/{listingId}/exchange-request | exchanges.request | requestExchange | listings | candidate-family | routes/govuk-alpha.php:152 |
 | POST | /listings/{listingId}/exchange-request | /{tenantSlug}/alpha/listings/{listingId}/exchange-request | /listings/{listingId}/exchange-request | exchanges.request.store | storeExchangeRequest | listings | candidate-workflow-family | routes/govuk-alpha.php:153 |
 | GET | /listings/{id} | /{tenantSlug}/alpha/listings/{id} | /listings/{id} | listings.show | listing | listings | candidate-family | routes/govuk-alpha.php:154 |
-| GET | /exchanges | /{tenantSlug}/alpha/exchanges | /exchanges | exchanges.index | exchanges | exchanges | skeleton | routes/govuk-alpha.php:155 |
+| GET | /exchanges | /{tenantSlug}/alpha/exchanges | /exchanges | exchanges.index | exchanges | exchanges | candidate-route | routes/govuk-alpha.php:155 |
 | GET | /exchanges/{id} | /{tenantSlug}/alpha/exchanges/{id} | /exchanges/{id} | exchanges.show | exchange | exchanges | missing | routes/govuk-alpha.php:156 |
 | POST | /exchanges/{id} | /{tenantSlug}/alpha/exchanges/{id} | /exchanges/{id} | exchanges.action.store | storeExchangeAction | exchanges | missing | routes/govuk-alpha.php:157 |
 | POST | /exchanges/{id}/rate | /{tenantSlug}/alpha/exchanges/{id}/rate | /exchanges/{id}/rate | exchanges.rate.store | storeExchangeRating | exchanges | missing | routes/govuk-alpha.php:158 |

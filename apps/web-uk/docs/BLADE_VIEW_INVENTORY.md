@@ -9,10 +9,10 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | Metric | Count |
 | --- | ---: |
 | Laravel Blade accessible views | 289 |
-| ASP.NET Nunjucks views | 109 |
-| candidate-exact-view | 24 |
+| ASP.NET Nunjucks views | 110 |
+| candidate-exact-view | 25 |
 | candidate-name-match | 6 |
-| missing-nunjucks-view | 259 |
+| missing-nunjucks-view | 258 |
 
 ## Family Summary
 
@@ -41,7 +41,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | event | 3 |  | 3 |
 | events | 6 |  | 6 |
 | exchange | 2 |  | 2 |
-| exchanges | 1 |  | 1 |
+| exchanges | 1 | 1 |  |
 | explore | 1 | 1 |  |
 | faq | 1 | 1 |  |
 | features | 1 | 1 |  |
@@ -167,7 +167,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | events.blade.php | events | missing-nunjucks-view |
 | exchange-detail.blade.php | exchange | missing-nunjucks-view |
 | exchange-request.blade.php | exchange | missing-nunjucks-view |
-| exchanges.blade.php | exchanges | missing-nunjucks-view |
+| exchanges.blade.php | exchanges | candidate-exact-view |
 | explore.blade.php | explore | candidate-exact-view |
 | faq.blade.php | faq | candidate-exact-view |
 | features.blade.php | features | candidate-exact-view |
