@@ -139,6 +139,65 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getVolunteerOrganisations', () => {
+    it('should call the Laravel volunteering organisations endpoint with search and per_page params', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: [
+            { id: 7, name: 'Community Club', description: 'A local volunteer organisation.' }
+          ],
+          meta: { per_page: 30, has_more: false }
+        })
+      });
+
+      const result = await api.getVolunteerOrganisations({ search: 'club', per_page: 30 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/organisations?search=club&per_page=30',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      expect(result.data[0].name).toBe('Community Club');
+    });
+  });
+
+  describe('getVolunteerOrganisation', () => {
+    it('should call the Laravel public volunteering organisation detail endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: {
+            id: 42,
+            name: 'Community Club',
+            public_contract: {
+              id: 42,
+              name: 'Community Club',
+              stats: { opportunity_count: 2, volunteer_count: 5 }
+            }
+          }
+        })
+      });
+
+      const result = await api.getVolunteerOrganisation(42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/organisations/42?include=public_contract',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      expect(result.data.public_contract.name).toBe('Community Club');
+    });
+  });
+
   describe('network errors', () => {
     it('should throw ApiOfflineError on connection refused', async () => {
       const error = new Error('fetch failed');

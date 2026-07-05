@@ -342,6 +342,158 @@ app.get('/about', (req, res) => {
 });
 
 app.use('/explore', exploreRoutes);
+
+app.get('/organisations', (req, res) => {
+  const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  const { getVolunteerOrganisations } = require('./lib/api');
+  const filters = { per_page: 30 };
+  if (organisationsQuery.trim()) {
+    filters.search = organisationsQuery.trim();
+  }
+
+  getVolunteerOrganisations(filters)
+    .then((result) => {
+      const organisations = Array.isArray(result?.data) ? result.data : [];
+
+      res.render('organisations', {
+        title: 'Organisations',
+        activeNav: 'explore',
+        organisations,
+        organisationsQuery,
+        status,
+        organisationsLoadFailed: false
+      });
+    })
+    .catch(() => {
+      res.render('organisations', {
+        title: 'Organisations',
+        activeNav: 'explore',
+        organisations: [],
+        organisationsQuery,
+        status,
+        organisationsLoadFailed: true
+      });
+    });
+});
+
+app.get('/organisations/browse', (req, res) => {
+  const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : '';
+  const { getVolunteerOrganisations } = require('./lib/api');
+  const filters = { per_page: 20 };
+
+  if (organisationsQuery.trim()) {
+    filters.search = organisationsQuery.trim();
+  }
+
+  if (cursor.trim()) {
+    filters.cursor = cursor.trim();
+  }
+
+  getVolunteerOrganisations(filters)
+    .then((result) => {
+      const organisations = Array.isArray(result?.data) ? result.data : [];
+      const meta = result?.meta && typeof result.meta === 'object' ? result.meta : {};
+      const nextCursor = typeof meta.cursor === 'string' ? meta.cursor : '';
+      const loadMoreParams = new URLSearchParams();
+
+      if (organisationsQuery.trim()) {
+        loadMoreParams.set('q', organisationsQuery.trim());
+      }
+
+      if (nextCursor) {
+        loadMoreParams.set('cursor', nextCursor);
+      }
+
+      const loadMoreQuery = loadMoreParams.toString();
+
+      res.render('organisations-browse', {
+        title: 'Browse organisations',
+        activeNav: 'explore',
+        organisations: organisations.map((organisation) => {
+          const publicContract = organisation.public_contract && typeof organisation.public_contract === 'object'
+            ? organisation.public_contract
+            : {};
+          const stats = publicContract.stats && typeof publicContract.stats === 'object'
+            ? publicContract.stats
+            : (organisation.stats && typeof organisation.stats === 'object' ? organisation.stats : {});
+          const description = organisation.description || organisation.excerpt || '';
+
+          return {
+            ...organisation,
+            description,
+            summary: description.length > 160 ? `${description.slice(0, 157)}...` : description,
+            opportunityCount: stats.opportunity_count || organisation.opportunity_count || 0,
+            volunteerCount: stats.volunteer_count || organisation.volunteer_count || 0,
+            totalHours: stats.total_hours || organisation.total_hours || 0,
+            averageRating: stats.average_rating || organisation.average_rating || 0,
+            hasWebsite: !!organisation.website
+          };
+        }),
+        organisationsQuery,
+        error: false,
+        manageableCount: 0,
+        hasMore: !!meta.has_more && !!nextCursor,
+        loadMoreHref: loadMoreQuery ? `/organisations/browse?${loadMoreQuery}` : ''
+      });
+    })
+    .catch(() => {
+      res.render('organisations-browse', {
+        title: 'Browse organisations',
+        activeNav: 'explore',
+        organisations: [],
+        organisationsQuery,
+        error: true,
+        manageableCount: 0,
+        hasMore: false,
+        loadMoreHref: ''
+      });
+    });
+});
+
+app.get('/organisations/:id(\\d+)', (req, res) => {
+  const { ApiError, getVolunteerOrganisation } = require('./lib/api');
+
+  getVolunteerOrganisation(req.params.id)
+    .then((result) => {
+      const data = result?.data && typeof result.data === 'object' ? result.data : {};
+      const publicContract = data.public_contract && typeof data.public_contract === 'object'
+        ? data.public_contract
+        : {};
+      const stats = publicContract.stats && typeof publicContract.stats === 'object'
+        ? publicContract.stats
+        : (data.stats && typeof data.stats === 'object' ? data.stats : {});
+      const organisation = {
+        ...data,
+        ...publicContract,
+        stats
+      };
+      const website = typeof organisation.website === 'string' ? organisation.website.trim() : '';
+      const websiteHref = website
+        ? (/^https?:\/\//i.test(website) ? website : `https://${website}`)
+        : '';
+
+      res.render('organisation-detail', {
+        title: organisation.name || 'Organisations',
+        activeNav: 'explore',
+        organisation,
+        orgStats: stats,
+        contactEmail: organisation.contact_email || organisation.email || '',
+        website,
+        websiteHref
+      });
+    })
+    .catch((error) => {
+      if (error instanceof ApiError && error.status === 404) {
+        return res.status(404).render('errors/404', { title: 'Page not found' });
+      }
+
+      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+    });
+});
+
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {

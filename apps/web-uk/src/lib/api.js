@@ -3,9 +3,11 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5080';
 const TENANT_ID = process.env.TENANT_ID || '';
 const { cache } = require('./cache');
+const { getApiBaseUrl } = require('./backend-contract');
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Cache TTL for different types of data (in milliseconds)
 const CACHE_TTL = {
@@ -250,6 +252,23 @@ async function deleteListing(token, id) {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
+}
+
+// Laravel volunteering API
+async function getVolunteerOrganisations(params = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/volunteering/organisations${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint);
+}
+
+async function getVolunteerOrganisation(id) {
+  return request(`/api/v2/volunteering/organisations/${encodeURIComponent(id)}?include=public_contract`);
 }
 
 // Wallet
@@ -1139,6 +1158,9 @@ module.exports = {
   createListing,
   updateListing,
   deleteListing,
+  // Laravel volunteering
+  getVolunteerOrganisations,
+  getVolunteerOrganisation,
   // Wallet
   getBalance,
   getTransactions,

@@ -1,6 +1,6 @@
 # apps/web-uk Shared Accessible Frontend Notes
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-06
 
 `apps/web-uk` is the ASP.NET repo's future shared accessible frontend candidate.
 It is not production-ready, does not certify production readiness, and must not
@@ -21,6 +21,16 @@ Local implementation:
 ```text
 apps/web-uk
 ```
+
+Backend target resolution is Laravel-first and lives in:
+
+```text
+apps/web-uk\src\lib\backend-contract.js
+```
+
+By default, `apps/web-uk` resolves API calls to the local Laravel staging base
+URL `http://127.0.0.1:8088`. `ACCESSIBLE_BACKEND_TARGET=aspnet` remains future
+work and must not be treated as certified compatibility.
 
 ## Stack
 
@@ -61,6 +71,21 @@ The shell feeds:
 
 The `/explore` page is a skeleton copied from the Laravel accessible information
 architecture. It does not certify ASP.NET backend or workflow parity.
+
+The `/organisations` page is now a local Blade-style candidate for the Laravel
+accessible organisations directory. It includes the caption, subnavigation,
+search form, empty state, status banners, registration copy, registration form,
+terms, and pending notice. Its directory list is backed by the Laravel
+`/api/v2/volunteering/organisations` collection using `search` and `per_page`
+parameters. Its `/organisations/browse` page is also backed by that collection,
+using `search`, `per_page`, and cursor-style load-more pagination. Its detail
+page is backed by
+`/api/v2/volunteering/organisations/{id}?include=public_contract` for profile,
+contact, and basic public stats. This remains partial: auth enforcement,
+volunteering feature gates, tenant-prefixed routes, organisation registration
+persistence, register/manage/jobs/apply workflows, detail depth
+opportunities/reviews, localization, runtime smoke tests, and ASP.NET backend
+compatibility are not certified.
 
 Additional preparation docs:
 
