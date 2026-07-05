@@ -187,6 +187,7 @@ public static class ServiceExtensions
         services.AddScoped<CaringSafeguardingService>();
         services.AddScoped<CaringHelpRequestSlaService>();
         services.AddScoped<CaringSupportRelationshipService>();
+        services.AddScoped<CaringCommunityVereineAdminService>();
         services.AddScoped<CaringHourEstateService>();
         services.AddScoped<CaringHourTransferService>();
         services.AddScoped<CaringHourGiftService>();
