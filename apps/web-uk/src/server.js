@@ -347,13 +347,35 @@ app.get('/organisations', (req, res) => {
   const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
   const status = typeof req.query.status === 'string' ? req.query.status : '';
 
-  res.render('organisations', {
-    title: 'Organisations',
-    activeNav: 'explore',
-    organisations: [],
-    organisationsQuery,
-    status
-  });
+  const { getVolunteerOrganisations } = require('./lib/api');
+  const filters = { per_page: 30 };
+  if (organisationsQuery.trim()) {
+    filters.search = organisationsQuery.trim();
+  }
+
+  getVolunteerOrganisations(filters)
+    .then((result) => {
+      const organisations = Array.isArray(result?.data) ? result.data : [];
+
+      res.render('organisations', {
+        title: 'Organisations',
+        activeNav: 'explore',
+        organisations,
+        organisationsQuery,
+        status,
+        organisationsLoadFailed: false
+      });
+    })
+    .catch(() => {
+      res.render('organisations', {
+        title: 'Organisations',
+        activeNav: 'explore',
+        organisations: [],
+        organisationsQuery,
+        status,
+        organisationsLoadFailed: true
+      });
+    });
 });
 
 app.use(staticPageRoutes);

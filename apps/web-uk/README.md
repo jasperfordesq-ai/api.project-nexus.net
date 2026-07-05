@@ -123,7 +123,7 @@ The application will be available at **http://localhost:5180**
 | `GET /terms` | Terms and conditions |
 | `GET /contact` | Contact page |
 | `GET /explore` | Shared accessible frontend Explore skeleton |
-| `GET /organisations` | Blade-style accessible organisations candidate; visual/form prep only, backend workflow not certified |
+| `GET /organisations` | Blade-style accessible organisations candidate; reads Laravel `/api/v2/volunteering/organisations`, with auth/form workflow still not certified |
 | `GET /help` | Shared accessible frontend preparation skeleton |
 | `GET /kb` | Shared accessible frontend preparation skeleton |
 | `GET /trust-and-safety` | Shared accessible frontend preparation skeleton |

@@ -254,6 +254,19 @@ async function deleteListing(token, id) {
   });
 }
 
+// Laravel volunteering API
+async function getVolunteerOrganisations(params = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/volunteering/organisations${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint);
+}
+
 // Wallet
 async function getBalance(token) {
   return request('/api/wallet/balance', {
@@ -1141,6 +1154,8 @@ module.exports = {
   createListing,
   updateListing,
   deleteListing,
+  // Laravel volunteering
+  getVolunteerOrganisations,
   // Wallet
   getBalance,
   getTransactions,

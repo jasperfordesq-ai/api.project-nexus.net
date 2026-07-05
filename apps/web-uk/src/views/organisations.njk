@@ -60,6 +60,16 @@
     <button class="govuk-button" data-module="govuk-button" type="submit">Search</button>
   </form>
 
+  {% if organisationsLoadFailed %}
+    <div class="govuk-warning-text">
+      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+      <strong class="govuk-warning-text__text">
+        <span class="govuk-visually-hidden">Warning</span>
+        Organisation listings are temporarily unavailable.
+      </strong>
+    </div>
+  {% endif %}
+
   {% if organisations and organisations.length %}
     <div class="nexus-alpha-card-list govuk-!-margin-bottom-8">
       {% for organisation in organisations %}
