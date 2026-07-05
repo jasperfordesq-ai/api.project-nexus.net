@@ -45,6 +45,12 @@ public class TenantResolutionMiddleware
         "/api/auth/refresh",         // Refresh determines tenant from token lookup
         "/api/auth/forgot-password",           // Forgot password determines tenant from request body
         "/api/auth/reset-password",            // Reset password determines tenant from token lookup
+        "/api/auth/sso",                       // Public SSO endpoints resolve tenant from query/header
+        "/api/v2/auth/sso",                    // Laravel-compatible public SSO endpoints
+        "/api/auth/oauth/exchange",            // Public one-time OAuth callback-code exchange
+        "/api/v2/auth/oauth/exchange",         // Laravel-compatible OAuth callback-code exchange
+        "/api/geo/os-places/search",           // Public geocoding proxy resolves tenant internally
+        "/api/v2/geo/os-places/search",        // Laravel-compatible OS Places proxy
         "/api/passkeys/authenticate/begin",    // Passkey auth determines tenant from request body
         "/api/passkeys/authenticate/finish",   // Passkey auth determines tenant from session
         "/api/v1/federation",                  // Federation external API uses its own auth
