@@ -221,6 +221,98 @@ public sealed class CaringRegionalPointService
         return rows.Select(FormatMemberTransaction).ToArray();
     }
 
+    public async Task<RegionalPointTransferResult> TransferBetweenMembersAsync(
+        int tenantId,
+        int senderId,
+        int recipientId,
+        decimal points,
+        string? message,
+        CancellationToken ct)
+    {
+        var config = await GetConfigAsync(tenantId, ct);
+        await AssertRegionalPointsEnabledAsync(tenantId, ct);
+
+        if (!config.MemberTransfersEnabled)
+        {
+            throw new RegionalPointOperationException("Regional point member transfers are disabled.");
+        }
+
+        if (senderId == recipientId)
+        {
+            throw new RegionalPointValidationException("Members cannot transfer regional points to themselves.");
+        }
+
+        points = NormalizePoints(points);
+        await AssertTenantUserAsync(tenantId, senderId, ct);
+        await AssertTenantUserAsync(tenantId, recipientId, ct);
+
+        var senderAccount = await EnsureAccountAsync(tenantId, senderId, ct);
+        var recipientAccount = await EnsureAccountAsync(tenantId, recipientId, ct);
+        if (senderAccount.Balance < points)
+        {
+            throw new RegionalPointOperationException("Not enough regional points.");
+        }
+
+        var now = DateTime.UtcNow;
+        var senderNewBalance = RoundPoints(senderAccount.Balance - points);
+        var recipientNewBalance = RoundPoints(recipientAccount.Balance + points);
+        var description = NormalizeDescription(message) ?? "Regional point member transfer";
+
+        senderAccount.Balance = senderNewBalance;
+        senderAccount.LifetimeSpent = RoundPoints(senderAccount.LifetimeSpent + points);
+        senderAccount.UpdatedAt = now;
+        recipientAccount.Balance = recipientNewBalance;
+        recipientAccount.LifetimeEarned = RoundPoints(recipientAccount.LifetimeEarned + points);
+        recipientAccount.UpdatedAt = now;
+
+        var debit = new CaringRegionalPointTransaction
+        {
+            TenantId = tenantId,
+            AccountId = senderAccount.Id,
+            UserId = senderId,
+            ActorUserId = senderId,
+            Type = "transfer_out",
+            Direction = "debit",
+            Points = points,
+            BalanceAfter = senderNewBalance,
+            Description = description,
+            Metadata = JsonSerializer.Serialize(new { recipient_user_id = recipientId }),
+            CreatedAt = now
+        };
+        var credit = new CaringRegionalPointTransaction
+        {
+            TenantId = tenantId,
+            AccountId = recipientAccount.Id,
+            UserId = recipientId,
+            ActorUserId = senderId,
+            Type = "transfer_in",
+            Direction = "credit",
+            Points = points,
+            BalanceAfter = recipientNewBalance,
+            Description = description,
+            ReferenceType = "regional_point_transfer",
+            Metadata = JsonSerializer.Serialize(new { sender_user_id = senderId }),
+            CreatedAt = now
+        };
+
+        _db.CaringRegionalPointTransactions.AddRange(debit, credit);
+        await _db.SaveChangesAsync(ct);
+
+        debit.ReferenceType = "regional_point_transfer";
+        debit.ReferenceId = credit.Id;
+        credit.ReferenceId = debit.Id;
+        await _db.SaveChangesAsync(ct);
+
+        return new RegionalPointTransferResult(
+            SenderTransactionId: debit.Id,
+            RecipientTransactionId: credit.Id,
+            SenderUserId: senderId,
+            RecipientUserId: recipientId,
+            Points: points,
+            SenderBalance: senderNewBalance,
+            RecipientBalance: recipientNewBalance);
+    }
+
     public async Task<RegionalPointMarketplaceQuote> CalculateMarketplaceDiscountAsync(
         int tenantId,
         int memberId,
@@ -916,6 +1008,15 @@ public sealed record RegionalPointMemberTransactionDto(
     [property: JsonPropertyName("balance_after")] decimal BalanceAfter,
     [property: JsonPropertyName("description")] string? Description,
     [property: JsonPropertyName("created_at")] DateTime CreatedAt);
+
+public sealed record RegionalPointTransferResult(
+    [property: JsonPropertyName("sender_transaction_id")] long SenderTransactionId,
+    [property: JsonPropertyName("recipient_transaction_id")] long RecipientTransactionId,
+    [property: JsonPropertyName("sender_user_id")] int SenderUserId,
+    [property: JsonPropertyName("recipient_user_id")] int RecipientUserId,
+    [property: JsonPropertyName("points")] decimal Points,
+    [property: JsonPropertyName("sender_balance")] decimal SenderBalance,
+    [property: JsonPropertyName("recipient_balance")] decimal RecipientBalance);
 
 public sealed record RegionalPointMarketplaceQuote(
     [property: JsonPropertyName("accepts")] bool Accepts,

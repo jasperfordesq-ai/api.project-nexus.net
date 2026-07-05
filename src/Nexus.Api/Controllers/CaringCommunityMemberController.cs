@@ -209,6 +209,53 @@ public sealed class CaringCommunityMemberController : ControllerBase
         }
     }
 
+    [HttpPost("regional-points/transfer")]
+    public async Task<IActionResult> RegionalPointsTransfer(
+        [FromBody] JsonElement payload,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var recipientId = ReadInt(payload, "recipient_user_id");
+        if (recipientId <= 0)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed.", "recipient_user_id"));
+        }
+
+        try
+        {
+            var data = await _regionalPoints.TransferBetweenMembersAsync(
+                _tenant.GetTenantIdOrThrow(),
+                user.UserId!.Value,
+                recipientId,
+                ReadDecimal(payload, "points"),
+                ReadString(payload, "message"),
+                ct);
+
+            return StatusCode(StatusCodes.Status201Created, new { data });
+        }
+        catch (RegionalPointValidationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", ex.Message));
+        }
+        catch (RegionalPointOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("REGIONAL_POINTS_TRANSFER_FAILED", ex.Message));
+        }
+        catch (RegionalPointFeatureDisabledException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("REGIONAL_POINTS_TRANSFER_FAILED", ex.Message));
+        }
+    }
+
     [HttpGet("regional-points/marketplace/quote")]
     public async Task<IActionResult> RegionalPointsMarketplaceQuote(
         [FromQuery(Name = "seller_id")] int sellerId,
@@ -470,6 +517,20 @@ public sealed class CaringCommunityMemberController : ControllerBase
             && payload.TryGetProperty(name, out var value)
             ? ReadDecimalValue(value)
             : 0m;
+    }
+
+    private static string? ReadString(JsonElement payload, string name)
+    {
+        if (payload.ValueKind != JsonValueKind.Object
+            || !payload.TryGetProperty(name, out var value)
+            || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        return value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : value.ToString();
     }
 
     private static int ReadIntValue(JsonElement value)

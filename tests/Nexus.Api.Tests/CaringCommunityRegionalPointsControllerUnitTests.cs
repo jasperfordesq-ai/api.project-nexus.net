@@ -79,6 +79,10 @@ public class CaringCommunityRegionalPointsControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("regional-points/history");
 
+        controllerType.GetMethod("RegionalPointsTransfer")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("regional-points/transfer");
+
         controllerType.GetMethod("RegionalPointsMarketplaceQuote")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("regional-points/marketplace/quote");
@@ -452,6 +456,110 @@ public class CaringCommunityRegionalPointsControllerUnitTests
         metadata.RootElement.GetProperty("discount_chf").GetDecimal().Should().Be(4m);
         metadata.RootElement.GetProperty("regional_points_per_chf").GetDecimal().Should().Be(10m);
         metadata.RootElement.GetProperty("max_discount_pct").GetInt32().Should().Be(25);
+    }
+
+    [Fact]
+    public async Task MemberRegionalPointsTransfer_MovesPointsAndReturnsLaravelCreatedEnvelope()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedRegionalPointsEnabled(db, 42);
+        db.TenantConfigs.Add(Setting(42, "member_transfers_enabled", "1"));
+        SeedUser(db, 42, 10, "sender@example.test", "Sender", "One");
+        SeedUser(db, 42, 20, "recipient@example.test", "Recipient", "Two");
+        db.Add(Entity(AccountTypeName,
+            ("Id", 1001L), ("TenantId", 42), ("UserId", 10), ("Balance", 80m),
+            ("LifetimeEarned", 90m), ("LifetimeSpent", 10m)));
+        db.Add(Entity(AccountTypeName,
+            ("Id", 1002L), ("TenantId", 42), ("UserId", 20), ("Balance", 5m),
+            ("LifetimeEarned", 5m), ("LifetimeSpent", 0m)));
+        await db.SaveChangesAsync();
+        var controller = CreateMemberController(db, tenant, userId: 10);
+
+        var data = ReadDataObject(await InvokeMember(
+            controller,
+            "RegionalPointsTransfer",
+            Json("""
+            {
+              "recipient_user_id": 20,
+              "points": 12.345,
+              "message": "  Thanks for the lift  "
+            }
+            """),
+            CancellationToken.None), StatusCodes.Status201Created);
+
+        data.GetProperty("sender_transaction_id").GetInt64().Should().BeGreaterThan(0);
+        data.GetProperty("recipient_transaction_id").GetInt64().Should().BeGreaterThan(0);
+        data.GetProperty("sender_user_id").GetInt32().Should().Be(10);
+        data.GetProperty("recipient_user_id").GetInt32().Should().Be(20);
+        data.GetProperty("points").GetDecimal().Should().Be(12.35m);
+        data.GetProperty("sender_balance").GetDecimal().Should().Be(67.65m);
+        data.GetProperty("recipient_balance").GetDecimal().Should().Be(17.35m);
+
+        var accounts = (await Set(AccountTypeName, db).ToListAsync()).ToDictionary(row => Get<int>(row, "UserId"));
+        Get<decimal>(accounts[10], "Balance").Should().Be(67.65m);
+        Get<decimal>(accounts[10], "LifetimeSpent").Should().Be(22.35m);
+        Get<decimal>(accounts[20], "Balance").Should().Be(17.35m);
+        Get<decimal>(accounts[20], "LifetimeEarned").Should().Be(17.35m);
+
+        var transactions = await Set(TransactionTypeName, db).ToListAsync();
+        transactions.Should().HaveCount(2);
+        var debit = transactions.Single(row => Get<string>(row, "Type") == "transfer_out");
+        var credit = transactions.Single(row => Get<string>(row, "Type") == "transfer_in");
+
+        Get<int>(debit, "UserId").Should().Be(10);
+        Get<int?>(debit, "ActorUserId").Should().Be(10);
+        Get<string>(debit, "Direction").Should().Be("debit");
+        Get<decimal>(debit, "Points").Should().Be(12.35m);
+        Get<decimal>(debit, "BalanceAfter").Should().Be(67.65m);
+        Get<string>(debit, "Description").Should().Be("Thanks for the lift");
+        Get<string>(debit, "ReferenceType").Should().Be("regional_point_transfer");
+        Get<long?>(debit, "ReferenceId").Should().Be(Get<long>(credit, "Id"));
+
+        Get<int>(credit, "UserId").Should().Be(20);
+        Get<int?>(credit, "ActorUserId").Should().Be(10);
+        Get<string>(credit, "Direction").Should().Be("credit");
+        Get<decimal>(credit, "Points").Should().Be(12.35m);
+        Get<decimal>(credit, "BalanceAfter").Should().Be(17.35m);
+        Get<string>(credit, "Description").Should().Be("Thanks for the lift");
+        Get<string>(credit, "ReferenceType").Should().Be("regional_point_transfer");
+        Get<long?>(credit, "ReferenceId").Should().Be(Get<long>(debit, "Id"));
+
+        using var debitMetadata = JsonDocument.Parse(Get<string>(debit, "Metadata")!);
+        debitMetadata.RootElement.GetProperty("recipient_user_id").GetInt32().Should().Be(20);
+        using var creditMetadata = JsonDocument.Parse(Get<string>(credit, "Metadata")!);
+        creditMetadata.RootElement.GetProperty("sender_user_id").GetInt32().Should().Be(10);
+    }
+
+    [Fact]
+    public async Task MemberRegionalPointsTransfer_WhenBalanceTooLow_ReturnsLaravelTransferFailedError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedRegionalPointsEnabled(db, 42);
+        db.TenantConfigs.Add(Setting(42, "member_transfers_enabled", "1"));
+        SeedUser(db, 42, 10, "sender@example.test", "Sender", "One");
+        SeedUser(db, 42, 20, "recipient@example.test", "Recipient", "Two");
+        db.Add(Entity(AccountTypeName,
+            ("Id", 1001L), ("TenantId", 42), ("UserId", 10), ("Balance", 5m),
+            ("LifetimeEarned", 5m), ("LifetimeSpent", 0m)));
+        await db.SaveChangesAsync();
+        var controller = CreateMemberController(db, tenant, userId: 10);
+
+        AssertSingleError(await InvokeMember(
+                controller,
+                "RegionalPointsTransfer",
+                Json("""
+                {
+                  "recipient_user_id": 20,
+                  "points": 10
+                }
+                """),
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "REGIONAL_POINTS_TRANSFER_FAILED");
     }
 
     [Fact]
