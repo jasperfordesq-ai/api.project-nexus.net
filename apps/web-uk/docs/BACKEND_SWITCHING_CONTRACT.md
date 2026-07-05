@@ -35,14 +35,16 @@ src/lib/backend-contract.js
 ## Current Page Candidates
 
 `/organisations` is a local Blade-style visual/form candidate based on the
-Laravel accessible organisations page. Its directory GET is the first
-Laravel-backed data flow in this app: it reads
+Laravel accessible organisations page. Its directory GET reads
 `/api/v2/volunteering/organisations` with `search` and `per_page` query params
-and keeps a warning state for API unavailability. It is not a backend adapter
-and must not be treated as proof that Laravel or ASP.NET organisation workflows
-are ready in this app. The remaining work includes tenant-prefixed routing, auth
-redirects, volunteering feature gates, registration persistence, validation
-behavior, redirects, localization, and runtime smoke tests.
+and keeps a warning state for API unavailability. Its detail GET reads
+`/api/v2/volunteering/organisations/{id}?include=public_contract` and renders
+profile, contact, jobs-link, basic public stats, and empty depth sections. It is
+not a backend adapter and must not be treated as proof that Laravel or ASP.NET
+organisation workflows are ready in this app. The remaining work includes
+tenant-prefixed routing, auth redirects, volunteering feature gates,
+registration persistence, validation behavior, redirects, detail
+opportunities/reviews depth data, localization, and runtime smoke tests.
 
 ## Required Compatibility Areas
 

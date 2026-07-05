@@ -49,7 +49,8 @@ jest.mock('../src/lib/api', () => ({
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getTransactions: jest.fn(),
-  getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] })
+  getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
+  getVolunteerOrganisation: jest.fn()
 }));
 
 process.env.COOKIE_SECRET = 'test-secret-at-least-32-characters';
@@ -168,6 +169,55 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('There are no organisations listed yet.');
   });
 
+  it('renders the Blade-style organisation detail page from the Laravel public organisation contract', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteerOrganisation.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Community Club',
+        description: 'A volunteer organisation supporting local residents with practical help and events.',
+        contact_email: 'hello@example.test',
+        website: 'https://example.test',
+        public_contract: {
+          id: 42,
+          name: 'Community Club',
+          description: 'A volunteer organisation supporting local residents with practical help and events.',
+          contact_email: 'hello@example.test',
+          website: 'https://example.test',
+          stats: {
+            opportunity_count: 2,
+            volunteer_count: 5,
+            total_hours: 17.5,
+            review_count: 1,
+            average_rating: 4.5
+          }
+        }
+      }
+    });
+
+    const response = await request(app).get('/organisations/42');
+
+    expect(api.getVolunteerOrganisation).toHaveBeenCalledWith('42');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/organisations"');
+    expect(response.text).toContain('Community Club');
+    expect(response.text).toContain('A volunteer organisation supporting local residents');
+    expect(response.text).toContain('href="mailto:hello@example.test"');
+    expect(response.text).toContain('href="https://example.test"');
+    expect(response.text).toContain('href="/organisations/42/jobs"');
+    expect(response.text).toContain('View job openings');
+    expect(response.text).toContain('About this organisation');
+    expect(response.text).toContain('Open opportunities');
+    expect(response.text).toContain('2');
+    expect(response.text).toContain('Volunteers');
+    expect(response.text).toContain('5');
+    expect(response.text).toContain('Hours contributed');
+    expect(response.text).toContain('17.5');
+    expect(response.text).toContain('Volunteer reviews');
+    expect(response.text).toContain('There are no current volunteering opportunities at this organisation.');
+    expect(response.text).toContain('This organisation has no reviews yet.');
+  });
+
   it('keeps the rendered footer clear of official government identity claims', async () => {
     const response = await request(app).get('/');
 
@@ -195,7 +245,7 @@ describe('shared accessible frontend shell', () => {
     const contract = fs.readFileSync(path.join(__dirname, '..', 'docs', 'BACKEND_SWITCHING_CONTRACT.md'), 'utf8');
 
     expect(matrix).toContain('Laravel `govuk-alpha*`');
-    expect(matrix).toContain('| Organisations | `/organisations` | `/organisations` | Partial Laravel-backed candidate: GET directory/search renders `/api/v2/volunteering/organisations`; registration/auth/tenant gates not certified. |');
+    expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/{id}` | `/organisations`, `/organisations/:id` | Partial Laravel-backed candidate: directory/search renders `/api/v2/volunteering/organisations`; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`; registration/auth/tenant gates not certified. |');
     expect(matrix).toContain('It does not certify route parity');
     expect(contract).toContain('Its default backend contract is now Laravel-first');
     expect(contract).toContain('| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |');
