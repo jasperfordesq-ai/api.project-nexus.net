@@ -87,6 +87,44 @@ public sealed class CaringCommunityMemberController : ControllerBase
         return Ok(new { data = new { items } });
     }
 
+    [HttpPost("request-help")]
+    public async Task<IActionResult> RequestHelp(
+        [FromBody] JsonElement payload,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var result = await _relationships.CreateMemberHelpRequestAsync(
+            _tenant.GetTenantIdOrThrow(),
+            user.UserId!.Value,
+            new Dictionary<string, object?>
+            {
+                ["what"] = ReadString(payload, "what"),
+                ["when"] = ReadString(payload, "when"),
+                ["contact_preference"] = ReadString(payload, "contact_preference")
+            },
+            ct);
+
+        if (!result.Succeeded)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelErrors(result.Errors ?? Array.Empty<MemberHelpRequestError>()));
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = new
+            {
+                success = true,
+                message = "Help request submitted."
+            }
+        });
+    }
+
     [HttpGet("me/data-export")]
     public async Task<IActionResult> MyDataExport(CancellationToken ct)
     {
@@ -593,6 +631,19 @@ public sealed class CaringCommunityMemberController : ControllerBase
         }
 
         return new { errors = new[] { error } };
+    }
+
+    private static object LaravelErrors(IEnumerable<MemberHelpRequestError> errors)
+    {
+        return new
+        {
+            errors = errors.Select(error => new Dictionary<string, object?>
+            {
+                ["code"] = error.Code,
+                ["message"] = error.Message,
+                ["field"] = error.Field
+            }).ToArray()
+        };
     }
 }
 

@@ -70,6 +70,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         controller.GetMethod("ResumeRelationship")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("my-relationships/{id:int}/resume");
+
+        controller.GetMethod("RequestHelp")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("request-help");
     }
 
     [Fact]
@@ -577,6 +581,72 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
     }
 
     [Fact]
+    public async Task RequestHelp_CreatesPendingHelpRequestAndReturnsLaravelCreatedEnvelope()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(10, 42, "Ada", "Member"),
+            User(70, 7, "Other", "Tenant"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadDataObject(await Invoke(
+            controller,
+            "RequestHelp",
+            Json("""
+            {
+              "what": "  Need help collecting medicine  ",
+              "when": "  Friday morning  ",
+              "contact_preference": "fax"
+            }
+            """),
+            CancellationToken.None), StatusCodes.Status201Created);
+
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+        data.GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var stored = await db.CaringHelpRequests.IgnoreQueryFilters().SingleAsync();
+        stored.TenantId.Should().Be(42);
+        stored.UserId.Should().Be(10);
+        stored.What.Should().Be("Need help collecting medicine");
+        stored.WhenNeeded.Should().Be("Friday morning");
+        stored.ContactPreference.Should().Be("either");
+        stored.Status.Should().Be("pending");
+        stored.IsOnBehalf.Should().BeFalse();
+        stored.RequestedById.Should().BeNull();
+        stored.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+        stored.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task RequestHelp_WithMissingFields_ReturnsLaravelValidationErrors()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var result = await Invoke(
+            controller,
+            "RequestHelp",
+            Json("""{ "contact_preference": "phone" }"""),
+            CancellationToken.None);
+
+        var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+        var errors = document.RootElement.GetProperty("errors").EnumerateArray().ToArray();
+        errors.Should().HaveCount(2);
+        errors.Select(error => error.GetProperty("field").GetString())
+            .Should().BeEquivalentTo("what", "when");
+        errors.Should().OnlyContain(error => error.GetProperty("code").GetString() == "VALIDATION_ERROR");
+        db.CaringHelpRequests.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ResearchConsent_WhenCaringCommunityDisabled_ReturnsLaravelFeatureDisabledError()
     {
         var tenant = CreateTenantContext(42);
@@ -586,6 +656,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         var controller = CreateController(db, tenant, userId: 10);
 
         AssertSingleError(await Invoke(controller, "ResearchConsent", CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(
+            await Invoke(controller, "RequestHelp", Json("{}"), CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
         AssertSingleError(
@@ -905,6 +979,20 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
         return document.RootElement.GetProperty("data").Clone();
+    }
+
+    private static JsonElement ReadDataObject(IActionResult result, int expectedStatus = StatusCodes.Status200OK)
+    {
+        var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
+        objectResult.StatusCode.GetValueOrDefault(StatusCodes.Status200OK).Should().Be(expectedStatus);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+        return document.RootElement.GetProperty("data").Clone();
+    }
+
+    private static JsonElement Json(string raw)
+    {
+        using var document = JsonDocument.Parse(raw);
+        return document.RootElement.Clone();
     }
 
     private static void AssertSingleError(IActionResult result, int statusCode, string code)

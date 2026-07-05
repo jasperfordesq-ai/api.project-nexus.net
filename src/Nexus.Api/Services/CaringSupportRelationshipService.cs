@@ -162,6 +162,61 @@ public sealed class CaringSupportRelationshipService
         return SupportRelationshipCreateResult.Success(RelationshipRow(relationship, users, categories));
     }
 
+    public async Task<MemberHelpRequestResult> CreateMemberHelpRequestAsync(
+        int tenantId,
+        int userId,
+        IReadOnlyDictionary<string, object?>? input,
+        CancellationToken ct)
+    {
+        var errors = new List<MemberHelpRequestError>();
+        var what = (StringValue(input, "what") ?? string.Empty).Trim();
+        var whenNeeded = (StringValue(input, "when") ?? string.Empty).Trim();
+        var contactPreference = NormalizeContactPreference(StringValue(input, "contact_preference"));
+
+        if (what.Length == 0)
+        {
+            errors.Add(new MemberHelpRequestError("VALIDATION_ERROR", "Validation failed.", "what"));
+        }
+        else if (what.Length > 500)
+        {
+            errors.Add(new MemberHelpRequestError("VALIDATION_ERROR", "Validation failed.", "what"));
+        }
+
+        if (whenNeeded.Length == 0)
+        {
+            errors.Add(new MemberHelpRequestError("VALIDATION_ERROR", "Validation failed.", "when"));
+        }
+        else if (whenNeeded.Length > 200)
+        {
+            errors.Add(new MemberHelpRequestError("VALIDATION_ERROR", "Validation failed.", "when"));
+        }
+
+        if (errors.Count > 0)
+        {
+            return MemberHelpRequestResult.Validation(errors);
+        }
+
+        var now = DateTime.UtcNow;
+        var request = new CaringHelpRequest
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            What = what,
+            WhenNeeded = whenNeeded,
+            ContactPreference = contactPreference,
+            Status = "pending",
+            IsOnBehalf = false,
+            RequestedById = null,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.CaringHelpRequests.Add(request);
+        await _db.SaveChangesAsync(ct);
+
+        return MemberHelpRequestResult.Created();
+    }
+
     public async Task<SupportRelationshipLogHoursResult> LogHoursAsync(
         int tenantId,
         int relationshipId,
@@ -660,6 +715,14 @@ public sealed class CaringSupportRelationshipService
         };
     }
 
+    private static string NormalizeContactPreference(string? value)
+    {
+        var normalized = value?.Trim().ToLowerInvariant();
+        return normalized is "phone" or "message" or "either"
+            ? normalized
+            : "either";
+    }
+
     private static string DisplayName(User? user)
     {
         if (user is null)
@@ -778,6 +841,26 @@ public sealed record SupportRelationshipCreateResult(
         return new SupportRelationshipCreateResult(false, null, code);
     }
 }
+
+public sealed record MemberHelpRequestResult(
+    bool Succeeded,
+    IReadOnlyList<MemberHelpRequestError>? Errors = null)
+{
+    public static MemberHelpRequestResult Created()
+    {
+        return new MemberHelpRequestResult(true);
+    }
+
+    public static MemberHelpRequestResult Validation(IReadOnlyList<MemberHelpRequestError> errors)
+    {
+        return new MemberHelpRequestResult(false, errors);
+    }
+}
+
+public sealed record MemberHelpRequestError(
+    string Code,
+    string Message,
+    string Field);
 
 public sealed record SupportRelationshipLogHoursResult(
     bool Succeeded,
