@@ -38,7 +38,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Blade link | Laravel path | `apps/web-uk` path | Current ASP.NET status |
 | --- | --- | --- | --- |
 | Brand | `/` or `/{tenantSlug}/alpha` | `/` | Implemented local equivalent. |
-| My account | `/account` | `/account` | Preparation skeleton. |
+| My account | `/account` | `/account` | Implemented Blade-style candidate hub; feature/module gates, auth enforcement, live counts, and backend workflows are not certified. |
 | Home | `/` | `/` | Implemented local equivalent. |
 | Dashboard | `/dashboard` | `/dashboard` | Implemented route; backend contract not certified. |
 | Feed | `/feed` | `/feed` | Implemented route; backend contract not certified. |
@@ -49,16 +49,16 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Explore | `/explore` | `/explore` | Implemented skeleton. |
 | Sign in | `/login` | `/login` | Implemented local equivalent. |
 | Register | `/register` | `/register` | Implemented local equivalent. |
-| Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Preparation skeleton. |
-| Cookies | `/cookies` | `/cookies` | Preparation skeleton. |
+| Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Implemented candidate workflow; backend persistence not certified. |
+| Cookies | `/cookies` | `/cookies` | Implemented candidate page; backend/session persistence not certified. |
 
 ## Footer Column Contract
 
 | Column | Blade links | `apps/web-uk` current status |
 | --- | --- | --- |
-| Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering and Blog are preparation skeletons. |
-| Support | Help centre, Knowledge base, Trust and safety, Contact, About | Contact/About implemented; Help/Knowledge base/Trust and safety skeletons exist. |
-| Legal | Legal, Terms of service, Privacy policy, Community guidelines, Acceptable use, Cookie policy, Accessibility statement | Local skeletons exist for the Laravel footer destinations; old `/terms` and `/privacy` still exist as legacy local routes. |
+| Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering is a preparation skeleton; Blog has a local Blade-style search/empty-state index candidate. |
+| Support | Help centre, Knowledge base, Trust and safety, Contact, FAQ, About | Contact/About implemented; Help centre and Knowledge base have local Blade-style search/empty-state candidates; FAQ has a local Blade-style accordion candidate; Trust and safety has a local Blade-style guidance candidate; Contact has a local Blade-style form candidate but Laravel Turnstile/backend delivery is not certified. |
+| Legal | Legal, Terms of service, Privacy policy, Community guidelines, Acceptable use, Cookie policy, Accessibility statement | Legal hub and legal document routes have local Blade-style fallback candidates; tenant-managed document data, version metadata, sanitized rich content, localization persistence, and backend runtime behaviour are not certified. Old `/terms` and `/privacy` still exist as legacy local routes. |
 
 ## Explore Contract
 
@@ -72,7 +72,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Goals | `/goals` | `/goals` | Preparation skeleton. |
 | Skills | `/skills` | `/skills` | Preparation skeleton. |
 | Organisations | `/organisations` | `/organisations` | Preparation skeleton. |
-| Blog | `/blog` | `/blog` | Preparation skeleton. |
+| Blog | `/blog` | `/blog` | Local Blade-style index candidate; live posts, categories, feature gate, feed, post detail, comments/likes, and backend runtime are not certified. |
 | Resources | `/resources` | `/resources` | Preparation skeleton. |
 | Marketplace | `/marketplace` | `/marketplace` | Preparation skeleton. |
 | Jobs | `/jobs` | `/jobs` | Preparation skeleton. |
@@ -91,9 +91,18 @@ runtime tests before `apps/web-uk` can be shared:
 
 | Family | Examples | Current status |
 | --- | --- | --- |
-| Tenant routing | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Not implemented in `apps/web-uk`. |
-| Cookie/report POST workflows | `/cookie-consent`, `/report-a-problem` POST | Skeleton GET pages only. |
-| Legal document sourcing | `/legal/*` tenant documents | Skeleton GET pages only. |
+| Tenant routing | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Local shared-domain alias started for `/{tenantSlug}/alpha/...` so prepared pages can render through the same Express handlers with prefixed shell links, no-JS form actions, and local redirects for contact/report/cookie workflows. Laravel tenant lookup, custom-domain resolution, feature gates, and backend workflow certification are not complete. |
+| Cookie/report POST workflows | `/cookie-consent`, `/report-a-problem` POST | Both have local no-JS candidate workflows. Laravel cookie/session persistence and `support_reports` persistence are not certified. |
+| Account hub | `/account` | Local Blade-style candidate card hub with tenant-prefixed links. Laravel feature/module gates, auth enforcement, unread counts, and destination workflow parity are not certified. |
+| Timebanking guide | `/guide` | Local Blade-style guide candidate with equality section, ordered three-step list, and tenant-prefixed register/listings/wallet CTAs. Laravel feature/module gates, auth/session behavior, localization persistence, and runtime route certification are not complete. |
+| Feature summary | `/features` | Local Blade-style feature summary candidate with spaced bullet list and tenant-prefixed guide CTA. Laravel feature/module gates, localization persistence, and runtime route certification are not complete. |
+| Help centre | `/help` | Local Blade-style search/empty-state candidate with tenant-prefixed contact CTA. Live FAQ group loading, search filtering, localization persistence, and runtime route certification are not complete. |
+| Knowledge base | `/kb`, `/kb/{id}` | Local Blade-style index search/empty-state candidate for `/kb` only. Live article data, pagination, `/kb/{id}` article detail, localization persistence, and runtime route certification are not complete. |
+| Blog | `/blog`, `/blog/feed.xml`, `/blog/{slug}`, comments/likes | Local Blade-style index search/empty-state candidate for `/blog` only. Blog feature gate, live posts/categories, cursor pagination, RSS feed, post detail, comments/likes, localization, and runtime certification are not complete. |
+| FAQ | `/faq` | Local Blade-style accordion candidate with Laravel English strings. Laravel localization persistence and runtime route certification are not complete. |
+| Accessibility statement | `/accessibility` | Local Blade-style statement candidate with WCAG summary list and tenant-prefixed legal/contact links. Laravel localization persistence and runtime route certification are not complete. |
+| Trust and safety | `/trust-and-safety` | Local Blade-style safety guidance candidate with warning text, guidance sections, tenant-prefixed contact CTA, and community guidelines link. Laravel localization persistence, safeguarding workflow handling, and runtime route certification are not complete. |
+| Legal document sourcing | `/legal`, `/legal/*` tenant documents | Local Blade-style legal hub and fallback document candidates. Tenant-managed document loading, version metadata, sanitized rich content, localization persistence, and runtime route certification are not complete. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
 | Volunteering | opportunities, hours, organisations, expenses, wellbeing | Skeleton landing only. |
 | Exchanges | requests, accept/decline, ready/confirm/cancel | Skeleton landing only. |

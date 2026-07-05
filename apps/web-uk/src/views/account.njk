@@ -1,0 +1,41 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">My account</h1>
+  <p class="govuk-body-l">
+    Manage your personal tools, messages, saved items, profile, and settings for {{ serviceName }}.
+  </p>
+
+  <div class="govuk-inset-text">
+    This local candidate mirrors the Laravel Blade account hub layout. Its backend workflow parity is not certified yet.
+  </div>
+
+  <div class="nexus-alpha-card-list govuk-!-margin-top-6">
+    {% for item in alphaAccountLinks %}
+      <article class="nexus-alpha-card">
+        <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
+          <a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a>
+          {% if item.badgeKey == 'unreadMessageCount' and unreadMessageCount > 0 %}
+            <strong class="govuk-tag govuk-tag--blue govuk-!-margin-left-2">
+              {{ unreadMessageCount }} unread
+            </strong>
+          {% endif %}
+        </h2>
+        <p class="govuk-body govuk-!-margin-bottom-0">{{ item.description }}</p>
+      </article>
+    {% endfor %}
+  </div>
+
+  {% if isAuthenticated %}
+    <form method="post" action="{{ logoutUrl or '/logout' }}" class="govuk-!-margin-top-8">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Sign out</button>
+    </form>
+  {% endif %}
+{% endblock %}

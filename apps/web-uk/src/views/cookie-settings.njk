@@ -1,0 +1,65 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{#
+  Blade-source pattern: accessible-frontend/views/cookie-settings.blade.php.
+  Local preparation page only; Laravel tenant/session persistence remains
+  uncertified until the shared accessible frontend contract is proved end to end.
+#}
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">Cookie settings for {{ tenantName or serviceName }}</span>
+      <h1 class="govuk-heading-xl">Cookie settings</h1>
+
+      {% if status == "saved" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" data-module="govuk-notification-banner" aria-labelledby="cookie-saved-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="cookie-saved-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">Your cookie settings have been saved.</p>
+          </div>
+        </div>
+      {% endif %}
+
+      <p class="govuk-body-l">Choose whether this accessible service can use analytics cookies.</p>
+
+      <h2 class="govuk-heading-m">Essential cookies</h2>
+      <p class="govuk-body">Essential cookies keep the service secure, remember your session, and make forms work. They are always on.</p>
+
+      <form method="post" action="{{ cookieConsentUrl or '/cookie-consent' }}">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <input type="hidden" name="cookies" value="save">
+
+        <h2 class="govuk-heading-m">Analytics cookies</h2>
+        <p class="govuk-body">Analytics cookies help us understand how people use the accessible frontend so we can improve it.</p>
+
+        <div class="govuk-form-group">
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Do you want to accept analytics cookies?</legend>
+            <div class="govuk-radios" data-module="govuk-radios">
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="analytics-yes" name="analytics" type="radio" value="yes" {% if alphaCookieConsent == "accepted" %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="analytics-yes">Yes</label>
+              </div>
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="analytics-no" name="analytics" type="radio" value="no" {% if alphaCookieConsent != "accepted" %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="analytics-no">No</label>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        <button class="govuk-button" data-module="govuk-button" type="submit">Save cookie settings</button>
+      </form>
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="/legal/cookies">Read the cookie policy</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}
