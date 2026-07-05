@@ -378,6 +378,47 @@ app.get('/organisations', (req, res) => {
     });
 });
 
+app.get('/organisations/:id(\\d+)', (req, res) => {
+  const { ApiError, getVolunteerOrganisation } = require('./lib/api');
+
+  getVolunteerOrganisation(req.params.id)
+    .then((result) => {
+      const data = result?.data && typeof result.data === 'object' ? result.data : {};
+      const publicContract = data.public_contract && typeof data.public_contract === 'object'
+        ? data.public_contract
+        : {};
+      const stats = publicContract.stats && typeof publicContract.stats === 'object'
+        ? publicContract.stats
+        : (data.stats && typeof data.stats === 'object' ? data.stats : {});
+      const organisation = {
+        ...data,
+        ...publicContract,
+        stats
+      };
+      const website = typeof organisation.website === 'string' ? organisation.website.trim() : '';
+      const websiteHref = website
+        ? (/^https?:\/\//i.test(website) ? website : `https://${website}`)
+        : '';
+
+      res.render('organisation-detail', {
+        title: organisation.name || 'Organisations',
+        activeNav: 'explore',
+        organisation,
+        orgStats: stats,
+        contactEmail: organisation.contact_email || organisation.email || '',
+        website,
+        websiteHref
+      });
+    })
+    .catch((error) => {
+      if (error instanceof ApiError && error.status === 404) {
+        return res.status(404).render('errors/404', { title: 'Page not found' });
+      }
+
+      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+    });
+});
+
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {

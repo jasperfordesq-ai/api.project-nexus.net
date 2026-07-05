@@ -166,6 +166,38 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getVolunteerOrganisation', () => {
+    it('should call the Laravel public volunteering organisation detail endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: {
+            id: 42,
+            name: 'Community Club',
+            public_contract: {
+              id: 42,
+              name: 'Community Club',
+              stats: { opportunity_count: 2, volunteer_count: 5 }
+            }
+          }
+        })
+      });
+
+      const result = await api.getVolunteerOrganisation(42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/organisations/42?include=public_contract',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      expect(result.data.public_contract.name).toBe('Community Club');
+    });
+  });
+
   describe('network errors', () => {
     it('should throw ApiOfflineError on connection refused', async () => {
       const error = new Error('fetch failed');

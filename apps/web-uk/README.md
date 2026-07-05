@@ -124,6 +124,7 @@ The application will be available at **http://localhost:5180**
 | `GET /contact` | Contact page |
 | `GET /explore` | Shared accessible frontend Explore skeleton |
 | `GET /organisations` | Blade-style accessible organisations candidate; reads Laravel `/api/v2/volunteering/organisations`, with auth/form workflow still not certified |
+| `GET /organisations/:id` | Blade-style organisation detail candidate; reads Laravel `/api/v2/volunteering/organisations/{id}?include=public_contract`, with depth workflows still not certified |
 | `GET /help` | Shared accessible frontend preparation skeleton |
 | `GET /kb` | Shared accessible frontend preparation skeleton |
 | `GET /trust-and-safety` | Shared accessible frontend preparation skeleton |

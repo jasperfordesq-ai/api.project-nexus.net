@@ -199,8 +199,9 @@ Follow the Laravel Blade accessible frontend for:
 - Explore as the gateway to discovery modules.
 - Organisations as a Blade-style directory/search/registration candidate. The
   directory GET now reads the Laravel `/api/v2/volunteering/organisations`
-  collection; registration/auth/tenant/feature-gate behavior still needs
-  certification.
+  collection, and detail GET reads
+  `/api/v2/volunteering/organisations/{id}?include=public_contract`;
+  registration/auth/tenant/feature-gate/depth behavior still needs certification.
 
 Reusable shell data lives in `src/lib/accessible-shell.js`. Keep shared nav,
 footer, locale, and Explore link contracts there rather than hardcoding new

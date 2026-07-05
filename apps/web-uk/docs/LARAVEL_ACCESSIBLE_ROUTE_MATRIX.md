@@ -1,6 +1,6 @@
 # Laravel Accessible Route Matrix
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-06
 
 ## Purpose
 
@@ -71,7 +71,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Groups | `/groups` | `/groups` | Implemented route; backend contract not certified. |
 | Goals | `/goals` | `/goals` | Preparation skeleton. |
 | Skills | `/skills` | `/skills` | Preparation skeleton. |
-| Organisations | `/organisations` | `/organisations` | Partial Laravel-backed candidate: GET directory/search renders `/api/v2/volunteering/organisations`; registration/auth/tenant gates not certified. |
+| Organisations | `/organisations`, `/organisations/{id}` | `/organisations`, `/organisations/:id` | Partial Laravel-backed candidate: directory/search renders `/api/v2/volunteering/organisations`; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`; registration/auth/tenant gates not certified. |
 | Blog | `/blog` | `/blog` | Preparation skeleton. |
 | Resources | `/resources` | `/resources` | Preparation skeleton. |
 | Marketplace | `/marketplace` | `/marketplace` | Preparation skeleton. |
@@ -96,7 +96,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Legal document sourcing | `/legal/*` tenant documents | Skeleton GET pages only. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
 | Volunteering | opportunities, hours, organisations, expenses, wellbeing | Skeleton landing only. |
-| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | Partial Laravel-backed candidate for `/organisations` GET only. Directory/search uses `/api/v2/volunteering/organisations` with mocked contract tests. Auth enforcement, volunteering feature gate, tenant-prefixed routes, registration persistence, browse/register/manage/detail/jobs/apply workflows, localization, and runtime certification are not complete. |
+| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | Partial Laravel-backed candidate for `/organisations` and `/organisations/{id}` GET only. Directory/search uses `/api/v2/volunteering/organisations`; detail uses `/api/v2/volunteering/organisations/{id}?include=public_contract`, both with mocked contract tests. Auth enforcement, volunteering feature gate, tenant-prefixed routes, registration persistence, browse/register/manage/jobs/apply workflows, depth opportunities/reviews, localization, and runtime certification are not complete. |
 | Exchanges | requests, accept/decline, ready/confirm/cancel | Skeleton landing only. |
 | Feed typed engagement | likes, comments, reactions, share, save, hide, report | Partial route equivalents only. |
 | Marketplace/commerce | marketplace, seller, orders, coupons, courses, podcasts | Mostly skeleton links only. |

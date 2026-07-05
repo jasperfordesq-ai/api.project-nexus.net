@@ -267,6 +267,10 @@ async function getVolunteerOrganisations(params = {}) {
   return request(endpoint);
 }
 
+async function getVolunteerOrganisation(id) {
+  return request(`/api/v2/volunteering/organisations/${encodeURIComponent(id)}?include=public_contract`);
+}
+
 // Wallet
 async function getBalance(token) {
   return request('/api/wallet/balance', {
@@ -1156,6 +1160,7 @@ module.exports = {
   deleteListing,
   // Laravel volunteering
   getVolunteerOrganisations,
+  getVolunteerOrganisation,
   // Wallet
   getBalance,
   getTransactions,
