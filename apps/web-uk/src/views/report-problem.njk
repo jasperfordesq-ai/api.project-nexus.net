@@ -1,0 +1,104 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{#
+  Blade-source pattern: accessible-frontend/views/report-problem.blade.php.
+  Local preparation workflow only; Laravel support_reports persistence and
+  notification parity remain uncertified until backend contracts are proved.
+#}
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">Report a problem for {{ tenantName or serviceName }}</span>
+      <h1 class="govuk-heading-xl">Report a problem with this page</h1>
+
+      {% if status == "sent" %}
+        <div class="govuk-panel govuk-panel--confirmation">
+          <h2 class="govuk-panel__title">Problem report sent</h2>
+          {% if reference %}
+            <div class="govuk-panel__body">Your reference is {{ reference }}.</div>
+          {% endif %}
+        </div>
+        <p class="govuk-body govuk-!-margin-top-6">
+          <a class="govuk-link" href="{{ homeUrl or '/' }}">Return to the service home page</a>
+        </p>
+      {% else %}
+        {% if errors and (errors.summary or errors.description or errors.impact) %}
+          <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+            <div role="alert">
+              <h2 class="govuk-error-summary__title">There is a problem</h2>
+              <div class="govuk-error-summary__body">
+                <ul class="govuk-list govuk-error-summary__list">
+                  {% if errors.summary %}<li><a href="#summary">{{ errors.summary }}</a></li>{% endif %}
+                  {% if errors.description %}<li><a href="#description">{{ errors.description }}</a></li>{% endif %}
+                  {% if errors.impact %}<li><a href="#impact">{{ errors.impact }}</a></li>{% endif %}
+                </ul>
+              </div>
+            </div>
+          </div>
+        {% elif status == "failed" %}
+          <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="report-error-title">
+            <div class="govuk-notification-banner__header">
+              <h2 class="govuk-notification-banner__title" id="report-error-title">There is a problem</h2>
+            </div>
+            <div class="govuk-notification-banner__content">
+              <p class="govuk-notification-banner__heading">The problem report could not be sent. Try again later.</p>
+            </div>
+          </div>
+        {% endif %}
+
+        <p class="govuk-body-l">Use this form to report an accessibility, content, or service problem on the current page.</p>
+
+        <form method="post" action="{{ alphaRoutePrefix or '' }}/report-a-problem" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="page_url" value="{{ pageUrl or '/' }}">
+
+          <p class="govuk-body">
+            Page:
+            <span class="govuk-!-font-weight-bold">{{ pageUrl or '/' }}</span>
+          </p>
+
+          <div class="govuk-form-group{% if errors.summary %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label govuk-label--s" for="summary">What is the problem?</label>
+            <div id="summary-hint" class="govuk-hint">Use a short summary. For example, "The continue button does not work".</div>
+            {% if errors.summary %}
+              <p id="summary-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.summary }}</p>
+            {% endif %}
+            <input class="govuk-input{% if errors.summary %} govuk-input--error{% endif %}" id="summary" name="summary" type="text" maxlength="180" value="{{ form.summary or '' }}" aria-describedby="summary-hint{% if errors.summary %} summary-error{% endif %}">
+          </div>
+
+          <div class="govuk-form-group{% if errors.description %} govuk-form-group--error{% endif %}">
+            <label class="govuk-label govuk-label--s" for="description">Describe the problem</label>
+            <div id="description-hint" class="govuk-hint">Include what you were trying to do and what happened.</div>
+            {% if errors.description %}
+              <p id="description-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.description }}</p>
+            {% endif %}
+            <textarea class="govuk-textarea{% if errors.description %} govuk-textarea--error{% endif %}" id="description" name="description" rows="5" maxlength="5000" aria-describedby="description-hint{% if errors.description %} description-error{% endif %}">{{ form.description or '' }}</textarea>
+          </div>
+
+          <div class="govuk-form-group{% if errors.impact %} govuk-form-group--error{% endif %}">
+            <fieldset class="govuk-fieldset" aria-describedby="{% if errors.impact %}impact-error{% endif %}">
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">How did this problem affect you?</legend>
+              {% if errors.impact %}
+                <p id="impact-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.impact }}</p>
+              {% endif %}
+              <div class="govuk-radios" data-module="govuk-radios" id="impact">
+                {% for option in impacts %}
+                  <div class="govuk-radios__item">
+                    <input class="govuk-radios__input" id="impact-{{ option.value }}" name="impact" type="radio" value="{{ option.value }}" {% if form.impact == option.value %}checked{% endif %}>
+                    <label class="govuk-label govuk-radios__label" for="impact-{{ option.value }}">{{ option.label }}</label>
+                  </div>
+                {% endfor %}
+              </div>
+            </fieldset>
+          </div>
+
+          <button class="govuk-button" data-module="govuk-button" type="submit">Send problem report</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

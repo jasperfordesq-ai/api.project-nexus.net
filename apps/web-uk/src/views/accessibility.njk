@@ -1,0 +1,61 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <a class="govuk-back-link" href="{{ legalHubUrl or '/legal' }}">Back to legal</a>
+
+      <span class="govuk-caption-l">{{ tenantName }}</span>
+      <h1 class="govuk-heading-xl">Accessibility statement</h1>
+      <p class="govuk-body-l">
+        This statement applies to the accessible version of {{ tenantName }}. We want as many people as possible to be able to use this service.
+      </p>
+
+      <h2 class="govuk-heading-m">Our commitment</h2>
+      <p class="govuk-body">
+        We believe the internet should be usable by everyone, regardless of ability or disability. This accessible service is built with semantic HTML, clear structure, standard form controls and progressive enhancement, so it works well with keyboards, screen readers and low-bandwidth connections.
+      </p>
+
+      <h2 class="govuk-heading-m">Compliance status</h2>
+      <p class="govuk-body">
+        This service aims to conform to the Web Content Accessibility Guidelines (WCAG) version 2.2 Level AA. We assess against this standard and fix issues we find. Where any part is not yet fully conformant, we say so below and work to put it right.
+      </p>
+
+      <dl class="govuk-summary-list">
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Target standard</dt>
+          <dd class="govuk-summary-list__value">WCAG 2.2 Level AA</dd>
+        </div>
+      </dl>
+
+      <h2 class="govuk-heading-m">How this service supports you</h2>
+      {% for feature in alphaAccessibilityFeatures %}
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ feature.title }}</h3>
+        <p class="govuk-body">{{ feature.description }}</p>
+      {% endfor %}
+
+      <h2 class="govuk-heading-m">Known limitations</h2>
+      <p class="govuk-body">
+        We are continually improving this service. Some content provided by community members, or features that are still in beta, may not yet fully meet WCAG 2.2 AA. If you find a problem, please tell us using the details below.
+      </p>
+
+      <h2 class="govuk-heading-m">Reporting accessibility problems</h2>
+      <p class="govuk-body">
+        If you find an accessibility problem, or you need information on this service in a different format, please contact us. We aim to respond to accessibility feedback within 5 working days.
+      </p>
+      <p class="govuk-body">
+        <a class="govuk-link" href="{{ contactHref or '/contact' }}">Report an accessibility problem</a>
+      </p>
+
+      <h2 class="govuk-heading-m">How we tested this service</h2>
+      <p class="govuk-body">
+        This service is tested with automated accessibility checks and with keyboard and screen-reader testing as part of our development process. Testing is ongoing as new pages are added.
+      </p>
+    </div>
+  </div>
+{% endblock %}
