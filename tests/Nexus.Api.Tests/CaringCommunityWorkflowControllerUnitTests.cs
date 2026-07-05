@@ -32,6 +32,8 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
         controller.GetCustomAttribute<AuthorizeAttribute>()?.Policy.Should().Be("AdminOnly");
         controller.GetMethod("Workflow")?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("workflow");
+        controller.GetMethod("UpdatePolicy")?.GetCustomAttribute<HttpPutAttribute>()?.Template
+            .Should().Be("workflow/policy");
     }
 
     [Fact]
@@ -112,6 +114,85 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
         policy.GetProperty("escalation_sla_days").GetInt32().Should().Be(5);
         policy.GetProperty("municipal_report_default_period").GetString().Should().Be("previous_quarter");
         policy.GetProperty("default_hour_value_chf").GetInt32().Should().Be(50);
+    }
+
+    [Fact]
+    public async Task UpdatePolicy_NormalizesAndPersistsLaravelWorkflowPolicy()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedPolicy(db, 42);
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = 7,
+            Key = "caring_community.workflow.default_hour_value_chf",
+            Value = "77"
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1);
+
+        var result = await Invoke(controller, "UpdatePolicy", new Dictionary<string, object?>
+        {
+            ["approval_required"] = false,
+            ["auto_approve_trusted_reviewers"] = true,
+            ["review_sla_days"] = 0,
+            ["escalation_sla_days"] = 99,
+            ["allow_member_self_log"] = false,
+            ["require_organisation_for_partner_hours"] = false,
+            ["monthly_statement_day"] = 31,
+            ["municipal_report_default_period"] = "unsupported_period",
+            ["include_social_value_estimate"] = false,
+            ["default_hour_value_chf"] = 999
+        }, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("approval_required").GetBoolean().Should().BeFalse();
+        data.GetProperty("auto_approve_trusted_reviewers").GetBoolean().Should().BeTrue();
+        data.GetProperty("review_sla_days").GetInt32().Should().Be(1);
+        data.GetProperty("escalation_sla_days").GetInt32().Should().Be(60);
+        data.GetProperty("allow_member_self_log").GetBoolean().Should().BeFalse();
+        data.GetProperty("require_organisation_for_partner_hours").GetBoolean().Should().BeFalse();
+        data.GetProperty("monthly_statement_day").GetInt32().Should().Be(28);
+        data.GetProperty("municipal_report_default_period").GetString().Should().Be("last_90_days");
+        data.GetProperty("include_social_value_estimate").GetBoolean().Should().BeFalse();
+        data.GetProperty("default_hour_value_chf").GetInt32().Should().Be(500);
+
+        var rows = await db.TenantConfigs
+            .IgnoreQueryFilters()
+            .Where(config => config.TenantId == 42 && config.Key.StartsWith("caring_community.workflow."))
+            .ToDictionaryAsync(config => config.Key, config => config.Value);
+
+        rows["caring_community.workflow.approval_required"].Should().Be("0");
+        rows["caring_community.workflow.auto_approve_trusted_reviewers"].Should().Be("1");
+        rows["caring_community.workflow.review_sla_days"].Should().Be("1");
+        rows["caring_community.workflow.escalation_sla_days"].Should().Be("60");
+        rows["caring_community.workflow.municipal_report_default_period"].Should().Be("last_90_days");
+        rows["caring_community.workflow.default_hour_value_chf"].Should().Be("500");
+
+        (await db.TenantConfigs.IgnoreQueryFilters()
+            .SingleAsync(config => config.TenantId == 7 && config.Key == "caring_community.workflow.default_hour_value_chf"))
+            .Value.Should().Be("77");
+    }
+
+    [Fact]
+    public async Task UpdatePolicy_WhenFeatureDisabled_ReturnsLaravelForbidden()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: false);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1);
+
+        var result = await Invoke(controller, "UpdatePolicy", new Dictionary<string, object?>(), CancellationToken.None);
+
+        var forbidden = result.Should().BeOfType<ObjectResult>().Subject;
+        forbidden.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(forbidden.Value));
+        document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("FEATURE_DISABLED");
     }
 
     [Fact]

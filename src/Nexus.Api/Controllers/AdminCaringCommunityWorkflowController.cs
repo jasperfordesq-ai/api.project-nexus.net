@@ -40,6 +40,20 @@ public sealed class AdminCaringCommunityWorkflowController : ControllerBase
         return Ok(new { data });
     }
 
+    [HttpPut("workflow/policy")]
+    public async Task<IActionResult> UpdatePolicy([FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _workflow.IsFeatureEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var data = await _workflow.UpdatePolicyAsync(tenantId, request, ct);
+        return Ok(new { data });
+    }
+
     private static object LaravelError(string code, string message, string? field = null)
     {
         var error = new Dictionary<string, object?>

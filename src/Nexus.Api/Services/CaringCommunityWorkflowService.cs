@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -75,6 +76,36 @@ public sealed class CaringCommunityWorkflowService
         };
     }
 
+    public async Task<object> UpdatePolicyAsync(int tenantId, IReadOnlyDictionary<string, object?>? input, CancellationToken ct)
+    {
+        var current = await LoadPolicyAsync(tenantId, ct);
+        var policy = NormalizePolicy(new WorkflowPolicy(
+            ApprovalRequired: BoolInput(input, "approval_required", current.ApprovalRequired),
+            AutoApproveTrustedReviewers: BoolInput(input, "auto_approve_trusted_reviewers", current.AutoApproveTrustedReviewers),
+            ReviewSlaDays: IntInput(input, "review_sla_days", current.ReviewSlaDays),
+            EscalationSlaDays: IntInput(input, "escalation_sla_days", current.EscalationSlaDays),
+            AllowMemberSelfLog: BoolInput(input, "allow_member_self_log", current.AllowMemberSelfLog),
+            RequireOrganisationForPartnerHours: BoolInput(input, "require_organisation_for_partner_hours", current.RequireOrganisationForPartnerHours),
+            MonthlyStatementDay: IntInput(input, "monthly_statement_day", current.MonthlyStatementDay),
+            MunicipalReportDefaultPeriod: StringInput(input, "municipal_report_default_period", current.MunicipalReportDefaultPeriod),
+            IncludeSocialValueEstimate: BoolInput(input, "include_social_value_estimate", current.IncludeSocialValueEstimate),
+            DefaultHourValueChf: IntInput(input, "default_hour_value_chf", current.DefaultHourValueChf)));
+
+        await UpsertPolicyConfigAsync(tenantId, "approval_required", SerializeBool(policy.ApprovalRequired), ct);
+        await UpsertPolicyConfigAsync(tenantId, "auto_approve_trusted_reviewers", SerializeBool(policy.AutoApproveTrustedReviewers), ct);
+        await UpsertPolicyConfigAsync(tenantId, "review_sla_days", policy.ReviewSlaDays.ToString(CultureInfo.InvariantCulture), ct);
+        await UpsertPolicyConfigAsync(tenantId, "escalation_sla_days", policy.EscalationSlaDays.ToString(CultureInfo.InvariantCulture), ct);
+        await UpsertPolicyConfigAsync(tenantId, "allow_member_self_log", SerializeBool(policy.AllowMemberSelfLog), ct);
+        await UpsertPolicyConfigAsync(tenantId, "require_organisation_for_partner_hours", SerializeBool(policy.RequireOrganisationForPartnerHours), ct);
+        await UpsertPolicyConfigAsync(tenantId, "monthly_statement_day", policy.MonthlyStatementDay.ToString(CultureInfo.InvariantCulture), ct);
+        await UpsertPolicyConfigAsync(tenantId, "municipal_report_default_period", policy.MunicipalReportDefaultPeriod, ct);
+        await UpsertPolicyConfigAsync(tenantId, "include_social_value_estimate", SerializeBool(policy.IncludeSocialValueEstimate), ct);
+        await UpsertPolicyConfigAsync(tenantId, "default_hour_value_chf", policy.DefaultHourValueChf.ToString(CultureInfo.InvariantCulture), ct);
+        await _db.SaveChangesAsync(ct);
+
+        return PolicyPayload(await LoadPolicyAsync(tenantId, ct));
+    }
+
     private async Task<WorkflowPolicy> LoadPolicyAsync(int tenantId, CancellationToken ct)
     {
         var settings = await _db.TenantConfigs
@@ -95,7 +126,7 @@ public sealed class CaringCommunityWorkflowService
             reportPeriod = "last_90_days";
         }
 
-        return new WorkflowPolicy(
+        return NormalizePolicy(new WorkflowPolicy(
             ApprovalRequired: ParseBool(settings, "approval_required", true),
             AutoApproveTrustedReviewers: ParseBool(settings, "auto_approve_trusted_reviewers", false),
             ReviewSlaDays: reviewSla,
@@ -105,7 +136,7 @@ public sealed class CaringCommunityWorkflowService
             MonthlyStatementDay: Clamp(ParseInt(settings, "monthly_statement_day", 1), 1, 28),
             MunicipalReportDefaultPeriod: reportPeriod,
             IncludeSocialValueEstimate: ParseBool(settings, "include_social_value_estimate", true),
-            DefaultHourValueChf: Clamp(ParseInt(settings, "default_hour_value_chf", 35), 0, 500));
+            DefaultHourValueChf: Clamp(ParseInt(settings, "default_hour_value_chf", 35), 0, 500)));
     }
 
     private async Task<object> StatsAsync(int tenantId, WorkflowPolicy policy, CancellationToken ct)
@@ -304,6 +335,48 @@ public sealed class CaringCommunityWorkflowService
         };
     }
 
+    private async Task UpsertPolicyConfigAsync(int tenantId, string key, string value, CancellationToken ct)
+    {
+        var settingKey = PolicyPrefix + key;
+        var row = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(config => config.TenantId == tenantId && config.Key == settingKey, ct);
+
+        if (row is null)
+        {
+            row = new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = settingKey,
+                Value = value,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _db.TenantConfigs.Add(row);
+            return;
+        }
+
+        row.Value = value;
+        row.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static WorkflowPolicy NormalizePolicy(WorkflowPolicy policy)
+    {
+        var reviewSla = Clamp(policy.ReviewSlaDays, 1, 30);
+        var reportPeriod = ReportPeriods.Contains(policy.MunicipalReportDefaultPeriod)
+            ? policy.MunicipalReportDefaultPeriod
+            : "last_90_days";
+
+        return policy with
+        {
+            ReviewSlaDays = reviewSla,
+            EscalationSlaDays = Clamp(policy.EscalationSlaDays, reviewSla, 60),
+            MonthlyStatementDay = Clamp(policy.MonthlyStatementDay, 1, 28),
+            MunicipalReportDefaultPeriod = reportPeriod,
+            DefaultHourValueChf = Clamp(policy.DefaultHourValueChf, 0, 500)
+        };
+    }
+
     private static int Clamp(int value, int min, int max)
     {
         return Math.Min(max, Math.Max(min, value));
@@ -329,6 +402,100 @@ public sealed class CaringCommunityWorkflowService
         return settings.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)
             ? value.Trim()
             : fallback;
+    }
+
+    private static bool BoolInput(IReadOnlyDictionary<string, object?>? input, string key, bool fallback)
+    {
+        if (input is null || !input.TryGetValue(key, out var value) || value is null)
+        {
+            return fallback;
+        }
+
+        if (value is JsonElement json)
+        {
+            return json.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Number => json.TryGetInt32(out var number) && number != 0,
+                JsonValueKind.String => StringToBool(json.GetString(), fallback),
+                _ => fallback
+            };
+        }
+
+        return value switch
+        {
+            bool boolean => boolean,
+            int number => number != 0,
+            long number => number != 0,
+            decimal number => number != 0m,
+            double number => Math.Abs(number) > double.Epsilon,
+            string text => StringToBool(text, fallback),
+            _ => fallback
+        };
+    }
+
+    private static int IntInput(IReadOnlyDictionary<string, object?>? input, string key, int fallback)
+    {
+        if (input is null || !input.TryGetValue(key, out var value) || value is null)
+        {
+            return fallback;
+        }
+
+        if (value is JsonElement json)
+        {
+            return json.ValueKind switch
+            {
+                JsonValueKind.Number => json.TryGetInt32(out var number) ? number : fallback,
+                JsonValueKind.True => 1,
+                JsonValueKind.False => 0,
+                JsonValueKind.String => int.TryParse(json.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? number : 0,
+                _ => 0
+            };
+        }
+
+        return value switch
+        {
+            int number => number,
+            long number => number > int.MaxValue ? int.MaxValue : number < int.MinValue ? int.MinValue : (int)number,
+            decimal number => (int)number,
+            double number => (int)number,
+            bool boolean => boolean ? 1 : 0,
+            string text => int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? number : 0,
+            _ => 0
+        };
+    }
+
+    private static string StringInput(IReadOnlyDictionary<string, object?>? input, string key, string fallback)
+    {
+        if (input is null || !input.TryGetValue(key, out var value) || value is null)
+        {
+            return fallback;
+        }
+
+        if (value is JsonElement json)
+        {
+            return json.ValueKind == JsonValueKind.String
+                ? json.GetString()?.Trim() ?? string.Empty
+                : json.ToString().Trim();
+        }
+
+        return Convert.ToString(value, CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
+    }
+
+    private static bool StringToBool(string? value, bool fallback)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "1" or "true" or "yes" or "on" => true,
+            "0" or "false" or "no" or "off" or "" => false,
+            _ => fallback
+        };
+    }
+
+    private static string SerializeBool(bool value)
+    {
+        return value ? "1" : "0";
     }
 
     private static bool IsStatus(string status, string expected)
