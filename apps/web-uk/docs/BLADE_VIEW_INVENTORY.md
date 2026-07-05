@@ -9,10 +9,10 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | Metric | Count |
 | --- | ---: |
 | Laravel Blade accessible views | 289 |
-| ASP.NET Nunjucks views | 110 |
-| candidate-exact-view | 25 |
+| ASP.NET Nunjucks views | 111 |
+| candidate-exact-view | 26 |
 | candidate-name-match | 6 |
-| missing-nunjucks-view | 258 |
+| missing-nunjucks-view | 257 |
 
 ## Family Summary
 
@@ -51,7 +51,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | gamification | 14 |  | 14 |
 | goal | 5 |  | 5 |
 | goals | 7 |  | 7 |
-| group | 13 |  | 13 |
+| group | 13 | 1 | 12 |
 | groups | 4 |  | 4 |
 | guide | 1 | 1 |  |
 | help | 1 | 1 |  |
@@ -230,7 +230,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | group-edit.blade.php | group | missing-nunjucks-view |
 | group-exchange-create.blade.php | group | missing-nunjucks-view |
 | group-exchange-detail.blade.php | group | missing-nunjucks-view |
-| group-exchanges.blade.php | group | missing-nunjucks-view |
+| group-exchanges.blade.php | group | candidate-exact-view |
 | group-files.blade.php | group | missing-nunjucks-view |
 | group-manage.blade.php | group | missing-nunjucks-view |
 | groups-image.blade.php | groups | missing-nunjucks-view |

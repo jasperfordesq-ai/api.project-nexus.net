@@ -160,6 +160,7 @@ lookup or backend workflow certification.
 | `GET /volunteering` | Local Blade-style volunteering index/search/empty-state candidate; live opportunities, applications, hours, organisations, shifts, and backend workflows are not certified |
 | `GET /skills` | Local Blade-style skills directory search/empty-state candidate; live skill tree, category drill-down, member search, and backend behaviour are not certified |
 | `GET /exchanges` | Local Blade-style exchanges tab/empty-state candidate; auth enforcement, live exchange data, actions, ratings, broker review, and backend workflows are not certified |
+| `GET /group-exchanges` | Local Blade-style group exchanges filter/empty-state candidate; auth enforcement, feature gate, create/detail/participant actions, credit movement, and backend workflows are not certified |
 | `GET /accessibility` | Local Blade-style accessibility statement candidate; localization/runtime backend behaviour is not certified |
 | `GET /trust-and-safety` | Local Blade-style trust and safety candidate; localization/runtime backend behaviour is not certified |
 | `GET /legal` | Local Blade-style legal hub candidate; tenant-managed document data is not certified |

@@ -20,10 +20,6 @@ const pages = {
     title: 'Onboarding',
     body: 'The onboarding wizard must match the Laravel session-backed accessible workflow before shared use.'
   },
-  '/group-exchanges': {
-    title: 'Group exchanges',
-    body: 'Group exchange workflows must match the Laravel accessible frontend before shared use.'
-  },
   '/matches': {
     title: 'Matches',
     body: 'Match pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'

@@ -623,6 +623,28 @@ app.get('/exchanges', (req, res) => {
   });
 });
 
+app.get('/group-exchanges', (req, res) => {
+  const allowedStates = ['', 'draft', 'pending', 'active', 'completed', 'cancelled'];
+  const requestedState = typeof req.query.state === 'string' ? req.query.state : '';
+  const exchangeState = allowedStates.includes(requestedState) ? requestedState : '';
+
+  res.render('group-exchanges', {
+    title: 'Group exchanges',
+    activeNav: 'group_exchanges',
+    exchangeState,
+    status: typeof req.query.status === 'string' ? req.query.status : '',
+    createHref: prefixedLocalPath(req, '/group-exchanges/new'),
+    filterTabs: [
+      { value: '', label: 'All' },
+      { value: 'draft', label: 'Draft' },
+      { value: 'pending', label: 'Awaiting approval' },
+      { value: 'active', label: 'Active' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'cancelled', label: 'Cancelled' }
+    ]
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

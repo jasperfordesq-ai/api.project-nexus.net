@@ -623,6 +623,27 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Blade-style group exchanges filter and empty state under the tenant alpha route prefix', async () => {
+    const response = await request(app).get('/acme/alpha/group-exchanges?state=active&status=cancelled');
+
+    expect(staticPageRoutes.pages['/group-exchanges']).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Group exchanges');
+    expect(response.text).toContain('Exchanges of time between several members at once');
+    expect(response.text).toContain('href="/acme/alpha/group-exchanges/new"');
+    expect(response.text).toContain('Start a group exchange');
+    expect(response.text).toContain('The group exchange has been cancelled.');
+    expect(response.text).toContain('aria-label="Filter by status"');
+    expect(response.text).toContain('href="/acme/alpha/group-exchanges"');
+    expect(response.text).toContain('href="/acme/alpha/group-exchanges?state=draft"');
+    expect(response.text).toContain('href="/acme/alpha/group-exchanges?state=pending"');
+    expect(response.text).toContain('<strong>Active</strong>');
+    expect(response.text).toContain('href="/acme/alpha/group-exchanges?state=completed"');
+    expect(response.text).toContain('href="/acme/alpha/group-exchanges?state=cancelled"');
+    expect(response.text).toContain('You have no group exchanges yet.');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Blade-style legal hub under the tenant alpha route prefix', async () => {
     const response = await request(app).get('/acme/alpha/legal');
 
@@ -733,7 +754,6 @@ describe('shared accessible frontend shell', () => {
       '/verify-email',
       '/newsletter/unsubscribe',
       '/onboarding',
-      '/group-exchanges',
       '/matches',
       '/achievements',
       '/leaderboard',
@@ -801,7 +821,7 @@ describe('shared accessible frontend shell', () => {
     expect(contract).toContain('buildLaravelAccessiblePath()');
     expect(contract).toContain('Do not treat Blade routes as');
     expect(routeInventory).toContain('| Laravel accessible route declarations | 608 |');
-    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 28 |');
+    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 27 |');
     expect(routeInventory).toContain('Laravel shared-domain path');
     expect(routeInventory).toContain('Laravel custom-domain path');
     expect(routeInventory).toContain('| GET | /faq | /{tenantSlug}/alpha/faq | /faq |');
@@ -814,6 +834,7 @@ describe('shared accessible frontend shell', () => {
     expect(routeInventory).toContain('| GET | /volunteering/hours | /{tenantSlug}/alpha/volunteering/hours | /volunteering/hours | volunteering.hours | volunteeringHours | volunteering | missing |');
     expect(routeInventory).toContain('| GET | /skills | /{tenantSlug}/alpha/skills | /skills | skills.index | skills | skills | candidate-route |');
     expect(routeInventory).toContain('| GET | /exchanges | /{tenantSlug}/alpha/exchanges | /exchanges | exchanges.index | exchanges | exchanges | candidate-route |');
+    expect(routeInventory).toContain('| GET | /group-exchanges | /{tenantSlug}/alpha/group-exchanges | /group-exchanges | group-exchanges.index | groupExchanges | group-exchanges | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal | /{tenantSlug}/alpha/legal | /legal | legal.hub | legalHub | legal | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal/community-guidelines | /{tenantSlug}/alpha/legal/community-guidelines | /legal/community-guidelines | legal.community-guidelines | legalDocument | legal | candidate-route |');
     expect(routeInventory).toContain('| POST | /report-a-problem | /{tenantSlug}/alpha/report-a-problem | /report-a-problem | report-problem.store | storeReportProblem | report-a-problem | candidate-workflow |');
@@ -826,6 +847,7 @@ describe('shared accessible frontend shell', () => {
     expect(viewInventory).toContain('| volunteering-hours.blade.php | volunteering | missing-nunjucks-view |');
     expect(viewInventory).toContain('| skills.blade.php | skills | candidate-exact-view |');
     expect(viewInventory).toContain('| exchanges.blade.php | exchanges | candidate-exact-view |');
+    expect(viewInventory).toContain('| group-exchanges.blade.php | group | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-hub.blade.php | legal | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-document.blade.php | legal | candidate-exact-view |');
     expect(backendMatrix).toContain('| Family | GET routes | POST routes | Mutating routes | Tenant | Auth | CSRF | Feature/module gates |');

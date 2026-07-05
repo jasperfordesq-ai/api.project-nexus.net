@@ -1,0 +1,41 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Group exchanges</h1>
+  <p class="govuk-body-l">Exchanges of time between several members at once &mdash; for example a group of people sharing or pooling a task.</p>
+
+  {% if status == "cancelled" %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="ge-list-status">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="ge-list-status">Success</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">The group exchange has been cancelled.</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <a class="govuk-button" href="{{ createHref }}" role="button" draggable="false" data-module="govuk-button">Start a group exchange</a>
+
+  <nav class="govuk-!-margin-bottom-4" aria-label="Filter by status">
+    <ul class="govuk-list nexus-alpha-filter-tabs">
+      {% for tab in filterTabs %}
+        <li class="govuk-!-display-inline-block govuk-!-margin-right-3">
+          {% if exchangeState == tab.value %}
+            <strong>{{ tab.label }}</strong>
+          {% else %}
+            <a class="govuk-link" href="{{ alphaRoutePrefix }}/group-exchanges{% if tab.value %}?state={{ tab.value }}{% endif %}">{{ tab.label }}</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <div class="govuk-inset-text">You have no group exchanges yet.</div>
+{% endblock %}

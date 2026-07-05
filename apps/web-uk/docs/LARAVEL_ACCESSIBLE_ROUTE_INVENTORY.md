@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 28 |
+| ASP.NET static skeleton paths | 27 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 40 |
+| candidate-route | 41 |
 | candidate-workflow | 7 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 33 |
+| skeleton | 32 |
 
 ## Family Summary
 
@@ -46,7 +46,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | federation | 28 | 17 | 11 |  | 1 | 27 |
 | feed | 22 | 5 | 17 | 22 |  |  |
 | goals | 27 | 12 | 15 |  | 2 | 25 |
-| group-exchanges | 9 | 3 | 6 |  | 1 | 8 |
+| group-exchanges | 9 | 3 | 6 | 1 |  | 8 |
 | groups | 36 | 15 | 21 | 36 |  |  |
 | guide | 1 | 1 |  | 1 |  |  |
 | help | 1 | 1 |  | 1 |  |  |
@@ -195,7 +195,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | GET | /exchanges/{id} | /{tenantSlug}/alpha/exchanges/{id} | /exchanges/{id} | exchanges.show | exchange | exchanges | missing | routes/govuk-alpha.php:156 |
 | POST | /exchanges/{id} | /{tenantSlug}/alpha/exchanges/{id} | /exchanges/{id} | exchanges.action.store | storeExchangeAction | exchanges | missing | routes/govuk-alpha.php:157 |
 | POST | /exchanges/{id}/rate | /{tenantSlug}/alpha/exchanges/{id}/rate | /exchanges/{id}/rate | exchanges.rate.store | storeExchangeRating | exchanges | missing | routes/govuk-alpha.php:158 |
-| GET | /group-exchanges | /{tenantSlug}/alpha/group-exchanges | /group-exchanges | group-exchanges.index | groupExchanges | group-exchanges | skeleton | routes/govuk-alpha.php:159 |
+| GET | /group-exchanges | /{tenantSlug}/alpha/group-exchanges | /group-exchanges | group-exchanges.index | groupExchanges | group-exchanges | candidate-route | routes/govuk-alpha.php:159 |
 | GET | /group-exchanges/new | /{tenantSlug}/alpha/group-exchanges/new | /group-exchanges/new | group-exchanges.create | createGroupExchange | group-exchanges | missing | routes/govuk-alpha.php:160 |
 | POST | /group-exchanges/new | /{tenantSlug}/alpha/group-exchanges/new | /group-exchanges/new | group-exchanges.store | storeGroupExchange | group-exchanges | missing | routes/govuk-alpha.php:161 |
 | GET | /group-exchanges/{id} | /{tenantSlug}/alpha/group-exchanges/{id} | /group-exchanges/{id} | group-exchanges.show | groupExchange | group-exchanges | missing | routes/govuk-alpha.php:162 |

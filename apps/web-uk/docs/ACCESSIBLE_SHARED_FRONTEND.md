@@ -182,6 +182,15 @@ accept/decline/start/confirm/cancel actions, ratings, broker review,
 pagination, Laravel localization persistence, tenant-specific content, runtime
 web-route behaviour, or ASP.NET backend compatibility.
 
+The `/group-exchanges` page is a local Blade-style candidate copied from the
+Laravel Group exchanges index shape. It includes the caption, lead copy, start
+button, cancelled success notification, status filter tabs, and empty state with
+tenant-prefixed links. It does not certify Laravel auth enforcement, the
+`group_exchanges` feature gate, live group exchange data, create/detail pages,
+participant add/remove workflows, confirmation/completion/cancellation actions,
+time-credit movement, Laravel localization persistence, tenant-specific content,
+runtime web-route behaviour, or ASP.NET backend compatibility.
+
 The `/accessibility` page is a local Blade-style candidate copied from the
 Laravel accessibility statement shape. It uses the same back link, statement
 sections, WCAG 2.2 Level AA summary list, support feature sections, feedback
