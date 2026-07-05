@@ -32,6 +32,174 @@ public sealed class CaringCommunityVereineAdminControllerUnitTests
         controller.GetMethod("AssignVereinAdmin")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("{organizationId}/admins");
+
+        controller.GetMethod("PreviewVereinMemberImport")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("{organizationId}/members/import/preview");
+
+        controller.GetMethod("ImportVereinMembers")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("{organizationId}/members/import");
+    }
+
+    [Fact]
+    public async Task PreviewVereinMemberImport_ReturnsLaravelSummaryAndRows()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        var existing = User(10, 42, "Eve", "Existing");
+        existing.Email = "existing@example.test";
+        var member = User(11, 42, "Mary", "Member");
+        member.Email = "member@example.test";
+        db.Users.AddRange(
+            User(9, 42, "Admin", "User", Role.Names.Admin),
+            existing,
+            member);
+        db.Organisations.Add(Organisation(101, 42, 9, "Quartier Verein", "club"));
+        db.OrganisationMembers.Add(new OrganisationMember
+        {
+            TenantId = 42,
+            OrganisationId = 101,
+            UserId = 11,
+            Role = "member",
+            JoinedAt = new DateTime(2026, 1, 1, 9, 0, 0, DateTimeKind.Utc)
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        var data = ReadOkData(await Invoke(
+            controller,
+            "PreviewVereinMemberImport",
+            101,
+            new Dictionary<string, object?>
+            {
+                ["csv"] = string.Join('\n', new[]
+                {
+                    "email,first_name,last_name,phone,role",
+                    "new@example.test,Ada,Create,+410000000,admin",
+                    "existing@example.test,Eve,Existing,,owner",
+                    "member@example.test,Mary,Member,,unexpected",
+                    "bad-email,Bad,Email,,member",
+                    "new@example.test,Duplicate,Row,,member"
+                })
+            },
+            CancellationToken.None));
+
+        data.GetProperty("organization").GetProperty("id").GetInt32().Should().Be(101);
+        var summary = data.GetProperty("summary");
+        summary.GetProperty("total_rows").GetInt32().Should().Be(5);
+        summary.GetProperty("ready_to_create").GetInt32().Should().Be(1);
+        summary.GetProperty("ready_to_link").GetInt32().Should().Be(1);
+        summary.GetProperty("duplicates").GetInt32().Should().Be(2);
+        summary.GetProperty("invalid").GetInt32().Should().Be(1);
+
+        var items = data.GetProperty("items").EnumerateArray().ToList();
+        items.Select(item => item.GetProperty("action").GetString()).Should().Equal(
+            "create",
+            "link_existing",
+            "already_member",
+            "invalid",
+            "invalid");
+        items[0].GetProperty("role").GetString().Should().Be("admin");
+        items[2].GetProperty("role").GetString().Should().Be("member");
+        items[1].GetProperty("existing_user_id").GetInt32().Should().Be(10);
+    }
+
+    [Fact]
+    public async Task ImportVereinMembers_CreatesLinksAndSkipsAlreadyMembers()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        var existing = User(10, 42, "Eve", "Existing");
+        existing.Email = "existing@example.test";
+        var alreadyMember = User(11, 42, "Mary", "Member");
+        alreadyMember.Email = "member@example.test";
+        db.Users.AddRange(
+            User(9, 42, "Admin", "User", Role.Names.Admin),
+            existing,
+            alreadyMember);
+        db.Organisations.Add(Organisation(101, 42, 9, "Quartier Verein", "club"));
+        db.OrganisationMembers.Add(new OrganisationMember
+        {
+            TenantId = 42,
+            OrganisationId = 101,
+            UserId = 11,
+            Role = "member",
+            JoinedAt = new DateTime(2026, 1, 1, 9, 0, 0, DateTimeKind.Utc)
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        var data = ReadData(await Invoke(
+            controller,
+            "ImportVereinMembers",
+            101,
+            new Dictionary<string, object?>
+            {
+                ["csv"] = string.Join('\n', new[]
+                {
+                    "email,first_name,last_name,phone,role",
+                    "new@example.test,Ada,Create,+410000000,admin",
+                    "existing@example.test,Eve,Existing,,owner",
+                    "member@example.test,Mary,Member,,member"
+                })
+            },
+            CancellationToken.None));
+
+        data.GetProperty("created").GetInt32().Should().Be(1);
+        data.GetProperty("linked").GetInt32().Should().Be(1);
+        data.GetProperty("skipped").GetInt32().Should().Be(1);
+        data.GetProperty("imported_by").GetInt32().Should().Be(9);
+        var members = data.GetProperty("members").EnumerateArray().ToList();
+        members.Should().HaveCount(2);
+        members[0].GetProperty("email").GetString().Should().Be("new@example.test");
+        members[0].GetProperty("created").GetBoolean().Should().BeTrue();
+        members[0].GetProperty("temporary_password").GetString().Should().NotBeNullOrWhiteSpace();
+        members[1].GetProperty("email").GetString().Should().Be("existing@example.test");
+        members[1].GetProperty("created").GetBoolean().Should().BeFalse();
+
+        var createdUser = await db.Users.IgnoreQueryFilters().SingleAsync(user => user.Email == "new@example.test");
+        createdUser.TenantId.Should().Be(42);
+        createdUser.FirstName.Should().Be("Ada");
+        createdUser.LastName.Should().Be("Create");
+        createdUser.Role.Should().Be(Role.Names.Member);
+        createdUser.IsActive.Should().BeTrue();
+
+        var orgMembers = await db.OrganisationMembers.IgnoreQueryFilters()
+            .Where(row => row.OrganisationId == 101)
+            .OrderBy(row => row.UserId)
+            .ToListAsync();
+        orgMembers.Should().HaveCount(3);
+        orgMembers.Single(row => row.UserId == createdUser.Id).Role.Should().Be("admin");
+        orgMembers.Single(row => row.UserId == 10).Role.Should().Be("owner");
+        orgMembers.Single(row => row.UserId == 11).Role.Should().Be("member");
+    }
+
+    [Fact]
+    public async Task ImportVereinMembers_WhenCsvInvalid_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.Add(User(9, 42, "Admin", "User", Role.Names.Admin));
+        db.Organisations.Add(Organisation(101, 42, 9, "Quartier Verein", "club"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "ImportVereinMembers",
+                101,
+                new Dictionary<string, object?> { ["csv"] = "email\nnot-an-email" },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        db.Users.IgnoreQueryFilters().Should().HaveCount(1);
+        db.OrganisationMembers.IgnoreQueryFilters().Should().BeEmpty();
     }
 
     [Fact]
@@ -178,6 +346,14 @@ public sealed class CaringCommunityVereineAdminControllerUnitTests
     {
         var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
         objectResult.StatusCode.Should().Be(StatusCodes.Status201Created);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+        return document.RootElement.GetProperty("data").Clone();
+    }
+
+    private static JsonElement ReadOkData(IActionResult result)
+    {
+        var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(StatusCodes.Status200OK);
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
         return document.RootElement.GetProperty("data").Clone();
     }
