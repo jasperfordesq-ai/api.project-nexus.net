@@ -21,7 +21,7 @@ The `compose.yml` file defines how to run the UK frontend in development and pro
 | Host port | `5180` |
 | Container port | `3001` |
 | URL | http://localhost:5180 |
-| Backend API | http://host.docker.internal:5080 |
+| Backend API | http://host.docker.internal:8088 |
 | Health check | http://localhost:5180/health |
 
 ## Commands
@@ -61,14 +61,17 @@ docker compose --profile prod up
 |---------|-----------|----------------|-------|
 | UK Frontend | 5180 | 3001 | Avoids conflict with the React frontend (5173) |
 
-## API URL Rules
+## Backend URL Rules
 
-| Environment | API_BASE_URL |
-|-------------|--------------|
-| Docker (default) | `http://host.docker.internal:5080` |
-| Non-Docker local | `http://localhost:5000` (or as configured in `.env`) |
+| Environment | Target variables |
+|-------------|------------------|
+| Docker (default) | `ACCESSIBLE_BACKEND_TARGET=laravel`, `LARAVEL_BASE_URL=http://host.docker.internal:8088` |
+| Non-Docker local | `ACCESSIBLE_BACKEND_TARGET=laravel`, `LARAVEL_BASE_URL=http://127.0.0.1:8088` |
 
-The Docker environment uses `host.docker.internal` to reach services running on the host machine. This is configured in `.env.docker` and **should not be changed** unless you're connecting to a different backend.
+The Docker environment uses `host.docker.internal` to reach Laravel running on
+the host machine. This is configured in `.env.docker` and **should not be
+changed to ASP.NET** unless doing explicit future compatibility work. ASP.NET is
+not certified as a shared accessible backend.
 
 ## File Structure
 
@@ -107,7 +110,7 @@ When working on this project:
 
 1. **Assume Docker is running** unless explicitly told otherwise
 2. **Use port 5180** for testing the UK frontend
-3. **Backend is at** `http://host.docker.internal:5080` from container perspective
+3. **Laravel backend is at** `http://host.docker.internal:8088` from container perspective
 4. **Use `docker compose` commands** (not `docker-compose`)
 5. **Check container health** with `docker compose ps` or `curl http://localhost:5180/health`
 
@@ -120,8 +123,8 @@ docker ps --filter "name=nexus-uk-frontend"
 # Check frontend responds
 curl http://localhost:5180/health
 
-# Check backend reachable from container
-docker exec nexus-uk-frontend-dev wget -qO- http://host.docker.internal:5080/health
+# Check Laravel backend reachable from container
+docker exec nexus-uk-frontend-dev wget -qO- http://host.docker.internal:8088
 ```
 
 ## Troubleshooting
@@ -136,7 +139,7 @@ lsof -i :5180                 # macOS/Linux
 ```
 
 ### Backend not reachable
-1. Verify backend is running on port 5080
+1. Verify Laravel is running on port 8088
 2. Check `host.docker.internal` resolves: `docker exec nexus-uk-frontend-dev ping host.docker.internal`
 3. On Linux, ensure `extra_hosts` is set in compose.yml (already configured)
 

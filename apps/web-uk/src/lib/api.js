@@ -3,9 +3,11 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5080';
 const TENANT_ID = process.env.TENANT_ID || '';
 const { cache } = require('./cache');
+const { getApiBaseUrl } = require('./backend-contract');
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Cache TTL for different types of data (in milliseconds)
 const CACHE_TTL = {

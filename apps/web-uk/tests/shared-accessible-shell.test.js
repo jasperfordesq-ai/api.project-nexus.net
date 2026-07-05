@@ -168,7 +168,8 @@ describe('shared accessible frontend shell', () => {
     expect(matrix).toContain('Laravel `govuk-alpha*`');
     expect(matrix).toContain('| Organisations | `/organisations` | `/organisations` | Local Blade-style candidate for directory, search, registration form, terms, and empty state. |');
     expect(matrix).toContain('It does not certify route parity');
-    expect(contract).toContain('this pass does not implement real backend adapters');
-    expect(contract).toContain('ASP.NET must become compatible with that behavior');
+    expect(contract).toContain('Its default backend contract is now Laravel-first');
+    expect(contract).toContain('| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |');
+    expect(contract).toContain('ASP.NET must become');
   });
 });
