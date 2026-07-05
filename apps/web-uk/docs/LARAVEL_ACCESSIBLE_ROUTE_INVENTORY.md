@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 24 |
+| ASP.NET static skeleton paths | 23 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 44 |
+| candidate-route | 45 |
 | candidate-workflow | 8 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 28 |
+| skeleton | 27 |
 
 ## Family Summary
 
@@ -65,7 +65,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | members | 11 | 5 | 6 | 11 |  |  |
 | messages | 18 | 6 | 12 | 18 |  |  |
 | newsletter | 1 | 1 |  |  | 1 |  |
-| nexus-score | 2 | 2 |  |  | 1 | 1 |
+| nexus-score | 2 | 2 |  | 1 |  | 1 |
 | notifications | 6 | 1 | 5 | 6 |  |  |
 | onboarding | 4 | 2 | 2 |  | 1 | 3 |
 | organisations | 9 | 7 | 2 |  | 2 | 7 |
@@ -236,7 +236,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | POST | /achievements/daily-reward | /{tenantSlug}/alpha/achievements/daily-reward | /achievements/daily-reward | achievements.daily-reward | dailyReward | achievements | missing | routes/govuk-alpha.php:202 |
 | POST | /achievements/challenges/{id}/claim | /{tenantSlug}/alpha/achievements/challenges/{id}/claim | /achievements/challenges/{id}/claim | achievements.claim-challenge | claimChallengeReward | achievements | missing | routes/govuk-alpha.php:203 |
 | GET | /leaderboard | /{tenantSlug}/alpha/leaderboard | /leaderboard | leaderboard | leaderboard | leaderboard | candidate-route | routes/govuk-alpha.php:204 |
-| GET | /nexus-score | /{tenantSlug}/alpha/nexus-score | /nexus-score | nexus-score | nexusScore | nexus-score | skeleton | routes/govuk-alpha.php:205 |
+| GET | /nexus-score | /{tenantSlug}/alpha/nexus-score | /nexus-score | nexus-score | nexusScore | nexus-score | candidate-route | routes/govuk-alpha.php:205 |
 | GET | /notifications | /{tenantSlug}/alpha/notifications | /notifications | notifications.index | notifications | notifications | candidate-route | routes/govuk-alpha.php:206 |
 | POST | /notifications/read-all | /{tenantSlug}/alpha/notifications/read-all | /notifications/read-all | notifications.read-all | markAllNotificationsRead | notifications | candidate-workflow-family | routes/govuk-alpha.php:207 |
 | POST | /notifications/{id}/delete | /{tenantSlug}/alpha/notifications/{id}/delete | /notifications/{id}/delete | notifications.delete | deleteNotification | notifications | candidate-workflow-family | routes/govuk-alpha.php:208 |

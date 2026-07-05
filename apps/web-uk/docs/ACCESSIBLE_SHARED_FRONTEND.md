@@ -219,6 +219,14 @@ member links, community-impact service data, Laravel localization persistence,
 tenant-specific content, runtime web-route behaviour, or ASP.NET backend
 compatibility.
 
+The `/nexus-score` page is a local Blade-style candidate copied from the
+Laravel NEXUS score shape. It includes the caption, lead copy, related tiers
+link, and unavailable-score empty state. It does not certify Laravel auth
+enforcement, the `gamification` feature gate, live NEXUS score data, tier
+resolution, score panel rendering, category breakdowns, improvement insights,
+Laravel localization persistence, tenant-specific content, runtime web-route
+behaviour, or ASP.NET backend compatibility.
+
 The `/accessibility` page is a local Blade-style candidate copied from the
 Laravel accessibility statement shape. It uses the same back link, statement
 sections, WCAG 2.2 Level AA summary list, support feature sections, feedback

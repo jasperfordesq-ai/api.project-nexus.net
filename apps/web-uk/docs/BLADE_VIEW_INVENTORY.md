@@ -9,10 +9,10 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | Metric | Count |
 | --- | ---: |
 | Laravel Blade accessible views | 289 |
-| ASP.NET Nunjucks views | 114 |
-| candidate-exact-view | 29 |
+| ASP.NET Nunjucks views | 115 |
+| candidate-exact-view | 30 |
 | candidate-name-match | 5 |
-| missing-nunjucks-view | 255 |
+| missing-nunjucks-view | 254 |
 
 ## Family Summary
 
@@ -71,7 +71,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | members | 4 | 1 | 3 |
 | messages | 4 |  | 4 |
 | newsletter | 1 |  | 1 |
-| nexus | 1 |  | 1 |
+| nexus | 1 | 1 |  |
 | notifications | 1 | 1 |  |
 | onboarding | 1 |  | 1 |
 | organisation | 1 |  | 1 |
@@ -296,7 +296,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | messages-groups.blade.php | messages | missing-nunjucks-view |
 | messages.blade.php | messages | missing-nunjucks-view |
 | newsletter-unsubscribe.blade.php | newsletter | missing-nunjucks-view |
-| nexus-score.blade.php | nexus | missing-nunjucks-view |
+| nexus-score.blade.php | nexus | candidate-exact-view |
 | notifications.blade.php | notifications | candidate-name-match |
 | onboarding.blade.php | onboarding | missing-nunjucks-view |
 | organisation-detail.blade.php | organisation | missing-nunjucks-view |

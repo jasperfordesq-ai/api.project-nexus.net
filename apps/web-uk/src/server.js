@@ -721,6 +721,15 @@ app.get('/leaderboard', (req, res) => {
   });
 });
 
+app.get('/nexus-score', (req, res) => {
+  res.render('nexus-score', {
+    title: 'NEXUS score',
+    activeNav: 'nexus_score',
+    nexusScore: null,
+    tiersHref: prefixedLocalPath(req, '/nexus-score/tiers')
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

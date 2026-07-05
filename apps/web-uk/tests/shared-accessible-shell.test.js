@@ -716,6 +716,20 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Blade-style NEXUS score unavailable state under the tenant alpha route prefix', async () => {
+    const response = await request(app).get('/acme/alpha/nexus-score');
+
+    expect(staticPageRoutes.pages['/nexus-score']).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('NEXUS score');
+    expect(response.text).toContain('Your reputation score, based on how you take part in the community.');
+    expect(response.text).toContain('Related NEXUS score pages');
+    expect(response.text).toContain('href="/acme/alpha/nexus-score/tiers"');
+    expect(response.text).toContain('Score tiers');
+    expect(response.text).toContain('Your score is not available yet. Take part in the community and check back soon.');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Blade-style legal hub under the tenant alpha route prefix', async () => {
     const response = await request(app).get('/acme/alpha/legal');
 
@@ -827,7 +841,6 @@ describe('shared accessible frontend shell', () => {
       '/newsletter/unsubscribe',
       '/onboarding',
       '/matches',
-      '/nexus-score',
       '/activity',
       '/saved'
     ];
@@ -891,7 +904,7 @@ describe('shared accessible frontend shell', () => {
     expect(contract).toContain('buildLaravelAccessiblePath()');
     expect(contract).toContain('Do not treat Blade routes as');
     expect(routeInventory).toContain('| Laravel accessible route declarations | 608 |');
-    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 24 |');
+    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 23 |');
     expect(routeInventory).toContain('Laravel shared-domain path');
     expect(routeInventory).toContain('Laravel custom-domain path');
     expect(routeInventory).toContain('| GET | /faq | /{tenantSlug}/alpha/faq | /faq |');
@@ -910,6 +923,8 @@ describe('shared accessible frontend shell', () => {
     expect(routeInventory).toContain('| POST | /achievements/daily-reward | /{tenantSlug}/alpha/achievements/daily-reward | /achievements/daily-reward | achievements.daily-reward | dailyReward | achievements | missing |');
     expect(routeInventory).toContain('| GET | /leaderboard | /{tenantSlug}/alpha/leaderboard | /leaderboard | leaderboard | leaderboard | leaderboard | candidate-route |');
     expect(routeInventory).toContain('| GET | /leaderboard/competitive | /{tenantSlug}/alpha/leaderboard/competitive | /leaderboard/competitive | gamification.competitive | gamificationCompetitive | leaderboard | missing |');
+    expect(routeInventory).toContain('| GET | /nexus-score | /{tenantSlug}/alpha/nexus-score | /nexus-score | nexus-score | nexusScore | nexus-score | candidate-route |');
+    expect(routeInventory).toContain('| GET | /nexus-score/tiers | /{tenantSlug}/alpha/nexus-score/tiers | /nexus-score/tiers | gamification.tiers | gamificationTierLadder | nexus-score | missing |');
     expect(routeInventory).toContain('| GET | /legal | /{tenantSlug}/alpha/legal | /legal | legal.hub | legalHub | legal | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal/community-guidelines | /{tenantSlug}/alpha/legal/community-guidelines | /legal/community-guidelines | legal.community-guidelines | legalDocument | legal | candidate-route |');
     expect(routeInventory).toContain('| POST | /report-a-problem | /{tenantSlug}/alpha/report-a-problem | /report-a-problem | report-problem.store | storeReportProblem | report-a-problem | candidate-workflow |');
@@ -926,6 +941,7 @@ describe('shared accessible frontend shell', () => {
     expect(viewInventory).toContain('| polls.blade.php | polls | candidate-exact-view |');
     expect(viewInventory).toContain('| achievements.blade.php | achievements | candidate-exact-view |');
     expect(viewInventory).toContain('| leaderboard.blade.php | leaderboard | candidate-exact-view |');
+    expect(viewInventory).toContain('| nexus-score.blade.php | nexus | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-hub.blade.php | legal | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-document.blade.php | legal | candidate-exact-view |');
     expect(backendMatrix).toContain('| Family | GET routes | POST routes | Mutating routes | Tenant | Auth | CSRF | Feature/module gates |');
