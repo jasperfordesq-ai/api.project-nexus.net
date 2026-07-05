@@ -1,6 +1,6 @@
 # Laravel Full-Parity Map
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-05
 
 Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
@@ -8,11 +8,11 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 | Surface | Laravel Edition | .NET Edition |
 | --- | ---: | ---: |
-| Controllers | 308 | 215 |
-| Services | 479 | 187 |
+| Controllers | 308 | 216 |
+| Services | 479 | 188 |
 | Models/entities | 200 Laravel models | 187 EF entity files |
 | Migrations | 318 | 89 EF migration classes excluding designers/snapshot |
-| OpenAPI operations | 891 | 3,525 static controller operations from parity script |
+| OpenAPI operations | 891 | 3,591 static controller operations from parity script |
 | Schema tables | 361 Laravel source tables | 316 .NET static table names |
 | Frontend routes | 589 React / 607 accessible | 462 React / 136 accessible |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
@@ -23,8 +23,8 @@ These counts are directional. They are not a parity score.
 
 `scripts/compare-laravel-api-parity.ps1` generated
 `artifacts/parity/api/api-parity.json` on 2026-07-05 with 2,429 Laravel source
-operations after supplemental API route parsing and de-duplication, 2,313 static
-matches, and 116 missing operations. Laravel `govuk-alpha*` accessible page
+operations after supplemental API route parsing and de-duplication, 2,346 static
+matches, and 83 missing operations. Laravel `govuk-alpha*` accessible page
 routes are excluded from the API comparator and tracked in the frontend
 comparator. The artifact is ignored by git; regenerate it before using the
 numbers for implementation planning.
@@ -40,8 +40,11 @@ before using the numbers for schema implementation planning.
 React routes, 462 .NET React routes, 393 React matches, 196 missing Laravel-side
 React routes, 607 Laravel accessible routes, 136 `apps/web-uk` routes, 53
 accessible matches, and 554 missing Laravel-side accessible routes. The artifact
-is ignored by git; regenerate it before using the numbers for frontend
-implementation planning.
+is ignored by git. The React side of this artifact is now historical inventory
+for the retired `apps/react-frontend` fork. Do not use it to plan new React work
+in this repo unless explicitly approved. Use the production Laravel React
+frontend at `C:\platforms\htdocs\staging\react-frontend` as the contract target
+for ASP.NET backend compatibility.
 
 `scripts/compare-laravel-localization-parity.ps1` generated
 `artifacts/parity/localization/localization-parity.json` on 2026-07-04 with 11
@@ -52,7 +55,7 @@ matched namespaces. The artifact is ignored by git; regenerate it before using
 the numbers for localization implementation planning.
 
 `scripts/export-laravel-parity-backlog.ps1` generated
-`artifacts/parity/backlog/parity-backlog.json` on 2026-07-05 with 6,604 open
+`artifacts/parity/backlog/parity-backlog.json` on 2026-07-05 with 6,570 open
 implementation items across API, schema, frontend, and localization artifacts.
 The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 
@@ -97,15 +100,18 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 2. **User-facing API gaps**
    - Prioritize endpoints used by Laravel React frontend pages and accessible
      frontend routes.
-   - Acceptance: route, auth, tenant scoping, request validation, response
-     shape, and error shape match Laravel or have documented .NET-compatible
-     aliases.
+   - Acceptance: route, method, `/api/v2` alias, auth, tenant scoping, request
+     validation, response shape, error shape, upload behavior, realtime config,
+     and status codes match the Laravel React frontend contract or have
+     documented .NET-compatible aliases.
 
 3. **Caring Community and National KISS**
    - Port domain entities, services, admin routes, member routes, scheduled
-     tasks, locale keys, and frontend surfaces.
+     tasks, locale keys, and backend contracts needed by the canonical Laravel
+     React frontend.
    - Acceptance: Laravel caring/KISS tests or equivalent .NET integration tests
-     cover workflows, tenant isolation, and admin authorization.
+     cover workflows, tenant isolation, admin authorization, and Laravel React
+     request/response compatibility.
 
 4. **Marketplace / commerce / monetization**
    - Complete marketplace listing, order, payment, escrow, pickup, coupon,
@@ -148,8 +154,11 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
   by an equivalent .NET workflow.
 - Every Laravel module guide has a corresponding .NET implementation note and
   test plan.
-- React admin/member pages and accessible frontend routes have equivalent .NET
-  API support.
+- React admin/member workflows from the canonical Laravel React frontend have
+  equivalent ASP.NET API support proven by route/API matrix rows, regression
+  tests, and runtime smoke tests.
+- The legacy `apps/react-frontend/` copy remains frozen unless the user
+  explicitly approves frontend work.
 - Formerly excluded modules have real implementations or explicitly approved product
   decisions outside this technical parity goal.
 - `dotnet test Nexus.sln --configuration Release` and relevant frontend checks

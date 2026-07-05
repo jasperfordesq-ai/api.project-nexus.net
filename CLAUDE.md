@@ -1,6 +1,6 @@
 # Project NEXUS .NET Edition - Agent Guide
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-05
 
 > WARNING: Before deploying or touching any production container, read
 > `.claude/production-containers.md`.
@@ -28,6 +28,56 @@ background jobs, integrations, tenant settings, localization, tests, and
 documentation. Earlier "out of scope" exclusions are retired and are now tracked
 as parity gaps.
 
+## React Frontend Retirement And Contract Policy
+
+The separate React frontend in this repo, `apps/react-frontend/`, is now a
+legacy/outdated fork. It is frozen as historical reference only. Do not continue
+feature development in it, do not treat it as the source of truth, and do not
+copy it back over the Laravel React frontend.
+
+The canonical React frontend is:
+
+```text
+C:\platforms\htdocs\staging\react-frontend
+```
+
+That frontend is production software. The Laravel backend is production and is
+the source of truth for the frontend API contract. The ASP.NET backend is
+development-only and must become contract-compatible with the Laravel React
+frontend.
+
+Default rule for agents: do not modify frontend files in this repo unless the
+user explicitly approves that specific frontend change. Backend parity work
+should happen in ASP.NET controllers, services, DTOs, auth/tenant handling,
+OpenAPI/contracts, tests, and docs.
+
+For every API call made by the Laravel React frontend, ASP.NET must expose the
+same compatible contract:
+
+- same HTTP method and path, including `/api/v2/...` aliases where the Laravel
+  React frontend expects them;
+- compatible request payloads, query parameters, multipart/upload fields, and
+  headers;
+- compatible response envelopes, pagination metadata, status codes, validation
+  errors, auth errors, tenant errors, and not-found behavior;
+- compatible auth refresh, tenant bootstrap, feature/module flags, upload URL,
+  and realtime configuration behavior.
+
+Do not "fix" compatibility by weakening the Laravel React frontend or by adding
+ASP.NET-specific conditionals to production React pages. If a difference is
+unavoidable, document it as a temporary adapter requirement and prefer fixing
+the ASP.NET backend first.
+
+Compatibility claims require proof:
+
+- a route/API matrix comparing Laravel React API calls, Laravel routes/OpenAPI,
+  and ASP.NET routes/OpenAPI;
+- focused ASP.NET regression tests for matched endpoints;
+- runtime smoke tests showing the Laravel React frontend can exercise the
+  implemented ASP.NET endpoints without request/response shape failures.
+
+See `docs/REACT_FRONTEND_RETIREMENT.md` for the maintained policy.
+
 ## Current Inventory Snapshot
 
 Backend, API, schema, frontend, localization, and backlog counts were refreshed
@@ -35,11 +85,11 @@ from source on 2026-07-05.
 
 | Surface | Laravel Edition (`C:\platforms\htdocs\staging`) | .NET Edition (this repo) |
 | --- | ---: | ---: |
-| Controllers | 308 PHP controller files | 215 C# controller files |
-| Services | 479 PHP service files | 187 C# service files |
+| Controllers | 308 PHP controller files | 216 C# controller files |
+| Services | 479 PHP service files | 188 C# service files |
 | Models/entities | 200 Laravel model files | 187 EF entity files |
 | Migrations | 318 Laravel migrations | 89 EF migration classes excluding designers/snapshot |
-| API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 3,525 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,313 static matches / 116 missing source operations |
+| API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 3,591 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,346 static matches / 83 missing source operations |
 | Schema tables | 361 Laravel source tables from `scripts/compare-laravel-schema-parity.ps1` | 316 static EF/migration table names; 126 exact matches |
 | Frontend routes | 589 React routes / 607 accessible routes from `scripts/compare-laravel-frontend-parity.ps1` | 462 React routes / 136 `apps/web-uk` routes; 393 React matches and 53 accessible matches |
 | Localization | 11 locales / 605 locale namespaces; English key scan has 17,280 Laravel keys | 7 locales / 280 locale namespaces; English key scan has 5,575 .NET keys and 157 matches |
@@ -94,14 +144,22 @@ equivalent:
 
 ## Frontend Parity Targets
 
-The primary production parity SPA is `apps/react-frontend/`.
+The primary production React frontend is no longer the copy in this repo. The
+canonical React frontend is the Laravel repo frontend at
+`C:\platforms\htdocs\staging\react-frontend`.
 
-- `apps/react-frontend/src/admin/` is the primary admin parity target.
+- `apps/react-frontend/` is a frozen legacy copy kept for historical reference
+  only. Do not modify it unless explicitly approved.
+- `apps/react-frontend/src/admin/` may be inspected to understand old .NET
+  adapter work, but it is not the forward development target.
 - `apps/web-uk/` is no longer dismissed from parity. It is the .NET accessible
   frontend candidate and must be mapped against Laravel `accessible-frontend/`
   and `routes/govuk-alpha*`.
 - `apps/admin/` is a secondary standalone admin app. Do not use it as the main
   Laravel parity target unless a task explicitly asks for standalone-admin work.
+- Current backend work should make ASP.NET compatible with the Laravel React API
+  contract, especially the routes and response shapes used by the production
+  Laravel React frontend.
 
 ## Architecture Invariants
 
@@ -144,7 +202,7 @@ Services:
 | API | `http://localhost:5080` | ASP.NET backend |
 | Swagger | `http://localhost:5080/swagger` | Runtime API documentation |
 | Health | `http://localhost:5080/health` | Anonymous health endpoint |
-| React frontend | `http://localhost:5173` | Primary parity SPA |
+| React frontend | `http://localhost:5173` | Legacy/frozen .NET React copy; use only when explicitly approved |
 | Web UK frontend | `http://localhost:5180` | Accessible parity candidate |
 | Standalone admin | `http://localhost:5190` | Secondary admin app |
 
@@ -161,11 +219,14 @@ shared contracts are touched.
 
 ```bash
 dotnet test Nexus.sln --configuration Release
-npm --prefix apps/react-frontend run lint
-npm --prefix apps/react-frontend run test:ci
 npm --prefix apps/admin run build
 npm --prefix apps/admin run test
 ```
+
+Only run `apps/react-frontend` checks when the user explicitly approves work in
+that legacy/frozen frontend. For backend contract compatibility, prefer ASP.NET
+regression tests plus route/API matrix and runtime smoke tests against the
+canonical Laravel React frontend.
 
 For docs-only changes, at minimum run link/path sanity checks with `rg` and
 inspect `git diff`.

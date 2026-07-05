@@ -1,6 +1,6 @@
 # Laravel Parity Implementation Backlog
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-05
 
 Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
@@ -17,11 +17,11 @@ frontend and localization artifacts.
 
 | Metric | Count |
 | --- | ---: |
-| Total open backlog items | 6,604 |
-| P0 items | 170 |
+| Total open backlog items | 6,570 |
+| P0 items | 136 |
 | P1 items | 6,430 |
 | P2 items | 4 |
-| API items | 117 |
+| API items | 83 |
 | Schema items | 235 |
 | Frontend items | 750 |
 | Localization items | 5,502 |
@@ -36,7 +36,7 @@ derived from static comparison artifacts.
 | Localization | 4,672 |
 | Verein / Clubs | 669 |
 | Accessible frontend | 466 |
-| Unclassified parity gap | 367 |
+| Unclassified parity gap | 333 |
 | Mailchimp-like communications | 161 |
 | Caring Community / National KISS | 115 |
 | Marketplace / commerce | 74 |
@@ -90,8 +90,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\compare-laravel-loca
 - Read the Laravel source path before implementing a row.
 - Prefer batches that close a workflow end-to-end: API contract, schema,
   frontend route, localization, tests, and docs.
-- Keep `apps/react-frontend/` as the primary SPA/admin target and `apps/web-uk/`
-  as the accessible frontend target.
+- Do not implement React backlog rows in `apps/react-frontend/` unless the user
+  explicitly approves that specific frontend change. That folder is now a
+  legacy/frozen copy.
+- Treat `C:\platforms\htdocs\staging\react-frontend` as the canonical React
+  frontend contract target. Backend work should make ASP.NET expose the same API
+  methods, paths, `/api/v2` aliases, payloads, response envelopes, auth/tenant
+  behavior, upload behavior, realtime config, and status codes expected by that
+  frontend.
+- Keep `apps/web-uk/` as the accessible frontend target unless the user narrows
+  the task to backend-only work.
 - Preserve ASP.NET Core, EF Core/PostgreSQL, JWT, tenant isolation, CORS,
   FIDO2/WebAuthn, AGPL, and production-container invariants.
 
@@ -104,7 +112,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\compare-laravel-loca
   shape, and regression tests.
 - Schema items include EF mappings, migrations, indexes/constraints where
   required, and tenant-safety verification.
-- Frontend items include route/view behavior, API wiring, feature gates,
-  localization, and accessibility checks.
+- React frontend items are satisfied by proving the Laravel React frontend can
+  run the certified workflow against ASP.NET through compatible backend
+  contracts. Proof requires a route/API matrix, ASP.NET regression tests, and
+  runtime smoke tests.
+- Accessible frontend items include route/view behavior, API wiring, feature
+  gates, localization, and accessibility checks.
 - Localization items include namespace/key aliases where direct filename parity
   is not the right .NET target.

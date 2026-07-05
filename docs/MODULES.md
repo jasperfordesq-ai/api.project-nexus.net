@@ -1,8 +1,13 @@
 # Laravel-to-.NET Module Map
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-05
 
 Laravel source of truth: `C:\platforms\htdocs\staging`.
+
+React frontend source of truth:
+`C:\platforms\htdocs\staging\react-frontend`. The ASP.NET repo copy at
+`apps/react-frontend/` is legacy/frozen and must not be used as the forward
+development target unless the user explicitly approves that frontend work.
 
 Status values:
 
@@ -14,7 +19,7 @@ Status values:
 
 | Laravel module | Laravel source paths | .NET target paths | Status |
 | --- | --- | --- | --- |
-| Admin | `app/Http/Controllers/Api/Admin*`, `react-frontend/src/admin`, `docs/modules/admin.md` | `src/Nexus.Api/Controllers/Admin*`, `apps/react-frontend/src/admin` | Partial |
+| Admin | `app/Http/Controllers/Api/Admin*`, `react-frontend/src/admin`, `docs/modules/admin.md` | `src/Nexus.Api/Controllers/Admin*`; ASP.NET must satisfy the Laravel React admin API contract. The old `apps/react-frontend/src/admin` copy is legacy reference only. | Partial |
 | AI chat | `app/Services/AI`, `docs/modules/ai-chat.md` | `src/Nexus.Api/Services/*Ai*`, `src/Nexus.Api/Controllers/*Ai*` | Mapped |
 | Blog and resources | `docs/modules/blog-and-resources.md`, `app/Services/*Blog*`, resource routes | `AdminBlogController`, resources/admin compatibility controllers | Partial |
 | Connections and reviews | `docs/modules/connections-and-reviews.md`, connection/review services | connection, endorsement, review controllers/services | Mapped |
@@ -34,7 +39,7 @@ Status values:
 | Monetization | `docs/modules/monetization.md`, subscriptions, coupons, ads | donations/plans/coupons/ad pages exist; verify contracts | Partial |
 | Notifications | `docs/modules/notifications.md`, notification/email/push services | notification, push, email services/controllers | Mapped |
 | Organisations | `docs/modules/organisations.md`, organisation services/controllers | organisation controllers/services | Mapped |
-| Podcasts | `docs/modules/podcasts.md`, podcast frontend/services | no dedicated .NET podcast module found | Gap |
+| Podcasts | `docs/modules/podcasts.md`, `PodcastController.php`, `AdminPodcastController.php`, podcast routes, Laravel React `src/lib/api/podcasts.ts`, `src/admin/modules/podcasts/PodcastsAdmin.tsx` | `PodcastsCompatibilityController.cs`, `PodcastsCompatibilityService.cs`; compatibility state currently stored under tenant-scoped `TenantConfig` | Partial |
 | Search | `docs/modules/search.md`, Meilisearch and SQL fallback | search/semantic search controllers/services | Mapped |
 | Social feed | `docs/modules/social-feed.md`, feed/poll/story services | feed, poll, comments, moderation controllers/services | Mapped |
 | Volunteering | `docs/modules/volunteering.md`, volunteering services/admin pages | volunteer long-tail services/controllers | Partial |
