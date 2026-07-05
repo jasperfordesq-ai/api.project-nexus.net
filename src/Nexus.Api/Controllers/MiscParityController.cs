@@ -528,6 +528,7 @@ public class MiscParityController : ControllerBase
     public IActionResult UpdatePoll(int id, [FromBody] JsonElement body) => Ok(new { data = new { id, title = Str(body, "title") } });
 
     [HttpGet("polls/{id:int}/export")]
+    [HttpGet("v2/polls/{id:int}/export")]
     [Authorize]
     public IActionResult ExportPoll(int id) => File(Encoding.UTF8.GetBytes($"poll_id\n{id}\n"), "text/csv", $"poll-{id}.csv");
 

@@ -38,9 +38,11 @@ public class MemberParityController : ControllerBase
     public async Task<IActionResult> Appreciations() => Ok(new { data = await _db.Reviews.Where(r => r.TenantId == TenantId() && r.TargetUserId == UserId()).OrderByDescending(r => r.CreatedAt).ToListAsync() });
 
     [HttpGet("me/data-export/history")]
+    [HttpGet("v2/me/data-export/history")]
     public async Task<IActionResult> DataExportHistory() => Ok(new { data = await _db.DataExportRequests.Where(r => r.UserId == UserId()).OrderByDescending(r => r.CreatedAt).ToListAsync() });
 
     [HttpPost("me/data-export")]
+    [HttpPost("v2/me/data-export")]
     public async Task<IActionResult> RequestDataExport()
     {
         var request = new DataExportRequest { TenantId = TenantId(), UserId = UserId(), Status = ExportStatus.Pending };

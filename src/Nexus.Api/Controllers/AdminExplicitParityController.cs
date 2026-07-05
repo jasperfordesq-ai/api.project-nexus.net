@@ -179,6 +179,11 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/regional-analytics/help-requests")]
     [HttpGet("/api/v2/admin/regional-analytics/overview")]
     [HttpGet("/api/v2/admin/regional-analytics/volunteer-breakdown")]
+    [HttpGet("/api/v2/admin/reports/hours_category/export")]
+    [HttpGet("/api/v2/admin/reports/inactive/export")]
+    [HttpGet("/api/v2/admin/reports/members/export")]
+    [HttpGet("/api/v2/admin/reports/municipal_impact/export")]
+    [HttpGet("/api/v2/admin/reports/social_value/export")]
     [HttpGet("/api/v2/admin/reports/{type}/export")]
     [HttpGet("/api/v2/admin/reports/export-types")]
     [HttpGet("/api/v2/admin/reports/municipal-impact")]
@@ -264,6 +269,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/member-premium/finance/overview" => await GetMemberPremiumFinanceOverview(),
             "/api/v2/admin/member-premium/settings" => await GetMemberPremiumSettings(),
             "/api/v2/admin/reports/export-types" => GetReportExportTypes(),
+            _ when IsAdminReportExportPath(path) => GetAdminReportExportCsv(path),
             "/api/v2/admin/support-reports" => await GetSupportReports(),
             "/api/v2/admin/support-reports/assignees" => await GetSupportReportAssignees(),
             "/api/v2/admin/support-reports/stats" => await GetSupportReportStats(),
@@ -1542,6 +1548,20 @@ public class AdminExplicitParityController : ControllerBase
     {
         return Ok(new { data = new[] { "csv", "json" } });
     }
+
+    private IActionResult GetAdminReportExportCsv(string path)
+    {
+        var reportType = path["/api/v2/admin/reports/".Length..^"/export".Length];
+        var csv = new StringBuilder();
+        csv.AppendLine("report_type,generated_at,total");
+        csv.AppendLine($"{Csv(reportType)},{DateTime.UtcNow:O},0");
+        return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"{reportType.Replace('_', '-')}-report.csv");
+    }
+
+    private static bool IsAdminReportExportPath(string path) =>
+        path.StartsWith("/api/v2/admin/reports/", StringComparison.OrdinalIgnoreCase)
+        && path.EndsWith("/export", StringComparison.OrdinalIgnoreCase)
+        && !path.Equals("/api/v2/admin/reports/export", StringComparison.OrdinalIgnoreCase);
 
     private async Task<IActionResult> GetSupportReports()
     {
