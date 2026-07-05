@@ -102,6 +102,48 @@ public class AdminHeaderLogoControllerUnitTests
     }
 
     [Fact]
+    public async Task UploadPartnerLogo_PersistsCurrentTenantPartnerLogoUrl()
+    {
+        var tenantContext = new TenantContext();
+        tenantContext.SetTenant(42);
+        await using var db = CreateDbContext(tenantContext);
+        await SeedTenantsAsync(db);
+        var uploadRoot = CreateUploadRoot();
+
+        var controller = CreateController(db, tenantContext, uploadRoot);
+        var action = typeof(AdminController).GetMethod(
+            "UploadPartnerLogo",
+            BindingFlags.Instance | BindingFlags.Public);
+
+        action.Should().NotBeNull("Laravel exposes POST /api/v2/admin/settings/partner-logo");
+        var uploadAction = action ?? throw new InvalidOperationException("UploadPartnerLogo action was not found.");
+        uploadAction.GetCustomAttributes<HttpPostAttribute>()
+            .Select(attribute => attribute.Template)
+            .Should().Contain("settings/partner-logo");
+
+        var logo = CreateFormFile("partner.webp", "image/webp", [0x52, 0x49, 0x46, 0x46]);
+        var result = await (Task<IActionResult>)uploadAction.Invoke(controller, [logo, CancellationToken.None])!;
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var url = document.RootElement.GetProperty("data").GetProperty("url").GetString();
+
+        url.Should().StartWith("/api/files/");
+        var config = await db.TenantConfigs.IgnoreQueryFilters()
+            .SingleAsync(c => c.TenantId == 42 && c.Key == "general.partner_logo_url");
+        config.Value.Should().Be(url);
+        (await db.TenantConfigs.IgnoreQueryFilters()
+                .AnyAsync(c => c.TenantId == 7 && c.Key == "general.partner_logo_url"))
+            .Should().BeFalse();
+
+        var currentTenant = await db.Tenants.IgnoreQueryFilters().SingleAsync(t => t.Id == 42);
+        currentTenant.LogoUrl.Should().Be("/tenant/logo.svg");
+        db.FileUploads.IgnoreQueryFilters()
+            .Single(f => f.TenantId == 42 && f.EntityType == "partner_logo")
+            .ContentType.Should().Be("image/webp");
+    }
+
+    [Fact]
     public async Task UploadHeaderLogo_RejectsUnsupportedLogoMimeType()
     {
         var tenantContext = new TenantContext();

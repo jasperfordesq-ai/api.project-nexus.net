@@ -51,7 +51,7 @@ Generated from source on 2026-07-05:
 | C# service files | 182 |
 | EF entity files | 186 |
 | EF migration classes excluding designers/snapshot | 88 |
-| Static controller operations from `scripts/compare-laravel-api-parity.ps1` | 3,394 |
+| Static controller operations from `scripts/compare-laravel-api-parity.ps1` | 3,395 |
 | Static EF/migration table names from `scripts/compare-laravel-schema-parity.ps1` | 312 |
 | Static React routes from `scripts/compare-laravel-frontend-parity.ps1` | 462 |
 | Static `apps/web-uk` routes from `scripts/compare-laravel-frontend-parity.ps1` | 136 |
@@ -62,7 +62,7 @@ Generated from source on 2026-07-05:
 
 The static controller operation count needs normalization through the parity
 script and a future Swagger/OpenAPI export before being used as an API parity
-score. The current static API report found 2,247 matched operations and 182
+score. The current static API report found 2,248 matched operations and 181
 missing Laravel source operations.
 
 The static table count needs alias triage before being used as a schema parity

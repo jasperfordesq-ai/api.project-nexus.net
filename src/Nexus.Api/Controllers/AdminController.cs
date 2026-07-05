@@ -1022,6 +1022,15 @@ public class AdminController : ControllerBase
         => UploadHeaderLogoVariantAsync(logo, "logo_dark_url", updateTenantLogoUrl: false, ct);
 
     /// <summary>
+    /// Laravel parity: POST /api/v2/admin/settings/partner-logo.
+    /// Uploads the tenant partner/footer logo override.
+    /// </summary>
+    [HttpPost("settings/partner-logo")]
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public Task<IActionResult> UploadPartnerLogo([FromForm] IFormFile? logo, CancellationToken ct = default)
+        => UploadHeaderLogoVariantAsync(logo, "general.partner_logo_url", updateTenantLogoUrl: false, ct, "partner_logo");
+
+    /// <summary>
     /// Laravel parity: DELETE /api/v2/admin/settings/header-logo.
     /// Clears the tenant light header logo override.
     /// </summary>
@@ -1074,7 +1083,8 @@ public class AdminController : ControllerBase
         IFormFile? logo,
         string configKey,
         bool updateTenantLogoUrl,
-        CancellationToken ct)
+        CancellationToken ct,
+        string entityType = "tenant_logo")
     {
         var adminUserId = GetCurrentUserId();
         if (adminUserId == null) return Unauthorized(new { error = "Invalid token" });
@@ -1123,7 +1133,7 @@ public class AdminController : ControllerBase
             tenantId,
             FileCategory.TenantLogo,
             tenantId,
-            "tenant_logo");
+            entityType);
 
         if (error != null)
         {
