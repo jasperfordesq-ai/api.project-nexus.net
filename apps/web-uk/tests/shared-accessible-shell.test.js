@@ -691,6 +691,31 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Blade-style leaderboard filters, community impact, and empty state under the tenant alpha route prefix', async () => {
+    const response = await request(app).get('/acme/alpha/leaderboard?type=xp&period=week');
+
+    expect(staticPageRoutes.pages['/leaderboard']).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Leaderboard');
+    expect(response.text).toContain('See how members are contributing to the community.');
+    expect(response.text).toContain('Community impact');
+    expect(response.text).toContain('Aggregate activity across this timebank community.');
+    expect(response.text).toContain('Total members');
+    expect(response.text).toContain('Exchanges completed');
+    expect(response.text).toContain('Hours exchanged');
+    expect(response.text).toContain('Active listings');
+    expect(response.text).toContain('Connections made');
+    expect(response.text).toContain('Badges awarded');
+    expect(response.text).toContain('form method="get" action="/acme/alpha/leaderboard"');
+    expect(response.text).toContain('Filter leaderboard');
+    expect(response.text).toContain('id="type" name="type"');
+    expect(response.text).toContain('<option value="xp" selected>Experience points</option>');
+    expect(response.text).toContain('id="period" name="period"');
+    expect(response.text).toContain('<option value="week" selected>This week</option>');
+    expect(response.text).toContain('There is nothing to show here yet.');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Blade-style legal hub under the tenant alpha route prefix', async () => {
     const response = await request(app).get('/acme/alpha/legal');
 
@@ -802,7 +827,6 @@ describe('shared accessible frontend shell', () => {
       '/newsletter/unsubscribe',
       '/onboarding',
       '/matches',
-      '/leaderboard',
       '/nexus-score',
       '/activity',
       '/saved'
@@ -867,7 +891,7 @@ describe('shared accessible frontend shell', () => {
     expect(contract).toContain('buildLaravelAccessiblePath()');
     expect(contract).toContain('Do not treat Blade routes as');
     expect(routeInventory).toContain('| Laravel accessible route declarations | 608 |');
-    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 25 |');
+    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 24 |');
     expect(routeInventory).toContain('Laravel shared-domain path');
     expect(routeInventory).toContain('Laravel custom-domain path');
     expect(routeInventory).toContain('| GET | /faq | /{tenantSlug}/alpha/faq | /faq |');
@@ -884,6 +908,8 @@ describe('shared accessible frontend shell', () => {
     expect(routeInventory).toContain('| GET | /polls | /{tenantSlug}/alpha/polls | /polls | polls.index | polls | polls | candidate-route |');
     expect(routeInventory).toContain('| GET | /achievements | /{tenantSlug}/alpha/achievements | /achievements | achievements | achievements | achievements | candidate-route |');
     expect(routeInventory).toContain('| POST | /achievements/daily-reward | /{tenantSlug}/alpha/achievements/daily-reward | /achievements/daily-reward | achievements.daily-reward | dailyReward | achievements | missing |');
+    expect(routeInventory).toContain('| GET | /leaderboard | /{tenantSlug}/alpha/leaderboard | /leaderboard | leaderboard | leaderboard | leaderboard | candidate-route |');
+    expect(routeInventory).toContain('| GET | /leaderboard/competitive | /{tenantSlug}/alpha/leaderboard/competitive | /leaderboard/competitive | gamification.competitive | gamificationCompetitive | leaderboard | missing |');
     expect(routeInventory).toContain('| GET | /legal | /{tenantSlug}/alpha/legal | /legal | legal.hub | legalHub | legal | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal/community-guidelines | /{tenantSlug}/alpha/legal/community-guidelines | /legal/community-guidelines | legal.community-guidelines | legalDocument | legal | candidate-route |');
     expect(routeInventory).toContain('| POST | /report-a-problem | /{tenantSlug}/alpha/report-a-problem | /report-a-problem | report-problem.store | storeReportProblem | report-a-problem | candidate-workflow |');
@@ -899,6 +925,7 @@ describe('shared accessible frontend shell', () => {
     expect(viewInventory).toContain('| group-exchanges.blade.php | group | candidate-exact-view |');
     expect(viewInventory).toContain('| polls.blade.php | polls | candidate-exact-view |');
     expect(viewInventory).toContain('| achievements.blade.php | achievements | candidate-exact-view |');
+    expect(viewInventory).toContain('| leaderboard.blade.php | leaderboard | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-hub.blade.php | legal | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-document.blade.php | legal | candidate-exact-view |');
     expect(backendMatrix).toContain('| Family | GET routes | POST routes | Mutating routes | Tenant | Auth | CSRF | Feature/module gates |');

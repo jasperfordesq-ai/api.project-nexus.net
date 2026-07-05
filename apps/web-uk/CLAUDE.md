@@ -212,6 +212,7 @@ Follow the Laravel Blade accessible frontend for:
 - `/group-exchanges` as the Blade-style Group exchanges create link, status filter, cancelled success state, and empty state;
 - `/polls` as the Blade-style Polls filter, create form, status messages, and empty state;
 - `/achievements` as the Blade-style Achievements summary, progress, daily reward, challenge empty state, and badge empty state;
+- `/leaderboard` as the Blade-style Leaderboard community-impact grid, metric/period filter, and empty state;
 - `/faq` as the Blade-style GOV.UK accordion for common timebanking questions;
 - `/accessibility` as the Blade-style WCAG statement with summary list and feedback link;
 - `/trust-and-safety` as the Blade-style GOV.UK warning text and safety guidance page;

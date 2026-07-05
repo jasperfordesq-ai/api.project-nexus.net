@@ -9,9 +9,9 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | Metric | Count |
 | --- | ---: |
 | Laravel Blade accessible views | 289 |
-| ASP.NET Nunjucks views | 113 |
-| candidate-exact-view | 28 |
-| candidate-name-match | 6 |
+| ASP.NET Nunjucks views | 114 |
+| candidate-exact-view | 29 |
+| candidate-name-match | 5 |
 | missing-nunjucks-view | 255 |
 
 ## Family Summary
@@ -272,7 +272,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | kb-article.blade.php | kb | missing-nunjucks-view |
 | kb-index.blade.php | kb | candidate-exact-view |
 | layout.blade.php | layout | missing-nunjucks-view |
-| leaderboard.blade.php | leaderboard | candidate-name-match |
+| leaderboard.blade.php | leaderboard | candidate-exact-view |
 | legal-document.blade.php | legal | candidate-exact-view |
 | legal-hub.blade.php | legal | candidate-exact-view |
 | listing-create.blade.php | listing | missing-nunjucks-view |

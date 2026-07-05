@@ -50,7 +50,7 @@ Generated on 2026-07-05 with `npm run audit:accessible-prep`:
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
 | Laravel Blade accessible views | 289 |
-| ASP.NET static skeleton paths | 25 |
+| ASP.NET static skeleton paths | 24 |
 
 The large number of missing routes/views is expected. The purpose of this pass
 is to make those gaps visible and safe to work through later.

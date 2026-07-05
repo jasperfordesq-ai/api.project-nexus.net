@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 25 |
+| ASP.NET static skeleton paths | 24 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 43 |
+| candidate-route | 44 |
 | candidate-workflow | 8 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 29 |
+| skeleton | 28 |
 
 ## Family Summary
 
@@ -54,7 +54,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | ideation | 34 | 12 | 22 |  | 1 | 33 |
 | jobs | 38 | 21 | 17 |  | 2 | 36 |
 | kb | 2 | 2 |  | 1 |  | 1 |
-| leaderboard | 5 | 5 |  |  | 1 | 4 |
+| leaderboard | 5 | 5 |  | 1 |  | 4 |
 | legal | 6 | 6 |  | 6 |  |  |
 | listings | 19 | 8 | 11 | 19 |  |  |
 | login | 7 | 3 | 4 | 2 | 2 | 3 |
@@ -235,7 +235,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | GET | /achievements | /{tenantSlug}/alpha/achievements | /achievements | achievements | achievements | achievements | candidate-route | routes/govuk-alpha.php:200 |
 | POST | /achievements/daily-reward | /{tenantSlug}/alpha/achievements/daily-reward | /achievements/daily-reward | achievements.daily-reward | dailyReward | achievements | missing | routes/govuk-alpha.php:202 |
 | POST | /achievements/challenges/{id}/claim | /{tenantSlug}/alpha/achievements/challenges/{id}/claim | /achievements/challenges/{id}/claim | achievements.claim-challenge | claimChallengeReward | achievements | missing | routes/govuk-alpha.php:203 |
-| GET | /leaderboard | /{tenantSlug}/alpha/leaderboard | /leaderboard | leaderboard | leaderboard | leaderboard | skeleton | routes/govuk-alpha.php:204 |
+| GET | /leaderboard | /{tenantSlug}/alpha/leaderboard | /leaderboard | leaderboard | leaderboard | leaderboard | candidate-route | routes/govuk-alpha.php:204 |
 | GET | /nexus-score | /{tenantSlug}/alpha/nexus-score | /nexus-score | nexus-score | nexusScore | nexus-score | skeleton | routes/govuk-alpha.php:205 |
 | GET | /notifications | /{tenantSlug}/alpha/notifications | /notifications | notifications.index | notifications | notifications | candidate-route | routes/govuk-alpha.php:206 |
 | POST | /notifications/read-all | /{tenantSlug}/alpha/notifications/read-all | /notifications/read-all | notifications.read-all | markAllNotificationsRead | notifications | candidate-workflow-family | routes/govuk-alpha.php:207 |

@@ -680,6 +680,47 @@ app.get('/achievements', (req, res) => {
   });
 });
 
+app.get('/leaderboard', (req, res) => {
+  const leaderboardTypes = [
+    { value: 'credits_earned', label: 'Time credits earned' },
+    { value: 'credits_spent', label: 'Time credits spent' },
+    { value: 'vol_hours', label: 'Volunteer hours' },
+    { value: 'badges', label: 'Badges earned' },
+    { value: 'xp', label: 'Experience points' },
+    { value: 'connections', label: 'Connections made' },
+    { value: 'reviews', label: 'Reviews given' },
+    { value: 'posts', label: 'Posts created' },
+    { value: 'streak', label: 'Login streak' }
+  ];
+  const leaderboardPeriods = [
+    { value: 'all_time', label: 'All time' },
+    { value: 'month', label: 'This month' },
+    { value: 'week', label: 'This week' }
+  ];
+  const requestedType = typeof req.query.type === 'string' ? req.query.type : '';
+  const requestedPeriod = typeof req.query.period === 'string' ? req.query.period : '';
+  const validTypes = leaderboardTypes.map((type) => type.value);
+  const validPeriods = leaderboardPeriods.map((period) => period.value);
+
+  res.render('leaderboard', {
+    title: 'Leaderboard',
+    activeNav: 'leaderboard',
+    leaderboardType: validTypes.includes(requestedType) ? requestedType : 'credits_earned',
+    leaderboardPeriod: validPeriods.includes(requestedPeriod) ? requestedPeriod : 'all_time',
+    leaderboardTypes,
+    leaderboardPeriods,
+    leaderboardRows: [],
+    communityImpact: {
+      totalMembers: 0,
+      totalExchanges: 0,
+      totalVolunteerHours: '0.0',
+      totalListings: 0,
+      totalConnections: 0,
+      totalBadgesAwarded: 0
+    }
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

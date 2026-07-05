@@ -210,6 +210,15 @@ claim persistence, challenge reward persistence, Laravel localization
 persistence, tenant-specific content, runtime web-route behaviour, or ASP.NET
 backend compatibility.
 
+The `/leaderboard` page is a local Blade-style candidate copied from the
+Laravel Leaderboard shape. It includes the caption, lead copy, community-impact
+stat grid, metric and period filter form, tenant-prefixed form action, and
+empty state. It does not certify Laravel auth enforcement, the `gamification`
+feature gate, live leaderboard rows, score formatting, current-user marking,
+member links, community-impact service data, Laravel localization persistence,
+tenant-specific content, runtime web-route behaviour, or ASP.NET backend
+compatibility.
+
 The `/accessibility` page is a local Blade-style candidate copied from the
 Laravel accessibility statement shape. It uses the same back link, statement
 sections, WCAG 2.2 Level AA summary list, support feature sections, feedback
