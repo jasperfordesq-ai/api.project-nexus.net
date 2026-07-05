@@ -3,6 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
@@ -105,6 +107,64 @@ public sealed class CaringResearchPartnershipService
             .ToListAsync(ct);
 
         return rows.Select(row => ExportRow(row.export, row.partner)).Cast<object>().ToArray();
+    }
+
+    public async Task<object> GenerateDatasetExportAsync(
+        int tenantId,
+        long partnerId,
+        int actorId,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        CancellationToken ct)
+    {
+        var partner = await _db.CaringResearchPartners
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.Id == partnerId, ct);
+
+        if (partner is null)
+        {
+            throw new InvalidOperationException("Research partner not found.");
+        }
+
+        if (partner.Status != "active")
+        {
+            throw new InvalidOperationException("Research partner is not active.");
+        }
+
+        var dataset = await AggregateDatasetAsync(tenantId, periodStart, periodEnd, ct);
+        var datasetJson = JsonSerializer.Serialize(dataset);
+        var now = DateTime.UtcNow;
+        var export = new CaringResearchDatasetExport
+        {
+            TenantId = tenantId,
+            PartnerId = partnerId,
+            RequestedBy = actorId,
+            DatasetKey = "caring_community_aggregate_v1",
+            PeriodStart = periodStart,
+            PeriodEnd = periodEnd,
+            Status = "generated",
+            RowCount = ((IReadOnlyCollection<object>)dataset.rows).Count,
+            AnonymizationVersion = "aggregate-v1",
+            DataHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(datasetJson))).ToLowerInvariant(),
+            GeneratedAt = now,
+            Metadata = JsonSerializer.Serialize(new
+            {
+                partner_name = partner.Name,
+                methodology = "tenant-scoped aggregate metrics only; no direct identifiers, no row-level member records",
+                suppression_threshold = 5
+            }),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.CaringResearchDatasetExports.Add(export);
+        await _db.SaveChangesAsync(ct);
+
+        return new
+        {
+            export = ExportRow(export, null),
+            dataset
+        };
     }
 
     public async Task<object> RevokeDatasetExportAsync(int tenantId, long exportId, int actorId, CancellationToken ct)
@@ -247,6 +307,68 @@ public sealed class CaringResearchPartnershipService
             revoked_at = row.RevokedAt,
             notes = row.Notes
         };
+    }
+
+    private async Task<ResearchAggregateDataset> AggregateDatasetAsync(
+        int tenantId,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        CancellationToken ct)
+    {
+        var consentedUserIds = await _db.CaringResearchConsents
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(consent => consent.TenantId == tenantId
+                && consent.ConsentStatus == "opted_in"
+                && consent.ConsentedAt != null
+                && consent.RevokedAt == null)
+            .Select(consent => consent.UserId)
+            .ToListAsync(ct);
+
+        if (consentedUserIds.Count == 0)
+        {
+            return ResearchAggregateDataset.Empty(periodStart, periodEnd);
+        }
+
+        var consented = consentedUserIds.ToHashSet();
+        var logs = await _db.VolunteerLogs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(log => log.TenantId == tenantId
+                && log.Status == "approved"
+                && log.DateLogged >= periodStart
+                && log.DateLogged <= periodEnd)
+            .ToListAsync(ct);
+
+        var rows = logs
+            .Where(log => consented.Contains(log.UserId))
+            .GroupBy(log => $"{log.DateLogged.Year:D4}-{log.DateLogged.Month:D2}")
+            .OrderBy(group => group.Key)
+            .Select(group => new
+            {
+                period = group.Key,
+                metric_family = "volunteering",
+                activity_count = group.Count(),
+                participant_count = group.Select(log => log.UserId).Distinct().Count(),
+                approved_hours = decimal.Round(group.Sum(log => log.Hours), 2),
+                suppressed = false
+            })
+            .Where(row => row.participant_count >= 5)
+            .Cast<object>()
+            .ToArray();
+
+        return new ResearchAggregateDataset(
+            "caring_community_aggregate_v1",
+            new { start = periodStart, end = periodEnd },
+            new
+            {
+                version = "aggregate-v1",
+                direct_identifiers = false,
+                row_level_member_records = false,
+                suppression_threshold = 5,
+                suppressed_rows_omitted = true
+            },
+            rows);
     }
 
     private static object DecodeJsonOrEmptyArray(string? raw)
@@ -398,3 +520,26 @@ public sealed record CaringResearchPartnerCreateInput(
     object? DataScope,
     DateOnly? StartsAt,
     DateOnly? EndsAt);
+
+public sealed record ResearchAggregateDataset(
+    string dataset_key,
+    object period,
+    object anonymization,
+    IReadOnlyList<object> rows)
+{
+    public static ResearchAggregateDataset Empty(DateOnly periodStart, DateOnly periodEnd)
+    {
+        return new ResearchAggregateDataset(
+            "caring_community_aggregate_v1",
+            new { start = periodStart, end = periodEnd },
+            new
+            {
+                version = "aggregate-v1",
+                direct_identifiers = false,
+                row_level_member_records = false,
+                suppression_threshold = 5,
+                suppressed_rows_omitted = true
+            },
+            []);
+    }
+}

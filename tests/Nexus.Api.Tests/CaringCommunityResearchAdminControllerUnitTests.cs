@@ -48,6 +48,9 @@ public class CaringCommunityResearchAdminControllerUnitTests
         researchController.GetMethod("DatasetExports")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("dataset-exports");
+        researchController.GetMethod("GenerateDatasetExport")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("partners/{partnerId}/dataset-exports");
         researchController.GetMethod("RevokeDatasetExport")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("dataset-exports/{exportId}/revoke");
@@ -338,6 +341,145 @@ public class CaringCommunityResearchAdminControllerUnitTests
         export.GetProperty("metadata").GetProperty("suppression_threshold").GetInt32().Should().Be(5);
         export.GetProperty("partner_name").GetString().Should().Be("Ageing Futures Lab");
         export.GetProperty("partner_institution").GetString().Should().Be("FHNW");
+    }
+
+    [Fact]
+    public async Task GenerateDatasetExport_ForActivePartnerCreatesLaravelAggregateDataset()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Add(Entity(PartnerTypeName,
+            ("Id", 100L), ("TenantId", 42), ("Name", "Ageing Futures Lab"), ("Institution", "FHNW"),
+            ("ContactEmail", null), ("AgreementReference", null), ("MethodologyUrl", null), ("Status", "active"),
+            ("DataScope", """{"datasets":["caring_community_aggregate_v1"]}"""), ("StartsAt", null), ("EndsAt", null),
+            ("CreatedBy", 9001), ("CreatedAt", new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)), ("UpdatedAt", null)));
+        for (var userId = 1001; userId <= 1005; userId++)
+        {
+            db.CaringResearchConsents.Add(new CaringResearchConsent
+            {
+                TenantId = 42,
+                UserId = userId,
+                ConsentStatus = "opted_in",
+                ConsentVersion = "research-v1",
+                ConsentedAt = new DateTime(2026, 1, 1, 8, 0, 0, DateTimeKind.Utc),
+                CreatedAt = new DateTime(2026, 1, 1, 8, 0, 0, DateTimeKind.Utc)
+            });
+            db.VolunteerLogs.Add(new VolunteerLog
+            {
+                TenantId = 42,
+                UserId = userId,
+                DateLogged = new DateOnly(2026, 1, userId - 1000),
+                Hours = userId - 1000,
+                Status = "approved",
+                CreatedAt = new DateTime(2026, 1, userId - 1000, 8, 0, 0, DateTimeKind.Utc)
+            });
+        }
+        db.VolunteerLogs.Add(new VolunteerLog
+        {
+            TenantId = 42,
+            UserId = 2001,
+            DateLogged = new DateOnly(2026, 1, 9),
+            Hours = 8,
+            Status = "pending",
+            CreatedAt = new DateTime(2026, 1, 9, 8, 0, 0, DateTimeKind.Utc)
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateResearchController(db, tenant, userId: 9001);
+
+        var data = ReadDataObject(await Invoke(controller,
+            "GenerateDatasetExport",
+            100L,
+            new Dictionary<string, object?>
+            {
+                ["period_start"] = "2026-01-01",
+                ["period_end"] = "2026-01-31"
+            },
+            CancellationToken.None),
+            StatusCodes.Status201Created);
+
+        var export = data.GetProperty("export");
+        export.GetProperty("tenant_id").GetInt32().Should().Be(42);
+        export.GetProperty("partner_id").GetInt64().Should().Be(100);
+        export.GetProperty("requested_by").GetInt32().Should().Be(9001);
+        export.GetProperty("dataset_key").GetString().Should().Be("caring_community_aggregate_v1");
+        export.GetProperty("period_start").GetString().Should().Be("2026-01-01");
+        export.GetProperty("period_end").GetString().Should().Be("2026-01-31");
+        export.GetProperty("status").GetString().Should().Be("generated");
+        export.GetProperty("row_count").GetInt32().Should().Be(1);
+        export.GetProperty("anonymization_version").GetString().Should().Be("aggregate-v1");
+        export.GetProperty("data_hash").GetString().Should().HaveLength(64);
+        export.GetProperty("metadata").GetProperty("partner_name").GetString().Should().Be("Ageing Futures Lab");
+        export.GetProperty("metadata").GetProperty("suppression_threshold").GetInt32().Should().Be(5);
+
+        var dataset = data.GetProperty("dataset");
+        dataset.GetProperty("dataset_key").GetString().Should().Be("caring_community_aggregate_v1");
+        dataset.GetProperty("period").GetProperty("start").GetString().Should().Be("2026-01-01");
+        dataset.GetProperty("period").GetProperty("end").GetString().Should().Be("2026-01-31");
+        dataset.GetProperty("anonymization").GetProperty("suppression_threshold").GetInt32().Should().Be(5);
+        var row = dataset.GetProperty("rows")[0];
+        row.GetProperty("period").GetString().Should().Be("2026-01");
+        row.GetProperty("metric_family").GetString().Should().Be("volunteering");
+        row.GetProperty("activity_count").GetInt32().Should().Be(5);
+        row.GetProperty("participant_count").GetInt32().Should().Be(5);
+        row.GetProperty("approved_hours").GetDecimal().Should().Be(15m);
+        row.GetProperty("suppressed").GetBoolean().Should().BeFalse();
+
+        var stored = await db.CaringResearchDatasetExports.IgnoreQueryFilters().SingleAsync();
+        stored.Status.Should().Be("generated");
+        stored.RowCount.Should().Be(1);
+        stored.Metadata.Should().Contain("Ageing Futures Lab");
+    }
+
+    [Fact]
+    public async Task GenerateDatasetExport_WhenInvalidDates_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateResearchController(db, tenant, userId: 9001);
+
+        AssertSingleError(await Invoke(controller,
+                "GenerateDatasetExport",
+                100L,
+                new Dictionary<string, object?>
+                {
+                    ["period_start"] = "2026-02-01",
+                    ["period_end"] = "2026-01-01"
+                },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        db.CaringResearchDatasetExports.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GenerateDatasetExport_WhenPartnerInactive_ReturnsLaravelExportFailedError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Add(Entity(PartnerTypeName,
+            ("Id", 100L), ("TenantId", 42), ("Name", "Paused Lab"), ("Institution", "FHNW"),
+            ("ContactEmail", null), ("AgreementReference", null), ("MethodologyUrl", null), ("Status", "paused"),
+            ("DataScope", null), ("StartsAt", null), ("EndsAt", null), ("CreatedBy", 9001),
+            ("CreatedAt", new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)), ("UpdatedAt", null)));
+        await db.SaveChangesAsync();
+        var controller = CreateResearchController(db, tenant, userId: 9001);
+
+        AssertSingleError(await Invoke(controller,
+                "GenerateDatasetExport",
+                100L,
+                new Dictionary<string, object?>
+                {
+                    ["period_start"] = "2026-01-01",
+                    ["period_end"] = "2026-01-31"
+                },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "RESEARCH_EXPORT_FAILED");
     }
 
     [Fact]

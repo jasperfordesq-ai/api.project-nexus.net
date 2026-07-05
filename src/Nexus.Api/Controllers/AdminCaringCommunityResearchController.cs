@@ -130,6 +130,45 @@ public sealed class AdminCaringCommunityResearchController : ControllerBase
         return Ok(new { data = new { exports } });
     }
 
+    [HttpPost("partners/{partnerId}/dataset-exports")]
+    public async Task<IActionResult> GenerateDatasetExport(long partnerId, [FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var guard = await GuardResearchAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        if (request is null
+            || !TryDateOnly(request, "period_start", out var periodStart)
+            || !TryDateOnly(request, "period_end", out var periodEnd)
+            || periodStart is null
+            || periodEnd is null
+            || periodEnd.Value < periodStart.Value)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed."));
+        }
+
+        try
+        {
+            var result = await _research.GenerateDatasetExportAsync(
+                _tenant.GetTenantIdOrThrow(),
+                partnerId,
+                CurrentUserId(),
+                periodStart.Value,
+                periodEnd.Value,
+                ct);
+
+            return StatusCode(StatusCodes.Status201Created, new { data = result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("RESEARCH_EXPORT_FAILED", ex.Message));
+        }
+    }
+
     [HttpPost("dataset-exports/{exportId}/revoke")]
     public async Task<IActionResult> RevokeDatasetExport(long exportId, CancellationToken ct)
     {
