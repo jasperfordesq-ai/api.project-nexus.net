@@ -77,11 +77,13 @@ accessible organisations directory. It includes the caption, subnavigation,
 search form, empty state, status banners, registration copy, registration form,
 terms, and pending notice. Its directory list is backed by the Laravel
 `/api/v2/volunteering/organisations` collection using `search` and `per_page`
-parameters. Its detail page is backed by
+parameters. Its `/organisations/browse` page is also backed by that collection,
+using `search`, `per_page`, and cursor-style load-more pagination. Its detail
+page is backed by
 `/api/v2/volunteering/organisations/{id}?include=public_contract` for profile,
 contact, and basic public stats. This remains partial: auth enforcement,
 volunteering feature gates, tenant-prefixed routes, organisation registration
-persistence, browse/register/manage/jobs/apply workflows, detail depth
+persistence, register/manage/jobs/apply workflows, detail depth
 opportunities/reviews, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 

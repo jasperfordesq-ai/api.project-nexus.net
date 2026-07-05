@@ -169,6 +169,51 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('There are no organisations listed yet.');
   });
 
+  it('renders the Blade-style paginated organisations browse page from Laravel data', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteerOrganisations.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          name: 'Community Club',
+          description: 'A volunteer organisation supporting local residents with practical help and events.',
+          website: 'https://example.test',
+          public_contract: {
+            stats: {
+              opportunity_count: 2,
+              volunteer_count: 5,
+              total_hours: 17.5,
+              average_rating: 4.5
+            }
+          }
+        }
+      ],
+      meta: { cursor: 'next-cursor', per_page: 20, has_more: true }
+    });
+
+    const response = await request(app).get('/organisations/browse?q=club&cursor=abc');
+
+    expect(api.getVolunteerOrganisations).toHaveBeenCalledWith({ search: 'club', per_page: 20, cursor: 'abc' });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Organisations in Project NEXUS Accessible');
+    expect(response.text).toContain('Browse organisations');
+    expect(response.text).toContain('Find volunteer organisations in your community and the opportunities they offer.');
+    expect(response.text).toContain('href="/organisations/register"');
+    expect(response.text).toContain('Register an organisation');
+    expect(response.text).toContain('action="/organisations/browse"');
+    expect(response.text).toContain('Search organisations');
+    expect(response.text).toContain('value="club"');
+    expect(response.text).toContain('1 organisation');
+    expect(response.text).toContain('href="/organisations/42"');
+    expect(response.text).toContain('Community Club');
+    expect(response.text).toContain('2 opportunities');
+    expect(response.text).toContain('5 volunteers');
+    expect(response.text).toContain('17.5 hours logged');
+    expect(response.text).toContain('Has a website');
+    expect(response.text).toContain('href="/organisations/browse?q=club&amp;cursor=next-cursor"');
+    expect(response.text).toContain('Load more organisations');
+  });
+
   it('renders the Blade-style organisation detail page from the Laravel public organisation contract', async () => {
     const api = require('../src/lib/api');
     api.getVolunteerOrganisation.mockResolvedValueOnce({
@@ -245,7 +290,7 @@ describe('shared accessible frontend shell', () => {
     const contract = fs.readFileSync(path.join(__dirname, '..', 'docs', 'BACKEND_SWITCHING_CONTRACT.md'), 'utf8');
 
     expect(matrix).toContain('Laravel `govuk-alpha*`');
-    expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/{id}` | `/organisations`, `/organisations/:id` | Partial Laravel-backed candidate: directory/search renders `/api/v2/volunteering/organisations`; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`; registration/auth/tenant gates not certified. |');
+    expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/browse`, `/organisations/{id}` | `/organisations`, `/organisations/browse`, `/organisations/:id` | Partial Laravel-backed candidate: directory/search and browse render `/api/v2/volunteering/organisations`; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`; registration/auth/tenant gates not certified. |');
     expect(matrix).toContain('It does not certify route parity');
     expect(contract).toContain('Its default backend contract is now Laravel-first');
     expect(contract).toContain('| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |');
