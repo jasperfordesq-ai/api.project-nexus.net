@@ -9,10 +9,10 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | Metric | Count |
 | --- | ---: |
 | Laravel Blade accessible views | 289 |
-| ASP.NET Nunjucks views | 116 |
-| candidate-exact-view | 31 |
+| ASP.NET Nunjucks views | 117 |
+| candidate-exact-view | 32 |
 | candidate-name-match | 5 |
-| missing-nunjucks-view | 253 |
+| missing-nunjucks-view | 252 |
 
 ## Family Summary
 
@@ -87,7 +87,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | reset | 1 | 1 |  |
 | resources | 5 |  | 5 |
 | reviews | 1 |  | 1 |
-| saved | 5 |  | 5 |
+| saved | 5 | 1 | 4 |
 | search | 3 |  | 3 |
 | settings | 5 |  | 5 |
 | skills | 1 | 1 |  |
@@ -353,7 +353,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | saved-collection-detail.blade.php | saved | missing-nunjucks-view |
 | saved-collections.blade.php | saved | missing-nunjucks-view |
 | saved-public-collections.blade.php | saved | missing-nunjucks-view |
-| saved.blade.php | saved | missing-nunjucks-view |
+| saved.blade.php | saved | candidate-exact-view |
 | search-advanced.blade.php | search | missing-nunjucks-view |
 | search-saved-delete.blade.php | search | missing-nunjucks-view |
 | search.blade.php | search | missing-nunjucks-view |

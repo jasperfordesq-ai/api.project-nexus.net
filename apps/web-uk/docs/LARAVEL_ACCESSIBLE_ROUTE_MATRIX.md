@@ -71,6 +71,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Leaderboard | `/leaderboard` | `/leaderboard` | Local Blade-style community-impact/filter/empty-state candidate; auth enforcement, gamification feature gate, live rows, score formatting, member links, and backend runtime are not certified. |
 | NEXUS score | `/nexus-score` | `/nexus-score` | Local Blade-style related-link/unavailable-state candidate; auth enforcement, gamification feature gate, live score, tier, breakdown, insights, and backend runtime are not certified. |
 | Activity | `/activity` | `/activity` | Local Blade-style summary/stat-grid/empty-timeline candidate; auth enforcement, live MemberActivityService data, engagement/skills/monthly/timeline data, activity insights, and backend runtime are not certified. |
+| Saved items | `/saved` | `/saved` | Local Blade-style saved-items filter/empty-state candidate; auth enforcement, live BookmarkService data, removal workflow, collections, appreciations, and backend runtime are not certified. |
 | Search | `/search` | `/search` | Implemented route; backend contract not certified. |
 | Groups | `/groups` | `/groups` | Implemented route; backend contract not certified. |
 | Goals | `/goals` | `/goals` | Preparation skeleton. |
@@ -106,6 +107,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Leaderboard | `/leaderboard`, `/leaderboard/competitive`, `/leaderboard/seasons`, `/leaderboard/journey`, `/leaderboard/spotlight` | Local Blade-style community-impact/filter/empty-state candidate for `/leaderboard` only. Auth enforcement, `gamification` feature gate, live leaderboard rows, score formatting, current-user marking, member links, community-impact service data, localization, and runtime certification are not complete. |
 | NEXUS score | `/nexus-score`, `/nexus-score/tiers` | Local Blade-style related-link/unavailable-state candidate for `/nexus-score` only. Auth enforcement, `gamification` feature gate, live NexusScoreCacheService data, tier ladder, score panel, category breakdowns, insights, localization, and runtime certification are not complete. |
 | Activity | `/activity`, `/activity/insights` | Local Blade-style summary/stat-grid/empty-timeline candidate for `/activity` only. Auth enforcement, MemberActivityService data, engagement/skills/monthly/timeline data, insights page, localization, and runtime certification are not complete. |
+| Saved items and collections | `/saved`, `/saved/destroy`, `/me/collections`, `/users/{userId}/collections`, `/users/{userId}/appreciations` | Local Blade-style saved-items filter/empty-state candidate for `/saved` only. Auth enforcement, BookmarkService data, bookmark removal, saved collections, public collections, appreciation wall, localization, and runtime certification are not complete. |
 | Help centre | `/help` | Local Blade-style search/empty-state candidate with tenant-prefixed contact CTA. Live FAQ group loading, search filtering, localization persistence, and runtime route certification are not complete. |
 | Knowledge base | `/kb`, `/kb/{id}` | Local Blade-style index search/empty-state candidate for `/kb` only. Live article data, pagination, `/kb/{id}` article detail, localization persistence, and runtime route certification are not complete. |
 | Blog | `/blog`, `/blog/feed.xml`, `/blog/{slug}`, comments/likes | Local Blade-style index search/empty-state candidate for `/blog` only. Blog feature gate, live posts/categories, cursor pagination, RSS feed, post detail, comments/likes, localization, and runtime certification are not complete. |
@@ -119,7 +121,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Feed typed engagement | likes, comments, reactions, share, save, hide, report | Partial route equivalents only. |
 | Marketplace/commerce | marketplace, seller, orders, coupons, courses, podcasts | Mostly skeleton links only. |
 | Federation | members, listings, events, groups, messages, transfers | Skeleton landing only. |
-| Resources/search/saved/settings | full parity route families | Partial or missing. |
+| Resources/search/settings | full parity route families | Partial or missing. |
 
 ## Next Certification Work
 

@@ -748,6 +748,29 @@ app.get('/activity', (req, res) => {
   });
 });
 
+app.get('/saved', (req, res) => {
+  const savedTypeOptions = [
+    { value: 'post', label: 'Post' },
+    { value: 'listing', label: 'Listing' },
+    { value: 'event', label: 'Event' },
+    { value: 'job', label: 'Opportunity' },
+    { value: 'blog', label: 'Blog post' },
+    { value: 'discussion', label: 'Discussion' }
+  ];
+  const requestedType = typeof req.query.type === 'string' ? req.query.type : '';
+  const validTypes = savedTypeOptions.map((type) => type.value);
+  const savedTypeFilter = validTypes.includes(requestedType) ? requestedType : '';
+
+  res.render('saved', {
+    title: 'Saved items',
+    activeNav: 'saved',
+    savedTypeFilter,
+    savedTypeOptions,
+    savedItems: [],
+    savedHref: prefixedLocalPath(req, '/saved')
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

@@ -215,6 +215,7 @@ Follow the Laravel Blade accessible frontend for:
 - `/leaderboard` as the Blade-style Leaderboard community-impact grid, metric/period filter, and empty state;
 - `/nexus-score` as the Blade-style NEXUS score related tiers link and unavailable-score empty state;
 - `/activity` as the Blade-style Activity stat grid, insights link, optional summary sections, and recent activity empty state;
+- `/saved` as the Blade-style Saved items type filter, list shape, removal form shape, and empty state;
 - `/faq` as the Blade-style GOV.UK accordion for common timebanking questions;
 - `/accessibility` as the Blade-style WCAG statement with summary list and feedback link;
 - `/trust-and-safety` as the Blade-style GOV.UK warning text and safety guidance page;

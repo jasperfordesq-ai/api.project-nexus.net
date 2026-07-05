@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 22 |
+| ASP.NET static skeleton paths | 21 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 46 |
+| candidate-route | 47 |
 | candidate-workflow | 8 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 26 |
+| skeleton | 25 |
 
 ## Family Summary
 
@@ -78,7 +78,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | report-a-problem | 2 | 1 | 1 | 2 |  |  |
 | resources | 12 | 6 | 6 |  | 1 | 11 |
 | reviews | 7 | 3 | 4 | 7 |  |  |
-| saved | 2 | 1 | 1 |  | 1 | 1 |
+| saved | 2 | 1 | 1 | 1 |  | 1 |
 | search | 6 | 3 | 3 | 6 |  |  |
 | settings | 13 | 5 | 8 | 13 |  |  |
 | skills | 1 | 1 |  | 1 |  |  |
@@ -284,7 +284,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | GET | /organisations | /{tenantSlug}/alpha/organisations | /organisations | organisations.index | organisations | organisations | skeleton | routes/govuk-alpha.php:259 |
 | POST | /organisations | /{tenantSlug}/alpha/organisations | /organisations | organisations.store | storeOrganisation | organisations | skeleton | routes/govuk-alpha.php:260 |
 | GET | /organisations/{id} | /{tenantSlug}/alpha/organisations/{id} | /organisations/{id} | organisations.show | organisation | organisations | missing | routes/govuk-alpha.php:261 |
-| GET | /saved | /{tenantSlug}/alpha/saved | /saved | saved.index | saved | saved | skeleton | routes/govuk-alpha.php:262 |
+| GET | /saved | /{tenantSlug}/alpha/saved | /saved | saved.index | saved | saved | candidate-route | routes/govuk-alpha.php:262 |
 | POST | /saved/destroy | /{tenantSlug}/alpha/saved/destroy | /saved/destroy | saved.destroy | destroySaved | saved | missing | routes/govuk-alpha.php:263 |
 | GET | /resources | /{tenantSlug}/alpha/resources | /resources | resources.index | resources | resources | skeleton | routes/govuk-alpha.php:264 |
 | GET | /jobs | /{tenantSlug}/alpha/jobs | /jobs | jobs.index | jobs | jobs | skeleton | routes/govuk-alpha.php:265 |
