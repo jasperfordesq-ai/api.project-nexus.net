@@ -730,6 +730,24 @@ app.get('/nexus-score', (req, res) => {
   });
 });
 
+app.get('/activity', (req, res) => {
+  res.render('activity', {
+    title: 'My activity',
+    activeNav: 'activity',
+    insightsHref: prefixedLocalPath(req, '/activity/insights'),
+    activitySummary: {
+      hoursGiven: '0.0',
+      hoursReceived: '0.0',
+      connections: 0,
+      groupsJoined: 0
+    },
+    engagement: null,
+    skills: [],
+    monthlyHours: [],
+    timeline: []
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

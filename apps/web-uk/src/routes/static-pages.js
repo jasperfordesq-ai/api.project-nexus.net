@@ -24,10 +24,6 @@ const pages = {
     title: 'Matches',
     body: 'Match pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
   },
-  '/activity': {
-    title: 'Activity',
-    body: 'Activity pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
   '/saved': {
     title: 'Saved',
     body: 'Saved items and collections must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'

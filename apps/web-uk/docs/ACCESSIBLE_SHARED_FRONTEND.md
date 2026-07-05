@@ -227,6 +227,15 @@ resolution, score panel rendering, category breakdowns, improvement insights,
 Laravel localization persistence, tenant-specific content, runtime web-route
 behaviour, or ASP.NET backend compatibility.
 
+The `/activity` page is a local Blade-style candidate copied from the Laravel
+Activity shape. It includes the caption, lead copy, related activity insights
+link, hours/connections/groups stat grid, optional engagement/skills/monthly
+sections, and recent-activity empty state. It does not certify Laravel auth
+enforcement, live `MemberActivityService` data, engagement/skills/monthly
+timeline data, `/activity/insights`, Laravel localization persistence,
+tenant-specific content, runtime web-route behaviour, or ASP.NET backend
+compatibility.
+
 The `/accessibility` page is a local Blade-style candidate copied from the
 Laravel accessibility statement shape. It uses the same back link, statement
 sections, WCAG 2.2 Level AA summary list, support feature sections, feedback

@@ -9,10 +9,10 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | Metric | Count |
 | --- | ---: |
 | Laravel Blade accessible views | 289 |
-| ASP.NET Nunjucks views | 115 |
-| candidate-exact-view | 30 |
+| ASP.NET Nunjucks views | 116 |
+| candidate-exact-view | 31 |
 | candidate-name-match | 5 |
-| missing-nunjucks-view | 254 |
+| missing-nunjucks-view | 253 |
 
 ## Family Summary
 
@@ -22,7 +22,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | accessibility | 1 | 1 |  |
 | account | 1 | 1 |  |
 | achievements | 1 | 1 |  |
-| activity | 2 |  | 2 |
+| activity | 2 | 1 | 1 |
 | ai | 1 |  | 1 |
 | blocked | 1 |  | 1 |
 | blog | 2 | 1 | 1 |
@@ -107,7 +107,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | account.blade.php | account | candidate-exact-view |
 | achievements.blade.php | achievements | candidate-exact-view |
 | activity-insights.blade.php | activity | missing-nunjucks-view |
-| activity.blade.php | activity | missing-nunjucks-view |
+| activity.blade.php | activity | candidate-exact-view |
 | ai-chat.blade.php | ai | missing-nunjucks-view |
 | blocked-users.blade.php | blocked | missing-nunjucks-view |
 | blog-index.blade.php | blog | candidate-exact-view |

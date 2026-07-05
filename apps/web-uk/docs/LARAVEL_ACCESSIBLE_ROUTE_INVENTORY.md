@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 23 |
+| ASP.NET static skeleton paths | 22 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 45 |
+| candidate-route | 46 |
 | candidate-workflow | 8 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 27 |
+| skeleton | 26 |
 
 ## Family Summary
 
@@ -26,7 +26,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | accessibility | 1 | 1 |  | 1 |  |  |
 | account | 1 | 1 |  | 1 |  |  |
 | achievements | 10 | 6 | 4 | 1 |  | 9 |
-| activity | 2 | 2 |  |  | 1 | 1 |
+| activity | 2 | 2 |  | 1 |  | 1 |
 | appreciations | 1 |  | 1 |  |  | 1 |
 | blog | 12 | 5 | 7 | 1 |  | 11 |
 | chat | 2 | 1 | 1 |  | 2 |  |
@@ -243,7 +243,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | POST | /notifications/{id}/read | /{tenantSlug}/alpha/notifications/{id}/read | /notifications/{id}/read | notifications.mark-read | markNotificationRead | notifications | candidate-workflow-family | routes/govuk-alpha.php:209 |
 | POST | /notifications/delete-all | /{tenantSlug}/alpha/notifications/delete-all | /notifications/delete-all | notifications.delete-all | deleteAllNotifications | notifications | candidate-workflow-family | routes/govuk-alpha.php:210 |
 | POST | /notifications/group/read | /{tenantSlug}/alpha/notifications/group/read | /notifications/group/read | notifications.group-read | markGroupNotificationsRead | notifications | candidate-workflow-family | routes/govuk-alpha.php:211 |
-| GET | /activity | /{tenantSlug}/alpha/activity | /activity | activity | activity | activity | skeleton | routes/govuk-alpha.php:212 |
+| GET | /activity | /{tenantSlug}/alpha/activity | /activity | activity | activity | activity | candidate-route | routes/govuk-alpha.php:212 |
 | GET | /reviews | /{tenantSlug}/alpha/reviews | /reviews | reviews.index | reviews | reviews | candidate-route | routes/govuk-alpha.php:213 |
 | POST | /reviews | /{tenantSlug}/alpha/reviews | /reviews | reviews.store | storeReview | reviews | candidate-workflow | routes/govuk-alpha.php:214 |
 | GET | /explore | /{tenantSlug}/alpha/explore | /explore | explore | explore | explore | candidate-route | routes/govuk-alpha.php:215 |

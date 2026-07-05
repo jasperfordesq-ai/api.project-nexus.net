@@ -165,6 +165,7 @@ lookup or backend workflow certification.
 | `GET /achievements` | Local Blade-style achievements summary/daily-reward/challenge/badge candidate; auth enforcement, gamification gate, live XP/badge data, reward claims, and backend workflows are not certified |
 | `GET /leaderboard` | Local Blade-style leaderboard filter/community-impact/empty-state candidate; auth enforcement, gamification gate, live ranking rows, score formatting, and backend workflows are not certified |
 | `GET /nexus-score` | Local Blade-style NEXUS score unavailable-state candidate; auth enforcement, gamification gate, live score, tier, breakdown, insights, and backend workflows are not certified |
+| `GET /activity` | Local Blade-style activity summary/stat-grid/empty-timeline candidate; auth enforcement, live MemberActivityService data, insights, and backend workflows are not certified |
 | `GET /accessibility` | Local Blade-style accessibility statement candidate; localization/runtime backend behaviour is not certified |
 | `GET /trust-and-safety` | Local Blade-style trust and safety candidate; localization/runtime backend behaviour is not certified |
 | `GET /legal` | Local Blade-style legal hub candidate; tenant-managed document data is not certified |
