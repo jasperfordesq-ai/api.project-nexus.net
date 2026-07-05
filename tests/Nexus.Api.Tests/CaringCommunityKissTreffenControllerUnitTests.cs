@@ -24,6 +24,7 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
     private const string ServiceTypeName = "Nexus.Api.Services.KissTreffenService, Nexus.Api";
     private const string EntityTypeName = "Nexus.Api.Entities.CaringKissTreffen, Nexus.Api";
     private const string MinutesRequestTypeName = "Nexus.Api.Controllers.KissTreffenMinutesRequest, Nexus.Api";
+    private const string UpsertRequestTypeName = "Nexus.Api.Controllers.KissTreffenUpsertRequest, Nexus.Api";
 
     [Fact]
     public void Actions_ExposeLaravelKissTreffenReadRoutes()
@@ -39,7 +40,7 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
     }
 
     [Fact]
-    public void Actions_ExposeLaravelAdminMinutesRoute()
+    public void Actions_ExposeLaravelAdminMutationRoutes()
     {
         var controller = Resolve(AdminControllerTypeName);
 
@@ -47,8 +48,12 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
             .Should().Be("api/admin/caring-community/kiss-treffen");
         controller.GetCustomAttribute<AuthorizeAttribute>()?.Policy
             .Should().Be("AdminOnly");
-        controller.GetMethod("RecordMinutes")
-            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{eventId:int}/minutes");
+        var upsert = controller.GetMethod("Upsert");
+        upsert.Should().NotBeNull();
+        upsert!.GetCustomAttribute<HttpPutAttribute>()?.Template.Should().Be("{eventId:int}");
+        var recordMinutes = controller.GetMethod("RecordMinutes");
+        recordMinutes.Should().NotBeNull();
+        recordMinutes!.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{eventId:int}/minutes");
     }
 
     [Fact]
@@ -132,6 +137,125 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(forbidden.Value));
         document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
             .Should().Be("FEATURE_DISABLED");
+    }
+
+    [Fact]
+    public async Task Upsert_CreatesTenantTreffenForExistingEventAndReturnsLaravelData()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedEvents(db);
+        db.EventRsvps.AddRange(
+            Rsvp(42, 10, 20, "going"),
+            Rsvp(42, 10, 21, "attended"));
+        await db.SaveChangesAsync();
+        var controller = CreateAdminController(db, tenant, userId: 9001);
+
+        var result = await Invoke(controller, "Upsert", 10, UpsertRequest(
+            "governance_circle",
+            false,
+            2,
+            " Fondation KISS Basel ",
+            " https://cdn.example.test/kiss/minutes.pdf ",
+            " quorum plan "), CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("event_id").GetInt32().Should().Be(10);
+        data.GetProperty("treffen_type").GetString().Should().Be("governance_circle");
+        data.GetProperty("members_only").GetBoolean().Should().BeFalse();
+        data.GetProperty("fondation_header").GetString().Should().Be("Fondation KISS Basel");
+        data.GetProperty("minutes_document_url").GetString().Should().Be("https://cdn.example.test/kiss/minutes.pdf");
+        data.GetProperty("coordinator_notes").GetString().Should().Be("quorum plan");
+        data.GetProperty("event").GetProperty("title").GetString().Should().Be("Monthly KISS circle");
+        data.GetProperty("quorum").GetProperty("required").GetInt32().Should().Be(2);
+        data.GetProperty("quorum").GetProperty("current").GetInt32().Should().Be(2);
+        data.GetProperty("quorum").GetProperty("met").GetBoolean().Should().BeTrue();
+
+        var saved = await db.CaringKissTreffen.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.EventId == 10);
+        saved.TreffenType.Should().Be("governance_circle");
+        saved.MembersOnly.Should().BeFalse();
+        saved.QuorumRequired.Should().Be(2);
+        saved.FondationHeader.Should().Be("Fondation KISS Basel");
+        saved.MinutesDocumentUrl.Should().Be("https://cdn.example.test/kiss/minutes.pdf");
+        saved.CoordinatorNotes.Should().Be("quorum plan");
+    }
+
+    [Fact]
+    public async Task Upsert_UpdatesExistingTreffenDefaultsMembersOnlyAndRequiresTenantEvent()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedEvents(db);
+        db.Add(Treffen(42, id: 100, eventId: 10, type: "monthly_stamm", quorumRequired: 4, membersOnly: false));
+        db.Add(Treffen(7, id: 900, eventId: 70, type: "monthly_stamm", quorumRequired: 1, membersOnly: true));
+        await db.SaveChangesAsync();
+        var controller = CreateAdminController(db, tenant, userId: 9001);
+
+        var result = await Invoke(controller, "Upsert", 10, UpsertRequest(
+            "cooperative_workshop",
+            null,
+            null,
+            "",
+            "",
+            ""), CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("treffen_type").GetString().Should().Be("cooperative_workshop");
+        data.GetProperty("members_only").GetBoolean().Should().BeTrue();
+        data.GetProperty("quorum").GetProperty("required").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("fondation_header").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("minutes_document_url").ValueKind.Should().Be(JsonValueKind.Null);
+
+        AssertSingleError(
+            await Invoke(controller, "Upsert", 70, UpsertRequest("monthly_stamm", true, 1, null, null, null), CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "KISS_TREFFEN_FAILED");
+
+        var otherTenant = await db.CaringKissTreffen.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 7 && row.EventId == 70);
+        otherTenant.TreffenType.Should().Be("monthly_stamm");
+    }
+
+    [Fact]
+    public async Task Upsert_ValidatesTreffenTypeQuorumAndFeatureFlagWithLaravelErrors()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedEvents(db);
+        await db.SaveChangesAsync();
+        var controller = CreateAdminController(db, tenant, userId: 9001);
+
+        AssertSingleError(
+            await Invoke(controller, "Upsert", 10, UpsertRequest("invalid_type", true, 1, null, null, null), CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        AssertSingleError(
+            await Invoke(controller, "Upsert", 10, UpsertRequest("monthly_stamm", true, -1, null, null, null), CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        var disabledTenant = CreateTenantContext(70);
+        await using var disabledDb = CreateDbContext(disabledTenant);
+        SeedFeature(disabledDb, 70, enabled: false);
+        await disabledDb.SaveChangesAsync();
+        var disabled = CreateAdminController(disabledDb, disabledTenant, userId: 9001);
+
+        AssertSingleError(
+            await Invoke(disabled, "Upsert", 10, UpsertRequest("monthly_stamm", true, 1, null, null, null), CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
     }
 
     [Fact]
@@ -355,6 +479,24 @@ public sealed class CaringCommunityKissTreffenControllerUnitTests
     private static object MinutesRequest(string? minutesDocumentUrl, string? coordinatorNotes)
     {
         var request = Activator.CreateInstance(Resolve(MinutesRequestTypeName))!;
+        Set(request, "MinutesDocumentUrl", minutesDocumentUrl);
+        Set(request, "CoordinatorNotes", coordinatorNotes);
+        return request;
+    }
+
+    private static object UpsertRequest(
+        string? treffenType,
+        bool? membersOnly,
+        int? quorumRequired,
+        string? fondationHeader,
+        string? minutesDocumentUrl,
+        string? coordinatorNotes)
+    {
+        var request = Activator.CreateInstance(Resolve(UpsertRequestTypeName))!;
+        Set(request, "TreffenType", treffenType);
+        Set(request, "MembersOnly", membersOnly);
+        Set(request, "QuorumRequired", quorumRequired);
+        Set(request, "FondationHeader", fondationHeader);
         Set(request, "MinutesDocumentUrl", minutesDocumentUrl);
         Set(request, "CoordinatorNotes", coordinatorNotes);
         return request;

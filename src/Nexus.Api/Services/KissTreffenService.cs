@@ -13,6 +13,14 @@ namespace Nexus.Api.Services;
 public sealed class KissTreffenService
 {
     private static readonly string[] QuorumStatuses = ["going", "attended"];
+    private static readonly HashSet<string> TreffenTypes = new(StringComparer.Ordinal)
+    {
+        "monthly_stamm",
+        "annual_general_assembly",
+        "governance_circle",
+        "cooperative_workshop",
+        "other"
+    };
 
     private readonly NexusDbContext _db;
 
@@ -101,6 +109,72 @@ public sealed class KissTreffenService
         var users = await LoadUsersAsync(tenantId, [eventRow.CreatedById], ct);
         var quorum = await LoadQuorumCountsAsync(tenantId, [eventId], ct);
         return Map(row, eventRow, users, quorum);
+    }
+
+    public async Task<KissTreffenRow> UpsertAsync(
+        int tenantId,
+        int eventId,
+        string? treffenType,
+        bool? membersOnly,
+        int? quorumRequired,
+        string? fondationHeader,
+        string? minutesDocumentUrl,
+        string? coordinatorNotes,
+        CancellationToken ct)
+    {
+        var eventExists = await _db.Events
+            .IgnoreQueryFilters()
+            .AnyAsync(item => item.TenantId == tenantId && item.Id == eventId, ct);
+
+        if (!eventExists)
+        {
+            throw new InvalidOperationException("Event not found.");
+        }
+
+        var type = string.IsNullOrEmpty(treffenType) ? "monthly_stamm" : treffenType;
+        if (!TreffenTypes.Contains(type))
+        {
+            throw new ArgumentException("Invalid Caring Community Treffen type.", nameof(treffenType));
+        }
+
+        if (quorumRequired is < 0)
+        {
+            throw new ArgumentException("Invalid integer field: quorum_required.", nameof(quorumRequired));
+        }
+
+        var row = await _db.CaringKissTreffen
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item => item.TenantId == tenantId && item.EventId == eventId, ct);
+
+        var now = DateTime.UtcNow;
+        if (row is null)
+        {
+            row = new CaringKissTreffen
+            {
+                TenantId = tenantId,
+                EventId = eventId,
+                CreatedAt = now
+            };
+            _db.CaringKissTreffen.Add(row);
+        }
+
+        row.TreffenType = type;
+        row.MembersOnly = membersOnly ?? true;
+        row.QuorumRequired = quorumRequired;
+        row.FondationHeader = OptionalString(fondationHeader, 255);
+        row.MinutesDocumentUrl = OptionalString(minutesDocumentUrl, 512);
+        row.CoordinatorNotes = OptionalString(coordinatorNotes, 2000);
+        row.UpdatedAt = now;
+
+        await _db.SaveChangesAsync(ct);
+
+        var mapped = await GetByEventIdAsync(tenantId, eventId, ct);
+        if (mapped is null)
+        {
+            throw new InvalidOperationException("Caring Community Treffen meeting record not found.");
+        }
+
+        return mapped;
     }
 
     public async Task<KissTreffenRow?> RecordMinutesAsync(

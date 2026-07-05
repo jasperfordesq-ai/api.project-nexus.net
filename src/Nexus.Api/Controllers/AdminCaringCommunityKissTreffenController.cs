@@ -28,6 +28,50 @@ public sealed class AdminCaringCommunityKissTreffenController : ControllerBase
         _tenant = tenant;
     }
 
+    [HttpPut("{eventId:int}")]
+    public async Task<IActionResult> Upsert(
+        int eventId,
+        [FromBody] KissTreffenUpsertRequest? request,
+        CancellationToken ct = default)
+    {
+        if (User.GetUserId() is null)
+        {
+            return Unauthorized(LaravelError("AUTH_REQUIRED", "Authentication required."));
+        }
+
+        var guard = await GuardAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        try
+        {
+            var data = await _treffen.UpsertAsync(
+                _tenant.GetTenantIdOrThrow(),
+                eventId,
+                request?.TreffenType,
+                request?.MembersOnly,
+                request?.QuorumRequired,
+                request?.FondationHeader,
+                request?.MinutesDocumentUrl,
+                request?.CoordinatorNotes,
+                ct);
+
+            return Ok(new { data });
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("KISS_TREFFEN_FAILED", ex.Message));
+        }
+    }
+
     [HttpPost("{eventId:int}/minutes")]
     public async Task<IActionResult> RecordMinutes(
         int eventId,
@@ -102,6 +146,16 @@ public sealed class AdminCaringCommunityKissTreffenController : ControllerBase
 
 public sealed class KissTreffenMinutesRequest
 {
+    [JsonPropertyName("minutes_document_url")] public string? MinutesDocumentUrl { get; set; }
+    [JsonPropertyName("coordinator_notes")] public string? CoordinatorNotes { get; set; }
+}
+
+public sealed class KissTreffenUpsertRequest
+{
+    [JsonPropertyName("treffen_type")] public string? TreffenType { get; set; }
+    [JsonPropertyName("members_only")] public bool? MembersOnly { get; set; }
+    [JsonPropertyName("quorum_required")] public int? QuorumRequired { get; set; }
+    [JsonPropertyName("fondation_header")] public string? FondationHeader { get; set; }
     [JsonPropertyName("minutes_document_url")] public string? MinutesDocumentUrl { get; set; }
     [JsonPropertyName("coordinator_notes")] public string? CoordinatorNotes { get; set; }
 }
