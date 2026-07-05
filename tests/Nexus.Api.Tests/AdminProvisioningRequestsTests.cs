@@ -31,6 +31,24 @@ public class AdminProvisioningRequestsTests : IntegrationTestBase
         notes = "Pilot tenant"
     };
 
+    private static object LaravelPublicBody(string slug = "pilot-coop") => new
+    {
+        applicant_name = "Alice Applicant",
+        applicant_email = "alice@example.test",
+        applicant_phone = "+41 44 555 0100",
+        org_name = "Pilot Cooperative",
+        country_code = "CH",
+        region_or_canton = "ZH",
+        requested_slug = slug,
+        requested_subdomain = slug,
+        tenant_category = "caring_community",
+        languages = new[] { "en", "de" },
+        default_language = "en",
+        expected_member_count_bucket = "50_250",
+        intended_use = "Community support pilot",
+        captcha_token = "3+4=7"
+    };
+
     [Theory]
     [InlineData("anonymous", (int)HttpStatusCode.Unauthorized)]
     [InlineData("member", (int)HttpStatusCode.Forbidden)]
@@ -76,6 +94,103 @@ public class AdminProvisioningRequestsTests : IntegrationTestBase
         resp.StatusCode.Should().Be(HttpStatusCode.Accepted);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetString().Should().Be("pending");
+    }
+
+    [Fact]
+    public async Task LaravelPublicProvisioning_SubmitCheckSlugAndStatusUseV2Contract()
+    {
+        ClearAuthToken();
+
+        var available = await Client.GetAsync("/api/v2/provisioning-requests/check-slug/pilot-coop");
+        available.StatusCode.Should().Be(HttpStatusCode.OK);
+        var availableJson = await available.Content.ReadFromJsonAsync<JsonElement>();
+        availableJson.GetProperty("data").GetProperty("available").GetBoolean().Should().BeTrue();
+
+        var submit = await Client.PostAsJsonAsync("/api/v2/provisioning-requests", LaravelPublicBody());
+        submit.StatusCode.Should().Be(HttpStatusCode.Created);
+        var submitJson = await submit.Content.ReadFromJsonAsync<JsonElement>();
+        var data = submitJson.GetProperty("data");
+        data.GetProperty("status").GetString().Should().Be("pending");
+        data.GetProperty("status_token").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var taken = await Client.GetAsync("/api/v2/provisioning-requests/check-slug/pilot-coop");
+        var takenJson = await taken.Content.ReadFromJsonAsync<JsonElement>();
+        takenJson.GetProperty("data").GetProperty("available").GetBoolean().Should().BeFalse();
+
+        var status = await Client.GetAsync($"/api/v2/provisioning-requests/status/{data.GetProperty("status_token").GetString()}");
+        status.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statusJson = await status.Content.ReadFromJsonAsync<JsonElement>();
+        var statusData = statusJson.GetProperty("data");
+        statusData.GetProperty("org_name").GetString().Should().Be("Pilot Cooperative");
+        statusData.GetProperty("requested_slug").GetString().Should().Be("pilot-coop");
+        statusData.GetProperty("status").GetString().Should().Be("pending");
+        statusData.GetProperty("provisioned_tenant_id").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task LaravelSuperAdminProvisioning_ListDetailAndActionsUseV2Contract()
+    {
+        ClearAuthToken();
+        var submit = await Client.PostAsJsonAsync("/api/v2/provisioning-requests", LaravelPublicBody("super-pilot"));
+        submit.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        await AuthenticateAsAdminAsync();
+
+        var list = await Client.GetAsync("/api/v2/super-admin/provisioning-requests?status=pending");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var row = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("requested_slug").GetString() == "super-pilot");
+        row.GetProperty("id").ValueKind.Should().Be(JsonValueKind.Number);
+        row.GetProperty("applicant_name").GetString().Should().Be("Alice Applicant");
+        row.GetProperty("tenant_category").GetString().Should().Be("caring_community");
+        row.GetProperty("languages").GetString().Should().Contain("de");
+        var id = row.GetProperty("id").GetInt32();
+
+        var detail = await Client.GetAsync($"/api/v2/super-admin/provisioning-requests/{id}");
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("data").GetProperty("requested_slug").GetString().Should().Be("super-pilot");
+
+        var approve = await Client.PostAsJsonAsync($"/api/v2/super-admin/provisioning-requests/{id}/approve", new { });
+        approve.StatusCode.Should().Be(HttpStatusCode.OK);
+        var approveJson = await approve.Content.ReadFromJsonAsync<JsonElement>();
+        approveJson.GetProperty("data").GetProperty("queued").GetBoolean().Should().BeTrue();
+        approveJson.GetProperty("data").GetProperty("request_id").GetInt32().Should().Be(id);
+
+        var afterApprove = await Client.GetAsync($"/api/v2/super-admin/provisioning-requests/{id}");
+        var afterApproveJson = await afterApprove.Content.ReadFromJsonAsync<JsonElement>();
+        afterApproveJson.GetProperty("data").GetProperty("status").GetString().Should().Be("approved");
+
+        var retry = await Client.PostAsJsonAsync($"/api/v2/super-admin/provisioning-requests/{id}/retry", new { });
+        retry.StatusCode.Should().Be(HttpStatusCode.OK);
+        var retryJson = await retry.Content.ReadFromJsonAsync<JsonElement>();
+        retryJson.GetProperty("data").GetProperty("queued").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LaravelSuperAdminProvisioning_RejectRequiresReasonAndPersistsRejection()
+    {
+        ClearAuthToken();
+        var submit = await Client.PostAsJsonAsync("/api/v2/provisioning-requests", LaravelPublicBody("reject-pilot"));
+        submit.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        await AuthenticateAsAdminAsync();
+        var list = await Client.GetAsync("/api/v2/super-admin/provisioning-requests");
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var id = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("requested_slug").GetString() == "reject-pilot")
+            .GetProperty("id").GetInt32();
+
+        var missingReason = await Client.PostAsJsonAsync($"/api/v2/super-admin/provisioning-requests/{id}/reject", new { });
+        missingReason.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var reject = await Client.PostAsJsonAsync($"/api/v2/super-admin/provisioning-requests/{id}/reject", new { reason = "Outside pilot scope" });
+        reject.StatusCode.Should().Be(HttpStatusCode.OK);
+        var rejectJson = await reject.Content.ReadFromJsonAsync<JsonElement>();
+        var rejected = rejectJson.GetProperty("data");
+        rejected.GetProperty("status").GetString().Should().Be("rejected");
+        rejected.GetProperty("rejection_reason").GetString().Should().Be("Outside pilot scope");
     }
 
     [Fact]

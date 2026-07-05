@@ -62,7 +62,8 @@ public class TenantResolutionMiddleware
         "/api/realtime/config",                // Static config, no tenant-scoped data
         "/api/tenants",                         // Public tenant list for login page dropdown
         "/api/webhooks/volunteering",             // HMAC-authenticated webhook; sets tenant from payload
-        "/api/provisioning/requests"              // Public new-tenant provisioning submissions; service assigns platform tenant
+        "/api/provisioning/requests",             // Public new-tenant provisioning submissions; service assigns platform tenant
+        "/api/v2/provisioning-requests"           // Laravel-compatible provisioning submissions/status checks
     };
 
     public TenantResolutionMiddleware(
