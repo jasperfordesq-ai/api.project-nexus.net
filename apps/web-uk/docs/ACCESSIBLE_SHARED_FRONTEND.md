@@ -75,10 +75,12 @@ architecture. It does not certify ASP.NET backend or workflow parity.
 The `/organisations` page is now a local Blade-style candidate for the Laravel
 accessible organisations directory. It includes the caption, subnavigation,
 search form, empty state, status banners, registration copy, registration form,
-terms, and pending notice. This is preparation only: auth enforcement,
-volunteering feature gates, tenant-prefixed routes, live `VolunteerService`
-data, organisation registration persistence, browse/register/manage/detail/jobs
-workflows, localization, and ASP.NET backend compatibility are not certified.
+terms, and pending notice. Its directory list is backed by the Laravel
+`/api/v2/volunteering/organisations` collection using `search` and `per_page`
+parameters. This remains partial: auth enforcement, volunteering feature gates,
+tenant-prefixed routes, organisation registration persistence,
+browse/register/manage/detail/jobs workflows, localization, runtime smoke tests,
+and ASP.NET backend compatibility are not certified.
 
 Additional preparation docs:
 

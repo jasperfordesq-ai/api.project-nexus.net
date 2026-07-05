@@ -18,7 +18,7 @@ Frontend stack.
 | Footer columns | `AlphaController::alphaFooterColumns()` | `src/lib/accessible-shell.js` and `partials/footer.njk` | Started. Platform, Support, and Legal columns mirror Blade labels and local path equivalents. |
 | Footer meta | `layout.blade.php` | `partials/footer.njk` | Started. Report problem, Cookies, POST sign-out, AGPL attribution, and source link are present. |
 | Explore gateway | `views/explore.blade.php` | `src/views/explore.njk` | Started. Card order and live-content section structure now mirror Blade. |
-| Organisations directory | `views/organisations.blade.php` | `src/views/organisations.njk` | Started. Directory heading, subnavigation, search, empty state, registration copy, terms, and form are present with local placeholder data only. |
+| Organisations directory | `views/organisations.blade.php` | `src/views/organisations.njk` | Partial. Directory heading, subnavigation, search, empty state, registration copy, terms, and form are present. Directory data loads from Laravel `/api/v2/volunteering/organisations`; API-unavailable warning state is present. |
 
 ## Still To Port
 
@@ -31,7 +31,7 @@ Frontend stack.
 | Account hub | Blade moves wallet, messages, connections, matches, group exchanges, gamification, profile, and settings into My account. | Build an `account` route/view fed by existing modules, then certify backend calls. |
 | Module and feature gating | Blade only shows modules enabled for the tenant. | Add a feature/module flag local from ASP.NET tenant bootstrap, matching Laravel semantics. |
 | Live Explore content | Blade shows recent listings and upcoming events. | Add data loaders after Laravel-compatible listing/event response shapes are proven. |
-| Organisations workflows | Blade protects the page with auth and volunteering feature checks, lists real organisations, and posts registrations through `VolunteerService`. | Keep the local view as a visual candidate until tenant routing, auth redirects, feature gates, live data, validation, persistence, and success/error redirects are certified. |
+| Organisations workflows | Blade protects the page with auth and volunteering feature checks, lists real organisations, and posts registrations through `VolunteerService`. | Directory data now reads Laravel's public organisations API. Tenant routing, auth redirects, feature gates, registration validation/persistence, and success/error redirects still need certification. |
 | Page-specific subnavs | Commerce, federation, gamification, jobs, messages, and ideation have Blade partial navs. | Port each partial into Nunjucks during module-by-module route parity work. |
 | Error and validation summaries | Blade uses consistent GOV.UK error summary behavior. | Audit every form after route/workflow parity is mapped. |
 

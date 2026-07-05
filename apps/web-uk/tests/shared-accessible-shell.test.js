@@ -48,7 +48,8 @@ jest.mock('../src/lib/api', () => ({
   getBalance: jest.fn(),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
-  getTransactions: jest.fn()
+  getTransactions: jest.fn(),
+  getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] })
 }));
 
 process.env.COOKIE_SECRET = 'test-secret-at-least-32-characters';
@@ -116,9 +117,22 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Blade-style organisations directory and registration form as a local candidate', async () => {
     const staticPageRoutes = require('../src/routes/static-pages');
+    const api = require('../src/lib/api');
+    api.getVolunteerOrganisations.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          name: 'Community Club',
+          description: 'A volunteer organisation supporting local residents with practical help and events.'
+        }
+      ],
+      meta: { per_page: 30, has_more: false }
+    });
+
     const response = await request(app).get('/organisations?q=club');
 
     expect(staticPageRoutes.pages['/organisations']).toBeUndefined();
+    expect(api.getVolunteerOrganisations).toHaveBeenCalledWith({ search: 'club', per_page: 30 });
     expect(response.status).toBe(200);
     expect(response.text).toContain('Organisations');
     expect(response.text).toContain('Community and partner organisations.');
@@ -131,12 +145,27 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/organisations"');
     expect(response.text).toContain('Find an organisation');
     expect(response.text).toContain('value="club"');
-    expect(response.text).toContain('There are no organisations listed yet.');
+    expect(response.text).toContain('href="/organisations/42"');
+    expect(response.text).toContain('Community Club');
+    expect(response.text).toContain('A volunteer organisation supporting local residents');
+    expect(response.text).not.toContain('There are no organisations listed yet.');
     expect(response.text).toContain('New organisations are reviewed before they appear.');
     expect(response.text).toContain('Organisation registration terms');
     expect(response.text).toContain('I have read and agree to the organisation registration terms above.');
     expect(response.text).toContain('Submit for approval');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('keeps the organisations page usable when the Laravel organisations API is unavailable', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteerOrganisations.mockRejectedValueOnce(new api.ApiOfflineError());
+
+    const response = await request(app).get('/organisations');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Organisations');
+    expect(response.text).toContain('Organisation listings are temporarily unavailable.');
+    expect(response.text).toContain('There are no organisations listed yet.');
   });
 
   it('keeps the rendered footer clear of official government identity claims', async () => {
@@ -166,7 +195,7 @@ describe('shared accessible frontend shell', () => {
     const contract = fs.readFileSync(path.join(__dirname, '..', 'docs', 'BACKEND_SWITCHING_CONTRACT.md'), 'utf8');
 
     expect(matrix).toContain('Laravel `govuk-alpha*`');
-    expect(matrix).toContain('| Organisations | `/organisations` | `/organisations` | Local Blade-style candidate for directory, search, registration form, terms, and empty state. |');
+    expect(matrix).toContain('| Organisations | `/organisations` | `/organisations` | Partial Laravel-backed candidate: GET directory/search renders `/api/v2/volunteering/organisations`; registration/auth/tenant gates not certified. |');
     expect(matrix).toContain('It does not certify route parity');
     expect(contract).toContain('Its default backend contract is now Laravel-first');
     expect(contract).toContain('| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |');
