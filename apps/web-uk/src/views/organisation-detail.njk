@@ -1,0 +1,86 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% set organisationName = organisation.name or "Organisations" %}
+{% set organisationDescription = organisation.description or organisation.excerpt or "" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/organisations">Organisations</a>
+
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">{{ organisationName }}</h1>
+
+  {% if organisationDescription %}
+    <p class="govuk-body-l">{{ organisationDescription }}</p>
+  {% endif %}
+
+  {% if contactEmail or website %}
+    <dl class="govuk-summary-list">
+      {% if contactEmail %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Contact email (optional)</dt>
+          <dd class="govuk-summary-list__value">
+            <a class="govuk-link" href="mailto:{{ contactEmail }}">{{ contactEmail }}</a>
+          </dd>
+        </div>
+      {% endif %}
+      {% if website %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Website (optional)</dt>
+          <dd class="govuk-summary-list__value">
+            <a class="govuk-link" href="{{ websiteHref }}" rel="nofollow noopener noreferrer" target="_blank">
+              {{ website }}<span class="govuk-visually-hidden"> opens in a new tab</span>
+            </a>
+          </dd>
+        </div>
+      {% endif %}
+    </dl>
+  {% endif %}
+
+  {% if organisation.id %}
+    <p class="govuk-body">
+      <a class="govuk-link" href="/organisations/{{ organisation.id }}/jobs">View job openings</a>
+    </p>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">About this organisation</h2>
+  <dl class="nexus-alpha-inline-list">
+    <div>
+      <dt>Open opportunities</dt>
+      <dd>{{ orgStats.opportunity_count or 0 }}</dd>
+    </div>
+    <div>
+      <dt>Volunteers</dt>
+      <dd>{{ orgStats.volunteer_count or 0 }}</dd>
+    </div>
+    <div>
+      <dt>Hours contributed</dt>
+      <dd>{{ orgStats.total_hours or 0 }}</dd>
+    </div>
+    <div>
+      <dt>Reviews</dt>
+      <dd>{{ orgStats.review_count or 0 }}</dd>
+    </div>
+    {% if orgStats.review_count and orgStats.average_rating %}
+      <div>
+        <dt>Average rating</dt>
+        <dd>
+          <progress max="5" value="{{ orgStats.average_rating }}" aria-label="{{ orgStats.average_rating }} out of 5">
+            {{ orgStats.average_rating }} out of 5
+          </progress>
+          <span class="govuk-!-margin-left-2">{{ orgStats.average_rating }} out of 5</span>
+        </dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  <h2 class="govuk-heading-l">Volunteering opportunities</h2>
+  <div class="govuk-inset-text">There are no current volunteering opportunities at this organisation.</div>
+
+  <h2 class="govuk-heading-l">Volunteer reviews</h2>
+  <div class="govuk-inset-text">This organisation has no reviews yet.</div>
+{% endblock %}
