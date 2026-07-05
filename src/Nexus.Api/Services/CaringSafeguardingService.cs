@@ -115,6 +115,46 @@ public sealed class CaringSafeguardingService
         return ReportDetailRow(row.Report, row.Reporter, row.SubjectUser, row.AssignedTo, actions, now);
     }
 
+    public async Task<bool> AssignReportAsync(
+        int tenantId,
+        long reportId,
+        int assigneeUserId,
+        int actorId,
+        CancellationToken ct)
+    {
+        var report = await _db.SafeguardingReports
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.Id == reportId, ct);
+        if (report is null)
+        {
+            return false;
+        }
+
+        var assigneeExists = await _db.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(user => user.TenantId == tenantId && user.Id == assigneeUserId, ct);
+        if (!assigneeExists)
+        {
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        report.AssignedToUserId = assigneeUserId;
+        report.UpdatedAt = now;
+        _db.SafeguardingReportActions.Add(new SafeguardingReportAction
+        {
+            TenantId = tenantId,
+            ReportId = reportId,
+            ActorUserId = actorId,
+            Action = "assigned",
+            Notes = "Assigned to user #" + assigneeUserId.ToString(CultureInfo.InvariantCulture),
+            CreatedAt = now
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<IReadOnlyList<object>> MyReportsAsync(int tenantId, int userId, CancellationToken ct)
     {
         var reports = await _db.SafeguardingReports

@@ -23,7 +23,7 @@ public class CaringCommunitySafeguardingControllerUnitTests
     private const string ActionTypeName = "Nexus.Api.Entities.SafeguardingReportAction, Nexus.Api";
 
     [Fact]
-    public void Actions_ExposeLaravelSafeguardingReadRoutes()
+    public void Actions_ExposeLaravelSafeguardingRoutes()
     {
         var controller = Resolve(ControllerTypeName);
 
@@ -41,6 +41,10 @@ public class CaringCommunitySafeguardingControllerUnitTests
         controller.GetMethod("Report")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("reports/{id:long}");
+
+        controller.GetMethod("Assign")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("reports/{id:long}/assign");
     }
 
     [Fact]
@@ -172,6 +176,102 @@ public class CaringCommunitySafeguardingControllerUnitTests
     }
 
     [Fact]
+    public async Task Assign_UpdatesTenantReportAndWritesLaravelAction()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 401, 42, reporterId: 10, subjectId: 11, assigneeId: null,
+            category: "neglect", severity: "high", status: "submitted",
+            dueAt: DateTime.UtcNow.AddHours(6), createdAt: new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        SeedReport(db, 901, 7, reporterId: 70, subjectId: null, assigneeId: null,
+            category: "other", severity: "critical", status: "submitted",
+            dueAt: null, createdAt: new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        var data = ReadData(await Invoke(controller,
+            "Assign",
+            401L,
+            new Dictionary<string, object?> { ["assignee_user_id"] = 12 },
+            CancellationToken.None));
+
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var report = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Id == 401);
+        report.AssignedToUserId.Should().Be(12);
+        report.UpdatedAt.Should().NotBeNull();
+
+        var action = await db.SafeguardingReportActions.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.ReportId == 401);
+        action.ActorUserId.Should().Be(9);
+        action.Action.Should().Be("assigned");
+        action.Notes.Should().Be("Assigned to user #12");
+
+        (await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 7 && row.Id == 901))
+            .AssignedToUserId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Assign_WhenAssigneeMissing_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(await Invoke(controller,
+                "Assign",
+                401L,
+                new Dictionary<string, object?>(),
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR",
+            "assignee_user_id");
+    }
+
+    [Fact]
+    public async Task Assign_WhenReportOrAssigneeOutsideTenant_ReturnsLaravelNotFound()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 401, 42, reporterId: 10, subjectId: 11, assigneeId: null,
+            category: "neglect", severity: "high", status: "submitted",
+            dueAt: DateTime.UtcNow.AddHours(6), createdAt: new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        SeedReport(db, 901, 7, reporterId: 70, subjectId: null, assigneeId: null,
+            category: "other", severity: "critical", status: "submitted",
+            dueAt: null, createdAt: new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(await Invoke(controller,
+                "Assign",
+                901L,
+                new Dictionary<string, object?> { ["assignee_user_id"] = 12 },
+                CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "NOT_FOUND");
+        AssertSingleError(await Invoke(controller,
+                "Assign",
+                401L,
+                new Dictionary<string, object?> { ["assignee_user_id"] = 70 },
+                CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "NOT_FOUND");
+
+        var report = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Id == 401);
+        report.AssignedToUserId.Should().BeNull();
+        db.SafeguardingReportActions.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AdminReads_WhenCaringCommunityDisabled_ReturnLaravelFeatureDisabledError()
     {
         var tenant = CreateTenantContext(42);
@@ -184,6 +284,13 @@ public class CaringCommunitySafeguardingControllerUnitTests
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
         AssertSingleError(await Invoke(controller, "Reports", null, null, CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(await Invoke(controller,
+                "Assign",
+                404L,
+                new Dictionary<string, object?> { ["assignee_user_id"] = 12 },
+                CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
     }
@@ -211,13 +318,18 @@ public class CaringCommunitySafeguardingControllerUnitTests
         return document.RootElement.GetProperty("data").Clone();
     }
 
-    private static void AssertSingleError(IActionResult result, int statusCode, string code)
+    private static void AssertSingleError(IActionResult result, int statusCode, string code, string? field = null)
     {
         result.Should().BeOfType<ObjectResult>();
         var objectResult = (ObjectResult)result;
         objectResult.StatusCode.Should().Be(statusCode);
         using var document = JsonSerializer.SerializeToDocument(objectResult.Value);
-        document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be(code);
+        var error = document.RootElement.GetProperty("errors")[0];
+        error.GetProperty("code").GetString().Should().Be(code);
+        if (field is not null)
+        {
+            error.GetProperty("field").GetString().Should().Be(field);
+        }
     }
 
     private static object Entity(string typeName, params (string Name, object? Value)[] values)

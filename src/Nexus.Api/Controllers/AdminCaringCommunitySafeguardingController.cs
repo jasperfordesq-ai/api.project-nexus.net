@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
@@ -73,6 +74,37 @@ public sealed class AdminCaringCommunitySafeguardingController : ControllerBase
         return Ok(new { data });
     }
 
+    [HttpPost("reports/{id:long}/assign")]
+    public async Task<IActionResult> Assign(long id, [FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var guard = await GuardAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        var assigneeId = IntValue(request, "assignee_user_id", min: 1);
+        if (assigneeId is null)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Field is required.", "assignee_user_id"));
+        }
+
+        var assigned = await _safeguarding.AssignReportAsync(
+            _tenant.GetTenantIdOrThrow(),
+            id,
+            assigneeId.Value,
+            CurrentUserId(),
+            ct);
+        if (!assigned)
+        {
+            return StatusCode(StatusCodes.Status404NotFound,
+                LaravelError("NOT_FOUND", "Not found."));
+        }
+
+        return Ok(new { data = new { success = true } });
+    }
+
     private async Task<IActionResult?> GuardAsync(CancellationToken ct)
     {
         if (!await _safeguarding.IsCaringCommunityEnabledAsync(_tenant.GetTenantIdOrThrow(), ct))
@@ -82,6 +114,35 @@ public sealed class AdminCaringCommunitySafeguardingController : ControllerBase
         }
 
         return null;
+    }
+
+    private int CurrentUserId()
+    {
+        var value = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? "0";
+        return int.TryParse(value, out var id) ? id : 0;
+    }
+
+    private static int? IntValue(IReadOnlyDictionary<string, object?>? request, string key, int min)
+    {
+        if (request is null || !request.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        var parsed = value switch
+        {
+            int i => i,
+            long l when l <= int.MaxValue && l >= int.MinValue => (int)l,
+            decimal d when d == decimal.Truncate(d) && d <= int.MaxValue && d >= int.MinValue => (int)d,
+            string s when int.TryParse(s, out var i) => i,
+            JsonElement element when element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var i) => i,
+            JsonElement element when element.ValueKind == JsonValueKind.String && int.TryParse(element.GetString(), out var i) => i,
+            _ => 0
+        };
+
+        return parsed >= min ? parsed : null;
     }
 
     private static object LaravelError(string code, string message, string? field = null)
