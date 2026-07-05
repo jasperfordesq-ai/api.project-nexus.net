@@ -85,6 +85,38 @@ public sealed class AdminCaringCommunityResearchController : ControllerBase
         return Ok(new { data = new { partners } });
     }
 
+    [HttpPost("partners")]
+    public async Task<IActionResult> CreatePartner([FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var guard = await GuardResearchAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        if (!TryCreatePartnerInput(request, out var input))
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed."));
+        }
+
+        try
+        {
+            var partner = await _research.CreatePartnerAsync(
+                _tenant.GetTenantIdOrThrow(),
+                CurrentUserId(),
+                input,
+                ct);
+
+            return StatusCode(StatusCodes.Status201Created, new { data = partner });
+        }
+        catch (CaringResearchValidationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", ex.Message));
+        }
+    }
+
     [HttpGet("dataset-exports")]
     public async Task<IActionResult> DatasetExports([FromQuery(Name = "partner_id")] int? partnerId, CancellationToken ct)
     {
@@ -223,5 +255,97 @@ public sealed class AdminCaringCommunityResearchController : ControllerBase
         return int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
             ? userId
             : 0;
+    }
+
+    private static bool TryCreatePartnerInput(
+        Dictionary<string, object?>? request,
+        out CaringResearchPartnerCreateInput input)
+    {
+        input = default!;
+        if (request is null)
+        {
+            return false;
+        }
+
+        var name = ScalarString(request, "name")?.Trim();
+        var institution = ScalarString(request, "institution")?.Trim();
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(institution))
+        {
+            return false;
+        }
+
+        var contactEmail = BlankToNull(ScalarString(request, "contact_email"));
+        if (contactEmail is not null)
+        {
+            try
+            {
+                _ = new System.Net.Mail.MailAddress(contactEmail);
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
+
+        var methodologyUrl = BlankToNull(ScalarString(request, "methodology_url"));
+        if (methodologyUrl is not null
+            && !Uri.TryCreate(methodologyUrl, UriKind.Absolute, out _))
+        {
+            return false;
+        }
+
+        var status = BlankToNull(ScalarString(request, "status")) ?? "draft";
+        if (status is not ("draft" or "active" or "paused" or "ended"))
+        {
+            return false;
+        }
+
+        if (!TryDateOnly(request, "starts_at", out var startsAt)
+            || !TryDateOnly(request, "ends_at", out var endsAt))
+        {
+            return false;
+        }
+
+        input = new CaringResearchPartnerCreateInput(
+            name,
+            institution,
+            contactEmail,
+            BlankToNull(ScalarString(request, "agreement_reference")),
+            methodologyUrl,
+            status,
+            request.TryGetValue("data_scope", out var dataScope) ? dataScope : null,
+            startsAt,
+            endsAt);
+
+        return true;
+    }
+
+    private static bool TryDateOnly(Dictionary<string, object?> request, string key, out DateOnly? value)
+    {
+        value = null;
+        var raw = BlankToNull(ScalarString(request, key));
+        if (raw is null)
+        {
+            return true;
+        }
+
+        if (!DateOnly.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        {
+            return false;
+        }
+
+        value = parsed;
+        return true;
+    }
+
+    private static string? BlankToNull(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+    }
+
+    private static string? ScalarString(Dictionary<string, object?> request, string key)
+    {
+        return request.TryGetValue(key, out var value) ? CoerceScalar(value) : null;
     }
 }

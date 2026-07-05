@@ -42,6 +42,9 @@ public class CaringCommunityResearchAdminControllerUnitTests
         researchController.GetMethod("Partners")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("partners");
+        researchController.GetMethod("CreatePartner")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("partners");
         researchController.GetMethod("DatasetExports")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("dataset-exports");
@@ -201,6 +204,81 @@ public class CaringCommunityResearchAdminControllerUnitTests
             .Should().Be("caring_community_aggregate_v1");
         partners[1].GetProperty("starts_at").GetString().Should().Be("2026-01-01");
         partners[1].GetProperty("ends_at").GetString().Should().Be("2026-12-31");
+    }
+
+    [Fact]
+    public async Task CreatePartner_PersistsTenantScopedLaravelPartnerShape()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateResearchController(db, tenant, userId: 9001);
+
+        var data = ReadDataObject(await Invoke(controller,
+            "CreatePartner",
+            new Dictionary<string, object?>
+            {
+                ["name"] = "  Ageing Futures Lab  ",
+                ["institution"] = "  FHNW  ",
+                ["contact_email"] = "research@example.test",
+                ["agreement_reference"] = "aggregate_dataset_v1",
+                ["methodology_url"] = "https://example.test/methodology",
+                ["status"] = "active",
+                ["data_scope"] = new Dictionary<string, object?>
+                {
+                    ["datasets"] = new[] { "caring_community_aggregate_v1", "pilot_scoreboard_v1" }
+                },
+                ["starts_at"] = "2026-01-01",
+                ["ends_at"] = "2026-12-31"
+            },
+            CancellationToken.None),
+            StatusCodes.Status201Created);
+
+        data.GetProperty("tenant_id").GetInt32().Should().Be(42);
+        data.GetProperty("name").GetString().Should().Be("Ageing Futures Lab");
+        data.GetProperty("institution").GetString().Should().Be("FHNW");
+        data.GetProperty("contact_email").GetString().Should().Be("research@example.test");
+        data.GetProperty("agreement_reference").GetString().Should().Be("aggregate_dataset_v1");
+        data.GetProperty("methodology_url").GetString().Should().Be("https://example.test/methodology");
+        data.GetProperty("status").GetString().Should().Be("active");
+        data.GetProperty("data_scope").GetProperty("datasets").EnumerateArray()
+            .Select(item => item.GetString())
+            .Should().Contain(new[] { "caring_community_aggregate_v1", "pilot_scoreboard_v1" });
+        data.GetProperty("starts_at").GetString().Should().Be("2026-01-01");
+        data.GetProperty("ends_at").GetString().Should().Be("2026-12-31");
+        data.GetProperty("created_by").GetInt32().Should().Be(9001);
+
+        var stored = await db.CaringResearchPartners.IgnoreQueryFilters().SingleAsync();
+        stored.TenantId.Should().Be(42);
+        stored.Name.Should().Be("Ageing Futures Lab");
+        stored.Institution.Should().Be("FHNW");
+        stored.CreatedBy.Should().Be(9001);
+        stored.Status.Should().Be("active");
+        stored.DataScope.Should().Contain("pilot_scoreboard_v1");
+    }
+
+    [Fact]
+    public async Task CreatePartner_WhenInvalid_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateResearchController(db, tenant, userId: 9001);
+
+        AssertSingleError(await Invoke(controller,
+                "CreatePartner",
+                new Dictionary<string, object?>
+                {
+                    ["name"] = "No Institution",
+                    ["status"] = "unknown"
+                },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        db.CaringResearchPartners.IgnoreQueryFilters().Should().BeEmpty();
     }
 
     [Fact]
@@ -426,6 +504,15 @@ public class CaringCommunityResearchAdminControllerUnitTests
     {
         result.Should().BeOfType<OkObjectResult>();
         var document = JsonSerializer.SerializeToDocument(((OkObjectResult)result).Value);
+        return document.RootElement.GetProperty("data").Clone();
+    }
+
+    private static JsonElement ReadDataObject(IActionResult result, int statusCode)
+    {
+        result.Should().BeOfType<ObjectResult>();
+        var objectResult = (ObjectResult)result;
+        objectResult.StatusCode.Should().Be(statusCode);
+        var document = JsonSerializer.SerializeToDocument(objectResult.Value);
         return document.RootElement.GetProperty("data").Clone();
     }
 

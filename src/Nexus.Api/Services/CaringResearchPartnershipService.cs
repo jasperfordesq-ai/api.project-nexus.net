@@ -46,6 +46,43 @@ public sealed class CaringResearchPartnershipService
         return rows.Select(PartnerRow).Cast<object>().ToArray();
     }
 
+    public async Task<object> CreatePartnerAsync(
+        int tenantId,
+        int actorId,
+        CaringResearchPartnerCreateInput input,
+        CancellationToken ct)
+    {
+        var name = Truncate(input.Name.Trim(), 255);
+        var institution = Truncate(input.Institution.Trim(), 255);
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(institution))
+        {
+            throw new CaringResearchValidationException("Research partner name and institution are required.");
+        }
+
+        var now = DateTime.UtcNow;
+        var row = new CaringResearchPartner
+        {
+            TenantId = tenantId,
+            Name = name,
+            Institution = institution,
+            ContactEmail = TruncateNullable(input.ContactEmail, 255),
+            AgreementReference = TruncateNullable(input.AgreementReference, 255),
+            MethodologyUrl = TruncateNullable(input.MethodologyUrl, 255),
+            Status = input.Status,
+            DataScope = JsonSerializer.Serialize(NormalizeDataScope(input.DataScope)),
+            StartsAt = input.StartsAt,
+            EndsAt = input.EndsAt,
+            CreatedBy = actorId,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.CaringResearchPartners.Add(row);
+        await _db.SaveChangesAsync(ct);
+
+        return PartnerRow(row);
+    }
+
     public async Task<IReadOnlyList<object>> ListDatasetExportsAsync(int tenantId, long? partnerId, CancellationToken ct)
     {
         var query =
@@ -256,6 +293,90 @@ public sealed class CaringResearchPartnershipService
         }
     }
 
+    private static object NormalizeDataScope(object? scope)
+    {
+        var datasets = ExtractDatasetList(scope);
+        if (datasets.Count == 0)
+        {
+            datasets.Add("caring_community_aggregate_v1");
+        }
+
+        return new { datasets };
+    }
+
+    private static List<string> ExtractDatasetList(object? scope)
+    {
+        if (scope is JsonElement json)
+        {
+            if (json.ValueKind != JsonValueKind.Object
+                || !json.TryGetProperty("datasets", out var datasets)
+                || datasets.ValueKind != JsonValueKind.Array)
+            {
+                return [];
+            }
+
+            return datasets.EnumerateArray()
+                .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : item.GetRawText())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(item => item!)
+                .ToList();
+        }
+
+        if (scope is IDictionary<string, object?> dictionary
+            && dictionary.TryGetValue("datasets", out var rawDatasets))
+        {
+            return ExtractDatasetValues(rawDatasets);
+        }
+
+        return [];
+    }
+
+    private static List<string> ExtractDatasetValues(object? rawDatasets)
+    {
+        if (rawDatasets is JsonElement json)
+        {
+            return json.ValueKind == JsonValueKind.Array
+                ? json.EnumerateArray()
+                    .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : item.GetRawText())
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .Select(item => item!)
+                    .ToList()
+                : [];
+        }
+
+        if (rawDatasets is IEnumerable<string> strings)
+        {
+            return strings
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(item => item.Trim())
+                .ToList();
+        }
+
+        if (rawDatasets is System.Collections.IEnumerable enumerable
+            && rawDatasets is not string)
+        {
+            return enumerable
+                .Cast<object?>()
+                .Where(item => item is not null)
+                .Select(item => Convert.ToString(item, System.Globalization.CultureInfo.InvariantCulture))
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(item => item!.Trim())
+                .ToList();
+        }
+
+        return [];
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        return value.Length <= maxLength ? value : value[..maxLength];
+    }
+
+    private static string? TruncateNullable(string? value, int maxLength)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : Truncate(value.Trim(), maxLength);
+    }
+
     private static bool IsTruthy(string? value)
     {
         return value?.Trim().ToLowerInvariant() is "1" or "true" or "yes" or "on";
@@ -266,3 +387,14 @@ public sealed class CaringResearchValidationException : Exception
 {
     public CaringResearchValidationException(string message) : base(message) { }
 }
+
+public sealed record CaringResearchPartnerCreateInput(
+    string Name,
+    string Institution,
+    string? ContactEmail,
+    string? AgreementReference,
+    string? MethodologyUrl,
+    string Status,
+    object? DataScope,
+    DateOnly? StartsAt,
+    DateOnly? EndsAt);
