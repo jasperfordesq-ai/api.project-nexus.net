@@ -9,7 +9,7 @@
 <footer class="govuk-footer" role="contentinfo">
   <div class="govuk-width-container">
     {% if alphaFooterColumns and alphaFooterColumns.length %}
-      <div class="govuk-footer__navigation">
+      <div class="govuk-footer__navigation" aria-label="Footer navigation">
         {% for column in alphaFooterColumns %}
           <div class="govuk-footer__section govuk-grid-column-one-third">
             <h2 class="govuk-footer__heading govuk-heading-m">{{ column.heading }}</h2>
@@ -32,13 +32,10 @@
 
         <ul class="govuk-footer__inline-list">
           <li class="govuk-footer__inline-list-item">
-            <a class="govuk-footer__link" href="/contact">Report a problem with this page</a>
+            <a class="govuk-footer__link" href="{{ reportProblemUrl or '/report-a-problem' }}">Report a problem with this page</a>
           </li>
           <li class="govuk-footer__inline-list-item">
-            <a class="govuk-footer__link" href="/privacy">Privacy</a>
-          </li>
-          <li class="govuk-footer__inline-list-item">
-            <a class="govuk-footer__link" href="/terms">Terms</a>
+            <a class="govuk-footer__link" href="{{ cookieSettingsUrl or '/cookies' }}">Cookies</a>
           </li>
         </ul>
 
@@ -54,10 +51,10 @@
         {% endif %}
 
         <div class="govuk-footer__meta-custom">
-          <p class="govuk-!-margin-bottom-2">Licensed under GNU AGPL v3.</p>
-          <p class="govuk-!-margin-bottom-2">Created by Jasper Ford. Co-founded with Mary Casey.</p>
+          <p class="govuk-!-margin-bottom-2">Project NEXUS is free software licensed under AGPL-3.0-or-later.</p>
+          <p class="govuk-!-margin-bottom-2">Copyright &copy; 2024-2026 Jasper Ford. See NOTICE for attribution and acknowledgements.</p>
           <p class="govuk-!-margin-bottom-0">
-            <a class="govuk-footer__link" href="https://github.com/jasperfordesq-ai/api.project-nexus.net" rel="noopener noreferrer">Source code</a>
+            <a class="govuk-footer__link" href="{{ sourceCodeUrl or 'https://github.com/jasperfordesq-ai/nexus-v1' }}" rel="noopener noreferrer">View the source code on GitHub</a>
           </p>
         </div>
       </div>

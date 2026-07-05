@@ -21,6 +21,12 @@ footer, card list, and Explore page should visually follow the Laravel Blade
 accessible frontend. See `docs/ACCESSIBLE_SHARED_FRONTEND.md` and the root
 `../../docs/ACCESSIBLE_SHARED_FRONTEND.md`.
 
+Route and backend preparation docs live beside this app:
+
+- `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
+- `docs/BLADE_COMPONENT_PORT_AUDIT.md`
+- `docs/BACKEND_SWITCHING_CONTRACT.md`
+
 Do not claim route parity, workflow parity, tenant-domain parity, localization
 parity, API compatibility, production readiness, or shared-frontend readiness
 from skeleton or styling work.
@@ -195,6 +201,19 @@ Follow the Laravel Blade accessible frontend for:
 Reusable shell data lives in `src/lib/accessible-shell.js`. Keep shared nav,
 footer, locale, and Explore link contracts there rather than hardcoding new
 copies into individual templates.
+
+Header and footer links should mirror the Laravel Blade accessible frontend
+labels and information architecture. If a Laravel destination is not implemented
+yet, prefer an honest preparation skeleton over a dead link, and document the
+missing backend/workflow contract in `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`.
+
+## Backend Switching Preparation
+
+Do not build real backend-specific adapters until ASP.NET accessible route and
+workflow parity is proved module by module. The future direction is one
+accessible frontend capable of talking to Laravel-compatible or
+ASP.NET-compatible backends, but ASP.NET must bend toward Laravel's Blade
+contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
 
 ## Backend API
 

@@ -22,6 +22,12 @@ C:\platforms\htdocs\staging\routes\govuk-alpha-parity
 See [docs/ACCESSIBLE_SHARED_FRONTEND.md](docs/ACCESSIBLE_SHARED_FRONTEND.md) and
 the root [docs/ACCESSIBLE_SHARED_FRONTEND.md](../../docs/ACCESSIBLE_SHARED_FRONTEND.md).
 
+Preparation docs:
+
+- [docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md](docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md)
+- [docs/BLADE_COMPONENT_PORT_AUDIT.md](docs/BLADE_COMPONENT_PORT_AUDIT.md)
+- [docs/BACKEND_SWITCHING_CONTRACT.md](docs/BACKEND_SWITCHING_CONTRACT.md)
+
 ## Credits and Origins
 
 ### Creator
@@ -114,6 +120,14 @@ The application will be available at **http://localhost:5180**
 | `GET /terms` | Terms and conditions |
 | `GET /contact` | Contact page |
 | `GET /explore` | Shared accessible frontend Explore skeleton |
+| `GET /help` | Shared accessible frontend preparation skeleton |
+| `GET /kb` | Shared accessible frontend preparation skeleton |
+| `GET /trust-and-safety` | Shared accessible frontend preparation skeleton |
+| `GET /cookies` | Shared accessible frontend preparation skeleton |
+| `GET /report-a-problem` | Shared accessible frontend preparation skeleton |
+| `GET /accessibility` | Shared accessible frontend preparation skeleton |
+| `GET /legal` | Shared accessible frontend preparation skeleton |
+| `GET /legal/*` | Shared accessible frontend preparation skeleton |
 | `GET /service-unavailable` | 503 error page |
 
 ### Protected Routes (require authentication)

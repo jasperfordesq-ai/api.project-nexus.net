@@ -34,6 +34,7 @@ const searchRoutes = require('./routes/search');
 const reviewsRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');
 const exploreRoutes = require('./routes/explore');
+const staticPageRoutes = require('./routes/static-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
 const { getContributorGroups, getResearchFoundation } = require('./lib/contributors');
@@ -341,6 +342,7 @@ app.get('/about', (req, res) => {
 });
 
 app.use('/explore', exploreRoutes);
+app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
   res.status(503).render('errors/503', { title: 'Service unavailable' });

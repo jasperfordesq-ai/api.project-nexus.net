@@ -11,7 +11,10 @@
  * prepared to become the future shared accessible frontend candidate.
  */
 
-const serviceName = 'Project NEXUS Community';
+const serviceName = 'Project NEXUS Accessible';
+const phaseText = 'Beta';
+const feedbackUrl = 'mailto:feedback@project-nexus.ie?subject=NEXUS%20Beta%20feedback';
+const sourceCodeUrl = 'https://github.com/jasperfordesq-ai/nexus-v1';
 
 const localeOptions = [
   ['en', 'English'],
@@ -34,7 +37,8 @@ const navItems = [
   { key: 'listings', label: 'Listings', href: '/listings' },
   { key: 'members', label: 'Members', href: '/members' },
   { key: 'events', label: 'Events', href: '/events' },
-  { key: 'explore', label: 'Explore', href: '/explore' }
+  { key: 'volunteering', label: 'Volunteering', href: '/volunteering' },
+  { key: 'explore', label: 'Explore', href: '/explore', authenticatedOnly: true }
 ];
 
 const footerColumns = [
@@ -42,27 +46,35 @@ const footerColumns = [
     key: 'platform',
     heading: 'Platform',
     links: [
-      { label: 'Listings', href: '/listings' },
-      { label: 'Members', href: '/members' },
-      { label: 'Events', href: '/events' },
-      { label: 'Explore', href: '/explore' }
+      { key: 'listings', label: 'Listings', href: '/listings' },
+      { key: 'members', label: 'Members', href: '/members' },
+      { key: 'events', label: 'Events', href: '/events' },
+      { key: 'volunteering', label: 'Volunteering', href: '/volunteering' },
+      { key: 'blog', label: 'Blog', href: '/blog' }
     ]
   },
   {
     key: 'support',
     heading: 'Support',
     links: [
-      { label: 'Contact', href: '/contact' },
-      { label: 'About', href: '/about' },
-      { label: 'Report a problem', href: '/contact' }
+      { key: 'help', label: 'Help centre', href: '/help' },
+      { key: 'kb', label: 'Knowledge base', href: '/kb' },
+      { key: 'trust_safety', label: 'Trust and safety', href: '/trust-and-safety' },
+      { key: 'contact', label: 'Contact', href: '/contact' },
+      { key: 'about', label: 'About', href: '/about' }
     ]
   },
   {
     key: 'legal',
     heading: 'Legal',
     links: [
-      { label: 'Terms', href: '/terms' },
-      { label: 'Privacy', href: '/privacy' }
+      { key: 'legal_hub', label: 'Legal', href: '/legal' },
+      { key: 'terms', label: 'Terms of service', href: '/legal/terms' },
+      { key: 'privacy', label: 'Privacy policy', href: '/legal/privacy' },
+      { key: 'community_guidelines', label: 'Community guidelines', href: '/legal/community-guidelines' },
+      { key: 'acceptable_use', label: 'Acceptable use', href: '/legal/acceptable-use' },
+      { key: 'cookies', label: 'Cookie policy', href: '/legal/cookies' },
+      { key: 'accessibility', label: 'Accessibility statement', href: '/accessibility' }
     ]
   }
 ];
@@ -71,7 +83,19 @@ const exploreLinks = [
   {
     title: 'Exchanges',
     description: 'See your exchange requests, agreements, and time-credit activity.',
-    href: '/listings'
+    href: '/exchanges',
+    status: 'placeholder'
+  },
+  {
+    title: 'AI assistant',
+    description: 'Get accessible guidance and help with community tasks when enabled.',
+    href: '/chat',
+    status: 'placeholder'
+  },
+  {
+    title: 'Polls',
+    description: 'Vote in community polls and see active questions.',
+    href: '/polls'
   },
   {
     title: 'Search',
@@ -86,28 +110,84 @@ const exploreLinks = [
   {
     title: 'Goals',
     description: 'Track goals, progress, and community achievements.',
-    href: '/progress'
+    href: '/goals'
   },
   {
-    title: 'Browse listings',
-    description: 'Browse offers and requests from members in your community.',
-    href: '/listings'
+    title: 'Skills',
+    description: 'Browse member skills and capabilities across the community.',
+    href: '/skills',
+    status: 'placeholder'
   },
   {
-    title: 'Find members',
-    description: 'Find members, view profiles, and build trusted connections.',
-    href: '/members'
+    title: 'Organisations',
+    description: 'Find community organisations and volunteering groups.',
+    href: '/organisations',
+    status: 'placeholder'
   },
   {
-    title: 'Events',
-    description: 'Find upcoming community events and activities.',
-    href: '/events'
+    title: 'Blog',
+    description: 'Read community news, stories, and updates.',
+    href: '/blog'
+  },
+  {
+    title: 'Resources',
+    description: 'Browse shared documents, links, and community resources.',
+    href: '/resources',
+    status: 'placeholder'
+  },
+  {
+    title: 'Marketplace',
+    description: 'Browse marketplace offers, requests, courses, and local goods.',
+    href: '/marketplace',
+    status: 'placeholder'
   },
   {
     title: 'Jobs',
     description: 'Browse community opportunities and job vacancies when enabled.',
     href: '/jobs'
-  }
+  },
+  {
+    title: 'Courses',
+    description: 'Find learning opportunities and community courses.',
+    href: '/courses',
+    status: 'placeholder'
+  },
+  {
+    title: 'Podcasts',
+    description: 'Listen to community audio and podcast episodes.',
+    href: '/podcasts',
+    status: 'placeholder'
+  },
+  {
+    title: 'Coupons',
+    description: 'Find merchant coupons and local offers.',
+    href: '/coupons',
+    status: 'placeholder'
+  },
+  {
+    title: 'Premium',
+    description: 'Manage member premium features when enabled.',
+    href: '/premium',
+    status: 'placeholder'
+  },
+  {
+    title: 'Ideation',
+    description: 'Join challenges and contribute ideas for the community.',
+    href: '/ideation',
+    status: 'placeholder'
+  },
+  {
+    title: 'Federation',
+    description: 'Explore cross-community federation features.',
+    href: '/federation',
+    status: 'placeholder'
+  },
+  {
+    title: 'Clubs',
+    description: 'Browse club organisations when available in this community.',
+    href: '/clubs',
+    status: 'placeholder'
+  },
 ];
 
 function activeNavForPath(pathname = '/') {
@@ -117,6 +197,7 @@ function activeNavForPath(pathname = '/') {
   if (pathname.startsWith('/listings')) return 'listings';
   if (pathname.startsWith('/members')) return 'members';
   if (pathname.startsWith('/events')) return 'events';
+  if (pathname.startsWith('/volunteering')) return 'volunteering';
   if (pathname.startsWith('/explore')) return 'explore';
   if (pathname.startsWith('/login')) return 'login';
   if (pathname.startsWith('/register')) return 'register';
@@ -134,9 +215,12 @@ function buildNavItems({ isAuthenticated = false } = {}) {
 function buildShellLocals(req, isAuthenticated) {
   const tenantName = process.env.ACCESSIBLE_TENANT_NAME || serviceName;
   const currentLocale = typeof req.query.locale === 'string' ? req.query.locale : 'en';
+  const currentPath = req.path || '/';
+  const currentUrl = req.originalUrl || currentPath;
 
   return {
     serviceName,
+    phaseText,
     tenantName,
     alphaCurrentLocale: currentLocale,
     alphaLocaleOptions: localeOptions,
@@ -145,9 +229,13 @@ function buildShellLocals(req, isAuthenticated) {
     alphaActiveNav: activeNavForPath(req.path),
     alphaFooterColumns: footerColumns,
     alphaExploreLinks: exploreLinks,
-    currentUrl: req.originalUrl || req.path,
-    feedbackUrl: '/contact',
+    currentPath,
+    currentUrl,
+    feedbackUrl,
+    reportProblemUrl: `/report-a-problem?return=${encodeURIComponent(currentUrl)}`,
+    cookieSettingsUrl: '/cookies',
     mainSiteUrl: process.env.MAIN_FRONTEND_URL || 'https://app.project-nexus.ie',
+    sourceCodeUrl,
     sharedAccessibleStatus: 'candidate_not_certified'
   };
 }
@@ -159,5 +247,6 @@ module.exports = {
   exploreLinks,
   footerColumns,
   localeOptions,
+  phaseText,
   serviceName
 };

@@ -18,3 +18,9 @@ Urgent first-read rules:
 - Keep the app HTML-first and progressively enhanced. No React, Vue, Next.js, or
   client-side routing.
 - Run brand checks and focused tests after shell/layout changes.
+
+Preparation docs that future agents must keep current:
+
+- `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
+- `docs/BLADE_COMPONENT_PORT_AUDIT.md`
+- `docs/BACKEND_SWITCHING_CONTRACT.md`

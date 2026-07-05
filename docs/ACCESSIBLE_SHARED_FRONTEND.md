@@ -37,6 +37,12 @@ This work prepares the skeleton and guardrails only. It does not certify
 production readiness, route parity, workflow parity, tenant-domain parity, auth
 parity, localization parity, or API compatibility.
 
+Current local preparation docs in `apps/web-uk/docs/`:
+
+- `LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
+- `BLADE_COMPONENT_PORT_AUDIT.md`
+- `BACKEND_SWITCHING_CONTRACT.md`
+
 The React utility-bar link must continue pointing at the production Laravel
 accessible frontend until `apps/web-uk` has passed route, workflow, accessibility,
 tenant, auth, and runtime smoke certification.

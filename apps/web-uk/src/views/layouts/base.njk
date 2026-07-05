@@ -37,10 +37,10 @@
         {{ tenantName or serviceName }}
       </a>
 
-      <nav class="nexus-alpha-header__links" aria-label="Header links">
+      <nav class="nexus-alpha-header__links" aria-label="Service links">
         {% if alphaLocaleOptions and alphaLocaleOptions.length > 1 %}
-          <form method="get" action="{{ currentUrl or '' }}" class="nexus-alpha-lang" aria-label="Language">
-            <label class="govuk-visually-hidden" for="alpha-locale-select">Language</label>
+          <form method="get" action="{{ currentPath or '/' }}" class="nexus-alpha-lang" aria-label="Choose a language">
+            <label class="govuk-visually-hidden" for="alpha-locale-select">Choose a language</label>
             <select class="govuk-select nexus-alpha-lang__select" id="alpha-locale-select" name="locale">
               {% for locale in alphaLocaleOptions %}
                 <option value="{{ locale[0] }}" {% if locale[0] == alphaCurrentLocale %}selected{% endif %}>{{ locale[1] }}</option>
@@ -51,7 +51,7 @@
         {% endif %}
 
         {% if isAuthenticated %}
-          <a class="nexus-alpha-header__link" href="/profile" {% if (activeNav or alphaActiveNav) == 'account' %}aria-current="page"{% endif %}>
+          <a class="nexus-alpha-header__link" href="/account" {% if (activeNav or alphaActiveNav) == 'account' %}aria-current="page"{% endif %}>
             My account
             {% if unreadMessageCount > 0 %}
               <span class="nexus-alpha-nav-badge" aria-hidden="true">{{ unreadMessageCount if unreadMessageCount < 100 else '99+' }}</span>
@@ -63,10 +63,10 @@
     </div>
   </header>
 
-  <section class="govuk-service-navigation" data-module="govuk-service-navigation" aria-label="Service information">
+  <section class="govuk-service-navigation" data-module="govuk-service-navigation" aria-label="Community service information">
     <div class="govuk-width-container">
       <div class="govuk-service-navigation__container">
-        <nav class="govuk-service-navigation__wrapper" aria-label="Primary navigation">
+        <nav class="govuk-service-navigation__wrapper" aria-label="Community navigation">
           <button type="button" class="govuk-service-navigation__toggle govuk-js-service-navigation-toggle" aria-controls="alpha-navigation" hidden aria-hidden="true">
             Menu
           </button>
@@ -100,9 +100,9 @@
 {% block beforeContent %}
   {{ govukPhaseBanner({
     tag: {
-      text: "Alpha"
+      text: phaseText or "Beta"
     },
-    html: 'This is a shared accessible frontend candidate. Your <a class="govuk-link" href="' ~ feedbackUrl ~ '">feedback</a> will help us improve it.'
+    html: '<a class="govuk-link" href="' ~ feedbackUrl ~ '">Give feedback</a>'
   }) }}
 {% endblock %}
 

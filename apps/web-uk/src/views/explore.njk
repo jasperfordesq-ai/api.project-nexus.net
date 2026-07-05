@@ -7,7 +7,7 @@
 
 {% block mainContent %}
   <span class="govuk-caption-xl">{{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Explore Project NEXUS Community</h1>
+  <h1 class="govuk-heading-xl">Explore</h1>
   <p class="govuk-body-l">
     Find the main community spaces from one simpler accessible page.
   </p>
@@ -25,14 +25,24 @@
           <a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a>
         </h2>
         <p class="govuk-body govuk-!-margin-bottom-0">{{ item.description }}</p>
+        {% if item.status == 'placeholder' %}
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-top-2 govuk-!-margin-bottom-0">
+            Preparation link: backend workflow parity is not certified yet.
+          </p>
+        {% endif %}
       </article>
     {% endfor %}
   </div>
 
-  <h2 class="govuk-heading-l govuk-!-margin-top-8">Live content placeholders</h2>
+  <h2 class="govuk-heading-l govuk-!-margin-top-8">Recent listings</h2>
   <p class="govuk-body">
-    Recent listings, upcoming events, and tenant feature gates will be wired only
-    after the ASP.NET backend exposes contracts compatible with the Laravel
-    accessible frontend.
+    Recent listing content will be wired only after the ASP.NET backend exposes
+    contracts compatible with the Laravel accessible frontend.
+  </p>
+
+  <h2 class="govuk-heading-l govuk-!-margin-top-6">Upcoming events</h2>
+  <p class="govuk-body">
+    Upcoming event content will be wired only after route, tenant, auth, feature
+    gate, and response-shape parity has been proven.
   </p>
 {% endblock %}

@@ -62,6 +62,15 @@ The shell feeds:
 The `/explore` page is a skeleton copied from the Laravel accessible information
 architecture. It does not certify ASP.NET backend or workflow parity.
 
+Additional preparation docs:
+
+- `LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md` maps Blade route families and shell links
+  to current `apps/web-uk` equivalents.
+- `BLADE_COMPONENT_PORT_AUDIT.md` tracks what visual/workflow patterns have and
+  have not been ported from Blade.
+- `BACKEND_SWITCHING_CONTRACT.md` documents future Laravel/ASP.NET backend
+  switching requirements without implementing a real adapter yet.
+
 ## Before Extraction To Its Own Repo
 
 - Keep this `docs/` folder.
