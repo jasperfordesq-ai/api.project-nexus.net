@@ -22,11 +22,24 @@ C:\platforms\htdocs\staging\routes\govuk-alpha-parity
 See [docs/ACCESSIBLE_SHARED_FRONTEND.md](docs/ACCESSIBLE_SHARED_FRONTEND.md) and
 the root [docs/ACCESSIBLE_SHARED_FRONTEND.md](../../docs/ACCESSIBLE_SHARED_FRONTEND.md).
 
+`apps/web-uk` is configured as Laravel-first for backend targeting. The single
+configuration point is `src/lib/backend-config.js`; ASP.NET remains a future
+`pending_backend_parity` target, not a certified adapter.
+
+Laravel accessible Blade pages are web routes, not API endpoints. Shared-domain
+local work uses `/{tenantSlug}/alpha/...`; custom accessible domains use bare
+paths such as `/dashboard`.
+
 Preparation docs:
 
+- [docs/ACCESSIBLE_PREPARATION_SCORECARD.md](docs/ACCESSIBLE_PREPARATION_SCORECARD.md)
 - [docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md](docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md)
+- [docs/LARAVEL_ACCESSIBLE_ROUTE_INVENTORY.md](docs/LARAVEL_ACCESSIBLE_ROUTE_INVENTORY.md)
+- [docs/BLADE_VIEW_INVENTORY.md](docs/BLADE_VIEW_INVENTORY.md)
+- [docs/AUTH_FORM_CONTRACT_MATRIX.md](docs/AUTH_FORM_CONTRACT_MATRIX.md)
 - [docs/BLADE_COMPONENT_PORT_AUDIT.md](docs/BLADE_COMPONENT_PORT_AUDIT.md)
 - [docs/BACKEND_SWITCHING_CONTRACT.md](docs/BACKEND_SWITCHING_CONTRACT.md)
+- [docs/ACCESSIBLE_BACKEND_CONTRACT_MATRIX.md](docs/ACCESSIBLE_BACKEND_CONTRACT_MATRIX.md)
 
 ## Credits and Origins
 
@@ -94,12 +107,24 @@ The application will be available at **http://localhost:5180**
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3001` | Server port |
-| `API_BASE_URL` | `http://localhost:5000` | Backend API URL |
+| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Backend target. `aspnet` remains pending backend parity. |
+| `LARAVEL_BACKEND_URL` | `http://localhost` | Laravel backend URL for the accessible frontend candidate. |
+| `ASPNET_BACKEND_URL` | `http://localhost:5080` | Future ASP.NET backend URL; not certified for shared accessible use. |
+| `ACCESSIBLE_ROUTE_MODE` | `tenant-slug` | Laravel accessible route mode: `tenant-slug` or `custom-domain`. |
+| `ACCESSIBLE_TENANT_SLUG` | - | Required for Laravel shared-domain accessible paths. |
+| `API_BASE_URL` | - | Legacy fallback for older local commands/tests. Prefer `LARAVEL_BACKEND_URL`. |
 | `COOKIE_SECRET` | - | **Required.** Secret for signed cookies |
 | `SESSION_SECRET` | - | Secret for sessions (defaults to COOKIE_SECRET) |
 | `NODE_ENV` | `development` | Environment (development/production) |
 
 ## Available Routes
+
+Prepared public pages can also render locally through the Laravel shared-domain
+accessible alias `/{tenantSlug}/alpha/...`. For example,
+`/acme/alpha/explore` maps to the local `/explore` handler while header,
+footer, language, cookie, contact, and report-problem shell links/forms keep the
+`/acme/alpha` prefix. This is route-shape preparation only, not Laravel tenant
+lookup or backend workflow certification.
 
 ### Public Routes
 
@@ -118,16 +143,35 @@ The application will be available at **http://localhost:5180**
 | `POST /reset-password` | Process password reset |
 | `GET /privacy` | Privacy policy |
 | `GET /terms` | Terms and conditions |
-| `GET /contact` | Contact page |
+| `GET /contact` | Local no-JS accessible contact candidate page; Laravel Turnstile/backend delivery is not certified |
+| `POST /contact` | Local no-JS accessible contact candidate workflow; Laravel Turnstile/backend delivery is not certified |
 | `GET /explore` | Shared accessible frontend Explore skeleton |
-| `GET /help` | Shared accessible frontend preparation skeleton |
-| `GET /kb` | Shared accessible frontend preparation skeleton |
-| `GET /trust-and-safety` | Shared accessible frontend preparation skeleton |
-| `GET /cookies` | Shared accessible frontend preparation skeleton |
-| `GET /report-a-problem` | Shared accessible frontend preparation skeleton |
-| `GET /accessibility` | Shared accessible frontend preparation skeleton |
-| `GET /legal` | Shared accessible frontend preparation skeleton |
-| `GET /legal/*` | Shared accessible frontend preparation skeleton |
+| `GET /features` | Local Blade-style feature summary candidate; Laravel feature gates and runtime backend behaviour are not certified |
+| `GET /guide` | Local Blade-style timebanking guide candidate; Laravel feature gates and runtime backend behaviour are not certified |
+| `GET /account` | Local Blade-style accessible account hub candidate; feature gates, auth enforcement, live counts, and backend workflows are not certified |
+| `GET /faq` | Local Blade-style accessible FAQ accordion candidate; localization/runtime backend behaviour is not certified |
+| `GET /cookies` | Local no-JS accessible cookie settings candidate page; Laravel backend/session parity is not certified |
+| `POST /cookie-consent` | Local no-JS accessible cookie banner/settings candidate workflow; Laravel backend/session parity is not certified |
+| `GET /report-a-problem` | Local no-JS accessible report-problem candidate page; Laravel backend persistence is not certified |
+| `POST /report-a-problem` | Local no-JS accessible report-problem candidate workflow; Laravel backend persistence is not certified |
+| `GET /help` | Local Blade-style help centre search/empty-state candidate; live FAQ data and backend behaviour are not certified |
+| `GET /kb` | Local Blade-style knowledge base search/empty-state candidate; live article data, article detail, and backend behaviour are not certified |
+| `GET /blog` | Local Blade-style blog search/empty-state candidate; live posts, categories, feed, post detail, comments/likes, and backend behaviour are not certified |
+| `GET /volunteering` | Local Blade-style volunteering index/search/empty-state candidate; live opportunities, applications, hours, organisations, shifts, and backend workflows are not certified |
+| `GET /skills` | Local Blade-style skills directory search/empty-state candidate; live skill tree, category drill-down, member search, and backend behaviour are not certified |
+| `GET /exchanges` | Local Blade-style exchanges tab/empty-state candidate; auth enforcement, live exchange data, actions, ratings, broker review, and backend workflows are not certified |
+| `GET /group-exchanges` | Local Blade-style group exchanges filter/empty-state candidate; auth enforcement, feature gate, create/detail/participant actions, credit movement, and backend workflows are not certified |
+| `GET /polls` | Local Blade-style polls filter/create-form/empty-state candidate; auth enforcement, feature gate, live polls, voting, results, deletion, and backend workflows are not certified |
+| `GET /achievements` | Local Blade-style achievements summary/daily-reward/challenge/badge candidate; auth enforcement, gamification gate, live XP/badge data, reward claims, and backend workflows are not certified |
+| `GET /leaderboard` | Local Blade-style leaderboard filter/community-impact/empty-state candidate; auth enforcement, gamification gate, live ranking rows, score formatting, and backend workflows are not certified |
+| `GET /nexus-score` | Local Blade-style NEXUS score unavailable-state candidate; auth enforcement, gamification gate, live score, tier, breakdown, insights, and backend workflows are not certified |
+| `GET /activity` | Local Blade-style activity summary/stat-grid/empty-timeline candidate; auth enforcement, live MemberActivityService data, insights, and backend workflows are not certified |
+| `GET /saved` | Local Blade-style saved-items filter/empty-state candidate; auth enforcement, live BookmarkService data, removal, collections, appreciations, and backend workflows are not certified |
+| `GET /resources` | Local Blade-style resources search/library-link/empty-state candidate; auth enforcement, resources feature gate, live ResourceService data, library, upload, download, comments, and backend workflows are not certified |
+| `GET /accessibility` | Local Blade-style accessibility statement candidate; localization/runtime backend behaviour is not certified |
+| `GET /trust-and-safety` | Local Blade-style trust and safety candidate; localization/runtime backend behaviour is not certified |
+| `GET /legal` | Local Blade-style legal hub candidate; tenant-managed document data is not certified |
+| `GET /legal/*` | Local Blade-style fallback legal document candidate; tenant-managed legal document data/backend behaviour is not certified |
 | `GET /service-unavailable` | 503 error page |
 
 ### Protected Routes (require authentication)
@@ -313,6 +357,7 @@ nexus-uk-frontend/
 | `npm run watch:css` | Watch Sass files |
 | `npm run watch:server` | Watch server with nodemon |
 | `npm run brand:check` | Verify no government branding exists |
+| `npm run audit:accessible-prep` | Regenerate Laravel accessible route/view/backend preparation inventories |
 | `npm test` | Run tests with Jest |
 | `npm run test:coverage` | Run tests with coverage report |
 | `npm run test:watch` | Run tests in watch mode |
