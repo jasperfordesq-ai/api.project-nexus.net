@@ -94,7 +94,10 @@ The application will be available at **http://localhost:5180**
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3001` | Server port |
-| `API_BASE_URL` | `http://localhost:5000` | Backend API URL |
+| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Backend contract target. `aspnet` is allowed only as future/not-certified work. |
+| `LARAVEL_BASE_URL` | `http://127.0.0.1:8088` | Laravel backend base URL used by default. Mirrors the local Laravel staging `.env`. |
+| `ASPNET_BASE_URL` | `http://localhost:5080` | Future ASP.NET backend base URL when explicitly selected. Not certified. |
+| `API_BASE_URL` | - | Explicit backend URL override. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
 | `COOKIE_SECRET` | - | **Required.** Secret for signed cookies |
 | `SESSION_SECRET` | - | Secret for sessions (defaults to COOKIE_SECRET) |
 | `NODE_ENV` | `development` | Environment (development/production) |

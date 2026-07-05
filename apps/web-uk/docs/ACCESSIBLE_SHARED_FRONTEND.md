@@ -1,6 +1,6 @@
 # apps/web-uk Shared Accessible Frontend Notes
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-06
 
 `apps/web-uk` is the ASP.NET repo's future shared accessible frontend candidate.
 It is not production-ready, does not certify production readiness, and must not
@@ -21,6 +21,16 @@ Local implementation:
 ```text
 apps/web-uk
 ```
+
+Backend target resolution is Laravel-first and lives in:
+
+```text
+apps/web-uk\src\lib\backend-contract.js
+```
+
+By default, `apps/web-uk` resolves API calls to the local Laravel staging base
+URL `http://127.0.0.1:8088`. `ACCESSIBLE_BACKEND_TARGET=aspnet` remains future
+work and must not be treated as certified compatibility.
 
 ## Stack
 
