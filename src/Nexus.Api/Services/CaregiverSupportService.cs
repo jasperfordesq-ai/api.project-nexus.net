@@ -218,6 +218,70 @@ public sealed class CaregiverSupportService
             RiskLevel: riskLevel);
     }
 
+    public async Task<CaregiverHelpRequestMutationResult> CreateRequestOnBehalfAsync(
+        int tenantId,
+        int caregiverId,
+        IReadOnlyDictionary<string, object?> data,
+        CancellationToken ct)
+    {
+        var caredForId = IntValue(data, "cared_for_id");
+        if (caredForId <= 0)
+        {
+            return CaregiverHelpRequestMutationResult.Validation(
+                "Missing required field: cared_for_id.",
+                "cared_for_id");
+        }
+
+        var title = StringValue(data, "title").Trim();
+        if (title.Length == 0)
+        {
+            return CaregiverHelpRequestMutationResult.Validation(
+                "Missing required field: title.",
+                "title");
+        }
+
+        var hasActiveLink = await _db.CaringCaregiverLinks
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(link =>
+                link.TenantId == tenantId
+                && link.CaregiverId == caregiverId
+                && link.CaredForId == caredForId
+                && link.Status == "active", ct);
+        if (!hasActiveLink)
+        {
+            return CaregiverHelpRequestMutationResult.Forbidden("Active caregiver link required.");
+        }
+
+        var description = StringValue(data, "description").Trim();
+        var what = description.Length == 0 ? title : $"{title}\n\n{description}";
+        var whenNeeded = StringValue(data, "when_needed").Trim();
+        if (whenNeeded.Length == 0)
+        {
+            whenNeeded = "As soon as practical";
+        }
+
+        var now = DateTime.UtcNow;
+        var request = new CaringHelpRequest
+        {
+            TenantId = tenantId,
+            UserId = caredForId,
+            RequestedById = caregiverId,
+            IsOnBehalf = true,
+            What = what,
+            WhenNeeded = whenNeeded,
+            ContactPreference = NormalizeContactPreference(StringValue(data, "contact_preference")),
+            Status = "pending",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.CaringHelpRequests.Add(request);
+        await _db.SaveChangesAsync(ct);
+
+        return new CaregiverHelpRequestMutationResult(Row: MapHelpRequest(request));
+    }
+
     public async Task<CaregiverScheduleDto> GetScheduleForCaredForAsync(
         int tenantId,
         int caredForId,
@@ -811,6 +875,31 @@ public sealed class CaregiverSupportService
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
+    private static string NormalizeContactPreference(string value)
+    {
+        return value.Trim() switch
+        {
+            "phone" or "message" or "either" => value.Trim(),
+            _ => "either"
+        };
+    }
+
+    private static CaregiverHelpRequestRow MapHelpRequest(CaringHelpRequest request)
+    {
+        return new CaregiverHelpRequestRow(
+            Id: request.Id,
+            TenantId: request.TenantId,
+            UserId: request.UserId,
+            What: request.What,
+            WhenNeeded: request.WhenNeeded,
+            ContactPreference: request.ContactPreference,
+            Status: request.Status,
+            IsOnBehalf: request.IsOnBehalf,
+            RequestedById: request.RequestedById,
+            CreatedAt: request.CreatedAt,
+            UpdatedAt: request.UpdatedAt);
+    }
+
     private static CaregiverLinkRow Map(CaringCaregiverLink link, User? caredFor)
     {
         return new CaregiverLinkRow(
@@ -890,6 +979,41 @@ public sealed record CaregiverLinkMutationResult(
     string? ErrorField = null);
 
 public sealed record CaregiverLinkDeleteResult(bool Ok = false, bool NotFound = false);
+
+public sealed record CaregiverHelpRequestMutationResult(
+    CaregiverHelpRequestRow? Row = null,
+    string? ErrorCode = null,
+    string? ErrorMessage = null,
+    string? ErrorField = null)
+{
+    public static CaregiverHelpRequestMutationResult Validation(string message, string? field = null)
+    {
+        return new CaregiverHelpRequestMutationResult(
+            ErrorCode: "VALIDATION_ERROR",
+            ErrorMessage: message,
+            ErrorField: field);
+    }
+
+    public static CaregiverHelpRequestMutationResult Forbidden(string message)
+    {
+        return new CaregiverHelpRequestMutationResult(
+            ErrorCode: "FORBIDDEN",
+            ErrorMessage: message);
+    }
+}
+
+public sealed record CaregiverHelpRequestRow(
+    [property: JsonPropertyName("id")] int Id,
+    [property: JsonPropertyName("tenant_id")] int TenantId,
+    [property: JsonPropertyName("user_id")] int UserId,
+    [property: JsonPropertyName("what")] string What,
+    [property: JsonPropertyName("when_needed")] string WhenNeeded,
+    [property: JsonPropertyName("contact_preference")] string ContactPreference,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("is_on_behalf")] bool IsOnBehalf,
+    [property: JsonPropertyName("requested_by_id")] int? RequestedById,
+    [property: JsonPropertyName("created_at")] DateTime CreatedAt,
+    [property: JsonPropertyName("updated_at")] DateTime? UpdatedAt);
 
 public sealed record CaregiverCoverRequestMutationResult(
     CaregiverCoverRequestRow? Row = null,

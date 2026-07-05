@@ -43,6 +43,9 @@ public class CaringCommunityCaregiverControllerUnitTests
             .GetMethod("BurnoutCheck")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("burnout-check");
         typeof(CaringCommunityCaregiverController)
+            .GetMethod("RequestOnBehalf")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("request-on-behalf");
+        typeof(CaringCommunityCaregiverController)
             .GetMethod("CoverRequests")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("cover-requests");
         typeof(CaringCommunityCaregiverController)
@@ -113,6 +116,122 @@ public class CaringCommunityCaregiverControllerUnitTests
         data.GetProperty("threshold").GetDecimal().Should().Be(20m);
         data.GetProperty("at_risk").GetBoolean().Should().BeTrue();
         data.GetProperty("risk_level").GetString().Should().Be("moderate");
+    }
+
+    [Fact]
+    public async Task RequestOnBehalf_CreatesHelpRequestForLinkedCaredForUser()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, true);
+        db.Users.AddRange(
+            User(1001, 42, "Cara", "Giver"),
+            User(2001, 42, "Pat", "Recipient", "/avatars/pat.png"));
+        db.CaringCaregiverLinks.Add(Link(42, 1001, 2001, "family", status: "active"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1001);
+
+        var result = await Invoke(
+            controller,
+            "RequestOnBehalf",
+            new Dictionary<string, object?>
+            {
+                ["cared_for_id"] = 2001,
+                ["title"] = "Needs groceries",
+                ["description"] = "Milk, bread, and a short check-in.",
+                ["when_needed"] = "tomorrow morning",
+                ["contact_preference"] = "phone"
+            },
+            CancellationToken.None);
+
+        var created = result.Should().BeOfType<ObjectResult>().Subject;
+        created.StatusCode.Should().Be(StatusCodes.Status201Created);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(created.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("tenant_id").GetInt32().Should().Be(42);
+        data.GetProperty("user_id").GetInt32().Should().Be(2001);
+        data.GetProperty("requested_by_id").GetInt32().Should().Be(1001);
+        data.GetProperty("is_on_behalf").GetBoolean().Should().BeTrue();
+        data.GetProperty("what").GetString().Should().Be("Needs groceries\n\nMilk, bread, and a short check-in.");
+        data.GetProperty("when_needed").GetString().Should().Be("tomorrow morning");
+        data.GetProperty("contact_preference").GetString().Should().Be("phone");
+        data.GetProperty("status").GetString().Should().Be("pending");
+
+        var stored = await db.CaringHelpRequests.IgnoreQueryFilters().SingleAsync();
+        stored.TenantId.Should().Be(42);
+        stored.UserId.Should().Be(2001);
+        stored.RequestedById.Should().Be(1001);
+        stored.IsOnBehalf.Should().BeTrue();
+        stored.What.Should().Be("Needs groceries\n\nMilk, bread, and a short check-in.");
+        stored.WhenNeeded.Should().Be("tomorrow morning");
+        stored.ContactPreference.Should().Be("phone");
+        stored.Status.Should().Be("pending");
+    }
+
+    [Fact]
+    public async Task RequestOnBehalf_ValidatesInputAndActiveLink()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, true);
+        db.Users.AddRange(
+            User(1001, 42, "Cara", "Giver"),
+            User(2001, 42, "Pat", "Recipient"),
+            User(2002, 42, "No", "Link"));
+        db.CaringCaregiverLinks.Add(Link(42, 1001, 2001, "family", status: "active"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1001);
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "RequestOnBehalf",
+                new Dictionary<string, object?> { ["title"] = "Missing cared-for" },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "RequestOnBehalf",
+                new Dictionary<string, object?> { ["cared_for_id"] = 2001 },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "RequestOnBehalf",
+                new Dictionary<string, object?>
+                {
+                    ["cared_for_id"] = 2002,
+                    ["title"] = "No active link"
+                },
+                CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FORBIDDEN");
+
+        var defaulted = await Invoke(
+            controller,
+            "RequestOnBehalf",
+            new Dictionary<string, object?>
+            {
+                ["cared_for_id"] = 2001,
+                ["title"] = "Default fields",
+                ["contact_preference"] = "fax"
+            },
+            CancellationToken.None);
+        var created = defaulted.Should().BeOfType<ObjectResult>().Subject;
+        created.StatusCode.Should().Be(StatusCodes.Status201Created);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(created.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("what").GetString().Should().Be("Default fields");
+        data.GetProperty("when_needed").GetString().Should().Be("As soon as practical");
+        data.GetProperty("contact_preference").GetString().Should().Be("either");
+
+        db.CaringHelpRequests.IgnoreQueryFilters().Should().ContainSingle();
     }
 
     [Fact]
