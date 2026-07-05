@@ -42,6 +42,10 @@ public sealed class CaringCommunitySlaAndSupportAdminControllerUnitTests
         controller.GetMethod("CreateSupportRelationship")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("support-relationships");
+
+        controller.GetMethod("LogSupportRelationshipHours")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("support-relationships/{id}/hours");
     }
 
     [Fact]
@@ -315,6 +319,219 @@ public sealed class CaringCommunitySlaAndSupportAdminControllerUnitTests
     }
 
     [Fact]
+    public async Task LogSupportRelationshipHours_CreatesVolunteerLogAndUpdatesRelationship()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(9, 42, "Admin", "User", Role.Names.Admin),
+            User(10, 42, "Ada", "Supporter"),
+            User(11, 42, "Grace", "Recipient"));
+        db.CaringSupportRelationships.Add(Relationship(
+            201,
+            42,
+            10,
+            11,
+            9,
+            "Weekly shop",
+            "Shopping and tea",
+            "weekly",
+            2.5m,
+            "active",
+            new DateOnly(2026, 6, 1),
+            new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+        var input = new Dictionary<string, object?>
+        {
+            ["date"] = "2026-07-01",
+            ["hours"] = 2.75m,
+            ["description"] = "  Tea, forms and groceries  "
+        };
+
+        var data = ReadData(await Invoke(controller, "LogSupportRelationshipHours", 201, input, CancellationToken.None), StatusCodes.Status201Created);
+
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+        var log = data.GetProperty("log");
+        log.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        log.GetProperty("status").GetString().Should().Be("approved");
+        log.GetProperty("hours").GetDecimal().Should().Be(2.75m);
+        log.GetProperty("date_logged").GetString().Should().Be("2026-07-01");
+        log.GetProperty("payment_result").ValueKind.Should().Be(JsonValueKind.Null);
+        log.GetProperty("regional_points_result").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var relationship = data.GetProperty("relationship");
+        relationship.GetProperty("id").GetInt32().Should().Be(201);
+        relationship.GetProperty("last_logged_at").GetString().Should().NotBeNullOrWhiteSpace();
+        relationship.GetProperty("next_check_in_at").GetString().Should().Be("2026-07-08 09:00:00");
+
+        var storedLog = await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync();
+        storedLog.TenantId.Should().Be(42);
+        storedLog.UserId.Should().Be(10);
+        storedLog.SupportRecipientId.Should().Be(11);
+        storedLog.CaringSupportRelationshipId.Should().Be(201);
+        storedLog.DateLogged.Should().Be(new DateOnly(2026, 7, 1));
+        storedLog.Hours.Should().Be(2.75m);
+        storedLog.Description.Should().Be("Tea, forms and groceries");
+        storedLog.Status.Should().Be("approved");
+
+        var storedRelationship = await db.CaringSupportRelationships.IgnoreQueryFilters().SingleAsync(row => row.Id == 201);
+        storedRelationship.LastLoggedAt.Should().NotBeNull();
+        storedRelationship.NextCheckInAt.Should().Be(new DateTime(2026, 7, 8, 9, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public async Task LogSupportRelationshipHours_DefaultsDescriptionAndRejectsDuplicateActiveLog()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(9, 42, "Admin", "User", Role.Names.Admin),
+            User(10, 42, "Ada", "Supporter"),
+            User(11, 42, "Grace", "Recipient"));
+        db.CaringSupportRelationships.Add(Relationship(
+            201,
+            42,
+            10,
+            11,
+            9,
+            "Weekly shop",
+            null,
+            "fortnightly",
+            2.5m,
+            "active",
+            new DateOnly(2026, 6, 1),
+            null,
+            new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)));
+        db.VolunteerLogs.Add(new VolunteerLog
+        {
+            TenantId = 42,
+            UserId = 10,
+            CaringSupportRelationshipId = 201,
+            SupportRecipientId = 11,
+            DateLogged = new DateOnly(2026, 7, 1),
+            Hours = 1m,
+            Description = "Previous",
+            Status = "rejected",
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+        var input = new Dictionary<string, object?>
+        {
+            ["date"] = "2026-07-01",
+            ["hours"] = 1.25m,
+            ["description"] = "  "
+        };
+
+        var data = ReadData(await Invoke(controller, "LogSupportRelationshipHours", 201, input, CancellationToken.None), StatusCodes.Status201Created);
+
+        data.GetProperty("log").GetProperty("status").GetString().Should().Be("approved");
+        data.GetProperty("relationship").GetProperty("next_check_in_at").GetString().Should().Be("2026-07-15 09:00:00");
+        var newLog = await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(row => row.Status == "approved");
+        newLog.Description.Should().Be("Weekly shop");
+
+        AssertSingleError(
+            await Invoke(controller, "LogSupportRelationshipHours", 201, input, CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "ALREADY_EXISTS");
+    }
+
+    [Fact]
+    public async Task LogSupportRelationshipHours_WhenInvalidInput_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(9, 42, "Admin", "User", Role.Names.Admin),
+            User(10, 42, "Ada", "Supporter"),
+            User(11, 42, "Grace", "Recipient"));
+        db.CaringSupportRelationships.Add(Relationship(
+            201,
+            42,
+            10,
+            11,
+            9,
+            "Weekly shop",
+            null,
+            "weekly",
+            2.5m,
+            "active",
+            new DateOnly(2026, 6, 1),
+            null,
+            new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(
+            await Invoke(controller, "LogSupportRelationshipHours", 201, new Dictionary<string, object?>
+            {
+                ["date"] = "2026-07-01",
+                ["hours"] = 0m
+            }, CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        AssertSingleError(
+            await Invoke(controller, "LogSupportRelationshipHours", 201, new Dictionary<string, object?>
+            {
+                ["date"] = "2099-01-01",
+                ["hours"] = 1m
+            }, CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        db.VolunteerLogs.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task LogSupportRelationshipHours_WhenMissingOrInactive_ReturnsLaravelErrors()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(9, 42, "Admin", "User", Role.Names.Admin),
+            User(10, 42, "Ada", "Supporter"),
+            User(11, 42, "Grace", "Recipient"));
+        db.CaringSupportRelationships.Add(Relationship(
+            201,
+            42,
+            10,
+            11,
+            9,
+            "Weekly shop",
+            null,
+            "weekly",
+            2.5m,
+            "paused",
+            new DateOnly(2026, 6, 1),
+            null,
+            new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+        var input = new Dictionary<string, object?>
+        {
+            ["date"] = "2026-07-01",
+            ["hours"] = 1m
+        };
+
+        AssertSingleError(
+            await Invoke(controller, "LogSupportRelationshipHours", 999, input, CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "NOT_FOUND");
+
+        AssertSingleError(
+            await Invoke(controller, "LogSupportRelationshipHours", 201, input, CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "RELATIONSHIP_INACTIVE");
+    }
+
+    [Fact]
     public async Task AdminReads_WhenFeatureDisabled_ReturnLaravelErrors()
     {
         var tenant = CreateTenantContext(42);
@@ -333,6 +550,10 @@ public sealed class CaringCommunitySlaAndSupportAdminControllerUnitTests
             "FEATURE_DISABLED");
         AssertSingleError(
             await Invoke(controller, "CreateSupportRelationship", new Dictionary<string, object?>(), CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(
+            await Invoke(controller, "LogSupportRelationshipHours", 201, new Dictionary<string, object?>(), CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
     }

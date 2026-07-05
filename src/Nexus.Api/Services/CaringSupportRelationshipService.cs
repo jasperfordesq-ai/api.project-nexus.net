@@ -162,6 +162,105 @@ public sealed class CaringSupportRelationshipService
         return SupportRelationshipCreateResult.Success(RelationshipRow(relationship, users, categories));
     }
 
+    public async Task<SupportRelationshipLogHoursResult> LogHoursAsync(
+        int tenantId,
+        int relationshipId,
+        int coordinatorId,
+        IReadOnlyDictionary<string, object?>? input,
+        CancellationToken ct)
+    {
+        var relationship = await _db.CaringSupportRelationships
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.Id == relationshipId, ct);
+        if (relationship is null)
+        {
+            return SupportRelationshipLogHoursResult.Fail("NOT_FOUND");
+        }
+
+        if (relationship.Status != "active")
+        {
+            return SupportRelationshipLogHoursResult.Fail("RELATIONSHIP_INACTIVE");
+        }
+
+        var date = DateValue(StringValue(input, "date"));
+        var hours = DecimalValue(input, "hours") ?? 0m;
+        if (date is null || date.Value > DateOnly.FromDateTime(DateTime.UtcNow) || hours <= 0m || hours > 24m)
+        {
+            return SupportRelationshipLogHoursResult.Fail("VALIDATION_ERROR");
+        }
+
+        var duplicate = await _db.VolunteerLogs
+            .IgnoreQueryFilters()
+            .AnyAsync(log =>
+                log.TenantId == tenantId
+                && log.UserId == relationship.SupporterId
+                && log.CaringSupportRelationshipId == relationshipId
+                && log.DateLogged == date.Value
+                && log.Status != "declined"
+                && log.Status != "rejected",
+                ct);
+        if (duplicate)
+        {
+            return SupportRelationshipLogHoursResult.Fail("ALREADY_EXISTS");
+        }
+
+        var now = DateTime.UtcNow;
+        var description = NullIfEmpty(StringValue(input, "description")?.Trim()) ?? relationship.Title;
+        var log = new VolunteerLog
+        {
+            TenantId = tenantId,
+            UserId = relationship.SupporterId,
+            OrganizationId = relationship.OrganizationId,
+            OpportunityId = null,
+            CaringSupportRelationshipId = relationshipId,
+            SupportRecipientId = relationship.RecipientId,
+            DateLogged = date.Value,
+            Hours = Math.Round(hours, 2, MidpointRounding.AwayFromZero),
+            Description = Truncate(description, 2000),
+            Status = await ResolveLogStatusAsync(tenantId, coordinatorId, ct),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.VolunteerLogs.Add(log);
+        relationship.LastLoggedAt = now;
+        relationship.NextCheckInAt = NextCheckIn(date.Value, relationship.Frequency);
+        relationship.UpdatedAt = now;
+        await _db.SaveChangesAsync(ct);
+
+        var users = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user =>
+                user.TenantId == tenantId
+                && (user.Id == relationship.SupporterId
+                    || user.Id == relationship.RecipientId
+                    || user.Id == relationship.CoordinatorId))
+            .ToDictionaryAsync(user => user.Id, ct);
+        var categories = relationship.CategoryId is null
+            ? new Dictionary<int, string>()
+            : await _db.Categories
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(category => category.TenantId == tenantId && category.Id == relationship.CategoryId.Value)
+                .ToDictionaryAsync(category => category.Id, category => category.Name, ct);
+
+        return SupportRelationshipLogHoursResult.Success(new
+        {
+            success = true,
+            log = new
+            {
+                id = log.Id,
+                status = log.Status,
+                hours = Math.Round(log.Hours, 2, MidpointRounding.AwayFromZero),
+                date_logged = log.DateLogged.ToString(DateFormat, CultureInfo.InvariantCulture),
+                payment_result = (object?)null,
+                regional_points_result = (object?)null
+            },
+            relationship = RelationshipRow(relationship, users, categories)
+        });
+    }
+
     public async Task<IReadOnlyList<object>> ListForMemberAsync(int tenantId, int userId, CancellationToken ct)
     {
         var relationships = await _db.CaringSupportRelationships
@@ -311,6 +410,20 @@ public sealed class CaringSupportRelationshipService
         await _db.SaveChangesAsync(ct);
 
         return RelationshipLifecycleResult.Success(targetStatus);
+    }
+
+    private async Task<string> ResolveLogStatusAsync(int tenantId, int coordinatorId, CancellationToken ct)
+    {
+        var role = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user => user.TenantId == tenantId && user.Id == coordinatorId)
+            .Select(user => user.Role)
+            .FirstOrDefaultAsync(ct);
+
+        return role is "admin" or "tenant_admin" or "super_admin" or "broker"
+            ? "approved"
+            : "pending";
     }
 
     private async Task UpsertSuggestionLogAsync(
@@ -663,6 +776,22 @@ public sealed record SupportRelationshipCreateResult(
     public static SupportRelationshipCreateResult Fail(string code)
     {
         return new SupportRelationshipCreateResult(false, null, code);
+    }
+}
+
+public sealed record SupportRelationshipLogHoursResult(
+    bool Succeeded,
+    object? Payload,
+    string? ErrorCode)
+{
+    public static SupportRelationshipLogHoursResult Success(object payload)
+    {
+        return new SupportRelationshipLogHoursResult(true, payload, null);
+    }
+
+    public static SupportRelationshipLogHoursResult Fail(string code)
+    {
+        return new SupportRelationshipLogHoursResult(false, null, code);
     }
 }
 

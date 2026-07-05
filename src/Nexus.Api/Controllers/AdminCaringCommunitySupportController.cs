@@ -86,6 +86,45 @@ public sealed class AdminCaringCommunitySupportController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, new { data = result.Relationship });
     }
 
+    [HttpPost("support-relationships/{id}/hours")]
+    public async Task<IActionResult> LogSupportRelationshipHours(
+        int id,
+        [FromBody] Dictionary<string, object?>? request,
+        CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _relationships.IsFeatureEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var result = await _relationships.LogHoursAsync(
+            tenantId,
+            id,
+            User.GetUserId() ?? 0,
+            request,
+            ct);
+
+        if (!result.Succeeded)
+        {
+            var code = result.ErrorCode ?? "VALIDATION_ERROR";
+            var message = code switch
+            {
+                "NOT_FOUND" => "Support relationship not found.",
+                "RELATIONSHIP_INACTIVE" => "Support relationship is not active.",
+                "ALREADY_EXISTS" => "Support hours have already been logged for this relationship and date.",
+                _ => "Support hours could not be logged."
+            };
+            var status = code == "NOT_FOUND"
+                ? StatusCodes.Status404NotFound
+                : StatusCodes.Status422UnprocessableEntity;
+            return StatusCode(status, LaravelError(code, message));
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new { data = result.Payload });
+    }
+
     private static object LaravelError(string code, string message, string? field = null)
     {
         var error = new Dictionary<string, object?>
