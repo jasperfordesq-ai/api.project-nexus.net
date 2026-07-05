@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
@@ -92,6 +93,36 @@ public sealed class CaringCommunityHourGiftsController : ControllerBase
         return Ok(new { data = new { success = true } });
     }
 
+    [HttpPost("{id}/decline")]
+    public async Task<IActionResult> Decline(
+        long id,
+        [FromBody] CaringHourGiftDeclineRequest? request,
+        CancellationToken ct)
+    {
+        var guard = await GuardAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized(LaravelError("AUTH_REQUIRED", "Authentication required."));
+        }
+
+        try
+        {
+            await _gifts.DeclineAsync(_tenant.GetTenantIdOrThrow(), id, userId.Value, request?.Reason, ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return UnprocessableEntity(LaravelError("GIFT_DECLINE_FAILED", ex.Message));
+        }
+
+        return Ok(new { data = new { success = true } });
+    }
+
     private async Task<IActionResult?> GuardAsync(CancellationToken ct)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
@@ -118,4 +149,10 @@ public sealed class CaringCommunityHourGiftsController : ControllerBase
             }
         };
     }
+}
+
+public sealed class CaringHourGiftDeclineRequest
+{
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
 }

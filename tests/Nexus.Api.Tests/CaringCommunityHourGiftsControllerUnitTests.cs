@@ -33,6 +33,8 @@ public class CaringCommunityHourGiftsControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("sent");
         type.GetMethod("Accept")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{id}/accept");
+        type.GetMethod("Decline")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{id}/decline");
     }
 
     [Fact]
@@ -159,6 +161,50 @@ public class CaringCommunityHourGiftsControllerUnitTests
         walletCredit.Description.Should().Be("Caring hour gift accepted");
     }
 
+    [Fact]
+    public async Task Decline_MarksPendingGiftDeclinedStoresReasonAndRefundsSenderWallet()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(42, 10, "sender@example.test", "Sam", "Sender"),
+            User(42, 20, "recipient@example.test", "Robin", "Recipient"));
+        db.Add(CreateGift(
+            42,
+            senderId: 10,
+            recipientId: 20,
+            hours: 3.5m,
+            status: "pending",
+            createdAt: DateTime.UtcNow.AddHours(-2),
+            message: "Could you use these?",
+            id: 101));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 20);
+        var request = CreateDeclineRequest("  Not needed this week  ");
+
+        var result = await InvokeActionAsync(controller, "Decline", 101L, request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        document.RootElement.GetProperty("data").GetProperty("success").GetBoolean()
+            .Should().BeTrue();
+
+        var gift = await db.CaringHourGifts.IgnoreQueryFilters().SingleAsync(g => g.Id == 101);
+        gift.Status.Should().Be("declined");
+        gift.DeclinedAt.Should().NotBeNull();
+        gift.UpdatedAt.Should().NotBeNull();
+        gift.DeclineReason.Should().Be("Not needed this week");
+
+        var refund = await db.Transactions.IgnoreQueryFilters().SingleAsync();
+        refund.TenantId.Should().Be(42);
+        refund.SenderId.Should().Be(0);
+        refund.ReceiverId.Should().Be(10);
+        refund.Amount.Should().Be(3.5m);
+        refund.Status.Should().Be(TransactionStatus.Completed);
+        refund.Description.Should().Be("Caring hour gift declined refund");
+    }
+
     private static Type? ResolveControllerType()
     {
         return Type.GetType("Nexus.Api.Controllers.CaringCommunityHourGiftsController, Nexus.Api");
@@ -203,6 +249,15 @@ public class CaringCommunityHourGiftsControllerUnitTests
         Set(gift, "CreatedAt", createdAt);
         Set(gift, "UpdatedAt", createdAt);
         return gift;
+    }
+
+    private static object CreateDeclineRequest(string? reason)
+    {
+        var type = Type.GetType("Nexus.Api.Controllers.CaringHourGiftDeclineRequest, Nexus.Api");
+        type.Should().NotBeNull();
+        var request = Activator.CreateInstance(type!)!;
+        Set(request, "Reason", reason);
+        return request;
     }
 
     private static void Set(object target, string propertyName, object? value)

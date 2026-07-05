@@ -14,6 +14,8 @@ public sealed class CaringHourGiftService
 {
     private const string StatusPending = "pending";
     private const string StatusAccepted = "accepted";
+    private const string StatusDeclined = "declined";
+    private const int MaxMessageLength = 500;
 
     private readonly NexusDbContext _db;
 
@@ -113,6 +115,52 @@ public sealed class CaringHourGiftService
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task DeclineAsync(
+        int tenantId,
+        long giftId,
+        int recipientUserId,
+        string? reason,
+        CancellationToken ct)
+    {
+        var gift = await _db.CaringHourGifts
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(g => g.TenantId == tenantId && g.Id == giftId, ct);
+
+        if (gift is null)
+        {
+            throw new InvalidOperationException("Gift not found.");
+        }
+
+        if (gift.RecipientUserId != recipientUserId)
+        {
+            throw new InvalidOperationException("Only the recipient can decline this gift.");
+        }
+
+        if (gift.Status != StatusPending)
+        {
+            throw new InvalidOperationException("Gift is no longer pending.");
+        }
+
+        var now = DateTime.UtcNow;
+        gift.Status = StatusDeclined;
+        gift.DeclinedAt = now;
+        gift.DeclineReason = NormalizeReason(reason);
+        gift.UpdatedAt = now;
+
+        _db.Transactions.Add(new Transaction
+        {
+            TenantId = tenantId,
+            SenderId = 0,
+            ReceiverId = gift.SenderUserId,
+            Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
+            Description = "Caring hour gift declined refund",
+            Status = TransactionStatus.Completed,
+            CreatedAt = now
+        });
+
+        await _db.SaveChangesAsync(ct);
+    }
+
     private async Task<IReadOnlyDictionary<int, User>> LoadUsersAsync(
         int tenantId,
         IEnumerable<int> userIds,
@@ -162,6 +210,24 @@ public sealed class CaringHourGiftService
         }
 
         return $"{user.FirstName} {user.LastName}".Trim();
+    }
+
+    private static string? NormalizeReason(string? reason)
+    {
+        if (reason is null)
+        {
+            return null;
+        }
+
+        var trimmed = reason.Trim();
+        if (trimmed.Length == 0)
+        {
+            return null;
+        }
+
+        return trimmed.Length <= MaxMessageLength
+            ? trimmed
+            : trimmed[..MaxMessageLength];
     }
 
     private static bool? ParseBool(string? raw)
