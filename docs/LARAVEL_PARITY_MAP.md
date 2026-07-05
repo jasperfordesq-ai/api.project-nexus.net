@@ -11,8 +11,8 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 | Controllers | 308 | 209 |
 | Services | 479 | 182 |
 | Models/entities | 200 Laravel models | 186 EF entity files |
-| Migrations | 318 | 85 EF migration classes excluding designers/snapshot |
-| OpenAPI operations | 891 | 3,388 static controller operations from parity script |
+| Migrations | 318 | 86 EF migration classes excluding designers/snapshot |
+| OpenAPI operations | 891 | 3,389 static controller operations from parity script |
 | Schema tables | 361 Laravel source tables | 309 .NET static table names |
 | Frontend routes | 589 React / 607 accessible | 462 React / 136 accessible |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
@@ -23,8 +23,8 @@ These counts are directional. They are not a parity score.
 
 `scripts/compare-laravel-api-parity.ps1` generated
 `artifacts/parity/api/api-parity.json` on 2026-07-05 with 2,429 Laravel source
-operations after supplemental API route parsing and de-duplication, 2,243 static
-matches, and 186 missing operations. Laravel `govuk-alpha*` accessible page
+operations after supplemental API route parsing and de-duplication, 2,244 static
+matches, and 185 missing operations. Laravel `govuk-alpha*` accessible page
 routes are excluded from the API comparator and tracked in the frontend
 comparator. The artifact is ignored by git; regenerate it before using the
 numbers for implementation planning.
@@ -52,7 +52,7 @@ matched namespaces. The artifact is ignored by git; regenerate it before using
 the numbers for localization implementation planning.
 
 `scripts/export-laravel-parity-backlog.ps1` generated
-`artifacts/parity/backlog/parity-backlog.json` on 2026-07-05 with 6,680 open
+`artifacts/parity/backlog/parity-backlog.json` on 2026-07-05 with 6,679 open
 implementation items across API, schema, frontend, and localization artifacts.
 The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 

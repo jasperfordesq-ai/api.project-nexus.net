@@ -13850,6 +13850,10 @@ namespace Nexus.Api.Migrations
                     b.Property<int>("Level")
                         .HasColumnType("integer");
 
+                    b.Property<string>("NotificationPreferences")
+                        .HasColumnType("text")
+                        .HasColumnName("notification_preferences");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(255)

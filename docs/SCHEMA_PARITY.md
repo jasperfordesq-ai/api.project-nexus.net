@@ -12,7 +12,7 @@ Generated with `scripts/compare-laravel-schema-parity.ps1` on 2026-07-04.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 318 | PHP migration files under `database/migrations`. |
-| ASP.NET EF migrations | 85 | Committed EF migration classes, excluding `.Designer.cs` and model snapshot files. |
+| ASP.NET EF migrations | 86 | Committed EF migration classes, excluding `.Designer.cs` and model snapshot files. |
 | Laravel created tables | 215 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 102 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 195 | Unique `protected/public $table = ...` model declarations. |

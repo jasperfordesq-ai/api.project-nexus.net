@@ -35,6 +35,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("my-relationships");
 
+        controller.GetMethod("SetOnboardingChoice")
+            ?.GetCustomAttribute<HttpPutAttribute>()?.Template
+            .Should().Be("me/onboarding-choice");
+
         controller.GetMethod("SafeguardingMyReports")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("safeguarding/my-reports");
@@ -90,6 +94,87 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         controller.GetMethod("ImportVereinMembers")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("vereine/{organizationId}/members/import");
+    }
+
+    [Fact]
+    public async Task SetOnboardingChoice_PersistsChoiceInLaravelCompatibleUserPreferenceBag()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        var user = User(10, 42, "Ada", "Member");
+        SetNotificationPreferences(user, """
+            {"email":true,"caring_community":{"existing":"keep"}}
+            """);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadData(await Invoke(
+            controller,
+            "SetOnboardingChoice",
+            new Dictionary<string, object?> { ["choice"] = "helper" },
+            CancellationToken.None));
+
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+        data.GetProperty("choice").GetString().Should().Be("helper");
+
+        var stored = await db.Users.IgnoreQueryFilters().SingleAsync(row => row.Id == 10);
+        using var document = JsonDocument.Parse(GetNotificationPreferences(stored).Should().NotBeNull().And.Subject!);
+        var root = document.RootElement;
+        root.GetProperty("email").GetBoolean().Should().BeTrue();
+        var caring = root.GetProperty("caring_community");
+        caring.GetProperty("existing").GetString().Should().Be("keep");
+        caring.GetProperty("onboarding_choice").GetString().Should().Be("helper");
+        stored.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task SetOnboardingChoice_RejectsInvalidChoiceWithLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.Add(User(10, 42, "Ada", "Member"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "SetOnboardingChoice",
+                new Dictionary<string, object?> { ["choice"] = "coordinator" },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR",
+            "choice");
+    }
+
+    [Fact]
+    public async Task SetOnboardingChoice_ReplacesNonObjectPreferenceJsonWithCaringCommunityBag()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        var user = User(10, 42, "Ada", "Member");
+        SetNotificationPreferences(user, "[]");
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadData(await Invoke(
+            controller,
+            "SetOnboardingChoice",
+            new Dictionary<string, object?> { ["choice"] = "browse" },
+            CancellationToken.None));
+
+        data.GetProperty("choice").GetString().Should().Be("browse");
+        var stored = await db.Users.IgnoreQueryFilters().SingleAsync(row => row.Id == 10);
+        using var document = JsonDocument.Parse(GetNotificationPreferences(stored).Should().NotBeNull().And.Subject!);
+        document.RootElement.GetProperty("caring_community")
+            .GetProperty("onboarding_choice")
+            .GetString()
+            .Should().Be("browse");
     }
 
     [Fact]
@@ -1160,7 +1245,8 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             regionalPoints,
             research,
             vereine,
-            tenant)!;
+            tenant,
+            db)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;
     }
@@ -1245,12 +1331,41 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         };
     }
 
-    private static void AssertSingleError(IActionResult result, int statusCode, string code)
+    private static void AssertSingleError(
+        IActionResult result,
+        int statusCode,
+        string code,
+        string? field = null)
     {
         var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
         objectResult.StatusCode.Should().Be(statusCode);
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
-        document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be(code);
+        var error = document.RootElement.GetProperty("errors")[0];
+        error.GetProperty("code").GetString().Should().Be(code);
+        if (field is not null)
+        {
+            error.GetProperty("field").GetString().Should().Be(field);
+        }
+    }
+
+    private static string? GetNotificationPreferences(User user)
+    {
+        return Resolve(ControllerTypeName).Assembly
+            .GetType("Nexus.Api.Entities.User", throwOnError: true)!
+            .GetProperty("NotificationPreferences")
+            .Should().NotBeNull("Laravel stores caring-community onboarding choice in users.notification_preferences")
+            .And.Subject!
+            .GetValue(user) as string;
+    }
+
+    private static void SetNotificationPreferences(User user, string value)
+    {
+        Resolve(ControllerTypeName).Assembly
+            .GetType("Nexus.Api.Entities.User", throwOnError: true)!
+            .GetProperty("NotificationPreferences")
+            .Should().NotBeNull("Laravel stores caring-community onboarding choice in users.notification_preferences")
+            .And.Subject!
+            .SetValue(user, value);
     }
 
     private static void SeedFeature(NexusDbContext db, int tenantId, bool enabled)

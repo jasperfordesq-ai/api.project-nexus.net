@@ -38,6 +38,12 @@ public class User : ITenantEntity
     public string? Bio { get; set; }
 
     /// <summary>
+    /// Laravel-compatible per-user JSON preference bag.
+    /// Used by Caring Community onboarding personalization and other legacy preferences.
+    /// </summary>
+    public string? NotificationPreferences { get; set; }
+
+    /// <summary>
     /// Registration lifecycle state. Defaults to Active for backward compatibility.
     /// </summary>
     public RegistrationStatus RegistrationStatus { get; set; } = RegistrationStatus.Active;

@@ -6,11 +6,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -31,6 +33,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
     private readonly CaringResearchPartnershipService _research;
     private readonly CaringCommunityVereineAdminService _vereine;
     private readonly TenantContext _tenant;
+    private readonly NexusDbContext _db;
 
     public CaringCommunityMemberController(
         CaringSupportRelationshipService relationships,
@@ -41,7 +44,8 @@ public sealed class CaringCommunityMemberController : ControllerBase
         CaringRegionalPointService regionalPoints,
         CaringResearchPartnershipService research,
         CaringCommunityVereineAdminService vereine,
-        TenantContext tenant)
+        TenantContext tenant,
+        NexusDbContext db)
     {
         _relationships = relationships;
         _safeguarding = safeguarding;
@@ -52,6 +56,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
         _research = research;
         _vereine = vereine;
         _tenant = tenant;
+        _db = db;
     }
 
     [HttpGet("my-relationships")]
@@ -330,6 +335,41 @@ public sealed class CaringCommunityMemberController : ControllerBase
             ct);
 
         return Ok(new { data });
+    }
+
+    [HttpPut("me/onboarding-choice")]
+    public async Task<IActionResult> SetOnboardingChoice(
+        [FromBody] CaringCommunityOnboardingChoiceRequest? request,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var choice = request?.Choice ?? string.Empty;
+        if (choice is not ("recipient" or "helper" or "browse"))
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed.", "choice"));
+        }
+
+        var row = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item =>
+                item.TenantId == _tenant.GetTenantIdOrThrow()
+                && item.Id == user.UserId!.Value,
+                ct);
+
+        if (row is not null)
+        {
+            row.NotificationPreferences = UpsertOnboardingChoice(row.NotificationPreferences, choice);
+            row.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return Ok(new { data = new { success = true, choice } });
     }
 
     [HttpGet("my-future-care-fund")]
@@ -750,6 +790,28 @@ public sealed class CaringCommunityMemberController : ControllerBase
         return string.IsNullOrWhiteSpace(sanitized) ? "en" : sanitized;
     }
 
+    private static string UpsertOnboardingChoice(string? rawPreferences, string choice)
+    {
+        JsonObject root;
+        try
+        {
+            var parsed = string.IsNullOrWhiteSpace(rawPreferences)
+                ? null
+                : JsonNode.Parse(rawPreferences);
+            root = parsed as JsonObject ?? new JsonObject();
+        }
+        catch (JsonException)
+        {
+            root = new JsonObject();
+        }
+
+        var caring = root["caring_community"] as JsonObject ?? new JsonObject();
+        caring["onboarding_choice"] = choice;
+        root["caring_community"] = caring;
+
+        return root.ToJsonString();
+    }
+
     private static int ReadIntValue(JsonElement value)
     {
         return value.ValueKind switch
@@ -842,4 +904,10 @@ public sealed class ResearchConsentRequest
 
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
+}
+
+public sealed class CaringCommunityOnboardingChoiceRequest
+{
+    [JsonPropertyName("choice")]
+    public string? Choice { get; set; }
 }
