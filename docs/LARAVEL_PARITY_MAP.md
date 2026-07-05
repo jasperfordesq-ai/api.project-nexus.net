@@ -72,7 +72,7 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 | Tenant SSO providers | `AdminSsoProvidersController.php`, `SsoOidcService.php`, `tenant_sso_providers` migration | `AdminSsoProvidersController.cs`, `TenantSsoProviderService.cs`, `TenantSsoProvider.cs`, `tenant_sso_providers` migration | Admin provider CRUD/test surface now matched; public SSO redirect/callback, PKCE state, token validation, domain guard, and account-linking flow still need full parity |
 | Mailchimp-like behavior | `MailchimpService.php` | no matched provider files; email templates exist | Decide equivalent behavior and implement or document replacement |
 | Partner API / portal | `app/Http/Controllers/Api/PartnerApi`, `app/Services/PartnerApi`, `react-frontend/src/partners` | API partner admin entity/service/controller | External partner API/auth/webhook parity incomplete |
-| Accessible frontend | `accessible-frontend/`, `routes/govuk-alpha.php`, `routes/govuk-alpha-parity/*` | `apps/web-uk/` exists | Route/workflow parity map and implementation needed |
+| Accessible frontend | `accessible-frontend/`, `routes/govuk-alpha.php`, `routes/govuk-alpha-parity/*` | `apps/web-uk/` exists and is now the future shared accessible frontend candidate; shell/Explore prep follows the Laravel Blade visual source of truth | Route/workflow parity map and implementation needed; shell prep does not certify production readiness |
 
 ## Backlog Order
 
@@ -139,6 +139,8 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
    - Complete external partner API auth, rate limiting, webhooks, and portal
      workflows.
    - Map `apps/web-uk/` against Laravel `accessible-frontend/` route by route.
+   - Keep `apps/web-uk/` visually aligned to Laravel Blade accessible while
+     preserving Express/Nunjucks/GOV.UK Frontend as the preferred future stack.
    - Acceptance: accessible route tests cover tenant, auth, feature gates, and
      core workflows.
 

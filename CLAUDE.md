@@ -152,9 +152,16 @@ canonical React frontend is the Laravel repo frontend at
   only. Do not modify it unless explicitly approved.
 - `apps/react-frontend/src/admin/` may be inspected to understand old .NET
   adapter work, but it is not the forward development target.
-- `apps/web-uk/` is no longer dismissed from parity. It is the .NET accessible
-  frontend candidate and must be mapped against Laravel `accessible-frontend/`
-  and `routes/govuk-alpha*`.
+- `apps/web-uk/` is no longer dismissed from parity. It is the future shared
+  accessible frontend candidate and must be mapped against Laravel
+  `accessible-frontend/` and `routes/govuk-alpha*`.
+- The Laravel Blade accessible frontend remains the current visual/workflow
+  source of truth. Port its shell, information architecture, footer, card-list,
+  and Explore patterns into `apps/web-uk` while keeping the Express/Nunjucks/GOV.UK
+  Frontend stack.
+- Do not point production utility-bar traffic at `apps/web-uk` until accessible
+  route, workflow, tenant-domain, auth, localization, accessibility, and runtime
+  smoke certification passes.
 - `apps/admin/` is a secondary standalone admin app. Do not use it as the main
   Laravel parity target unless a task explicitly asks for standalone-admin work.
 - Current backend work should make ASP.NET compatible with the Laravel React API

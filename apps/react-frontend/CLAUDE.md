@@ -2,6 +2,23 @@
 
 > Stack-specific conventions for `react-frontend/`. See root `CLAUDE.md` for project-wide rules.
 
+## Legacy/Frozen Status
+
+This React frontend is a legacy/outdated fork and is frozen. Do not modify files
+in this folder unless the user explicitly approves that specific frontend
+change.
+
+The canonical production React frontend lives in the Laravel repo:
+
+```text
+C:\platforms\htdocs\staging\react-frontend
+```
+
+ASP.NET backend work must make the backend contract-compatible with that
+Laravel React frontend. Do not continue feature development here, do not copy
+this folder over the Laravel React frontend, and do not weaken the Laravel React
+frontend to suit ASP.NET gaps. See `../../docs/REACT_FRONTEND_RETIREMENT.md`.
+
 ## Stack
 
 | Item | Value |

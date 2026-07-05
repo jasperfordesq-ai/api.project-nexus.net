@@ -1,6 +1,6 @@
 # Project NEXUS .NET Documentation
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-05
 
 This directory contains the maintained documentation for the Project NEXUS .NET
 Edition. The canonical Laravel source for parity is
@@ -15,6 +15,8 @@ Edition. The canonical Laravel source for parity is
 | [LARAVEL_PARITY_MAP.md](LARAVEL_PARITY_MAP.md) | Canonical parity gap register and implementation backlog. |
 | [PARITY_BACKLOG.md](PARITY_BACKLOG.md) | Generated backlog rollup, priority semantics, and implementation consumption rules. |
 | [API_PARITY.md](API_PARITY.md) | API contract inventory and comparison policy. |
+| [REACT_FRONTEND_RETIREMENT.md](REACT_FRONTEND_RETIREMENT.md) | Retirement policy for the old ASP.NET React fork and contract-compatibility rules for the Laravel React frontend. |
+| [ACCESSIBLE_SHARED_FRONTEND.md](ACCESSIBLE_SHARED_FRONTEND.md) | Direction, GOV.UK upstream references, and guardrails for `apps/web-uk` as the future shared accessible frontend candidate. |
 | [SCHEMA_PARITY.md](SCHEMA_PARITY.md) | Database table/entity/migration parity inventory and generated report policy. |
 | [FRONTEND_PARITY.md](FRONTEND_PARITY.md) | React and accessible frontend route parity inventory and generated report policy. |
 | [LOCALIZATION_PARITY.md](LOCALIZATION_PARITY.md) | Locale, namespace, and translation-key parity inventory. |
@@ -30,6 +32,15 @@ Edition. The canonical Laravel source for parity is
   maintained map.
 - Preserve production warnings from `CLAUDE.md` and
   `.claude/production-containers.md`.
-- Treat `apps/react-frontend/` as the primary SPA/admin parity target.
+- Treat `apps/react-frontend/` as a legacy/frozen React copy, not the forward
+  development target.
+- Treat `C:\platforms\htdocs\staging\react-frontend` as the canonical React
+  frontend contract target for ASP.NET backend compatibility.
+- Do not modify frontend files unless the user explicitly approves that specific
+  frontend change.
 - Treat `apps/web-uk/` as the .NET accessible frontend candidate and map it
   against Laravel `accessible-frontend/`.
+- Treat the Laravel Blade accessible frontend as the current visual/workflow
+  source of truth for `apps/web-uk/`.
+- Do not point production utility-bar traffic at `apps/web-uk/` until accessible
+  route/workflow/tenant/auth/accessibility certification passes.

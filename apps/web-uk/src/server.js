@@ -33,9 +33,11 @@ const gamificationRoutes = require('./routes/gamification');
 const searchRoutes = require('./routes/search');
 const reviewsRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');
+const exploreRoutes = require('./routes/explore');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
 const { getContributorGroups, getResearchFoundation } = require('./lib/contributors');
+const { buildShellLocals } = require('./lib/accessible-shell');
 
 const app = express();
 
@@ -257,6 +259,7 @@ app.use(async (req, res, next) => {
   // Check if user is authenticated
   const token = req.signedCookies.token;
   res.locals.isAuthenticated = !!token;
+  Object.assign(res.locals, buildShellLocals(req, res.locals.isAuthenticated));
 
   // Make CSRF token available to all views
   res.locals.csrfToken = req.csrfToken ? req.csrfToken() : '';
@@ -336,6 +339,8 @@ app.get('/about', (req, res) => {
     otherAcknowledgements
   });
 });
+
+app.use('/explore', exploreRoutes);
 
 app.get('/service-unavailable', (req, res) => {
   res.status(503).render('errors/503', { title: 'Service unavailable' });

@@ -1,8 +1,26 @@
 # Project NEXUS Community - UK Frontend
 
-A community service frontend using the GOV.UK Design System.
+A community service frontend using GOV.UK Frontend and GOV.UK Design System
+patterns.
 
 **This is NOT a UK Government service. We are not affiliated with or endorsed by GOV.UK.**
+
+## Shared Accessible Frontend Status
+
+`apps/web-uk` is the future shared accessible frontend candidate for Project
+NEXUS. It is not production-ready and does not replace the Laravel Blade
+accessible frontend yet.
+
+The Laravel accessible frontend remains the visual and workflow source of truth:
+
+```text
+C:\platforms\htdocs\staging\accessible-frontend
+C:\platforms\htdocs\staging\routes\govuk-alpha.php
+C:\platforms\htdocs\staging\routes\govuk-alpha-parity
+```
+
+See [docs/ACCESSIBLE_SHARED_FRONTEND.md](docs/ACCESSIBLE_SHARED_FRONTEND.md) and
+the root [docs/ACCESSIBLE_SHARED_FRONTEND.md](../../docs/ACCESSIBLE_SHARED_FRONTEND.md).
 
 ## Credits and Origins
 
@@ -95,6 +113,7 @@ The application will be available at **http://localhost:5180**
 | `GET /privacy` | Privacy policy |
 | `GET /terms` | Terms and conditions |
 | `GET /contact` | Contact page |
+| `GET /explore` | Shared accessible frontend Explore skeleton |
 | `GET /service-unavailable` | 503 error page |
 
 ### Protected Routes (require authentication)

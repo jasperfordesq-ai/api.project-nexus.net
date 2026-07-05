@@ -1,6 +1,6 @@
 # Frontend Route Parity Map
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-05
 
 Laravel source of truth:
 
@@ -11,9 +11,18 @@ Laravel source of truth:
 
 .NET targets:
 
-- `apps/react-frontend`
-- `apps/web-uk`
+- `apps/react-frontend` is now legacy/frozen and kept as historical reference.
+- `apps/web-uk` is the future shared accessible frontend candidate.
 - `apps/admin` remains secondary unless a task explicitly targets it.
+
+Canonical React frontend target:
+
+- `C:\platforms\htdocs\staging\react-frontend`
+
+The forward path is not to continue developing the ASP.NET React copy. The
+forward path is to make the ASP.NET backend contract-compatible with the
+production Laravel React frontend. Do not modify frontend files unless the user
+explicitly approves that specific frontend change.
 
 ## Current Route Counts
 
@@ -30,9 +39,35 @@ and Express `app/router` declarations. It does not prove rendered UI parity,
 feature-gate parity, API wiring, localization, accessibility quality, or workflow
 completion.
 
-The script intentionally compares React routes only against `apps/react-frontend`
-and accessible routes only against `apps/web-uk`, so one frontend cannot hide a
-missing route in the other.
+The historical script compares Laravel React routes against the legacy
+`apps/react-frontend` copy and accessible routes against `apps/web-uk`. Those
+React counts are now historical inventory only. They do not define the forward
+development target and must not be used to justify new work in the legacy React
+copy.
+
+Future compatibility reports should instead inventory API calls made by
+`C:\platforms\htdocs\staging\react-frontend`, then verify that ASP.NET exposes
+compatible routes, request shapes, response shapes, auth/tenant behavior,
+uploads, realtime config, and status codes.
+
+## Accessible Frontend Direction
+
+The Laravel Blade accessible frontend is the current visual/workflow source of
+truth:
+
+```text
+C:\platforms\htdocs\staging\accessible-frontend
+C:\platforms\htdocs\staging\routes\govuk-alpha.php
+C:\platforms\htdocs\staging\routes\govuk-alpha-parity
+```
+
+`apps/web-uk` keeps the preferred Express/Nunjucks/GOV.UK Frontend stack and is
+being prepared as the future shared accessible frontend. Shell and Explore
+skeleton work does not change the route counts above and does not prove
+production readiness. The React utility-bar accessible link must continue
+pointing at the production Laravel accessible frontend until `apps/web-uk` has
+passed route, workflow, tenant-domain, auth, localization, accessibility, and
+runtime smoke certification.
 
 ## Generated Artifacts
 
@@ -53,6 +88,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\compare-laravel-fron
 ```
 
 ## High-Risk Missing React Families
+
+This section is historical. It shows what the old ASP.NET React fork was missing
+at the time of the route scan. Do not implement these gaps in
+`apps/react-frontend/` unless explicitly approved. Prefer implementing the
+ASP.NET backend endpoints required by the canonical Laravel React frontend.
 
 | Route family | Missing routes | Parity implication |
 | --- | ---: | --- |
@@ -80,12 +120,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\compare-laravel-fron
 
 ## Acceptance Criteria For Frontend Parity
 
-- Every Laravel React route is implemented in `apps/react-frontend`, intentionally
-  redirected with equivalent behavior, or documented as replaced by a .NET
-  equivalent workflow.
+- The production Laravel React frontend at
+  `C:\platforms\htdocs\staging\react-frontend` can run against ASP.NET for the
+  certified module without request/response contract failures.
+- Every Laravel React API call used by the certified module has a matching
+  ASP.NET method/path, including `/api/v2` aliases where expected.
+- Request bodies, query parameters, response envelopes, pagination, validation
+  errors, auth/tenant errors, upload behavior, realtime config, and status codes
+  are compatible with Laravel.
 - Every Laravel accessible route under `govuk-alpha*` has an equivalent
   `apps/web-uk` route, view, form method, validation behavior, and API support.
 - Admin, super-admin, partner, broker, and accessible surfaces are tracked
   independently.
-- Route parity is followed by rendered UI checks, API-contract checks, feature
-  gate checks, localization checks, and accessibility checks.
+- Compatibility is proven with a route/API matrix, ASP.NET regression tests, and
+  runtime smoke tests using the Laravel React frontend against the ASP.NET API.

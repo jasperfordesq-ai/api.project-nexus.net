@@ -18,6 +18,9 @@ const FORBIDDEN_PATTERNS = [
   { pattern: /govuk-footer__copyright-logo/g, description: 'Copyright logo class' },
   { pattern: /<svg[^>]*crest/gi, description: 'Crest SVG element' },
   { pattern: /class="[^"]*\bogl\b[^"]*"/gi, description: 'OGL class' },
+  { pattern: /Crown copyright/gi, description: 'Crown copyright wording' },
+  { pattern: /Open Government Licence/gi, description: 'Open Government Licence wording' },
+  { pattern: /GOV\.UK service/gi, description: 'Official GOV.UK service wording' },
 ];
 
 const VIEWS_DIR = path.join(__dirname, '..', 'src', 'views');

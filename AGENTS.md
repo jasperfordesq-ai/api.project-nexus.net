@@ -14,5 +14,19 @@ file. It is the single source of truth for:
 - Database, commands, local-dev setup, API endpoints
 - Frontend parity target and admin panel guidance
 
+## Emergency Frontend Guardrail
+
+The React frontend in this repo (`apps/react-frontend/`) is now a legacy,
+frozen copy. Do not modify frontend files unless the user explicitly approves
+that specific frontend change.
+
+The canonical React frontend lives in the Laravel repo at
+`C:\platforms\htdocs\staging\react-frontend`. Laravel is the source of truth.
+Make the ASP.NET backend contract-compatible with the Laravel React frontend:
+same methods, paths, `/api/v2` aliases where expected, request/response shapes,
+auth/tenant/upload behavior, status codes, and validation/error envelopes.
+Prove compatibility with a route/API matrix and runtime smoke tests.
+
 This pointer exists because keeping `AGENTS.md` and `CLAUDE.md` in sync as
-separate copies caused drift. Edit `CLAUDE.md` only.
+separate copies caused drift. Edit `CLAUDE.md` for authoritative project
+instructions. Keep only urgent first-read guardrails duplicated here.

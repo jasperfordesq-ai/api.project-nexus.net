@@ -1,10 +1,17 @@
 # Localization Parity Map
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-05
 
 Laravel source of truth: `C:\platforms\htdocs\staging\lang`.
 
-.NET target: `apps/react-frontend/public/locales`.
+.NET historical React target: `apps/react-frontend/public/locales`.
+
+That React locale target is now legacy/frozen with the retired ASP.NET React
+copy. The forward React localization contract is the production Laravel React
+frontend at `C:\platforms\htdocs\staging\react-frontend`. Backend localization,
+email, validation, and API error-message parity should be implemented in ASP.NET
+backend resources or services, not by continuing development in the legacy React
+copy unless explicitly approved.
 
 ## Current Source Counts
 

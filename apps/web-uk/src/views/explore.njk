@@ -1,0 +1,38 @@
+{# Copyright © 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Explore Project NEXUS Community</h1>
+  <p class="govuk-body-l">
+    Find the main community spaces from one simpler accessible page.
+  </p>
+
+  <div class="govuk-inset-text">
+    This page is a shared-accessible-frontend preparation skeleton. It copies the
+    Laravel accessible frontend information architecture, but it does not certify
+    ASP.NET route or workflow parity yet.
+  </div>
+
+  <div class="nexus-alpha-card-list govuk-!-margin-top-6">
+    {% for item in alphaExploreLinks %}
+      <article class="nexus-alpha-card">
+        <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
+          <a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a>
+        </h2>
+        <p class="govuk-body govuk-!-margin-bottom-0">{{ item.description }}</p>
+      </article>
+    {% endfor %}
+  </div>
+
+  <h2 class="govuk-heading-l govuk-!-margin-top-8">Live content placeholders</h2>
+  <p class="govuk-body">
+    Recent listings, upcoming events, and tenant feature gates will be wired only
+    after the ASP.NET backend exposes contracts compatible with the Laravel
+    accessible frontend.
+  </p>
+{% endblock %}

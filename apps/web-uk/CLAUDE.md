@@ -1,4 +1,29 @@
-# CLAUDE.md - Project NEXUS UK Frontend
+# CLAUDE.md - Project NEXUS Accessible Frontend Candidate
+
+## Shared Accessible Frontend Direction
+
+`apps/web-uk` is the future shared accessible frontend candidate for Project
+NEXUS. It is not production-ready and must not replace the Laravel Blade
+accessible frontend yet.
+
+The current visual and workflow source of truth is the Laravel accessible
+frontend:
+
+```text
+C:\platforms\htdocs\staging\accessible-frontend
+C:\platforms\htdocs\staging\routes\govuk-alpha.php
+C:\platforms\htdocs\staging\routes\govuk-alpha-parity
+```
+
+This app should keep the ASP.NET repo's preferred accessible stack
+(Express/Nunjucks/GOV.UK Frontend), but its shell, information architecture,
+footer, card list, and Explore page should visually follow the Laravel Blade
+accessible frontend. See `docs/ACCESSIBLE_SHARED_FRONTEND.md` and the root
+`../../docs/ACCESSIBLE_SHARED_FRONTEND.md`.
+
+Do not claim route parity, workflow parity, tenant-domain parity, localization
+parity, API compatibility, production readiness, or shared-frontend readiness
+from skeleton or styling work.
 
 ## Project Purpose
 
@@ -143,7 +168,7 @@ We use the GOV.UK Design System (govuk-frontend) for its accessibility and usabi
 | Node.js | 18+ | Runtime |
 | Express | 4.x | Web framework |
 | Nunjucks | 3.x | Templating |
-| govuk-frontend | 5.x | Design system (styles + components) |
+| govuk-frontend | 6.x | Design system (styles + components) |
 | Dart Sass | 1.x | CSS compilation |
 | Helmet | 7.x | Security headers |
 | csrf-csrf | 3.x | CSRF protection |
@@ -153,6 +178,23 @@ We use the GOV.UK Design System (govuk-frontend) for its accessibility and usabi
 | Morgan | 1.x | Request logging |
 
 **No React. No Next.js. No alternative CSS frameworks. SSR HTML only.**
+
+## Laravel Blade Visual Parity Rules
+
+The ASP.NET accessible frontend must not invent a separate visual language.
+Follow the Laravel Blade accessible frontend for:
+
+- custom `nexus-alpha-header`;
+- dark header and accent strip;
+- lean GOV.UK service navigation;
+- no-JS language selector;
+- `nexus-alpha-card-list` and `nexus-alpha-card`;
+- footer columns and AGPL/source metadata;
+- Explore as the gateway to discovery modules.
+
+Reusable shell data lives in `src/lib/accessible-shell.js`. Keep shared nav,
+footer, locale, and Explore link contracts there rather than hardcoding new
+copies into individual templates.
 
 ## Backend API
 
