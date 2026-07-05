@@ -7,11 +7,23 @@ using System.Globalization;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 
 namespace Nexus.Api.Services;
 
 public sealed class CaringFavourService
 {
+    private static readonly HashSet<string> AllowedCategories = new(StringComparer.Ordinal)
+    {
+        "companionship",
+        "shopping",
+        "transport",
+        "home_help",
+        "gardening",
+        "meals",
+        "other"
+    };
+
     private readonly NexusDbContext _db;
 
     public CaringFavourService(NexusDbContext db)
@@ -28,6 +40,75 @@ public sealed class CaringFavourService
             .FirstOrDefaultAsync(ct);
 
         return ParseBool(raw) == true;
+    }
+
+    public async Task<CaringFavourOfferOutcome> OfferFavourAsync(
+        int tenantId,
+        int userId,
+        string? description,
+        string? category,
+        string? favourDate,
+        bool isAnonymous,
+        CancellationToken ct)
+    {
+        var errors = new List<CaringFavourValidationError>();
+        var normalizedDescription = (description ?? string.Empty).Trim();
+        if (normalizedDescription.Length == 0)
+        {
+            errors.Add(new CaringFavourValidationError("VALIDATION_ERROR", "Field is required.", "description"));
+        }
+        else if (normalizedDescription.Length > 500)
+        {
+            errors.Add(new CaringFavourValidationError("VALIDATION_ERROR", "Field is too long.", "description"));
+        }
+
+        DateOnly parsedDate;
+        var normalizedDate = (favourDate ?? string.Empty).Trim();
+        if (normalizedDate.Length == 0)
+        {
+            parsedDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        }
+        else if (!DateOnly.TryParseExact(
+            normalizedDate,
+            "yyyy-MM-dd",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out parsedDate))
+        {
+            errors.Add(new CaringFavourValidationError("VALIDATION_ERROR", "Invalid date.", "favour_date"));
+            parsedDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        }
+
+        if (errors.Count > 0)
+        {
+            return CaringFavourOfferOutcome.Invalid(errors);
+        }
+
+        var normalizedCategory = (category ?? string.Empty).Trim();
+        if (normalizedCategory.Length > 0 && !AllowedCategories.Contains(normalizedCategory))
+        {
+            normalizedCategory = "other";
+        }
+
+        var now = DateTime.UtcNow;
+        _db.CaringFavours.Add(new CaringFavour
+        {
+            TenantId = tenantId,
+            OfferedByUserId = userId,
+            ReceivedByUserId = null,
+            Category = normalizedCategory.Length == 0 ? null : normalizedCategory,
+            Description = normalizedDescription,
+            FavourDate = parsedDate,
+            IsAnonymous = isAnonymous,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        await _db.SaveChangesAsync(ct);
+
+        return CaringFavourOfferOutcome.Created(new CaringFavourOfferResponse(
+            Success: true,
+            Message: "Favour recorded."));
     }
 
     public async Task<CaringFavourList> ListAdminFavoursAsync(int tenantId, CancellationToken ct)
@@ -108,3 +189,22 @@ public sealed record CaringFavourAdminRow(
     string? OffererName,
     [property: JsonPropertyName("created_at")]
     string CreatedAt);
+
+public sealed record CaringFavourOfferOutcome(
+    bool Succeeded,
+    IReadOnlyList<CaringFavourValidationError> Errors,
+    CaringFavourOfferResponse? Data)
+{
+    public static CaringFavourOfferOutcome Created(CaringFavourOfferResponse data) => new(true, [], data);
+
+    public static CaringFavourOfferOutcome Invalid(IReadOnlyList<CaringFavourValidationError> errors) => new(false, errors, null);
+}
+
+public sealed record CaringFavourOfferResponse(
+    [property: JsonPropertyName("success")] bool Success,
+    [property: JsonPropertyName("message")] string Message);
+
+public sealed record CaringFavourValidationError(
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("message")] string Message,
+    [property: JsonPropertyName("field")] string Field);
