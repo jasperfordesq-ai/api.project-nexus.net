@@ -14,6 +14,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const { doubleCsrf } = require('csrf-csrf');
 const path = require('path');
+const crypto = require('crypto');
 
 const authRoutes = require('./routes/auth');
 const listingsRoutes = require('./routes/listings');
@@ -39,6 +40,7 @@ const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
 const { getContributorGroups, getResearchFoundation } = require('./lib/contributors');
 const { buildShellLocals } = require('./lib/accessible-shell');
+const { legalDocuments, legalFallbacks } = require('./lib/legal-content');
 
 const app = express();
 
@@ -233,6 +235,25 @@ app.use(session({
 // Flash messages
 app.use(flash());
 
+app.use((req, res, next) => {
+  const match = req.url.match(/^\/([A-Za-z0-9_-]+)\/alpha(?=\/|\?|$)/);
+
+  if (!match) {
+    return next();
+  }
+
+  const routePrefix = `/${match[1]}/alpha`;
+  const localUrl = req.url.slice(routePrefix.length);
+
+  req.accessibleTenantSlug = match[1];
+  req.accessibleRoutePrefix = routePrefix;
+  req.accessibleCurrentUrl = req.url;
+  req.accessibleCurrentPath = req.url.split('?')[0] || routePrefix;
+  req.url = localUrl === '' ? '/' : (localUrl.startsWith('?') ? `/${localUrl}` : localUrl);
+
+  return next();
+});
+
 // CSRF protection
 const {
   generateToken,
@@ -314,6 +335,130 @@ app.get('/components', (req, res) => {
   res.render('components', { title: 'Components Demo' });
 });
 
+app.post('/cookie-consent', doubleCsrfProtection, (req, res) => {
+  const isSettingsSave = req.body.cookies === 'save';
+  const choice = req.body.cookies === 'reject' || (isSettingsSave && req.body.analytics !== 'yes') ? 'rejected' : 'accepted';
+  const returnUrl = typeof req.body.return === 'string' && req.body.return.startsWith('/') && !req.body.return.startsWith('//')
+    ? req.body.return
+    : isSettingsSave ? `${prefixedLocalPath(req, '/cookies')}?status=saved` : prefixedLocalPath(req, '/');
+
+  res.cookie('nexus_alpha_cookie_consent', choice, {
+    maxAge: 365 * 24 * 60 * 60 * 1000,
+    sameSite: 'lax',
+    secure: NODE_ENV === 'production'
+  });
+
+  if (req.session) {
+    req.session.alphaCookieChoice = choice;
+  }
+
+  res.redirect(returnUrl);
+});
+
+app.get('/cookies', (req, res) => {
+  res.render('cookie-settings', {
+    title: 'Cookie settings',
+    status: req.query.status || ''
+  });
+});
+
+const supportImpacts = [
+  { value: 'blocked', label: 'I could not complete what I needed to do' },
+  { value: 'major', label: 'It caused a major problem' },
+  { value: 'minor', label: 'It caused a minor problem' },
+  { value: 'cosmetic', label: 'It is a small display or wording problem' }
+];
+
+const contactSubjects = [
+  { value: 'general', label: 'General' },
+  { value: 'account', label: 'Account' },
+  { value: 'technical', label: 'Technical problem' },
+  { value: 'feedback', label: 'Feedback' },
+  { value: 'other', label: 'Other' }
+];
+
+function safeLocalPath(value, fallback = '/') {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : fallback;
+}
+
+function prefixedLocalPath(req, pathValue) {
+  const routePrefix = req.accessibleRoutePrefix || '';
+  if (pathValue === '/') {
+    return routePrefix || '/';
+  }
+
+  return `${routePrefix}${pathValue}`;
+}
+
+function buildReportReference() {
+  const date = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+  return `NXR-${date}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+}
+
+function renderReportProblem(res, options = {}) {
+  res.status(options.statusCode || 200).render('report-problem', {
+    title: 'Report a problem with this page',
+    pageUrl: options.pageUrl || '/',
+    status: options.status || '',
+    reference: options.reference || '',
+    errors: options.errors || {},
+    form: options.form || {},
+    impacts: supportImpacts
+  });
+}
+
+app.get('/report-a-problem', (req, res) => {
+  const pageUrl = safeLocalPath(req.query.return, '/');
+
+  if (!res.locals.isAuthenticated) {
+    return res.redirect(`${prefixedLocalPath(req, '/contact')}?problem_url=${encodeURIComponent(pageUrl)}`);
+  }
+
+  return renderReportProblem(res, {
+    pageUrl,
+    status: req.query.status || '',
+    reference: req.query.ref || ''
+  });
+});
+
+app.post('/report-a-problem', doubleCsrfProtection, (req, res) => {
+  if (!res.locals.isAuthenticated) {
+    return res.redirect(`${prefixedLocalPath(req, '/login')}?status=auth-required`);
+  }
+
+  const form = {
+    summary: String(req.body.summary || '').trim(),
+    description: String(req.body.description || '').trim(),
+    impact: String(req.body.impact || '')
+  };
+  const pageUrl = safeLocalPath(req.body.page_url, '/');
+  const validImpacts = supportImpacts.map((impact) => impact.value);
+  const errors = {};
+
+  if (form.summary.length < 3 || form.summary.length > 180) {
+    errors.summary = 'Summary must be between 3 and 180 characters.';
+  }
+  if (form.description.length < 10 || form.description.length > 5000) {
+    errors.description = 'Description must be between 10 and 5000 characters.';
+  }
+  if (!validImpacts.includes(form.impact)) {
+    errors.impact = 'Choose how this problem affected you.';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return renderReportProblem(res, {
+      statusCode: 400,
+      pageUrl,
+      status: 'invalid',
+      errors,
+      form
+    });
+  }
+
+  const reference = buildReportReference();
+  return res.redirect(`${prefixedLocalPath(req, '/report-a-problem')}?return=${encodeURIComponent(pageUrl)}&status=sent&ref=${encodeURIComponent(reference)}`);
+});
+
 app.get('/privacy', (req, res) => {
   res.render('privacy', { title: 'Privacy policy' });
 });
@@ -322,8 +467,60 @@ app.get('/terms', (req, res) => {
   res.render('terms', { title: 'Terms and conditions' });
 });
 
+function renderContact(res, options = {}) {
+  res.status(options.statusCode || 200).render('contact', {
+    title: 'Contact us',
+    status: options.status || '',
+    errors: options.errors || {},
+    form: options.form || {},
+    subjects: contactSubjects
+  });
+}
+
 app.get('/contact', (req, res) => {
-  res.render('contact', { title: 'Contact us' });
+  const problemUrl = safeLocalPath(req.query.problem_url, '');
+  const form = problemUrl
+    ? {
+        subject: 'technical',
+        message: `I want to report a problem with this page: ${problemUrl}\n\n`
+      }
+    : {};
+
+  renderContact(res, {
+    status: req.query.status || '',
+    form
+  });
+});
+
+app.post('/contact', doubleCsrfProtection, (req, res) => {
+  const form = {
+    name: String(req.body.name || '').trim(),
+    email: String(req.body.email || '').trim(),
+    subject: String(req.body.subject || '').trim() || 'general',
+    message: String(req.body.message || '').trim()
+  };
+  const errors = {};
+
+  if (form.name === '') {
+    errors.name = 'Enter your name.';
+  }
+  if (form.email === '' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    errors.email = 'Enter an email address in the correct format.';
+  }
+  if (form.message === '') {
+    errors.message = 'Enter a message.';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return renderContact(res, {
+      statusCode: 400,
+      status: 'contact-validation',
+      errors,
+      form
+    });
+  }
+
+  return res.redirect(`${prefixedLocalPath(req, '/contact')}?status=contact-sent`);
 });
 
 app.get('/about', (req, res) => {
@@ -342,6 +539,142 @@ app.get('/about', (req, res) => {
 });
 
 app.use('/explore', exploreRoutes);
+
+app.get('/account', (req, res) => {
+  res.render('account', {
+    title: 'My account',
+    activeNav: 'account'
+  });
+});
+
+app.get('/faq', (req, res) => {
+  res.render('faq', {
+    title: 'Frequently asked questions',
+    activeNav: 'faq'
+  });
+});
+
+app.get('/help', (req, res) => {
+  res.render('help', {
+    title: 'Help centre',
+    activeNav: 'help',
+    searchQuery: typeof req.query.q === 'string' ? req.query.q : '',
+    contactHref: prefixedLocalPath(req, '/contact')
+  });
+});
+
+app.get('/kb', (req, res) => {
+  res.render('kb-index', {
+    title: 'Knowledge base',
+    activeNav: 'kb',
+    searchQuery: typeof req.query.q === 'string' ? req.query.q : ''
+  });
+});
+
+app.get('/blog', (req, res) => {
+  res.render('blog-index', {
+    title: 'Blog',
+    activeNav: 'blog',
+    searchQuery: typeof req.query.q === 'string' ? req.query.q : ''
+  });
+});
+
+app.get('/volunteering', (req, res) => {
+  res.render('volunteering', {
+    title: 'Volunteering',
+    activeNav: 'volunteering',
+    searchQuery: typeof req.query.q === 'string' ? req.query.q : '',
+    isRemote: req.query.is_remote === '1',
+    organisationsHref: prefixedLocalPath(req, '/organisations'),
+    hoursHref: prefixedLocalPath(req, '/volunteering/hours'),
+    accessibilityHref: prefixedLocalPath(req, '/volunteering/accessibility'),
+    certificatesHref: prefixedLocalPath(req, '/volunteering/certificates'),
+    waitlistHref: prefixedLocalPath(req, '/volunteering/waitlist'),
+    swapsHref: prefixedLocalPath(req, '/volunteering/swaps'),
+    groupSignupsHref: prefixedLocalPath(req, '/volunteering/group-signups'),
+    expensesHref: prefixedLocalPath(req, '/volunteering/expenses'),
+    donationsHref: prefixedLocalPath(req, '/volunteering/donations')
+  });
+});
+
+app.get('/legal', (req, res) => {
+  res.render('legal-hub', {
+    title: 'Legal',
+    activeNav: 'legal',
+    legalDocuments: legalDocuments.map((document) => ({
+      ...document,
+      href: prefixedLocalPath(req, document.path)
+    }))
+  });
+});
+
+const legalDocumentRoutes = {
+  '/legal/terms': 'terms',
+  '/legal/privacy': 'privacy',
+  '/legal/cookies': 'cookies',
+  '/legal/community-guidelines': 'community_guidelines',
+  '/legal/acceptable-use': 'acceptable_use'
+};
+
+function renderLegalDocument(req, res) {
+  const docType = legalDocumentRoutes[req.path];
+  const fallback = legalFallbacks[docType];
+
+  return res.render('legal-document', {
+    title: fallback.title,
+    activeNav: 'legal',
+    docType,
+    fallback: {
+      ...fallback,
+      intro: fallback.intro.replace(':name', res.locals.tenantName)
+    },
+    legalHubHref: prefixedLocalPath(req, '/legal'),
+    contactHref: prefixedLocalPath(req, '/contact')
+  });
+}
+
+app.get('/legal/terms', renderLegalDocument);
+app.get('/legal/privacy', renderLegalDocument);
+app.get('/legal/cookies', renderLegalDocument);
+app.get('/legal/community-guidelines', renderLegalDocument);
+app.get('/legal/acceptable-use', renderLegalDocument);
+
+app.get('/features', (req, res) => {
+  res.render('features', {
+    title: 'Features',
+    activeNav: 'features',
+    guideHref: prefixedLocalPath(req, '/guide')
+  });
+});
+
+app.get('/guide', (req, res) => {
+  res.render('guide', {
+    title: 'How timebanking works',
+    activeNav: 'guide',
+    registerHref: prefixedLocalPath(req, '/register'),
+    listingsHref: prefixedLocalPath(req, '/listings'),
+    walletHref: prefixedLocalPath(req, '/wallet')
+  });
+});
+
+app.get('/accessibility', (req, res) => {
+  res.render('accessibility', {
+    title: 'Accessibility statement',
+    activeNav: 'accessibility',
+    legalHubUrl: prefixedLocalPath(req, '/legal'),
+    contactHref: prefixedLocalPath(req, '/contact')
+  });
+});
+
+app.get('/trust-and-safety', (req, res) => {
+  res.render('trust-safety', {
+    title: 'Trust and safety',
+    activeNav: 'trust-safety',
+    contactHref: prefixedLocalPath(req, '/contact'),
+    guidelinesHref: prefixedLocalPath(req, '/legal/community-guidelines')
+  });
+});
+
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {

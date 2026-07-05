@@ -23,9 +23,14 @@ accessible frontend. See `docs/ACCESSIBLE_SHARED_FRONTEND.md` and the root
 
 Route and backend preparation docs live beside this app:
 
+- `docs/ACCESSIBLE_PREPARATION_SCORECARD.md`
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
+- `docs/LARAVEL_ACCESSIBLE_ROUTE_INVENTORY.md`
+- `docs/BLADE_VIEW_INVENTORY.md`
+- `docs/AUTH_FORM_CONTRACT_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
 - `docs/BACKEND_SWITCHING_CONTRACT.md`
+- `docs/ACCESSIBLE_BACKEND_CONTRACT_MATRIX.md`
 
 Do not claim route parity, workflow parity, tenant-domain parity, localization
 parity, API compatibility, production readiness, or shared-frontend readiness
@@ -192,15 +197,28 @@ Follow the Laravel Blade accessible frontend for:
 
 - custom `nexus-alpha-header`;
 - dark header and accent strip;
+- no-JS cookie banner before the skip link;
+- no-JS language switcher with scalar non-locale query preservation;
+- no-JS contact and report-problem form patterns;
+- `/guide` as the Blade-style timebanking guide with ordered steps and getting-started CTAs;
+- `/features` as the Blade-style feature summary page with spaced bullet list and guide CTA;
+- `/account` as the Blade-style card-list hub for personal tools;
+- `/help` as the Blade-style Help centre search form, empty state, and contact CTA;
+- `/kb` as the Blade-style Knowledge base search form, articles heading, and empty/no-results state;
+- `/blog` as the Blade-style Blog search form, posts heading, and empty/no-results state;
+- `/volunteering` as the Blade-style Volunteering index with guidance, hours summary shell, tools, tabs, filters, and empty state;
+- `/faq` as the Blade-style GOV.UK accordion for common timebanking questions;
+- `/accessibility` as the Blade-style WCAG statement with summary list and feedback link;
+- `/trust-and-safety` as the Blade-style GOV.UK warning text and safety guidance page;
+- `/legal` and `/legal/*` as the Blade-style legal hub and fallback legal document pages;
 - lean GOV.UK service navigation;
-- no-JS language selector;
 - `nexus-alpha-card-list` and `nexus-alpha-card`;
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.
 
 Reusable shell data lives in `src/lib/accessible-shell.js`. Keep shared nav,
-footer, locale, and Explore link contracts there rather than hardcoding new
-copies into individual templates.
+footer, locale, cookie-banner, and Explore link contracts there rather than
+hardcoding new copies into individual templates.
 
 Header and footer links should mirror the Laravel Blade accessible frontend
 labels and information architecture. If a Laravel destination is not implemented
@@ -215,9 +233,38 @@ accessible frontend capable of talking to Laravel-compatible or
 ASP.NET-compatible backends, but ASP.NET must bend toward Laravel's Blade
 contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
 
+`src/lib/backend-config.js` is the Laravel-first backend targeting guardrail.
+`ACCESSIBLE_BACKEND_TARGET` defaults to `laravel`; use `LARAVEL_BACKEND_URL`
+for the Laravel backend base URL. `API_BASE_URL` is only a legacy fallback.
+ASP.NET targeting remains `pending_backend_parity` until runtime route/form
+smoke tests prove compatibility.
+
+Local no-JS cookie, contact, and report-problem handlers are preparation
+candidates only. Do not treat them as certified Laravel backend delivery,
+Laravel tenant persistence, or ASP.NET backend compatibility.
+
+Laravel accessible Blade routes are web routes, not JSON API endpoints. They
+exist in two Laravel modes: shared-domain `/{tenantSlug}/alpha/...` and custom
+accessible-domain bare paths. Use `ACCESSIBLE_ROUTE_MODE=tenant-slug` with
+`ACCESSIBLE_TENANT_SLUG=<slug>` for shared-domain local work, or
+`ACCESSIBLE_ROUTE_MODE=custom-domain` for a resolved accessible domain. Use
+`buildLaravelAccessiblePath()` / `buildLaravelAccessibleUrl()` for these web
+route contracts and `buildBackendUrl()` only for JSON API calls.
+
+For local preparation, `/{tenantSlug}/alpha/...` requests are accepted as
+aliases for the corresponding Express route, and shell links/forms/local
+redirects keep that prefix. Do not confuse this with certified Laravel tenant
+resolution, custom-domain routing, feature gates, auth/session behavior, or
+backend persistence.
+
+Run `npm run audit:accessible-prep` after Laravel accessible route/view changes
+to regenerate the route, view, and backend contract preparation inventories.
+
 ## Backend API
 
-- Base URL: `http://localhost:5000` (configurable via `API_BASE_URL` env var)
+- Default target: Laravel (`ACCESSIBLE_BACKEND_TARGET=laravel`)
+- Laravel base URL: `http://localhost` (configurable via `LARAVEL_BACKEND_URL`)
+- Legacy fallback: `API_BASE_URL`
 - See the root `docs/API_PARITY.md` for API parity status and this file's endpoint table for routes used by this frontend.
 
 ### Key Endpoints Used

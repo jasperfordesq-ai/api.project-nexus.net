@@ -39,9 +39,18 @@ parity, localization parity, or API compatibility.
 
 Current local preparation docs in `apps/web-uk/docs/`:
 
+- `ACCESSIBLE_PREPARATION_SCORECARD.md`
 - `LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
+- `LARAVEL_ACCESSIBLE_ROUTE_INVENTORY.md`
+- `BLADE_VIEW_INVENTORY.md`
 - `BLADE_COMPONENT_PORT_AUDIT.md`
 - `BACKEND_SWITCHING_CONTRACT.md`
+- `ACCESSIBLE_BACKEND_CONTRACT_MATRIX.md`
+
+Backend target configuration lives in
+`apps/web-uk/src/lib/backend-config.js`. It defaults the accessible candidate to
+the Laravel backend target. ASP.NET remains pending backend parity, not a
+certified accessible adapter.
 
 The React utility-bar link must continue pointing at the production Laravel
 accessible frontend until `apps/web-uk` has passed route, workflow, accessibility,

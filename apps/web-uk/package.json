@@ -10,6 +10,7 @@
     "watch:css": "sass --quiet-deps --load-path=node_modules/govuk-frontend/dist --watch src/assets/scss/main.scss:public/css/main.css",
     "watch:server": "nodemon src/server.js",
     "brand:check": "node scripts/brand-check.js",
+    "audit:accessible-prep": "node scripts/generate-accessible-prep-audit.js",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",

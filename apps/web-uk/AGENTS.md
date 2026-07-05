@@ -17,10 +17,21 @@ Urgent first-read rules:
   Crown copyright wording, or any copy implying this is a government service.
 - Keep the app HTML-first and progressively enhanced. No React, Vue, Next.js, or
   client-side routing.
+- Keep the Blade-style no-JS cookie banner before the skip link; do not replace
+  it with a JavaScript-only consent flow.
+- Do not treat local cookie, contact, or report-problem handlers as certified
+  Laravel backend delivery or ASP.NET backend compatibility.
 - Run brand checks and focused tests after shell/layout changes.
 
 Preparation docs that future agents must keep current:
 
+- `docs/ACCESSIBLE_PREPARATION_SCORECARD.md`
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
+- `docs/LARAVEL_ACCESSIBLE_ROUTE_INVENTORY.md`
+- `docs/BLADE_VIEW_INVENTORY.md`
+- `docs/AUTH_FORM_CONTRACT_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
 - `docs/BACKEND_SWITCHING_CONTRACT.md`
+- `docs/ACCESSIBLE_BACKEND_CONTRACT_MATRIX.md`
+
+Run `npm run audit:accessible-prep` after Laravel accessible route/view changes.
