@@ -89,6 +89,85 @@ public sealed class LaravelReactUtilityCompatibilityTests : IntegrationTestBase
         coordinator.GetProperty("recipient_id").GetInt32().Should().Be(TestData.AdminUser.Id);
     }
 
+    [Fact]
+    public async Task PublicUtilityRoutes_ReturnLaravelReactShapes()
+    {
+        var health = await ReadJsonAsync(await Client.GetAsync("/api/health"), HttpStatusCode.OK);
+        health.GetProperty("status").GetString().Should().Be("ok");
+
+        var changelog = await ReadDataAsync(await Client.GetAsync("/api/v2/public-changelog"));
+        changelog.GetProperty("items").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var page = await ReadDataAsync(await Client.GetAsync("/api/v2/public-page-content/about"));
+        page.GetProperty("page_key").GetString().Should().Be("about");
+        page.GetProperty("title").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var staticRoute = await ReadDataAsync(await Client.GetAsync("/api/v2/public-static-route-content/contact"));
+        staticRoute.GetProperty("page_key").GetString().Should().Be("contact");
+        staticRoute.GetProperty("content").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task NotificationUnsubscribeRoutes_ReturnLaravelReactShapes()
+    {
+        var invalidPage = await Client.GetAsync("/api/v2/notifications/unsubscribe?token=bad");
+        invalidPage.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await invalidPage.Content.ReadAsStringAsync()).Should().Contain("Unsubscribe link invalid");
+        invalidPage.Content.Headers.ContentType?.MediaType.Should().Be("text/html");
+
+        var invalidPost = await ReadJsonAsync(await Client.PostAsJsonAsync("/api/v2/notifications/unsubscribe", new { token = "bad" }), HttpStatusCode.BadRequest);
+        invalidPost.GetProperty("success").GetBoolean().Should().BeFalse();
+        invalidPost.GetProperty("error").GetString().Should().Be("INVALID_TOKEN");
+    }
+
+    [Fact]
+    public async Task AuthenticatedAiChatUtilityRoutes_ReturnLaravelReactShapes()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var starters = await ReadDataAsync(await Client.GetAsync("/api/v2/ai/chat/starters"));
+        starters.GetProperty("starters").EnumerateArray().Should().HaveCountGreaterThan(0);
+
+        var missingTrace = await ReadJsonAsync(
+            await Client.PostAsJsonAsync("/api/v2/ai/chat/feedback", new { feedback = "up" }),
+            HttpStatusCode.UnprocessableEntity);
+        missingTrace.GetProperty("success").GetBoolean().Should().BeFalse();
+        missingTrace.GetProperty("error").GetString().Should().Be("VALIDATION");
+    }
+
+    [Fact]
+    public async Task AdminVolunteeringDonationRoutes_ReturnLaravelReactShapes()
+    {
+        var donationId = await SeedPendingMoneyDonationAsync();
+        await AuthenticateAsAdminAsync();
+
+        var list = await ReadDataAsync(await Client.GetAsync("/api/v2/admin/volunteering/donations"));
+        list.GetProperty("items").EnumerateArray().Should().Contain(d =>
+            d.GetProperty("id").GetInt32() == donationId &&
+            d.GetProperty("status").GetString() == "pending");
+
+        var complete = await ReadDataAsync(await Client.PostAsJsonAsync($"/api/v2/admin/volunteering/donations/{donationId}/complete", new { }));
+        complete.GetProperty("id").GetInt32().Should().Be(donationId);
+        complete.GetProperty("status").GetString().Should().Be("completed");
+        complete.GetProperty("already_completed").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PostmarkWebhookRoute_ReturnsLaravelReactShape()
+    {
+        var response = await Client.PostAsJsonAsync("/api/v2/webhooks/postmark", new
+        {
+            RecordType = "Delivery",
+            Email = "member@example.test",
+            MessageID = "pm-test-1",
+            Metadata = new { tenant_id = TestData.Tenant1.Id }
+        });
+
+        var json = await ReadJsonAsync(response, HttpStatusCode.OK);
+        json.GetProperty("received").GetInt32().Should().Be(1);
+        json.GetProperty("processed").GetInt32().Should().Be(1);
+    }
+
     private async Task SeedEnabledSsoProviderAsync()
     {
         using var scope = Factory.Services.CreateScope();
@@ -151,6 +230,26 @@ public sealed class LaravelReactUtilityCompatibilityTests : IntegrationTestBase
         db.Goals.Add(goal);
         await db.SaveChangesAsync();
         return goal.Id;
+    }
+
+    private async Task<int> SeedPendingMoneyDonationAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var donation = new MoneyDonation
+        {
+            TenantId = TestData.Tenant1.Id,
+            DonorUserId = TestData.MemberUser.Id,
+            DonorDisplayName = "Volunteer donor",
+            DonorEmail = "volunteer-donor@example.test",
+            AmountMinorUnits = 1800,
+            Currency = "GBP",
+            Status = MoneyDonationStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.MoneyDonations.Add(donation);
+        await db.SaveChangesAsync();
+        return donation.Id;
     }
 
     private static async Task<JsonElement> ReadDataAsync(HttpResponseMessage response)

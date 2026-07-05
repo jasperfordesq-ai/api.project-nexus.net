@@ -39,6 +39,8 @@ public class TenantResolutionMiddleware
         "/health",
         "/health/ready",
         "/health/live",
+        "/api/health",
+        "/api/v2/health",
         "/swagger",                  // Swagger UI and JSON spec
         "/api/auth/login",           // Login determines tenant from credentials
         "/api/auth/register",        // Register determines tenant from request body
@@ -51,6 +53,16 @@ public class TenantResolutionMiddleware
         "/api/v2/auth/oauth/exchange",         // Laravel-compatible OAuth callback-code exchange
         "/api/geo/os-places/search",           // Public geocoding proxy resolves tenant internally
         "/api/v2/geo/os-places/search",        // Laravel-compatible OS Places proxy
+        "/api/public-changelog",               // Public React static content
+        "/api/v2/public-changelog",            // Laravel-compatible public changelog
+        "/api/public-page-content",            // Public React static page content
+        "/api/v2/public-page-content",         // Laravel-compatible public page content
+        "/api/public-static-route-content",     // Public React locale-backed route content
+        "/api/v2/public-static-route-content",  // Laravel-compatible static route content
+        "/api/notifications/unsubscribe",       // Public one-click unsubscribe
+        "/api/v2/notifications/unsubscribe",    // Laravel-compatible one-click unsubscribe
+        "/api/webhooks/postmark",               // Shared-secret webhook; handles auth itself
+        "/api/v2/webhooks/postmark",            // Laravel-compatible Postmark webhook
         "/api/passkeys/authenticate/begin",    // Passkey auth determines tenant from request body
         "/api/passkeys/authenticate/finish",   // Passkey auth determines tenant from session
         "/api/v1/federation",                  // Federation external API uses its own auth
