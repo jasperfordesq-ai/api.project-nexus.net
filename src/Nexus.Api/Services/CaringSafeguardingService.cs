@@ -10,6 +10,14 @@ using Nexus.Api.Entities;
 
 namespace Nexus.Api.Services;
 
+public enum SafeguardingStatusChangeResult
+{
+    Changed,
+    NotFound,
+    InvalidStatus,
+    InvalidTransition
+}
+
 /// <summary>
 /// Tenant-scoped Caring Community safeguarding read model matching Laravel admin endpoints.
 /// </summary>
@@ -23,6 +31,16 @@ public sealed class CaringSafeguardingService
 
     private static readonly string[] Severities =
         ["low", "medium", "high", "critical"];
+
+    private static readonly IReadOnlyDictionary<string, string[]> StatusTransitions =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["submitted"] = ["submitted", "triaged", "investigating", "resolved", "dismissed"],
+            ["triaged"] = ["triaged", "investigating", "resolved", "dismissed"],
+            ["investigating"] = ["investigating", "resolved", "dismissed"],
+            ["resolved"] = ["resolved"],
+            ["dismissed"] = ["dismissed"]
+        };
 
     private readonly NexusDbContext _db;
 
@@ -217,6 +235,60 @@ public sealed class CaringSafeguardingService
 
         await _db.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task<SafeguardingStatusChangeResult> ChangeStatusAsync(
+        int tenantId,
+        long reportId,
+        string newStatus,
+        int actorId,
+        string? notes,
+        CancellationToken ct)
+    {
+        if (!Statuses.Contains(newStatus))
+        {
+            return SafeguardingStatusChangeResult.InvalidStatus;
+        }
+
+        var report = await _db.SafeguardingReports
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.Id == reportId, ct);
+        if (report is null)
+        {
+            return SafeguardingStatusChangeResult.NotFound;
+        }
+
+        if (!StatusTransitions.TryGetValue(report.Status, out var allowed) || !allowed.Contains(newStatus))
+        {
+            return SafeguardingStatusChangeResult.InvalidTransition;
+        }
+
+        var now = DateTime.UtcNow;
+        var trimmedNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        report.Status = newStatus;
+        report.UpdatedAt = now;
+
+        if (newStatus is "resolved" or "dismissed")
+        {
+            report.ResolvedAt = now;
+            if (trimmedNotes is not null)
+            {
+                report.ResolutionNotes = trimmedNotes;
+            }
+        }
+
+        _db.SafeguardingReportActions.Add(new SafeguardingReportAction
+        {
+            TenantId = tenantId,
+            ReportId = reportId,
+            ActorUserId = actorId,
+            Action = StatusAction(newStatus),
+            Notes = trimmedNotes,
+            CreatedAt = now
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return SafeguardingStatusChangeResult.Changed;
     }
 
     public async Task<IReadOnlyList<object>> MyReportsAsync(int tenantId, int userId, CancellationToken ct)
@@ -445,6 +517,15 @@ public sealed class CaringSafeguardingService
     {
         return value is null ? null : DbDateTime(value.Value);
     }
+
+    private static string StatusAction(string status)
+        => status switch
+        {
+            "resolved" => "resolved",
+            "dismissed" => "dismissed",
+            "triaged" => "triaged",
+            _ => "status_changed"
+        };
 
     private static bool IsTruthy(string? value)
     {

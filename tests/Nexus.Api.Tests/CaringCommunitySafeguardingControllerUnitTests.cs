@@ -53,6 +53,10 @@ public class CaringCommunitySafeguardingControllerUnitTests
         controller.GetMethod("Note")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("reports/{id:long}/note");
+
+        controller.GetMethod("Status")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("reports/{id:long}/status");
     }
 
     [Fact]
@@ -463,6 +467,157 @@ public class CaringCommunitySafeguardingControllerUnitTests
     }
 
     [Fact]
+    public async Task Status_TransitionsTenantReportAndWritesLaravelAction()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 505, 42, reporterId: 10, subjectId: 11, assigneeId: 12,
+            category: "neglect", severity: "critical", status: "submitted",
+            dueAt: DateTime.UtcNow.AddHours(-2), createdAt: new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        SeedReport(db, 901, 7, reporterId: 70, subjectId: null, assigneeId: null,
+            category: "other", severity: "critical", status: "submitted",
+            dueAt: null, createdAt: new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        var data = ReadData(await Invoke(controller,
+            "Status",
+            505L,
+            new Dictionary<string, object?> { ["status"] = "triaged", ["notes"] = "  Coordinator reviewed.  " },
+            CancellationToken.None));
+
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var report = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Id == 505);
+        report.Status.Should().Be("triaged");
+        report.ResolvedAt.Should().BeNull();
+        report.ResolutionNotes.Should().BeNull();
+        report.UpdatedAt.Should().NotBeNull();
+
+        var action = await db.SafeguardingReportActions.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.ReportId == 505);
+        action.ActorUserId.Should().Be(9);
+        action.Action.Should().Be("triaged");
+        action.Notes.Should().Be("Coordinator reviewed.");
+
+        var otherTenant = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 7 && row.Id == 901);
+        otherTenant.Status.Should().Be("submitted");
+    }
+
+    [Fact]
+    public async Task Status_WhenResolved_PersistsResolutionFieldsAndResolvedAction()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 506, 42, reporterId: 10, subjectId: null, assigneeId: 12,
+            category: "medical_concern", severity: "high", status: "investigating",
+            dueAt: null, createdAt: new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        ReadData(await Invoke(controller,
+            "Status",
+            506L,
+            new Dictionary<string, object?> { ["status"] = "resolved", ["notes"] = "  Support plan confirmed.  " },
+            CancellationToken.None));
+
+        var report = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Id == 506);
+        report.Status.Should().Be("resolved");
+        report.ResolvedAt.Should().NotBeNull();
+        report.ResolutionNotes.Should().Be("Support plan confirmed.");
+
+        var action = await db.SafeguardingReportActions.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.ReportId == 506);
+        action.Action.Should().Be("resolved");
+        action.Notes.Should().Be("Support plan confirmed.");
+    }
+
+    [Fact]
+    public async Task Status_WhenInvalidStatus_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 507, 42, reporterId: 10, subjectId: null, assigneeId: null,
+            category: "other", severity: "high", status: "submitted",
+            dueAt: null, createdAt: new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(await Invoke(controller,
+                "Status",
+                507L,
+                new Dictionary<string, object?> { ["status"] = "closed", ["notes"] = "x" },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        var report = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Id == 507);
+        report.Status.Should().Be("submitted");
+        db.SafeguardingReportActions.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Status_WhenInvalidTransition_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 508, 42, reporterId: 10, subjectId: null, assigneeId: null,
+            category: "other", severity: "low", status: "resolved",
+            dueAt: null, createdAt: new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(await Invoke(controller,
+                "Status",
+                508L,
+                new Dictionary<string, object?> { ["status"] = "triaged", ["notes"] = "reopen" },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        var report = await db.SafeguardingReports.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Id == 508);
+        report.Status.Should().Be("resolved");
+        db.SafeguardingReportActions.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Status_WhenReportOutsideTenant_ReturnsLaravelNotFound()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedUsers(db);
+        SeedReport(db, 901, 7, reporterId: 70, subjectId: null, assigneeId: null,
+            category: "other", severity: "critical", status: "submitted",
+            dueAt: null, createdAt: new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        AssertSingleError(await Invoke(controller,
+                "Status",
+                901L,
+                new Dictionary<string, object?> { ["status"] = "triaged", ["notes"] = "hidden tenant" },
+                CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "NOT_FOUND");
+
+        db.SafeguardingReportActions.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AdminReads_WhenCaringCommunityDisabled_ReturnLaravelFeatureDisabledError()
     {
         var tenant = CreateTenantContext(42);
@@ -495,6 +650,13 @@ public class CaringCommunitySafeguardingControllerUnitTests
                 "Note",
                 404L,
                 new Dictionary<string, object?> { ["note"] = "x" },
+                CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(await Invoke(controller,
+                "Status",
+                404L,
+                new Dictionary<string, object?> { ["status"] = "triaged", ["notes"] = "x" },
                 CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");

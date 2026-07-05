@@ -161,6 +161,35 @@ public sealed class AdminCaringCommunitySafeguardingController : ControllerBase
         return Ok(new { data = new { success = true } });
     }
 
+    [HttpPost("reports/{id:long}/status")]
+    public async Task<IActionResult> Status(long id, [FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var guard = await GuardAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        var status = StringValue(request, "status") ?? string.Empty;
+        var notes = StringValue(request, "notes")?.Trim();
+        var changed = await _safeguarding.ChangeStatusAsync(
+            _tenant.GetTenantIdOrThrow(),
+            id,
+            status,
+            CurrentUserId(),
+            string.IsNullOrWhiteSpace(notes) ? null : notes,
+            ct);
+
+        return changed switch
+        {
+            SafeguardingStatusChangeResult.Changed => Ok(new { data = new { success = true } }),
+            SafeguardingStatusChangeResult.NotFound => StatusCode(StatusCodes.Status404NotFound,
+                LaravelError("NOT_FOUND", "Not found.")),
+            _ => StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Invalid safeguarding status."))
+        };
+    }
+
     private async Task<IActionResult?> GuardAsync(CancellationToken ct)
     {
         if (!await _safeguarding.IsCaringCommunityEnabledAsync(_tenant.GetTenantIdOrThrow(), ct))
