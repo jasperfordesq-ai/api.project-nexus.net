@@ -32,6 +32,10 @@ public class CaringCommunityNudgeAnalyticsControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("nudges/analytics");
         typeof(AdminCaringCommunityNudgesController)
+            .GetMethod("UpdateConfig")
+            ?.GetCustomAttribute<HttpPutAttribute>()?.Template
+            .Should().Be("nudges/config");
+        typeof(AdminCaringCommunityNudgesController)
             .GetMethod("Dispatch")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("nudges/dispatch");
@@ -161,6 +165,80 @@ public class CaringCommunityNudgeAnalyticsControllerUnitTests
     }
 
     [Fact]
+    public async Task UpdateConfig_ClampsPersistsAndReturnsLaravelConfig()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedConfig(db);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant);
+
+        var data = ReadData(await InvokeUpdateConfig(controller, Json("""
+        {
+          "enabled": false,
+          "min_score": 1.2,
+          "cooldown_days": 0,
+          "daily_limit": 500
+        }
+        """)));
+
+        var config = data.GetProperty("config");
+        config.GetProperty("enabled").GetBoolean().Should().BeFalse();
+        config.GetProperty("min_score").GetDecimal().Should().Be(0.95m);
+        config.GetProperty("cooldown_days").GetInt32().Should().Be(1);
+        config.GetProperty("daily_limit").GetInt32().Should().Be(250);
+
+        var rows = await db.TenantConfigs.IgnoreQueryFilters()
+            .Where(row => row.TenantId == 42 && row.Key.StartsWith("caring_community.nudges."))
+            .ToDictionaryAsync(row => row.Key, row => row.Value);
+        rows["caring_community.nudges.enabled"].Should().Be("0");
+        rows["caring_community.nudges.min_score"].Should().Be("0.95");
+        rows["caring_community.nudges.cooldown_days"].Should().Be("1");
+        rows["caring_community.nudges.daily_limit"].Should().Be("250");
+
+        var otherTenantRows = await db.TenantConfigs.IgnoreQueryFilters()
+            .Where(row => row.TenantId == 7 && row.Key.StartsWith("caring_community.nudges."))
+            .ToDictionaryAsync(row => row.Key, row => row.Value);
+        otherTenantRows["caring_community.nudges.enabled"].Should().Be("false");
+        otherTenantRows["caring_community.nudges.min_score"].Should().Be("0.95");
+    }
+
+    [Fact]
+    public async Task UpdateConfig_PartialInputPreservesCurrentValues()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedConfig(db);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant);
+
+        var data = ReadData(await InvokeUpdateConfig(controller, Json("""{ "daily_limit": 7 }""")));
+
+        var config = data.GetProperty("config");
+        config.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        config.GetProperty("min_score").GetDecimal().Should().Be(0.8m);
+        config.GetProperty("cooldown_days").GetInt32().Should().Be(21);
+        config.GetProperty("daily_limit").GetInt32().Should().Be(7);
+    }
+
+    [Fact]
+    public async Task UpdateConfig_WhenFeatureDisabled_ReturnsLaravelFeatureDisabledError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: false);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant);
+
+        AssertSingleError(
+            await InvokeUpdateConfig(controller, Json("""{ "enabled": true }""")),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+    }
+
+    [Fact]
     public async Task Dispatch_LiveCreatesSentNudgeNotificationAndSkipsDuplicate()
     {
         var tenant = CreateTenantContext(42);
@@ -269,6 +347,22 @@ public class CaringCommunityNudgeAnalyticsControllerUnitTests
         requestType.GetProperty("Limit")!.SetValue(request, limit);
         var result = method.Invoke(controller, [request, CancellationToken.None]);
         return await result.Should().BeAssignableTo<Task<IActionResult>>().Subject;
+    }
+
+    private static async Task<IActionResult> InvokeUpdateConfig(
+        AdminCaringCommunityNudgesController controller,
+        JsonElement payload)
+    {
+        var method = typeof(AdminCaringCommunityNudgesController).GetMethod("UpdateConfig");
+        method.Should().NotBeNull();
+        var result = method!.Invoke(controller, [payload, CancellationToken.None]);
+        return await result.Should().BeAssignableTo<Task<IActionResult>>().Subject;
+    }
+
+    private static JsonElement Json(string raw)
+    {
+        using var document = JsonDocument.Parse(raw);
+        return document.RootElement.Clone();
     }
 
     private static void AssertSingleError(IActionResult result, int statusCode, string code)

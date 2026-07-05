@@ -5,6 +5,7 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Nexus.Api.Data;
 using Nexus.Api.Services;
@@ -39,6 +40,22 @@ public sealed class AdminCaringCommunityNudgesController : ControllerBase
 
         var data = await _nudges.AnalyticsAsync(tenantId, ct);
         return Ok(new { data });
+    }
+
+    [HttpPut("nudges/config")]
+    public async Task<IActionResult> UpdateConfig(
+        [FromBody] JsonElement payload,
+        CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _nudges.IsFeatureEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var config = await _nudges.UpdateConfigAsync(tenantId, payload, ct);
+        return Ok(new { data = new { config } });
     }
 
     [HttpPost("nudges/dispatch")]

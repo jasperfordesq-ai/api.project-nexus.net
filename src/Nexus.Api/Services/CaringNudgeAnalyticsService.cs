@@ -211,6 +211,35 @@ public sealed class CaringNudgeAnalyticsService
             Items: items);
     }
 
+    public async Task<CaringNudgeConfig> UpdateConfigAsync(
+        int tenantId,
+        JsonElement input,
+        CancellationToken ct)
+    {
+        var current = await ConfigAsync(tenantId, ct);
+        var updates = new CaringNudgeConfig(
+            HasProperty(input, "enabled")
+                ? ReadBool(input, "enabled")
+                : current.Enabled,
+            HasProperty(input, "min_score")
+                ? Clamp(ReadDecimal(input, "min_score"), 0.4m, 0.95m)
+                : current.MinScore,
+            HasProperty(input, "cooldown_days")
+                ? Clamp(ReadInt(input, "cooldown_days"), 1, 90)
+                : current.CooldownDays,
+            HasProperty(input, "daily_limit")
+                ? Clamp(ReadInt(input, "daily_limit"), 1, 250)
+                : current.DailyLimit);
+
+        await UpsertSettingAsync(tenantId, "enabled", updates.Enabled ? "1" : "0", ct);
+        await UpsertSettingAsync(tenantId, "min_score", FormatDecimal(updates.MinScore), ct);
+        await UpsertSettingAsync(tenantId, "cooldown_days", updates.CooldownDays.ToString(CultureInfo.InvariantCulture), ct);
+        await UpsertSettingAsync(tenantId, "daily_limit", updates.DailyLimit.ToString(CultureInfo.InvariantCulture), ct);
+        await _db.SaveChangesAsync(ct);
+
+        return await ConfigAsync(tenantId, ct);
+    }
+
     private async Task<CaringNudgeConfig> ConfigAsync(int tenantId, CancellationToken ct)
     {
         var rows = await _db.TenantConfigs
@@ -228,6 +257,31 @@ public sealed class CaringNudgeAnalyticsService
             ParseDecimal(Setting(rows, "min_score"), DefaultMinScore, 0.4m, 0.95m),
             ParseInt(Setting(rows, "cooldown_days"), DefaultCooldownDays, 1, 90),
             ParseInt(Setting(rows, "daily_limit"), DefaultDailyLimit, 1, 250));
+    }
+
+    private async Task UpsertSettingAsync(int tenantId, string key, string value, CancellationToken ct)
+    {
+        var fullKey = SettingPrefix + key;
+        var row = await _db.TenantConfigs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(config => config.TenantId == tenantId && config.Key == fullKey, ct);
+
+        if (row is null)
+        {
+            row = new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = fullKey,
+                Value = value,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _db.TenantConfigs.Add(row);
+            return;
+        }
+
+        row.Value = value;
+        row.UpdatedAt = DateTime.UtcNow;
     }
 
     private async Task<IReadOnlyList<CaringNudgeCandidate>> PreviewCandidatesAsync(
@@ -369,6 +423,73 @@ public sealed class CaringNudgeAnalyticsService
     private static string? Setting(IReadOnlyDictionary<string, string> rows, string key)
     {
         return rows.GetValueOrDefault(SettingPrefix + key);
+    }
+
+    private static bool HasProperty(JsonElement input, string name)
+    {
+        return input.ValueKind == JsonValueKind.Object && input.TryGetProperty(name, out _);
+    }
+
+    private static bool ReadBool(JsonElement input, string name)
+    {
+        if (input.ValueKind != JsonValueKind.Object || !input.TryGetProperty(name, out var value))
+        {
+            return false;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Number when value.TryGetInt32(out var number) => number != 0,
+            JsonValueKind.String => ParseBool(value.GetString()) ?? false,
+            _ => false
+        };
+    }
+
+    private static decimal ReadDecimal(JsonElement input, string name)
+    {
+        if (input.ValueKind != JsonValueKind.Object || !input.TryGetProperty(name, out var value))
+        {
+            return 0m;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number when value.TryGetDecimal(out var parsed) => parsed,
+            JsonValueKind.String when decimal.TryParse(value.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            _ => 0m
+        };
+    }
+
+    private static int ReadInt(JsonElement input, string name)
+    {
+        if (input.ValueKind != JsonValueKind.Object || !input.TryGetProperty(name, out var value))
+        {
+            return 0;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number when value.TryGetInt32(out var parsed) => parsed,
+            JsonValueKind.String when int.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            _ => 0
+        };
+    }
+
+    private static decimal Clamp(decimal value, decimal min, decimal max)
+    {
+        return Math.Max(min, Math.Min(max, value));
+    }
+
+    private static int Clamp(int value, int min, int max)
+    {
+        return Math.Max(min, Math.Min(max, value));
+    }
+
+    private static string FormatDecimal(decimal value)
+    {
+        return value.ToString("0.#############################", CultureInfo.InvariantCulture);
     }
 
     private static bool? ParseBool(string? raw)
