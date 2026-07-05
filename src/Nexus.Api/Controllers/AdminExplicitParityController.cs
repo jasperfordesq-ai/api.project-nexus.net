@@ -28,6 +28,7 @@ public class AdminExplicitParityController : ControllerBase
     private const string CompatibilityWritesKey = "admin_explicit.compatibility_writes";
     private const string MemberPremiumConnectAccountKey = "donations.stripe_connect_account_id";
     private const string MemberPremiumDisputesKey = "donations.disputes";
+    private const string SupportReportsKey = "admin_explicit.support_reports";
 
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -184,6 +185,10 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/reports/municipal-impact/templates")]
     [HttpGet("/api/v2/admin/reports/municipal-impact/verification")]
     [HttpGet("/api/v2/admin/residency-verifications")]
+    [HttpGet("/api/v2/admin/support-reports")]
+    [HttpGet("/api/v2/admin/support-reports/{id}")]
+    [HttpGet("/api/v2/admin/support-reports/assignees")]
+    [HttpGet("/api/v2/admin/support-reports/stats")]
     [HttpGet("/api/v2/admin/safeguarding/members/{userid}/activity")]
     [HttpGet("/api/v2/admin/safeguarding/members/{userid}/activity.csv")]
     [HttpGet("/api/v2/admin/safeguarding/statement")]
@@ -259,6 +264,9 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/member-premium/finance/overview" => await GetMemberPremiumFinanceOverview(),
             "/api/v2/admin/member-premium/settings" => await GetMemberPremiumSettings(),
             "/api/v2/admin/reports/export-types" => GetReportExportTypes(),
+            "/api/v2/admin/support-reports" => await GetSupportReports(),
+            "/api/v2/admin/support-reports/assignees" => await GetSupportReportAssignees(),
+            "/api/v2/admin/support-reports/stats" => await GetSupportReportStats(),
             "/api/v2/admin/super/billing/export" => await GetBillingExportCsv(),
             "/api/v2/admin/super/billing/revenue" => await GetBillingRevenue(),
             "/api/v2/admin/super/billing/snapshot" => await GetBillingSnapshot(),
@@ -270,6 +278,7 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetLastInt(path, "/api/v2/admin/events/", out var eventId) => await GetEvent(eventId),
             _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await GetGroup(groupId),
             _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await GetListing(listingId),
+            _ when TryGetLastInt(path, "/api/v2/admin/support-reports/", out var supportReportId) => await GetSupportReport(supportReportId),
             _ => await GetPersistedCompatibilityRead(path)
         };
     }
@@ -306,7 +315,14 @@ public class AdminExplicitParityController : ControllerBase
 
     [HttpPatch("/api/v2/admin/agents/{id}")]
     [HttpPatch("/api/v2/admin/enterprise/config/features")]
-    public async Task<IActionResult> Patch() => await PersistCompatibilityWrite("patch");
+    [HttpPatch("/api/v2/admin/support-reports/{id}")]
+    public async Task<IActionResult> Patch()
+    {
+        var path = Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+        return TryGetLastInt(path, "/api/v2/admin/support-reports/", out var supportReportId)
+            ? await UpdateSupportReport(supportReportId)
+            : await PersistCompatibilityWrite("patch");
+    }
 
     [HttpPost("/api/v2/admin/ad-campaigns/{id}/approve")]
     [HttpPost("/api/v2/admin/ad-campaigns/{id}/pause")]
@@ -459,6 +475,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPut("/api/v2/admin/moderation/settings")]
     [HttpPut("/api/v2/admin/reports/municipal-impact/templates/{id}")]
     [HttpPut("/api/v2/admin/reports/social-value/config")]
+    [HttpPut("/api/v2/admin/support-reports/{id}")]
     [HttpPut("/api/v2/admin/safeguarding/options/reorder")]
     [HttpPut("/api/v2/admin/super/identity/fee")]
     [HttpPut("/api/v2/admin/volunteering/community-projects/{id}/review")]
@@ -483,6 +500,7 @@ public class AdminExplicitParityController : ControllerBase
         {
             "/api/v2/admin/federation/topics/mine" => await PutFederationTopicSubscriptions(),
             "/api/v2/admin/member-premium/settings" => await PutMemberPremiumSettings(),
+            _ when TryGetLastInt(path, "/api/v2/admin/support-reports/", out var supportReportId) => await UpdateSupportReport(supportReportId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpdateFederationWebhook(webhookId),
             _ => await PersistCompatibilityWrite("put")
         };
@@ -1525,6 +1543,170 @@ public class AdminExplicitParityController : ControllerBase
         return Ok(new { data = new[] { "csv", "json" } });
     }
 
+    private async Task<IActionResult> GetSupportReports()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var page = QueryInt("page", 1, 1, int.MaxValue);
+        var limit = QueryInt("limit", QueryInt("per_page", 20, 1, 100), 1, 100);
+        var reports = await LoadSupportReports(tenantId);
+        var filtered = ApplySupportReportFilters(reports).ToList();
+        var total = filtered.Count;
+        var totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)limit));
+        var pageReports = filtered
+            .OrderByDescending(r => ParseDate(r.CreatedAt))
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToList();
+        var users = await LoadSupportReportUsers(pageReports);
+
+        return Ok(new
+        {
+            data = pageReports.Select(r => FormatSupportReport(r, users, includeDiagnostics: false)).ToList(),
+            meta = new
+            {
+                total,
+                page,
+                limit,
+                per_page = limit,
+                total_pages = totalPages
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetSupportReport(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var reports = await LoadSupportReports(tenantId);
+        var report = reports.FirstOrDefault(r => r.Id == id);
+        if (report == null)
+        {
+            return NotFound(new { error = "Support report not found" });
+        }
+
+        var users = await LoadSupportReportUsers(new[] { report });
+        return Ok(new { data = FormatSupportReport(report, users, includeDiagnostics: true) });
+    }
+
+    private async Task<IActionResult> GetSupportReportStats()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var reports = await LoadSupportReports(tenantId);
+        return Ok(new
+        {
+            data = new
+            {
+                total = reports.Count,
+                open = reports.Count(r => r.Status == "open"),
+                triaged = reports.Count(r => r.Status == "triaged"),
+                resolved = reports.Count(r => r.Status == "resolved"),
+                closed = reports.Count(r => r.Status == "closed"),
+                blocked = reports.Count(r => r.Impact == "blocked"),
+                major = reports.Count(r => r.Impact == "major"),
+                unassigned = reports.Count(r => r.AssignedUserId == null && (r.Status == "open" || r.Status == "triaged"))
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetSupportReportAssignees()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var users = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == tenantId && u.IsActive && (u.Role == "admin" || u.Role == "tenant_admin" || u.Role == "super_admin" || u.Role == "god"))
+            .OrderBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Select(u => new
+            {
+                id = u.Id,
+                name = ((u.FirstName + " " + u.LastName).Trim() == string.Empty ? u.Email : (u.FirstName + " " + u.LastName).Trim()),
+                email = u.Email,
+                avatar_url = u.AvatarUrl,
+                role = u.Role
+            })
+            .ToListAsync();
+
+        return Ok(new { data = new { assignees = users } });
+    }
+
+    private async Task<IActionResult> UpdateSupportReport(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var reports = await LoadSupportReports(tenantId);
+        var report = reports.FirstOrDefault(r => r.Id == id);
+        if (report == null)
+        {
+            return NotFound(new { error = "Support report not found" });
+        }
+
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        using var document = JsonDocument.Parse(payloadJson);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            return UnprocessableEntity(new { error = "VALIDATION_FAILED", field = "body" });
+        }
+
+        var hasChanges = false;
+        var now = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+        if (TryFindProperty(document.RootElement, "status", out var statusProperty))
+        {
+            var status = statusProperty.GetString();
+            if (!IsValidSupportReportStatus(status))
+            {
+                return UnprocessableEntity(new { error = "VALIDATION_FAILED", field = "status" });
+            }
+
+            report.Status = status!;
+            if (status == "triaged" && string.IsNullOrWhiteSpace(report.TriagedAt)) report.TriagedAt = now;
+            if (status == "resolved" && string.IsNullOrWhiteSpace(report.ResolvedAt)) report.ResolvedAt = now;
+            if (status == "closed" && string.IsNullOrWhiteSpace(report.ClosedAt)) report.ClosedAt = now;
+            hasChanges = true;
+        }
+
+        if (TryFindProperty(document.RootElement, "assigned_user_id", out var assignedProperty))
+        {
+            report.AssignedUserId = assignedProperty.ValueKind == JsonValueKind.Null ? null : assignedProperty.GetInt32();
+            if (report.AssignedUserId != null && !await IsAssignableSupportReportAdmin(report.AssignedUserId.Value, tenantId))
+            {
+                return UnprocessableEntity(new { error = "VALIDATION_FAILED", field = "assigned_user_id" });
+            }
+            hasChanges = true;
+        }
+
+        if (TryFindProperty(document.RootElement, "triage_notes", out var triageNotesProperty))
+        {
+            report.TriageNotes = NullableJsonString(triageNotesProperty);
+            hasChanges = true;
+        }
+
+        if (TryFindProperty(document.RootElement, "sentry_event_id", out var sentryEventProperty))
+        {
+            report.SentryEventId = NullableJsonString(sentryEventProperty);
+            hasChanges = true;
+        }
+
+        if (TryFindProperty(document.RootElement, "sentry_issue_url", out var sentryIssueProperty))
+        {
+            report.SentryIssueUrl = NullableJsonString(sentryIssueProperty);
+            hasChanges = true;
+        }
+
+        if (!hasChanges)
+        {
+            return UnprocessableEntity(new { error = "NO_CHANGES" });
+        }
+
+        report.UpdatedAt = now;
+        await SaveSupportReports(reports);
+
+        var users = await LoadSupportReportUsers(new[] { report });
+        return Ok(new { data = FormatSupportReport(report, users, includeDiagnostics: true) });
+    }
+
     private async Task<IActionResult> GetMemberPremiumSettings()
     {
         if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
@@ -1838,6 +2020,173 @@ public class AdminExplicitParityController : ControllerBase
             MoneyDonationStatus.Cancelled => "failed",
             _ => status.ToString().ToLowerInvariant()
         };
+    }
+
+    private async Task<List<SupportReportRecord>> LoadSupportReports(int tenantId)
+    {
+        var raw = await GetTenantConfigValueAsync(SupportReportsKey);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new List<SupportReportRecord>();
+        }
+
+        try
+        {
+            var records = JsonSerializer.Deserialize<List<SupportReportRecord>>(raw, StoreJsonOptions) ?? new List<SupportReportRecord>();
+            return records.Where(r => r.TenantId == tenantId).ToList();
+        }
+        catch (JsonException)
+        {
+            return new List<SupportReportRecord>();
+        }
+    }
+
+    private async Task SaveSupportReports(List<SupportReportRecord> reports)
+    {
+        var json = JsonSerializer.Serialize(reports.OrderBy(r => r.Id).ToList(), StoreJsonOptions);
+        await UpsertTenantConfigValueAsync(SupportReportsKey, json);
+        await _db.SaveChangesAsync();
+    }
+
+    private IEnumerable<SupportReportRecord> ApplySupportReportFilters(IEnumerable<SupportReportRecord> reports)
+    {
+        var status = Request.Query["status"].FirstOrDefault();
+        if (IsValidSupportReportStatus(status))
+        {
+            reports = reports.Where(r => r.Status == status);
+        }
+
+        var impact = Request.Query["impact"].FirstOrDefault();
+        if (impact is "blocked" or "major" or "minor" or "cosmetic")
+        {
+            reports = reports.Where(r => r.Impact == impact);
+        }
+
+        var search = Request.Query["search"].FirstOrDefault()?.Trim();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            reports = reports.Where(r =>
+                ContainsIgnoreCase(r.Reference, search) ||
+                ContainsIgnoreCase(r.Summary, search) ||
+                ContainsIgnoreCase(r.Description, search) ||
+                ContainsIgnoreCase(r.Route, search));
+        }
+
+        return reports;
+    }
+
+    private async Task<Dictionary<int, User>> LoadSupportReportUsers(IEnumerable<SupportReportRecord> reports)
+    {
+        var userIds = reports
+            .SelectMany(r => new[] { r.UserId, r.AssignedUserId })
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<int, User>();
+        }
+
+        return await _db.Users
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+    }
+
+    private static object FormatSupportReport(SupportReportRecord report, IReadOnlyDictionary<int, User> users, bool includeDiagnostics)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["id"] = report.Id,
+            ["tenant_id"] = report.TenantId,
+            ["tenant_name"] = null,
+            ["user_id"] = report.UserId,
+            ["assigned_user_id"] = report.AssignedUserId,
+            ["reference"] = report.Reference,
+            ["source"] = report.Source,
+            ["summary"] = report.Summary,
+            ["description"] = report.Description,
+            ["impact"] = report.Impact,
+            ["status"] = report.Status,
+            ["module"] = report.Module,
+            ["route"] = report.Route,
+            ["page_url"] = report.PageUrl,
+            ["sentry_event_id"] = report.SentryEventId,
+            ["sentry_issue_url"] = report.SentryIssueUrl,
+            ["user_agent"] = report.UserAgent,
+            ["triage_notes"] = report.TriageNotes,
+            ["triaged_at"] = report.TriagedAt,
+            ["resolved_at"] = report.ResolvedAt,
+            ["closed_at"] = report.ClosedAt,
+            ["created_at"] = report.CreatedAt,
+            ["updated_at"] = report.UpdatedAt,
+            ["reporter"] = report.UserId.HasValue && users.TryGetValue(report.UserId.Value, out var reporter) ? FormatSupportReportUser(reporter) : null,
+            ["assignee"] = report.AssignedUserId.HasValue && users.TryGetValue(report.AssignedUserId.Value, out var assignee) ? FormatSupportReportUser(assignee) : null
+        };
+
+        if (includeDiagnostics)
+        {
+            payload["diagnostics"] = report.Diagnostics?.ValueKind == JsonValueKind.Undefined ? null : report.Diagnostics;
+        }
+
+        return payload;
+    }
+
+    private static object FormatSupportReportUser(User user)
+    {
+        var name = $"{user.FirstName} {user.LastName}".Trim();
+        return new
+        {
+            id = user.Id,
+            name = string.IsNullOrWhiteSpace(name) ? user.Email : name,
+            email = user.Email,
+            avatar_url = user.AvatarUrl,
+            role = user.Role
+        };
+    }
+
+    private async Task<bool> IsAssignableSupportReportAdmin(int userId, int tenantId)
+    {
+        return await _db.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Id == userId
+                && u.TenantId == tenantId
+                && u.IsActive
+                && (u.Role == "admin" || u.Role == "tenant_admin" || u.Role == "super_admin" || u.Role == "god"));
+    }
+
+    private int QueryInt(string key, int fallback, int min, int max)
+    {
+        if (!int.TryParse(Request.Query[key].FirstOrDefault(), out var parsed))
+        {
+            return fallback;
+        }
+
+        return Math.Clamp(parsed, min, max);
+    }
+
+    private static bool IsValidSupportReportStatus(string? status)
+    {
+        return status is "open" or "triaged" or "resolved" or "closed";
+    }
+
+    private static bool ContainsIgnoreCase(string? haystack, string needle)
+    {
+        return haystack?.Contains(needle, StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string? NullableJsonString(JsonElement value)
+    {
+        return value.ValueKind == JsonValueKind.Null ? null : value.GetString()?.Trim();
+    }
+
+    private static DateTime ParseDate(string? value)
+    {
+        return DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsed)
+            ? parsed
+            : DateTime.MinValue;
     }
 
     private async Task<IActionResult> GetPersistedCompatibilityRead(string path)
@@ -2521,5 +2870,32 @@ public class AdminExplicitParityController : ControllerBase
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? DeletedAt { get; set; }
+    }
+
+    private sealed class SupportReportRecord
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public int? UserId { get; set; }
+        public int? AssignedUserId { get; set; }
+        public string Reference { get; set; } = string.Empty;
+        public string Source { get; set; } = "in_app";
+        public string Summary { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Impact { get; set; } = "minor";
+        public string Status { get; set; } = "open";
+        public string? Module { get; set; }
+        public string? Route { get; set; }
+        public string? PageUrl { get; set; }
+        public string? SentryEventId { get; set; }
+        public string? SentryIssueUrl { get; set; }
+        public JsonElement? Diagnostics { get; set; }
+        public string? UserAgent { get; set; }
+        public string? TriageNotes { get; set; }
+        public string? TriagedAt { get; set; }
+        public string? ResolvedAt { get; set; }
+        public string? ClosedAt { get; set; }
+        public string? CreatedAt { get; set; }
+        public string? UpdatedAt { get; set; }
     }
 }

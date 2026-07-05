@@ -445,6 +445,81 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task SupportReports_ReturnLaravelListDetailStatsAndAssignees()
+    {
+        await SeedSupportReportsAsync();
+        await AuthenticateAsAdminAsync();
+
+        var list = await Client.GetAsync("/api/v2/admin/support-reports?status=open&impact=blocked&search=checkout&page=1&limit=10");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var report = listJson.GetProperty("data").EnumerateArray().Single();
+        report.GetProperty("reference").GetString().Should().Be("NXR-260705-BLOCK1");
+        report.GetProperty("summary").GetString().Should().Contain("Checkout");
+        report.TryGetProperty("diagnostics", out _).Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().Be(1);
+        listJson.GetProperty("meta").GetProperty("total_pages").GetInt32().Should().Be(1);
+
+        var stats = await Client.GetAsync("/api/v2/admin/support-reports/stats");
+        stats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statsJson = await stats.Content.ReadFromJsonAsync<JsonElement>();
+        var statsData = statsJson.GetProperty("data");
+        statsData.GetProperty("total").GetInt32().Should().Be(2);
+        statsData.GetProperty("open").GetInt32().Should().Be(1);
+        statsData.GetProperty("triaged").GetInt32().Should().Be(1);
+        statsData.GetProperty("blocked").GetInt32().Should().Be(1);
+        statsData.GetProperty("major").GetInt32().Should().Be(1);
+        statsData.GetProperty("unassigned").GetInt32().Should().Be(1);
+
+        var assignees = await Client.GetAsync("/api/v2/admin/support-reports/assignees");
+        assignees.StatusCode.Should().Be(HttpStatusCode.OK);
+        var assigneesJson = await assignees.Content.ReadFromJsonAsync<JsonElement>();
+        assigneesJson.GetProperty("data").GetProperty("assignees").EnumerateArray()
+            .Should().Contain(item =>
+                item.GetProperty("id").GetInt32() == TestData.AdminUser.Id &&
+                item.GetProperty("name").GetString() == "Admin User" &&
+                item.GetProperty("email").GetString() == "admin@test.com" &&
+                item.GetProperty("role").GetString() == "admin");
+
+        var detail = await Client.GetAsync("/api/v2/admin/support-reports/101");
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("diagnostics").GetProperty("browser").GetString().Should().Be("chromium");
+        detailData.GetProperty("reporter").GetProperty("email").GetString().Should().Be("member@test.com");
+    }
+
+    [Fact]
+    public async Task SupportReports_UpdatePersistsLaravelFields()
+    {
+        await SeedSupportReportsAsync();
+        await AuthenticateAsAdminAsync();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/admin/support-reports/101", new
+        {
+            status = "resolved",
+            assigned_user_id = TestData.AdminUser.Id,
+            triage_notes = "Reproduced and linked to Sentry.",
+            sentry_issue_url = "https://sentry.example.test/issues/123"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await update.Content.ReadFromJsonAsync<JsonElement>();
+        var data = json.GetProperty("data");
+        data.GetProperty("status").GetString().Should().Be("resolved");
+        data.GetProperty("assigned_user_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        data.GetProperty("triage_notes").GetString().Should().Be("Reproduced and linked to Sentry.");
+        data.GetProperty("sentry_issue_url").GetString().Should().Be("https://sentry.example.test/issues/123");
+        data.GetProperty("resolved_at").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("assignee").GetProperty("name").GetString().Should().Be("Admin User");
+
+        var reload = await Client.GetAsync("/api/v2/admin/support-reports/101");
+        var reloadJson = await reload.Content.ReadFromJsonAsync<JsonElement>();
+        reloadJson.GetProperty("data").GetProperty("status").GetString().Should().Be("resolved");
+    }
+
+    [Fact]
     public async Task CatchAllPost_PersistsCompatibilityRecord()
     {
         await AuthenticateAsAdminAsync();
@@ -470,5 +545,76 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
             .OrderByDescending(e => e.Id)
             .FirstAsync();
         audit.RequestBody.Should().Contain("explicit parity test");
+    }
+
+    private async Task SeedSupportReportsAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = TestData.Tenant1.Id,
+            Key = "admin_explicit.support_reports",
+            Value = JsonSerializer.Serialize(new object[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["id"] = 101,
+                    ["tenant_id"] = TestData.Tenant1.Id,
+                    ["user_id"] = TestData.MemberUser.Id,
+                    ["assigned_user_id"] = null,
+                    ["reference"] = "NXR-260705-BLOCK1",
+                    ["source"] = "in_app",
+                    ["summary"] = "Checkout blocks card payment",
+                    ["description"] = "The checkout submit button never completes.",
+                    ["impact"] = "blocked",
+                    ["status"] = "open",
+                    ["module"] = "donations",
+                    ["route"] = "/admin/member-premium",
+                    ["page_url"] = "https://app.example.test/admin/member-premium",
+                    ["sentry_event_id"] = null,
+                    ["sentry_issue_url"] = null,
+                    ["diagnostics"] = new Dictionary<string, object?>
+                    {
+                        ["browser"] = "chromium",
+                        ["viewport"] = "1440x900"
+                    },
+                    ["user_agent"] = "Playwright",
+                    ["triage_notes"] = null,
+                    ["triaged_at"] = null,
+                    ["resolved_at"] = null,
+                    ["closed_at"] = null,
+                    ["created_at"] = "2026-07-05T09:00:00Z",
+                    ["updated_at"] = "2026-07-05T09:00:00Z"
+                },
+                new Dictionary<string, object?>
+                {
+                    ["id"] = 102,
+                    ["tenant_id"] = TestData.Tenant1.Id,
+                    ["user_id"] = TestData.MemberUser.Id,
+                    ["assigned_user_id"] = TestData.AdminUser.Id,
+                    ["reference"] = "NXR-260705-MAJOR2",
+                    ["source"] = "in_app",
+                    ["summary"] = "Profile save is slow",
+                    ["description"] = "Saving profile preferences takes several seconds.",
+                    ["impact"] = "major",
+                    ["status"] = "triaged",
+                    ["module"] = "profile",
+                    ["route"] = "/profile/settings",
+                    ["page_url"] = "https://app.example.test/profile/settings",
+                    ["sentry_event_id"] = "evt_test_123",
+                    ["sentry_issue_url"] = null,
+                    ["diagnostics"] = null,
+                    ["user_agent"] = "Playwright",
+                    ["triage_notes"] = "Investigating.",
+                    ["triaged_at"] = "2026-07-05T10:00:00Z",
+                    ["resolved_at"] = null,
+                    ["closed_at"] = null,
+                    ["created_at"] = "2026-07-05T08:00:00Z",
+                    ["updated_at"] = "2026-07-05T10:00:00Z"
+                }
+            }, JsonOptions)
+        });
+        await db.SaveChangesAsync();
     }
 }
