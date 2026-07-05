@@ -34,6 +34,8 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
             .Should().Be("workflow");
         controller.GetMethod("UpdatePolicy")?.GetCustomAttribute<HttpPutAttribute>()?.Template
             .Should().Be("workflow/policy");
+        controller.GetMethod("AssignReview")?.GetCustomAttribute<HttpPutAttribute>()?.Template
+            .Should().Be("workflow/reviews/{id}/assign");
     }
 
     [Fact]
@@ -114,6 +116,97 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
         policy.GetProperty("escalation_sla_days").GetInt32().Should().Be(5);
         policy.GetProperty("municipal_report_default_period").GetString().Should().Be("previous_quarter");
         policy.GetProperty("default_hour_value_chf").GetInt32().Should().Be(50);
+    }
+
+    [Fact]
+    public async Task AssignReview_AssignsPendingReviewToTenantCoordinator()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedPolicy(db, 42);
+        db.Users.AddRange(
+            User(10, 42, "Mia", "Member", Role.Names.Member),
+            User(11, 42, "Ben", "Broker", Role.Names.Admin),
+            User(99, 7, "Other", "Admin", Role.Names.Admin));
+        db.VolunteerLogs.AddRange(
+            Log(100, 42, 10, "pending", 2.4m, DateTime.UtcNow.AddDays(-4)),
+            Log(200, 7, 99, "pending", 9m, DateTime.UtcNow.AddDays(-4)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1);
+
+        var result = await Invoke(controller, "AssignReview", 100, new Dictionary<string, object?>
+        {
+            ["assigned_to"] = 11
+        }, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("message").GetString().Should().Be("Review assignment updated.");
+        var review = data.GetProperty("review");
+        review.GetProperty("id").GetInt32().Should().Be(100);
+        review.GetProperty("member_name").GetString().Should().Be("Mia Member");
+        review.GetProperty("assigned_to").GetInt32().Should().Be(11);
+        review.GetProperty("assigned_name").GetString().Should().Be("Ben Broker");
+        review.GetProperty("assigned_at").ValueKind.Should().Be(JsonValueKind.String);
+        review.GetProperty("hours").GetDecimal().Should().Be(2.4m);
+        review.GetProperty("is_overdue").GetBoolean().Should().BeTrue();
+
+        var stored = await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 100);
+        stored.AssignedTo.Should().Be(11);
+        stored.AssignedAt.Should().NotBeNull();
+        stored.UpdatedAt.Should().NotBeNull();
+
+        var otherTenant = await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 200);
+        otherTenant.AssignedTo.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AssignReview_ReturnsNotFoundForInvalidAssigneeOtherTenantOrNonPendingReview()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedPolicy(db, 42);
+        db.Users.AddRange(
+            User(10, 42, "Mia", "Member", Role.Names.Member),
+            User(11, 42, "Ben", "Broker", Role.Names.Member),
+            User(12, 42, "Ava", "Admin", Role.Names.Admin),
+            User(99, 7, "Other", "Admin", Role.Names.Admin));
+        db.VolunteerLogs.AddRange(
+            Log(100, 42, 10, "pending", 2m, DateTime.UtcNow.AddDays(-1)),
+            Log(101, 42, 10, "approved", 2m, DateTime.UtcNow.AddDays(-1)),
+            Log(200, 7, 99, "pending", 9m, DateTime.UtcNow.AddDays(-1)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1);
+
+        var invalidAssignee = await Invoke(controller, "AssignReview", 100, new Dictionary<string, object?>
+        {
+            ["assigned_to"] = 11
+        }, CancellationToken.None);
+        var crossTenant = await Invoke(controller, "AssignReview", 200, new Dictionary<string, object?>
+        {
+            ["assigned_to"] = 12
+        }, CancellationToken.None);
+        var nonPending = await Invoke(controller, "AssignReview", 101, new Dictionary<string, object?>
+        {
+            ["assigned_to"] = 12
+        }, CancellationToken.None);
+
+        foreach (var result in new[] { invalidAssignee, crossTenant, nonPending })
+        {
+            var notFound = result.Should().BeOfType<ObjectResult>().Subject;
+            notFound.StatusCode.Should().Be(StatusCodes.Status404NotFound);
+            using var document = JsonDocument.Parse(JsonSerializer.Serialize(notFound.Value));
+            var error = document.RootElement.GetProperty("errors")[0];
+            error.GetProperty("code").GetString().Should().Be("NOT_FOUND");
+            error.GetProperty("message").GetString().Should().Be("Review could not be assigned.");
+        }
+
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 100)).AssignedTo.Should().BeNull();
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 101)).AssignedTo.Should().BeNull();
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 200)).AssignedTo.Should().BeNull();
     }
 
     [Fact]

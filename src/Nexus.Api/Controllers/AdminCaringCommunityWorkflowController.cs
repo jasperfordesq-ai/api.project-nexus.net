@@ -54,6 +54,33 @@ public sealed class AdminCaringCommunityWorkflowController : ControllerBase
         return Ok(new { data });
     }
 
+    [HttpPut("workflow/reviews/{id}/assign")]
+    public async Task<IActionResult> AssignReview(int id, [FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _workflow.IsFeatureEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var review = await _workflow.AssignReviewAsync(tenantId, id, request, ct);
+        if (review is null)
+        {
+            return StatusCode(StatusCodes.Status404NotFound,
+                LaravelError("NOT_FOUND", "Review could not be assigned."));
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                review,
+                message = "Review assignment updated."
+            }
+        });
+    }
+
     private static object LaravelError(string code, string message, string? field = null)
     {
         var error = new Dictionary<string, object?>

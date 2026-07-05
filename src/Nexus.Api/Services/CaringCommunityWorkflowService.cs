@@ -106,6 +106,36 @@ public sealed class CaringCommunityWorkflowService
         return PolicyPayload(await LoadPolicyAsync(tenantId, ct));
     }
 
+    public async Task<object?> AssignReviewAsync(int tenantId, int logId, IReadOnlyDictionary<string, object?>? input, CancellationToken ct)
+    {
+        var assigneeId = NullableIntInput(input, "assigned_to");
+        if (assigneeId is int userId && !await IsCoordinatorAsync(tenantId, userId, ct))
+        {
+            return null;
+        }
+
+        var log = await _db.VolunteerLogs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item =>
+                item.TenantId == tenantId
+                && item.Id == logId
+                && item.Status == PendingStatus,
+                ct);
+
+        if (log is null)
+        {
+            return null;
+        }
+
+        log.AssignedTo = assigneeId;
+        log.AssignedAt = assigneeId is null ? null : DateTime.UtcNow;
+        log.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        var policy = await LoadPolicyAsync(tenantId, ct);
+        return await ReviewByIdAsync(tenantId, logId, policy, ct);
+    }
+
     private async Task<WorkflowPolicy> LoadPolicyAsync(int tenantId, CancellationToken ct)
     {
         var settings = await _db.TenantConfigs
@@ -242,6 +272,42 @@ public sealed class CaringCommunityWorkflowService
         }).Cast<object>().ToArray();
     }
 
+    private async Task<object?> ReviewByIdAsync(int tenantId, int logId, WorkflowPolicy policy, CancellationToken ct)
+    {
+        var log = await _db.VolunteerLogs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(item => item.User)
+            .FirstOrDefaultAsync(item => item.TenantId == tenantId && item.Id == logId && item.Status == PendingStatus, ct);
+
+        if (log is null)
+        {
+            return null;
+        }
+
+        var assignedUser = log.AssignedTo is int assignedTo
+            ? await _db.Users
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(user => user.TenantId == tenantId && user.Id == assignedTo)
+                .FirstOrDefaultAsync(ct)
+            : null;
+        var assignedName = assignedUser is null ? null : DisplayName(assignedUser);
+
+        string? opportunityTitle = null;
+        if (log.OpportunityId is int opportunityId)
+        {
+            opportunityTitle = await _db.VolunteerOpportunities
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(opportunity => opportunity.TenantId == tenantId && opportunity.Id == opportunityId)
+                .Select(opportunity => opportunity.Title)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        return ReviewPayload(log, policy, assignedName, opportunityTitle, DateTime.UtcNow);
+    }
+
     private async Task<object[]> RecentDecisionsAsync(int tenantId, CancellationToken ct)
     {
         var logs = await _db.VolunteerLogs
@@ -295,6 +361,19 @@ public sealed class CaringCommunityWorkflowService
                 && CoordinatorRoles.Contains(user.Role), ct);
     }
 
+    private async Task<bool> IsCoordinatorAsync(int tenantId, int userId, CancellationToken ct)
+    {
+        return await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(user =>
+                user.TenantId == tenantId
+                && user.Id == userId
+                && user.IsActive
+                && CoordinatorRoles.Contains(user.Role),
+                ct);
+    }
+
     private async Task<object[]> CoordinatorsAsync(int tenantId, CancellationToken ct)
     {
         var users = await _db.Users
@@ -332,6 +411,33 @@ public sealed class CaringCommunityWorkflowService
             municipal_report_default_period = policy.MunicipalReportDefaultPeriod,
             include_social_value_estimate = policy.IncludeSocialValueEstimate,
             default_hour_value_chf = policy.DefaultHourValueChf
+        };
+    }
+
+    private static object ReviewPayload(
+        VolunteerLog log,
+        WorkflowPolicy policy,
+        string? assignedName,
+        string? opportunityTitle,
+        DateTime now)
+    {
+        return new
+        {
+            id = log.Id,
+            member_name = DisplayName(log.User),
+            organisation_name = string.Empty,
+            opportunity_title = opportunityTitle ?? string.Empty,
+            assigned_to = log.AssignedTo,
+            assigned_name = string.IsNullOrWhiteSpace(assignedName) ? null : assignedName,
+            assigned_at = FormatTimestamp(log.AssignedAt),
+            escalated_at = FormatTimestamp(log.EscalatedAt),
+            escalation_note = log.EscalationNote,
+            hours = RoundHours(log.Hours),
+            date_logged = log.DateLogged.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            created_at = FormatTimestamp(log.CreatedAt),
+            age_days = Math.Max(0, (int)Math.Floor((now - log.CreatedAt).TotalDays)),
+            is_overdue = log.CreatedAt < now.AddDays(-policy.ReviewSlaDays),
+            is_escalated = log.EscalatedAt is not null || log.CreatedAt < now.AddDays(-policy.EscalationSlaDays)
         };
     }
 
@@ -481,6 +587,32 @@ public sealed class CaringCommunityWorkflowService
         }
 
         return Convert.ToString(value, CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
+    }
+
+    private static int? NullableIntInput(IReadOnlyDictionary<string, object?>? input, string key)
+    {
+        if (input is null || !input.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        var parsed = value switch
+        {
+            JsonElement json => json.ValueKind switch
+            {
+                JsonValueKind.Number => json.TryGetInt32(out var number) ? number : 0,
+                JsonValueKind.String => int.TryParse(json.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? number : 0,
+                _ => 0
+            },
+            int number => number,
+            long number => number > int.MaxValue ? int.MaxValue : number < int.MinValue ? int.MinValue : (int)number,
+            decimal number => (int)number,
+            double number => (int)number,
+            string text => int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? number : 0,
+            _ => 0
+        };
+
+        return parsed >= 1 ? parsed : null;
     }
 
     private static bool StringToBool(string? value, bool fallback)
