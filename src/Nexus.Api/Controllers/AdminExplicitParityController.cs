@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Services.Federation;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
@@ -25,6 +26,8 @@ public class AdminExplicitParityController : ControllerBase
     private const string FederationTopicSubscriptionsKey = "admin_explicit.federation.topic_subscriptions";
     private const string FederationWebhooksKey = "admin_explicit.federation.webhooks";
     private const string CompatibilityWritesKey = "admin_explicit.compatibility_writes";
+    private const string MemberPremiumConnectAccountKey = "donations.stripe_connect_account_id";
+    private const string MemberPremiumDisputesKey = "donations.disputes";
 
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -148,6 +151,11 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/listings/moderation-queue")]
     [HttpGet("/api/v2/admin/listings/moderation-stats")]
     [HttpGet("/api/v2/admin/listings/stats")]
+    [HttpGet("/api/v2/admin/member-premium/finance/annual-receipts")]
+    [HttpGet("/api/v2/admin/member-premium/finance/disputes")]
+    [HttpGet("/api/v2/admin/member-premium/finance/gift-aid-export")]
+    [HttpGet("/api/v2/admin/member-premium/finance/overview")]
+    [HttpGet("/api/v2/admin/member-premium/settings")]
     [HttpGet("/api/v2/admin/member-premium/subscribers")]
     [HttpGet("/api/v2/admin/member-premium/tiers")]
     [HttpGet("/api/v2/admin/member-premium/tiers/{id}")]
@@ -245,6 +253,11 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/listings/moderation-queue" => await GetListingsModerationQueue(),
             "/api/v2/admin/listings/moderation-stats" => await GetListingsModerationStats(),
             "/api/v2/admin/listings/stats" => await GetListingsStats(),
+            "/api/v2/admin/member-premium/finance/annual-receipts" => await GetMemberPremiumAnnualReceiptsCsv(),
+            "/api/v2/admin/member-premium/finance/disputes" => await GetMemberPremiumFinanceDisputes(),
+            "/api/v2/admin/member-premium/finance/gift-aid-export" => await GetMemberPremiumGiftAidCsv(),
+            "/api/v2/admin/member-premium/finance/overview" => await GetMemberPremiumFinanceOverview(),
+            "/api/v2/admin/member-premium/settings" => await GetMemberPremiumSettings(),
             "/api/v2/admin/reports/export-types" => GetReportExportTypes(),
             "/api/v2/admin/super/billing/export" => await GetBillingExportCsv(),
             "/api/v2/admin/super/billing/revenue" => await GetBillingRevenue(),
@@ -364,6 +377,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPost("/api/v2/admin/ki-agents/proposals/approve-eligible")]
     [HttpPost("/api/v2/admin/ki-agents/trigger")]
     [HttpPost("/api/v2/admin/listings/{id}/reject")]
+    [HttpPost("/api/v2/admin/member-premium/connect/onboarding")]
     [HttpPost("/api/v2/admin/member-premium/tiers")]
     [HttpPost("/api/v2/admin/member-premium/tiers/{id}/sync-stripe")]
     [HttpPost("/api/v2/admin/members/inactive/detect")]
@@ -407,6 +421,7 @@ public class AdminExplicitParityController : ControllerBase
         return path switch
         {
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
+            "/api/v2/admin/member-premium/connect/onboarding" => await CreateMemberPremiumConnectOnboarding(),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/test", out var webhookId) => await TestFederationWebhook(webhookId),
             _ => await PersistCompatibilityWrite("post")
         };
@@ -439,6 +454,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPut("/api/v2/admin/group-collections/{id}/groups")]
     [HttpPut("/api/v2/admin/help/faqs/{id}")]
     [HttpPut("/api/v2/admin/ki-agents/config")]
+    [HttpPut("/api/v2/admin/member-premium/settings")]
     [HttpPut("/api/v2/admin/member-premium/tiers/{id}")]
     [HttpPut("/api/v2/admin/moderation/settings")]
     [HttpPut("/api/v2/admin/reports/municipal-impact/templates/{id}")]
@@ -466,6 +482,7 @@ public class AdminExplicitParityController : ControllerBase
         return path switch
         {
             "/api/v2/admin/federation/topics/mine" => await PutFederationTopicSubscriptions(),
+            "/api/v2/admin/member-premium/settings" => await PutMemberPremiumSettings(),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpdateFederationWebhook(webhookId),
             _ => await PersistCompatibilityWrite("put")
         };
@@ -1506,6 +1523,321 @@ public class AdminExplicitParityController : ControllerBase
     private IActionResult GetReportExportTypes()
     {
         return Ok(new { data = new[] { "csv", "json" } });
+    }
+
+    private async Task<IActionResult> GetMemberPremiumSettings()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        return Ok(new
+        {
+            data = new
+            {
+                settings = await BuildMemberPremiumSettings(tenantId)
+            }
+        });
+    }
+
+    private async Task<IActionResult> PutMemberPremiumSettings()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        var accountId = ExtractStringFromPayload(payloadJson, "stripe_connect_account_id")?.Trim() ?? string.Empty;
+        if (!IsValidStripeConnectAccountId(accountId))
+        {
+            return UnprocessableEntity(new
+            {
+                error = "VALIDATION_ERROR",
+                message = "Invalid Stripe Connect account ID.",
+                field = "stripe_connect_account_id"
+            });
+        }
+
+        await UpsertTenantConfigValueAsync(MemberPremiumConnectAccountKey, accountId);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            data = new
+            {
+                settings = await BuildMemberPremiumSettings(tenantId)
+            }
+        });
+    }
+
+    private async Task<IActionResult> CreateMemberPremiumConnectOnboarding()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var accountId = await GetTenantConfigValueAsync(MemberPremiumConnectAccountKey);
+        if (string.IsNullOrWhiteSpace(accountId))
+        {
+            accountId = $"acct_compat_{tenantId}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+            await UpsertTenantConfigValueAsync(MemberPremiumConnectAccountKey, accountId);
+            await _db.SaveChangesAsync();
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                settings = await BuildMemberPremiumSettings(tenantId),
+                onboarding_url = $"https://connect.stripe.com/setup/{accountId}"
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetMemberPremiumFinanceOverview()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var rows = await _db.MoneyDonations
+            .AsNoTracking()
+            .Where(d => d.TenantId == tenantId)
+            .ToListAsync();
+
+        var completed = rows.Where(d => d.Status == MoneyDonationStatus.Succeeded).ToList();
+        var refunded = rows.Where(d => d.Status == MoneyDonationStatus.Refunded).ToList();
+        var pending = rows.Where(d => d.Status == MoneyDonationStatus.Pending).ToList();
+        var failed = rows.Where(d => d.Status == MoneyDonationStatus.Failed || d.Status == MoneyDonationStatus.Cancelled).ToList();
+        var disputes = await LoadMemberPremiumDisputes();
+
+        return Ok(new
+        {
+            data = new
+            {
+                overview = new
+                {
+                    totals = new
+                    {
+                        completed_cents = completed.Sum(d => d.AmountMinorUnits),
+                        refunded_cents = refunded.Sum(d => d.AmountMinorUnits),
+                        pending_cents = pending.Sum(d => d.AmountMinorUnits),
+                        failed_count = failed.Count
+                    },
+                    routing = new
+                    {
+                        platform_fallback_cents = completed.Sum(d => d.AmountMinorUnits),
+                        tenant_connect_cents = 0L,
+                        platform_fallback_count = completed.Count,
+                        tenant_connect_count = 0
+                    },
+                    gift_aid = new
+                    {
+                        ready_cents = 0L,
+                        ready_count = 0
+                    },
+                    recurring = new
+                    {
+                        active_count = await _db.UserSubscriptions.AsNoTracking().CountAsync(s => s.Status == SubscriptionStatus.Active),
+                        past_due_count = 0,
+                        canceled_count = await _db.UserSubscriptions.AsNoTracking().CountAsync(s => s.Status == SubscriptionStatus.Cancelled)
+                    },
+                    disputes = new
+                    {
+                        open_count = disputes.Count
+                    },
+                    receipts = new
+                    {
+                        failed_email_count = 0
+                    }
+                }
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetMemberPremiumFinanceDisputes()
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var limit = 50;
+        if (int.TryParse(Request.Query["limit"].FirstOrDefault(), out var parsedLimit))
+        {
+            limit = Math.Clamp(parsedLimit, 1, 200);
+        }
+
+        var disputes = (await LoadMemberPremiumDisputes()).Take(limit).ToList();
+        return Ok(new { data = new { items = disputes } });
+    }
+
+    private async Task<IActionResult> GetMemberPremiumGiftAidCsv()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var donations = await CompletedMemberPremiumDonations(tenantId).ToListAsync();
+        var lines = new List<string>
+        {
+            "donation_id,donor_name,donor_email,amount,currency,declaration_name,address_line1,address_line2,town,postcode,country,consented_at,donation_date"
+        };
+
+        lines.AddRange(donations.Select(d => string.Join(',', new[]
+        {
+            d.Id.ToString(CultureInfo.InvariantCulture),
+            Csv(d.DonorDisplayName),
+            Csv(d.DonorEmail),
+            FormatMinorUnits(d.AmountMinorUnits),
+            Csv(d.Currency.ToUpperInvariant()),
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            Csv((d.CompletedAt ?? d.CreatedAt).ToString("O", CultureInfo.InvariantCulture))
+        })));
+
+        return File(Encoding.UTF8.GetBytes(string.Join('\n', lines) + "\n"), "text/csv", "gift-aid-donations.csv");
+    }
+
+    private async Task<IActionResult> GetMemberPremiumAnnualReceiptsCsv()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var year = DateTime.UtcNow.Year;
+        if (int.TryParse(Request.Query["year"].FirstOrDefault(), out var parsedYear)
+            && parsedYear >= 2000
+            && parsedYear <= DateTime.UtcNow.Year + 1)
+        {
+            year = parsedYear;
+        }
+
+        var donations = await _db.MoneyDonations
+            .AsNoTracking()
+            .Where(d => d.TenantId == tenantId
+                && (d.Status == MoneyDonationStatus.Succeeded || d.Status == MoneyDonationStatus.Refunded)
+                && d.CreatedAt.Year == year)
+            .OrderBy(d => d.CreatedAt)
+            .ToListAsync();
+
+        var lines = new List<string>
+        {
+            "donation_id,user_id,donor_name,donor_email,amount,currency,status,payment_method,fund_code,payment_route,stripe_account_id,stripe_payment_intent_id,gift_aid_claim_status,donation_date"
+        };
+
+        lines.AddRange(donations.Select(d => string.Join(',', new[]
+        {
+            d.Id.ToString(CultureInfo.InvariantCulture),
+            d.DonorUserId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            Csv(d.DonorDisplayName),
+            Csv(d.DonorEmail),
+            FormatMinorUnits(d.AmountMinorUnits),
+            Csv(d.Currency.ToUpperInvariant()),
+            Csv(ToLaravelDonationStatus(d.Status)),
+            Csv("stripe"),
+            Csv("general"),
+            Csv("platform_default"),
+            string.Empty,
+            Csv(d.StripePaymentIntentId),
+            Csv("not_eligible"),
+            Csv((d.CompletedAt ?? d.CreatedAt).ToString("O", CultureInfo.InvariantCulture))
+        })));
+
+        return File(Encoding.UTF8.GetBytes(string.Join('\n', lines) + "\n"), "text/csv", $"donation-annual-receipts-{year}.csv");
+    }
+
+    private async Task<object> BuildMemberPremiumSettings(int tenantId)
+    {
+        var accountId = NormalizeStripeConnectAccountId(await GetTenantConfigValueAsync(MemberPremiumConnectAccountKey));
+        var configuredRoute = accountId == string.Empty ? "platform_default" : "tenant_connect";
+        var accountStatus = accountId == string.Empty
+            ? new
+            {
+                state = "not_connected",
+                charges_enabled = false,
+                payouts_enabled = false,
+                details_submitted = false,
+                requirements_due = Array.Empty<string>(),
+                disabled_reason = (string?)null,
+                error = (string?)null
+            }
+            : new
+            {
+                state = "unknown",
+                charges_enabled = false,
+                payouts_enabled = false,
+                details_submitted = false,
+                requirements_due = Array.Empty<string>(),
+                disabled_reason = (string?)null,
+                error = (string?)"Stripe account status could not be checked."
+            };
+
+        return new
+        {
+            stripe_connect_account_id = accountId,
+            active_stripe_account_id = string.Empty,
+            payment_route = "platform_default",
+            configured_payment_route = configuredRoute,
+            account_status = accountStatus,
+            fallback_reason = accountId == string.Empty ? null : "stripe_connect_not_ready"
+        };
+    }
+
+    private IQueryable<MoneyDonation> CompletedMemberPremiumDonations(int tenantId)
+    {
+        return _db.MoneyDonations
+            .AsNoTracking()
+            .Where(d => d.TenantId == tenantId && d.Status == MoneyDonationStatus.Succeeded)
+            .OrderBy(d => d.CreatedAt);
+    }
+
+    private async Task<List<Dictionary<string, object?>>> LoadMemberPremiumDisputes()
+    {
+        var raw = await GetTenantConfigValueAsync(MemberPremiumDisputesKey);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new List<Dictionary<string, object?>>();
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return new List<Dictionary<string, object?>>();
+            }
+
+            return doc.RootElement.EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.Object)
+                .Select(item => item.EnumerateObject()
+                    .ToDictionary(p => p.Name, p => ConvertJsonValue(p.Value), StringComparer.OrdinalIgnoreCase))
+                .ToList();
+        }
+        catch (JsonException)
+        {
+            return new List<Dictionary<string, object?>>();
+        }
+    }
+
+    private static bool IsValidStripeConnectAccountId(string accountId)
+    {
+        return accountId == string.Empty
+            || (accountId.StartsWith("acct_", StringComparison.Ordinal) && accountId.Length > "acct_".Length && accountId.All(c => char.IsLetterOrDigit(c) || c == '_'));
+    }
+
+    private static string NormalizeStripeConnectAccountId(string? accountId)
+    {
+        var normalized = accountId?.Trim() ?? string.Empty;
+        return IsValidStripeConnectAccountId(normalized) ? normalized : string.Empty;
+    }
+
+    private static string FormatMinorUnits(long minorUnits)
+    {
+        return (minorUnits / 100m).ToString("0.00", CultureInfo.InvariantCulture);
+    }
+
+    private static string ToLaravelDonationStatus(MoneyDonationStatus status)
+    {
+        return status switch
+        {
+            MoneyDonationStatus.Succeeded => "completed",
+            MoneyDonationStatus.Refunded => "refunded",
+            MoneyDonationStatus.Pending => "pending",
+            MoneyDonationStatus.Failed => "failed",
+            MoneyDonationStatus.Cancelled => "failed",
+            _ => status.ToString().ToLowerInvariant()
+        };
     }
 
     private async Task<IActionResult> GetPersistedCompatibilityRead(string path)

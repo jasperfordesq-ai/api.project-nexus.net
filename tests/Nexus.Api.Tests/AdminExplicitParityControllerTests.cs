@@ -252,6 +252,199 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MemberPremiumSettings_PersistStripeConnectAccountAndReturnLaravelEnvelope()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/member-premium/settings");
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        var initialSettings = initialJson.GetProperty("data").GetProperty("settings");
+        initialSettings.GetProperty("stripe_connect_account_id").GetString().Should().BeEmpty();
+        initialSettings.GetProperty("payment_route").GetString().Should().Be("platform_default");
+        initialSettings.GetProperty("configured_payment_route").GetString().Should().Be("platform_default");
+        initialSettings.GetProperty("account_status").GetProperty("state").GetString().Should().Be("not_connected");
+
+        var update = await Client.PutAsJsonAsync("/api/v2/admin/member-premium/settings", new
+        {
+            stripe_connect_account_id = "acct_testTenant123"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        var settings = updateJson.GetProperty("data").GetProperty("settings");
+        settings.GetProperty("stripe_connect_account_id").GetString().Should().Be("acct_testTenant123");
+        settings.GetProperty("configured_payment_route").GetString().Should().Be("tenant_connect");
+        settings.GetProperty("payment_route").GetString().Should().Be("platform_default");
+        settings.GetProperty("fallback_reason").GetString().Should().Be("stripe_connect_not_ready");
+
+        var reload = await Client.GetAsync("/api/v2/admin/member-premium/settings");
+        var reloadJson = await reload.Content.ReadFromJsonAsync<JsonElement>();
+        reloadJson.GetProperty("data").GetProperty("settings")
+            .GetProperty("stripe_connect_account_id").GetString().Should().Be("acct_testTenant123");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var stored = await db.TenantConfigs.IgnoreQueryFilters()
+            .SingleAsync(c => c.TenantId == TestData.Tenant1.Id && c.Key == "donations.stripe_connect_account_id");
+        stored.Value.Should().Be("acct_testTenant123");
+    }
+
+    [Fact]
+    public async Task MemberPremiumSettings_RejectInvalidStripeConnectAccount()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PutAsJsonAsync("/api/v2/admin/member-premium/settings", new
+        {
+            stripe_connect_account_id = "not-a-connect-account"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("error").GetString().Should().Be("VALIDATION_ERROR");
+        json.GetProperty("field").GetString().Should().Be("stripe_connect_account_id");
+    }
+
+    [Fact]
+    public async Task MemberPremiumConnectOnboarding_ReturnsSettingsAndCompatibilityUrl()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/admin/member-premium/connect/onboarding", new
+        {
+            return_url = "https://app.example.test/admin/member-premium?stripe_connect=return",
+            refresh_url = "https://app.example.test/admin/member-premium?stripe_connect=refresh"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = json.GetProperty("data");
+        data.GetProperty("settings").GetProperty("stripe_connect_account_id").GetString()
+            .Should().StartWith("acct_");
+        data.GetProperty("onboarding_url").GetString()
+            .Should().StartWith("https://connect.stripe.com/setup/");
+    }
+
+    [Fact]
+    public async Task MemberPremiumFinance_ReturnsLaravelOverviewAndDisputeEnvelopes()
+    {
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            db.MoneyDonations.AddRange(
+                new MoneyDonation
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    DonorUserId = TestData.MemberUser.Id,
+                    DonorDisplayName = "Active donor",
+                    DonorEmail = "donor@example.test",
+                    AmountMinorUnits = 2500,
+                    Currency = "GBP",
+                    Status = MoneyDonationStatus.Succeeded,
+                    CompletedAt = DateTime.UtcNow.AddDays(-1),
+                    CreatedAt = DateTime.UtcNow.AddDays(-1)
+                },
+                new MoneyDonation
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    DonorDisplayName = "Pending donor",
+                    DonorEmail = "pending@example.test",
+                    AmountMinorUnits = 1200,
+                    Currency = "GBP",
+                    Status = MoneyDonationStatus.Pending,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new MoneyDonation
+                {
+                    TenantId = TestData.Tenant1.Id,
+                    DonorDisplayName = "Refunded donor",
+                    DonorEmail = "refunded@example.test",
+                    AmountMinorUnits = 900,
+                    Currency = "GBP",
+                    Status = MoneyDonationStatus.Refunded,
+                    CreatedAt = DateTime.UtcNow
+                });
+            db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = TestData.Tenant1.Id,
+                Key = "donations.disputes",
+                Value = """
+                    [
+                      {
+                        "id": 7,
+                        "stripe_dispute_id": "dp_test_123",
+                        "payment_intent_id": "pi_test_123",
+                        "amount": 2500,
+                        "currency": "gbp",
+                        "status": "needs_response",
+                        "reason": "fraudulent",
+                        "evidence_due_at": null,
+                        "payment_route": "platform_default",
+                        "stripe_account_id": null,
+                        "created_at": "2026-07-05T12:00:00Z"
+                      }
+                    ]
+                    """
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var overviewResponse = await Client.GetAsync("/api/v2/admin/member-premium/finance/overview");
+        overviewResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var overviewJson = await overviewResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var overview = overviewJson.GetProperty("data").GetProperty("overview");
+        overview.GetProperty("totals").GetProperty("completed_cents").GetInt64().Should().BeGreaterThanOrEqualTo(2500);
+        overview.GetProperty("totals").GetProperty("pending_cents").GetInt64().Should().BeGreaterThanOrEqualTo(1200);
+        overview.GetProperty("routing").GetProperty("platform_fallback_count").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var disputesResponse = await Client.GetAsync("/api/v2/admin/member-premium/finance/disputes?limit=1");
+        disputesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var disputesJson = await disputesResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var dispute = disputesJson.GetProperty("data").GetProperty("items").EnumerateArray().Single();
+        dispute.GetProperty("stripe_dispute_id").GetString().Should().Be("dp_test_123");
+    }
+
+    [Fact]
+    public async Task MemberPremiumFinanceExports_ReturnCsvDownloads()
+    {
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            db.MoneyDonations.Add(new MoneyDonation
+            {
+                TenantId = TestData.Tenant1.Id,
+                DonorUserId = TestData.MemberUser.Id,
+                DonorDisplayName = "Receipt donor",
+                DonorEmail = "receipt@example.test",
+                AmountMinorUnits = 3456,
+                Currency = "GBP",
+                Status = MoneyDonationStatus.Succeeded,
+                CompletedAt = new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc),
+                CreatedAt = new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var giftAid = await Client.GetAsync("/api/v2/admin/member-premium/finance/gift-aid-export");
+        giftAid.StatusCode.Should().Be(HttpStatusCode.OK);
+        giftAid.Content.Headers.ContentType?.MediaType.Should().Be("text/csv");
+        (await giftAid.Content.ReadAsStringAsync()).Should().Contain("donation_id,donor_name,donor_email,amount,currency");
+
+        var receipts = await Client.GetAsync("/api/v2/admin/member-premium/finance/annual-receipts?year=2026");
+        receipts.StatusCode.Should().Be(HttpStatusCode.OK);
+        receipts.Content.Headers.ContentType?.MediaType.Should().Be("text/csv");
+        var body = await receipts.Content.ReadAsStringAsync();
+        body.Should().Contain("donation_id,user_id,donor_name,donor_email,amount,currency,status");
+        body.Should().Contain("Receipt donor");
+        body.Should().Contain("34.56");
+    }
+
+    [Fact]
     public async Task CatchAllPost_PersistsCompatibilityRecord()
     {
         await AuthenticateAsAdminAsync();
