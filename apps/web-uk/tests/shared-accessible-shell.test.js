@@ -114,6 +114,31 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('does not certify ASP.NET route or workflow');
   });
 
+  it('renders the Blade-style organisations directory and registration form as a local candidate', async () => {
+    const staticPageRoutes = require('../src/routes/static-pages');
+    const response = await request(app).get('/organisations?q=club');
+
+    expect(staticPageRoutes.pages['/organisations']).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Organisations');
+    expect(response.text).toContain('Community and partner organisations.');
+    expect(response.text).toContain('href="/organisations/browse"');
+    expect(response.text).toContain('Browse all organisations');
+    expect(response.text).toContain('href="/organisations/register"');
+    expect(response.text).toContain('Register an organisation');
+    expect(response.text).toContain('href="/organisations/manage"');
+    expect(response.text).toContain('Manage my organisations');
+    expect(response.text).toContain('action="/organisations"');
+    expect(response.text).toContain('Find an organisation');
+    expect(response.text).toContain('value="club"');
+    expect(response.text).toContain('There are no organisations listed yet.');
+    expect(response.text).toContain('New organisations are reviewed before they appear.');
+    expect(response.text).toContain('Organisation registration terms');
+    expect(response.text).toContain('I have read and agree to the organisation registration terms above.');
+    expect(response.text).toContain('Submit for approval');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('keeps the rendered footer clear of official government identity claims', async () => {
     const response = await request(app).get('/');
 
@@ -141,7 +166,7 @@ describe('shared accessible frontend shell', () => {
     const contract = fs.readFileSync(path.join(__dirname, '..', 'docs', 'BACKEND_SWITCHING_CONTRACT.md'), 'utf8');
 
     expect(matrix).toContain('Laravel `govuk-alpha*`');
-    expect(matrix).toContain('| Volunteering | `/volunteering` | `/volunteering` | Preparation skeleton. |');
+    expect(matrix).toContain('| Organisations | `/organisations` | `/organisations` | Local Blade-style candidate for directory, search, registration form, terms, and empty state. |');
     expect(matrix).toContain('It does not certify route parity');
     expect(contract).toContain('this pass does not implement real backend adapters');
     expect(contract).toContain('ASP.NET must become compatible with that behavior');

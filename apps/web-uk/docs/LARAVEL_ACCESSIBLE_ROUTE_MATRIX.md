@@ -71,7 +71,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Groups | `/groups` | `/groups` | Implemented route; backend contract not certified. |
 | Goals | `/goals` | `/goals` | Preparation skeleton. |
 | Skills | `/skills` | `/skills` | Preparation skeleton. |
-| Organisations | `/organisations` | `/organisations` | Preparation skeleton. |
+| Organisations | `/organisations` | `/organisations` | Local Blade-style candidate for directory, search, registration form, terms, and empty state. |
 | Blog | `/blog` | `/blog` | Preparation skeleton. |
 | Resources | `/resources` | `/resources` | Preparation skeleton. |
 | Marketplace | `/marketplace` | `/marketplace` | Preparation skeleton. |
@@ -96,6 +96,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Legal document sourcing | `/legal/*` tenant documents | Skeleton GET pages only. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
 | Volunteering | opportunities, hours, organisations, expenses, wellbeing | Skeleton landing only. |
+| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | Local Blade-style candidate for `/organisations` only. Auth enforcement, volunteering feature gate, tenant-prefixed routes, live organisation data, registration persistence, browse/register/manage/detail/jobs/apply workflows, localization, and runtime certification are not complete. |
 | Exchanges | requests, accept/decline, ready/confirm/cancel | Skeleton landing only. |
 | Feed typed engagement | likes, comments, reactions, share, save, hide, report | Partial route equivalents only. |
 | Marketplace/commerce | marketplace, seller, orders, coupons, courses, podcasts | Mostly skeleton links only. |

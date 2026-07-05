@@ -62,6 +62,14 @@ The shell feeds:
 The `/explore` page is a skeleton copied from the Laravel accessible information
 architecture. It does not certify ASP.NET backend or workflow parity.
 
+The `/organisations` page is now a local Blade-style candidate for the Laravel
+accessible organisations directory. It includes the caption, subnavigation,
+search form, empty state, status banners, registration copy, registration form,
+terms, and pending notice. This is preparation only: auth enforcement,
+volunteering feature gates, tenant-prefixed routes, live `VolunteerService`
+data, organisation registration persistence, browse/register/manage/detail/jobs
+workflows, localization, and ASP.NET backend compatibility are not certified.
+
 Additional preparation docs:
 
 - `LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md` maps Blade route families and shell links

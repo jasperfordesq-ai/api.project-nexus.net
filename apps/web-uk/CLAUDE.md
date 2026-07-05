@@ -197,6 +197,8 @@ Follow the Laravel Blade accessible frontend for:
 - `nexus-alpha-card-list` and `nexus-alpha-card`;
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.
+- Organisations as a Blade-style directory/search/registration candidate until
+  backend workflow certification is complete.
 
 Reusable shell data lives in `src/lib/accessible-shell.js`. Keep shared nav,
 footer, locale, and Explore link contracts there rather than hardcoding new

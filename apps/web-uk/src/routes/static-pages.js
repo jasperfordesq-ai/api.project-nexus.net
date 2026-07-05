@@ -100,10 +100,6 @@ const pages = {
     title: 'Skills',
     body: 'Skills pages will follow the Laravel accessible frontend contract.'
   },
-  '/organisations': {
-    title: 'Organisations',
-    body: 'Organisation pages will follow the Laravel accessible frontend contract.'
-  },
   '/resources': {
     title: 'Resources',
     body: 'Resource library pages will follow the Laravel accessible frontend contract.'
@@ -152,3 +148,4 @@ router.get(Object.keys(pages), (req, res) => {
 });
 
 module.exports = router;
+module.exports.pages = pages;
