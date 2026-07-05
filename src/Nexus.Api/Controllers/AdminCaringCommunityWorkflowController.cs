@@ -116,6 +116,33 @@ public sealed class AdminCaringCommunityWorkflowController : ControllerBase
         });
     }
 
+    [HttpPut("workflow/reviews/{id}/escalate")]
+    public async Task<IActionResult> EscalateReview(int id, [FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _workflow.IsFeatureEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var review = await _workflow.EscalateReviewAsync(tenantId, id, RequestString(request, "note"), ct);
+        if (review is null)
+        {
+            return StatusCode(StatusCodes.Status404NotFound,
+                LaravelError("NOT_FOUND", "Review could not be escalated."));
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                review,
+                message = "Review escalated."
+            }
+        });
+    }
+
     private int CurrentUserId()
     {
         var raw = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;

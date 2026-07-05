@@ -171,6 +171,30 @@ public sealed class CaringCommunityWorkflowService
         };
     }
 
+    public async Task<object?> EscalateReviewAsync(int tenantId, int logId, string? note, CancellationToken ct)
+    {
+        var log = await _db.VolunteerLogs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item =>
+                item.TenantId == tenantId
+                && item.Id == logId
+                && item.Status == PendingStatus,
+                ct);
+
+        if (log is null)
+        {
+            return null;
+        }
+
+        log.EscalatedAt = DateTime.UtcNow;
+        log.EscalationNote = TruncateOrNull(note, 1000);
+        log.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        var policy = await LoadPolicyAsync(tenantId, ct);
+        return await ReviewByIdAsync(tenantId, logId, policy, ct);
+    }
+
     private async Task<WorkflowPolicy> LoadPolicyAsync(int tenantId, CancellationToken ct)
     {
         var settings = await _db.TenantConfigs
@@ -648,6 +672,17 @@ public sealed class CaringCommunityWorkflowService
         };
 
         return parsed >= 1 ? parsed : null;
+    }
+
+    private static string? TruncateOrNull(string? value, int maxLength)
+    {
+        var trimmed = value?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return null;
+        }
+
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
     private static bool StringToBool(string? value, bool fallback)

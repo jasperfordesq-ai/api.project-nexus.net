@@ -38,6 +38,8 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
             .Should().Be("workflow/reviews/{id}/assign");
         controller.GetMethod("DecideReview")?.GetCustomAttribute<HttpPutAttribute>()?.Template
             .Should().Be("workflow/reviews/{id}/decision");
+        controller.GetMethod("EscalateReview")?.GetCustomAttribute<HttpPutAttribute>()?.Template
+            .Should().Be("workflow/reviews/{id}/escalate");
     }
 
     [Fact]
@@ -118,6 +120,104 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
         policy.GetProperty("escalation_sla_days").GetInt32().Should().Be(5);
         policy.GetProperty("municipal_report_default_period").GetString().Should().Be("previous_quarter");
         policy.GetProperty("default_hour_value_chf").GetInt32().Should().Be(50);
+    }
+
+    [Fact]
+    public async Task EscalateReview_EscalatesPendingReviewAndNormalizesNote()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedPolicy(db, 42);
+        db.Users.AddRange(
+            User(10, 42, "Mia", "Member", Role.Names.Member),
+            User(11, 42, "Ben", "Broker", Role.Names.Admin),
+            User(99, 7, "Other", "Admin", Role.Names.Admin));
+        db.VolunteerLogs.AddRange(
+            Log(100, 42, 10, "pending", 2.4m, DateTime.UtcNow.AddDays(-1), assignedTo: 11),
+            Log(200, 7, 99, "pending", 9m, DateTime.UtcNow.AddDays(-1)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1);
+        var note = "  " + new string('x', 1005) + "  ";
+
+        var result = await Invoke(controller, "EscalateReview", 100, new Dictionary<string, object?>
+        {
+            ["note"] = note
+        }, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("message").GetString().Should().Be("Review escalated.");
+        var review = data.GetProperty("review");
+        review.GetProperty("id").GetInt32().Should().Be(100);
+        review.GetProperty("assigned_to").GetInt32().Should().Be(11);
+        review.GetProperty("assigned_name").GetString().Should().Be("Ben Broker");
+        review.GetProperty("escalated_at").ValueKind.Should().Be(JsonValueKind.String);
+        review.GetProperty("escalation_note").GetString().Should().Be(new string('x', 1000));
+        review.GetProperty("is_escalated").GetBoolean().Should().BeTrue();
+
+        var stored = await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 100);
+        stored.EscalatedAt.Should().NotBeNull();
+        stored.EscalationNote.Should().Be(new string('x', 1000));
+        stored.UpdatedAt.Should().NotBeNull();
+
+        var otherTenant = await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 200);
+        otherTenant.EscalatedAt.Should().BeNull();
+        otherTenant.EscalationNote.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task EscalateReview_ReturnsNotFoundForOtherTenantOrNonPendingAndNullsBlankNote()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedPolicy(db, 42);
+        db.Users.AddRange(
+            User(10, 42, "Mia", "Member", Role.Names.Member),
+            User(99, 7, "Other", "Admin", Role.Names.Admin));
+        db.VolunteerLogs.AddRange(
+            Log(100, 42, 10, "pending", 2m, DateTime.UtcNow.AddDays(-1)),
+            Log(101, 42, 10, "approved", 1m, DateTime.UtcNow.AddDays(-1)),
+            Log(200, 7, 99, "pending", 9m, DateTime.UtcNow.AddDays(-1)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1);
+
+        var escalated = await Invoke(controller, "EscalateReview", 100, new Dictionary<string, object?>
+        {
+            ["note"] = "   "
+        }, CancellationToken.None);
+        var nonPending = await Invoke(controller, "EscalateReview", 101, new Dictionary<string, object?>
+        {
+            ["note"] = "should not store"
+        }, CancellationToken.None);
+        var crossTenant = await Invoke(controller, "EscalateReview", 200, new Dictionary<string, object?>
+        {
+            ["note"] = "should not store"
+        }, CancellationToken.None);
+
+        var ok = escalated.Should().BeOfType<OkObjectResult>().Subject;
+        using (var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value)))
+        {
+            var review = document.RootElement.GetProperty("data").GetProperty("review");
+            review.GetProperty("escalation_note").ValueKind.Should().Be(JsonValueKind.Null);
+            review.GetProperty("is_escalated").GetBoolean().Should().BeTrue();
+        }
+
+        foreach (var result in new[] { nonPending, crossTenant })
+        {
+            var notFound = result.Should().BeOfType<ObjectResult>().Subject;
+            notFound.StatusCode.Should().Be(StatusCodes.Status404NotFound);
+            using var document = JsonDocument.Parse(JsonSerializer.Serialize(notFound.Value));
+            var error = document.RootElement.GetProperty("errors")[0];
+            error.GetProperty("code").GetString().Should().Be("NOT_FOUND");
+            error.GetProperty("message").GetString().Should().Be("Review could not be escalated.");
+        }
+
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 100)).EscalationNote.Should().BeNull();
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 101)).EscalatedAt.Should().BeNull();
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 200)).EscalatedAt.Should().BeNull();
     }
 
     [Fact]
