@@ -16,6 +16,7 @@ public sealed class CaringHourGiftService
     private const string StatusAccepted = "accepted";
     private const string StatusDeclined = "declined";
     private const string StatusReverted = "reverted";
+    private const string PendingGiftTransactionDescription = "Caring hour gift pending";
     private const int MaxMessageLength = 500;
 
     private readonly NexusDbContext _db;
@@ -72,6 +73,89 @@ public sealed class CaringHourGiftService
         return rows.Select(row => Map(row, row.RecipientUserId, partners)).ToArray();
     }
 
+    public async Task<CaringHourGiftSendResult> SendAsync(
+        int tenantId,
+        int senderUserId,
+        int recipientUserId,
+        decimal hours,
+        string? message,
+        CancellationToken ct)
+    {
+        if (senderUserId <= 0 || recipientUserId <= 0)
+        {
+            throw new ArgumentException("Sender and recipient are required.");
+        }
+
+        if (senderUserId == recipientUserId)
+        {
+            throw new ArgumentException("You cannot gift hours to yourself.");
+        }
+
+        if (hours <= 0)
+        {
+            throw new ArgumentException("Hours must be greater than zero.");
+        }
+
+        if (Math.Round(hours, 2, MidpointRounding.AwayFromZero) != hours)
+        {
+            throw new ArgumentException("Hours must have at most 2 decimal places.");
+        }
+
+        var cleanMessage = NormalizeMessage(message);
+        var roundedHours = Math.Round(hours, 2, MidpointRounding.AwayFromZero);
+
+        var senderExists = await _db.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.TenantId == tenantId && u.Id == senderUserId && u.IsActive, ct);
+        if (!senderExists)
+        {
+            throw new InvalidOperationException("Sender not found.");
+        }
+
+        var availableBalance = await AvailableBalanceAsync(tenantId, senderUserId, ct);
+        if (availableBalance < roundedHours)
+        {
+            throw new InvalidOperationException("Insufficient banked hours.");
+        }
+
+        var recipientExists = await _db.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.TenantId == tenantId && u.Id == recipientUserId && u.IsActive, ct);
+        if (!recipientExists)
+        {
+            throw new InvalidOperationException("Recipient not found.");
+        }
+
+        var now = DateTime.UtcNow;
+        var gift = new CaringHourGift
+        {
+            TenantId = tenantId,
+            SenderUserId = senderUserId,
+            RecipientUserId = recipientUserId,
+            Hours = roundedHours,
+            Message = cleanMessage,
+            Status = StatusPending,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.CaringHourGifts.Add(gift);
+        _db.Transactions.Add(new Transaction
+        {
+            TenantId = tenantId,
+            SenderId = senderUserId,
+            ReceiverId = recipientUserId,
+            Amount = roundedHours,
+            Description = PendingGiftTransactionDescription,
+            Status = TransactionStatus.Pending,
+            CreatedAt = now
+        });
+
+        await _db.SaveChangesAsync(ct);
+
+        return new CaringHourGiftSendResult(gift.Id, StatusPending, true);
+    }
+
     public async Task AcceptAsync(
         int tenantId,
         long giftId,
@@ -102,16 +186,26 @@ public sealed class CaringHourGiftService
         gift.AcceptedAt = now;
         gift.UpdatedAt = now;
 
-        _db.Transactions.Add(new Transaction
+        var pendingHold = await FindPendingGiftTransactionAsync(gift, ct);
+        if (pendingHold is not null)
         {
-            TenantId = tenantId,
-            SenderId = gift.SenderUserId,
-            ReceiverId = gift.RecipientUserId,
-            Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
-            Description = "Caring hour gift accepted",
-            Status = TransactionStatus.Completed,
-            CreatedAt = now
-        });
+            pendingHold.Status = TransactionStatus.Completed;
+            pendingHold.Description = "Caring hour gift accepted";
+            pendingHold.UpdatedAt = now;
+        }
+        else
+        {
+            _db.Transactions.Add(new Transaction
+            {
+                TenantId = tenantId,
+                SenderId = gift.SenderUserId,
+                ReceiverId = gift.RecipientUserId,
+                Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
+                Description = "Caring hour gift accepted",
+                Status = TransactionStatus.Completed,
+                CreatedAt = now
+            });
+        }
 
         await _db.SaveChangesAsync(ct);
     }
@@ -148,16 +242,25 @@ public sealed class CaringHourGiftService
         gift.DeclineReason = NormalizeReason(reason);
         gift.UpdatedAt = now;
 
-        _db.Transactions.Add(new Transaction
+        var pendingHold = await FindPendingGiftTransactionAsync(gift, ct);
+        if (pendingHold is not null)
         {
-            TenantId = tenantId,
-            SenderId = 0,
-            ReceiverId = gift.SenderUserId,
-            Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
-            Description = "Caring hour gift declined refund",
-            Status = TransactionStatus.Completed,
-            CreatedAt = now
-        });
+            pendingHold.Status = TransactionStatus.Cancelled;
+            pendingHold.UpdatedAt = now;
+        }
+        else
+        {
+            _db.Transactions.Add(new Transaction
+            {
+                TenantId = tenantId,
+                SenderId = 0,
+                ReceiverId = gift.SenderUserId,
+                Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
+                Description = "Caring hour gift declined refund",
+                Status = TransactionStatus.Completed,
+                CreatedAt = now
+            });
+        }
 
         await _db.SaveChangesAsync(ct);
     }
@@ -192,18 +295,66 @@ public sealed class CaringHourGiftService
         gift.RevertedAt = now;
         gift.UpdatedAt = now;
 
-        _db.Transactions.Add(new Transaction
+        var pendingHold = await FindPendingGiftTransactionAsync(gift, ct);
+        if (pendingHold is not null)
         {
-            TenantId = tenantId,
-            SenderId = 0,
-            ReceiverId = gift.SenderUserId,
-            Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
-            Description = "Caring hour gift reverted refund",
-            Status = TransactionStatus.Completed,
-            CreatedAt = now
-        });
+            pendingHold.Status = TransactionStatus.Cancelled;
+            pendingHold.UpdatedAt = now;
+        }
+        else
+        {
+            _db.Transactions.Add(new Transaction
+            {
+                TenantId = tenantId,
+                SenderId = 0,
+                ReceiverId = gift.SenderUserId,
+                Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
+                Description = "Caring hour gift reverted refund",
+                Status = TransactionStatus.Completed,
+                CreatedAt = now
+            });
+        }
 
         await _db.SaveChangesAsync(ct);
+    }
+
+    private async Task<decimal> AvailableBalanceAsync(int tenantId, int userId, CancellationToken ct)
+    {
+        var received = await _db.Transactions
+            .IgnoreQueryFilters()
+            .Where(t => t.TenantId == tenantId
+                && t.ReceiverId == userId
+                && t.Status == TransactionStatus.Completed)
+            .SumAsync(t => t.Amount, ct);
+
+        var sent = await _db.Transactions
+            .IgnoreQueryFilters()
+            .Where(t => t.TenantId == tenantId
+                && t.SenderId == userId
+                && t.Status == TransactionStatus.Completed)
+            .SumAsync(t => t.Amount, ct);
+
+        var pendingOut = await _db.Transactions
+            .IgnoreQueryFilters()
+            .Where(t => t.TenantId == tenantId
+                && t.SenderId == userId
+                && t.Status == TransactionStatus.Pending)
+            .SumAsync(t => t.Amount, ct);
+
+        return received - sent - pendingOut;
+    }
+
+    private Task<Transaction?> FindPendingGiftTransactionAsync(CaringHourGift gift, CancellationToken ct)
+    {
+        var hours = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero);
+        return _db.Transactions
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.TenantId == gift.TenantId
+                && t.SenderId == gift.SenderUserId
+                && t.ReceiverId == gift.RecipientUserId
+                && t.Amount == hours
+                && t.Status == TransactionStatus.Pending
+                && t.Description == PendingGiftTransactionDescription, ct);
     }
 
     private async Task<IReadOnlyDictionary<int, User>> LoadUsersAsync(
@@ -275,6 +426,27 @@ public sealed class CaringHourGiftService
             : trimmed[..MaxMessageLength];
     }
 
+    private static string? NormalizeMessage(string? message)
+    {
+        if (message is null)
+        {
+            return null;
+        }
+
+        var trimmed = message.Trim();
+        if (trimmed.Length == 0)
+        {
+            return null;
+        }
+
+        if (trimmed.Length > MaxMessageLength)
+        {
+            throw new ArgumentException("Message is too long.");
+        }
+
+        return trimmed;
+    }
+
     private static bool? ParseBool(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -303,3 +475,8 @@ public sealed record CaringHourGiftPartnerDto(
     [property: JsonPropertyName("id")] int Id,
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("avatar_url")] string? AvatarUrl);
+
+public sealed record CaringHourGiftSendResult(
+    [property: JsonPropertyName("gift_id")] long GiftId,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("success")] bool Success);

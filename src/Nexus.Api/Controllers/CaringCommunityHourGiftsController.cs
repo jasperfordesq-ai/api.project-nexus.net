@@ -66,6 +66,57 @@ public sealed class CaringCommunityHourGiftsController : ControllerBase
         return Ok(new { data = new { items } });
     }
 
+    [HttpPost("send")]
+    public async Task<IActionResult> Send(
+        [FromBody] CaringHourGiftSendRequest? request,
+        CancellationToken ct)
+    {
+        var guard = await GuardAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized(LaravelError("AUTH_REQUIRED", "Authentication required."));
+        }
+
+        if (request?.RecipientUserId is null or <= 0)
+        {
+            return UnprocessableEntity(LaravelError("VALIDATION_ERROR", "Field is required."));
+        }
+
+        if (request.Hours <= 0)
+        {
+            return UnprocessableEntity(LaravelError("VALIDATION_ERROR", "Field is required."));
+        }
+
+        try
+        {
+            var result = await _gifts.SendAsync(
+                _tenant.GetTenantIdOrThrow(),
+                userId.Value,
+                request.RecipientUserId.Value,
+                request.Hours,
+                request.Message,
+                ct);
+            return StatusCode(StatusCodes.Status201Created, new { data = result });
+        }
+        catch (ArgumentException ex)
+        {
+            return UnprocessableEntity(LaravelError("VALIDATION_ERROR", ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            var code = ex.Message.Contains("Insufficient", StringComparison.OrdinalIgnoreCase)
+                ? "INSUFFICIENT_HOURS"
+                : "GIFT_FAILED";
+            return UnprocessableEntity(LaravelError(code, ex.Message));
+        }
+    }
+
     [HttpPost("{id}/accept")]
     public async Task<IActionResult> Accept(long id, CancellationToken ct)
     {
@@ -182,4 +233,16 @@ public sealed class CaringHourGiftDeclineRequest
 {
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+}
+
+public sealed class CaringHourGiftSendRequest
+{
+    [JsonPropertyName("recipient_user_id")]
+    public int? RecipientUserId { get; set; }
+
+    [JsonPropertyName("hours")]
+    public decimal Hours { get; set; }
+
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
 }

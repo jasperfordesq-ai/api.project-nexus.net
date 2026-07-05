@@ -31,6 +31,8 @@ public class CaringCommunityHourGiftsControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("inbox");
         type.GetMethod("Sent")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("sent");
+        type.GetMethod("Send")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("send");
         type.GetMethod("Accept")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{id}/accept");
         type.GetMethod("Decline")
@@ -119,6 +121,48 @@ public class CaringCommunityHourGiftsControllerUnitTests
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(forbidden.Value));
         document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
             .Should().Be("FEATURE_DISABLED");
+    }
+
+    [Fact]
+    public async Task Send_CreatesPendingGiftAndPendingOutgoingWalletHold()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(42, 10, "sender@example.test", "Sam", "Sender"),
+            User(42, 20, "recipient@example.test", "Robin", "Recipient"),
+            User(7, 70, "other-recipient@example.test", "Other", "Tenant"));
+        SeedBalance(db, tenantId: 42, receiverId: 10, amount: 8m);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+        var request = CreateSendRequest(recipientUserId: 20, hours: 2.5m, message: "  For next week  ");
+
+        var result = await InvokeActionAsync(controller, "Send", request, CancellationToken.None);
+
+        var created = result.Should().BeOfType<ObjectResult>().Subject;
+        created.StatusCode.Should().Be(StatusCodes.Status201Created);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(created.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("gift_id").GetInt64().Should().BeGreaterThan(0);
+        data.GetProperty("status").GetString().Should().Be("pending");
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var gift = await db.CaringHourGifts.IgnoreQueryFilters().SingleAsync();
+        gift.TenantId.Should().Be(42);
+        gift.SenderUserId.Should().Be(10);
+        gift.RecipientUserId.Should().Be(20);
+        gift.Hours.Should().Be(2.5m);
+        gift.Message.Should().Be("For next week");
+        gift.Status.Should().Be("pending");
+
+        var hold = await db.Transactions.IgnoreQueryFilters()
+            .SingleAsync(t => t.Description == "Caring hour gift pending");
+        hold.TenantId.Should().Be(42);
+        hold.SenderId.Should().Be(10);
+        hold.ReceiverId.Should().Be(20);
+        hold.Amount.Should().Be(2.5m);
+        hold.Status.Should().Be(TransactionStatus.Pending);
     }
 
     [Fact]
@@ -302,6 +346,31 @@ public class CaringCommunityHourGiftsControllerUnitTests
         var request = Activator.CreateInstance(type!)!;
         Set(request, "Reason", reason);
         return request;
+    }
+
+    private static object CreateSendRequest(int recipientUserId, decimal hours, string? message)
+    {
+        var type = Type.GetType("Nexus.Api.Controllers.CaringHourGiftSendRequest, Nexus.Api");
+        type.Should().NotBeNull();
+        var request = Activator.CreateInstance(type!)!;
+        Set(request, "RecipientUserId", recipientUserId);
+        Set(request, "Hours", hours);
+        Set(request, "Message", message);
+        return request;
+    }
+
+    private static void SeedBalance(NexusDbContext db, int tenantId, int receiverId, decimal amount)
+    {
+        db.Transactions.Add(new Transaction
+        {
+            TenantId = tenantId,
+            SenderId = 0,
+            ReceiverId = receiverId,
+            Amount = amount,
+            Description = "Seed grant",
+            Status = TransactionStatus.Completed,
+            CreatedAt = DateTime.UtcNow.AddDays(-7)
+        });
     }
 
     private static void Set(object target, string propertyName, object? value)
