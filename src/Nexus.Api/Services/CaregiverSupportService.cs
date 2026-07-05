@@ -486,6 +486,65 @@ public sealed class CaregiverSupportService
         return new CaregiverCoverCandidatesResult(Rows: rows);
     }
 
+    public async Task<CaregiverCoverRequestMutationResult> AssignCoverCandidateAsync(
+        int tenantId,
+        int caregiverId,
+        int coverRequestId,
+        IReadOnlyDictionary<string, object?> data,
+        CancellationToken ct)
+    {
+        EnsureCoverRequestsAvailable();
+
+        var supporterId = IntValue(data, "supporter_id");
+        if (supporterId <= 0)
+        {
+            return CaregiverCoverRequestMutationResult.Validation(
+                "Missing required field: supporter_id.",
+                "supporter_id");
+        }
+
+        var candidates = await SuggestCoverCandidatesAsync(tenantId, caregiverId, coverRequestId, ct);
+        if (candidates.NotFound)
+        {
+            return CaregiverCoverRequestMutationResult.NotFound("Cover request not found.");
+        }
+
+        if (candidates.Rows?.Any(row => row.Id == supporterId) != true)
+        {
+            return CaregiverCoverRequestMutationResult.Validation("Cover request candidate is invalid.");
+        }
+
+        var request = await _db.CaringCoverRequests
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row =>
+                row.TenantId == tenantId
+                && row.CaregiverId == caregiverId
+                && row.Id == coverRequestId, ct);
+        if (request is null)
+        {
+            return CaregiverCoverRequestMutationResult.NotFound("Cover request not found.");
+        }
+
+        var now = DateTime.UtcNow;
+        request.MatchedSupporterId = supporterId;
+        request.Status = "matched";
+        request.MatchedAt = now;
+        request.UpdatedAt = now;
+        await _db.SaveChangesAsync(ct);
+
+        var userIds = new[] { request.CaredForId, supporterId };
+        var users = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user => user.TenantId == tenantId && userIds.Contains(user.Id))
+            .ToDictionaryAsync(user => user.Id, user => user, ct);
+
+        return new CaregiverCoverRequestMutationResult(Row: MapCoverRequest(
+            request,
+            users.GetValueOrDefault(request.CaredForId),
+            users.GetValueOrDefault(supporterId)));
+    }
+
     private async Task<bool> UserBelongsToTenantAsync(int userId, int tenantId, CancellationToken ct)
     {
         return await _db.Users
@@ -850,6 +909,13 @@ public sealed record CaregiverCoverRequestMutationResult(
     {
         return new CaregiverCoverRequestMutationResult(
             ErrorCode: "FORBIDDEN",
+            ErrorMessage: message);
+    }
+
+    public static CaregiverCoverRequestMutationResult NotFound(string message)
+    {
+        return new CaregiverCoverRequestMutationResult(
+            ErrorCode: "NOT_FOUND",
             ErrorMessage: message);
     }
 }

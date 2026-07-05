@@ -51,6 +51,9 @@ public class CaringCommunityCaregiverControllerUnitTests
         typeof(CaringCommunityCaregiverController)
             .GetMethod("CoverCandidates")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("cover-requests/{id:int}/candidates");
+        typeof(CaringCommunityCaregiverController)
+            .GetMethod("AssignCoverCandidate")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("cover-requests/{id:int}/assign");
     }
 
     [Fact]
@@ -493,6 +496,143 @@ public class CaringCommunityCaregiverControllerUnitTests
         using var notFoundDocument = JsonDocument.Parse(JsonSerializer.Serialize(notFound.Value));
         notFoundDocument.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
             .Should().Be("NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task AssignCoverCandidate_MatchesEligibleSupporterAndReturnsLaravelRow()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, true);
+        db.Users.AddRange(
+            User(1001, 42, "Cara", "Giver"),
+            User(2001, 42, "Pat", "Recipient", "/avatars/pat.png"),
+            User(3001, 42, "Sam", "Supporter", "/avatars/sam.png", trustTier: 3),
+            User(9001, 7, "Other", "Tenant", trustTier: 5));
+        db.CaringCaregiverLinks.Add(Link(42, 1001, 2001, "family", status: "active"));
+        await db.SaveChangesAsync();
+        var linkId = await db.CaringCaregiverLinks.IgnoreQueryFilters()
+            .Where(link => link.TenantId == 42 && link.CaregiverId == 1001)
+            .Select(link => link.Id)
+            .SingleAsync();
+        db.Add(CoverRequest(
+            id: 701,
+            tenantId: 42,
+            caregiverLinkId: linkId,
+            caregiverId: 1001,
+            caredForId: 2001,
+            title: "Respite cover",
+            startsAt: new DateTime(2026, 7, 20, 9, 0, 0, DateTimeKind.Utc),
+            endsAt: new DateTime(2026, 7, 20, 12, 0, 0, DateTimeKind.Utc),
+            requiredSkillsJson: "[\"driving\"]",
+            minimumTrustTier: 3));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1001);
+
+        var result = await Invoke(
+            controller,
+            "AssignCoverCandidate",
+            701,
+            new Dictionary<string, object?> { ["supporter_id"] = 3001 },
+            CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("id").GetInt64().Should().Be(701);
+        data.GetProperty("matched_supporter_id").GetInt32().Should().Be(3001);
+        data.GetProperty("matched_supporter_name").GetString().Should().Be("Sam Supporter");
+        data.GetProperty("matched_supporter_avatar_url").GetString().Should().Be("/avatars/sam.png");
+        data.GetProperty("status").GetString().Should().Be("matched");
+        data.GetProperty("matched_at").ValueKind.Should().NotBe(JsonValueKind.Null);
+
+        var stored = await db.CaringCoverRequests.IgnoreQueryFilters().SingleAsync(row => row.Id == 701);
+        stored.MatchedSupporterId.Should().Be(3001);
+        stored.Status.Should().Be("matched");
+        stored.MatchedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AssignCoverCandidate_ValidatesSupporterAndOwnership()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, true);
+        db.Users.AddRange(
+            User(1001, 42, "Cara", "Giver"),
+            User(1002, 42, "Other", "Caregiver"),
+            User(2001, 42, "Pat", "Recipient"),
+            User(3001, 42, "Sam", "Supporter", trustTier: 1),
+            User(3002, 42, "Noor", "Helper", trustTier: 5),
+            User(9001, 7, "Other", "Tenant", trustTier: 5));
+        db.CaringCaregiverLinks.AddRange(
+            Link(42, 1001, 2001, "family", status: "active"),
+            Link(42, 1002, 2001, "friend", status: "active"));
+        await db.SaveChangesAsync();
+        var caregiverLinkId = await db.CaringCaregiverLinks.IgnoreQueryFilters()
+            .Where(link => link.TenantId == 42 && link.CaregiverId == 1001)
+            .Select(link => link.Id)
+            .SingleAsync();
+        var otherCaregiverLinkId = await db.CaringCaregiverLinks.IgnoreQueryFilters()
+            .Where(link => link.TenantId == 42 && link.CaregiverId == 1002)
+            .Select(link => link.Id)
+            .SingleAsync();
+        db.Add(CoverRequest(
+            id: 711,
+            tenantId: 42,
+            caregiverLinkId: caregiverLinkId,
+            caregiverId: 1001,
+            caredForId: 2001,
+            title: "Needs tier five",
+            startsAt: new DateTime(2026, 7, 20, 9, 0, 0, DateTimeKind.Utc),
+            endsAt: new DateTime(2026, 7, 20, 12, 0, 0, DateTimeKind.Utc),
+            minimumTrustTier: 5));
+        db.Add(CoverRequest(
+            id: 712,
+            tenantId: 42,
+            caregiverLinkId: otherCaregiverLinkId,
+            caregiverId: 1002,
+            caredForId: 2001,
+            title: "Other caregiver",
+            startsAt: new DateTime(2026, 7, 21, 9, 0, 0, DateTimeKind.Utc),
+            endsAt: new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1001);
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "AssignCoverCandidate",
+                711,
+                new Dictionary<string, object?>(),
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "AssignCoverCandidate",
+                711,
+                new Dictionary<string, object?> { ["supporter_id"] = 3001 },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "AssignCoverCandidate",
+                712,
+                new Dictionary<string, object?> { ["supporter_id"] = 3002 },
+                CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "NOT_FOUND");
+
+        (await db.CaringCoverRequests.IgnoreQueryFilters().SingleAsync(row => row.Id == 711))
+            .MatchedSupporterId.Should().BeNull();
+        (await db.CaringCoverRequests.IgnoreQueryFilters().SingleAsync(row => row.Id == 712))
+            .MatchedSupporterId.Should().BeNull();
     }
 
     [Fact]
