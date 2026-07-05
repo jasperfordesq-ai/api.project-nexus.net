@@ -9,6 +9,8 @@
  */
 
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using Nexus.Api.Tests.Fixtures;
 
@@ -50,5 +52,24 @@ public class ReactFrontendCompatibilityControllerAuthTests : IntegrationTestBase
         {
             ((int)resp.StatusCode).Should().Be(expectedStatus);
         }
+    }
+
+    [Fact]
+    public async Task FederationNeighborhoodTenantMembership_V2Aliases_ReturnLaravelReactShapes()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var add = await Client.PostAsJsonAsync($"/api/v2/admin/federation/neighborhoods/{TestData.Tenant1.Id}/tenants", new
+        {
+            tenant_id = TestData.Tenant2.Id
+        });
+        add.StatusCode.Should().Be(HttpStatusCode.OK);
+        var addJson = await add.Content.ReadFromJsonAsync<JsonElement>();
+        addJson.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var remove = await Client.DeleteAsync($"/api/v2/admin/federation/neighborhoods/{TestData.Tenant1.Id}/tenants/{TestData.Tenant2.Id}");
+        remove.StatusCode.Should().Be(HttpStatusCode.OK);
+        var removeJson = await remove.Content.ReadFromJsonAsync<JsonElement>();
+        removeJson.GetProperty("success").GetBoolean().Should().BeTrue();
     }
 }

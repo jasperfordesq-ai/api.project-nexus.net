@@ -32,6 +32,28 @@ public class PublicCompatibilityEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task LaravelReactV2TenantAndRegistrationDiscovery_ReturnPublicShapes()
+    {
+        ClearAuthToken();
+
+        var tenantsResponse = await Client.GetAsync("/api/v2/tenants?include_master=1");
+        tenantsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var tenants = await tenantsResponse.Content.ReadFromJsonAsync<JsonElement>();
+        tenants.ValueKind.Should().Be(JsonValueKind.Array);
+        tenants.EnumerateArray().Should().Contain(t => t.GetProperty("slug").GetString() == "test-tenant");
+
+        var registrationInfoResponse = await Client.GetAsync("/api/v2/auth/registration-info");
+        registrationInfoResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var registrationInfo = await registrationInfoResponse.Content.ReadFromJsonAsync<JsonElement>();
+        registrationInfo.GetProperty("data").TryGetProperty("registration_mode", out _).Should().BeTrue();
+
+        var inviteResponse = await Client.PostAsJsonAsync("/api/v2/auth/validate-invite", new { code = "not-a-real-code" });
+        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var invite = await inviteResponse.Content.ReadFromJsonAsync<JsonElement>();
+        invite.TryGetProperty("valid", out _).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task PlatformStats_WithoutTenantHeader_ReturnsFrontendStatsShape()
     {
         ClearAuthToken();

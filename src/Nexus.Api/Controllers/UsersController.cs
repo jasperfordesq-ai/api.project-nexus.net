@@ -20,6 +20,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/users")]
+[Route("api/v2/users")]
 [Authorize]
 public class UsersController : ControllerBase
 {

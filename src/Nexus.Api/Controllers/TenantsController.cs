@@ -18,6 +18,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/tenants")]
+[Route("api/v2/tenants")]
 public class TenantsController : ControllerBase
 {
     private readonly NexusDbContext _db;

@@ -1139,24 +1139,35 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/auth/registration-info")]
+    [HttpGet("api/v2/auth/registration-info")]
     [AllowAnonymous]
     public async Task<IActionResult> RegistrationInfo()
     {
         var policy = await _db.TenantRegistrationPolicies.FirstOrDefaultAsync(p => p.IsActive);
+        var mode = policy?.Mode.ToString() ?? RegistrationMode.Standard.ToString();
+        var requiresInvite = policy?.Mode == RegistrationMode.InviteOnly;
+        var requiresVerification = policy?.Mode is RegistrationMode.VerifiedIdentity or RegistrationMode.GovernmentId;
         return Ok(new
         {
             data = new
             {
-                mode = policy?.Mode.ToString() ?? RegistrationMode.Standard.ToString(),
+                mode,
+                registration_mode = mode,
                 provider = policy?.Provider.ToString() ?? VerificationProvider.None.ToString(),
                 verification_level = policy?.VerificationLevel.ToString() ?? VerificationLevel.None.ToString(),
                 message = policy?.RegistrationMessage,
-                invite_required = policy?.Mode == RegistrationMode.InviteOnly
+                invite_required = requiresInvite,
+                requires_invite_code = requiresInvite,
+                requires_verification = requiresVerification,
+                can_register = true,
+                is_closed = false,
+                is_waitlist = false
             }
         });
     }
 
     [HttpPost("api/auth/validate-invite")]
+    [HttpPost("api/v2/auth/validate-invite")]
     [AllowAnonymous]
     public async Task<IActionResult> ValidateInvite([FromBody] ValidateInviteRequest request)
     {
@@ -1169,6 +1180,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpPost("api/auth/start-verification")]
+    [HttpPost("api/v2/auth/start-verification")]
     [Authorize]
     public async Task<IActionResult> StartVerificationAlias()
     {
@@ -1192,6 +1204,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/auth/verification-status")]
+    [HttpGet("api/v2/auth/verification-status")]
     [Authorize]
     public async Task<IActionResult> VerificationStatusAlias()
     {
@@ -1681,6 +1694,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/federation/neighborhoods")]
+    [HttpGet("api/v2/admin/federation/neighborhoods")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminFederationNeighborhoods()
     {
@@ -2490,15 +2504,21 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/federation/neighborhoods/{id:int}")]
+    [HttpGet("api/v2/admin/federation/neighborhoods/{id:int}")]
     [HttpPut("api/admin/federation/neighborhoods/{id:int}")]
+    [HttpPut("api/v2/admin/federation/neighborhoods/{id:int}")]
     [HttpDelete("api/admin/federation/neighborhoods/{id:int}")]
+    [HttpDelete("api/v2/admin/federation/neighborhoods/{id:int}")]
     [HttpGet("api/admin/federation/partnerships/{id:int}")]
     [HttpPost("api/admin/federation/partnerships/{id:int}/approve")]
     [HttpPost("api/admin/federation/partnerships/{id:int}/reject")]
     [HttpDelete("api/admin/federation/partnerships/{id:int}")]
     [HttpGet("api/admin/federation/neighborhoods/{id:int}/tenants")]
+    [HttpGet("api/v2/admin/federation/neighborhoods/{id:int}/tenants")]
     [HttpPost("api/admin/federation/neighborhoods/{id:int}/tenants")]
+    [HttpPost("api/v2/admin/federation/neighborhoods/{id:int}/tenants")]
     [HttpDelete("api/admin/federation/neighborhoods/{id:int}/tenants/{tenantId:int}")]
+    [HttpDelete("api/v2/admin/federation/neighborhoods/{id:int}/tenants/{tenantId:int}")]
     [HttpPut("api/admin/federation/credit-agreements/{id:int}/{tenantId:int}")]
     [Authorize(Policy = "AdminOnly")]
     public IActionResult AdminFederationNestedCompatibility()

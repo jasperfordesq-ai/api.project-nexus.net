@@ -15,6 +15,18 @@ public class UsersControllerTests : IntegrationTestBase
     public UsersControllerTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     [Fact]
+    public async Task GetMe_V2Alias_ReturnsCurrentUserForLaravelReact()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync("/api/v2/users/me");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("email").GetString().Should().Be("member@test.com");
+    }
+
+    [Fact]
     public async Task GetMe_WithoutAuth_ReturnsUnauthorized()
     {
         ClearAuthToken();

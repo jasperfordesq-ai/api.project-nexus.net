@@ -22,6 +22,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin")]
+[Route("api/v2/admin")]
 [Authorize(Policy = "AdminOnly")]
 public class AdminCompatibility3Controller : ControllerBase
 {

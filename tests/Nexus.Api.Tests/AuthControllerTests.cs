@@ -89,6 +89,21 @@ public class AuthControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Register_V2Alias_WithInvalidPayload_ReturnsValidationNotNotFound()
+    {
+        ClearAuthToken();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/auth/register", new
+        {
+            email = "",
+            password = "",
+            tenant_slug = "test-tenant"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Login_UserFromDifferentTenant_ReturnsUnauthorized()
     {
         // Attempt to login as admin@test.com but with other-tenant

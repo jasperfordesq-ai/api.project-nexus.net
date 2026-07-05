@@ -44,9 +44,14 @@ public class TenantResolutionMiddleware
         "/swagger",                  // Swagger UI and JSON spec
         "/api/auth/login",           // Login determines tenant from credentials
         "/api/auth/register",        // Register determines tenant from request body
+        "/api/v2/auth/register",     // Laravel-compatible register
         "/api/auth/refresh",         // Refresh determines tenant from token lookup
         "/api/auth/forgot-password",           // Forgot password determines tenant from request body
         "/api/auth/reset-password",            // Reset password determines tenant from token lookup
+        "/api/auth/registration-info",         // Public registration mode discovery
+        "/api/v2/auth/registration-info",      // Laravel-compatible registration mode discovery
+        "/api/auth/validate-invite",           // Public invite-code validation during registration
+        "/api/v2/auth/validate-invite",        // Laravel-compatible invite-code validation
         "/api/auth/sso",                       // Public SSO endpoints resolve tenant from query/header
         "/api/v2/auth/sso",                    // Laravel-compatible public SSO endpoints
         "/api/auth/oauth/exchange",            // Public one-time OAuth callback-code exchange
@@ -79,6 +84,7 @@ public class TenantResolutionMiddleware
         "/api/announcements",                  // Handles optional tenant context itself
         "/api/realtime/config",                // Static config, no tenant-scoped data
         "/api/tenants",                         // Public tenant list for login page dropdown
+        "/api/v2/tenants",                      // Laravel-compatible public tenant list
         "/api/webhooks/volunteering",             // HMAC-authenticated webhook; sets tenant from payload
         "/api/provisioning/requests",             // Public new-tenant provisioning submissions; service assigns platform tenant
         "/api/v2/provisioning-requests"           // Laravel-compatible provisioning submissions/status checks
