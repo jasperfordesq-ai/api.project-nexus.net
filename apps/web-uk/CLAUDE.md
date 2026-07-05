@@ -207,6 +207,7 @@ Follow the Laravel Blade accessible frontend for:
 - `/kb` as the Blade-style Knowledge base search form, articles heading, and empty/no-results state;
 - `/blog` as the Blade-style Blog search form, posts heading, and empty/no-results state;
 - `/volunteering` as the Blade-style Volunteering index with guidance, hours summary shell, tools, tabs, filters, and empty state;
+- `/skills` as the Blade-style Skills directory search form, search result empty state, and category empty state;
 - `/faq` as the Blade-style GOV.UK accordion for common timebanking questions;
 - `/accessibility` as the Blade-style WCAG statement with summary list and feedback link;
 - `/trust-and-safety` as the Blade-style GOV.UK warning text and safety guidance page;

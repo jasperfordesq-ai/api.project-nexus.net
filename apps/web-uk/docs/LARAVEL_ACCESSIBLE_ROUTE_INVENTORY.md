@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 30 |
+| ASP.NET static skeleton paths | 29 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 38 |
+| candidate-route | 39 |
 | candidate-workflow | 7 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 35 |
+| skeleton | 34 |
 
 ## Family Summary
 
@@ -81,7 +81,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | saved | 2 | 1 | 1 |  | 1 | 1 |
 | search | 6 | 3 | 3 | 6 |  |  |
 | settings | 13 | 5 | 8 | 13 |  |  |
-| skills | 1 | 1 |  |  | 1 |  |
+| skills | 1 | 1 |  | 1 |  |  |
 | trust-and-safety | 1 | 1 |  | 1 |  |  |
 | users | 3 | 2 | 1 |  |  | 3 |
 | verify-email | 1 | 1 |  |  | 1 |  |
@@ -248,7 +248,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | POST | /reviews | /{tenantSlug}/alpha/reviews | /reviews | reviews.store | storeReview | reviews | candidate-workflow | routes/govuk-alpha.php:214 |
 | GET | /explore | /{tenantSlug}/alpha/explore | /explore | explore | explore | explore | candidate-route | routes/govuk-alpha.php:215 |
 | GET | /search | /{tenantSlug}/alpha/search | /search | search | search | search | candidate-route | routes/govuk-alpha.php:216 |
-| GET | /skills | /{tenantSlug}/alpha/skills | /skills | skills.index | skills | skills | skeleton | routes/govuk-alpha.php:217 |
+| GET | /skills | /{tenantSlug}/alpha/skills | /skills | skills.index | skills | skills | candidate-route | routes/govuk-alpha.php:217 |
 | GET | /groups | /{tenantSlug}/alpha/groups | /groups | groups.index | groups | groups | candidate-route | routes/govuk-alpha.php:218 |
 | GET | /groups/new | /{tenantSlug}/alpha/groups/new | /groups/new | groups.create | createGroup | groups | candidate-family | routes/govuk-alpha.php:220 |
 | POST | /groups/new | /{tenantSlug}/alpha/groups/new | /groups/new | groups.store | storeGroup | groups | candidate-workflow-family | routes/govuk-alpha.php:221 |

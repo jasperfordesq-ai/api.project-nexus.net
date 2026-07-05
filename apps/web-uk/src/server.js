@@ -597,6 +597,14 @@ app.get('/volunteering', (req, res) => {
   });
 });
 
+app.get('/skills', (req, res) => {
+  res.render('skills', {
+    title: 'Skills directory',
+    activeNav: 'skills',
+    skillQuery: typeof req.query.skill === 'string' ? req.query.skill : ''
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

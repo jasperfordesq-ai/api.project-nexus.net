@@ -9,10 +9,10 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | Metric | Count |
 | --- | ---: |
 | Laravel Blade accessible views | 289 |
-| ASP.NET Nunjucks views | 108 |
-| candidate-exact-view | 23 |
+| ASP.NET Nunjucks views | 109 |
+| candidate-exact-view | 24 |
 | candidate-name-match | 6 |
-| missing-nunjucks-view | 260 |
+| missing-nunjucks-view | 259 |
 
 ## Family Summary
 
@@ -90,7 +90,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | saved | 5 |  | 5 |
 | search | 3 |  | 3 |
 | settings | 5 |  | 5 |
-| skills | 1 |  | 1 |
+| skills | 1 | 1 |  |
 | tenant | 1 |  | 1 |
 | trust | 1 | 1 |  |
 | two | 2 |  | 2 |
@@ -362,7 +362,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | settings-data-rights.blade.php | settings | missing-nunjucks-view |
 | settings-insurance.blade.php | settings | missing-nunjucks-view |
 | settings-linked-accounts.blade.php | settings | missing-nunjucks-view |
-| skills.blade.php | skills | missing-nunjucks-view |
+| skills.blade.php | skills | candidate-exact-view |
 | tenant-chooser.blade.php | tenant | missing-nunjucks-view |
 | trust-safety.blade.php | trust | candidate-exact-view |
 | two-factor-setup.blade.php | two | missing-nunjucks-view |

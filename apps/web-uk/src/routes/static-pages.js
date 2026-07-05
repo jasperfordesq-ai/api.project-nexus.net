@@ -84,10 +84,6 @@ const pages = {
     title: 'AI assistant',
     body: 'AI assistant pages will be wired after the backend contract and feature gates are compatible.'
   },
-  '/skills': {
-    title: 'Skills',
-    body: 'Skills pages will follow the Laravel accessible frontend contract.'
-  },
   '/organisations': {
     title: 'Organisations',
     body: 'Organisation pages will follow the Laravel accessible frontend contract.'

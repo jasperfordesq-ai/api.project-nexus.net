@@ -70,7 +70,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Search | `/search` | `/search` | Implemented route; backend contract not certified. |
 | Groups | `/groups` | `/groups` | Implemented route; backend contract not certified. |
 | Goals | `/goals` | `/goals` | Preparation skeleton. |
-| Skills | `/skills` | `/skills` | Preparation skeleton. |
+| Skills | `/skills` | `/skills` | Local Blade-style directory search/empty-state candidate; live skill tree, category drill-down, member search, and backend runtime are not certified. |
 | Organisations | `/organisations` | `/organisations` | Preparation skeleton. |
 | Blog | `/blog` | `/blog` | Local Blade-style index candidate; live posts, categories, feature gate, feed, post detail, comments/likes, and backend runtime are not certified. |
 | Resources | `/resources` | `/resources` | Preparation skeleton. |

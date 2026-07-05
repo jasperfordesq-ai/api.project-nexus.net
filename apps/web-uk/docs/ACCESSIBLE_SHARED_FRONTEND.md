@@ -165,6 +165,14 @@ group sign-ups, expenses, donations, post workflows, Laravel localization
 persistence, tenant-specific content, runtime web-route behaviour, or ASP.NET
 backend compatibility.
 
+The `/skills` page is a local Blade-style candidate copied from the Laravel
+Skills directory shape. It includes the caption, lead copy, skill search form,
+searched-skill empty state, and browse-by-category empty state with
+tenant-prefixed form action. It does not certify the live skill category tree,
+category drill-down tables, member search results, proficiency tags, profile
+links, Laravel localization persistence, tenant-specific content, runtime
+web-route behaviour, or ASP.NET backend compatibility.
+
 The `/accessibility` page is a local Blade-style candidate copied from the
 Laravel accessibility statement shape. It uses the same back link, statement
 sections, WCAG 2.2 Level AA summary list, support feature sections, feedback
