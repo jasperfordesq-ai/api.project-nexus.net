@@ -1,0 +1,39 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">{{ tenantName }}</span>
+      <h1 class="govuk-heading-xl">Help centre</h1>
+      <p class="govuk-body-l">
+        Find answers to common questions about {{ tenantName }}. If you cannot find what you need, contact us.
+      </p>
+
+      <form method="get" action="{{ alphaRoutePrefix }}/help" class="govuk-!-margin-bottom-6">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="q">Search help topics</label>
+          <div id="q-hint" class="govuk-hint">Type a word or phrase to filter the questions below.</div>
+          <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ searchQuery }}" aria-describedby="q-hint">
+        </div>
+        <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Search</button>
+      </form>
+
+      <div class="govuk-inset-text">
+        {% if searchQuery %}
+          No help topics match your search. Try a different word, or contact us.
+        {% else %}
+          No help topics are available yet.
+        {% endif %}
+      </div>
+
+      <h2 class="govuk-heading-m">Still need help?</h2>
+      <p class="govuk-body">If you cannot find the answer here, get in touch and we will help.</p>
+      <a class="govuk-button" data-module="govuk-button" href="{{ contactHref or '/contact' }}">Contact us</a>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% set score = nexusScore or {} %}
+  {% set hasScore = score.totalScore !== undefined and score.totalScore !== null %}
+  {% set categories = [
+    { key: "engagement", label: "Engagement" },
+    { key: "quality", label: "Quality" },
+    { key: "volunteer", label: "Volunteering" },
+    { key: "activity", label: "Activity" },
+    { key: "badges", label: "Badges" },
+    { key: "impact", label: "Impact" }
+  ] %}
+
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">NEXUS score</h1>
+  <p class="govuk-body-l">Your reputation score, based on how you take part in the community.</p>
+
+  <nav class="govuk-!-margin-bottom-6" aria-label="Related NEXUS score pages">
+    <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Related NEXUS score pages</h2>
+    <ul class="govuk-list">
+      <li><a class="govuk-link" href="{{ tiersHref }}">Score tiers</a></li>
+    </ul>
+  </nav>
+
+  {% if not hasScore %}
+    <div class="govuk-inset-text"><p class="govuk-body">Your score is not available yet. Take part in the community and check back soon.</p></div>
+  {% else %}
+    <div class="govuk-panel govuk-panel--confirmation nexus-alpha-panel">
+      <h2 class="govuk-panel__title">{{ score.totalScore or 0 }} out of {{ score.maxScore or 1000 }}</h2>
+      <div class="govuk-panel__body">
+        {% if score.tier and score.tier.name %}{{ score.tier.icon }} {{ score.tier.name }}{% endif %}
+        {% if score.percentile %}
+          <br>Top {{ score.percentile }}% in this community
+        {% endif %}
+      </div>
+    </div>
+
+    <h2 class="govuk-heading-l govuk-!-margin-top-7">How your score breaks down</h2>
+    <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">How your score breaks down</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Area</th>
+          <th scope="col" class="govuk-table__header">Score</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for category in categories %}
+          {% set item = score.breakdown[category.key] if score.breakdown else null %}
+          {% if item %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">{{ category.label }}</td>
+              <td class="govuk-table__cell">
+                <span class="govuk-!-margin-right-2">{{ item.score or 0 }} / {{ item.max or 0 }}</span>
+                <progress max="100" value="{{ item.percentage or 0 }}" aria-label="{{ category.label }}: {{ item.percentage or 0 }}%">{{ item.percentage or 0 }}%</progress>
+              </td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if score.insights and score.insights.length > 0 %}
+      <h2 class="govuk-heading-l govuk-!-margin-top-7">How to improve</h2>
+      <ul class="govuk-list govuk-list--bullet">
+        {% for insight in score.insights %}
+          <li>{{ insight.message or insight.text or insight.tip or insight }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
+{% endblock %}

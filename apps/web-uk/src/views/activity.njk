@@ -1,0 +1,126 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% set summary = activitySummary or {} %}
+
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">My activity</h1>
+  <p class="govuk-body-l">A summary of your contribution to the community.</p>
+
+  <nav class="govuk-!-margin-bottom-6" aria-label="Related activity pages">
+    <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Related activity pages</h2>
+    <ul class="govuk-list">
+      <li><a class="govuk-link" href="{{ insightsHref }}">Activity insights</a></li>
+    </ul>
+  </nav>
+
+  <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-8">
+    <div class="nexus-alpha-stat">
+      <dt class="govuk-body-s nexus-alpha-meta">Hours given</dt>
+      <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ summary.hoursGiven or "0.0" }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt class="govuk-body-s nexus-alpha-meta">Hours received</dt>
+      <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ summary.hoursReceived or "0.0" }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt class="govuk-body-s nexus-alpha-meta">Connections</dt>
+      <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ summary.connections or 0 }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt class="govuk-body-s nexus-alpha-meta">Groups joined</dt>
+      <dd class="govuk-heading-m govuk-!-margin-bottom-0">{{ summary.groupsJoined or 0 }}</dd>
+    </div>
+  </dl>
+
+  {% if engagement %}
+    <h2 class="govuk-heading-l">Recent engagement (last 30 days)</h2>
+    <dl class="govuk-summary-list govuk-!-margin-bottom-8">
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Posts</dt>
+        <dd class="govuk-summary-list__value">{{ engagement.posts or 0 }}</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Comments</dt>
+        <dd class="govuk-summary-list__value">{{ engagement.comments or 0 }}</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Likes given</dt>
+        <dd class="govuk-summary-list__value">{{ engagement.likesGiven or 0 }}</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Likes received</dt>
+        <dd class="govuk-summary-list__value">{{ engagement.likesReceived or 0 }}</dd>
+      </div>
+      {% if engagement.netBalance %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Net balance</dt>
+          <dd class="govuk-summary-list__value">{{ engagement.netBalance }} hrs</dd>
+        </div>
+      {% endif %}
+    </dl>
+  {% endif %}
+
+  {% if skills and skills.length > 0 %}
+    <h2 class="govuk-heading-l">Skills breakdown</h2>
+    <table class="govuk-table govuk-!-margin-bottom-8">
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Skills breakdown</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Skill</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Hours</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for skill in skills %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">{{ skill.name or skill.label }}</td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ skill.hours or "0.0" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if monthlyHours and monthlyHours.length > 0 %}
+    <h2 class="govuk-heading-l">Hours over the last months</h2>
+    <table class="govuk-table govuk-!-margin-bottom-8">
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Hours over the last months</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Month</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Given</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Received</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for month in monthlyHours %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">{{ month.label or month.month }}</td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ month.given or "0.0" }}</td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ month.received or "0.0" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">Recent activity</h2>
+  {% if timeline and timeline.length > 0 %}
+    <ol class="govuk-list">
+      {% for item in timeline %}
+        <li>
+          <p class="govuk-body govuk-!-margin-bottom-1">{{ item.title or item.description }}</p>
+          {% if item.date %}<p class="govuk-body-s nexus-alpha-meta">{{ item.date }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <div class="govuk-inset-text"><p class="govuk-body">You have no recent activity yet.</p></div>
+  {% endif %}
+{% endblock %}

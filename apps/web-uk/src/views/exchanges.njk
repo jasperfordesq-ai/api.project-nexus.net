@@ -1,0 +1,43 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-l">Exchanges</span>
+  <h1 class="govuk-heading-xl">Exchanges</h1>
+  <p class="govuk-body-l">Review exchange requests, track accepted exchanges and confirm completed hours.</p>
+
+  <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="exchange-disabled-title">
+    <div class="govuk-notification-banner__header">
+      <h2 class="govuk-notification-banner__title" id="exchange-disabled-title">Exchange workflow is not enabled</h2>
+    </div>
+    <div class="govuk-notification-banner__content">
+      <p class="govuk-body">This community has not enabled the structured exchange workflow yet.</p>
+    </div>
+  </div>
+
+  <nav aria-label="Filter exchanges" class="govuk-!-margin-bottom-7">
+    <ul class="nexus-alpha-filter-nav">
+      {% for tab in exchangeTabs %}
+        <li>
+          <a class="govuk-link{% if activeTab == tab.key %} govuk-link--no-visited-state{% endif %}"
+             href="{{ alphaRoutePrefix }}/exchanges?tab={{ tab.key }}"
+             {% if activeTab == tab.key %}aria-current="true"{% endif %}>
+            {{ tab.label }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <h2 class="govuk-heading-l">Exchange requests</h2>
+  <p class="govuk-body nexus-alpha-result-count" aria-live="polite">No exchanges shown</p>
+
+  <div class="govuk-inset-text">
+    <h2 class="govuk-heading-m">Nothing to show yet</h2>
+    <p class="govuk-body">There are no exchanges to show.</p>
+  </div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Saved items</h1>
+  <p class="govuk-body-l">Listings, posts and other items you have saved.</p>
+
+  <form method="get" action="{{ savedHref }}" class="govuk-!-margin-bottom-4">
+    <div class="govuk-form-group govuk-!-margin-bottom-2">
+      <label class="govuk-label" for="saved-type-filter">Filter by type</label>
+      <select class="govuk-select" id="saved-type-filter" name="type">
+        <option value="">All types</option>
+        {% for type in savedTypeOptions %}
+          <option value="{{ type.value }}"{% if savedTypeFilter == type.value %} selected{% endif %}>{{ type.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Apply</button>
+    {% if savedTypeFilter %}
+      <a class="govuk-link govuk-!-margin-left-4" href="{{ savedHref }}">Clear filters</a>
+    {% endif %}
+  </form>
+
+  {% if not savedItems or savedItems.length == 0 %}
+    <div class="govuk-inset-text"><p class="govuk-body">You have not saved anything yet.</p></div>
+  {% else %}
+    <ul class="govuk-list govuk-list--spaced">
+      {% for item in savedItems %}
+        <li>
+          {% if item.href %}
+            <a class="govuk-link" href="{{ item.href }}">{{ item.title }}</a>
+          {% else %}
+            {{ item.title }}
+          {% endif %}
+          {% if item.typeLabel %}
+            <strong class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ item.typeLabel }}</strong>
+          {% endif %}
+          {% if item.type and item.id %}
+            <form method="post" action="{{ alphaRoutePrefix }}/saved/destroy" class="nexus-alpha-linkform govuk-!-display-inline-block govuk-!-margin-left-2">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <input type="hidden" name="type" value="{{ item.type }}">
+              <input type="hidden" name="id" value="{{ item.id }}">
+              <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0 govuk-!-font-size-16" data-module="govuk-button" type="submit" aria-label="Remove {{ item.title }} from saved items">Remove</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

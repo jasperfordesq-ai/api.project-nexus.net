@@ -1,0 +1,34 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Skills directory</h1>
+  <p class="govuk-body-l">Browse the skills members are offering in this community.</p>
+
+  <form method="get" action="{{ alphaRoutePrefix }}/skills" class="govuk-!-margin-bottom-6">
+    <div class="govuk-form-group">
+      <label class="govuk-label" for="skill">Find members by skill</label>
+      <div id="skill-hint" class="govuk-hint">Enter a skill, for example gardening or accountancy.</div>
+      <input class="govuk-input govuk-!-width-two-thirds" id="skill" name="skill" type="search" value="{{ skillQuery }}" aria-describedby="skill-hint">
+    </div>
+    <button type="submit" class="govuk-button" data-module="govuk-button">Find members</button>
+  </form>
+
+  {% if skillQuery %}
+    <h2 class="govuk-heading-l">Members offering {{ skillQuery }}</h2>
+    <div class="govuk-inset-text">
+      <p class="govuk-body">No members found offering that skill.</p>
+    </div>
+    <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--l">
+  {% endif %}
+
+  <h2 class="govuk-heading-l">Browse by category</h2>
+  <div class="govuk-inset-text">
+    <p class="govuk-body">No skills have been added yet.</p>
+  </div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">{{ tenantName }}</span>
+      <h1 class="govuk-heading-xl">Trust and safety</h1>
+      <p class="govuk-body-l">
+        {{ tenantName }} connects neighbours so they can share skills using time credits. This page explains how that works in practice - what the platform does, what it does not, and how you can stay safe.
+      </p>
+
+      <div class="govuk-warning-text">
+        <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+        <strong class="govuk-warning-text__text">
+          <span class="govuk-visually-hidden">Important</span>
+          <span class="govuk-!-font-weight-bold">Report a safeguarding concern.</span>
+          If you are worried about a member, an exchange, or something you have seen on the platform, please tell us. We respond to safeguarding reports within one working day.
+        </strong>
+      </div>
+
+      {% for section in alphaTrustSafetySections %}
+        <h2 class="govuk-heading-m">{{ section.heading }}</h2>
+        {% if section.intro %}
+          <p class="govuk-body">{{ section.intro }}</p>
+        {% endif %}
+        {% if section.items %}
+          <ul class="govuk-list govuk-list--bullet">
+            {% for item in section.items %}
+              <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endfor %}
+
+      <h2 class="govuk-heading-m">Have a question we have not answered?</h2>
+      <p class="govuk-body">Get in touch and a coordinator will get back to you. Most messages are answered within one working day.</p>
+      <div class="govuk-button-group">
+        <a class="govuk-button" data-module="govuk-button" href="{{ contactHref or '/contact' }}">Contact us</a>
+        <a class="govuk-link" href="{{ guidelinesHref or '/legal/community-guidelines' }}">Read the community guidelines</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

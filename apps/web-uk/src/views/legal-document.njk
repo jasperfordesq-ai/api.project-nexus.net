@@ -1,0 +1,51 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <a class="govuk-back-link" href="{{ legalHubHref }}">Back to legal</a>
+
+      <span class="govuk-caption-l">{{ tenantName }}</span>
+      <h1 class="govuk-heading-xl">{{ fallback.title }}</h1>
+
+      <div class="govuk-inset-text">
+        A tailored version of this document has not been published for {{ tenantName }} yet. The general policy below applies.
+      </div>
+
+      <p class="govuk-body">{{ fallback.intro }}</p>
+
+      {% if fallback.heading %}
+        <h2 class="govuk-heading-m">{{ fallback.heading }}</h2>
+      {% endif %}
+
+      {% if fallback.points %}
+        <ul class="govuk-list govuk-list--bullet">
+          {% for point in fallback.points %}
+            <li>{{ point }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if fallback.closing %}
+        <p class="govuk-body">{{ fallback.closing }}</p>
+      {% endif %}
+
+      {% if fallback.sections %}
+        {% for section in fallback.sections %}
+          <h2 class="govuk-heading-m">{{ section.heading }}</h2>
+          <p class="govuk-body">{{ section.body }}</p>
+        {% endfor %}
+      {% endif %}
+
+      <p class="govuk-body">
+        If you have a question about this document, please
+        <a class="govuk-link" href="{{ contactHref }}">contact us</a>.
+      </p>
+    </div>
+  </div>
+{% endblock %}

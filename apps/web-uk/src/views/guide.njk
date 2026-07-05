@@ -1,0 +1,45 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-xl">{{ tenantName }}</span>
+      <h1 class="govuk-heading-xl">How timebanking works</h1>
+      <p class="govuk-body-l">
+        Timebanking is a simple way for a community to share skills and help each other. You give an hour of your time to someone, and you earn an hour you can spend on help from anyone else in the community.
+      </p>
+
+      <h2 class="govuk-heading-l">Everyone's time is equal</h2>
+      <p class="govuk-body">
+        One hour always equals one time credit, whatever the task. An hour of gardening is worth the same as an hour of accountancy, tutoring or giving someone a lift. That is what makes timebanking fair and welcoming for everyone.
+      </p>
+
+      <h2 class="govuk-heading-l">The three steps</h2>
+      <ol class="govuk-list govuk-list--number govuk-list--spaced">
+        {% for step in alphaGuideSteps %}
+          <li><span class="govuk-!-font-weight-bold">{{ step.title }}.</span> {{ step.body }}</li>
+        {% endfor %}
+      </ol>
+
+      <h2 class="govuk-heading-l">Getting started</h2>
+      <p class="govuk-body">
+        Browse what members are offering and asking for, create your own listing to offer a skill, and connect with people near you.
+      </p>
+
+      <div class="govuk-button-group govuk-!-margin-top-4">
+        {% if isAuthenticated %}
+          <a class="govuk-button" href="{{ listingsHref or '/listings' }}" role="button" draggable="false" data-module="govuk-button">Browse listings</a>
+          <a class="govuk-button govuk-button--secondary" href="{{ walletHref or '/wallet' }}" role="button" draggable="false" data-module="govuk-button">Go to your wallet</a>
+        {% else %}
+          <a class="govuk-button" href="{{ registerHref or '/register' }}" role="button" draggable="false" data-module="govuk-button">Create an account</a>
+          <a class="govuk-button govuk-button--secondary" href="{{ listingsHref or '/listings' }}" role="button" draggable="false" data-module="govuk-button">Browse listings</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
