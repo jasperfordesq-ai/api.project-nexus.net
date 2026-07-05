@@ -13,6 +13,7 @@ namespace Nexus.Api.Services;
 public sealed class CaringHourGiftService
 {
     private const string StatusPending = "pending";
+    private const string StatusAccepted = "accepted";
 
     private readonly NexusDbContext _db;
 
@@ -66,6 +67,50 @@ public sealed class CaringHourGiftService
 
         var partners = await LoadUsersAsync(tenantId, rows.Select(g => g.RecipientUserId), ct);
         return rows.Select(row => Map(row, row.RecipientUserId, partners)).ToArray();
+    }
+
+    public async Task AcceptAsync(
+        int tenantId,
+        long giftId,
+        int recipientUserId,
+        CancellationToken ct)
+    {
+        var gift = await _db.CaringHourGifts
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(g => g.TenantId == tenantId && g.Id == giftId, ct);
+
+        if (gift is null)
+        {
+            throw new InvalidOperationException("Gift not found.");
+        }
+
+        if (gift.RecipientUserId != recipientUserId)
+        {
+            throw new InvalidOperationException("Only the recipient can accept this gift.");
+        }
+
+        if (gift.Status != StatusPending)
+        {
+            throw new InvalidOperationException("Gift is no longer pending.");
+        }
+
+        var now = DateTime.UtcNow;
+        gift.Status = StatusAccepted;
+        gift.AcceptedAt = now;
+        gift.UpdatedAt = now;
+
+        _db.Transactions.Add(new Transaction
+        {
+            TenantId = tenantId,
+            SenderId = gift.SenderUserId,
+            ReceiverId = gift.RecipientUserId,
+            Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
+            Description = "Caring hour gift accepted",
+            Status = TransactionStatus.Completed,
+            CreatedAt = now
+        });
+
+        await _db.SaveChangesAsync(ct);
     }
 
     private async Task<IReadOnlyDictionary<int, User>> LoadUsersAsync(

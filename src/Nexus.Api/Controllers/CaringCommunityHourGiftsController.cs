@@ -65,6 +65,33 @@ public sealed class CaringCommunityHourGiftsController : ControllerBase
         return Ok(new { data = new { items } });
     }
 
+    [HttpPost("{id}/accept")]
+    public async Task<IActionResult> Accept(long id, CancellationToken ct)
+    {
+        var guard = await GuardAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized(LaravelError("AUTH_REQUIRED", "Authentication required."));
+        }
+
+        try
+        {
+            await _gifts.AcceptAsync(_tenant.GetTenantIdOrThrow(), id, userId.Value, ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return UnprocessableEntity(LaravelError("GIFT_ACCEPT_FAILED", ex.Message));
+        }
+
+        return Ok(new { data = new { success = true } });
+    }
+
     private async Task<IActionResult?> GuardAsync(CancellationToken ct)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();

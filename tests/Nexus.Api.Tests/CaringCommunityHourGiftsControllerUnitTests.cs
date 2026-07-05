@@ -19,7 +19,7 @@ namespace Nexus.Api.Tests;
 public class CaringCommunityHourGiftsControllerUnitTests
 {
     [Fact]
-    public void Actions_ExposeLaravelHourGiftReadRoutes()
+    public void Actions_ExposeLaravelHourGiftRoutes()
     {
         var controllerType = ResolveControllerType();
 
@@ -31,6 +31,8 @@ public class CaringCommunityHourGiftsControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("inbox");
         type.GetMethod("Sent")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("sent");
+        type.GetMethod("Accept")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{id}/accept");
     }
 
     [Fact]
@@ -115,6 +117,48 @@ public class CaringCommunityHourGiftsControllerUnitTests
             .Should().Be("FEATURE_DISABLED");
     }
 
+    [Fact]
+    public async Task Accept_MarksPendingGiftAcceptedAndCreditsRecipientWallet()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(42, 10, "sender@example.test", "Sam", "Sender"),
+            User(42, 20, "recipient@example.test", "Robin", "Recipient"));
+        db.Add(CreateGift(
+            42,
+            senderId: 10,
+            recipientId: 20,
+            hours: 2.75m,
+            status: "pending",
+            createdAt: DateTime.UtcNow.AddHours(-2),
+            message: "For care travel",
+            id: 100));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 20);
+
+        var result = await InvokeActionAsync(controller, "Accept", 100L, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        document.RootElement.GetProperty("data").GetProperty("success").GetBoolean()
+            .Should().BeTrue();
+
+        var gift = await db.CaringHourGifts.IgnoreQueryFilters().SingleAsync(g => g.Id == 100);
+        gift.Status.Should().Be("accepted");
+        gift.AcceptedAt.Should().NotBeNull();
+        gift.UpdatedAt.Should().NotBeNull();
+
+        var walletCredit = await db.Transactions.IgnoreQueryFilters().SingleAsync();
+        walletCredit.TenantId.Should().Be(42);
+        walletCredit.SenderId.Should().Be(10);
+        walletCredit.ReceiverId.Should().Be(20);
+        walletCredit.Amount.Should().Be(2.75m);
+        walletCredit.Status.Should().Be(TransactionStatus.Completed);
+        walletCredit.Description.Should().Be("Caring hour gift accepted");
+    }
+
     private static Type? ResolveControllerType()
     {
         return Type.GetType("Nexus.Api.Controllers.CaringCommunityHourGiftsController, Nexus.Api");
@@ -141,10 +185,15 @@ public class CaringCommunityHourGiftsControllerUnitTests
         decimal hours,
         string status,
         DateTime createdAt,
-        string? message)
+        string? message,
+        long? id = null)
     {
         var type = ResolveGiftType();
         var gift = Activator.CreateInstance(type)!;
+        if (id.HasValue)
+        {
+            Set(gift, "Id", id.Value);
+        }
         Set(gift, "TenantId", tenantId);
         Set(gift, "SenderUserId", senderId);
         Set(gift, "RecipientUserId", recipientId);
