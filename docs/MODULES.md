@@ -18,7 +18,7 @@ Status values:
 | AI chat | `app/Services/AI`, `docs/modules/ai-chat.md` | `src/Nexus.Api/Services/*Ai*`, `src/Nexus.Api/Controllers/*Ai*` | Mapped |
 | Blog and resources | `docs/modules/blog-and-resources.md`, `app/Services/*Blog*`, resource routes | `AdminBlogController`, resources/admin compatibility controllers | Partial |
 | Connections and reviews | `docs/modules/connections-and-reviews.md`, connection/review services | connection, endorsement, review controllers/services | Mapped |
-| Courses | `docs/modules/courses.md`, commerce/course frontend and services | no dedicated .NET course module found | Gap |
+| Courses | `docs/modules/courses.md`, `CourseController.php`, `CourseEnrollmentController.php`, `CourseContentController.php`, `CourseQuizController.php`, `CourseCohortController.php`, `CourseGroupController.php`, `CourseDiscussionController.php`, Laravel React `src/lib/api/courses.ts` | `CoursesCompatibilityController.cs`, `CoursesCompatibilityService.cs`, `AdminCoursesController.cs`, `AdminCoursesService.cs`; compatibility state currently stored under tenant-scoped `TenantConfig` | Partial |
 | Events | `docs/modules/events.md`, `EventsController`, event services | `EventsController`, admin event controllers | Mapped |
 | Gamification | `docs/modules/gamification.md`, gamification services/controllers | gamification controllers/services and locale files | Mapped |
 | Goals and impact | `docs/modules/goals-and-impact.md`, goals/regional impact services | goals controllers/services; regional analytics missing | Partial |

@@ -148,6 +148,7 @@ public static class ServiceExtensions
         services.AddScoped<CaringSubRegionService>();
         services.AddScoped<CareProviderDirectoryService>();
         services.AddScoped<AdminCoursesService>();
+        services.AddScoped<CoursesCompatibilityService>();
         services.AddScoped<AdminEmailDeliverabilityService>();
         services.AddScoped<AiModuleDocsService>();
         services.AddScoped<ExternalIntegrationBacklogService>();
