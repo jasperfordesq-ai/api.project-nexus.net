@@ -200,6 +200,16 @@ vote submission, hidden-results behaviour, ranked poll links, poll deletion,
 Laravel localization persistence, tenant-specific content, runtime web-route
 behaviour, or ASP.NET backend compatibility.
 
+The `/achievements` page is a local Blade-style candidate copied from the
+Laravel Achievements shape. It includes the caption, level/XP/badge summary,
+level progress bar, daily reward section, challenge empty state, earned-badges
+empty state, tenant-prefixed daily reward/challenge form actions, and status
+message patterns. It does not certify Laravel auth enforcement, the
+`gamification` feature gate, live profile/XP/badge/challenge data, daily reward
+claim persistence, challenge reward persistence, Laravel localization
+persistence, tenant-specific content, runtime web-route behaviour, or ASP.NET
+backend compatibility.
+
 The `/accessibility` page is a local Blade-style candidate copied from the
 Laravel accessibility statement shape. It uses the same back link, statement
 sections, WCAG 2.2 Level AA summary list, support feature sections, feedback

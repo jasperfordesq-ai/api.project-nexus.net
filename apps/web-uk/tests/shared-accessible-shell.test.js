@@ -668,6 +668,29 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Blade-style achievements summary and empty states under the tenant alpha route prefix', async () => {
+    const response = await request(app).get('/acme/alpha/achievements?status=daily-reward-claimed');
+
+    expect(staticPageRoutes.pages['/achievements']).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Achievements');
+    expect(response.text).toContain('Your level, experience and the badges you have earned in this community.');
+    expect(response.text).toContain('Level');
+    expect(response.text).toContain('Experience points');
+    expect(response.text).toContain('Badges earned');
+    expect(response.text).toContain('0% of the way to the next level');
+    expect(response.text).toContain('Daily reward');
+    expect(response.text).toContain('Daily reward claimed! You earned 5 XP.');
+    expect(response.text).toContain('Current streak: 0 day(s)');
+    expect(response.text).toContain('Claim today to earn 5 XP');
+    expect(response.text).toContain('form method="post" action="/acme/alpha/achievements/daily-reward"');
+    expect(response.text).toContain('Active challenges');
+    expect(response.text).toContain('There are no active challenges right now.');
+    expect(response.text).toContain('Your badges');
+    expect(response.text).toContain('You have not earned any badges yet. Take part in the community to start earning them.');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Blade-style legal hub under the tenant alpha route prefix', async () => {
     const response = await request(app).get('/acme/alpha/legal');
 
@@ -779,7 +802,6 @@ describe('shared accessible frontend shell', () => {
       '/newsletter/unsubscribe',
       '/onboarding',
       '/matches',
-      '/achievements',
       '/leaderboard',
       '/nexus-score',
       '/activity',
@@ -845,7 +867,7 @@ describe('shared accessible frontend shell', () => {
     expect(contract).toContain('buildLaravelAccessiblePath()');
     expect(contract).toContain('Do not treat Blade routes as');
     expect(routeInventory).toContain('| Laravel accessible route declarations | 608 |');
-    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 26 |');
+    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 25 |');
     expect(routeInventory).toContain('Laravel shared-domain path');
     expect(routeInventory).toContain('Laravel custom-domain path');
     expect(routeInventory).toContain('| GET | /faq | /{tenantSlug}/alpha/faq | /faq |');
@@ -860,6 +882,8 @@ describe('shared accessible frontend shell', () => {
     expect(routeInventory).toContain('| GET | /exchanges | /{tenantSlug}/alpha/exchanges | /exchanges | exchanges.index | exchanges | exchanges | candidate-route |');
     expect(routeInventory).toContain('| GET | /group-exchanges | /{tenantSlug}/alpha/group-exchanges | /group-exchanges | group-exchanges.index | groupExchanges | group-exchanges | candidate-route |');
     expect(routeInventory).toContain('| GET | /polls | /{tenantSlug}/alpha/polls | /polls | polls.index | polls | polls | candidate-route |');
+    expect(routeInventory).toContain('| GET | /achievements | /{tenantSlug}/alpha/achievements | /achievements | achievements | achievements | achievements | candidate-route |');
+    expect(routeInventory).toContain('| POST | /achievements/daily-reward | /{tenantSlug}/alpha/achievements/daily-reward | /achievements/daily-reward | achievements.daily-reward | dailyReward | achievements | missing |');
     expect(routeInventory).toContain('| GET | /legal | /{tenantSlug}/alpha/legal | /legal | legal.hub | legalHub | legal | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal/community-guidelines | /{tenantSlug}/alpha/legal/community-guidelines | /legal/community-guidelines | legal.community-guidelines | legalDocument | legal | candidate-route |');
     expect(routeInventory).toContain('| POST | /report-a-problem | /{tenantSlug}/alpha/report-a-problem | /report-a-problem | report-problem.store | storeReportProblem | report-a-problem | candidate-workflow |');
@@ -874,6 +898,7 @@ describe('shared accessible frontend shell', () => {
     expect(viewInventory).toContain('| exchanges.blade.php | exchanges | candidate-exact-view |');
     expect(viewInventory).toContain('| group-exchanges.blade.php | group | candidate-exact-view |');
     expect(viewInventory).toContain('| polls.blade.php | polls | candidate-exact-view |');
+    expect(viewInventory).toContain('| achievements.blade.php | achievements | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-hub.blade.php | legal | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-document.blade.php | legal | candidate-exact-view |');
     expect(backendMatrix).toContain('| Family | GET routes | POST routes | Mutating routes | Tenant | Auth | CSRF | Feature/module gates |');

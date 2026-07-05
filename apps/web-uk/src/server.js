@@ -655,6 +655,31 @@ app.get('/polls', (req, res) => {
   });
 });
 
+app.get('/achievements', (req, res) => {
+  res.render('achievements', {
+    title: 'Achievements',
+    activeNav: 'achievements',
+    status: typeof req.query.status === 'string' ? req.query.status : '',
+    achievementProfile: {
+      level: 0,
+      levelName: '',
+      xp: 0,
+      badgesCount: 0,
+      levelProgressPercent: 0,
+      atMaxLevel: false
+    },
+    dailyReward: {
+      canClaim: true,
+      streak: 0,
+      nextXp: 5,
+      rewardXp: 5
+    },
+    challenges: [],
+    earnedBadges: [],
+    badgeProgress: []
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

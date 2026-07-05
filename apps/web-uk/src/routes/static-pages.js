@@ -24,10 +24,6 @@ const pages = {
     title: 'Matches',
     body: 'Match pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
   },
-  '/achievements': {
-    title: 'Achievements',
-    body: 'Achievement pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
   '/leaderboard': {
     title: 'Leaderboard',
     body: 'Leaderboard pages must follow the Laravel accessible frontend contract after compatible backend endpoints are available.'

@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 26 |
+| ASP.NET static skeleton paths | 25 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 42 |
+| candidate-route | 43 |
 | candidate-workflow | 8 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 30 |
+| skeleton | 29 |
 
 ## Family Summary
 
@@ -25,7 +25,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | about | 1 | 1 |  | 1 |  |  |
 | accessibility | 1 | 1 |  | 1 |  |  |
 | account | 1 | 1 |  | 1 |  |  |
-| achievements | 10 | 6 | 4 |  | 1 | 9 |
+| achievements | 10 | 6 | 4 | 1 |  | 9 |
 | activity | 2 | 2 |  |  | 1 | 1 |
 | appreciations | 1 |  | 1 |  |  | 1 |
 | blog | 12 | 5 | 7 | 1 |  | 11 |
@@ -232,7 +232,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | POST | /connections/{id}/decline | /{tenantSlug}/alpha/connections/{id}/decline | /connections/{id}/decline | connections.decline | declineConnection | connections | candidate-workflow-family | routes/govuk-alpha.php:197 |
 | POST | /connections/{id}/remove | /{tenantSlug}/alpha/connections/{id}/remove | /connections/{id}/remove | connections.remove | cancelConnection | connections | candidate-workflow-family | routes/govuk-alpha.php:198 |
 | GET | /account | /{tenantSlug}/alpha/account | /account | account | account | account | candidate-route | routes/govuk-alpha.php:199 |
-| GET | /achievements | /{tenantSlug}/alpha/achievements | /achievements | achievements | achievements | achievements | skeleton | routes/govuk-alpha.php:200 |
+| GET | /achievements | /{tenantSlug}/alpha/achievements | /achievements | achievements | achievements | achievements | candidate-route | routes/govuk-alpha.php:200 |
 | POST | /achievements/daily-reward | /{tenantSlug}/alpha/achievements/daily-reward | /achievements/daily-reward | achievements.daily-reward | dailyReward | achievements | missing | routes/govuk-alpha.php:202 |
 | POST | /achievements/challenges/{id}/claim | /{tenantSlug}/alpha/achievements/challenges/{id}/claim | /achievements/challenges/{id}/claim | achievements.claim-challenge | claimChallengeReward | achievements | missing | routes/govuk-alpha.php:203 |
 | GET | /leaderboard | /{tenantSlug}/alpha/leaderboard | /leaderboard | leaderboard | leaderboard | leaderboard | skeleton | routes/govuk-alpha.php:204 |
