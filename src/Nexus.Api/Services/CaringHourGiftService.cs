@@ -15,6 +15,7 @@ public sealed class CaringHourGiftService
     private const string StatusPending = "pending";
     private const string StatusAccepted = "accepted";
     private const string StatusDeclined = "declined";
+    private const string StatusReverted = "reverted";
     private const int MaxMessageLength = 500;
 
     private readonly NexusDbContext _db;
@@ -154,6 +155,50 @@ public sealed class CaringHourGiftService
             ReceiverId = gift.SenderUserId,
             Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
             Description = "Caring hour gift declined refund",
+            Status = TransactionStatus.Completed,
+            CreatedAt = now
+        });
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task RevertAsync(
+        int tenantId,
+        long giftId,
+        int senderUserId,
+        CancellationToken ct)
+    {
+        var gift = await _db.CaringHourGifts
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(g => g.TenantId == tenantId && g.Id == giftId, ct);
+
+        if (gift is null)
+        {
+            throw new InvalidOperationException("Gift not found.");
+        }
+
+        if (gift.SenderUserId != senderUserId)
+        {
+            throw new InvalidOperationException("Only the sender can withdraw this gift.");
+        }
+
+        if (gift.Status != StatusPending)
+        {
+            throw new InvalidOperationException("Only pending gifts can be withdrawn.");
+        }
+
+        var now = DateTime.UtcNow;
+        gift.Status = StatusReverted;
+        gift.RevertedAt = now;
+        gift.UpdatedAt = now;
+
+        _db.Transactions.Add(new Transaction
+        {
+            TenantId = tenantId,
+            SenderId = 0,
+            ReceiverId = gift.SenderUserId,
+            Amount = Math.Round(gift.Hours, 2, MidpointRounding.AwayFromZero),
+            Description = "Caring hour gift reverted refund",
             Status = TransactionStatus.Completed,
             CreatedAt = now
         });

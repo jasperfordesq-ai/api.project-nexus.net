@@ -35,6 +35,8 @@ public class CaringCommunityHourGiftsControllerUnitTests
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{id}/accept");
         type.GetMethod("Decline")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{id}/decline");
+        type.GetMethod("Revert")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("{id}/revert");
     }
 
     [Fact]
@@ -203,6 +205,48 @@ public class CaringCommunityHourGiftsControllerUnitTests
         refund.Amount.Should().Be(3.5m);
         refund.Status.Should().Be(TransactionStatus.Completed);
         refund.Description.Should().Be("Caring hour gift declined refund");
+    }
+
+    [Fact]
+    public async Task Revert_MarksPendingGiftRevertedAndRefundsSenderWallet()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(42, 10, "sender@example.test", "Sam", "Sender"),
+            User(42, 20, "recipient@example.test", "Robin", "Recipient"));
+        db.Add(CreateGift(
+            42,
+            senderId: 10,
+            recipientId: 20,
+            hours: 4.25m,
+            status: "pending",
+            createdAt: DateTime.UtcNow.AddHours(-2),
+            message: "Withdraw before accepted",
+            id: 102));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var result = await InvokeActionAsync(controller, "Revert", 102L, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        document.RootElement.GetProperty("data").GetProperty("success").GetBoolean()
+            .Should().BeTrue();
+
+        var gift = await db.CaringHourGifts.IgnoreQueryFilters().SingleAsync(g => g.Id == 102);
+        gift.Status.Should().Be("reverted");
+        gift.RevertedAt.Should().NotBeNull();
+        gift.UpdatedAt.Should().NotBeNull();
+
+        var refund = await db.Transactions.IgnoreQueryFilters().SingleAsync();
+        refund.TenantId.Should().Be(42);
+        refund.SenderId.Should().Be(0);
+        refund.ReceiverId.Should().Be(10);
+        refund.Amount.Should().Be(4.25m);
+        refund.Status.Should().Be(TransactionStatus.Completed);
+        refund.Description.Should().Be("Caring hour gift reverted refund");
     }
 
     private static Type? ResolveControllerType()
