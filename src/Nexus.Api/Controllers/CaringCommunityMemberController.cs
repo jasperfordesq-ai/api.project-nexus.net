@@ -89,6 +89,50 @@ public sealed class CaringCommunityMemberController : ControllerBase
         return Ok(new { data = new { items } });
     }
 
+    [HttpPost("safeguarding/report")]
+    public async Task<IActionResult> SafeguardingReport(
+        [FromBody] JsonElement payload,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var result = await _safeguarding.SubmitReportAsync(
+            _tenant.GetTenantIdOrThrow(),
+            user.UserId!.Value,
+            new Dictionary<string, object?>
+            {
+                ["category"] = ReadString(payload, "category"),
+                ["severity"] = ReadString(payload, "severity"),
+                ["description"] = ReadString(payload, "description"),
+                ["subject_user_id"] = ReadNullableInt(payload, "subject_user_id"),
+                ["subject_organisation_id"] = ReadNullableInt(payload, "subject_organisation_id"),
+                ["evidence_url"] = ReadString(payload, "evidence_url")
+            },
+            ct);
+
+        if (!result.Succeeded)
+        {
+            var code = result.ErrorCode == "VALIDATION_ERROR"
+                ? "VALIDATION_ERROR"
+                : "REPORT_FAILED";
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError(code, result.ErrorMessage ?? "Validation failed."));
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = new
+            {
+                report_id = result.ReportId,
+                success = true
+            }
+        });
+    }
+
     [HttpPost("request-help")]
     public async Task<IActionResult> RequestHelp(
         [FromBody] JsonElement payload,

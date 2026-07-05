@@ -39,6 +39,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("safeguarding/my-reports");
 
+        controller.GetMethod("SafeguardingReport")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("safeguarding/report");
+
         controller.GetMethod("MyDataExport")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("me/data-export");
@@ -702,6 +706,89 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
     }
 
     [Fact]
+    public async Task SafeguardingReport_CreatesSubmittedReportWithAuditTrail()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(10, 42, "Ada", "Reporter"),
+            User(11, 42, "Grace", "Subject"),
+            User(12, 42, "Org", "Owner"),
+            User(70, 7, "Other", "Tenant"));
+        db.Organisations.Add(new Organisation
+        {
+            Id = 201,
+            TenantId = 42,
+            Name = "Community Care",
+            Slug = "community-care",
+            OwnerId = 12,
+            Status = "verified"
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadDataObject(await Invoke(
+            controller,
+            "SafeguardingReport",
+            Json("""
+            {
+              "category": "neglect",
+              "severity": "high",
+              "description": "  A concerning pattern was observed.  ",
+              "subject_user_id": 11,
+              "subject_organisation_id": 201,
+              "evidence_url": "  https://example.test/evidence  "
+            }
+            """),
+            CancellationToken.None), StatusCodes.Status201Created);
+
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+        var reportId = data.GetProperty("report_id").GetInt64();
+        var stored = await db.SafeguardingReports.IgnoreQueryFilters().SingleAsync();
+        stored.Id.Should().Be(reportId);
+        stored.TenantId.Should().Be(42);
+        stored.ReporterUserId.Should().Be(10);
+        stored.SubjectUserId.Should().Be(11);
+        stored.SubjectOrganisationId.Should().Be(201);
+        stored.Category.Should().Be("neglect");
+        stored.Severity.Should().Be("high");
+        stored.Description.Should().Be("A concerning pattern was observed.");
+        stored.EvidenceUrl.Should().Be("https://example.test/evidence");
+        stored.Status.Should().Be("submitted");
+        stored.ReviewDueAt.Should().NotBeNull();
+        (stored.ReviewDueAt!.Value - stored.CreatedAt).Should().BeCloseTo(TimeSpan.FromHours(24), TimeSpan.FromMinutes(1));
+
+        var action = await db.SafeguardingReportActions.IgnoreQueryFilters().SingleAsync();
+        action.TenantId.Should().Be(42);
+        action.ReportId.Should().Be(reportId);
+        action.ActorUserId.Should().Be(10);
+        action.Action.Should().Be("created");
+        action.Notes.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SafeguardingReport_WithInvalidCategory_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.Add(User(10, 42, "Ada", "Reporter"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "SafeguardingReport",
+                Json("""{ "category": "bad", "severity": "medium", "description": "Concern" }"""),
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+        db.SafeguardingReports.IgnoreQueryFilters().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ResearchConsent_WhenCaringCommunityDisabled_ReturnsLaravelFeatureDisabledError()
     {
         var tenant = CreateTenantContext(42);
@@ -719,6 +806,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             "FEATURE_DISABLED");
         AssertSingleError(
             await Invoke(controller, "RequestHelpVoice", null, null, CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(
+            await Invoke(controller, "SafeguardingReport", Json("{}"), CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
         AssertSingleError(

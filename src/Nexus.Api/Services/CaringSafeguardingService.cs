@@ -32,6 +32,25 @@ public sealed class CaringSafeguardingService
     private static readonly string[] Severities =
         ["low", "medium", "high", "critical"];
 
+    private static readonly string[] Categories =
+    [
+        "inappropriate_behavior",
+        "financial_concern",
+        "exploitation",
+        "neglect",
+        "medical_concern",
+        "other"
+    ];
+
+    private static readonly IReadOnlyDictionary<string, int> ReviewSlaHours =
+        new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["critical"] = 4,
+            ["high"] = 24,
+            ["medium"] = 72,
+            ["low"] = 168
+        };
+
     private static readonly IReadOnlyDictionary<string, string[]> StatusTransitions =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
@@ -58,6 +77,108 @@ public sealed class CaringSafeguardingService
             .FirstOrDefaultAsync(ct);
 
         return IsTruthy(value);
+    }
+
+    public async Task<SafeguardingSubmitReportResult> SubmitReportAsync(
+        int tenantId,
+        int reporterId,
+        IReadOnlyDictionary<string, object?> input,
+        CancellationToken ct)
+    {
+        var category = StringValue(input, "category") ?? string.Empty;
+        var severity = StringValue(input, "severity") ?? "medium";
+        var description = (StringValue(input, "description") ?? string.Empty).Trim();
+        var subjectUserId = IntValue(input, "subject_user_id");
+        var subjectOrganisationId = IntValue(input, "subject_organisation_id");
+        var evidenceUrl = (StringValue(input, "evidence_url") ?? string.Empty).Trim();
+
+        if (!Categories.Contains(category))
+        {
+            return SafeguardingSubmitReportResult.Validation("Invalid safeguarding category.");
+        }
+
+        if (!Severities.Contains(severity))
+        {
+            return SafeguardingSubmitReportResult.Validation("Invalid safeguarding severity.");
+        }
+
+        if (description.Length == 0)
+        {
+            return SafeguardingSubmitReportResult.Validation("Safeguarding description is required.");
+        }
+
+        if (description.Length > 2000)
+        {
+            return SafeguardingSubmitReportResult.Validation("Safeguarding description is too long.");
+        }
+
+        if (evidenceUrl.Length > 500)
+        {
+            return SafeguardingSubmitReportResult.Validation("Safeguarding evidence URL is too long.");
+        }
+
+        var reporterExists = await _db.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(user => user.TenantId == tenantId && user.Id == reporterId && user.IsActive, ct);
+        if (!reporterExists)
+        {
+            return SafeguardingSubmitReportResult.Failed("Safeguarding reporter was not found.");
+        }
+
+        if (subjectUserId is not null)
+        {
+            var subjectExists = await _db.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(user => user.TenantId == tenantId && user.Id == subjectUserId.Value && user.IsActive, ct);
+            if (!subjectExists)
+            {
+                return SafeguardingSubmitReportResult.Failed("Safeguarding subject user was not found.");
+            }
+        }
+
+        if (subjectOrganisationId is not null)
+        {
+            var organisationExists = await _db.Organisations
+                .IgnoreQueryFilters()
+                .AnyAsync(organisation => organisation.TenantId == tenantId && organisation.Id == subjectOrganisationId.Value, ct);
+            if (!organisationExists)
+            {
+                return SafeguardingSubmitReportResult.Failed("Safeguarding subject organisation was not found.");
+            }
+        }
+
+        var now = DateTime.UtcNow;
+        var report = new SafeguardingReport
+        {
+            TenantId = tenantId,
+            ReporterUserId = reporterId,
+            SubjectUserId = subjectUserId,
+            SubjectOrganisationId = subjectOrganisationId,
+            Category = category,
+            Severity = severity,
+            Description = description,
+            EvidenceUrl = evidenceUrl.Length > 0 ? evidenceUrl : null,
+            Status = "submitted",
+            ReviewDueAt = now.AddHours(ReviewSlaHours[severity]),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.SafeguardingReports.Add(report);
+        await _db.SaveChangesAsync(ct);
+
+        _db.SafeguardingReportActions.Add(new SafeguardingReportAction
+        {
+            TenantId = tenantId,
+            ReportId = report.Id,
+            ActorUserId = reporterId,
+            Action = "created",
+            Notes = null,
+            CreatedAt = now
+        });
+        await _db.SaveChangesAsync(ct);
+
+        return SafeguardingSubmitReportResult.Success(report.Id);
     }
 
     public async Task<object> DashboardSummaryAsync(int tenantId, CancellationToken ct)
@@ -532,6 +653,27 @@ public sealed class CaringSafeguardingService
         return value?.Trim().ToLowerInvariant() is "1" or "true" or "yes" or "on" or "enabled";
     }
 
+    private static string? StringValue(IReadOnlyDictionary<string, object?> input, string key)
+    {
+        return input.TryGetValue(key, out var value) ? value?.ToString() : null;
+    }
+
+    private static int? IntValue(IReadOnlyDictionary<string, object?> input, string key)
+    {
+        if (!input.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            int parsed when parsed > 0 => parsed,
+            long parsed when parsed > 0 && parsed <= int.MaxValue => (int)parsed,
+            string raw when int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed > 0 => parsed,
+            _ => null
+        };
+    }
+
     private sealed record ReportJoinRow(
         SafeguardingReport Report,
         User? Reporter,
@@ -541,4 +683,26 @@ public sealed class CaringSafeguardingService
     private sealed record ActionJoinRow(
         SafeguardingReportAction Action,
         User? Actor);
+}
+
+public sealed record SafeguardingSubmitReportResult(
+    bool Succeeded,
+    long? ReportId = null,
+    string? ErrorCode = null,
+    string? ErrorMessage = null)
+{
+    public static SafeguardingSubmitReportResult Success(long reportId)
+    {
+        return new SafeguardingSubmitReportResult(true, reportId);
+    }
+
+    public static SafeguardingSubmitReportResult Validation(string message)
+    {
+        return new SafeguardingSubmitReportResult(false, ErrorCode: "VALIDATION_ERROR", ErrorMessage: message);
+    }
+
+    public static SafeguardingSubmitReportResult Failed(string message)
+    {
+        return new SafeguardingSubmitReportResult(false, ErrorCode: "REPORT_FAILED", ErrorMessage: message);
+    }
 }
