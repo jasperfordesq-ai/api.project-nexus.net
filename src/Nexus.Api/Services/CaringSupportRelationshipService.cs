@@ -22,10 +22,14 @@ public sealed class CaringSupportRelationshipService
     private const string DefaultTitle = "Recurring support relationship";
 
     private readonly NexusDbContext _db;
+    private readonly ICaringHelpRequestVoiceProcessor? _voiceProcessor;
 
-    public CaringSupportRelationshipService(NexusDbContext db)
+    public CaringSupportRelationshipService(
+        NexusDbContext db,
+        ICaringHelpRequestVoiceProcessor? voiceProcessor = null)
     {
         _db = db;
+        _voiceProcessor = voiceProcessor;
     }
 
     public async Task<bool> IsFeatureEnabledAsync(int tenantId, CancellationToken ct)
@@ -215,6 +219,30 @@ public sealed class CaringSupportRelationshipService
         await _db.SaveChangesAsync(ct);
 
         return MemberHelpRequestResult.Created();
+    }
+
+    public async Task<MemberHelpRequestVoiceResult> ProcessMemberHelpRequestVoiceAsync(
+        int tenantId,
+        int userId,
+        Stream audio,
+        string? fileName,
+        string contentType,
+        string locale,
+        CancellationToken ct)
+    {
+        if (_voiceProcessor is null)
+        {
+            return MemberHelpRequestVoiceResult.Failed("TRANSCRIPTION_FAILED");
+        }
+
+        return await _voiceProcessor.ProcessAsync(
+            tenantId,
+            userId,
+            audio,
+            fileName,
+            contentType,
+            locale,
+            ct);
     }
 
     public async Task<SupportRelationshipLogHoursResult> LogHoursAsync(
@@ -861,6 +889,52 @@ public sealed record MemberHelpRequestError(
     string Code,
     string Message,
     string Field);
+
+public sealed record MemberHelpRequestVoiceResult(
+    bool Succeeded,
+    string? ErrorCode = null,
+    string? Transcript = null,
+    string? DetectedLanguage = null,
+    string? SuggestedCategory = null,
+    string? SuggestedWhen = null,
+    string? SuggestedContactPreference = null,
+    string? RawText = null)
+{
+    public static MemberHelpRequestVoiceResult Success(
+        string transcript,
+        string detectedLanguage,
+        string? suggestedCategory,
+        string? suggestedWhen,
+        string? suggestedContactPreference,
+        string rawText)
+    {
+        return new MemberHelpRequestVoiceResult(
+            true,
+            Transcript: transcript,
+            DetectedLanguage: detectedLanguage,
+            SuggestedCategory: suggestedCategory,
+            SuggestedWhen: suggestedWhen,
+            SuggestedContactPreference: suggestedContactPreference,
+            RawText: rawText);
+    }
+
+    public static MemberHelpRequestVoiceResult Failed(string errorCode)
+    {
+        return new MemberHelpRequestVoiceResult(false, errorCode);
+    }
+}
+
+public interface ICaringHelpRequestVoiceProcessor
+{
+    Task<MemberHelpRequestVoiceResult> ProcessAsync(
+        int tenantId,
+        int userId,
+        Stream audio,
+        string? fileName,
+        string contentType,
+        string locale,
+        CancellationToken ct);
+}
 
 public sealed record SupportRelationshipLogHoursResult(
     bool Succeeded,

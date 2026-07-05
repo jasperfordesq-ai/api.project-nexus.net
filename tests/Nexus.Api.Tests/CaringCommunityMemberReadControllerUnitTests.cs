@@ -74,6 +74,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         controller.GetMethod("RequestHelp")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("request-help");
+
+        controller.GetMethod("RequestHelpVoice")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("request-help/voice");
     }
 
     [Fact]
@@ -647,6 +651,57 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
     }
 
     [Fact]
+    public async Task RequestHelpVoice_WithMissingAudio_ReturnsLaravelValidationError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        AssertSingleError(
+            await Invoke(controller, "RequestHelpVoice", null, "de-CH!!", CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+    }
+
+    [Fact]
+    public async Task RequestHelpVoice_WithAudio_ReturnsLaravelSuggestionsEnvelope()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var voice = new StubVoiceProcessor(MemberHelpRequestVoiceResult.Success(
+            "I need help shopping tomorrow morning.",
+            "en",
+            "shopping",
+            "2026-07-06T08:00:00.0000000+00:00",
+            "phone",
+            "I need help shopping tomorrow morning."));
+        var controller = CreateController(db, tenant, userId: 10, voice);
+
+        var data = ReadData(await Invoke(
+            controller,
+            "RequestHelpVoice",
+            FormFile("voice.webm", "audio/webm", [1, 2, 3, 4]),
+            "de_CH!!",
+            CancellationToken.None));
+
+        data.GetProperty("transcript").GetString().Should().Be("I need help shopping tomorrow morning.");
+        data.GetProperty("detected_language").GetString().Should().Be("en");
+        data.GetProperty("suggested_category").GetString().Should().Be("shopping");
+        data.GetProperty("suggested_when").GetString().Should().Be("2026-07-06T08:00:00.0000000+00:00");
+        data.GetProperty("suggested_contact_preference").GetString().Should().Be("phone");
+        data.GetProperty("raw_text").GetString().Should().Be("I need help shopping tomorrow morning.");
+        voice.LastTenantId.Should().Be(42);
+        voice.LastUserId.Should().Be(10);
+        voice.LastFileName.Should().Be("voice.webm");
+        voice.LastContentType.Should().Be("audio/webm");
+        voice.LastLocale.Should().Be("deCH");
+    }
+
+    [Fact]
     public async Task ResearchConsent_WhenCaringCommunityDisabled_ReturnsLaravelFeatureDisabledError()
     {
         var tenant = CreateTenantContext(42);
@@ -660,6 +715,10 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             "FEATURE_DISABLED");
         AssertSingleError(
             await Invoke(controller, "RequestHelp", Json("{}"), CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(
+            await Invoke(controller, "RequestHelpVoice", null, null, CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
         AssertSingleError(
@@ -901,9 +960,13 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             "NOT_FOUND");
     }
 
-    private static object CreateController(NexusDbContext db, TenantContext tenant, int userId)
+    private static object CreateController(
+        NexusDbContext db,
+        TenantContext tenant,
+        int userId,
+        ICaringHelpRequestVoiceProcessor? voiceProcessor = null)
     {
-        var relationships = new CaringSupportRelationshipService(db);
+        var relationships = new CaringSupportRelationshipService(db, voiceProcessor);
         var safeguarding = new CaringSafeguardingService(db);
         var dataExport = new CaringCommunityDataExportService(db);
         var ahvPensionExport = new CaringCommunityAhvPensionExportService(db);
@@ -993,6 +1056,15 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
     {
         using var document = JsonDocument.Parse(raw);
         return document.RootElement.Clone();
+    }
+
+    private static IFormFile FormFile(string fileName, string contentType, byte[] bytes)
+    {
+        return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "audio", fileName)
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = contentType
+        };
     }
 
     private static void AssertSingleError(IActionResult result, int statusCode, string code)
@@ -1192,6 +1264,39 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
                     "TestAuth"))
             }
         };
+    }
+
+    private sealed class StubVoiceProcessor : ICaringHelpRequestVoiceProcessor
+    {
+        private readonly MemberHelpRequestVoiceResult _result;
+
+        public StubVoiceProcessor(MemberHelpRequestVoiceResult result)
+        {
+            _result = result;
+        }
+
+        public int? LastTenantId { get; private set; }
+        public int? LastUserId { get; private set; }
+        public string? LastFileName { get; private set; }
+        public string? LastContentType { get; private set; }
+        public string? LastLocale { get; private set; }
+
+        public Task<MemberHelpRequestVoiceResult> ProcessAsync(
+            int tenantId,
+            int userId,
+            Stream audio,
+            string? fileName,
+            string contentType,
+            string locale,
+            CancellationToken ct)
+        {
+            LastTenantId = tenantId;
+            LastUserId = userId;
+            LastFileName = fileName;
+            LastContentType = contentType;
+            LastLocale = locale;
+            return Task.FromResult(_result);
+        }
     }
 
     private static Type Resolve(string typeName)

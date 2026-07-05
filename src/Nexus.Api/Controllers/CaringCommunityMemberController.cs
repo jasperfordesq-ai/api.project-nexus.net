@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
 using Nexus.Api.Extensions;
@@ -12,6 +13,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Nexus.Api.Controllers;
 
@@ -121,6 +123,69 @@ public sealed class CaringCommunityMemberController : ControllerBase
             {
                 success = true,
                 message = "Help request submitted."
+            }
+        });
+    }
+
+    [HttpPost("request-help/voice")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> RequestHelpVoice(
+        [FromForm] IFormFile? audio,
+        [FromForm] string? locale,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        if (audio is null || audio.Length <= 0)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed.", "audio"));
+        }
+
+        if (audio.Length > 10 * 1024 * 1024)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed.", "audio"));
+        }
+
+        var mime = audio.ContentType ?? string.Empty;
+        if (!mime.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(mime, "video/webm", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed.", "audio"));
+        }
+
+        await using var stream = audio.OpenReadStream();
+        var result = await _relationships.ProcessMemberHelpRequestVoiceAsync(
+            _tenant.GetTenantIdOrThrow(),
+            user.UserId!.Value,
+            stream,
+            audio.FileName,
+            mime,
+            SanitizeLocale(locale),
+            ct);
+
+        if (!result.Succeeded)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway,
+                LaravelError("TRANSCRIPTION_FAILED", "Server error."));
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                transcript = result.Transcript,
+                detected_language = result.DetectedLanguage,
+                suggested_category = result.SuggestedCategory,
+                suggested_when = result.SuggestedWhen,
+                suggested_contact_preference = result.SuggestedContactPreference,
+                raw_text = result.RawText
             }
         });
     }
@@ -569,6 +634,12 @@ public sealed class CaringCommunityMemberController : ControllerBase
         return value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : value.ToString();
+    }
+
+    private static string SanitizeLocale(string? locale)
+    {
+        var sanitized = Regex.Replace(locale ?? string.Empty, "[^a-zA-Z-]", string.Empty);
+        return string.IsNullOrWhiteSpace(sanitized) ? "en" : sanitized;
     }
 
     private static int ReadIntValue(JsonElement value)
