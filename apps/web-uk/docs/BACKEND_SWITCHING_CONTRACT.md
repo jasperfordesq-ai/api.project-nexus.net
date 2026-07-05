@@ -16,6 +16,15 @@ truth, and ASP.NET must become compatible with that behavior.
 | Laravel-compatible | The frontend talks to endpoints and page workflows matching the Laravel accessible frontend. | Source of truth only; no Express adapter is implemented here. |
 | ASP.NET-compatible | The frontend talks to ASP.NET endpoints that intentionally mimic Laravel accessible contracts. | Development-only; not certified. |
 
+## Current Page Candidates
+
+`/organisations` is a local Blade-style visual/form candidate based on the
+Laravel accessible organisations page. It is not a backend adapter and must not
+be treated as proof that Laravel or ASP.NET organisation workflows are ready in
+this app. The remaining work includes tenant-prefixed routing, auth redirects,
+volunteering feature gates, live organisation data, registration persistence,
+validation behavior, redirects, localization, and runtime smoke tests.
+
 ## Required Compatibility Areas
 
 Before switching backends, every certified route family needs proof for:

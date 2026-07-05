@@ -342,6 +342,20 @@ app.get('/about', (req, res) => {
 });
 
 app.use('/explore', exploreRoutes);
+
+app.get('/organisations', (req, res) => {
+  const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  res.render('organisations', {
+    title: 'Organisations',
+    activeNav: 'explore',
+    organisations: [],
+    organisationsQuery,
+    status
+  });
+});
+
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
