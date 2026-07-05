@@ -22,6 +22,13 @@ namespace Nexus.Api.Controllers;
 public class V15SocialCompatibilityController : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNameCaseInsensitive = true
+    };
+
+    private const string SupportReportsKey = "admin_explicit.support_reports";
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly PushNotificationService _pushService;
@@ -647,6 +654,72 @@ public class V15SocialCompatibilityController : ControllerBase
         return Ok(new { data = rows.GroupBy(n => n.Type).Select(g => new { group_key = g.Key, count = g.Count(), unread_count = g.Count(n => !n.IsRead), items = g }) });
     }
 
+    [HttpGet("/api/wallet/config")]
+    [HttpGet("/api/v2/wallet/config")]
+    public async Task<IActionResult> WalletConfig()
+    {
+        var value = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == TenantId() && c.Key == "wallet.max_transfer")
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        int? maxTransfer = int.TryParse(value, out var parsed) ? parsed : null;
+        return Ok(new { success = true, data = new { max_transfer = maxTransfer } });
+    }
+
+    [HttpGet("/api/notifications/settings")]
+    [HttpGet("/api/v2/notifications/settings")]
+    public async Task<IActionResult> LaravelNotificationSettings()
+    {
+        var userId = RequireUserId();
+        var prefix = NotificationSettingPrefix(userId);
+        var rows = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == TenantId() && c.Key.StartsWith(prefix))
+            .Select(c => new { c.Key, c.Value })
+            .ToListAsync();
+
+        var globalFrequency = "off";
+        var perGroup = new List<object>();
+        var perThread = new List<object>();
+
+        foreach (var row in rows)
+        {
+            var suffix = row.Key[prefix.Length..];
+            var parts = suffix.Split('.', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2 || !int.TryParse(parts[1], out var contextId))
+            {
+                continue;
+            }
+
+            var frequency = NormalizeNotificationFrequency(row.Value) ?? "off";
+            switch (parts[0])
+            {
+                case "global":
+                    globalFrequency = frequency;
+                    break;
+                case "group":
+                    perGroup.Add(new { group_id = contextId, frequency });
+                    break;
+                case "thread":
+                    perThread.Add(new { thread_id = contextId, frequency });
+                    break;
+            }
+        }
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                global_frequency = globalFrequency,
+                per_group = perGroup,
+                per_thread = perThread
+            }
+        });
+    }
+
     [HttpPost("/api/v2/notifications/group/read")]
     [HttpPost("/api/v2/notifications/group/{groupKey}/read")]
     public async Task<IActionResult> MarkNotificationGroupRead(string? groupKey, [FromBody] JsonElement body)
@@ -660,9 +733,15 @@ public class V15SocialCompatibilityController : ControllerBase
     }
 
     [HttpPost("/api/notifications/settings")]
+    [HttpPost("/api/v2/notifications/settings")]
     [HttpPut("/api/v2/users/me/notifications")]
     public async Task<IActionResult> UpdateNotificationSettings([FromBody] JsonElement body)
     {
+        if (TryGet(body, "context_type", out _) || TryGet(body, "frequency", out _) || TryGet(body, "push_enabled", out _))
+        {
+            return await UpdateLaravelNotificationSettings(body);
+        }
+
         var type = ReadString(body, "notification_type", "type") ?? "general";
         var pref = await _pushService.UpdatePreferenceAsync(
             RequireUserId(),
@@ -716,6 +795,80 @@ public class V15SocialCompatibilityController : ControllerBase
             ReadString(body, "body", "message") ?? string.Empty,
             body.ValueKind == JsonValueKind.Undefined ? null : JsonSerializer.Serialize(body, JsonOptions));
         return Ok(new { success = true, sent_count = sent });
+    }
+
+    [HttpPost("/api/support/reports")]
+    [HttpPost("/api/v2/support/reports")]
+    public async Task<IActionResult> CreateSupportReport([FromBody] JsonElement body)
+    {
+        var summary = ReadString(body, "summary")?.Trim();
+        var description = ReadString(body, "description")?.Trim();
+        var impact = ReadString(body, "impact")?.Trim().ToLowerInvariant();
+        var errors = new List<object>();
+
+        if (string.IsNullOrWhiteSpace(summary) || summary.Length < 3 || summary.Length > 180)
+        {
+            errors.Add(ValidationError("summary", "Summary must be between 3 and 180 characters."));
+        }
+
+        if (string.IsNullOrWhiteSpace(description) || description.Length < 10 || description.Length > 5000)
+        {
+            errors.Add(ValidationError("description", "Description must be between 10 and 5000 characters."));
+        }
+
+        if (impact is not ("blocked" or "major" or "minor" or "cosmetic"))
+        {
+            errors.Add(ValidationError("impact", "Impact must be blocked, major, minor, or cosmetic."));
+        }
+
+        if (errors.Count > 0)
+        {
+            return UnprocessableEntity(new { success = false, errors });
+        }
+
+        var now = DateTime.UtcNow;
+        var reports = await LoadAllSupportReports();
+        var report = new SupportReportCompatRecord
+        {
+            Id = reports.Count == 0 ? 1 : reports.Max(r => r.Id) + 1,
+            TenantId = TenantId(),
+            UserId = RequireUserId(),
+            Reference = $"NXR-{now:yyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}",
+            Source = "in_app",
+            Summary = summary!,
+            Description = description!,
+            Impact = impact!,
+            Status = "open",
+            Module = ReadString(body, "module"),
+            Route = ReadString(body, "route"),
+            PageUrl = ReadString(body, "page_url", "pageUrl"),
+            SentryEventId = ReadString(body, "sentry_event_id", "sentryEventId"),
+            SentryIssueUrl = ReadString(body, "sentry_issue_url", "sentryIssueUrl"),
+            Diagnostics = ReadBool(body, "include_diagnostics", "includeDiagnostics") == true ? NormalizeDiagnostics(body, now) : null,
+            UserAgent = Request.Headers.UserAgent.FirstOrDefault(),
+            CreatedAt = now.ToString("O"),
+            UpdatedAt = now.ToString("O")
+        };
+
+        reports.Add(report);
+        await SaveAllSupportReports(reports);
+
+        return Created($"/api/v2/support/reports/{report.Id}", new
+        {
+            success = true,
+            data = new
+            {
+                report = new
+                {
+                    id = report.Id,
+                    reference = report.Reference,
+                    status = report.Status,
+                    impact = report.Impact,
+                    summary = report.Summary,
+                    created_at = report.CreatedAt
+                }
+            }
+        });
     }
 
     [HttpGet("/api/push/vapid-key")]
@@ -1095,6 +1248,192 @@ public class V15SocialCompatibilityController : ControllerBase
 
     private static object PageMeta(int page, int limit, int total) => new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) };
 
+    private async Task<IActionResult> UpdateLaravelNotificationSettings(JsonElement body)
+    {
+        if (TryGet(body, "push_enabled", out var pushValue))
+        {
+            var enabled = ReadBool(body, "push_enabled") ?? (pushValue.ValueKind == JsonValueKind.Number && pushValue.GetInt32() != 0);
+            return Ok(new { success = true, data = new { push_enabled = enabled } });
+        }
+
+        var contextType = ReadString(body, "context_type", "contextType")?.Trim().ToLowerInvariant();
+        var frequency = NormalizeNotificationFrequency(ReadString(body, "frequency"));
+        var contextId = contextType == "global" ? 0 : ReadInt(body, "context_id", "contextId");
+        var errors = new List<object>();
+
+        if (contextType is not ("global" or "group" or "thread"))
+        {
+            errors.Add(ValidationError("context_type", "Context type must be global, group, or thread."));
+        }
+
+        if (frequency == null)
+        {
+            errors.Add(ValidationError("frequency", "Frequency must be instant, daily, weekly, monthly, or off."));
+        }
+
+        if (contextType is "group" or "thread" && (!contextId.HasValue || contextId.Value <= 0))
+        {
+            errors.Add(ValidationError("context_id", "Context id is required for group and thread notification settings."));
+        }
+
+        if (errors.Count > 0)
+        {
+            return UnprocessableEntity(new { success = false, errors });
+        }
+
+        var key = $"{NotificationSettingPrefix(RequireUserId())}{contextType}.{contextId ?? 0}";
+        await UpsertTenantConfig(key, frequency!);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                context_type = contextType,
+                context_id = contextId ?? 0,
+                frequency
+            }
+        });
+    }
+
+    private async Task<List<SupportReportCompatRecord>> LoadAllSupportReports()
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.Key == SupportReportsKey)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new List<SupportReportCompatRecord>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<SupportReportCompatRecord>>(raw, StoreJsonOptions) ?? new List<SupportReportCompatRecord>();
+        }
+        catch (JsonException)
+        {
+            return new List<SupportReportCompatRecord>();
+        }
+    }
+
+    private async Task SaveAllSupportReports(List<SupportReportCompatRecord> reports)
+    {
+        var json = JsonSerializer.Serialize(reports.OrderBy(r => r.Id).ToList(), StoreJsonOptions);
+        await UpsertTenantConfig(SupportReportsKey, json);
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task UpsertTenantConfig(string key, string value)
+    {
+        var tenantId = TenantId();
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (existing != null)
+        {
+            existing.Value = value;
+            existing.UpdatedAt = DateTime.UtcNow;
+            return;
+        }
+
+        _db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenantId,
+            Key = key,
+            Value = value,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+    }
+
+    private static string? NormalizeNotificationFrequency(string? frequency)
+    {
+        return frequency?.Trim().ToLowerInvariant() switch
+        {
+            "instant" => "instant",
+            "daily" => "daily",
+            "weekly" => "monthly",
+            "monthly" => "monthly",
+            "off" => "off",
+            _ => null
+        };
+    }
+
+    private static string NotificationSettingPrefix(int userId) => $"notification_settings.{userId}.";
+
+    private static JsonElement? NormalizeDiagnostics(JsonElement body, DateTime capturedAt)
+    {
+        if (!TryGet(body, "diagnostics", out var diagnostics) || diagnostics.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return JsonSerializer.SerializeToElement(new Dictionary<string, object?>
+        {
+            ["captured_at"] = capturedAt.ToString("O"),
+            ["payload"] = NormalizeDiagnosticValue(diagnostics)
+        }, StoreJsonOptions);
+    }
+
+    private static object? NormalizeDiagnosticValue(JsonElement value, string? propertyName = null, int depth = 0)
+    {
+        if (IsSensitiveDiagnosticKey(propertyName))
+        {
+            return "[filtered]";
+        }
+
+        if (depth >= 6)
+        {
+            return "[truncated]";
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Object => value.EnumerateObject().ToDictionary(
+                property => IsSensitiveDiagnosticKey(property.Name) ? "[filtered]" : property.Name,
+                property => NormalizeDiagnosticValue(property.Value, property.Name, depth + 1)),
+            JsonValueKind.Array => value.EnumerateArray().Select(item => NormalizeDiagnosticValue(item, null, depth + 1)).ToList(),
+            JsonValueKind.String => RedactDiagnosticString(value.GetString()),
+            JsonValueKind.Number => value.TryGetInt64(out var integer) ? integer : value.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => value.ToString()
+        };
+    }
+
+    private static string? RedactDiagnosticString(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        var normalized = value.ToLowerInvariant();
+        return normalized.Contains("bearer ") || normalized.Contains("secret") || normalized.Contains("token=")
+            ? "[filtered]"
+            : value;
+    }
+
+    private static bool IsSensitiveDiagnosticKey(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return false;
+        }
+
+        var normalized = key.ToLowerInvariant();
+        return normalized.Contains("authorization")
+            || normalized.Contains("password")
+            || normalized.Contains("secret")
+            || normalized.Contains("token")
+            || normalized.Contains("cookie");
+    }
+
+    private static object ValidationError(string field, string message) => new { field, message };
+
     private static string? ReadString(JsonElement body, params string[] names)
     {
         foreach (var name in names)
@@ -1163,5 +1502,32 @@ public class V15SocialCompatibilityController : ControllerBase
 
         value = default;
         return false;
+    }
+
+    private sealed class SupportReportCompatRecord
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public int? UserId { get; set; }
+        public int? AssignedUserId { get; set; }
+        public string Reference { get; set; } = string.Empty;
+        public string Source { get; set; } = "in_app";
+        public string Summary { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Impact { get; set; } = "minor";
+        public string Status { get; set; } = "open";
+        public string? Module { get; set; }
+        public string? Route { get; set; }
+        public string? PageUrl { get; set; }
+        public string? SentryEventId { get; set; }
+        public string? SentryIssueUrl { get; set; }
+        public JsonElement? Diagnostics { get; set; }
+        public string? UserAgent { get; set; }
+        public string? TriageNotes { get; set; }
+        public string? TriagedAt { get; set; }
+        public string? ResolvedAt { get; set; }
+        public string? ClosedAt { get; set; }
+        public string? CreatedAt { get; set; }
+        public string? UpdatedAt { get; set; }
     }
 }
