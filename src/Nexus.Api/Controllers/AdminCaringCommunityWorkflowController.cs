@@ -81,6 +81,64 @@ public sealed class AdminCaringCommunityWorkflowController : ControllerBase
         });
     }
 
+    [HttpPut("workflow/reviews/{id}/decision")]
+    public async Task<IActionResult> DecideReview(int id, [FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _workflow.IsFeatureEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var action = RequestString(request, "action");
+        if (action is not ("approve" or "decline"))
+        {
+            return StatusCode(StatusCodes.Status400BadRequest,
+                LaravelError("VALIDATION_ERROR", "Decision is required.", "action"));
+        }
+
+        var reviewerId = CurrentUserId();
+        var review = await _workflow.DecideReviewAsync(tenantId, id, reviewerId, action, ct);
+        if (review is null)
+        {
+            return StatusCode(StatusCodes.Status404NotFound,
+                LaravelError("NOT_FOUND", "Review decision failed."));
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                review,
+                message = action == "approve" ? "Review approved." : "Review declined."
+            }
+        });
+    }
+
+    private int CurrentUserId()
+    {
+        var raw = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return int.TryParse(raw, out var id) ? id : 0;
+    }
+
+    private static string RequestString(IReadOnlyDictionary<string, object?>? request, string key)
+    {
+        if (request is null || !request.TryGetValue(key, out var value) || value is null)
+        {
+            return string.Empty;
+        }
+
+        if (value is System.Text.Json.JsonElement json)
+        {
+            return json.ValueKind == System.Text.Json.JsonValueKind.String
+                ? json.GetString()?.Trim() ?? string.Empty
+                : json.ToString().Trim();
+        }
+
+        return Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
+    }
+
     private static object LaravelError(string code, string message, string? field = null)
     {
         var error = new Dictionary<string, object?>

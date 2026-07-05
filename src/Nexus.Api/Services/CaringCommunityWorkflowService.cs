@@ -136,6 +136,41 @@ public sealed class CaringCommunityWorkflowService
         return await ReviewByIdAsync(tenantId, logId, policy, ct);
     }
 
+    public async Task<object?> DecideReviewAsync(int tenantId, int logId, int reviewerId, string action, CancellationToken ct)
+    {
+        if (action is not ("approve" or "decline"))
+        {
+            return null;
+        }
+
+        var log = await _db.VolunteerLogs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item =>
+                item.TenantId == tenantId
+                && item.Id == logId
+                && item.Status == PendingStatus,
+                ct);
+
+        if (log is null || log.UserId == reviewerId)
+        {
+            return null;
+        }
+
+        var status = action == "approve" ? ApprovedStatus : DeclinedStatus;
+        log.Status = status;
+        log.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        return new
+        {
+            id = logId,
+            status,
+            payment_result = (object?)null,
+            regional_points_result = (object?)null,
+            summary = await SummaryAsync(tenantId, ct)
+        };
+    }
+
     private async Task<WorkflowPolicy> LoadPolicyAsync(int tenantId, CancellationToken ct)
     {
         var settings = await _db.TenantConfigs

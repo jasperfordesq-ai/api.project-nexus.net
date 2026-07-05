@@ -36,6 +36,8 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
             .Should().Be("workflow/policy");
         controller.GetMethod("AssignReview")?.GetCustomAttribute<HttpPutAttribute>()?.Template
             .Should().Be("workflow/reviews/{id}/assign");
+        controller.GetMethod("DecideReview")?.GetCustomAttribute<HttpPutAttribute>()?.Template
+            .Should().Be("workflow/reviews/{id}/decision");
     }
 
     [Fact]
@@ -116,6 +118,126 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
         policy.GetProperty("escalation_sla_days").GetInt32().Should().Be(5);
         policy.GetProperty("municipal_report_default_period").GetString().Should().Be("previous_quarter");
         policy.GetProperty("default_hour_value_chf").GetInt32().Should().Be(50);
+    }
+
+    [Fact]
+    public async Task DecideReview_ApprovesPendingReviewAndReturnsLaravelSummary()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedPolicy(db, 42);
+        db.Users.AddRange(
+            User(1, 42, "Ava", "Admin", Role.Names.Admin),
+            User(10, 42, "Mia", "Member", Role.Names.Member),
+            User(99, 7, "Other", "Admin", Role.Names.Admin));
+        db.VolunteerLogs.AddRange(
+            Log(100, 42, 10, "pending", 2.4m, DateTime.UtcNow.AddDays(-4)),
+            Log(101, 42, 10, "pending", 1.0m, DateTime.UtcNow.AddDays(-1)),
+            Log(200, 7, 99, "pending", 9m, DateTime.UtcNow.AddDays(-4)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1);
+
+        var result = await Invoke(controller, "DecideReview", 100, new Dictionary<string, object?>
+        {
+            ["action"] = "approve"
+        }, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("message").GetString().Should().Be("Review approved.");
+        var review = data.GetProperty("review");
+        review.GetProperty("id").GetInt32().Should().Be(100);
+        review.GetProperty("status").GetString().Should().Be("approved");
+        review.GetProperty("payment_result").ValueKind.Should().Be(JsonValueKind.Null);
+        review.GetProperty("regional_points_result").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var summary = review.GetProperty("summary");
+        summary.GetProperty("stats").GetProperty("pending_count").GetInt32().Should().Be(1);
+        summary.GetProperty("stats").GetProperty("approved_30d_hours").GetDecimal().Should().Be(2.4m);
+        summary.GetProperty("pending_reviews").EnumerateArray().Select(item => item.GetProperty("id").GetInt32())
+            .Should().Equal(101);
+
+        var stored = await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 100);
+        stored.Status.Should().Be("approved");
+        stored.UpdatedAt.Should().NotBeNull();
+
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 200)).Status.Should().Be("pending");
+    }
+
+    [Fact]
+    public async Task DecideReview_DeclinesPendingReviewAndRejectsInvalidOrUnavailableDecisions()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedPolicy(db, 42);
+        db.Users.AddRange(
+            User(1, 42, "Ava", "Admin", Role.Names.Admin),
+            User(10, 42, "Mia", "Member", Role.Names.Member),
+            User(99, 7, "Other", "Admin", Role.Names.Admin));
+        db.VolunteerLogs.AddRange(
+            Log(100, 42, 10, "pending", 2m, DateTime.UtcNow.AddDays(-1)),
+            Log(101, 42, 10, "approved", 1m, DateTime.UtcNow.AddDays(-1)),
+            Log(102, 42, 1, "pending", 1m, DateTime.UtcNow.AddDays(-1)),
+            Log(200, 7, 99, "pending", 9m, DateTime.UtcNow.AddDays(-1)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1);
+
+        var declined = await Invoke(controller, "DecideReview", 100, new Dictionary<string, object?>
+        {
+            ["action"] = "decline"
+        }, CancellationToken.None);
+        var invalidAction = await Invoke(controller, "DecideReview", 101, new Dictionary<string, object?>
+        {
+            ["action"] = "maybe"
+        }, CancellationToken.None);
+        var nonPending = await Invoke(controller, "DecideReview", 101, new Dictionary<string, object?>
+        {
+            ["action"] = "approve"
+        }, CancellationToken.None);
+        var selfReview = await Invoke(controller, "DecideReview", 102, new Dictionary<string, object?>
+        {
+            ["action"] = "approve"
+        }, CancellationToken.None);
+        var crossTenant = await Invoke(controller, "DecideReview", 200, new Dictionary<string, object?>
+        {
+            ["action"] = "approve"
+        }, CancellationToken.None);
+
+        var ok = declined.Should().BeOfType<OkObjectResult>().Subject;
+        using (var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value)))
+        {
+            var data = document.RootElement.GetProperty("data");
+            data.GetProperty("message").GetString().Should().Be("Review declined.");
+            data.GetProperty("review").GetProperty("status").GetString().Should().Be("declined");
+            data.GetProperty("review").GetProperty("summary").GetProperty("stats").GetProperty("declined_30d_count").GetInt32().Should().Be(1);
+        }
+
+        var validation = invalidAction.Should().BeOfType<ObjectResult>().Subject;
+        validation.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        using (var document = JsonDocument.Parse(JsonSerializer.Serialize(validation.Value)))
+        {
+            var error = document.RootElement.GetProperty("errors")[0];
+            error.GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+            error.GetProperty("field").GetString().Should().Be("action");
+        }
+
+        foreach (var result in new[] { nonPending, selfReview, crossTenant })
+        {
+            var notFound = result.Should().BeOfType<ObjectResult>().Subject;
+            notFound.StatusCode.Should().Be(StatusCodes.Status404NotFound);
+            using var document = JsonDocument.Parse(JsonSerializer.Serialize(notFound.Value));
+            var error = document.RootElement.GetProperty("errors")[0];
+            error.GetProperty("code").GetString().Should().Be("NOT_FOUND");
+            error.GetProperty("message").GetString().Should().Be("Review decision failed.");
+        }
+
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 100)).Status.Should().Be("declined");
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 101)).Status.Should().Be("approved");
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 102)).Status.Should().Be("pending");
+        (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 200)).Status.Should().Be("pending");
     }
 
     [Fact]
