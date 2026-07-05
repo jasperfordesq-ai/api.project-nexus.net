@@ -645,6 +645,16 @@ app.get('/group-exchanges', (req, res) => {
   });
 });
 
+app.get('/polls', (req, res) => {
+  res.render('polls', {
+    title: 'Polls',
+    activeNav: 'explore',
+    pollsMine: req.query.mine === '1',
+    pollsCategory: typeof req.query.category === 'string' ? req.query.category : '',
+    status: typeof req.query.status === 'string' ? req.query.status : ''
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

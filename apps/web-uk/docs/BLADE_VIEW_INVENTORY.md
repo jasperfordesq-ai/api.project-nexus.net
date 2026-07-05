@@ -9,10 +9,10 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | Metric | Count |
 | --- | ---: |
 | Laravel Blade accessible views | 289 |
-| ASP.NET Nunjucks views | 111 |
-| candidate-exact-view | 26 |
+| ASP.NET Nunjucks views | 112 |
+| candidate-exact-view | 27 |
 | candidate-name-match | 6 |
-| missing-nunjucks-view | 257 |
+| missing-nunjucks-view | 256 |
 
 ## Family Summary
 
@@ -79,7 +79,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | partials | 25 | 1 | 24 |
 | podcast | 2 |  | 2 |
 | podcasts | 1 |  | 1 |
-| polls | 1 |  | 1 |
+| polls | 1 | 1 |  |
 | premium | 2 |  | 2 |
 | profile | 3 | 1 | 2 |
 | register | 1 | 1 |  |
@@ -334,7 +334,7 @@ This generated inventory maps Laravel Blade accessible views to the current Nunj
 | podcast-detail.blade.php | podcast | missing-nunjucks-view |
 | podcast-episode.blade.php | podcast | missing-nunjucks-view |
 | podcasts.blade.php | podcasts | missing-nunjucks-view |
-| polls.blade.php | polls | missing-nunjucks-view |
+| polls.blade.php | polls | candidate-exact-view |
 | premium-return.blade.php | premium | missing-nunjucks-view |
 | premium.blade.php | premium | missing-nunjucks-view |
 | profile-delete.blade.php | profile | missing-nunjucks-view |

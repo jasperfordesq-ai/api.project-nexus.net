@@ -66,7 +66,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | --- | --- | --- | --- |
 | Exchanges | `/exchanges` | `/exchanges` | Local Blade-style tab/empty-state candidate; auth enforcement, live exchange data, actions, ratings, broker review, and backend runtime are not certified. |
 | AI assistant | `/chat` | `/chat` | Preparation skeleton. |
-| Polls | `/polls` | `/polls` | Preparation skeleton. |
+| Polls | `/polls` | `/polls` | Local Blade-style filter/create-form/empty-state candidate; auth enforcement, live polls, voting, results, deletion, and backend runtime are not certified. |
 | Search | `/search` | `/search` | Implemented route; backend contract not certified. |
 | Groups | `/groups` | `/groups` | Implemented route; backend contract not certified. |
 | Goals | `/goals` | `/goals` | Preparation skeleton. |
@@ -97,6 +97,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Timebanking guide | `/guide` | Local Blade-style guide candidate with equality section, ordered three-step list, and tenant-prefixed register/listings/wallet CTAs. Laravel feature/module gates, auth/session behavior, localization persistence, and runtime route certification are not complete. |
 | Feature summary | `/features` | Local Blade-style feature summary candidate with spaced bullet list and tenant-prefixed guide CTA. Laravel feature/module gates, localization persistence, and runtime route certification are not complete. |
 | Group exchanges | `/group-exchanges`, `/group-exchanges/new`, `/group-exchanges/{id}` | Local Blade-style index candidate for `/group-exchanges` only. Auth enforcement, `group_exchanges` feature gate, live group exchange data, create/detail pages, participant add/remove workflows, confirmation/completion/cancellation actions, time-credit movement, localization, and runtime certification are not complete. |
+| Polls | `/polls`, `/polls/{pollId}/vote` | Local Blade-style index/create-form/empty-state candidate for `/polls` only. Auth enforcement, `polls` feature gate, live categories, poll creation persistence, voting, hidden/open result behaviour, ranked poll links, deletion, localization, and runtime certification are not complete. |
 | Help centre | `/help` | Local Blade-style search/empty-state candidate with tenant-prefixed contact CTA. Live FAQ group loading, search filtering, localization persistence, and runtime route certification are not complete. |
 | Knowledge base | `/kb`, `/kb/{id}` | Local Blade-style index search/empty-state candidate for `/kb` only. Live article data, pagination, `/kb/{id}` article detail, localization persistence, and runtime route certification are not complete. |
 | Blog | `/blog`, `/blog/feed.xml`, `/blog/{slug}`, comments/likes | Local Blade-style index search/empty-state candidate for `/blog` only. Blog feature gate, live posts/categories, cursor pagination, RSS feed, post detail, comments/likes, localization, and runtime certification are not complete. |

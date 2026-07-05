@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 27 |
+| ASP.NET static skeleton paths | 26 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 41 |
-| candidate-workflow | 7 |
+| candidate-route | 42 |
+| candidate-workflow | 8 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 32 |
+| skeleton | 30 |
 
 ## Family Summary
 
@@ -71,7 +71,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | organisations | 9 | 7 | 2 |  | 2 | 7 |
 | password | 2 | 1 | 1 |  | 2 |  |
 | podcasts | 14 | 6 | 8 |  | 1 | 13 |
-| polls | 13 | 6 | 7 |  | 2 | 11 |
+| polls | 13 | 6 | 7 | 2 |  | 11 |
 | premium | 6 | 3 | 3 |  | 1 | 5 |
 | profile | 21 | 5 | 16 | 21 |  |  |
 | register | 2 | 1 | 1 | 2 |  |  |
@@ -205,8 +205,8 @@ This generated inventory is preparation evidence only. It does not certify route
 | POST | /group-exchanges/{id}/complete | /{tenantSlug}/alpha/group-exchanges/{id}/complete | /group-exchanges/{id}/complete | group-exchanges.complete | completeGroupExchange | group-exchanges | missing | routes/govuk-alpha.php:166 |
 | POST | /group-exchanges/{id}/cancel | /{tenantSlug}/alpha/group-exchanges/{id}/cancel | /group-exchanges/{id}/cancel | group-exchanges.cancel | cancelGroupExchange | group-exchanges | missing | routes/govuk-alpha.php:167 |
 | GET | /matches | /{tenantSlug}/alpha/matches | /matches | matches.index | matches | matches | skeleton | routes/govuk-alpha.php:168 |
-| GET | /polls | /{tenantSlug}/alpha/polls | /polls | polls.index | polls | polls | skeleton | routes/govuk-alpha.php:169 |
-| POST | /polls | /{tenantSlug}/alpha/polls | /polls | polls.store | storePoll | polls | skeleton | routes/govuk-alpha.php:170 |
+| GET | /polls | /{tenantSlug}/alpha/polls | /polls | polls.index | polls | polls | candidate-route | routes/govuk-alpha.php:169 |
+| POST | /polls | /{tenantSlug}/alpha/polls | /polls | polls.store | storePoll | polls | candidate-workflow | routes/govuk-alpha.php:170 |
 | POST | /polls/{pollId}/vote | /{tenantSlug}/alpha/polls/{pollId}/vote | /polls/{pollId}/vote | polls.vote | storePollVote | polls | missing | routes/govuk-alpha.php:171 |
 | GET | /wallet | /{tenantSlug}/alpha/wallet | /wallet | wallet.index | wallet | wallet | candidate-route | routes/govuk-alpha.php:172 |
 | GET | /wallet/export.csv | /{tenantSlug}/alpha/wallet/export.csv | /wallet/export.csv | wallet.export | exportTransactions | wallet | candidate-family | routes/govuk-alpha.php:176 |

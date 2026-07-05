@@ -644,6 +644,30 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Blade-style polls filter, create form, and empty state under the tenant alpha route prefix', async () => {
+    const response = await request(app).get('/acme/alpha/polls?mine=1&category=transport&status=poll-created');
+
+    expect(staticPageRoutes.pages['/polls']).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Polls');
+    expect(response.text).toContain('Have your say on questions put to the community.');
+    expect(response.text).toContain('Your poll has been created.');
+    expect(response.text).toContain('You can vote once on each open poll. To keep things fair, the results stay hidden until a poll closes.');
+    expect(response.text).toContain('form method="get" action="/acme/alpha/polls"');
+    expect(response.text).toContain('id="mine" name="mine" type="checkbox" value="1" checked');
+    expect(response.text).toContain('Create a poll');
+    expect(response.text).toContain('form method="post" action="/acme/alpha/polls"');
+    expect(response.text).toContain('id="poll-question" name="question" type="text"');
+    expect(response.text).toContain('Poll options');
+    expect(response.text).toContain('id="poll-option-1" name="options[]" type="text"');
+    expect(response.text).toContain('id="poll-option-2" name="options[]" type="text"');
+    expect(response.text).toContain('id="poll-type-single" name="poll_type" type="radio" value="standard" checked');
+    expect(response.text).toContain('id="poll-type-multiple" name="poll_type" type="radio" value="multiple"');
+    expect(response.text).toContain('id="poll-anonymous" name="is_anonymous" type="checkbox" value="1"');
+    expect(response.text).toContain('There are no polls at the moment.');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Blade-style legal hub under the tenant alpha route prefix', async () => {
     const response = await request(app).get('/acme/alpha/legal');
 
@@ -821,7 +845,7 @@ describe('shared accessible frontend shell', () => {
     expect(contract).toContain('buildLaravelAccessiblePath()');
     expect(contract).toContain('Do not treat Blade routes as');
     expect(routeInventory).toContain('| Laravel accessible route declarations | 608 |');
-    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 27 |');
+    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 26 |');
     expect(routeInventory).toContain('Laravel shared-domain path');
     expect(routeInventory).toContain('Laravel custom-domain path');
     expect(routeInventory).toContain('| GET | /faq | /{tenantSlug}/alpha/faq | /faq |');
@@ -835,6 +859,7 @@ describe('shared accessible frontend shell', () => {
     expect(routeInventory).toContain('| GET | /skills | /{tenantSlug}/alpha/skills | /skills | skills.index | skills | skills | candidate-route |');
     expect(routeInventory).toContain('| GET | /exchanges | /{tenantSlug}/alpha/exchanges | /exchanges | exchanges.index | exchanges | exchanges | candidate-route |');
     expect(routeInventory).toContain('| GET | /group-exchanges | /{tenantSlug}/alpha/group-exchanges | /group-exchanges | group-exchanges.index | groupExchanges | group-exchanges | candidate-route |');
+    expect(routeInventory).toContain('| GET | /polls | /{tenantSlug}/alpha/polls | /polls | polls.index | polls | polls | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal | /{tenantSlug}/alpha/legal | /legal | legal.hub | legalHub | legal | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal/community-guidelines | /{tenantSlug}/alpha/legal/community-guidelines | /legal/community-guidelines | legal.community-guidelines | legalDocument | legal | candidate-route |');
     expect(routeInventory).toContain('| POST | /report-a-problem | /{tenantSlug}/alpha/report-a-problem | /report-a-problem | report-problem.store | storeReportProblem | report-a-problem | candidate-workflow |');
@@ -848,6 +873,7 @@ describe('shared accessible frontend shell', () => {
     expect(viewInventory).toContain('| skills.blade.php | skills | candidate-exact-view |');
     expect(viewInventory).toContain('| exchanges.blade.php | exchanges | candidate-exact-view |');
     expect(viewInventory).toContain('| group-exchanges.blade.php | group | candidate-exact-view |');
+    expect(viewInventory).toContain('| polls.blade.php | polls | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-hub.blade.php | legal | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-document.blade.php | legal | candidate-exact-view |');
     expect(backendMatrix).toContain('| Family | GET routes | POST routes | Mutating routes | Tenant | Auth | CSRF | Feature/module gates |');

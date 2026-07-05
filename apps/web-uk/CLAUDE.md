@@ -210,6 +210,7 @@ Follow the Laravel Blade accessible frontend for:
 - `/skills` as the Blade-style Skills directory search form, search result empty state, and category empty state;
 - `/exchanges` as the Blade-style Exchanges tab filter, disabled-workflow notice, result count, and empty state;
 - `/group-exchanges` as the Blade-style Group exchanges create link, status filter, cancelled success state, and empty state;
+- `/polls` as the Blade-style Polls filter, create form, status messages, and empty state;
 - `/faq` as the Blade-style GOV.UK accordion for common timebanking questions;
 - `/accessibility` as the Blade-style WCAG statement with summary list and feedback link;
 - `/trust-and-safety` as the Blade-style GOV.UK warning text and safety guidance page;

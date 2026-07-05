@@ -1,0 +1,132 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Polls</h1>
+  <p class="govuk-body-l">Have your say on questions put to the community.</p>
+
+  {% if status == "voted" %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="polls-status">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="polls-status">Success</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">Thank you - your vote has been recorded.</p>
+      </div>
+    </div>
+  {% elif status == "vote-failed" %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p class="govuk-body">We could not record your vote. You may have already voted, or the poll has closed.</p>
+        </div>
+      </div>
+    </div>
+  {% elif status == "poll-created" %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="poll-create-status">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="poll-create-status">Success</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">Your poll has been created.</p>
+      </div>
+    </div>
+  {% elif status == "poll-create-failed" %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p class="govuk-body">Could not create the poll. Check your entries and try again.</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="govuk-inset-text">You can vote once on each open poll. To keep things fair, the results stay hidden until a poll closes.</div>
+
+  <form method="get" action="{{ alphaRoutePrefix }}/polls" class="govuk-!-margin-bottom-6">
+    {% if pollsCategory %}
+      <input type="hidden" name="category" value="{{ pollsCategory }}">
+    {% endif %}
+    <div class="govuk-form-group">
+      <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+        <div class="govuk-checkboxes__item">
+          <input class="govuk-checkboxes__input" id="mine" name="mine" type="checkbox" value="1"{% if pollsMine %} checked{% endif %}>
+          <label class="govuk-label govuk-checkboxes__label" for="mine">Show only polls I created</label>
+        </div>
+      </div>
+    </div>
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
+  </form>
+
+  <details class="govuk-details govuk-!-margin-bottom-6" data-module="govuk-details">
+    <summary class="govuk-details__summary">
+      <span class="govuk-details__summary-text">Create a poll</span>
+    </summary>
+    <div class="govuk-details__text">
+      <form method="post" action="{{ alphaRoutePrefix }}/polls" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--s" for="poll-question">Poll question</label>
+          <div id="poll-question-hint" class="govuk-hint">Ask a clear, specific question</div>
+          <input class="govuk-input" id="poll-question" name="question" type="text" aria-describedby="poll-question-hint" required maxlength="500">
+        </div>
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--s" for="poll-description">Description (optional)</label>
+          <div id="poll-desc-hint" class="govuk-hint">Provide any additional context</div>
+          <textarea class="govuk-textarea" id="poll-description" name="description" rows="3" aria-describedby="poll-desc-hint" maxlength="2000"></textarea>
+        </div>
+        <fieldset class="govuk-fieldset govuk-!-margin-bottom-4">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
+            Poll options
+            <span class="govuk-hint">Add at least 2 options. Leave extra fields blank.</span>
+          </legend>
+          {% for number in [1, 2, 3, 4] %}
+            <div class="govuk-form-group govuk-!-margin-bottom-2">
+              <label class="govuk-label" for="poll-option-{{ number }}">Option {{ number }}</label>
+              <input class="govuk-input govuk-input--width-30" id="poll-option-{{ number }}" name="options[]" type="text" maxlength="500"{% if number <= 2 %} required{% endif %}>
+            </div>
+          {% endfor %}
+        </fieldset>
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--s" for="poll-expires">Closing date (optional)</label>
+          <input class="govuk-input govuk-input--width-10" id="poll-expires" name="expires_at" type="date">
+        </div>
+        <div class="govuk-form-group">
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Poll type</legend>
+            <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="poll-type-single" name="poll_type" type="radio" value="standard" checked>
+                <label class="govuk-label govuk-radios__label" for="poll-type-single">Single choice</label>
+              </div>
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="poll-type-multiple" name="poll_type" type="radio" value="multiple">
+                <label class="govuk-label govuk-radios__label" for="poll-type-multiple">Multiple choice</label>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+        <div class="govuk-form-group">
+          <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="poll-anonymous" name="is_anonymous" type="checkbox" value="1">
+              <label class="govuk-label govuk-checkboxes__label" for="poll-anonymous">Make votes anonymous</label>
+            </div>
+          </div>
+        </div>
+        <button class="govuk-button" data-module="govuk-button">Create poll</button>
+      </form>
+    </div>
+  </details>
+
+  <div class="govuk-inset-text">
+    <p class="govuk-body">There are no polls at the moment.</p>
+  </div>
+{% endblock %}
