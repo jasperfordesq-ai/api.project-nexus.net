@@ -53,6 +53,8 @@ public class TenantResolutionMiddleware
         "/api/tenant/bootstrap",               // Public tenant discovery endpoint; resolves tenant itself
         "/api/platform/stats",                 // Public landing page stats
         "/api/metrics",                        // Public landing page stats alias
+        "/api/sales/orders",                   // Public sales enquiry form; no tenant-scoped data
+        "/api/v2/sales/orders",                // Laravel-compatible sales enquiry form
         "/api/menus",                          // Public default menu contract
         "/api/cookie-consent",                 // Public cookie consent compatibility endpoint
         "/api/files",                          // File download handles public avatar vs protected documents
