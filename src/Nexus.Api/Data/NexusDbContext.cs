@@ -76,6 +76,8 @@ public class NexusDbContext : DbContext
     public DbSet<CaringProjectSubscription> CaringProjectSubscriptions => Set<CaringProjectSubscription>();
     public DbSet<CaringSmartNudge> CaringSmartNudges => Set<CaringSmartNudge>();
     public DbSet<CaringPaperOnboardingIntake> CaringPaperOnboardingIntakes => Set<CaringPaperOnboardingIntake>();
+    public DbSet<MunicipalReportTemplate> MunicipalReportTemplates => Set<MunicipalReportTemplate>();
+    public DbSet<MunicipalVerification> MunicipalVerifications => Set<MunicipalVerification>();
     public DbSet<CaringInviteCode> CaringInviteCodes => Set<CaringInviteCode>();
     public DbSet<CaringKpiBaseline> CaringKpiBaselines => Set<CaringKpiBaseline>();
     public DbSet<Exchange> Exchanges => Set<Exchange>();

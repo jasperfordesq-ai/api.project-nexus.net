@@ -807,6 +807,70 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<MunicipalReportTemplate>(entity =>
+        {
+            entity.ToTable("municipal_report_templates");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(160).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description").HasColumnType("text");
+            entity.Property(e => e.Audience).HasColumnName("audience").HasMaxLength(40).HasDefaultValue("municipality").IsRequired();
+            entity.Property(e => e.DatePreset).HasColumnName("date_preset").HasMaxLength(40).HasDefaultValue("last_90_days").IsRequired();
+            entity.Property(e => e.IncludeSocialValue).HasColumnName("include_social_value").HasDefaultValue(true);
+            entity.Property(e => e.HourValueChf).HasColumnName("hour_value_chf");
+            entity.Property(e => e.Sections).HasColumnName("sections").HasColumnType("jsonb");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasIndex(e => new { e.TenantId, e.Name })
+                .IsUnique()
+                .HasDatabaseName("municipal_report_templates_tenant_name_unique");
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<MunicipalVerification>(entity =>
+        {
+            entity.ToTable("municipal_verifications");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.Domain).HasColumnName("domain").HasMaxLength(253).IsRequired();
+            entity.Property(e => e.Method).HasColumnName("method").HasMaxLength(32).HasDefaultValue("dns_txt").IsRequired();
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(32).HasDefaultValue("pending").IsRequired();
+            entity.Property(e => e.DnsRecordName).HasColumnName("dns_record_name").HasMaxLength(253);
+            entity.Property(e => e.DnsRecordValue).HasColumnName("dns_record_value").HasMaxLength(255);
+            entity.Property(e => e.RequestedBy).HasColumnName("requested_by");
+            entity.Property(e => e.VerifiedBy).HasColumnName("verified_by");
+            entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+            entity.Property(e => e.AttestationNote).HasColumnName("attestation_note").HasMaxLength(1000);
+            entity.Property(e => e.Metadata).HasColumnName("metadata").HasColumnType("jsonb");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasIndex(e => new { e.TenantId, e.Domain })
+                .IsUnique()
+                .HasDatabaseName("municipal_verifications_tenant_domain_unique");
+            entity.HasIndex(e => new { e.TenantId, e.Status })
+                .HasDatabaseName("municipal_verifications_tenant_status_idx");
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         modelBuilder.Entity<MunicipalitySurvey>(entity =>
         {
             entity.ToTable("municipality_surveys");

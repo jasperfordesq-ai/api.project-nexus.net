@@ -507,6 +507,54 @@ public class CaringMunicipalityFeedback : ITenantEntity
 }
 
 /// <summary>
+/// Tenant-scoped reusable municipal/KISS report template.
+/// Mirrors Laravel's municipal_report_templates table.
+/// </summary>
+public class MunicipalReportTemplate : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string Audience { get; set; } = "municipality";
+    public string DatePreset { get; set; } = "last_90_days";
+    public bool IncludeSocialValue { get; set; } = true;
+    public int? HourValueChf { get; set; }
+    public string? Sections { get; set; }
+    public int? CreatedBy { get; set; }
+    public int? UpdatedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    public Tenant? Tenant { get; set; }
+}
+
+/// <summary>
+/// Tenant-scoped municipality domain verification row.
+/// Mirrors Laravel's municipal_verifications table.
+/// </summary>
+public class MunicipalVerification : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public string Domain { get; set; } = string.Empty;
+    public string Method { get; set; } = "dns_txt";
+    public string Status { get; set; } = "pending";
+    public string? DnsRecordName { get; set; }
+    public string? DnsRecordValue { get; set; }
+    public int? RequestedBy { get; set; }
+    public int? VerifiedBy { get; set; }
+    public DateTime? VerifiedAt { get; set; }
+    public DateTime? RevokedAt { get; set; }
+    public string? AttestationNote { get; set; }
+    public string? Metadata { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    public Tenant? Tenant { get; set; }
+}
+
+/// <summary>
 /// Tenant-scoped municipality survey header.
 /// Mirrors Laravel's municipality_surveys table.
 /// </summary>
