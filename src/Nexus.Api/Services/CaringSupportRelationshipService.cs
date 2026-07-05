@@ -166,6 +166,82 @@ public sealed class CaringSupportRelationshipService
         return SupportRelationshipCreateResult.Success(RelationshipRow(relationship, users, categories));
     }
 
+    public async Task<SupportRelationshipUpdateResult> UpdateAsync(
+        int tenantId,
+        int relationshipId,
+        IReadOnlyDictionary<string, object?>? input,
+        CancellationToken ct)
+    {
+        var relationship = await _db.CaringSupportRelationships
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.Id == relationshipId, ct);
+        if (relationship is null)
+        {
+            return SupportRelationshipUpdateResult.NotFound();
+        }
+
+        if (HasKey(input, "status"))
+        {
+            var status = StringValue(input, "status") ?? string.Empty;
+            if (Statuses.Contains(status, StringComparer.Ordinal))
+            {
+                relationship.Status = status;
+            }
+        }
+
+        if (HasKey(input, "frequency"))
+        {
+            relationship.Frequency = NormalizeFrequency(StringValue(input, "frequency"));
+        }
+
+        if (HasKey(input, "expected_hours"))
+        {
+            relationship.ExpectedHours = Math.Clamp(DecimalValue(input, "expected_hours") ?? 0m, 0.25m, 24m);
+        }
+
+        if (HasKey(input, "title"))
+        {
+            relationship.Title = Truncate((StringValue(input, "title") ?? string.Empty).Trim(), 255);
+        }
+
+        if (HasKey(input, "description"))
+        {
+            relationship.Description = NullIfEmpty((StringValue(input, "description") ?? string.Empty).Trim());
+        }
+
+        if (HasKey(input, "next_check_in_at"))
+        {
+            relationship.NextCheckInAt = DateTimeValue(StringValue(input, "next_check_in_at"));
+        }
+
+        if (HasKey(input, "last_logged_at"))
+        {
+            relationship.LastLoggedAt = DateTimeValue(StringValue(input, "last_logged_at"));
+        }
+
+        relationship.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        var users = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user =>
+                user.TenantId == tenantId
+                && (user.Id == relationship.SupporterId
+                    || user.Id == relationship.RecipientId
+                    || user.Id == relationship.CoordinatorId))
+            .ToDictionaryAsync(user => user.Id, ct);
+        var categories = relationship.CategoryId is null
+            ? new Dictionary<int, string>()
+            : await _db.Categories
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(category => category.TenantId == tenantId && category.Id == relationship.CategoryId.Value)
+                .ToDictionaryAsync(category => category.Id, category => category.Name, ct);
+
+        return SupportRelationshipUpdateResult.Success(RelationshipRow(relationship, users, categories));
+    }
+
     public async Task<MemberHelpRequestResult> CreateMemberHelpRequestAsync(
         int tenantId,
         int userId,
@@ -602,6 +678,22 @@ public sealed class CaringSupportRelationshipService
             : null;
     }
 
+    private static DateTime? DateTimeValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return DateTimeOffset.TryParse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out var parsed)
+            ? DateTime.SpecifyKind(parsed.UtcDateTime, DateTimeKind.Utc)
+            : null;
+    }
+
     private static DateTime NextCheckIn(DateOnly startDate, string frequency)
     {
         var date = frequency switch
@@ -838,6 +930,11 @@ public sealed class CaringSupportRelationshipService
         };
     }
 
+    private static bool HasKey(IReadOnlyDictionary<string, object?>? input, string key)
+    {
+        return input is not null && input.ContainsKey(key);
+    }
+
     private static string Truncate(string value, int maxLength)
     {
         return value.Length <= maxLength ? value : value[..maxLength];
@@ -867,6 +964,21 @@ public sealed record SupportRelationshipCreateResult(
     public static SupportRelationshipCreateResult Fail(string code)
     {
         return new SupportRelationshipCreateResult(false, null, code);
+    }
+}
+
+public sealed record SupportRelationshipUpdateResult(
+    bool Succeeded,
+    object? Relationship)
+{
+    public static SupportRelationshipUpdateResult Success(object relationship)
+    {
+        return new SupportRelationshipUpdateResult(true, relationship);
+    }
+
+    public static SupportRelationshipUpdateResult NotFound()
+    {
+        return new SupportRelationshipUpdateResult(false, null);
     }
 }
 

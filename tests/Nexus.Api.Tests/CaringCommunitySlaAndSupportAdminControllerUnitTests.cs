@@ -43,6 +43,10 @@ public sealed class CaringCommunitySlaAndSupportAdminControllerUnitTests
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("support-relationships");
 
+        controller.GetMethod("UpdateSupportRelationship")
+            ?.GetCustomAttribute<HttpPutAttribute>()?.Template
+            .Should().Be("support-relationships/{id}");
+
         controller.GetMethod("LogSupportRelationshipHours")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("support-relationships/{id}/hours");
@@ -319,6 +323,132 @@ public sealed class CaringCommunitySlaAndSupportAdminControllerUnitTests
     }
 
     [Fact]
+    public async Task UpdateSupportRelationship_NormalizesFieldsAndReturnsLaravelRelationship()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(9, 42, "Admin", "User", Role.Names.Admin),
+            User(10, 42, "Ada", "Supporter"),
+            User(11, 42, "Grace", "Recipient"));
+        db.CaringSupportRelationships.Add(Relationship(
+            201,
+            42,
+            10,
+            11,
+            9,
+            "Weekly shop",
+            "Shopping and tea",
+            "weekly",
+            2.5m,
+            "active",
+            new DateOnly(2026, 6, 1),
+            new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+        var input = new Dictionary<string, object?>
+        {
+            ["status"] = "paused",
+            ["frequency"] = "daily",
+            ["expected_hours"] = 30m,
+            ["title"] = "  Updated support plan  ",
+            ["description"] = "   ",
+            ["next_check_in_at"] = "2026-07-20T14:30:00Z",
+            ["last_logged_at"] = "2026-07-04 10:15:00"
+        };
+
+        var data = ReadData(await Invoke(controller, "UpdateSupportRelationship", 201, input, CancellationToken.None));
+
+        data.GetProperty("id").GetInt32().Should().Be(201);
+        data.GetProperty("supporter").GetProperty("name").GetString().Should().Be("Ada Supporter");
+        data.GetProperty("recipient").GetProperty("name").GetString().Should().Be("Grace Recipient");
+        data.GetProperty("coordinator").GetProperty("name").GetString().Should().Be("Admin User");
+        data.GetProperty("title").GetString().Should().Be("Updated support plan");
+        data.GetProperty("description").GetString().Should().Be(string.Empty);
+        data.GetProperty("frequency").GetString().Should().Be("weekly");
+        data.GetProperty("expected_hours").GetDecimal().Should().Be(24m);
+        data.GetProperty("status").GetString().Should().Be("paused");
+        data.GetProperty("next_check_in_at").GetString().Should().Be("2026-07-20 14:30:00");
+        data.GetProperty("last_logged_at").GetString().Should().Be("2026-07-04 10:15:00");
+
+        var stored = await db.CaringSupportRelationships.IgnoreQueryFilters().SingleAsync(row => row.Id == 201);
+        stored.Title.Should().Be("Updated support plan");
+        stored.Description.Should().BeNull();
+        stored.Frequency.Should().Be("weekly");
+        stored.ExpectedHours.Should().Be(24m);
+        stored.Status.Should().Be("paused");
+        stored.NextCheckInAt.Should().Be(new DateTime(2026, 7, 20, 14, 30, 0, DateTimeKind.Utc));
+        stored.LastLoggedAt.Should().Be(new DateTime(2026, 7, 4, 10, 15, 0, DateTimeKind.Utc));
+        stored.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task UpdateSupportRelationship_IgnoresInvalidStatusAndReturnsNotFoundOutsideTenant()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Users.AddRange(
+            User(9, 42, "Admin", "User", Role.Names.Admin),
+            User(10, 42, "Ada", "Supporter"),
+            User(11, 42, "Grace", "Recipient"),
+            User(70, 7, "Other", "Tenant"));
+        db.CaringSupportRelationships.AddRange(
+            Relationship(
+                201,
+                42,
+                10,
+                11,
+                9,
+                "Weekly shop",
+                "Shopping and tea",
+                "weekly",
+                2.5m,
+                "active",
+                new DateOnly(2026, 6, 1),
+                new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)),
+            Relationship(
+                901,
+                7,
+                70,
+                11,
+                null,
+                "Other tenant",
+                null,
+                "monthly",
+                3m,
+                "active",
+                new DateOnly(2026, 6, 1),
+                null,
+                new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 9);
+
+        var data = ReadData(await Invoke(
+            controller,
+            "UpdateSupportRelationship",
+            201,
+            new Dictionary<string, object?> { ["status"] = "bogus", ["expected_hours"] = 0m },
+            CancellationToken.None));
+
+        data.GetProperty("status").GetString().Should().Be("active");
+        data.GetProperty("expected_hours").GetDecimal().Should().Be(0.25m);
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "UpdateSupportRelationship",
+                901,
+                new Dictionary<string, object?> { ["status"] = "paused" },
+                CancellationToken.None),
+            StatusCodes.Status404NotFound,
+            "NOT_FOUND");
+    }
+
+    [Fact]
     public async Task LogSupportRelationshipHours_CreatesVolunteerLogAndUpdatesRelationship()
     {
         var tenant = CreateTenantContext(42);
@@ -553,6 +683,10 @@ public sealed class CaringCommunitySlaAndSupportAdminControllerUnitTests
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
         AssertSingleError(
+            await Invoke(controller, "UpdateSupportRelationship", 201, new Dictionary<string, object?>(), CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(
             await Invoke(controller, "LogSupportRelationshipHours", 201, new Dictionary<string, object?>(), CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
@@ -562,7 +696,7 @@ public sealed class CaringCommunitySlaAndSupportAdminControllerUnitTests
     {
         var policy = new OperatingPolicyService(db);
         var sla = Activator.CreateInstance(Resolve(SlaServiceTypeName), db, policy)!;
-        var relationships = Activator.CreateInstance(Resolve(SupportServiceTypeName), db)!;
+        var relationships = Activator.CreateInstance(Resolve(SupportServiceTypeName), db, null)!;
         var controller = (ControllerBase)Activator.CreateInstance(Resolve(ControllerTypeName), sla, relationships, tenant)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;

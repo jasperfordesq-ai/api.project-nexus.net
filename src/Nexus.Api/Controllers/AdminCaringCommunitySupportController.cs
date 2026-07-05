@@ -86,6 +86,29 @@ public sealed class AdminCaringCommunitySupportController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, new { data = result.Relationship });
     }
 
+    [HttpPut("support-relationships/{id}")]
+    public async Task<IActionResult> UpdateSupportRelationship(
+        int id,
+        [FromBody] Dictionary<string, object?>? request,
+        CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _relationships.IsFeatureEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var result = await _relationships.UpdateAsync(tenantId, id, request, ct);
+        if (!result.Succeeded)
+        {
+            return StatusCode(StatusCodes.Status404NotFound,
+                LaravelError("NOT_FOUND", "Support relationship not found."));
+        }
+
+        return Ok(new { data = result.Relationship });
+    }
+
     [HttpPost("support-relationships/{id}/hours")]
     public async Task<IActionResult> LogSupportRelationshipHours(
         int id,
