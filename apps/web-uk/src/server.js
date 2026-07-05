@@ -771,6 +771,17 @@ app.get('/saved', (req, res) => {
   });
 });
 
+app.get('/resources', (req, res) => {
+  res.render('resources', {
+    title: 'Resources',
+    activeNav: 'explore',
+    resourcesQuery: typeof req.query.q === 'string' ? req.query.q : '',
+    resources: [],
+    resourcesHref: prefixedLocalPath(req, '/resources'),
+    libraryHref: prefixedLocalPath(req, '/resources/library')
+  });
+});
+
 app.get('/legal', (req, res) => {
   res.render('legal-hub', {
     title: 'Legal',

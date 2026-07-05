@@ -9,14 +9,14 @@ This generated inventory is preparation evidence only. It does not certify route
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible route declarations | 608 |
-| ASP.NET static skeleton paths | 21 |
+| ASP.NET static skeleton paths | 20 |
 | Candidate route declarations and mounted families | 85 |
 | candidate-family | 59 |
-| candidate-route | 47 |
+| candidate-route | 48 |
 | candidate-workflow | 8 |
 | candidate-workflow-family | 119 |
 | missing | 350 |
-| skeleton | 25 |
+| skeleton | 24 |
 
 ## Family Summary
 
@@ -76,7 +76,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | profile | 21 | 5 | 16 | 21 |  |  |
 | register | 2 | 1 | 1 | 2 |  |  |
 | report-a-problem | 2 | 1 | 1 | 2 |  |  |
-| resources | 12 | 6 | 6 |  | 1 | 11 |
+| resources | 12 | 6 | 6 | 1 |  | 11 |
 | reviews | 7 | 3 | 4 | 7 |  |  |
 | saved | 2 | 1 | 1 | 1 |  | 1 |
 | search | 6 | 3 | 3 | 6 |  |  |
@@ -286,7 +286,7 @@ This generated inventory is preparation evidence only. It does not certify route
 | GET | /organisations/{id} | /{tenantSlug}/alpha/organisations/{id} | /organisations/{id} | organisations.show | organisation | organisations | missing | routes/govuk-alpha.php:261 |
 | GET | /saved | /{tenantSlug}/alpha/saved | /saved | saved.index | saved | saved | candidate-route | routes/govuk-alpha.php:262 |
 | POST | /saved/destroy | /{tenantSlug}/alpha/saved/destroy | /saved/destroy | saved.destroy | destroySaved | saved | missing | routes/govuk-alpha.php:263 |
-| GET | /resources | /{tenantSlug}/alpha/resources | /resources | resources.index | resources | resources | skeleton | routes/govuk-alpha.php:264 |
+| GET | /resources | /{tenantSlug}/alpha/resources | /resources | resources.index | resources | resources | candidate-route | routes/govuk-alpha.php:264 |
 | GET | /jobs | /{tenantSlug}/alpha/jobs | /jobs | jobs.index | jobs | jobs | skeleton | routes/govuk-alpha.php:265 |
 | GET | /jobs/saved | /{tenantSlug}/alpha/jobs/saved | /jobs/saved | jobs.saved | savedJobs | jobs | missing | routes/govuk-alpha.php:267 |
 | GET | /jobs/applications | /{tenantSlug}/alpha/jobs/applications | /jobs/applications | jobs.applications | myJobApplications | jobs | missing | routes/govuk-alpha.php:268 |

@@ -78,7 +78,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Skills | `/skills` | `/skills` | Local Blade-style directory search/empty-state candidate; live skill tree, category drill-down, member search, and backend runtime are not certified. |
 | Organisations | `/organisations` | `/organisations` | Preparation skeleton. |
 | Blog | `/blog` | `/blog` | Local Blade-style index candidate; live posts, categories, feature gate, feed, post detail, comments/likes, and backend runtime are not certified. |
-| Resources | `/resources` | `/resources` | Preparation skeleton. |
+| Resources | `/resources` | `/resources` | Local Blade-style search/library-link/empty-state candidate; auth enforcement, resources feature gate, live resource data, library, upload, download, comments, and backend runtime are not certified. |
 | Marketplace | `/marketplace` | `/marketplace` | Preparation skeleton. |
 | Jobs | `/jobs` | `/jobs` | Preparation skeleton. |
 | Courses | `/courses` | `/courses` | Preparation skeleton. |
@@ -118,10 +118,11 @@ runtime tests before `apps/web-uk` can be shared:
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
 | Volunteering | opportunities, hours, organisations, expenses, wellbeing | Local Blade-style index/search/empty-state candidate for `/volunteering` only. Live opportunities, categories, applications, recommended shifts, community projects, hours logging, organisation management, accessibility needs, certificates, waitlist, swaps, group sign-ups, expenses, donations, POST workflows, feature gates, localization, and runtime certification are not complete. |
 | Exchanges | requests, accept/decline, ready/confirm/cancel | Local Blade-style index candidate for `/exchanges` only, plus local Blade-style `/group-exchanges` index candidate. Auth enforcement, listings/group-exchanges gates, live exchange data, details, actions, participants, ratings, broker review, pagination, credit movement, localization, and runtime certification are not complete. |
+| Resources | `/resources`, `/resources/library`, `/resources/upload`, `/resources/{id}/download`, `/resources/{id}/comments` | Local Blade-style search/library-link/empty-state candidate for `/resources` only. Auth enforcement, `resources` feature gate, live ResourceService data, full library, upload, reorder, download, delete, reactions, comments, localization, and runtime certification are not complete. |
 | Feed typed engagement | likes, comments, reactions, share, save, hide, report | Partial route equivalents only. |
 | Marketplace/commerce | marketplace, seller, orders, coupons, courses, podcasts | Mostly skeleton links only. |
 | Federation | members, listings, events, groups, messages, transfers | Skeleton landing only. |
-| Resources/search/settings | full parity route families | Partial or missing. |
+| Search/settings | full parity route families | Partial or missing. |
 
 ## Next Certification Work
 

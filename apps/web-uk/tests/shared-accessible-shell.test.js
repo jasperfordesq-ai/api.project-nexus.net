@@ -767,6 +767,24 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Blade-style resources search and empty state under the tenant alpha route prefix', async () => {
+    const response = await request(app).get('/acme/alpha/resources?q=safety');
+
+    expect(staticPageRoutes.pages['/resources']).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Resources');
+    expect(response.text).toContain('Guides and reference materials shared with the community.');
+    expect(response.text).toContain('href="/acme/alpha/resources/library"');
+    expect(response.text).toContain('Open the full resource library');
+    expect(response.text).toContain('action="/acme/alpha/resources"');
+    expect(response.text).toContain('Find a resource');
+    expect(response.text).toContain('Search by title.');
+    expect(response.text).toContain('value="safety"');
+    expect(response.text).toContain('Search');
+    expect(response.text).toContain('There are no resources yet.');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Blade-style legal hub under the tenant alpha route prefix', async () => {
     const response = await request(app).get('/acme/alpha/legal');
 
@@ -939,7 +957,7 @@ describe('shared accessible frontend shell', () => {
     expect(contract).toContain('buildLaravelAccessiblePath()');
     expect(contract).toContain('Do not treat Blade routes as');
     expect(routeInventory).toContain('| Laravel accessible route declarations | 608 |');
-    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 21 |');
+    expect(routeInventory).toContain('| ASP.NET static skeleton paths | 20 |');
     expect(routeInventory).toContain('Laravel shared-domain path');
     expect(routeInventory).toContain('Laravel custom-domain path');
     expect(routeInventory).toContain('| GET | /faq | /{tenantSlug}/alpha/faq | /faq |');
@@ -964,6 +982,8 @@ describe('shared accessible frontend shell', () => {
     expect(routeInventory).toContain('| GET | /activity/insights | /{tenantSlug}/alpha/activity/insights | /activity/insights | activity.insights | activityInsights | activity | missing |');
     expect(routeInventory).toContain('| GET | /saved | /{tenantSlug}/alpha/saved | /saved | saved.index | saved | saved | candidate-route |');
     expect(routeInventory).toContain('| POST | /saved/destroy | /{tenantSlug}/alpha/saved/destroy | /saved/destroy | saved.destroy | destroySaved | saved | missing |');
+    expect(routeInventory).toContain('| GET | /resources | /{tenantSlug}/alpha/resources | /resources | resources.index | resources | resources | candidate-route |');
+    expect(routeInventory).toContain('| GET | /resources/library | /{tenantSlug}/alpha/resources/library | /resources/library | resources.library | resourcesLibrary | resources | missing |');
     expect(routeInventory).toContain('| GET | /legal | /{tenantSlug}/alpha/legal | /legal | legal.hub | legalHub | legal | candidate-route |');
     expect(routeInventory).toContain('| GET | /legal/community-guidelines | /{tenantSlug}/alpha/legal/community-guidelines | /legal/community-guidelines | legal.community-guidelines | legalDocument | legal | candidate-route |');
     expect(routeInventory).toContain('| POST | /report-a-problem | /{tenantSlug}/alpha/report-a-problem | /report-a-problem | report-problem.store | storeReportProblem | report-a-problem | candidate-workflow |');
@@ -985,6 +1005,8 @@ describe('shared accessible frontend shell', () => {
     expect(viewInventory).toContain('| activity-insights.blade.php | activity | missing-nunjucks-view |');
     expect(viewInventory).toContain('| saved.blade.php | saved | candidate-exact-view |');
     expect(viewInventory).toContain('| saved-collections.blade.php | saved | missing-nunjucks-view |');
+    expect(viewInventory).toContain('| resources.blade.php | resources | candidate-exact-view |');
+    expect(viewInventory).toContain('| resources-library.blade.php | resources | missing-nunjucks-view |');
     expect(viewInventory).toContain('| legal-hub.blade.php | legal | candidate-exact-view |');
     expect(viewInventory).toContain('| legal-document.blade.php | legal | candidate-exact-view |');
     expect(backendMatrix).toContain('| Family | GET routes | POST routes | Mutating routes | Tenant | Auth | CSRF | Feature/module gates |');

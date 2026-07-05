@@ -244,6 +244,14 @@ items, and empty state. It does not certify Laravel auth enforcement, live
 appreciations, Laravel localization persistence, tenant-specific content,
 runtime web-route behaviour, or ASP.NET backend compatibility.
 
+The `/resources` page is a local Blade-style candidate copied from the Laravel
+Resources shape. It includes the caption, lead copy, full library link, search
+form, future resource card-list structure, download link shape, and empty
+state. It does not certify Laravel auth enforcement, the `resources` feature
+gate, live `ResourceService` data, full library, upload, reorder, download,
+delete, reactions, comments, Laravel localization persistence, tenant-specific
+content, runtime web-route behaviour, or ASP.NET backend compatibility.
+
 The `/accessibility` page is a local Blade-style candidate copied from the
 Laravel accessibility statement shape. It uses the same back link, statement
 sections, WCAG 2.2 Level AA summary list, support feature sections, feedback

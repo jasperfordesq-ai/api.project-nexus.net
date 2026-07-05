@@ -56,10 +56,6 @@ const pages = {
     title: 'Organisations',
     body: 'Organisation pages will follow the Laravel accessible frontend contract.'
   },
-  '/resources': {
-    title: 'Resources',
-    body: 'Resource library pages will follow the Laravel accessible frontend contract.'
-  },
   '/marketplace': {
     title: 'Marketplace',
     body: 'Marketplace pages will follow the Laravel accessible frontend contract.'

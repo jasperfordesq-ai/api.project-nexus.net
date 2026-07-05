@@ -167,6 +167,7 @@ lookup or backend workflow certification.
 | `GET /nexus-score` | Local Blade-style NEXUS score unavailable-state candidate; auth enforcement, gamification gate, live score, tier, breakdown, insights, and backend workflows are not certified |
 | `GET /activity` | Local Blade-style activity summary/stat-grid/empty-timeline candidate; auth enforcement, live MemberActivityService data, insights, and backend workflows are not certified |
 | `GET /saved` | Local Blade-style saved-items filter/empty-state candidate; auth enforcement, live BookmarkService data, removal, collections, appreciations, and backend workflows are not certified |
+| `GET /resources` | Local Blade-style resources search/library-link/empty-state candidate; auth enforcement, resources feature gate, live ResourceService data, library, upload, download, comments, and backend workflows are not certified |
 | `GET /accessibility` | Local Blade-style accessibility statement candidate; localization/runtime backend behaviour is not certified |
 | `GET /trust-and-safety` | Local Blade-style trust and safety candidate; localization/runtime backend behaviour is not certified |
 | `GET /legal` | Local Blade-style legal hub candidate; tenant-managed document data is not certified |
