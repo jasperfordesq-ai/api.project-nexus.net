@@ -198,8 +198,8 @@ Follow the Laravel Blade accessible frontend for:
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.
 - Organisations as a Blade-style directory/search/registration candidate. The
-  directory GET now reads the Laravel `/api/v2/volunteering/organisations`
-  collection, and detail GET reads
+  directory and browse GETs now read the Laravel
+  `/api/v2/volunteering/organisations` collection, and detail GET reads
   `/api/v2/volunteering/organisations/{id}?include=public_contract`;
   registration/auth/tenant/feature-gate/depth behavior still needs certification.
 

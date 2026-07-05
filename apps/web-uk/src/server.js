@@ -378,6 +378,81 @@ app.get('/organisations', (req, res) => {
     });
 });
 
+app.get('/organisations/browse', (req, res) => {
+  const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : '';
+  const { getVolunteerOrganisations } = require('./lib/api');
+  const filters = { per_page: 20 };
+
+  if (organisationsQuery.trim()) {
+    filters.search = organisationsQuery.trim();
+  }
+
+  if (cursor.trim()) {
+    filters.cursor = cursor.trim();
+  }
+
+  getVolunteerOrganisations(filters)
+    .then((result) => {
+      const organisations = Array.isArray(result?.data) ? result.data : [];
+      const meta = result?.meta && typeof result.meta === 'object' ? result.meta : {};
+      const nextCursor = typeof meta.cursor === 'string' ? meta.cursor : '';
+      const loadMoreParams = new URLSearchParams();
+
+      if (organisationsQuery.trim()) {
+        loadMoreParams.set('q', organisationsQuery.trim());
+      }
+
+      if (nextCursor) {
+        loadMoreParams.set('cursor', nextCursor);
+      }
+
+      const loadMoreQuery = loadMoreParams.toString();
+
+      res.render('organisations-browse', {
+        title: 'Browse organisations',
+        activeNav: 'explore',
+        organisations: organisations.map((organisation) => {
+          const publicContract = organisation.public_contract && typeof organisation.public_contract === 'object'
+            ? organisation.public_contract
+            : {};
+          const stats = publicContract.stats && typeof publicContract.stats === 'object'
+            ? publicContract.stats
+            : (organisation.stats && typeof organisation.stats === 'object' ? organisation.stats : {});
+          const description = organisation.description || organisation.excerpt || '';
+
+          return {
+            ...organisation,
+            description,
+            summary: description.length > 160 ? `${description.slice(0, 157)}...` : description,
+            opportunityCount: stats.opportunity_count || organisation.opportunity_count || 0,
+            volunteerCount: stats.volunteer_count || organisation.volunteer_count || 0,
+            totalHours: stats.total_hours || organisation.total_hours || 0,
+            averageRating: stats.average_rating || organisation.average_rating || 0,
+            hasWebsite: !!organisation.website
+          };
+        }),
+        organisationsQuery,
+        error: false,
+        manageableCount: 0,
+        hasMore: !!meta.has_more && !!nextCursor,
+        loadMoreHref: loadMoreQuery ? `/organisations/browse?${loadMoreQuery}` : ''
+      });
+    })
+    .catch(() => {
+      res.render('organisations-browse', {
+        title: 'Browse organisations',
+        activeNav: 'explore',
+        organisations: [],
+        organisationsQuery,
+        error: true,
+        manageableCount: 0,
+        hasMore: false,
+        loadMoreHref: ''
+      });
+    });
+});
+
 app.get('/organisations/:id(\\d+)', (req, res) => {
   const { ApiError, getVolunteerOrganisation } = require('./lib/api');
 
