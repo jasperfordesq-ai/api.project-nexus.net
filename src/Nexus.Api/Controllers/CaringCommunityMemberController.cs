@@ -11,6 +11,7 @@ using Nexus.Api.Services;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Globalization;
 
 namespace Nexus.Api.Controllers;
 
@@ -244,6 +245,57 @@ public sealed class CaringCommunityMemberController : ControllerBase
         return Ok(new { data });
     }
 
+    [HttpPost("regional-points/marketplace/redeem")]
+    public async Task<IActionResult> RegionalPointsMarketplaceRedeem(
+        [FromBody] JsonElement payload,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var sellerId = ReadInt(payload, "seller_id");
+        if (sellerId <= 0)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", "Validation failed.", "seller_id"));
+        }
+
+        try
+        {
+            var result = await _regionalPoints.RedeemForMarketplaceDiscountAsync(
+                _tenant.GetTenantIdOrThrow(),
+                user.UserId!.Value,
+                sellerId,
+                ReadNullableInt(payload, "listing_id"),
+                ReadDecimal(payload, "points_to_use"),
+                ReadDecimal(payload, "order_total_chf"),
+                ct);
+
+            return StatusCode(StatusCodes.Status201Created, new { data = result with { Success = true } });
+        }
+        catch (RegionalPointValidationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError("VALIDATION_ERROR", ex.Message));
+        }
+        catch (RegionalPointFeatureDisabledException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", ex.Message));
+        }
+        catch (RegionalPointOperationException ex)
+        {
+            var code = ex.Message.Contains("not enough", StringComparison.OrdinalIgnoreCase)
+                ? "INSUFFICIENT_REGIONAL_POINTS"
+                : "REGIONAL_POINTS_REDEMPTION_FAILED";
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelError(code, ex.Message));
+        }
+    }
+
     [HttpGet("research/consent")]
     public async Task<IActionResult> ResearchConsent(CancellationToken ct)
     {
@@ -384,6 +436,60 @@ public sealed class CaringCommunityMemberController : ControllerBase
         }
 
         return (null, userId.Value);
+    }
+
+    private static int ReadInt(JsonElement payload, string name)
+    {
+        return payload.ValueKind == JsonValueKind.Object
+            && payload.TryGetProperty(name, out var value)
+            ? ReadIntValue(value)
+            : 0;
+    }
+
+    private static int? ReadNullableInt(JsonElement payload, string name)
+    {
+        if (payload.ValueKind != JsonValueKind.Object
+            || !payload.TryGetProperty(name, out var value)
+            || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(value.GetString()))
+        {
+            return null;
+        }
+
+        var parsed = ReadIntValue(value);
+        return parsed > 0 ? parsed : null;
+    }
+
+    private static decimal ReadDecimal(JsonElement payload, string name)
+    {
+        return payload.ValueKind == JsonValueKind.Object
+            && payload.TryGetProperty(name, out var value)
+            ? ReadDecimalValue(value)
+            : 0m;
+    }
+
+    private static int ReadIntValue(JsonElement value)
+    {
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number when value.TryGetInt32(out var parsed) => parsed,
+            JsonValueKind.String when int.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            _ => 0
+        };
+    }
+
+    private static decimal ReadDecimalValue(JsonElement value)
+    {
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number when value.TryGetDecimal(out var parsed) => parsed,
+            JsonValueKind.String when decimal.TryParse(value.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            _ => 0m
+        };
     }
 
     private IActionResult LifecycleResponse(RelationshipLifecycleResult result)

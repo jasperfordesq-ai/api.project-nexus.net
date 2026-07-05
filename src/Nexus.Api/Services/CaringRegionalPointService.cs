@@ -289,6 +289,118 @@ public sealed class CaringRegionalPointService
             Reason: null);
     }
 
+    public async Task<RegionalPointMarketplaceRedemptionResult> RedeemForMarketplaceDiscountAsync(
+        int tenantId,
+        int memberId,
+        int sellerId,
+        int? listingId,
+        decimal pointsToUse,
+        decimal orderTotalChf,
+        CancellationToken ct)
+    {
+        var config = await GetConfigAsync(tenantId, ct);
+        await AssertRegionalPointsEnabledAsync(tenantId, ct);
+
+        if (!config.MarketplaceRedemptionEnabled)
+        {
+            throw new RegionalPointOperationException("Regional point marketplace redemption is disabled.");
+        }
+
+        if (memberId == sellerId)
+        {
+            throw new RegionalPointOperationException("Members cannot redeem regional points with themselves.");
+        }
+
+        if (orderTotalChf <= 0m)
+        {
+            throw new RegionalPointValidationException("Order total must be greater than zero.");
+        }
+
+        pointsToUse = NormalizePoints(pointsToUse);
+        if (pointsToUse > MaxPointsPerRedemption)
+        {
+            throw new RegionalPointValidationException("Regional point redemption amount exceeds the maximum allowed value.");
+        }
+
+        await AssertTenantUserAsync(tenantId, memberId, ct);
+        await AssertTenantUserAsync(tenantId, sellerId, ct);
+
+        if (listingId.HasValue
+            && !await MarketplaceListingBelongsToSellerAsync(tenantId, listingId.Value, sellerId, ct))
+        {
+            throw new RegionalPointOperationException("Marketplace listing is unavailable for regional point redemption.");
+        }
+
+        var settings = await _db.MarketplaceSellerRegionalPointSettings
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(setting => setting.TenantId == tenantId && setting.SellerUserId == sellerId, ct);
+        if (settings is null || !settings.AcceptsRegionalPoints)
+        {
+            throw new RegionalPointOperationException("Merchant does not accept regional points.");
+        }
+
+        var pointsPerChf = RoundPoints(settings.RegionalPointsPerChf);
+        var maxDiscountPct = settings.RegionalPointsMaxDiscountPct;
+        if (pointsPerChf <= 0m || maxDiscountPct <= 0)
+        {
+            throw new RegionalPointOperationException("Merchant regional point settings are invalid.");
+        }
+
+        var discountChf = RoundPoints(pointsToUse / pointsPerChf);
+        var maxDiscountChf = RoundPoints(orderTotalChf * maxDiscountPct / 100m);
+        if (discountChf > maxDiscountChf + 0.005m)
+        {
+            throw new RegionalPointOperationException("Regional point discount exceeds merchant policy.");
+        }
+
+        var account = await EnsureAccountAsync(tenantId, memberId, ct);
+        if (account.Balance < pointsToUse)
+        {
+            throw new RegionalPointOperationException("Not enough regional points.");
+        }
+
+        var now = DateTime.UtcNow;
+        var newBalance = RoundPoints(account.Balance - pointsToUse);
+        account.Balance = newBalance;
+        account.LifetimeSpent = RoundPoints(account.LifetimeSpent + pointsToUse);
+        account.UpdatedAt = now;
+
+        var transaction = new CaringRegionalPointTransaction
+        {
+            TenantId = tenantId,
+            AccountId = account.Id,
+            UserId = memberId,
+            ActorUserId = memberId,
+            Type = "redemption",
+            Direction = "debit",
+            Points = pointsToUse,
+            BalanceAfter = newBalance,
+            Description = "Marketplace regional point redemption",
+            ReferenceType = listingId.HasValue ? "marketplace_listing" : "marketplace_seller",
+            ReferenceId = listingId ?? sellerId,
+            Metadata = JsonSerializer.Serialize(new
+            {
+                seller_user_id = sellerId,
+                marketplace_listing_id = listingId,
+                order_total_chf = RoundPoints(orderTotalChf),
+                discount_chf = discountChf,
+                regional_points_per_chf = pointsPerChf,
+                max_discount_pct = maxDiscountPct
+            }),
+            CreatedAt = now
+        };
+        _db.CaringRegionalPointTransactions.Add(transaction);
+        await _db.SaveChangesAsync(ct);
+
+        return new RegionalPointMarketplaceRedemptionResult(
+            TransactionId: transaction.Id,
+            SellerUserId: sellerId,
+            MarketplaceListingId: listingId,
+            PointsUsed: pointsToUse,
+            DiscountChf: discountChf,
+            NewRegionalPointBalance: newBalance);
+    }
+
     public async Task<RegionalPointSellerSettings> GetMarketplaceSellerSettingsAsync(
         int tenantId,
         int sellerId,
@@ -815,6 +927,19 @@ public sealed record RegionalPointMarketplaceQuote(
     [property: JsonPropertyName("reason")]
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? Reason);
+
+public sealed record RegionalPointMarketplaceRedemptionResult(
+    [property: JsonPropertyName("transaction_id")] long TransactionId,
+    [property: JsonPropertyName("seller_user_id")] int SellerUserId,
+    [property: JsonPropertyName("marketplace_listing_id")] int? MarketplaceListingId,
+    [property: JsonPropertyName("points_used")] decimal PointsUsed,
+    [property: JsonPropertyName("discount_chf")] decimal DiscountChf,
+    [property: JsonPropertyName("new_regional_point_balance")] decimal NewRegionalPointBalance)
+{
+    [JsonPropertyName("success")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Success { get; init; }
+}
 
 public sealed record RegionalPointTransactionDto(
     [property: JsonPropertyName("id")] long Id,

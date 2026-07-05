@@ -82,6 +82,10 @@ public class CaringCommunityRegionalPointsControllerUnitTests
         controllerType.GetMethod("RegionalPointsMarketplaceQuote")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("regional-points/marketplace/quote");
+
+        controllerType.GetMethod("RegionalPointsMarketplaceRedeem")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("regional-points/marketplace/redeem");
     }
 
     [Fact]
@@ -384,6 +388,104 @@ public class CaringCommunityRegionalPointsControllerUnitTests
         data.GetProperty("max_points_usable").GetDecimal().Should().Be(50m);
         data.GetProperty("max_discount_chf").GetDecimal().Should().Be(5m);
         data.TryGetProperty("reason", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MemberRegionalPointsMarketplaceRedeem_DebitsWalletAndReturnsLaravelCreatedEnvelope()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedRegionalPointsEnabled(db, 42);
+        db.TenantConfigs.Add(Setting(42, "marketplace_redemption_enabled", "1"));
+        SeedUser(db, 42, 10, "ada@example.test", "Ada", "Member");
+        SeedUser(db, 42, 20, "seller@example.test", "Seller", "One");
+        db.Add(Entity(AccountTypeName,
+            ("Id", 1001L), ("TenantId", 42), ("UserId", 10), ("Balance", 80m),
+            ("LifetimeEarned", 80m), ("LifetimeSpent", 5m)));
+        db.Add(Entity(SellerSettingTypeName,
+            ("Id", 3001L), ("TenantId", 42), ("SellerUserId", 20), ("AcceptsRegionalPoints", true),
+            ("RegionalPointsPerChf", 10m), ("RegionalPointsMaxDiscountPct", 25)));
+        await db.SaveChangesAsync();
+        var controller = CreateMemberController(db, tenant, userId: 10);
+
+        var data = ReadDataObject(await InvokeMember(
+            controller,
+            "RegionalPointsMarketplaceRedeem",
+            Json("""
+            {
+              "seller_id": 20,
+              "points_to_use": 40,
+              "order_total_chf": 20
+            }
+            """),
+            CancellationToken.None), StatusCodes.Status201Created);
+
+        data.GetProperty("success").GetBoolean().Should().BeTrue();
+        data.GetProperty("transaction_id").GetInt64().Should().BeGreaterThan(0);
+        data.GetProperty("seller_user_id").GetInt32().Should().Be(20);
+        data.GetProperty("marketplace_listing_id").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("points_used").GetDecimal().Should().Be(40m);
+        data.GetProperty("discount_chf").GetDecimal().Should().Be(4m);
+        data.GetProperty("new_regional_point_balance").GetDecimal().Should().Be(40m);
+
+        var account = await Set(AccountTypeName, db).SingleAsync();
+        Get<decimal>(account, "Balance").Should().Be(40m);
+        Get<decimal>(account, "LifetimeSpent").Should().Be(45m);
+
+        var transaction = await Set(TransactionTypeName, db).SingleAsync();
+        Get<int>(transaction, "TenantId").Should().Be(42);
+        Get<long>(transaction, "AccountId").Should().Be(1001L);
+        Get<int>(transaction, "UserId").Should().Be(10);
+        Get<int?>(transaction, "ActorUserId").Should().Be(10);
+        Get<string>(transaction, "Type").Should().Be("redemption");
+        Get<string>(transaction, "Direction").Should().Be("debit");
+        Get<decimal>(transaction, "Points").Should().Be(40m);
+        Get<decimal>(transaction, "BalanceAfter").Should().Be(40m);
+        Get<string>(transaction, "ReferenceType").Should().Be("marketplace_seller");
+        Get<long?>(transaction, "ReferenceId").Should().Be(20L);
+
+        using var metadata = JsonDocument.Parse(Get<string>(transaction, "Metadata")!);
+        metadata.RootElement.GetProperty("seller_user_id").GetInt32().Should().Be(20);
+        metadata.RootElement.GetProperty("marketplace_listing_id").ValueKind.Should().Be(JsonValueKind.Null);
+        metadata.RootElement.GetProperty("order_total_chf").GetDecimal().Should().Be(20m);
+        metadata.RootElement.GetProperty("discount_chf").GetDecimal().Should().Be(4m);
+        metadata.RootElement.GetProperty("regional_points_per_chf").GetDecimal().Should().Be(10m);
+        metadata.RootElement.GetProperty("max_discount_pct").GetInt32().Should().Be(25);
+    }
+
+    [Fact]
+    public async Task MemberRegionalPointsMarketplaceRedeem_WhenBalanceTooLow_ReturnsLaravelInsufficientError()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        SeedRegionalPointsEnabled(db, 42);
+        db.TenantConfigs.Add(Setting(42, "marketplace_redemption_enabled", "1"));
+        SeedUser(db, 42, 10, "ada@example.test", "Ada", "Member");
+        SeedUser(db, 42, 20, "seller@example.test", "Seller", "One");
+        db.Add(Entity(AccountTypeName,
+            ("Id", 1001L), ("TenantId", 42), ("UserId", 10), ("Balance", 10m),
+            ("LifetimeEarned", 10m), ("LifetimeSpent", 0m)));
+        db.Add(Entity(SellerSettingTypeName,
+            ("Id", 3001L), ("TenantId", 42), ("SellerUserId", 20), ("AcceptsRegionalPoints", true),
+            ("RegionalPointsPerChf", 10m), ("RegionalPointsMaxDiscountPct", 100)));
+        await db.SaveChangesAsync();
+        var controller = CreateMemberController(db, tenant, userId: 10);
+
+        AssertSingleError(await InvokeMember(
+                controller,
+                "RegionalPointsMarketplaceRedeem",
+                Json("""
+                {
+                  "seller_id": 20,
+                  "points_to_use": 40,
+                  "order_total_chf": 20
+                }
+                """),
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "INSUFFICIENT_REGIONAL_POINTS");
     }
 
     [Fact]
