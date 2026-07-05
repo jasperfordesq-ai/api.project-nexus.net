@@ -29,6 +29,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
     private readonly CaringCommunityFutureCareFundService _futureCareFund;
     private readonly CaringRegionalPointService _regionalPoints;
     private readonly CaringResearchPartnershipService _research;
+    private readonly CaringCommunityVereineAdminService _vereine;
     private readonly TenantContext _tenant;
 
     public CaringCommunityMemberController(
@@ -39,6 +40,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
         CaringCommunityFutureCareFundService futureCareFund,
         CaringRegionalPointService regionalPoints,
         CaringResearchPartnershipService research,
+        CaringCommunityVereineAdminService vereine,
         TenantContext tenant)
     {
         _relationships = relationships;
@@ -48,6 +50,7 @@ public sealed class CaringCommunityMemberController : ControllerBase
         _futureCareFund = futureCareFund;
         _regionalPoints = regionalPoints;
         _research = research;
+        _vereine = vereine;
         _tenant = tenant;
     }
 
@@ -232,6 +235,49 @@ public sealed class CaringCommunityMemberController : ControllerBase
                 raw_text = result.RawText
             }
         });
+    }
+
+    [HttpPost("vereine/{organizationId}/members/import/preview")]
+    public async Task<IActionResult> PreviewVereinMemberImport(
+        int organizationId,
+        [FromBody] JsonElement payload,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var result = await _vereine.PreviewVereinMemberImportAsync(
+            _tenant.GetTenantIdOrThrow(),
+            organizationId,
+            ReadString(payload, "csv") ?? string.Empty,
+            ct);
+
+        return ImportResult(result, StatusCodes.Status200OK);
+    }
+
+    [HttpPost("vereine/{organizationId}/members/import")]
+    public async Task<IActionResult> ImportVereinMembers(
+        int organizationId,
+        [FromBody] JsonElement payload,
+        CancellationToken ct)
+    {
+        var user = await GuardAndUserAsync(ct);
+        if (user.Result is not null)
+        {
+            return user.Result;
+        }
+
+        var result = await _vereine.ImportVereinMembersAsync(
+            _tenant.GetTenantIdOrThrow(),
+            organizationId,
+            user.UserId!.Value,
+            ReadString(payload, "csv") ?? string.Empty,
+            ct);
+
+        return ImportResult(result, StatusCodes.Status201Created);
     }
 
     [HttpGet("me/data-export")]
@@ -630,6 +676,24 @@ public sealed class CaringCommunityMemberController : ControllerBase
         }
 
         return (null, userId.Value);
+    }
+
+    private IActionResult ImportResult(VereinAdminAssignmentResult result, int successStatus)
+    {
+        if (result.Succeeded)
+        {
+            return StatusCode(successStatus, new { data = result.Payload });
+        }
+
+        var code = result.ErrorCode ?? "VALIDATION_ERROR";
+        var status = code == "VEREIN_IMPORT_UNAVAILABLE"
+            ? StatusCodes.Status503ServiceUnavailable
+            : StatusCodes.Status422UnprocessableEntity;
+        var message = code == "VEREIN_IMPORT_UNAVAILABLE"
+            ? "Verein member import is unavailable."
+            : "Verein member import could not be completed.";
+
+        return StatusCode(status, LaravelError(code, message));
     }
 
     private static int ReadInt(JsonElement payload, string name)

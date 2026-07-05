@@ -82,6 +82,14 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         controller.GetMethod("RequestHelpVoice")
             ?.GetCustomAttribute<HttpPostAttribute>()?.Template
             .Should().Be("request-help/voice");
+
+        controller.GetMethod("PreviewVereinMemberImport")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("vereine/{organizationId}/members/import/preview");
+
+        controller.GetMethod("ImportVereinMembers")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("vereine/{organizationId}/members/import");
     }
 
     [Fact]
@@ -823,6 +831,83 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
     }
 
     [Fact]
+    public async Task PreviewVereinMemberImport_AllowsMemberRouteAndReturnsLaravelSummary()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        var existing = User(11, 42, "Eve", "Existing");
+        existing.Email = "existing@example.test";
+        db.Users.AddRange(
+            User(10, 42, "Ada", "Member"),
+            existing);
+        db.Organisations.Add(Organisation(101, 42, 10, "Quartier Verein", "club"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadDataObject(await Invoke(
+            controller,
+            "PreviewVereinMemberImport",
+            101,
+            Json("""
+            {
+              "csv": "email,first_name,last_name,role\nnew@example.test,Nina,New,member\nexisting@example.test,Eve,Existing,admin"
+            }
+            """),
+            CancellationToken.None));
+
+        data.GetProperty("organization").GetProperty("id").GetInt32().Should().Be(101);
+        data.GetProperty("summary").GetProperty("total_rows").GetInt32().Should().Be(2);
+        data.GetProperty("summary").GetProperty("ready_to_create").GetInt32().Should().Be(1);
+        data.GetProperty("summary").GetProperty("ready_to_link").GetInt32().Should().Be(1);
+        var items = data.GetProperty("items").EnumerateArray().ToList();
+        items.Select(item => item.GetProperty("action").GetString()).Should().Equal("create", "link_existing");
+    }
+
+    [Fact]
+    public async Task ImportVereinMembers_AllowsMemberRouteAndCreatesMemberships()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        var existing = User(11, 42, "Eve", "Existing");
+        existing.Email = "existing@example.test";
+        db.Users.AddRange(
+            User(10, 42, "Ada", "Member"),
+            existing);
+        db.Organisations.Add(Organisation(101, 42, 10, "Quartier Verein", "club"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 10);
+
+        var data = ReadDataObject(
+            await Invoke(
+                controller,
+                "ImportVereinMembers",
+                101,
+                Json("""
+                {
+                  "csv": "email,first_name,last_name,role\nnew@example.test,Nina,New,member\nexisting@example.test,Eve,Existing,admin"
+                }
+                """),
+                CancellationToken.None),
+            StatusCodes.Status201Created);
+
+        data.GetProperty("created").GetInt32().Should().Be(1);
+        data.GetProperty("linked").GetInt32().Should().Be(1);
+        data.GetProperty("skipped").GetInt32().Should().Be(0);
+        data.GetProperty("imported_by").GetInt32().Should().Be(10);
+
+        var createdUser = await db.Users.IgnoreQueryFilters().SingleAsync(user => user.Email == "new@example.test");
+        var members = await db.OrganisationMembers.IgnoreQueryFilters()
+            .Where(row => row.OrganisationId == 101)
+            .OrderBy(row => row.UserId)
+            .ToListAsync();
+        members.Should().HaveCount(2);
+        members.Single(row => row.UserId == existing.Id).Role.Should().Be("admin");
+        members.Single(row => row.UserId == createdUser.Id).Role.Should().Be("member");
+    }
+
+    [Fact]
     public async Task MyRelationships_ReturnsLaravelMemberRowsWithRecentLogs()
     {
         var tenant = CreateTenantContext(42);
@@ -1064,6 +1149,7 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         var futureCareFund = new CaringCommunityFutureCareFundService(db);
         var regionalPoints = new CaringRegionalPointService(db);
         var research = new CaringResearchPartnershipService(db);
+        var vereine = new CaringCommunityVereineAdminService(db);
         var controller = (ControllerBase)Activator.CreateInstance(
             Resolve(ControllerTypeName),
             relationships,
@@ -1073,6 +1159,7 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             futureCareFund,
             regionalPoints,
             research,
+            vereine,
             tenant)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;
@@ -1318,6 +1405,22 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             Role = Role.Names.Member,
             AvatarUrl = avatarUrl,
             IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    private static Organisation Organisation(int id, int tenantId, int ownerId, string name, string type)
+    {
+        return new Organisation
+        {
+            Id = id,
+            TenantId = tenantId,
+            OwnerId = ownerId,
+            Name = name,
+            Slug = $"org-{id}",
+            Type = type,
+            Status = "verified",
+            IsPublic = true,
             CreatedAt = DateTime.UtcNow
         };
     }
