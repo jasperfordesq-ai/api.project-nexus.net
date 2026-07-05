@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
@@ -312,6 +313,119 @@ public sealed class CaregiverSupportService
             .ToArray();
     }
 
+    public async Task<CaregiverCoverRequestMutationResult> CreateCoverRequestAsync(
+        int tenantId,
+        int caregiverId,
+        IReadOnlyDictionary<string, object?> data,
+        CancellationToken ct)
+    {
+        EnsureCoverRequestsAvailable();
+
+        var caredForId = IntValue(data, "cared_for_id");
+        if (caredForId <= 0)
+        {
+            return CaregiverCoverRequestMutationResult.Validation(
+                "Missing required field: cared_for_id.",
+                "cared_for_id");
+        }
+
+        var link = await _db.CaringCaregiverLinks
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row =>
+                row.TenantId == tenantId
+                && row.CaregiverId == caregiverId
+                && row.CaredForId == caredForId
+                && row.Status == "active", ct);
+        if (link is null)
+        {
+            return CaregiverCoverRequestMutationResult.Forbidden("Active caregiver link required.");
+        }
+
+        var title = StringValue(data, "title").Trim();
+        if (title.Length == 0)
+        {
+            return CaregiverCoverRequestMutationResult.Validation(
+                "Missing required field: title.",
+                "title");
+        }
+
+        var startsAtRaw = StringValue(data, "starts_at").Trim();
+        var endsAtRaw = StringValue(data, "ends_at").Trim();
+        if (startsAtRaw.Length == 0 || endsAtRaw.Length == 0)
+        {
+            return CaregiverCoverRequestMutationResult.Validation("Cover request start and end dates are required.");
+        }
+
+        if (!TryParseDateTime(startsAtRaw, out var startsAt)
+            || !TryParseDateTime(endsAtRaw, out var endsAt)
+            || endsAt <= startsAt)
+        {
+            return CaregiverCoverRequestMutationResult.Validation("Cover request dates are invalid.");
+        }
+
+        var supportRelationshipId = IntNullable(data, "support_relationship_id");
+        if (supportRelationshipId is int relationshipId)
+        {
+            var relationshipExists = await _db.CaringSupportRelationships
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .AnyAsync(row =>
+                    row.TenantId == tenantId
+                    && row.Id == relationshipId
+                    && row.RecipientId == caredForId, ct);
+            if (!relationshipExists)
+            {
+                return CaregiverCoverRequestMutationResult.Validation("Cover request relationship was not found.");
+            }
+        }
+
+        var requiredSkills = SkillsValue(data, "required_skills");
+        var expectedHours = DecimalNullable(data, "expected_hours");
+        if (expectedHours is decimal hours)
+        {
+            expectedHours = Math.Clamp(hours, 0.25m, 999.99m);
+        }
+
+        var minimumTrustTier = Math.Clamp(IntValue(data, "minimum_trust_tier", 1), 0, 5);
+        var urgency = StringValue(data, "urgency").Trim();
+        if (urgency is not ("planned" or "soon" or "urgent"))
+        {
+            urgency = "planned";
+        }
+
+        var now = DateTime.UtcNow;
+        var request = new CaringCoverRequest
+        {
+            TenantId = tenantId,
+            CaregiverLinkId = link.Id,
+            CaregiverId = caregiverId,
+            CaredForId = caredForId,
+            SupportRelationshipId = supportRelationshipId,
+            Title = title.Length <= 255 ? title : title[..255],
+            Briefing = NullIfWhiteSpace(StringValue(data, "briefing")),
+            RequiredSkillsJson = JsonSerializer.Serialize(requiredSkills),
+            StartsAt = startsAt,
+            EndsAt = endsAt,
+            ExpectedHours = expectedHours,
+            MinimumTrustTier = minimumTrustTier,
+            Urgency = urgency,
+            Status = "open",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.CaringCoverRequests.Add(request);
+        await _db.SaveChangesAsync(ct);
+
+        var caredFor = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.TenantId == tenantId && user.Id == caredForId, ct);
+
+        return new CaregiverCoverRequestMutationResult(Row: MapCoverRequest(request, caredFor, null));
+    }
+
     public async Task<CaregiverCoverCandidatesResult> SuggestCoverCandidatesAsync(
         int tenantId,
         int caregiverId,
@@ -471,6 +585,173 @@ public sealed class CaregiverSupportService
         }
     }
 
+    private static IReadOnlyList<string> SkillsValue(
+        IReadOnlyDictionary<string, object?> data,
+        string key)
+    {
+        if (!data.TryGetValue(key, out var value) || value is null)
+        {
+            return [];
+        }
+
+        if (value is JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                JsonValueKind.String => SplitSkills(element.GetString()),
+                JsonValueKind.Array => element.EnumerateArray()
+                    .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString())
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .Select(item => item!.Trim())
+                    .ToArray(),
+                _ => []
+            };
+        }
+
+        if (value is string raw)
+        {
+            return SplitSkills(raw);
+        }
+
+        if (value is IEnumerable<string> strings)
+        {
+            return strings
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(item => item.Trim())
+                .ToArray();
+        }
+
+        if (value is IEnumerable<object?> objects)
+        {
+            return objects
+                .Select(item => item?.ToString())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(item => item!.Trim())
+                .ToArray();
+        }
+
+        return [];
+    }
+
+    private static IReadOnlyList<string> SplitSkills(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        return raw
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(skill => skill.Length > 0)
+            .ToArray();
+    }
+
+    private static int IntValue(
+        IReadOnlyDictionary<string, object?> data,
+        string key,
+        int defaultValue = 0)
+    {
+        return IntNullable(data, key) ?? defaultValue;
+    }
+
+    private static int? IntNullable(IReadOnlyDictionary<string, object?> data, string key)
+    {
+        if (!data.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            int typed => typed,
+            long typed when typed >= int.MinValue && typed <= int.MaxValue => (int)typed,
+            decimal typed when typed >= int.MinValue && typed <= int.MaxValue => (int)typed,
+            double typed when typed >= int.MinValue && typed <= int.MaxValue => (int)typed,
+            float typed when typed >= int.MinValue && typed <= int.MaxValue => (int)typed,
+            string raw when int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            JsonElement element => IntFromJson(element),
+            _ => null
+        };
+    }
+
+    private static int? IntFromJson(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var parsed))
+        {
+            return parsed;
+        }
+
+        if (element.ValueKind == JsonValueKind.String
+            && int.TryParse(element.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed))
+        {
+            return parsed;
+        }
+
+        return null;
+    }
+
+    private static decimal? DecimalNullable(IReadOnlyDictionary<string, object?> data, string key)
+    {
+        if (!data.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            decimal typed => typed,
+            int typed => typed,
+            long typed => typed,
+            double typed => (decimal)typed,
+            float typed => (decimal)typed,
+            string raw when decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            JsonElement element => DecimalFromJson(element),
+            _ => null
+        };
+    }
+
+    private static decimal? DecimalFromJson(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetDecimal(out var parsed))
+        {
+            return parsed;
+        }
+
+        if (element.ValueKind == JsonValueKind.String
+            && decimal.TryParse(element.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out parsed))
+        {
+            return parsed;
+        }
+
+        return null;
+    }
+
+    private static string StringValue(IReadOnlyDictionary<string, object?> data, string key)
+    {
+        if (!data.TryGetValue(key, out var value) || value is null)
+        {
+            return string.Empty;
+        }
+
+        return value is JsonElement element
+            ? element.ValueKind == JsonValueKind.String ? element.GetString() ?? string.Empty : element.ToString()
+            : value.ToString() ?? string.Empty;
+    }
+
+    private static bool TryParseDateTime(string raw, out DateTime value)
+    {
+        return DateTime.TryParse(
+            raw,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out value);
+    }
+
+    private static string? NullIfWhiteSpace(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
     private static CaregiverLinkRow Map(CaringCaregiverLink link, User? caredFor)
     {
         return new CaregiverLinkRow(
@@ -550,6 +831,28 @@ public sealed record CaregiverLinkMutationResult(
     string? ErrorField = null);
 
 public sealed record CaregiverLinkDeleteResult(bool Ok = false, bool NotFound = false);
+
+public sealed record CaregiverCoverRequestMutationResult(
+    CaregiverCoverRequestRow? Row = null,
+    string? ErrorCode = null,
+    string? ErrorMessage = null,
+    string? ErrorField = null)
+{
+    public static CaregiverCoverRequestMutationResult Validation(string message, string? field = null)
+    {
+        return new CaregiverCoverRequestMutationResult(
+            ErrorCode: "VALIDATION_ERROR",
+            ErrorMessage: message,
+            ErrorField: field);
+    }
+
+    public static CaregiverCoverRequestMutationResult Forbidden(string message)
+    {
+        return new CaregiverCoverRequestMutationResult(
+            ErrorCode: "FORBIDDEN",
+            ErrorMessage: message);
+    }
+}
 
 public sealed record CaregiverBurnoutRisk(
     [property: JsonPropertyName("weekly_hours")] decimal WeeklyHours,

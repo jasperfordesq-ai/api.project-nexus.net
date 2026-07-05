@@ -46,6 +46,9 @@ public class CaringCommunityCaregiverControllerUnitTests
             .GetMethod("CoverRequests")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("cover-requests");
         typeof(CaringCommunityCaregiverController)
+            .GetMethod("CreateCoverRequest")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().Be("cover-requests");
+        typeof(CaringCommunityCaregiverController)
             .GetMethod("CoverCandidates")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().Be("cover-requests/{id:int}/candidates");
     }
@@ -268,6 +271,153 @@ public class CaringCommunityCaregiverControllerUnitTests
         rows[1].GetProperty("matched_supporter_id").GetInt32().Should().Be(3001);
         rows[1].GetProperty("matched_supporter_name").GetString().Should().Be("Sam Supporter");
         rows[1].GetProperty("matched_supporter_avatar_url").GetString().Should().Be("/avatars/sam.png");
+    }
+
+    [Fact]
+    public async Task CreateCoverRequest_RequiresActiveLinkAndReturnsLaravelRow()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, true);
+        db.Users.AddRange(
+            User(1001, 42, "Cara", "Giver"),
+            User(2001, 42, "Pat", "Recipient", "/avatars/pat.png"),
+            User(3001, 42, "Sam", "Supporter"));
+        db.CaringCaregiverLinks.Add(Link(42, 1001, 2001, "family", status: "active"));
+        db.CaringSupportRelationships.Add(SupportRelationship(
+            42,
+            supporterId: 3001,
+            recipientId: 2001,
+            title: "Weekly relief"));
+        await db.SaveChangesAsync();
+        var linkId = await db.CaringCaregiverLinks.IgnoreQueryFilters()
+            .Where(link => link.TenantId == 42 && link.CaregiverId == 1001)
+            .Select(link => link.Id)
+            .SingleAsync();
+        var supportRelationshipId = await db.CaringSupportRelationships.IgnoreQueryFilters()
+            .Where(row => row.TenantId == 42 && row.RecipientId == 2001)
+            .Select(row => row.Id)
+            .SingleAsync();
+        var controller = CreateController(db, tenant, userId: 1001);
+
+        var result = await Invoke(
+            controller,
+            "CreateCoverRequest",
+            new Dictionary<string, object?>
+            {
+                ["cared_for_id"] = 2001,
+                ["support_relationship_id"] = supportRelationshipId,
+                ["title"] = "Holiday cover",
+                ["briefing"] = "Medication reminder and lunch.",
+                ["required_skills"] = "driving, mobility",
+                ["starts_at"] = "2026-07-20T09:00:00Z",
+                ["ends_at"] = "2026-07-20T12:30:00Z",
+                ["expected_hours"] = 3.5m,
+                ["minimum_trust_tier"] = 3,
+                ["urgency"] = "urgent"
+            },
+            CancellationToken.None);
+
+        var created = result.Should().BeOfType<ObjectResult>().Subject;
+        created.StatusCode.Should().Be(StatusCodes.Status201Created);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(created.Value));
+        var data = document.RootElement.GetProperty("data");
+        data.GetProperty("tenant_id").GetInt32().Should().Be(42);
+        data.GetProperty("caregiver_link_id").GetInt32().Should().Be(linkId);
+        data.GetProperty("caregiver_id").GetInt32().Should().Be(1001);
+        data.GetProperty("cared_for_id").GetInt32().Should().Be(2001);
+        data.GetProperty("cared_for_name").GetString().Should().Be("Pat Recipient");
+        data.GetProperty("cared_for_avatar_url").GetString().Should().Be("/avatars/pat.png");
+        data.GetProperty("support_relationship_id").GetInt32().Should().Be(supportRelationshipId);
+        data.GetProperty("title").GetString().Should().Be("Holiday cover");
+        data.GetProperty("briefing").GetString().Should().Be("Medication reminder and lunch.");
+        data.GetProperty("required_skills").EnumerateArray().Select(skill => skill.GetString())
+            .Should().Equal("driving", "mobility");
+        data.GetProperty("expected_hours").GetDecimal().Should().Be(3.5m);
+        data.GetProperty("minimum_trust_tier").GetInt32().Should().Be(3);
+        data.GetProperty("urgency").GetString().Should().Be("urgent");
+        data.GetProperty("status").GetString().Should().Be("open");
+        data.GetProperty("matched_at").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var stored = await db.CaringCoverRequests.IgnoreQueryFilters().SingleAsync();
+        stored.TenantId.Should().Be(42);
+        stored.CaregiverLinkId.Should().Be(linkId);
+        stored.CaregiverId.Should().Be(1001);
+        stored.CaredForId.Should().Be(2001);
+        stored.SupportRelationshipId.Should().Be(supportRelationshipId);
+        stored.RequiredSkillsJson.Should().Be("[\"driving\",\"mobility\"]");
+        stored.Status.Should().Be("open");
+    }
+
+    [Fact]
+    public async Task CreateCoverRequest_ValidatesInputAndActiveLink()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, true);
+        db.Users.AddRange(
+            User(1001, 42, "Cara", "Giver"),
+            User(2001, 42, "Pat", "Recipient"),
+            User(2002, 42, "No", "Link"));
+        db.CaringCaregiverLinks.Add(Link(42, 1001, 2001, "family", status: "active"));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, tenant, userId: 1001);
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "CreateCoverRequest",
+                new Dictionary<string, object?> { ["title"] = "Missing recipient" },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "CreateCoverRequest",
+                new Dictionary<string, object?>
+                {
+                    ["cared_for_id"] = 2001,
+                    ["title"] = "",
+                    ["starts_at"] = "2026-07-20T09:00:00Z",
+                    ["ends_at"] = "2026-07-20T12:00:00Z"
+                },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "CreateCoverRequest",
+                new Dictionary<string, object?>
+                {
+                    ["cared_for_id"] = 2001,
+                    ["title"] = "Bad dates",
+                    ["starts_at"] = "2026-07-20T12:00:00Z",
+                    ["ends_at"] = "2026-07-20T09:00:00Z"
+                },
+                CancellationToken.None),
+            StatusCodes.Status422UnprocessableEntity,
+            "VALIDATION_ERROR");
+
+        AssertSingleError(
+            await Invoke(
+                controller,
+                "CreateCoverRequest",
+                new Dictionary<string, object?>
+                {
+                    ["cared_for_id"] = 2002,
+                    ["title"] = "No active link",
+                    ["starts_at"] = "2026-07-20T09:00:00Z",
+                    ["ends_at"] = "2026-07-20T12:00:00Z"
+                },
+                CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FORBIDDEN");
+
+        db.CaringCoverRequests.IgnoreQueryFilters().Should().BeEmpty();
     }
 
     [Fact]
@@ -585,6 +735,15 @@ public class CaringCommunityCaregiverControllerUnitTests
         var property = entity.GetType().GetProperty(propertyName);
         property.Should().NotBeNull($"CaringCoverRequest.{propertyName} should exist");
         property!.SetValue(entity, value);
+    }
+
+    private static void AssertSingleError(IActionResult result, int statusCode, string code)
+    {
+        var objectResult = result.Should().BeAssignableTo<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(statusCode);
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+        document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be(code);
     }
 
     private static User User(

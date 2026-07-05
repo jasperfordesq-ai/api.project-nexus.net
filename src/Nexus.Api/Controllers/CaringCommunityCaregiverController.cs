@@ -177,6 +177,52 @@ public sealed class CaringCommunityCaregiverController : ControllerBase
         return Ok(new { data });
     }
 
+    [HttpPost("cover-requests")]
+    public async Task<IActionResult> CreateCoverRequest(
+        [FromBody] Dictionary<string, object?>? request,
+        CancellationToken ct)
+    {
+        var guard = await GuardAsync(ct);
+        if (guard is not null)
+        {
+            return guard;
+        }
+
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized(LaravelError("AUTH_REQUIRED", "Authentication required."));
+        }
+
+        if (!_caregivers.CoverRequestsAvailable())
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                LaravelError("FEATURE_UNAVAILABLE", "Caregiver cover requests are unavailable."));
+        }
+
+        var result = await _caregivers.CreateCoverRequestAsync(
+            _tenant.GetTenantIdOrThrow(),
+            userId.Value,
+            request ?? new Dictionary<string, object?>(),
+            ct);
+
+        if (result.ErrorCode == "VALIDATION_ERROR")
+        {
+            return UnprocessableEntity(LaravelError(
+                result.ErrorCode,
+                result.ErrorMessage ?? "Validation failed.",
+                result.ErrorField));
+        }
+
+        if (result.ErrorCode == "FORBIDDEN")
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError(result.ErrorCode, result.ErrorMessage ?? "Active caregiver link required."));
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new { data = result.Row });
+    }
+
     [HttpGet("cover-requests/{id:int}/candidates")]
     public async Task<IActionResult> CoverCandidates(int id, CancellationToken ct)
     {
