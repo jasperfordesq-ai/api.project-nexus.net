@@ -143,6 +143,58 @@ public sealed class CaringCommunityRolePresetService
         };
     }
 
+    public async Task<object> InstallAsync(int tenantId, string? presetKey, CancellationToken ct)
+    {
+        var selectedPresets = !string.IsNullOrWhiteSpace(presetKey) && Presets.ContainsKey(presetKey)
+            ? Presets.Where(entry => entry.Key == presetKey)
+            : Presets;
+        var now = DateTime.UtcNow;
+
+        foreach (var (key, preset) in selectedPresets)
+        {
+            var roleName = RoleName(tenantId, key);
+            var role = await _db.Roles
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.Name == roleName, ct);
+
+            if (role is null)
+            {
+                role = new Role
+                {
+                    TenantId = tenantId,
+                    Name = roleName,
+                    CreatedAt = now,
+                    IsSystem = false
+                };
+                _db.Roles.Add(role);
+            }
+            else
+            {
+                role.UpdatedAt = now;
+            }
+
+            role.Description = preset.Description;
+            role.Permissions = JsonSerializer.Serialize(MergePermissions(role.Permissions, preset.Permissions));
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return await StatusAsync(tenantId, ct);
+    }
+
+    private static IReadOnlyList<string> MergePermissions(string? existingPermissions, IReadOnlyList<string> presetPermissions)
+    {
+        var merged = ParsePermissions(existingPermissions).ToList();
+        foreach (var permission in presetPermissions)
+        {
+            if (!merged.Contains(permission, StringComparer.Ordinal))
+            {
+                merged.Add(permission);
+            }
+        }
+
+        return merged;
+    }
+
     private static PresetStatusRow PresetStatus(
         int tenantId,
         string key,

@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Data;
@@ -38,6 +39,36 @@ public sealed class AdminCaringCommunityRolePresetsController : ControllerBase
 
         var data = await _rolePresets.StatusAsync(tenantId, ct);
         return Ok(new { data });
+    }
+
+    [HttpPost("role-presets/install")]
+    public async Task<IActionResult> InstallRolePresets([FromBody] Dictionary<string, object?>? request, CancellationToken ct)
+    {
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        if (!await _rolePresets.IsCaringCommunityEnabledAsync(tenantId, ct))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                LaravelError("FEATURE_DISABLED", "Service unavailable."));
+        }
+
+        var preset = StringValue(request, "preset");
+        var data = await _rolePresets.InstallAsync(tenantId, string.IsNullOrWhiteSpace(preset) ? null : preset, ct);
+        return Ok(new { data });
+    }
+
+    private static string? StringValue(IReadOnlyDictionary<string, object?>? request, string key)
+    {
+        if (request is null || !request.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        if (value is JsonElement element)
+        {
+            return element.ValueKind == JsonValueKind.String ? element.GetString() : null;
+        }
+
+        return value as string;
     }
 
     private static object LaravelError(string code, string message, string? field = null)

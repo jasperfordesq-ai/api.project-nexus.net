@@ -61,6 +61,9 @@ public class CaringCommunityResearchAdminControllerUnitTests
         rolePresetController.GetMethod("RolePresets")
             ?.GetCustomAttribute<HttpGetAttribute>()?.Template
             .Should().Be("role-presets");
+        rolePresetController.GetMethod("InstallRolePresets")
+            ?.GetCustomAttribute<HttpPostAttribute>()?.Template
+            .Should().Be("role-presets/install");
     }
 
     [Fact]
@@ -599,6 +602,99 @@ public class CaringCommunityResearchAdminControllerUnitTests
     }
 
     [Fact]
+    public async Task InstallRolePresets_WithNamedPresetCreatesOnlyThatLaravelRole()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        await db.SaveChangesAsync();
+        var controller = CreateRolePresetController(db, tenant, userId: 9001);
+
+        var data = ReadDataObject(await Invoke(controller,
+            "InstallRolePresets",
+            new Dictionary<string, object?>
+            {
+                ["preset"] = "trusted_reviewer"
+            },
+            CancellationToken.None));
+
+        data.GetProperty("available").GetBoolean().Should().BeTrue();
+        data.GetProperty("installed_count").GetInt32().Should().Be(1);
+        data.GetProperty("total_count").GetInt32().Should().Be(6);
+
+        var presets = data.GetProperty("presets");
+        var trustedReviewer = presets.EnumerateArray()
+            .Single(item => item.GetProperty("key").GetString() == "trusted_reviewer");
+        trustedReviewer.GetProperty("role_name").GetString().Should().Be("kiss_trusted_reviewer_t42");
+        trustedReviewer.GetProperty("role_id").GetInt32().Should().BePositive();
+        trustedReviewer.GetProperty("installed").GetBoolean().Should().BeTrue();
+        trustedReviewer.GetProperty("permission_count").GetInt32().Should().Be(3);
+        trustedReviewer.GetProperty("installed_permissions").GetInt32().Should().Be(3);
+
+        var national = presets.EnumerateArray()
+            .Single(item => item.GetProperty("key").GetString() == "national_admin");
+        national.GetProperty("installed").GetBoolean().Should().BeFalse();
+
+        var role = await db.Roles.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Name == "kiss_trusted_reviewer_t42");
+        role.Description.Should().Be("Limited review authority for approved hour logs and community trust signals.");
+        role.IsSystem.Should().BeFalse();
+        JsonSerializer.Deserialize<string[]>(role.Permissions).Should()
+            .Contain(new[] { "caring.view", "caring.workflow.review", "volunteering.hours.review" });
+
+        db.Roles.IgnoreQueryFilters()
+            .Where(row => row.TenantId == 7 || row.Name.StartsWith("kiss_national_admin"))
+            .Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InstallRolePresets_WithUnknownPresetFallsBackToAllLaravelPresets()
+    {
+        var tenant = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenant);
+        SeedFeature(db, 42, enabled: true);
+        db.Roles.Add(new Role
+        {
+            TenantId = 42,
+            Name = "kiss_canton_admin_t42",
+            Description = "Old description",
+            Permissions = JsonSerializer.Serialize(new[] { "caring.view" }),
+            IsSystem = true
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateRolePresetController(db, tenant, userId: 9001);
+
+        var data = ReadDataObject(await Invoke(controller,
+            "InstallRolePresets",
+            new Dictionary<string, object?>
+            {
+                ["preset"] = "not-a-laravel-preset"
+            },
+            CancellationToken.None));
+
+        data.GetProperty("installed_count").GetInt32().Should().Be(6);
+        data.GetProperty("total_count").GetInt32().Should().Be(6);
+        var presets = data.GetProperty("presets");
+        presets.EnumerateArray().Should().AllSatisfy(item =>
+        {
+            item.GetProperty("installed").GetBoolean().Should().BeTrue();
+            item.GetProperty("installed_permissions").GetInt32()
+                .Should().Be(item.GetProperty("permission_count").GetInt32());
+        });
+
+        var canton = await db.Roles.IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == 42 && row.Name == "kiss_canton_admin_t42");
+        canton.Description.Should().Be("Regional operating view, municipal coordination, reporting, and trusted partner oversight.");
+        canton.IsSystem.Should().BeTrue();
+        JsonSerializer.Deserialize<string[]>(canton.Permissions).Should()
+            .Contain(new[] { "caring.workflow.assign", "federation.nodes.view" });
+
+        (await db.Roles.IgnoreQueryFilters()
+            .CountAsync(row => row.TenantId == 42 && row.Name.StartsWith("kiss_")))
+            .Should().Be(6);
+    }
+
+    [Fact]
     public async Task AdminReads_WhenCaringCommunityDisabled_ReturnLaravelFeatureDisabledError()
     {
         var tenant = CreateTenantContext(42);
@@ -613,6 +709,12 @@ public class CaringCommunityResearchAdminControllerUnitTests
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
         AssertSingleError(await Invoke(rolePresetController, "RolePresets", CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            "FEATURE_DISABLED");
+        AssertSingleError(await Invoke(rolePresetController,
+                "InstallRolePresets",
+                new Dictionary<string, object?>(),
+                CancellationToken.None),
             StatusCodes.Status403Forbidden,
             "FEATURE_DISABLED");
     }
