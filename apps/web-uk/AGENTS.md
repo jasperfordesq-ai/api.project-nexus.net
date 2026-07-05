@@ -10,6 +10,8 @@ Urgent first-read rules:
 - The Laravel Blade accessible frontend is the visual and workflow source of
   truth:
   `C:\platforms\htdocs\staging\accessible-frontend`.
+- The Laravel backend is the default backend target. ASP.NET backend switching is
+  future work and not certified.
 - Do not claim production readiness or shared-frontend readiness from skeleton
   work.
 - Use GOV.UK Frontend and GOV.UK Design System patterns, but do not use GOV.UK

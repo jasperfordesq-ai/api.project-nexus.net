@@ -1,6 +1,6 @@
 # Laravel Accessible Route Matrix
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-06
 
 ## Purpose
 
@@ -27,7 +27,7 @@ ASP.NET candidate:
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files. |
-| ASP.NET `apps/web-uk` | 160 | Express app/router declarations scanned from local source after shell prep; this includes route modules that may not be mounted as certified workflows yet. |
+| ASP.NET `apps/web-uk` | 162 | Express app/router declarations scanned from local source after shell prep; this includes route modules that may not be mounted as certified workflows yet. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families include POST
@@ -71,7 +71,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Groups | `/groups` | `/groups` | Implemented route; backend contract not certified. |
 | Goals | `/goals` | `/goals` | Preparation skeleton. |
 | Skills | `/skills` | `/skills` | Preparation skeleton. |
-| Organisations | `/organisations` | `/organisations` | Preparation skeleton. |
+| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/{id}` | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/:id` | Partial Laravel-backed candidate: directory/search and browse render `/api/v2/volunteering/organisations`; register GET renders the Blade-style form without certified POST persistence; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`; auth/tenant gates not certified. |
 | Blog | `/blog` | `/blog` | Preparation skeleton. |
 | Resources | `/resources` | `/resources` | Preparation skeleton. |
 | Marketplace | `/marketplace` | `/marketplace` | Preparation skeleton. |
@@ -96,6 +96,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Legal document sourcing | `/legal/*` tenant documents | Skeleton GET pages only. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
 | Volunteering | opportunities, hours, organisations, expenses, wellbeing | Skeleton landing only. |
+| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | Partial Laravel-backed candidate for `/organisations`, `/organisations/browse`, `/organisations/register` GET, and `/organisations/{id}` GET only. Directory/search and browse use `/api/v2/volunteering/organisations`; register GET renders the Blade-style form and validation status anchors without POST persistence; detail uses `/api/v2/volunteering/organisations/{id}?include=public_contract`, all with mocked contract tests. Auth enforcement, volunteering feature gate, tenant-prefixed routes, registration persistence, manage/jobs/apply workflows, depth opportunities/reviews, localization, and runtime certification are not complete. |
 | Exchanges | requests, accept/decline, ready/confirm/cancel | Skeleton landing only. |
 | Feed typed engagement | likes, comments, reactions, share, save, hide, report | Partial route equivalents only. |
 | Marketplace/commerce | marketplace, seller, orders, coupons, courses, podcasts | Mostly skeleton links only. |

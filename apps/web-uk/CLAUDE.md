@@ -197,6 +197,12 @@ Follow the Laravel Blade accessible frontend for:
 - `nexus-alpha-card-list` and `nexus-alpha-card`;
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.
+- Organisations as a Blade-style directory/search/registration candidate. The
+  directory and browse GETs now read the Laravel
+  `/api/v2/volunteering/organisations` collection, register GET renders the
+  Blade-style form, and detail GET reads
+  `/api/v2/volunteering/organisations/{id}?include=public_contract`; register
+  POST, auth, tenant, feature-gate, and depth behavior still need certification.
 
 Reusable shell data lives in `src/lib/accessible-shell.js`. Keep shared nav,
 footer, locale, and Explore link contracts there rather than hardcoding new
@@ -217,7 +223,14 @@ contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
 
 ## Backend API
 
-- Base URL: `http://localhost:5000` (configurable via `API_BASE_URL` env var)
+- Backend target config lives in `src/lib/backend-contract.js`.
+- Default target: Laravel (`ACCESSIBLE_BACKEND_TARGET=laravel`).
+- Default Laravel base URL: `http://127.0.0.1:8088`, matching the local Laravel
+  staging `.env`.
+- `ACCESSIBLE_BACKEND_TARGET=aspnet` is future work only and is marked
+  `future-not-certified`.
+- `API_BASE_URL` remains an explicit override, but Laravel-first work should
+  prefer `LARAVEL_BASE_URL`.
 - See the root `docs/API_PARITY.md` for API parity status and this file's endpoint table for routes used by this frontend.
 
 ### Key Endpoints Used
@@ -335,7 +348,10 @@ See the root [agent instructions](../../CLAUDE.md) for the Docker-only project i
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORT` | No | 3001 | Server port |
-| `API_BASE_URL` | No | http://localhost:5000 | Backend API URL |
+| `ACCESSIBLE_BACKEND_TARGET` | No | laravel | Backend contract target. `aspnet` is future/not-certified only. |
+| `LARAVEL_BASE_URL` | No | http://127.0.0.1:8088 | Laravel backend base URL used by default. |
+| `ASPNET_BASE_URL` | No | http://localhost:5080 | Future ASP.NET backend base URL when explicitly selected. |
+| `API_BASE_URL` | No | - | Explicit backend URL override. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
 | `COOKIE_SECRET` | **Yes** | - | Secret for signed cookies |
 | `SESSION_SECRET` | No | COOKIE_SECRET | Secret for sessions |
 | `NODE_ENV` | No | development | Environment |
