@@ -212,11 +212,46 @@ function buildNavItems({ isAuthenticated = false } = {}) {
   });
 }
 
+function prefixLocalHref(href, routePrefix = '') {
+  if (!routePrefix || typeof href !== 'string' || !href.startsWith('/') || href.startsWith('//')) {
+    return href;
+  }
+
+  return href === '/' ? routePrefix : `${routePrefix}${href}`;
+}
+
+function prefixLinks(items, routePrefix = '') {
+  return items.map((item) => ({
+    ...item,
+    href: prefixLocalHref(item.href, routePrefix)
+  }));
+}
+
+function prefixFooterColumns(columns, routePrefix = '') {
+  return columns.map((column) => ({
+    ...column,
+    links: prefixLinks(column.links, routePrefix)
+  }));
+}
+
+function buildLocaleQueryParams(query = {}) {
+  return Object.entries(query)
+    .filter(([key, value]) => key !== 'locale' && ['string', 'number', 'boolean'].includes(typeof value))
+    .map(([key, value]) => ({ key, value: String(value) }));
+}
+
 function buildShellLocals(req, isAuthenticated) {
   const tenantName = process.env.ACCESSIBLE_TENANT_NAME || serviceName;
   const currentLocale = typeof req.query.locale === 'string' ? req.query.locale : 'en';
-  const currentPath = req.path || '/';
-  const currentUrl = req.originalUrl || currentPath;
+  const routePrefix = req.accessibleRoutePrefix || '';
+  const currentPath = req.accessibleCurrentPath || req.path || '/';
+  const currentUrl = req.accessibleCurrentUrl || req.originalUrl || currentPath;
+  const cookieConsent = req.cookies ? req.cookies.nexus_alpha_cookie_consent : '';
+  const cookieChoice = req.session ? req.session.alphaCookieChoice : '';
+
+  if (req.session && req.session.alphaCookieChoice) {
+    delete req.session.alphaCookieChoice;
+  }
 
   return {
     serviceName,
@@ -224,16 +259,28 @@ function buildShellLocals(req, isAuthenticated) {
     tenantName,
     alphaCurrentLocale: currentLocale,
     alphaLocaleOptions: localeOptions,
+    alphaLocaleQueryParams: buildLocaleQueryParams(req.query),
     alphaTextDirection: currentLocale === 'ar' ? 'rtl' : 'ltr',
-    alphaNavItems: buildNavItems({ isAuthenticated }),
+    alphaRoutePrefix: routePrefix,
+    alphaRouteTenantSlug: req.accessibleTenantSlug || '',
+    alphaNavItems: prefixLinks(buildNavItems({ isAuthenticated }), routePrefix),
     alphaActiveNav: activeNavForPath(req.path),
-    alphaFooterColumns: footerColumns,
-    alphaExploreLinks: exploreLinks,
+    alphaFooterColumns: prefixFooterColumns(footerColumns, routePrefix),
+    alphaExploreLinks: prefixLinks(exploreLinks, routePrefix),
     currentPath,
     currentUrl,
+    alphaCookieChoice: cookieChoice,
+    alphaCookieConsent: cookieConsent,
+    alphaShowCookieBanner: !!cookieChoice || !cookieConsent,
+    homeUrl: prefixLocalHref('/', routePrefix),
+    accountUrl: prefixLocalHref('/account', routePrefix),
+    loginUrl: prefixLocalHref('/login', routePrefix),
+    registerUrl: prefixLocalHref('/register', routePrefix),
+    logoutUrl: prefixLocalHref('/logout', routePrefix),
+    cookieConsentUrl: prefixLocalHref('/cookie-consent', routePrefix),
     feedbackUrl,
-    reportProblemUrl: `/report-a-problem?return=${encodeURIComponent(currentUrl)}`,
-    cookieSettingsUrl: '/cookies',
+    reportProblemUrl: `${prefixLocalHref('/report-a-problem', routePrefix)}?return=${encodeURIComponent(currentUrl)}`,
+    cookieSettingsUrl: prefixLocalHref('/cookies', routePrefix),
     mainSiteUrl: process.env.MAIN_FRONTEND_URL || 'https://app.project-nexus.ie',
     sourceCodeUrl,
     sharedAccessibleStatus: 'candidate_not_certified'

@@ -3,9 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5080';
-const TENANT_ID = process.env.TENANT_ID || '';
 const { cache } = require('./cache');
+const { buildBackendHeaders, buildBackendUrl } = require('./backend-config');
 
 // Cache TTL for different types of data (in milliseconds)
 const CACHE_TTL = {
@@ -37,17 +36,9 @@ class ApiOfflineError extends Error {
 }
 
 async function request(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = buildBackendUrl(endpoint);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers
-  };
-
-  // Include X-Tenant-ID header for tenant resolution (required for unauthenticated requests)
-  if (TENANT_ID) {
-    headers['X-Tenant-ID'] = TENANT_ID;
-  }
+  const headers = buildBackendHeaders(options.headers);
 
   const config = {
     ...options,

@@ -3,17 +3,92 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">Contact {{ tenantName or serviceName }}</span>
       <h1 class="govuk-heading-xl">Contact us</h1>
 
-      <p class="govuk-body">If you need help with this service or have feedback, you can contact us.</p>
+      <p class="govuk-body-l">Use this form to contact {{ tenantName or serviceName }} about your account, a technical problem, or feedback.</p>
 
-      <h2 class="govuk-heading-l">Email</h2>
-      <p class="govuk-body">
-        <a href="mailto:support@project-nexus.net" class="govuk-link">support@project-nexus.net</a>
-      </p>
+      {% if status == "contact-sent" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="contact-success-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="contact-success-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">Message sent</p>
+            <p class="govuk-body">We will review your message and respond if needed.</p>
+            <p class="govuk-body govuk-!-margin-bottom-0">
+              <a class="govuk-link" href="{{ homeUrl or '/' }}">Return to the service home page</a>
+            </p>
+          </div>
+        </div>
+      {% endif %}
 
-      <h2 class="govuk-heading-l">Response time</h2>
-      <p class="govuk-body">We aim to respond within 2 working days.</p>
+      {% if errors and (errors.name or errors.email or errors.message) %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <div class="govuk-error-summary__body">
+              <ul class="govuk-list govuk-error-summary__list">
+                {% if errors.name %}<li><a href="#name">{{ errors.name }}</a></li>{% endif %}
+                {% if errors.email %}<li><a href="#email">{{ errors.email }}</a></li>{% endif %}
+                {% if errors.message %}<li><a href="#message">{{ errors.message }}</a></li>{% endif %}
+              </ul>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if status != "contact-sent" %}
+        <form method="post" action="{{ alphaRoutePrefix or '' }}/contact" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-visually-hidden">Contact form</legend>
+
+            <div class="govuk-form-group{% if errors.name %} govuk-form-group--error{% endif %}">
+              <label class="govuk-label" for="name">Name</label>
+              {% if errors.name %}
+                <p id="name-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.name }}</p>
+              {% endif %}
+              <input class="govuk-input{% if errors.name %} govuk-input--error{% endif %}" id="name" name="name" type="text" autocomplete="name" value="{{ form.name or '' }}" {% if errors.name %}aria-describedby="name-error"{% endif %}>
+            </div>
+
+            <div class="govuk-form-group{% if errors.email %} govuk-form-group--error{% endif %}">
+              <label class="govuk-label" for="email">Email address</label>
+              {% if errors.email %}
+                <p id="email-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.email }}</p>
+              {% endif %}
+              <input class="govuk-input govuk-!-width-two-thirds{% if errors.email %} govuk-input--error{% endif %}" id="email" name="email" type="email" autocomplete="email" value="{{ form.email or '' }}" {% if errors.email %}aria-describedby="email-error"{% endif %}>
+            </div>
+
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="subject">Subject</label>
+              <select class="govuk-select" id="subject" name="subject">
+                <option value="">Choose a subject</option>
+                {% for option in subjects %}
+                  <option value="{{ option.value }}" {% if form.subject == option.value %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="govuk-form-group{% if errors.message %} govuk-form-group--error{% endif %}">
+              <label class="govuk-label" for="message">Message</label>
+              {% if errors.message %}
+                <p id="message-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ errors.message }}</p>
+              {% endif %}
+              <textarea class="govuk-textarea{% if errors.message %} govuk-textarea--error{% endif %}" id="message" name="message" rows="5" {% if errors.message %}aria-describedby="message-error"{% endif %}>{{ form.message or '' }}</textarea>
+            </div>
+          </fieldset>
+
+          <button class="govuk-button" data-module="govuk-button" type="submit">Send message</button>
+
+          {% if not isAuthenticated %}
+            <p class="govuk-body-s">
+              You can <a class="govuk-link" href="{{ loginUrl or '/login' }}">sign in</a> before contacting us if your message is about your account.
+            </p>
+          {% endif %}
+        </form>
+      {% endif %}
     </div>
   </div>
 {% endblock %}
