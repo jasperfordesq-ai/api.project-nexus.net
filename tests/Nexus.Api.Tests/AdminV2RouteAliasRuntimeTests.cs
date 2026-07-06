@@ -301,4 +301,19 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/me/push-campaigns")]
+    [InlineData("/api/v2/me/ad-campaigns")]
+    [InlineData("/api/v2/ideation-campaigns")]
+    [InlineData("/api/v2/ideation-templates")]
+    public async Task LaravelReactAdvertisingAndIdeationV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }

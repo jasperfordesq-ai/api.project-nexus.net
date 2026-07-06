@@ -220,6 +220,14 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/me/saved-items', '/api/v2/me/saved-items'
     }
 
+    if ($normalized -eq '/api/me/push-campaigns' -or $normalized.StartsWith('/api/me/push-campaigns/')) {
+        return $normalized -replace '^/api/me/push-campaigns', '/api/v2/me/push-campaigns'
+    }
+
+    if ($normalized -eq '/api/me/ad-campaigns' -or $normalized.StartsWith('/api/me/ad-campaigns/')) {
+        return $normalized -replace '^/api/me/ad-campaigns', '/api/v2/me/ad-campaigns'
+    }
+
     if ($normalized -eq '/api/resources/categories' -or $normalized.StartsWith('/api/resources/categories/')) {
         return $normalized -replace '^/api/resources/categories', '/api/v2/resources/categories'
     }
@@ -230,6 +238,14 @@ function Get-AspNetV2RouteAlias {
 
     if ($normalized -eq '/api/search/saved' -or $normalized.StartsWith('/api/search/saved/')) {
         return $normalized -replace '^/api/search/saved', '/api/v2/search/saved'
+    }
+
+    if ($normalized -eq '/api/ideation-campaigns' -or $normalized.StartsWith('/api/ideation-campaigns/')) {
+        return $normalized -replace '^/api/ideation-campaigns', '/api/v2/ideation-campaigns'
+    }
+
+    if ($normalized -eq '/api/ideation-templates' -or $normalized.StartsWith('/api/ideation-templates/')) {
+        return $normalized -replace '^/api/ideation-templates', '/api/v2/ideation-templates'
     }
 
     if ($normalized -eq '/api/auth/2fa' -or $normalized.StartsWith('/api/auth/2fa/')) {
