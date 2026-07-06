@@ -477,6 +477,14 @@ async function deleteSavedItem(token, id) {
   });
 }
 
+async function dismissMatch(token, id, reason) {
+  return request(`/api/v2/matches/${encodeURIComponent(id)}/dismiss`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ reason })
+  });
+}
+
 // Messages
 async function getConversations(token) {
   return request('/api/messages', {
@@ -1381,6 +1389,7 @@ module.exports = {
   updateSavedCollection,
   deleteSavedCollection,
   deleteSavedItem,
+  dismissMatch,
   // Messages
   getConversations,
   getConversation,

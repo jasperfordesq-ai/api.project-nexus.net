@@ -730,6 +730,29 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel matching helpers', () => {
+    it('should dismiss a match through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { dismissed: true } })
+      });
+
+      await api.dismissMatch('test-token', 77, 'too_far');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/matches/77/dismiss',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ reason: 'too_far' })
+        })
+      );
+    });
+  });
+
   describe('Laravel onboarding helpers', () => {
     it('should save safeguarding preferences through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

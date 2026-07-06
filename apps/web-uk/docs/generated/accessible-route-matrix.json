@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T09:10:13.233Z",
+    "generatedAt": "2026-07-06T09:14:17.996Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 415,
-    "matchedRoutes": 333,
-    "missingRoutes": 275,
+    "webUkRoutes": 417,
+    "matchedRoutes": 335,
+    "missingRoutes": 273,
     "extraWebUkRoutes": 83,
     "familyCounts": {
       "admin": {
@@ -295,8 +295,8 @@
         "extraWebUk": 0
       },
       "matches": {
-        "matched": 2,
-        "missing": 2,
+        "matched": 4,
+        "missing": 0,
         "extraWebUk": 0
       },
       "me": {
@@ -5984,6 +5984,44 @@
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
     },
     {
+      "method": "POST",
+      "path": "/matches/{param}/dismiss",
+      "family": "matches",
+      "status": "matched",
+      "laravelRouteName": "matches.dismiss",
+      "laravelHandler": "dismissMatch",
+      "laravelView": "",
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
+      "laravelMiddleware": "'throttle:60,1'",
+      "auth": "auth-optional",
+      "tenantScoped": "yes",
+      "gates": "module:listings",
+      "apiNeeds": "",
+      "webUkPath": "/matches/{param}/dismiss",
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\matches.js"
+    },
+    {
+      "method": "POST",
+      "path": "/matches/board/{param}/dismiss",
+      "family": "matches",
+      "status": "matched",
+      "laravelRouteName": "connections.matches-board.dismiss",
+      "laravelHandler": "connectionsDismissMatch",
+      "laravelView": "",
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\connections.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\ConnectionsMatchesParity.php",
+      "laravelMiddleware": "'throttle:60,1'",
+      "auth": "auth-optional",
+      "tenantScoped": "yes",
+      "gates": "module:listings",
+      "apiNeeds": "service:MatchLearningService",
+      "webUkPath": "/matches/board/{param}/dismiss",
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\matches.js"
+    },
+    {
       "method": "GET",
       "path": "/me/collections",
       "family": "me",
@@ -11603,44 +11641,6 @@
       "tenantScoped": "yes",
       "gates": "feature:marketplace",
       "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/matches/{param}/dismiss",
-      "family": "matches",
-      "status": "missing",
-      "laravelRouteName": "matches.dismiss",
-      "laravelHandler": "dismissMatch",
-      "laravelView": "",
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
-      "laravelMiddleware": "'throttle:60,1'",
-      "auth": "auth-optional",
-      "tenantScoped": "yes",
-      "gates": "module:listings",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/matches/board/{param}/dismiss",
-      "family": "matches",
-      "status": "missing",
-      "laravelRouteName": "connections.matches-board.dismiss",
-      "laravelHandler": "connectionsDismissMatch",
-      "laravelView": "",
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\connections.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\ConnectionsMatchesParity.php",
-      "laravelMiddleware": "'throttle:60,1'",
-      "auth": "auth-optional",
-      "tenantScoped": "yes",
-      "gates": "module:listings",
-      "apiNeeds": "service:MatchLearningService",
       "webUkPath": "",
       "webUkView": "",
       "webUkFile": ""

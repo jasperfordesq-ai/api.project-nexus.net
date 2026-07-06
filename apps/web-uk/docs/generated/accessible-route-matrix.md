@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T09:10:13.233Z
+Generated: 2026-07-06T09:14:17.996Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 415 |
-| Matched routes | 333 |
-| Missing routes | 275 |
+| web-uk routes | 417 |
+| Matched routes | 335 |
+| Missing routes | 273 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -56,7 +56,7 @@ Generated: 2026-07-06T09:10:13.233Z
 | login | 7 | 0 | 0 |
 | logout | 1 | 0 | 1 |
 | marketplace | 23 | 25 | 0 |
-| matches | 2 | 2 | 0 |
+| matches | 4 | 0 | 0 |
 | me | 6 | 0 | 0 |
 | members | 5 | 6 | 1 |
 | messages | 7 | 11 | 2 |
@@ -270,8 +270,6 @@ Generated: 2026-07-06T09:10:13.233Z
 | POST | `/marketplace/slots/{param}/delete` | marketplace | commerceDeletePickupSlot |  | auth-optional | feature:marketplace |
 | POST | `/marketplace/slots/{param}/update` | marketplace | commerceUpdatePickupSlot |  | auth-optional | feature:marketplace |
 | POST | `/marketplace/slots/scan` | marketplace | commerceScanPickup |  | auth-optional | feature:marketplace |
-| POST | `/matches/{param}/dismiss` | matches | dismissMatch |  | auth-optional | module:listings |
-| POST | `/matches/board/{param}/dismiss` | matches | connectionsDismissMatch |  | auth-optional | module:listings |
 | POST | `/members/{param}/block` | members | blockMember |  | auth-optional | feature:connections |
 | POST | `/members/{param}/connection` | members | updateMemberConnection |  | auth-optional | feature:connections |
 | POST | `/members/{param}/endorse` | members | endorseMemberSkill |  | auth-optional | feature:connections |

@@ -61,6 +61,7 @@ jest.mock('../src/lib/api', () => ({
   updateSavedCollection: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   deleteSavedCollection: jest.fn().mockResolvedValue({}),
   deleteSavedItem: jest.fn().mockResolvedValue({}),
+  dismissMatch: jest.fn().mockResolvedValue({ data: { dismissed: true } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -114,6 +115,7 @@ describe('shared accessible frontend shell', () => {
     api.updateSavedCollection.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedCollection.mockReset().mockResolvedValue({});
     api.deleteSavedItem.mockReset().mockResolvedValue({});
+    api.dismissMatch.mockReset().mockResolvedValue({ data: { dismissed: true } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -895,6 +897,57 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/me/collections/12?status=item-removed');
     expect(api.deleteSavedItem).toHaveBeenCalledWith('test-token', 99);
+  });
+
+  it('submits the Laravel match dismiss route through the matching API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/matches/77/dismiss')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        reason: 'not_interested'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/matches?status=match-dismissed');
+    expect(api.dismissMatch).toHaveBeenCalledWith('test-token', 77, 'not_interested');
+  });
+
+  it('submits the Laravel matches board dismiss route through the matching API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/matches/board/77/dismiss')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        reason: 'too_far',
+        source: 'listing'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/matches/board?source=listing&status=match-dismissed#matches-top');
+    expect(api.dismissMatch).toHaveBeenCalledWith('test-token', 77, 'too_far');
   });
 
   it('submits the Laravel appreciation send route through the appreciations API helper', async () => {
