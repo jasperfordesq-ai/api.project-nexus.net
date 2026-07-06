@@ -124,6 +124,11 @@
           <label class="govuk-label" for="cover_letter">Why are you a good fit? (optional)</label>
           <textarea class="govuk-textarea" id="cover_letter" name="cover_letter" rows="5" maxlength="5000"></textarea>
         </div>
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="cv">Upload your CV</label>
+          <div id="cv-hint" class="govuk-hint">Upload a PDF, DOC or DOCX file.</div>
+          <input class="govuk-file-upload" id="cv" name="cv" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-describedby="cv-hint">
+        </div>
         <button type="submit" class="govuk-button" data-module="govuk-button">Apply</button>
       </form>
     {% endif %}

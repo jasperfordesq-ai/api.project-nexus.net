@@ -74,6 +74,7 @@ jest.mock('../src/lib/api', () => ({
   uploadGroupImage: jest.fn().mockResolvedValue({ data: { image_url: '/uploads/groups/cover.png' } }),
   uploadGroupFile: jest.fn().mockResolvedValue({ data: { id: 99 } }),
   callJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  uploadJobApplication: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   callAdminJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callJobDownload: jest.fn(),
   getJobs: jest.fn(),
@@ -6015,6 +6016,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Apply for this opportunity');
     expect(response.text).toContain('name="cover_letter"');
     expect(response.text).toContain('Why are you a good fit? (optional)');
+    expect(response.text).toContain('name="cv"');
+    expect(response.text).toContain('Upload your CV');
     expect(response.text).not.toContain('Laravel Blade route');
     expect(response.text).not.toContain('does not certify ASP.NET route or workflow');
   });
@@ -8080,6 +8083,41 @@ describe('shared accessible frontend shell', () => {
       .send({ _csrf: unsignedCsrf[1], cover_letter: 'Hello' });
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel job application route with multipart CV data', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.uploadJobApplication.mockClear();
+    api.callJobApi.mockClear();
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/jobs/42/apply')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('cover_letter', ' I can help with delivery. ')
+      .attach('cv', Buffer.from('%PDF-1.4 fake cv', 'utf8'), {
+        filename: 'alex-cv.pdf',
+        contentType: 'application/pdf'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/jobs/42?status=applied');
+    expect(api.uploadJobApplication).toHaveBeenCalledWith('test-token', 42, expect.objectContaining({
+      message: 'I can help with delivery.',
+      file: expect.objectContaining({
+        filename: 'alex-cv.pdf',
+        contentType: 'application/pdf',
+        buffer: expect.any(Buffer)
+      })
+    }));
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 

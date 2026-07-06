@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const { requireAuth } = require('../middleware/auth');
 const {
   ApiError,
@@ -13,7 +14,8 @@ const {
   getJobs,
   getJob,
   getProfile,
-  getUser
+  getUser,
+  uploadJobApplication
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
@@ -245,6 +247,20 @@ async function callJob(token, method, path, data = undefined) {
   }
 
   return callJobApi(token, method, path, data);
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
 }
 
 async function callAdminJob(token, method, path, data = undefined) {
@@ -2196,13 +2212,29 @@ router.post('/:id(\\d+)/apply', asyncRoute(async (req, res) => {
 
   const id = Number(req.params.id);
   const payload = { message: trimmed(req.body.cover_letter, 5000) };
+  const file = uploadedFile(req, 'cv');
 
   try {
-    await callJob(token, 'POST', `/${id}/apply`, payload);
+    if (file) {
+      const buffer = await fs.readFile(file.filepath);
+      await uploadJobApplication(token, id, {
+        ...payload,
+        file: {
+          buffer,
+          filename: file.originalFilename || file.newFilename || 'cv',
+          contentType: file.mimetype || 'application/octet-stream',
+          size: file.size
+        }
+      });
+    } else {
+      await callJob(token, 'POST', `/${id}/apply`, payload);
+    }
     return res.redirect(jobRedirect(id, 'applied'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     return res.redirect(jobRedirect(id, 'apply-failed'));
+  } finally {
+    await removeUploadedFile(file);
   }
 }));
 

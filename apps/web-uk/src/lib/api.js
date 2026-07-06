@@ -722,6 +722,24 @@ async function callJobApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/jobs${normalizedPath}`, options);
 }
 
+async function uploadJobApplication(token, jobId, data) {
+  const form = new globalThis.FormData();
+  form.append('message', data.message || '');
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('cv', blob, data.file.filename || 'cv');
+  }
+
+  return request(`/api/v2/jobs/${encodeURIComponent(jobId)}/apply`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function callAdminJobApi(token, method, path = '', data = undefined) {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
   const options = {
@@ -2492,6 +2510,7 @@ module.exports = {
   getJobs,
   getJob,
   callJobApi,
+  uploadJobApplication,
   callAdminJobApi,
   callJobDownload,
   // Wallet

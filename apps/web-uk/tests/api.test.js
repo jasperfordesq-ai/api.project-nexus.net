@@ -390,6 +390,30 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should upload job application CVs to Laravel with multipart data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { id: 91 } })
+      });
+
+      await api.uploadJobApplication('test-token', 501, {
+        message: 'I can help with delivery.',
+        file: {
+          buffer: Buffer.from('%PDF-1.4 test cv', 'utf8'),
+          filename: 'alex-cv.pdf',
+          contentType: 'application/pdf',
+          size: 16
+        }
+      });
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('http://localhost:5000/api/v2/jobs/501/apply');
+      expect(options.method).toBe('POST');
+      expect(options.headers.Authorization).toBe('Bearer test-token');
+      expect(options.body).toBeInstanceOf(FormData);
+    });
   });
 
   describe('getVolunteerOpportunity', () => {
