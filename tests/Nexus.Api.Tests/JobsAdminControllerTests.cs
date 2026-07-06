@@ -45,6 +45,60 @@ public class JobsAdminControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task V2ListAll_AsAdmin_ReturnsOk()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var r = await Client.GetAsync("/api/v2/admin/jobs?page=1&limit=10");
+
+        r.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task V2Stats_AsAdmin_ReturnsOk()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var r = await Client.GetAsync("/api/v2/admin/jobs/stats");
+
+        r.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task V2JobApplications_NonExistent_ReturnsNotFound()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var r = await Client.GetAsync("/api/v2/admin/jobs/99999/applications");
+
+        r.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task V2UpdateApplication_NonExistent_ReturnsNotFound()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var r = await Client.PutAsJsonAsync("/api/v2/admin/jobs/applications/99999", new
+        {
+            status = "accepted",
+            notes = "Laravel React compatibility test"
+        });
+
+        r.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task V2DeleteJob_NonExistent_ReturnsNotFound()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var r = await Client.DeleteAsync("/api/v2/admin/jobs/99999");
+
+        r.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task UpdateStatus_NonExistent_ReturnsNotFoundOrBadRequest()
     {
         await AuthenticateAsAdminAsync();

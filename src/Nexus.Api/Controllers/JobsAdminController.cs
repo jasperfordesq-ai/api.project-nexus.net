@@ -57,6 +57,7 @@ public class JobsAdminController : ControllerBase
     /// List all jobs (any status) for admin moderation.
     /// </summary>
     [HttpGet]
+    [HttpGet("/api/v2/admin/jobs")]
     public async Task<IActionResult> ListAll(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20,
@@ -175,6 +176,7 @@ public class JobsAdminController : ControllerBase
     /// Admin: get job module statistics.
     /// </summary>
     [HttpGet("stats")]
+    [HttpGet("/api/v2/admin/jobs/stats")]
     public async Task<IActionResult> GetStats()
     {
         if (!_tenantContext.TenantId.HasValue)
