@@ -949,6 +949,79 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation groups page', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/partners') {
+        return {
+          data: [
+            {
+              id: 12,
+              name: 'North Timebank',
+              is_external: false
+            },
+            {
+              id: 'ext-4',
+              name: 'External Circle',
+              is_external: true
+            }
+          ]
+        };
+      }
+      if (pathValue === '/groups?q=repair&partner_id=12&cursor=abc') {
+        return {
+          data: [
+            {
+              id: 81,
+              name: 'Repair cafe network',
+              description: 'A group for tool repairs and community fixing sessions.',
+              privacy: 'private',
+              member_count: 18,
+              timebank: {
+                id: 12,
+                name: 'North Timebank'
+              }
+            }
+          ],
+          meta: {
+            cursor: 'next-page'
+          }
+        };
+      }
+
+      return { data: [] };
+    });
+
+    const unsigned = await request(app).get('/federation/groups');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/groups?q=repair&partner_id=12&cursor=abc')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/groups?q=repair&partner_id=12&cursor=abc');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Groups from partner communities');
+    expect(response.text).toContain('Browse groups from communities in the network that have opened their groups to federation.');
+    expect(response.text).toContain('Search groups');
+    expect(response.text).toContain('value="repair"');
+    expect(response.text).toContain('<option value="12" selected>');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).not.toContain('External Circle');
+    expect(response.text).toContain('Repair cafe network');
+    expect(response.text).toContain('A group for tool repairs and community fixing sessions.');
+    expect(response.text).toContain('Private');
+    expect(response.text).toContain('Community');
+    expect(response.text).toContain('Members');
+    expect(response.text).toContain('18');
+    expect(response.text).toContain('href="/federation/groups?q=repair&amp;partner_id=12&amp;cursor=next-page"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('renders the Laravel-backed Federation connections page', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {

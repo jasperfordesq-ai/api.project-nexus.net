@@ -177,6 +177,23 @@ function normalizeConnection(connection) {
   return normalized;
 }
 
+function normalizeGroup(group) {
+  const timebank = asObject(group && group.timebank);
+  const tenantId = group && group.tenant_id !== undefined ? group.tenant_id : timebank.id;
+
+  return {
+    id: group && group.id,
+    name: trimmed(group && group.name) || 'Federation group',
+    description: trimmed(group && group.description, 200),
+    privacy: trimmed(group && group.privacy),
+    memberCount: numberOrZero(group && group.member_count),
+    coverImage: trimmed(group && group.cover_image),
+    tenantId,
+    tenantName: trimmed((group && group.tenant_name) || timebank.name),
+    createdAt: group && group.created_at ? group.created_at : ''
+  };
+}
+
 function participantName(participant) {
   return trimmed(participant && participant.name)
     || trimmed(`${trimmed(participant && participant.first_name)} ${trimmed(participant && participant.last_name)}`)
@@ -510,6 +527,57 @@ router.get('/opt-out', asyncRoute(async (req, res) => {
     title: 'Opt out of federation',
     activeNav: 'explore',
     federationActiveTab: 'overview'
+  });
+}));
+
+router.get('/groups', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  let groupsResult;
+  let partnersResult;
+  try {
+    groupsResult = await callFederationApi(token, 'GET', `/groups${federationQuery(req, ['q', 'partner_id', 'cursor'])}`);
+    partnersResult = await callFederationApi(token, 'GET', '/partners');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      return res.render('federation/groups', {
+        title: 'Groups from partner communities',
+        activeNav: 'explore',
+        federationActiveTab: 'groups',
+        allowed: false,
+        groups: [],
+        partnerOptions: [],
+        filters: {
+          q: trimmed(req.query.q),
+          partnerId: trimmed(req.query.partner_id)
+        },
+        loadMoreHref: ''
+      });
+    }
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const groups = asList(dataFrom(groupsResult)).map(normalizeGroup);
+  const partnerOptions = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner);
+  const meta = metaFrom(groupsResult);
+  const nextCursor = trimmed(meta.cursor || meta.next_cursor);
+
+  return res.render('federation/groups', {
+    title: 'Groups from partner communities',
+    activeNav: 'explore',
+    federationActiveTab: 'groups',
+    allowed: true,
+    groups,
+    partnerOptions,
+    filters: {
+      q: trimmed(req.query.q),
+      partnerId: trimmed(req.query.partner_id)
+    },
+    loadMoreHref: nextCursor ? loadMoreHref('/federation/groups', req, nextCursor) : ''
   });
 }));
 
