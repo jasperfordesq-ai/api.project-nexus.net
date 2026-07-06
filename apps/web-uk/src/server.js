@@ -61,7 +61,7 @@ const nunjucksEnv = nunjucks.configure([
 ], {
   autoescape: true,
   express: app,
-  watch: NODE_ENV !== 'production'
+  watch: NODE_ENV === 'development'
 });
 
 // Custom Nunjucks filters
