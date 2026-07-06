@@ -96,6 +96,7 @@ jest.mock('../src/lib/api', () => ({
   getResourceCategoryTree: jest.fn().mockResolvedValue({ data: [] }),
   uploadResource: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   uploadVolunteerCredential: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  uploadInsuranceCertificate: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   downloadResource: jest.fn(),
   deleteResource: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   reorderResources: jest.fn().mockResolvedValue({ data: { message: 'reordered' } }),
@@ -213,6 +214,7 @@ describe('shared accessible frontend shell', () => {
     api.getResourceCategoryTree.mockReset().mockResolvedValue({ data: [] });
     api.uploadResource.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.uploadVolunteerCredential.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.uploadInsuranceCertificate.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.downloadResource.mockReset();
     api.deleteResource.mockReset().mockResolvedValue({ data: { deleted: true } });
     api.reorderResources.mockReset().mockResolvedValue({ data: { message: 'reordered' } });
@@ -8316,6 +8318,44 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callUserSettingsApi).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel settings insurance upload route with multipart file data', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/settings/insurance')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('insurance_type', 'public_liability')
+      .field('provider_name', 'Example Mutual')
+      .field('policy_number', 'PL-123')
+      .field('expiry_date', '2027-06-30')
+      .attach('certificate_file', Buffer.from('%PDF insurance certificate', 'utf8'), {
+        filename: 'insurance.pdf',
+        contentType: 'application/pdf'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/settings/insurance?status=insurance-uploaded#certificates');
+    expect(api.uploadInsuranceCertificate).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      insurance_type: 'public_liability',
+      provider_name: 'Example Mutual',
+      policy_number: 'PL-123',
+      expiry_date: '2027-06-30',
+      file: expect.objectContaining({
+        filename: 'insurance.pdf',
+        contentType: 'application/pdf',
+        buffer: Buffer.from('%PDF insurance certificate', 'utf8')
+      })
+    }));
   });
 
   it('submits Laravel message action aliases and redirects signed-out visitors', async () => {

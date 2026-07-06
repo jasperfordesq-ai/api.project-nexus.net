@@ -118,12 +118,11 @@ resource delete, admin reorder, resource comments, comment deletion, and
 resource reactions while preserving Laravel library/comment status redirects.
 Settings POST aliases are wired to Laravel v2 user settings and sub-account
 APIs for appearance/theme, weekly availability, GDPR data-right requests,
-linked-account request/approve/permission/revoke, and insurance upload safe
-failure while preserving Laravel status redirects and anchors. Settings GET
+linked-account request/approve/permission/revoke, and multipart insurance
+uploads while preserving Laravel status redirects and anchors. Settings GET
 pages remain generated preparation pages or local legacy settings pages, and
-multipart insurance proxying, linked-account data rendering, tenant feature
-gates, localization, runtime smoke tests, and ASP.NET backend compatibility are
-not certified.
+linked-account data rendering, tenant feature gates, localization, insurance
+upload runtime smoke tests, and ASP.NET backend compatibility are not certified.
 Blog POST aliases are wired to Laravel v2 blog/comment/reaction APIs for
 post comments, comment-thread replies, post likes/reactions, and comment
 update/delete/reactions while preserving Laravel post and comment-thread status

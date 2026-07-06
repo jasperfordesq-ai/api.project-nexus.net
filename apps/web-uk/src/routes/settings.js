@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const { requireAuth } = require('../middleware/auth');
 const {
   getProfile,
@@ -14,6 +15,7 @@ const {
   getPreferences,
   changePassword,
   callUserSettingsApi,
+  uploadInsuranceCertificate,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -63,6 +65,20 @@ function allowedValue(value, allowed, fallback = null) {
 function positiveInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
 }
 
 function isAuthError(error) {
@@ -331,7 +347,36 @@ router.post('/insurance', asyncRoute(async (req, res) => {
     return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-type-invalid', '#upload'));
   }
 
-  return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-file-required', '#upload'));
+  const file = uploadedFile(req, 'certificate_file');
+  if (!file) {
+    return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-file-required', '#upload'));
+  }
+
+  try {
+    const buffer = await fs.readFile(file.filepath);
+    await uploadInsuranceCertificate(token, {
+      insurance_type: insuranceType,
+      provider_name: trimmed(req.body.provider_name, 255),
+      policy_number: trimmed(req.body.policy_number, 255),
+      coverage_amount: trimmed(req.body.coverage_amount),
+      start_date: trimmed(req.body.start_date),
+      expiry_date: trimmed(req.body.expiry_date),
+      notes: trimmed(req.body.notes, 1000),
+      file: {
+        buffer,
+        filename: trimmed(file.originalFilename) || 'certificate',
+        contentType: trimmed(file.mimetype) || 'application/octet-stream',
+        size: file.size
+      }
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-failed', '#upload'));
+  } finally {
+    await removeUploadedFile(file);
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-uploaded', '#certificates'));
 }));
 
 router.use(requireAuth);
