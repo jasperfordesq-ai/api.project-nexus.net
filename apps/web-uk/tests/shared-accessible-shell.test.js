@@ -71,6 +71,8 @@ jest.mock('../src/lib/api', () => ({
   callCourseApi: jest.fn().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } }),
   getMyCourses: jest.fn().mockResolvedValue({ data: [] }),
   callGroupApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  uploadGroupImage: jest.fn().mockResolvedValue({ data: { image_url: '/uploads/groups/cover.png' } }),
+  uploadGroupFile: jest.fn().mockResolvedValue({ data: { id: 99 } }),
   callJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callAdminJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callJobDownload: jest.fn(),
@@ -281,6 +283,8 @@ describe('shared accessible frontend shell', () => {
     api.callCourseApi.mockReset().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } });
     api.getMyCourses.mockReset().mockResolvedValue({ data: [] });
     api.callGroupApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.uploadGroupImage.mockReset().mockResolvedValue({ data: { image_url: '/uploads/groups/cover.png' } });
+    api.uploadGroupFile.mockReset().mockResolvedValue({ data: { id: 99 } });
     api.callJobApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callAdminJobApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callJobDownload.mockReset();
@@ -7846,6 +7850,61 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.headers.location).toBe('/login');
     expect(api.callGroupApi).not.toHaveBeenCalled();
     expect(api.createFeedPostV2).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel group image and file uploads with multipart file data', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const imageResponse = await agent
+      .post('/groups/42/image')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('type', 'cover')
+      .attach('image', Buffer.from('fake group cover image', 'utf8'), {
+        filename: 'group-cover.png',
+        contentType: 'image/png'
+      });
+
+    expect(imageResponse.status).toBe(302);
+    expect(imageResponse.headers.location).toBe('/groups/42/image?status=cover-updated');
+    expect(api.uploadGroupImage).toHaveBeenCalledWith('test-token', 42, expect.objectContaining({
+      type: 'cover',
+      file: expect.objectContaining({
+        filename: 'group-cover.png',
+        contentType: 'image/png',
+        buffer: Buffer.from('fake group cover image', 'utf8')
+      })
+    }));
+
+    const fileResponse = await agent
+      .post('/groups/42/files')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('folder', ' Policies ')
+      .field('description', ' Member handbook ')
+      .attach('file', Buffer.from('%PDF group handbook', 'utf8'), {
+        filename: 'handbook.pdf',
+        contentType: 'application/pdf'
+      });
+
+    expect(fileResponse.status).toBe(302);
+    expect(fileResponse.headers.location).toBe('/groups/42/files?status=file-uploaded');
+    expect(api.uploadGroupFile).toHaveBeenCalledWith('test-token', 42, expect.objectContaining({
+      folder: 'Policies',
+      description: 'Member handbook',
+      file: expect.objectContaining({
+        filename: 'handbook.pdf',
+        contentType: 'application/pdf',
+        buffer: Buffer.from('%PDF group handbook', 'utf8')
+      })
+    }));
   });
 
   it('submits Laravel jobs action aliases and redirects signed-out visitors', async () => {

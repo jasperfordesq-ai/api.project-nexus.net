@@ -1032,6 +1032,65 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should upload group images to Laravel with multipart image data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { image_url: '/uploads/groups/cover.png' } })
+      });
+
+      await api.uploadGroupImage('test-token', 42, {
+        type: 'cover',
+        file: {
+          buffer: Buffer.from('fake group cover image', 'utf8'),
+          filename: 'group-cover.png',
+          contentType: 'image/png'
+        }
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/groups/42/image?type=cover',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
+
+    it('should upload group files to Laravel with multipart file metadata', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 99 } })
+      });
+
+      await api.uploadGroupFile('test-token', 42, {
+        folder: 'Policies',
+        description: 'Member handbook',
+        file: {
+          buffer: Buffer.from('%PDF group handbook', 'utf8'),
+          filename: 'handbook.pdf',
+          contentType: 'application/pdf'
+        }
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/groups/42/files',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
   });
 
   describe('callUserSettingsApi', () => {

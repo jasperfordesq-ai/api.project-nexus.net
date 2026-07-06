@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const {
   getGroups,
   getMyGroups,
@@ -19,6 +20,8 @@ const {
   updateGroupMemberRole,
   transferGroupOwnership,
   callGroupApi,
+  uploadGroupImage,
+  uploadGroupFile,
   createFeedPostV2,
   getEvents,
   getUsers,
@@ -156,6 +159,20 @@ function discussionPayload(body) {
 
 function hasUploadedValue(req, fieldName) {
   return !!req.file || !!(req.files && req.files[fieldName]) || trimmed(req.body[fieldName]) !== '';
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
 }
 
 // List all groups
@@ -484,33 +501,70 @@ router.post('/:id(\\d+)/notifications', asyncRoute(async (req, res) => {
 router.post('/:id(\\d+)/image', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const type = allowed(req.body.type, ['avatar', 'cover'], 'avatar');
+  const file = uploadedFile(req, 'image');
 
-  if (!hasUploadedValue(req, 'image')) {
+  if (!file && !hasUploadedValue(req, 'image')) {
     return res.redirect(groupSubpageRedirect(id, 'image', 'image-missing'));
   }
 
   return requireGroupAction(req, res, groupSubpageRedirect(id, 'image', 'image-failed'), async (token) => {
-    await callGroup(token, 'POST', `/${id}/image?type=${encodeURIComponent(type)}`, {
-      type,
-      image: req.body.image
-    });
+    try {
+      if (!file) {
+        await callGroup(token, 'POST', `/${id}/image?type=${encodeURIComponent(type)}`, {
+          type,
+          image: req.body.image
+        });
+      } else {
+        const buffer = await fs.readFile(file.filepath);
+        await uploadGroupImage(token, id, {
+          type,
+          file: {
+            buffer,
+            filename: trimmed(file.originalFilename) || 'group-image',
+            contentType: trimmed(file.mimetype) || 'application/octet-stream',
+            size: file.size
+          }
+        });
+      }
+    } finally {
+      await removeUploadedFile(file);
+    }
     return res.redirect(groupSubpageRedirect(id, 'image', type === 'cover' ? 'cover-updated' : 'avatar-updated'));
   });
 }));
 
 router.post('/:id(\\d+)/files', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
+  const file = uploadedFile(req, 'file');
 
-  if (!hasUploadedValue(req, 'file')) {
+  if (!file && !hasUploadedValue(req, 'file')) {
     return res.redirect(groupSubpageRedirect(id, 'files', 'file-missing'));
   }
 
   return requireGroupAction(req, res, groupSubpageRedirect(id, 'files', 'file-upload-failed'), async (token) => {
-    await callGroup(token, 'POST', `/${id}/files`, {
-      file: req.body.file,
-      folder: optionalText(req.body.folder, 255),
-      description: optionalText(req.body.description, 2000)
-    });
+    try {
+      if (!file) {
+        await callGroup(token, 'POST', `/${id}/files`, {
+          file: req.body.file,
+          folder: optionalText(req.body.folder, 255),
+          description: optionalText(req.body.description, 2000)
+        });
+      } else {
+        const buffer = await fs.readFile(file.filepath);
+        await uploadGroupFile(token, id, {
+          folder: optionalText(req.body.folder, 255),
+          description: optionalText(req.body.description, 2000),
+          file: {
+            buffer,
+            filename: trimmed(file.originalFilename) || 'group-file',
+            contentType: trimmed(file.mimetype) || 'application/octet-stream',
+            size: file.size
+          }
+        });
+      }
+    } finally {
+      await removeUploadedFile(file);
+    }
     return res.redirect(groupSubpageRedirect(id, 'files', 'file-uploaded'));
   });
 }));

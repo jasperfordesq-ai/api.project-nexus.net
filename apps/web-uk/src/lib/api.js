@@ -672,6 +672,42 @@ async function callGroupApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/groups${normalizedPath}`, options);
 }
 
+async function uploadGroupImage(token, groupId, data) {
+  const type = data.type === 'cover' ? 'cover' : 'avatar';
+  const form = new globalThis.FormData();
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('image', blob, data.file.filename || 'group-image');
+  }
+
+  return request(`/api/v2/groups/${encodeURIComponent(groupId)}/image?type=${encodeURIComponent(type)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function uploadGroupFile(token, groupId, data) {
+  const form = new globalThis.FormData();
+  form.append('folder', data.folder || '');
+  form.append('description', data.description || '');
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('file', blob, data.file.filename || 'group-file');
+  }
+
+  return request(`/api/v2/groups/${encodeURIComponent(groupId)}/files`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function callJobApi(token, method, path = '', data = undefined) {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
   const options = {
@@ -2413,6 +2449,8 @@ module.exports = {
   callCourseApi,
   getMyCourses,
   callGroupApi,
+  uploadGroupImage,
+  uploadGroupFile,
   callIdeationApi,
   callGroupExchangeApi,
   callEventApi,
