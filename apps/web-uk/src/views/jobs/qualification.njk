@@ -1,0 +1,83 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/jobs/{{ qualification.jobId }}">Back to opportunity</a>
+
+  <span class="govuk-caption-xl">{{ qualification.jobTitle }}</span>
+  <h1 class="govuk-heading-xl">Am I qualified?</h1>
+  <p class="govuk-body-l">A quick comparison of your skills and circumstances against what this opportunity asks for.</p>
+
+  <h2 class="govuk-heading-l">Overall match</h2>
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Match score</dt>
+      <dd class="govuk-summary-list__value">{{ qualification.percentage }}%</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Level</dt>
+      <dd class="govuk-summary-list__value">{{ qualification.levelLabel }}</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Required skills</dt>
+      <dd class="govuk-summary-list__value">{{ qualification.skillsMatchedLabel }}</dd>
+    </div>
+  </dl>
+
+  <h2 class="govuk-heading-l">Required skills</h2>
+  {% if qualification.breakdown.length == 0 %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">No required skills were returned for this opportunity.</p>
+    </div>
+  {% else %}
+    <ul class="govuk-list nexus-alpha-card-list">
+      {% for skill in qualification.breakdown %}
+        <li class="nexus-alpha-card">
+          <div class="nexus-alpha-module-row">
+            <span class="govuk-body govuk-!-font-weight-bold">{{ skill.skill }}</span>
+            {% if skill.matched %}
+              <strong class="govuk-tag govuk-tag--green">You have this</strong>
+            {% else %}
+              <strong class="govuk-tag govuk-tag--yellow">To develop</strong>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">How you compare</h2>
+  {% if qualification.dimensions.length %}
+    <table class="govuk-table">
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Area</th>
+          <th scope="col" class="govuk-table__header">Score</th>
+          <th scope="col" class="govuk-table__header">Detail</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for dimension in qualification.dimensions %}
+          <tr class="govuk-table__row">
+            <th scope="row" class="govuk-table__header">{{ dimension.label }}</th>
+            <td class="govuk-table__cell">{{ dimension.score }}%</td>
+            <td class="govuk-table__cell">{{ dimension.detail }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if qualification.aiSummary %}
+    <h2 class="govuk-heading-l">Summary</h2>
+    <p class="govuk-body">{{ qualification.aiSummary }}</p>
+  {% endif %}
+
+  <p>
+    <a class="govuk-button" data-module="govuk-button" href="/jobs/{{ qualification.jobId }}">View this opportunity</a>
+  </p>
+{% endblock %}

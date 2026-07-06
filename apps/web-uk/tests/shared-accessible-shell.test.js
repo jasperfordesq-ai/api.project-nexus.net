@@ -231,6 +231,7 @@ describe('shared accessible frontend shell', () => {
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callGroupApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callJobApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callJobDownload.mockReset();
     api.getJobs.mockReset().mockResolvedValue({
       items: [],
       meta: { total: 0, has_more: false, offset: 0, per_page: 12 }
@@ -4062,6 +4063,214 @@ describe('shared accessible frontend shell', () => {
     api.callJobApi.mockClear();
 
     const response = await request(app).get('/jobs/501/applications');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.getJob).not.toHaveBeenCalled();
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed job analytics dashboard', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getJob.mockResolvedValueOnce({
+      data: {
+        id: 501,
+        title: 'Volunteer Coordinator'
+      }
+    });
+    api.callJobApi.mockResolvedValueOnce({
+      data: {
+        total_views: 120,
+        unique_viewers: 80,
+        total_applications: 3,
+        conversion_rate: 2.5,
+        avg_time_to_apply_hours: 12.5,
+        time_to_fill_days: 10,
+        views_by_day: [{ date: '2099-07-01', count: 7 }],
+        weekly_trend: [{ week: '209927', count: 2 }],
+        applications_by_stage: [{ stage: 'screening', count: 3 }],
+        referral_stats: {
+          total_shares: 5,
+          referral_applications: 2,
+          referral_conversion_pct: 40
+        },
+        scorecard_avg: 88.5
+      }
+    }).mockResolvedValueOnce({
+      data: {
+        expected_applications: { value: 5, current: 3, above_average: false },
+        estimated_time_to_fill: { value: 14, days_posted: 4 },
+        conversion_rate: { yours: 2.5, average: 1.8, above_average: true },
+        salary_comparison: { your_salary: 35000, market_avg: 32000, diff_percent: 9 },
+        similar_jobs_analyzed: 4
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/analytics')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getJob).toHaveBeenCalledWith('test-token', 501);
+    expect(api.callJobApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/501/analytics');
+    expect(api.callJobApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/501/predictions');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Volunteer Coordinator');
+    expect(response.text).toContain('Opportunity analytics');
+    expect(response.text).toContain('See how your opportunity is performing');
+    expect(response.text).toContain('href="/jobs/501/pipeline"');
+    expect(response.text).toContain('href="/jobs/501/applications/export.csv"');
+    expect(response.text).toContain('Key metrics');
+    expect(response.text).toContain('Total views');
+    expect(response.text).toContain('120');
+    expect(response.text).toContain('Unique viewers');
+    expect(response.text).toContain('80');
+    expect(response.text).toContain('Average time to apply');
+    expect(response.text).toContain('12.5 hours');
+    expect(response.text).toContain('Views over the last 30 days');
+    expect(response.text).toContain('1 July');
+    expect(response.text).toContain('Applications by stage');
+    expect(response.text).toContain('Screening');
+    expect(response.text).toContain('Referrals');
+    expect(response.text).toContain('Referral shares');
+    expect(response.text).toContain('Average scorecard');
+    expect(response.text).toContain('88.5%');
+    expect(response.text).toContain('Predictions');
+    expect(response.text).toContain('Based on 4 similar filled opportunities');
+    expect(response.text).toContain('Expected applications');
+    expect(response.text).toContain('14 days');
+    expect(response.text).toContain('Salary vs market');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('returns forbidden when Laravel denies job analytics access', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getJob.mockResolvedValueOnce({
+      data: {
+        id: 501,
+        title: 'Volunteer Coordinator'
+      }
+    });
+    api.callJobApi.mockRejectedValueOnce(new api.ApiError('Forbidden', 403, {}));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/analytics')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getJob).toHaveBeenCalledWith('test-token', 501);
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/501/analytics');
+    expect(response.status).toBe(403);
+  });
+
+  it('renders the Laravel-backed application pipeline board', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getJob.mockResolvedValueOnce({
+      data: {
+        id: 501,
+        title: 'Volunteer Coordinator'
+      }
+    });
+    api.callJobApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 91,
+          applicant: { name: 'Alex Morgan', email: 'alex@example.org' },
+          stage: 'screening',
+          created_at: '2099-07-02T10:00:00Z',
+          cv_filename: 'Alex_Morgan_CV.pdf'
+        }
+      ]
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/pipeline?status=status-updated')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getJob).toHaveBeenCalledWith('test-token', 501);
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/501/applications');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Volunteer Coordinator');
+    expect(response.text).toContain('Application pipeline');
+    expect(response.text).toContain('Candidates are grouped by stage');
+    expect(response.text).toContain('Candidate moved to the new stage.');
+    expect(response.text).toContain('View full applicant list');
+    expect(response.text).toContain('Applied');
+    expect(response.text).toContain('Screening');
+    expect(response.text).toContain('Interview');
+    expect(response.text).toContain('Offer');
+    expect(response.text).toContain('Alex Morgan');
+    expect(response.text).toContain('Applied 2 July 2099');
+    expect(response.text).toContain('href="/jobs/applications/91/cv"');
+    expect(response.text).toContain('Download CV');
+    expect(response.text).toContain('Alex_Morgan_CV.pdf');
+    expect(response.text).toContain('action="/jobs/501/applications/91/status"');
+    expect(response.text).toContain('Move to stage');
+    expect(response.text).toContain('value="offer"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed qualification assessment page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: {
+        job_id: 501,
+        job_title: 'Volunteer Coordinator',
+        percentage: 87,
+        level: 'good',
+        total_required: 4,
+        total_matched: 3,
+        breakdown: [
+          { skill: 'Planning', matched: true },
+          { skill: 'Safeguarding', matched: false }
+        ],
+        dimensions: [
+          { label: 'Skills Match', score: 87, detail: '3/4 skills matched' },
+          { label: 'Remote Work', score: 100, detail: 'Remote position available' }
+        ],
+        ai_summary: 'Strong match (87%). You have: Planning, communication.'
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/qualified')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/501/qualified');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Volunteer Coordinator');
+    expect(response.text).toContain('Am I qualified?');
+    expect(response.text).toContain('A quick comparison of your skills');
+    expect(response.text).toContain('Overall match');
+    expect(response.text).toContain('87%');
+    expect(response.text).toContain('Good match');
+    expect(response.text).toContain('3 of 4 skills matched');
+    expect(response.text).toContain('Required skills');
+    expect(response.text).toContain('You have this');
+    expect(response.text).toContain('Planning');
+    expect(response.text).toContain('To develop');
+    expect(response.text).toContain('Safeguarding');
+    expect(response.text).toContain('How you compare');
+    expect(response.text).toContain('Skills Match');
+    expect(response.text).toContain('3/4 skills matched');
+    expect(response.text).toContain('Summary');
+    expect(response.text).toContain('Strong match (87%). You have: Planning, communication.');
+    expect(response.text).toContain('href="/jobs/501"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from job depth tools before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.getJob.mockClear();
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/501/analytics');
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login');

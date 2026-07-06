@@ -123,12 +123,34 @@ const JOB_APPLICANT_STAGE_OPTIONS = [
   'accepted',
   'rejected'
 ];
+const JOB_PIPELINE_COLUMNS = ['applied', 'screening', 'interview', 'offer', 'accepted', 'rejected'];
+const JOB_PIPELINE_LABELS = {
+  applied: 'Applied',
+  screening: 'Screening',
+  interview: 'Interview',
+  offer: 'Offer',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  other: 'Other'
+};
 const JOB_APPLICANT_SUCCESS_MESSAGES = {
   'status-updated': 'The application stage has been updated.'
 };
 const JOB_APPLICANT_ERROR_MESSAGES = {
   'status-failed': 'We could not update the application. Please try again.',
   'export-failed': 'We could not prepare the download. Please try again.'
+};
+const JOB_PIPELINE_SUCCESS_MESSAGES = {
+  'status-updated': 'Candidate moved to the new stage.'
+};
+const JOB_PIPELINE_ERROR_MESSAGES = {
+  'status-failed': 'Sorry, we could not move that candidate. Please try again.'
+};
+const JOB_QUALIFICATION_LABELS = {
+  excellent: 'Excellent match',
+  good: 'Good match',
+  moderate: 'Moderate match',
+  low: 'Developing match'
 };
 const DOWNLOAD_HEADER_NAMES = [
   'content-type',
@@ -374,6 +396,11 @@ function formatDateOnlyLong(value) {
   }
 
   return formatDateLong(text);
+}
+
+function formatDateOnlyShort(value) {
+  const label = formatDateOnlyLong(value);
+  return label.replace(/\s+\d{4}$/, '');
 }
 
 function dateInputValue(value) {
@@ -668,6 +695,114 @@ function analyticsFrom(result) {
   return null;
 }
 
+function analyticsSeries(rows, labelKey, labelFormatter = null) {
+  return (Array.isArray(rows) ? rows : []).map((row) => {
+    const labelValue = row[labelKey];
+    const label = labelFormatter ? labelFormatter(labelValue) : trimmed(labelValue);
+
+    return {
+      ...row,
+      label: label || trimmed(labelValue) || 'Unknown',
+      count: finiteNumber(row.count, 0)
+    };
+  });
+}
+
+function decorateAnalytics(result) {
+  const analytics = analyticsFrom(result);
+  if (!analytics) return null;
+
+  const referralStats = analytics.referral_stats && typeof analytics.referral_stats === 'object'
+    ? analytics.referral_stats
+    : {};
+
+  return {
+    ...analytics,
+    totalViews: finiteNumber(analytics.total_views, 0),
+    uniqueViewers: finiteNumber(analytics.unique_viewers, 0),
+    totalApplications: finiteNumber(analytics.total_applications, 0),
+    conversionRate: finiteNumber(analytics.conversion_rate, 0),
+    averageTimeToApplyHours: finiteNumber(analytics.avg_time_to_apply_hours, 0),
+    timeToFillDays: finiteNumber(analytics.time_to_fill_days, 0),
+    viewsByDay: analyticsSeries(analytics.views_by_day, 'date', formatDateOnlyShort),
+    weeklyTrend: analyticsSeries(analytics.weekly_trend, 'week'),
+    applicationsByStage: (Array.isArray(analytics.applications_by_stage) ? analytics.applications_by_stage : []).map((row) => {
+      const stage = trimmed(row.stage);
+
+      return {
+        ...row,
+        stage,
+        label: JOB_PIPELINE_LABELS[stage] || JOB_APPLICATION_LABELS[stage] || statusTitle(stage) || 'Unknown',
+        count: finiteNumber(row.count, 0)
+      };
+    }),
+    referralStats: {
+      totalShares: finiteNumber(referralStats.total_shares, 0),
+      referralApplications: finiteNumber(referralStats.referral_applications, 0),
+      referralConversionPct: finiteNumber(referralStats.referral_conversion_pct, 0)
+    },
+    scorecardAverage: analytics.scorecard_avg === null || analytics.scorecard_avg === undefined
+      ? null
+      : finiteNumber(analytics.scorecard_avg, 0)
+  };
+}
+
+function objectFrom(result) {
+  const data = dataFrom(result);
+  return data && typeof data === 'object' && !Array.isArray(data) ? data : null;
+}
+
+function predictionAboveAverage(value) {
+  if (value.above_average !== undefined || value.aboveAverage !== undefined) {
+    return checked(value.above_average ?? value.aboveAverage);
+  }
+
+  const label = trimmed(value.label || value.comparison_label || value.comparisonLabel).toLowerCase();
+  return label.includes('above');
+}
+
+function decoratePredictions(result) {
+  const predictions = objectFrom(result);
+  if (!predictions) return null;
+
+  const expectedApplications = predictions.expected_applications && typeof predictions.expected_applications === 'object'
+    ? predictions.expected_applications
+    : {};
+  const estimatedTimeToFill = predictions.estimated_time_to_fill && typeof predictions.estimated_time_to_fill === 'object'
+    ? predictions.estimated_time_to_fill
+    : {};
+  const conversionRate = predictions.conversion_rate && typeof predictions.conversion_rate === 'object'
+    ? predictions.conversion_rate
+    : {};
+  const salaryComparison = predictions.salary_comparison && typeof predictions.salary_comparison === 'object'
+    ? predictions.salary_comparison
+    : null;
+
+  return {
+    ...predictions,
+    similarJobsAnalyzed: finiteNumber(predictions.similar_jobs_analyzed ?? predictions.similarJobsAnalyzed, 0),
+    expectedApplications: {
+      value: finiteNumber(expectedApplications.value, 0),
+      current: finiteNumber(expectedApplications.current, 0),
+      aboveAverage: predictionAboveAverage(expectedApplications)
+    },
+    estimatedTimeToFill: {
+      value: finiteNumber(estimatedTimeToFill.value, 0),
+      daysPosted: finiteNumber(estimatedTimeToFill.days_posted, 0)
+    },
+    conversionRate: {
+      yours: finiteNumber(conversionRate.yours, 0),
+      average: finiteNumber(conversionRate.average, 0),
+      aboveAverage: predictionAboveAverage(conversionRate)
+    },
+    salaryComparison: salaryComparison ? {
+      yourSalary: formatPlainNumber(salaryComparison.your_salary),
+      marketAverage: formatPlainNumber(salaryComparison.market_avg),
+      diffPercent: finiteNumber(salaryComparison.diff_percent, 0)
+    } : null
+  };
+}
+
 function decorateApplicant(application) {
   const applicant = application.applicant || application.user || {};
   const status = allowed(application.stage || application.status, JOB_APPLICANT_STAGE_OPTIONS, 'applied');
@@ -679,7 +814,59 @@ function decorateApplicant(application) {
     status,
     statusLabel: JOB_APPLICATION_LABELS[status] || status,
     appliedOnLabel: formatDateOnlyLong(application.created_at || application.applied_at),
-    coverLetter: trimmed(application.message || application.cover_letter || application.notes, 5000)
+    coverLetter: trimmed(application.message || application.cover_letter || application.notes, 5000),
+    cvFilename: trimmed(application.cv_filename || application.cvFilename, 255)
+  };
+}
+
+function groupPipeline(applications) {
+  const grouped = new Map();
+  JOB_PIPELINE_COLUMNS.forEach((stage) => grouped.set(stage, []));
+
+  applications.forEach((application) => {
+    const target = JOB_PIPELINE_COLUMNS.includes(application.status) ? application.status : 'other';
+    if (!grouped.has(target)) grouped.set(target, []);
+    grouped.get(target).push(application);
+  });
+
+  return Array.from(grouped.entries())
+    .filter(([stage, rows]) => stage !== 'other' || rows.length > 0)
+    .map(([stage, rows]) => ({
+      stage,
+      label: JOB_PIPELINE_LABELS[stage] || statusTitle(stage) || 'Other',
+      applications: rows,
+      countLabel: countLabel(rows.length, 'candidate', 'candidates', 'No candidates')
+    }));
+}
+
+function decorateQualification(result) {
+  const qualification = objectFrom(result);
+  if (!qualification) return null;
+
+  const level = trimmed(qualification.level);
+  const totalRequired = finiteNumber(qualification.total_required, 0);
+  const totalMatched = finiteNumber(qualification.total_matched, 0);
+
+  return {
+    ...qualification,
+    jobId: positiveInteger(qualification.job_id || qualification.jobId) || 0,
+    jobTitle: trimmed(qualification.job_title || qualification.jobTitle, 255) || 'Opportunity',
+    percentage: finiteNumber(qualification.percentage, 0),
+    level,
+    levelLabel: JOB_QUALIFICATION_LABELS[level] || JOB_QUALIFICATION_LABELS.low,
+    totalRequired,
+    totalMatched,
+    skillsMatchedLabel: `${totalMatched} of ${totalRequired} skills matched`,
+    breakdown: (Array.isArray(qualification.breakdown) ? qualification.breakdown : []).map((row) => ({
+      skill: trimmed(row.skill, 255),
+      matched: checked(row.matched)
+    })).filter((row) => row.skill),
+    dimensions: (Array.isArray(qualification.dimensions) ? qualification.dimensions : []).map((row) => ({
+      label: trimmed(row.label, 255),
+      score: finiteNumber(row.score, 0),
+      detail: trimmed(row.detail, 1000)
+    })).filter((row) => row.label),
+    aiSummary: trimmed(qualification.ai_summary || qualification.aiSummary, 5000)
   };
 }
 
@@ -756,6 +943,14 @@ function applicantSuccessMessage(status) {
 
 function applicantErrorMessage(status) {
   return JOB_APPLICANT_ERROR_MESSAGES[status] || '';
+}
+
+function pipelineSuccessMessage(status) {
+  return JOB_PIPELINE_SUCCESS_MESSAGES[status] || '';
+}
+
+function pipelineErrorMessage(status) {
+  return JOB_PIPELINE_ERROR_MESSAGES[status] || '';
 }
 
 function resultId(result) {
@@ -1094,6 +1289,64 @@ router.get('/:id(\\d+)/applications/export.csv', asyncRoute(async (req, res) => 
   return res.send(typeof csv === 'string' ? csv : String(csv || ''));
 }));
 
+router.get('/:id(\\d+)/analytics', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  let jobResult;
+  let analyticsResult;
+  let predictionsResult = null;
+
+  try {
+    jobResult = await getJob(token, id);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const job = dataFrom(jobResult);
+  if (!job || typeof job !== 'object' || !job.id) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  try {
+    analyticsResult = await callJob(token, 'GET', `/${id}/analytics`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  try {
+    predictionsResult = await callJob(token, 'GET', `/${id}/predictions`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  return res.render('jobs/analytics', {
+    title: 'Opportunity analytics',
+    activeNav: 'explore',
+    job: decorateJob(job),
+    analytics: decorateAnalytics(analyticsResult),
+    predictions: decoratePredictions(predictionsResult)
+  });
+}));
+
 router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const id = Number(req.params.id);
@@ -1133,6 +1386,67 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
     formAction: `/jobs/${id}/update`,
     jobForm: jobFormForEdit(job),
     jobFormErrors: [],
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/:id(\\d+)/pipeline', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  let jobResult;
+  let applicationsResult;
+
+  try {
+    jobResult = await getJob(token, id);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const job = dataFrom(jobResult);
+  if (!job || typeof job !== 'object' || !job.id) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  try {
+    applicationsResult = await callJob(token, 'GET', `/${id}/applications`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const applications = collectionItems(applicationsResult).map(decorateApplicant);
+
+  return res.render('jobs/pipeline', {
+    title: 'Application pipeline',
+    activeNav: 'explore',
+    job: decorateJob(job),
+    pipelineColumns: groupPipeline(applications),
+    hasApplications: applications.length > 0,
+    status: req.query.status || '',
+    successMessage: pipelineSuccessMessage(req.query.status),
+    errorMessage: pipelineErrorMessage(req.query.status),
+    statusOptions: JOB_PIPELINE_COLUMNS.map((status) => ({
+      value: status,
+      label: JOB_PIPELINE_LABELS[status] || status
+    })),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
@@ -1198,6 +1512,40 @@ router.get('/:id(\\d+)/applications', asyncRoute(async (req, res) => {
     })),
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/:id(\\d+)/qualified', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  let qualificationResult;
+
+  try {
+    qualificationResult = await callJob(token, 'GET', `/${id}/qualified`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const qualification = decorateQualification(qualificationResult);
+  if (!qualification) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  return res.render('jobs/qualification', {
+    title: 'Am I qualified?',
+    activeNav: 'explore',
+    qualification
   });
 }));
 
