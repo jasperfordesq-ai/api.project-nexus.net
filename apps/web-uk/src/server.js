@@ -36,6 +36,7 @@ const adminRoutes = require('./routes/admin');
 const exploreRoutes = require('./routes/explore');
 const staticPageRoutes = require('./routes/static-pages');
 const contactSupportRoutes = require('./routes/contact-support');
+const onboardingPostRoutes = require('./routes/onboarding-posts');
 const savedSocialRoutes = require('./routes/saved-social');
 const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
@@ -215,7 +216,12 @@ app.use('/js', express.static(
 app.use(generalLimiter);
 
 // Body parsing
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({
+  extended: true,
+  verify: (req, _res, buffer) => {
+    req.rawUrlencodedBody = buffer.toString('utf8');
+  }
+}));
 app.use(express.json());
 
 // Cookies
@@ -1083,6 +1089,7 @@ app.use('/events', doubleCsrfProtection, postOnly(formLimiter), eventsRoutes);
 app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedRoutes);
 app.use('/reports', doubleCsrfProtection, postOnly(formLimiter), reportsRoutes);
 app.use('/progress', doubleCsrfProtection, gamificationRoutes);
+app.use('/onboarding', doubleCsrfProtection, postOnly(formLimiter), onboardingPostRoutes);
 app.use('/search', doubleCsrfProtection, searchRoutes);
 app.use('/reviews', doubleCsrfProtection, postOnly(formLimiter), reviewsRoutes);
 app.use('/admin', doubleCsrfProtection, adminRoutes);

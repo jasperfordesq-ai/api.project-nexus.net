@@ -632,6 +632,62 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel onboarding helpers', () => {
+    it('should save safeguarding preferences through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { preferences_count: 1 } })
+      });
+
+      await api.saveOnboardingSafeguarding('test-token', [
+        { option_id: 9, value: 'yes' }
+      ]);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/onboarding/safeguarding',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            preferences: [{ option_id: 9, value: 'yes' }]
+          })
+        })
+      );
+    });
+
+    it('should complete onboarding through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { message: 'complete' } })
+      });
+
+      await api.completeOnboarding('test-token', {
+        interests: [2, 3],
+        offers: [5],
+        needs: [6]
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/onboarding/complete',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            interests: [2, 3],
+            offers: [5],
+            needs: [6]
+          })
+        })
+      );
+    });
+  });
+
   describe('Laravel notification helpers', () => {
     it('should mark all notifications read through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

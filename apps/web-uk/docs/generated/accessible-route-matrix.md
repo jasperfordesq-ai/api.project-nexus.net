@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T08:51:45.567Z
+Generated: 2026-07-06T09:04:27.103Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 409 |
-| Matched routes | 327 |
-| Missing routes | 281 |
+| web-uk routes | 411 |
+| Matched routes | 329 |
+| Missing routes | 279 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -63,7 +63,7 @@ Generated: 2026-07-06T08:51:45.567Z
 | newsletter | 1 | 0 | 0 |
 | nexus-score | 2 | 0 | 0 |
 | notifications | 6 | 0 | 0 |
-| onboarding | 2 | 2 | 0 |
+| onboarding | 4 | 0 | 0 |
 | organisations | 9 | 0 | 0 |
 | password | 2 | 0 | 0 |
 | podcasts | 6 | 8 | 0 |
@@ -293,8 +293,6 @@ Generated: 2026-07-06T08:51:45.567Z
 | POST | `/messages/groups/{param}/m/{param}/react` | messages | messagesToggleReaction |  | auth-optional | module:messages |
 | POST | `/messages/groups/{param}/members` | messages | messagesGroupAddMember |  | auth-optional | module:messages |
 | POST | `/messages/groups/{param}/members/{param}/remove` | messages | messagesGroupRemoveMember |  | auth-optional | module:messages |
-| POST | `/onboarding/{param}` | onboarding | onboardingStepPost |  | auth-optional |  |
-| POST | `/onboarding/avatar` | onboarding | onboardingAvatar |  | auth-optional |  |
 | POST | `/podcasts/{param}/subscribe` | podcasts | podcastSubscribe |  | auth-optional | feature:podcasts |
 | POST | `/podcasts/studio/{param}/delete` | podcasts | commerceDeletePodcast |  | auth-optional | feature:podcasts |
 | POST | `/podcasts/studio/{param}/episodes` | podcasts | commerceStorePodcastEpisode |  | auth-optional | feature:podcasts |

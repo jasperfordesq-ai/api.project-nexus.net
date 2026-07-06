@@ -210,6 +210,22 @@ async function updateProfile(token, data) {
   });
 }
 
+async function saveOnboardingSafeguarding(token, preferences) {
+  return request('/api/v2/onboarding/safeguarding', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ preferences })
+  });
+}
+
+async function completeOnboarding(token, data) {
+  return request('/api/v2/onboarding/complete', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function getUsers(token) {
   return request('/api/users', {
     headers: { Authorization: `Bearer ${token}` }
@@ -1302,6 +1318,8 @@ module.exports = {
   // Users
   getProfile,
   updateProfile,
+  saveOnboardingSafeguarding,
+  completeOnboarding,
   getUsers,
   getUser,
   // Listings

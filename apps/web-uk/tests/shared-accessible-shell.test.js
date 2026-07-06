@@ -38,6 +38,9 @@ jest.mock('../src/lib/api', () => ({
   verify2fa: jest.fn(),
   validateToken: jest.fn(),
   getProfile: jest.fn(),
+  updateProfile: jest.fn().mockResolvedValue({}),
+  saveOnboardingSafeguarding: jest.fn().mockResolvedValue({}),
+  completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
   getListings: jest.fn(),
   getBlogPosts: jest.fn(),
   getBlogPost: jest.fn(),
@@ -96,6 +99,9 @@ describe('shared accessible frontend shell', () => {
     api.getBalance.mockReset().mockResolvedValue({ balance: 8 });
     api.getTransactions.mockReset().mockResolvedValue({ data: [] });
     api.getProfile.mockReset().mockResolvedValue({ id: 101 });
+    api.updateProfile.mockReset().mockResolvedValue({});
+    api.saveOnboardingSafeguarding.mockReset().mockResolvedValue({});
+    api.completeOnboarding.mockReset().mockResolvedValue({ data: { message: 'complete' } });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
     api.sendAppreciation.mockReset().mockResolvedValue({ data: { id: 55 } });
@@ -172,6 +178,132 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Onboarding');
     expect(response.text).toContain('Laravel Blade route');
     expect(response.text).toContain('does not certify ASP.NET route or workflow');
+  });
+
+  it('submits the Laravel onboarding profile step through the profile API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/onboarding/profile')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        bio: ' I can help with gardening '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/onboarding/interests');
+    expect(api.updateProfile).toHaveBeenCalledWith('test-token', {
+      bio: 'I can help with gardening'
+    });
+  });
+
+  it('stores onboarding category choices and completes through the Laravel v2 API', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const interests = await agent
+      .post('/onboarding/interests')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        interests: ['2', 'bad', '3', '2']
+      });
+
+    expect(interests.status).toBe(302);
+    expect(interests.headers.location).toBe('/onboarding/skills');
+
+    const skills = await agent
+      .post('/onboarding/skills')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        offers: ['5'],
+        needs: ['6']
+      });
+
+    expect(skills.status).toBe(302);
+    expect(skills.headers.location).toBe('/onboarding/safeguarding');
+
+    const confirm = await agent
+      .post('/onboarding/confirm')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(confirm.status).toBe(302);
+    expect(confirm.headers.location).toBe('/dashboard?status=onboarding-complete');
+    expect(api.completeOnboarding).toHaveBeenCalledWith('test-token', {
+      interests: [2, 3],
+      offers: [5],
+      needs: [6]
+    });
+  });
+
+  it('submits onboarding safeguarding choices through the Laravel v2 API', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/onboarding/safeguarding')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        'safeguarding[9]': 'yes',
+        'safeguarding[10]': ''
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/onboarding/confirm');
+    expect(api.saveOnboardingSafeguarding).toHaveBeenCalledWith('test-token', [
+      { option_id: 9, value: 'yes' }
+    ]);
+  });
+
+  it('keeps the Laravel onboarding avatar route as a safe failure until multipart proxying exists', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/onboarding/avatar')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/onboarding/profile?status=avatar-failed');
   });
 
   it('renders the Laravel-style contact form with report-problem prefill', async () => {
