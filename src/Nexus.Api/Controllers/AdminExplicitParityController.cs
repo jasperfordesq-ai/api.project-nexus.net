@@ -450,6 +450,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
             "/api/v2/admin/member-premium/connect/onboarding" => await CreateMemberPremiumConnectOnboarding(),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/test", out var webhookId) => await TestFederationWebhook(webhookId),
+            _ when TryGetJobModerationAction(path, out var jobId, out var action) => await ModerateJob(jobId, action),
             _ => await PersistCompatibilityWrite("post")
         };
     }
@@ -1689,6 +1690,93 @@ public class AdminExplicitParityController : ControllerBase
         return Ok(new { data = items, meta = new { total, page, limit } });
     }
 
+    private async Task<IActionResult> ModerateJob(int id, string action)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var job = await _db.JobVacancies.FirstOrDefaultAsync(j => j.TenantId == tenantId && j.Id == id);
+        if (job == null)
+        {
+            return NotFound(new { error = "Job not found" });
+        }
+
+        var now = DateTime.UtcNow;
+        var adminUserId = GetCurrentAdminUserId();
+        switch (action)
+        {
+            case "approve":
+                job.Status = "active";
+                job.UpdatedAt = now;
+                await _db.SaveChangesAsync();
+                return Ok(new
+                {
+                    data = new
+                    {
+                        approved = true,
+                        id = job.Id,
+                        status = job.Status,
+                        message = "Job approved",
+                        admin_user_id = adminUserId,
+                        notes = JsonString(payload, "notes")
+                    }
+                });
+
+            case "reject":
+            {
+                var reason = JsonString(payload, "reason");
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    return UnprocessableEntity(new { error = "VALIDATION_REQUIRED", field = "reason" });
+                }
+
+                job.Status = "rejected";
+                job.UpdatedAt = now;
+                await _db.SaveChangesAsync();
+                return Ok(new
+                {
+                    data = new
+                    {
+                        rejected = true,
+                        id = job.Id,
+                        status = job.Status,
+                        reason,
+                        message = "Job rejected",
+                        admin_user_id = adminUserId
+                    }
+                });
+            }
+
+            case "flag":
+            {
+                var reason = JsonString(payload, "reason");
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    return UnprocessableEntity(new { error = "VALIDATION_REQUIRED", field = "reason" });
+                }
+
+                job.Status = "flagged";
+                job.UpdatedAt = now;
+                await _db.SaveChangesAsync();
+                return Ok(new
+                {
+                    data = new
+                    {
+                        flagged = true,
+                        id = job.Id,
+                        status = job.Status,
+                        reason,
+                        message = "Job flagged",
+                        admin_user_id = adminUserId
+                    }
+                });
+            }
+
+            default:
+                return BadRequest(new { error = "Unsupported job moderation action" });
+        }
+    }
+
     private async Task<IActionResult> GetEvent(int id)
     {
         var item = await _db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
@@ -2573,6 +2661,20 @@ public class AdminExplicitParityController : ControllerBase
         return NormalizePayloadJson(raw);
     }
 
+    private async Task<Dictionary<string, JsonElement>> ReadJsonObjectPayloadAsync()
+    {
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, StoreJsonOptions)
+                ?? new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
     private async Task<List<StoredParityRecord>> LoadStoredRecordsAsync(string key, bool includeDeleted = false)
     {
         var raw = await GetTenantConfigValueAsync(key);
@@ -2957,6 +3059,19 @@ public class AdminExplicitParityController : ControllerBase
         };
     }
 
+    private static string? JsonString(Dictionary<string, JsonElement> payload, string key)
+    {
+        foreach (var item in payload)
+        {
+            if (string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                return JsonElementToString(item.Value)?.Trim();
+            }
+        }
+
+        return null;
+    }
+
     private static string FederationWebhookLogsKey(int webhookId)
     {
         return $"admin_explicit.federation.webhook_logs.{webhookId}";
@@ -3016,6 +3131,27 @@ public class AdminExplicitParityController : ControllerBase
         if (tail.Contains('/')) return false;
 
         return int.TryParse(tail, out id);
+    }
+
+    private static bool TryGetJobModerationAction(string path, out int id, out string action)
+    {
+        id = 0;
+        action = string.Empty;
+
+        const string prefix = "/api/v2/admin/jobs/";
+        if (!path.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var parts = path[prefix.Length..].Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2 || !int.TryParse(parts[0], out id))
+        {
+            return false;
+        }
+
+        action = parts[1];
+        return action is "approve" or "reject" or "flag";
     }
 
     private static bool TryGetSlugBeforeSuffix(string path, string prefix, string suffix, out string slug)

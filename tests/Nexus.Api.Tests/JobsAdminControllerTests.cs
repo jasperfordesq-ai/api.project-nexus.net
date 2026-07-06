@@ -234,6 +234,46 @@ public class JobsAdminControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task V2ModerationActions_UpdateSeededJobStatuses()
+    {
+        var approveId = await SeedJobAsync("Laravel React approve alias", status: "draft");
+        var rejectId = await SeedJobAsync("Laravel React reject alias", status: "draft");
+        var flagId = await SeedJobAsync("Laravel React flag alias", status: "active");
+        await AuthenticateAsAdminAsync();
+
+        var approve = await Client.PostAsJsonAsync($"/api/v2/admin/jobs/{approveId}/approve", new
+        {
+            notes = "Approved through Laravel React alias"
+        });
+        approve.StatusCode.Should().Be(HttpStatusCode.OK);
+        var approveJson = await approve.Content.ReadFromJsonAsync<JsonElement>();
+        approveJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        approveJson.GetProperty("data").GetProperty("approved").GetBoolean().Should().BeTrue();
+
+        var reject = await Client.PostAsJsonAsync($"/api/v2/admin/jobs/{rejectId}/reject", new
+        {
+            reason = "Insufficient detail"
+        });
+        reject.StatusCode.Should().Be(HttpStatusCode.OK);
+        var rejectJson = await reject.Content.ReadFromJsonAsync<JsonElement>();
+        rejectJson.GetProperty("data").GetProperty("rejected").GetBoolean().Should().BeTrue();
+
+        var flag = await Client.PostAsJsonAsync($"/api/v2/admin/jobs/{flagId}/flag", new
+        {
+            reason = "Possible spam"
+        });
+        flag.StatusCode.Should().Be(HttpStatusCode.OK);
+        var flagJson = await flag.Content.ReadFromJsonAsync<JsonElement>();
+        flagJson.GetProperty("data").GetProperty("flagged").GetBoolean().Should().BeTrue();
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.JobVacancies.IgnoreQueryFilters().SingleAsync(j => j.Id == approveId)).Status.Should().Be("active");
+        (await db.JobVacancies.IgnoreQueryFilters().SingleAsync(j => j.Id == rejectId)).Status.Should().Be("rejected");
+        (await db.JobVacancies.IgnoreQueryFilters().SingleAsync(j => j.Id == flagId)).Status.Should().Be("flagged");
+    }
+
+    [Fact]
     public async Task UpdateStatus_NonExistent_ReturnsNotFoundOrBadRequest()
     {
         await AuthenticateAsAdminAsync();
@@ -243,7 +283,7 @@ public class JobsAdminControllerTests : IntegrationTestBase
         r.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.BadRequest);
     }
 
-    private async Task<int> SeedJobAsync(string title)
+    private async Task<int> SeedJobAsync(string title, string status = "active")
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -255,7 +295,7 @@ public class JobsAdminControllerTests : IntegrationTestBase
             Description = "Seeded for Laravel React admin jobs compatibility.",
             Category = "operations",
             JobType = "volunteer",
-            Status = "active",
+            Status = status,
             ContactEmail = TestData.AdminUser.Email,
             CreatedAt = DateTime.UtcNow
         };
