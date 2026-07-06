@@ -458,7 +458,10 @@ npm run brand:check
 
 ```env
 PORT=3001
-API_BASE_URL=http://localhost:5000
+ACCESSIBLE_BACKEND_TARGET=laravel
+LARAVEL_BASE_URL=http://127.0.0.1:8088
+# Optional explicit override:
+# API_BASE_URL=http://127.0.0.1:8088
 COOKIE_SECRET=your-secret-here
 SESSION_SECRET=your-session-secret
 NODE_ENV=development

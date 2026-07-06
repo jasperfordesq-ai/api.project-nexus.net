@@ -1,20 +1,54 @@
 # Backend Switching Contract
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-06
 
 ## Decision
 
 `apps/web-uk` may become a shared accessible frontend for Laravel and ASP.NET in
-the future, but this pass does not implement real backend adapters or switch
-production traffic. The Laravel Blade accessible frontend remains the source of
-truth, and ASP.NET must become compatible with that behavior.
+the future. Its default backend contract is now Laravel-first, but this does not
+certify completed page workflows or production traffic. The Laravel Blade
+accessible frontend remains the source of truth, and ASP.NET must become
+compatible with that behavior.
+
+Backend target resolution lives in:
+
+```text
+src/lib/backend-contract.js
+```
 
 ## Future Modes
 
 | Mode | Meaning | Current status |
 | --- | --- | --- |
-| Laravel-compatible | The frontend talks to endpoints and page workflows matching the Laravel accessible frontend. | Source of truth only; no Express adapter is implemented here. |
-| ASP.NET-compatible | The frontend talks to ASP.NET endpoints that intentionally mimic Laravel accessible contracts. | Development-only; not certified. |
+| Laravel-compatible | The frontend talks to endpoints and page workflows matching the Laravel accessible frontend. | Default target. Source of truth, but individual workflows still require route/data/form certification. |
+| ASP.NET-compatible | The frontend talks to ASP.NET endpoints that intentionally mimic Laravel accessible contracts. | Development-only; selectable for future work, not certified. |
+
+## Local Backend Defaults
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |
+| `LARAVEL_BASE_URL` | `http://127.0.0.1:8088` | Local Laravel staging backend URL, matching `C:\platforms\htdocs\staging\.env`. |
+| `ASPNET_BASE_URL` | `http://localhost:5080` | Future ASP.NET target when explicitly selected. Not certified. |
+| `API_BASE_URL` | unset | Explicit URL override for local testing. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
+
+## Current Page Candidates
+
+`/organisations`, `/organisations/browse`, and `/organisations/register` GET are
+local Blade-style visual/data candidates based on the Laravel accessible
+organisations pages. The directory GET reads
+`/api/v2/volunteering/organisations` with `search` and `per_page` query params
+and keeps a warning state for API unavailability. The browse GET uses the same
+collection with `search`, `per_page`, and cursor-style load-more pagination. The
+register GET renders the standalone Blade-style form and validation status
+anchors, but POST persistence is not certified. Its detail GET reads
+`/api/v2/volunteering/organisations/{id}?include=public_contract` and renders
+profile, contact, jobs-link, basic public stats, and empty depth sections. It is
+not a backend adapter and must not be treated as proof that Laravel or ASP.NET
+organisation workflows are ready in this app. The remaining work includes
+tenant-prefixed routing, auth redirects, volunteering feature gates,
+registration persistence, POST validation behavior, redirects, detail
+opportunities/reviews depth data, localization, and runtime smoke tests.
 
 ## Required Compatibility Areas
 
