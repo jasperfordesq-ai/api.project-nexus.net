@@ -14,6 +14,7 @@ public class AdminV2RouteAliasUnitTests
     [Theory]
     [InlineData(typeof(AdminController), "api/v2/admin")]
     [InlineData(typeof(AdminCompatibilityController), "api/v2/admin")]
+    [InlineData(typeof(AdminBlogController), "api/v2/admin/blog")]
     public void AdminControllers_ExposeLaravelReactV2AdminPrefix(Type controllerType, string expectedRoute)
     {
         controllerType
@@ -39,11 +40,17 @@ public class AdminV2RouteAliasUnitTests
     [InlineData(typeof(AdminCompatibilityController), "RunSeoAudit", typeof(HttpPostAttribute), "tools/seo-audit")]
     [InlineData(typeof(AdminController), "SuspendUser", typeof(HttpPostAttribute), "users/{id:int}/suspend")]
     [InlineData(typeof(AdminController), "ApproveListing", typeof(HttpPostAttribute), "listings/{id:int}/approve")]
+    [InlineData(typeof(AdminBlogController), "ListPosts", typeof(HttpGetAttribute), null)]
+    [InlineData(typeof(AdminBlogController), "CreatePost", typeof(HttpPostAttribute), null)]
+    [InlineData(typeof(AdminBlogController), "GetPost", typeof(HttpGetAttribute), "{id:int}")]
+    [InlineData(typeof(AdminBlogController), "UpdatePost", typeof(HttpPutAttribute), "{id:int}")]
+    [InlineData(typeof(AdminBlogController), "DeletePost", typeof(HttpDeleteAttribute), "{id:int}")]
+    [InlineData(typeof(AdminBlogController), "ToggleStatus", typeof(HttpPostAttribute), "{id:int}/toggle-status")]
     public void LaravelReactAdminActions_HaveExpectedRouteTemplates(
         Type controllerType,
         string methodName,
         Type httpAttributeType,
-        string expectedTemplate)
+        string? expectedTemplate)
     {
         var method = controllerType.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public);
 

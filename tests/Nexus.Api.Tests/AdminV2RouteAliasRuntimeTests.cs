@@ -16,6 +16,7 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
     [InlineData("/api/v2/admin/categories")]
     [InlineData("/api/v2/admin/attributes")]
     [InlineData("/api/v2/admin/gamification/campaigns")]
+    [InlineData("/api/v2/admin/blog")]
     public async Task LaravelReactAdminV2ReadAliases_AsAdmin_ReturnOk(string path)
     {
         await AuthenticateAsAdminAsync();
