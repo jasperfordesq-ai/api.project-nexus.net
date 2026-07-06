@@ -178,4 +178,108 @@ module.exports = router;
     expect(fs.existsSync(path.join(outDir, 'accessible-route-matrix.csv'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'accessible-route-matrix.md'))).toBe(true);
   });
+
+  it('discovers every router in a combined app.use mount', () => {
+    writeFile(path.join(sourceRoot, 'routes', 'govuk-alpha-parity', 'ideation.php'), `
+<?php
+Route::get('/ideation', [AlphaController::class, 'ideation'])
+    ->name('ideation.index');
+Route::get('/ideation/{challenge}', [AlphaController::class, 'ideationChallenge'])
+    ->name('ideation.show');
+Route::post('/ideation/{challenge}/ideas', [AlphaController::class, 'submitIdea'])
+    ->name('ideation.ideas.store');
+`);
+
+    writeFile(path.join(sourceRoot, 'app', 'Http', 'Controllers', 'GovukAlpha', 'Concerns', 'IdeationParity.php'), `
+<?php
+trait IdeationParity
+{
+    public function ideation(Request $request, string $tenantSlug): Response
+    {
+        return $this->view('accessible-frontend::ideation', []);
+    }
+
+    public function ideationChallenge(Request $request, string $tenantSlug, int $challenge): Response
+    {
+        return $this->view('accessible-frontend::ideation-detail', []);
+    }
+
+    public function submitIdea(Request $request, string $tenantSlug, int $challenge): RedirectResponse
+    {
+        return redirect('/ideation/' . $challenge);
+    }
+}
+`);
+
+    writeFile(path.join(targetRoot, 'apps', 'web-uk', 'src', 'server.js'), `
+const express = require('express');
+const dashboardRoutes = require('./routes/dashboard');
+const ideationRoutes = require('./routes/ideation');
+const ideationActionRoutes = require('./routes/ideation-actions');
+const prepRoutes = require('./routes/laravel-prep-pages');
+const staticPageRoutes = require('./routes/static-pages');
+const app = express();
+
+app.post('/report-a-problem', (req, res) => res.redirect('/'));
+app.use('/dashboard', dashboardRoutes);
+app.use('/ideation', doubleCsrfProtection, postOnly(formLimiter), ideationRoutes, ideationActionRoutes);
+app.use(prepRoutes);
+app.use(staticPageRoutes);
+`);
+
+    writeFile(path.join(targetRoot, 'apps', 'web-uk', 'src', 'routes', 'ideation.js'), `
+const express = require('express');
+const router = express.Router();
+
+router.get('/', (req, res) => {
+  res.render('ideation/index', { title: 'Ideas' });
+});
+
+router.get('/:id(\\\\d+)', (req, res) => {
+  res.render('ideation/detail', { title: 'Idea' });
+});
+
+module.exports = router;
+`);
+
+    writeFile(path.join(targetRoot, 'apps', 'web-uk', 'src', 'routes', 'ideation-actions.js'), `
+const express = require('express');
+const router = express.Router();
+
+router.post('/:id/ideas', (req, res) => {
+  res.redirect('/ideation/' + req.params.id);
+});
+
+module.exports = router;
+`);
+
+    writeFile(path.join(targetRoot, 'apps', 'web-uk', 'src', 'routes', 'laravel-prep-pages.js'), `
+const prepPages = [
+  { method: 'GET', expressPath: '/ideation' },
+  { method: 'GET', expressPath: '/ideation/:id(\\\\d+)' }
+];
+
+module.exports.prepPages = prepPages;
+`);
+
+    const report = generateAccessibleRouteMatrix({ sourceRoot, targetRoot, outDir });
+    const route = (method, routePath) => report.matrix.find(
+      (row) => row.method === method && row.path === routePath
+    );
+
+    expect(route('GET', '/ideation')).toEqual(expect.objectContaining({
+      status: 'matched',
+      webUkView: 'ideation/index',
+      webUkFile: expect.stringContaining('ideation.js')
+    }));
+    expect(route('GET', '/ideation/{param}')).toEqual(expect.objectContaining({
+      status: 'matched',
+      webUkView: 'ideation/detail',
+      webUkFile: expect.stringContaining('ideation.js')
+    }));
+    expect(route('POST', '/ideation/{param}/ideas')).toEqual(expect.objectContaining({
+      status: 'matched',
+      webUkFile: expect.stringContaining('ideation-actions.js')
+    }));
+  });
 });

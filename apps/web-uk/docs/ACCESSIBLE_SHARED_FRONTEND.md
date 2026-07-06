@@ -241,15 +241,22 @@ partial: RSS/media rendering, author configuration gates, moderation state,
 localization, runtime smoke tests, and ASP.NET backend compatibility are not
 certified.
 
-Ideation GET pages remain preparation pages, but the Laravel accessible POST
-aliases under `/ideation` are now local route declarations backed by Laravel v2
-ideation APIs. The aliases cover challenge create/update/status/favorite,
-duplicate, delete, campaign linking, and outcome updates; idea submit, draft,
-comment, vote, status, media, convert-to-group, and delete actions; and campaign
-create/update/delete plus challenge unlinking. This remains partial: Blade
-rendering, admin authorization depth, multipart/media upload proxying, team
-conversion runtime behavior, tenant/feature gates, localization, runtime smoke
-tests, and ASP.NET backend compatibility are not certified.
+The `/ideation` and `/ideation/{id}` GET pages are now partial Laravel-backed
+candidates for the Blade ideation challenge list/detail flow. Unsigned visitors
+redirect to `/login?status=auth-required`; signed GET requests call Laravel
+`/api/v2/ideation-challenges`, `/api/v2/ideation-challenges/{id}`, and
+`/api/v2/ideation-challenges/{id}/ideas?limit=30&sort=votes`, then render
+Blade-style search/status filters, challenge cards, status tags, idea counts,
+success/error banners, challenge metadata, prize inset, idea cards, vote forms,
+and the submit-idea form. Existing POST aliases still call Laravel v2 ideation
+APIs for challenge create/update/status/favorite, duplicate, delete, campaign
+linking, outcome updates, idea submit/draft/comment/vote/status/media/
+convert-to-group/delete actions, and campaign create/update/delete plus
+challenge unlinking. This remains partial: campaigns/outcomes/tags/new/manage/
+edit/drafts/idea detail GET pages, admin authorization depth, multipart/media
+upload proxying, team conversion runtime behavior, tenant/feature gates,
+localization, runtime smoke tests, and ASP.NET backend compatibility are not
+certified.
 
 Group exchange GET pages remain preparation pages, but the Laravel accessible
 POST aliases under `/group-exchanges` are now local route declarations backed by

@@ -35,6 +35,7 @@ const feedActionRoutes = require('./routes/feed-actions');
 const marketplaceActionRoutes = require('./routes/marketplace-actions');
 const marketplaceRoutes = require('./routes/marketplace');
 const volunteeringActionRoutes = require('./routes/volunteering-actions');
+const ideationRoutes = require('./routes/ideation');
 const ideationActionRoutes = require('./routes/ideation-actions');
 const groupExchangeActionRoutes = require('./routes/group-exchange-actions');
 const reportsRoutes = require('./routes/reports');
@@ -1087,6 +1088,7 @@ app.use('/chat', doubleCsrfProtection, postOnly(formLimiter), aiChatRoutes);
 app.use('/skills', doubleCsrfProtection, postOnly(formLimiter), skillsRoutes);
 app.use('/exchanges', doubleCsrfProtection, postOnly(formLimiter), exchangeRoutes);
 app.use('/goals', doubleCsrfProtection, postOnly(formLimiter), goalsRoutes);
+app.use('/ideation', doubleCsrfProtection, postOnly(formLimiter), ideationRoutes, ideationActionRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
@@ -1144,7 +1146,6 @@ app.use('/notifications', doubleCsrfProtection, notificationsRoutes);
 app.use('/settings', doubleCsrfProtection, settingsRoutes);
 app.use('/groups', doubleCsrfProtection, postOnly(formLimiter), groupsRoutes);
 app.use('/events', doubleCsrfProtection, postOnly(formLimiter), eventsRoutes);
-app.use('/ideation', doubleCsrfProtection, postOnly(formLimiter), ideationActionRoutes);
 app.use('/group-exchanges', doubleCsrfProtection, postOnly(formLimiter), groupExchangeActionRoutes);
 app.use('/marketplace', doubleCsrfProtection, postOnly(formLimiter), marketplaceActionRoutes);
 app.use('/volunteering', doubleCsrfProtection, postOnly(formLimiter), volunteeringActionRoutes);

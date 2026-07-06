@@ -7831,6 +7831,114 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
   });
 
+  it('redirects signed-out visitors away from Laravel ideation GET pages before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+
+    const index = await request(app).get('/ideation');
+    const detail = await request(app).get('/ideation/7');
+
+    expect(index.status).toBe(302);
+    expect(index.headers.location).toBe('/login?status=auth-required');
+    expect(detail.status).toBe(302);
+    expect(detail.headers.location).toBe('/login?status=auth-required');
+    expect(api.callIdeationApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed ideation challenge list and detail pages', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.callIdeationApi
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 7,
+              title: 'Better local parks',
+              description: 'Gather practical ideas for improving local parks.',
+              status: 'open',
+              ideas_count: 3
+            },
+            {
+              id: 8,
+              title: 'Community transport',
+              status: 'voting',
+              ideas_count: 12
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 7,
+          title: 'Better local parks',
+          description: 'Gather practical ideas for improving local parks.',
+          status: 'open',
+          category: 'Environment',
+          submission_deadline: '2026-10-01',
+          voting_deadline: '2026-11-01',
+          max_ideas_per_user: 2,
+          views_count: 18,
+          favorites_count: 5,
+          tags: ['parks', 'accessibility'],
+          prize_description: 'Winning ideas receive seed funding.'
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 12,
+              title: 'More accessible benches',
+              description: 'Add seating near the entrances and main path.',
+              vote_count: 9,
+              creator: { name: 'Avery Stone' }
+            }
+          ]
+        }
+      });
+
+    const index = await request(app)
+      .get('/ideation?status=open&q=parks')
+      .set('Cookie', signedCookieHeader());
+    const detail = await request(app)
+      .get('/ideation/7?status=idea-submitted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(index.status).toBe(200);
+    expect(staticPageRoutes.pages['/ideation']).toBeUndefined();
+    expect(index.text).toContain('Ideas');
+    expect(index.text).toContain('Share ideas and vote on suggestions for the community.');
+    expect(index.text).toContain('name="q"');
+    expect(index.text).toContain('value="parks"');
+    expect(index.text).toContain('name="status"');
+    expect(index.text).toContain('Better local parks');
+    expect(index.text).toContain('Gather practical ideas for improving local parks.');
+    expect(index.text).toContain('Open');
+    expect(index.text).toContain('3 ideas');
+    expect(index.text).toContain('Community transport');
+    expect(index.text).toContain('Voting');
+    expect(index.text).toContain('href="/ideation/7"');
+    expect(index.text).not.toContain('Ideation pages will follow the Laravel accessible frontend contract.');
+
+    expect(detail.status).toBe(200);
+    expect(detail.text).toContain('Back to challenges');
+    expect(detail.text).toContain('your idea has been submitted');
+    expect(detail.text).toContain('Better local parks');
+    expect(detail.text).toContain('Environment');
+    expect(detail.text).toContain('parks');
+    expect(detail.text).toContain('accessibility');
+    expect(detail.text).toContain('Winning ideas receive seed funding.');
+    expect(detail.text).toContain('More accessible benches');
+    expect(detail.text).toContain('9 votes');
+    expect(detail.text).toContain('Avery Stone');
+    expect(detail.text).toContain('method="post" action="/ideation/7/ideas/12/vote"');
+    expect(detail.text).toContain('method="post" action="/ideation/7/ideas"');
+    expect(detail.text).toContain('name="idea_title"');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-challenges?limit=30&status=open&search=parks');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-challenges/7');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/ideation-challenges/7/ideas?limit=30&sort=votes');
+  });
+
   it('submits Laravel ideation challenge action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

@@ -323,10 +323,12 @@ function parseAppUses(serverText, requireMap) {
     const args = match[1];
     const prefixMatch = args.match(/^\s*['"]([^'"]+)['"]\s*,/);
     const prefix = prefixMatch ? prefixMatch[1] : '';
-    const identifiers = [...args.matchAll(/\b([A-Za-z0-9_]+)\b/g)].map((idMatch) => idMatch[1]);
-    const routeVar = identifiers.reverse().find((identifier) => requireMap.has(identifier) || identifier === 'staticPageRoutes');
+    const identifiers = [...args.matchAll(/\b([A-Za-z0-9_]+)\b/g)]
+      .map((idMatch) => idMatch[1])
+      .filter((identifier) => requireMap.has(identifier) || identifier === 'staticPageRoutes');
+    const routeVars = [...new Set(identifiers)];
 
-    if (routeVar) {
+    for (const routeVar of routeVars) {
       uses.push({ prefix, routeVar });
     }
   }
@@ -469,6 +471,18 @@ function compressRoutes(routes, keyFn) {
     }
 
     const existing = map.get(key);
+    const existingIsFallback = isFallbackRoute(existing);
+    const routeIsFallback = isFallbackRoute(route);
+
+    if (existingIsFallback && !routeIsFallback) {
+      map.set(key, { ...route });
+      continue;
+    }
+
+    if (!existingIsFallback && routeIsFallback) {
+      continue;
+    }
+
     for (const [field, value] of Object.entries(route)) {
       if (!value || existing[field] === value) {
         continue;
@@ -484,6 +498,15 @@ function compressRoutes(routes, keyFn) {
   }
 
   return [...map.values()].sort((a, b) => `${a.method} ${a.path}`.localeCompare(`${b.method} ${b.path}`));
+}
+
+function isFallbackRoute(route) {
+  if (!route || route.webUkView !== 'static-page' || !route.webUkFile) {
+    return false;
+  }
+
+  const fileName = path.basename(route.webUkFile);
+  return fileName === 'static-pages.js' || fileName === 'laravel-prep-pages.js';
 }
 
 function buildMatrix(laravelRoutes, webUkRoutes, methodDetails) {

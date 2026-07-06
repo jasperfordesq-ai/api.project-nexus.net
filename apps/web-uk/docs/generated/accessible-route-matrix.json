@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T22:24:23.336Z",
+    "generatedAt": "2026-07-06T22:36:33.675Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -1990,8 +1990,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/about",
-      "webUkView": "about; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "about",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -2028,8 +2028,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/account",
-      "webUkView": "account; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "account",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -2294,8 +2294,8 @@
       "gates": "feature:blog",
       "apiNeeds": "service:BlogService",
       "webUkPath": "/blog",
-      "webUkView": "blog/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "blog/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js"
     },
     {
       "method": "GET",
@@ -2313,8 +2313,8 @@
       "gates": "feature:blog",
       "apiNeeds": "service:BlogService",
       "webUkPath": "/blog/{param}",
-      "webUkView": "blog/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "blog/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js"
     },
     {
       "method": "GET",
@@ -2332,8 +2332,8 @@
       "gates": "feature:blog",
       "apiNeeds": "",
       "webUkPath": "/blog/{param}/comments",
-      "webUkView": "blog/comments; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "blog/comments",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js"
     },
     {
       "method": "GET",
@@ -2351,8 +2351,8 @@
       "gates": "feature:blog",
       "apiNeeds": "",
       "webUkPath": "/blog/{param}/likers/{param}",
-      "webUkView": "blog/likers; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "blog/likers",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js"
     },
     {
       "method": "GET",
@@ -2370,8 +2370,8 @@
       "gates": "feature:blog",
       "apiNeeds": "service:BlogService",
       "webUkPath": "/blog/feed.xml",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js"
     },
     {
       "method": "POST",
@@ -2522,8 +2522,8 @@
       "gates": "feature:ai_chat",
       "apiNeeds": "",
       "webUkPath": "/chat",
-      "webUkView": "ai-chat/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\ai-chat.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "ai-chat/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\ai-chat.js"
     },
     {
       "method": "POST",
@@ -2560,8 +2560,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/clubs",
-      "webUkView": "clubs/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\clubs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "clubs/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\clubs.js"
     },
     {
       "method": "GET",
@@ -2579,8 +2579,8 @@
       "gates": "feature:connections",
       "apiNeeds": "",
       "webUkPath": "/connections",
-      "webUkView": "connections/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\connections.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "connections/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\connections.js"
     },
     {
       "method": "GET",
@@ -2674,8 +2674,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/contact",
-      "webUkView": "contact; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\contact-support.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "contact",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\contact-support.js"
     },
     {
       "method": "POST",
@@ -2731,8 +2731,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/cookies",
-      "webUkView": "cookie-settings; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "cookie-settings",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -2750,8 +2750,8 @@
       "gates": "feature:merchant_coupons",
       "apiNeeds": "",
       "webUkPath": "/coupons",
-      "webUkView": "coupons/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\coupons.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "coupons/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\coupons.js"
     },
     {
       "method": "GET",
@@ -2769,8 +2769,8 @@
       "gates": "feature:merchant_coupons",
       "apiNeeds": "",
       "webUkPath": "/coupons/{param}",
-      "webUkView": "coupons/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\coupons.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "coupons/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\coupons.js"
     },
     {
       "method": "GET",
@@ -2788,8 +2788,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses",
-      "webUkView": "courses/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "courses/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "GET",
@@ -2807,8 +2807,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses/{param}",
-      "webUkView": "courses/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "courses/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "GET",
@@ -2826,8 +2826,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses/{param}/certificate",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "GET",
@@ -2845,8 +2845,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses/{param}/learn",
-      "webUkView": "courses/learn; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "courses/learn",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "GET",
@@ -2864,8 +2864,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses/instructor",
-      "webUkView": "courses/instructor; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "courses/instructor",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "GET",
@@ -2883,8 +2883,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses/instructor/{param}/analytics",
-      "webUkView": "courses/analytics; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "courses/analytics",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "GET",
@@ -2902,8 +2902,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses/instructor/{param}/edit",
-      "webUkView": "courses/form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "courses/form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "GET",
@@ -2921,8 +2921,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses/instructor/{param}/grading",
-      "webUkView": "courses/grading; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "courses/grading",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "GET",
@@ -2940,8 +2940,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses/instructor/new",
-      "webUkView": "courses/form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "courses/form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "GET",
@@ -2959,8 +2959,8 @@
       "gates": "feature:courses",
       "apiNeeds": "",
       "webUkPath": "/courses/mine",
-      "webUkView": "courses/my-learning; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "courses/my-learning",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\courses.js"
     },
     {
       "method": "POST",
@@ -3282,8 +3282,8 @@
       "gates": "feature:events; module:dashboard; module:listings",
       "apiNeeds": "service:WalletService; service:feedService::getFeed; service:listingService::getAll",
       "webUkPath": "/dashboard",
-      "webUkView": "dashboard/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\dashboard.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "dashboard/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\dashboard.js"
     },
     {
       "method": "GET",
@@ -3301,8 +3301,8 @@
       "gates": "feature:events",
       "apiNeeds": "",
       "webUkPath": "/events",
-      "webUkView": "events/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "events/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
       "method": "GET",
@@ -3320,8 +3320,8 @@
       "gates": "feature:events",
       "apiNeeds": "",
       "webUkPath": "/events/{param}",
-      "webUkView": "events/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "events/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
       "method": "GET",
@@ -3339,8 +3339,8 @@
       "gates": "feature:events",
       "apiNeeds": "",
       "webUkPath": "/events/{param}/edit",
-      "webUkView": "events/edit; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "events/edit",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
       "method": "GET",
@@ -3453,8 +3453,8 @@
       "gates": "feature:events",
       "apiNeeds": "",
       "webUkPath": "/events/new",
-      "webUkView": "events/new; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "events/new",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
       "method": "POST",
@@ -3700,8 +3700,8 @@
       "gates": "module:listings",
       "apiNeeds": "",
       "webUkPath": "/exchanges",
-      "webUkView": "exchanges/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\exchanges.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "exchanges/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\exchanges.js"
     },
     {
       "method": "GET",
@@ -3719,8 +3719,8 @@
       "gates": "module:listings",
       "apiNeeds": "service:ExchangeRatingService",
       "webUkPath": "/exchanges/{param}",
-      "webUkView": "exchanges/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\exchanges.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "exchanges/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\exchanges.js"
     },
     {
       "method": "POST",
@@ -3776,8 +3776,8 @@
       "gates": "feature:events; module:listings",
       "apiNeeds": "",
       "webUkPath": "/explore",
-      "webUkView": "explore; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\explore.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "explore",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\explore.js"
     },
     {
       "method": "GET",
@@ -3833,8 +3833,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation",
-      "webUkView": "federation/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -3852,8 +3852,8 @@
       "gates": "feature:federation",
       "apiNeeds": "service:FederatedConnectionService",
       "webUkPath": "/federation/connections",
-      "webUkView": "federation/connections; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/connections",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -3871,8 +3871,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/events",
-      "webUkView": "federation/events; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/events",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -3890,8 +3890,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/groups",
-      "webUkView": "federation/groups; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/groups",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -3909,8 +3909,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/listings",
-      "webUkView": "federation/listings; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/listings",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -3928,8 +3928,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/listings/{param}/{param}",
-      "webUkView": "federation/listing-show; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/listing-show",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -3947,8 +3947,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/members",
-      "webUkView": "federation/members; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/members",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -3966,8 +3966,8 @@
       "gates": "feature:federation",
       "apiNeeds": "service:FederatedConnectionService",
       "webUkPath": "/federation/members/{param}",
-      "webUkView": "federation/member; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/member",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -3985,8 +3985,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/members/{param}/transfer",
-      "webUkView": "federation/transfer; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/transfer",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -4004,8 +4004,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/messages",
-      "webUkView": "federation/messages; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/messages",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -4023,8 +4023,8 @@
       "gates": "feature:federation; feature:message_translation",
       "apiNeeds": "",
       "webUkPath": "/federation/messages/conversation/{param}",
-      "webUkView": "federation/conversation; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/conversation",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -4042,8 +4042,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/onboarding",
-      "webUkView": "federation/onboarding; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/onboarding",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -4061,8 +4061,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/opt-in",
-      "webUkView": "federation/opt-in; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/opt-in",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -4080,8 +4080,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/opt-out",
-      "webUkView": "federation/opt-out; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/opt-out",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -4099,8 +4099,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/partners",
-      "webUkView": "federation/partners; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/partners",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -4118,8 +4118,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/partners/{param}",
-      "webUkView": "federation/partner; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/partner",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "GET",
@@ -4137,8 +4137,8 @@
       "gates": "feature:federation",
       "apiNeeds": "",
       "webUkPath": "/federation/settings",
-      "webUkView": "federation/settings; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "federation/settings",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\federation.js"
     },
     {
       "method": "POST",
@@ -4365,8 +4365,8 @@
       "gates": "module:feed",
       "apiNeeds": "service:feedService::getFeed",
       "webUkPath": "/feed",
-      "webUkView": "feed/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\feed.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "feed/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\feed.js"
     },
     {
       "method": "GET",
@@ -4783,8 +4783,8 @@
       "gates": "feature:goals",
       "apiNeeds": "service:GoalService",
       "webUkPath": "/goals",
-      "webUkView": "goals/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\goals.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "goals/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\goals.js"
     },
     {
       "method": "GET",
@@ -4802,8 +4802,8 @@
       "gates": "feature:goals",
       "apiNeeds": "service:GoalProgressService; service:GoalService",
       "webUkPath": "/goals/{param}",
-      "webUkView": "goals/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\goals.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "goals/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\goals.js"
     },
     {
       "method": "GET",
@@ -5467,8 +5467,8 @@
       "gates": "feature:groups",
       "apiNeeds": "",
       "webUkPath": "/groups",
-      "webUkView": "groups/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "groups/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js"
     },
     {
       "method": "GET",
@@ -5486,8 +5486,8 @@
       "gates": "feature:groups",
       "apiNeeds": "",
       "webUkPath": "/groups/{param}",
-      "webUkView": "groups/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "groups/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js"
     },
     {
       "method": "GET",
@@ -5600,8 +5600,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/groups/{param}/edit",
-      "webUkView": "groups/edit; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "groups/edit",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js"
     },
     {
       "method": "GET",
@@ -5733,8 +5733,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/groups/new",
-      "webUkView": "groups/new; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "groups/new",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js"
     },
     {
       "method": "POST",
@@ -6189,8 +6189,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/",
-      "webUkView": "home; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "home",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -6208,8 +6208,8 @@
       "gates": "feature:connections; module:feed; module:listings",
       "apiNeeds": "",
       "webUkPath": "/",
-      "webUkView": "home; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "home",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -6227,8 +6227,8 @@
       "gates": "feature:ideation_challenges",
       "apiNeeds": "service:IdeationChallengeService",
       "webUkPath": "/ideation",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
+      "webUkView": "ideation/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\ideation.js"
     },
     {
       "method": "GET",
@@ -6246,8 +6246,8 @@
       "gates": "feature:ideation_challenges",
       "apiNeeds": "service:IdeationChallengeService",
       "webUkPath": "/ideation/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "ideation/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\ideation.js"
     },
     {
       "method": "GET",
@@ -6873,8 +6873,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs",
-      "webUkView": "jobs/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -6892,8 +6892,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/{param}",
-      "webUkView": "jobs/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -6911,8 +6911,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/{param}/analytics",
-      "webUkView": "jobs/analytics; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/analytics",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -6930,8 +6930,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/{param}/applications",
-      "webUkView": "jobs/applicants; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/applicants",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -6949,8 +6949,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/{param}/applications/export.csv",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -6968,8 +6968,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "",
       "webUkPath": "/jobs/{param}/edit",
-      "webUkView": "jobs/form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -6987,8 +6987,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/{param}/pipeline",
-      "webUkView": "jobs/pipeline; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/pipeline",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7006,8 +7006,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/{param}/qualified",
-      "webUkView": "jobs/qualification; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/qualification",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7025,8 +7025,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/alerts",
-      "webUkView": "jobs/alerts; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/alerts",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7044,8 +7044,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/applications",
-      "webUkView": "jobs/applications; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/applications",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7063,8 +7063,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "",
       "webUkPath": "/jobs/applications/{param}/cv",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7082,8 +7082,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/applications/{param}/history",
-      "webUkView": "jobs/application-history; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/application-history",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7101,8 +7101,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobBiasAuditService",
       "webUkPath": "/jobs/bias-audit",
-      "webUkView": "jobs/bias-audit; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/bias-audit",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7120,8 +7120,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "",
       "webUkPath": "/jobs/create",
-      "webUkView": "jobs/form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7139,8 +7139,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "",
       "webUkPath": "/jobs/employer-onboarding",
-      "webUkView": "jobs/onboarding; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/onboarding",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7158,8 +7158,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/employers/{param}",
-      "webUkView": "jobs/employer-brand; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/employer-brand",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7177,8 +7177,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/mine",
-      "webUkView": "jobs/mine; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/mine",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7196,8 +7196,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "",
       "webUkPath": "/jobs/responses",
-      "webUkView": "jobs/responses; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/responses",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7215,8 +7215,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/jobs/saved",
-      "webUkView": "jobs/saved; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/saved",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7234,8 +7234,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:CandidateSearchService",
       "webUkPath": "/jobs/talent-search",
-      "webUkView": "jobs/talent-search; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/talent-search",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "GET",
@@ -7253,8 +7253,8 @@
       "gates": "feature:job_vacancies",
       "apiNeeds": "service:CandidateSearchService",
       "webUkPath": "/jobs/talent-search/{param}",
-      "webUkView": "jobs/talent-profile; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "jobs/talent-profile",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\jobs.js"
     },
     {
       "method": "POST",
@@ -7842,8 +7842,8 @@
       "gates": "module:listings",
       "apiNeeds": "service:listingService::countAll; service:listingService::getAll",
       "webUkPath": "/listings",
-      "webUkView": "listings/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
+      "webUkView": "listings/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
     },
     {
       "method": "GET",
@@ -7861,8 +7861,8 @@
       "gates": "module:listings",
       "apiNeeds": "service:BookmarkService; service:listingService::getById",
       "webUkPath": "/listings/{param}",
-      "webUkView": "listings/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
+      "webUkView": "listings/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
     },
     {
       "method": "GET",
@@ -7918,8 +7918,8 @@
       "gates": "module:listings",
       "apiNeeds": "service:ListingSkillTagService",
       "webUkPath": "/listings/{param}/edit",
-      "webUkView": "listings/form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
+      "webUkView": "listings/form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
     },
     {
       "method": "GET",
@@ -7975,8 +7975,8 @@
       "gates": "module:listings",
       "apiNeeds": "",
       "webUkPath": "/listings/new",
-      "webUkView": "listings/form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
+      "webUkView": "listings/form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
     },
     {
       "method": "POST",
@@ -8203,8 +8203,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/login",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -8222,8 +8222,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/login/forgot-password",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -8241,8 +8241,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/login/two-factor",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "POST",
@@ -8355,8 +8355,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace",
-      "webUkView": "marketplace/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
+      "webUkView": "marketplace/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8374,8 +8374,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/{param}",
-      "webUkView": "marketplace/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8393,8 +8393,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/{param}/buy",
-      "webUkView": "marketplace/buy; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/buy",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8412,8 +8412,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/{param}/edit",
-      "webUkView": "marketplace/form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8431,8 +8431,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/{param}/offer",
-      "webUkView": "marketplace/offer; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/offer",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8450,8 +8450,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/{param}/report",
-      "webUkView": "marketplace/report; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/report",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8469,8 +8469,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/category/{param}",
-      "webUkView": "marketplace/listing-list; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/listing-list",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8488,8 +8488,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/marketplace/coupons",
-      "webUkView": "marketplace/coupons; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/coupons",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8507,8 +8507,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/marketplace/coupons/{param}/edit",
-      "webUkView": "marketplace/coupon-form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/coupon-form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8526,8 +8526,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/marketplace/coupons/new",
-      "webUkView": "marketplace/coupon-form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/coupon-form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8545,8 +8545,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/create",
-      "webUkView": "marketplace/form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8564,8 +8564,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/free",
-      "webUkView": "marketplace/listing-list; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/listing-list",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8583,8 +8583,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/mine",
-      "webUkView": "marketplace/manage; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/manage",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8602,8 +8602,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/offers",
-      "webUkView": "marketplace/offers; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/offers",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8621,8 +8621,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/onboarding",
-      "webUkView": "marketplace/onboarding; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/onboarding",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8640,8 +8640,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/orders",
-      "webUkView": "marketplace/orders; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/orders",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8659,8 +8659,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/pickups",
-      "webUkView": "marketplace/pickups; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/pickups",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8678,8 +8678,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/sales",
-      "webUkView": "marketplace/orders; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/orders",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8697,8 +8697,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/saved",
-      "webUkView": "marketplace/listing-list; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/listing-list",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8716,8 +8716,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/search",
-      "webUkView": "marketplace/search; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/search",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8735,8 +8735,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/seller/{param}",
-      "webUkView": "marketplace/seller; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/seller",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8754,8 +8754,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/slots",
-      "webUkView": "marketplace/slots; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/slots",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "GET",
@@ -8773,8 +8773,8 @@
       "gates": "feature:marketplace",
       "apiNeeds": "",
       "webUkPath": "/marketplace/slots/{param}/edit",
-      "webUkView": "marketplace/slot-form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
+      "webUkView": "marketplace/slot-form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
       "method": "POST",
@@ -9457,8 +9457,8 @@
       "gates": "feature:connections",
       "apiNeeds": "",
       "webUkPath": "/members",
-      "webUkView": "members/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\members.js"
+      "webUkView": "members/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\members.js"
     },
     {
       "method": "GET",
@@ -9476,8 +9476,8 @@
       "gates": "feature:connections",
       "apiNeeds": "",
       "webUkPath": "/members/{param}",
-      "webUkView": "members/profile; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\members.js"
+      "webUkView": "members/profile",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\members.js"
     },
     {
       "method": "GET",
@@ -9666,8 +9666,8 @@
       "gates": "module:messages",
       "apiNeeds": "service:BrokerMessageVisibilityService",
       "webUkPath": "/messages",
-      "webUkView": "messages/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\messages.js"
+      "webUkView": "messages/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\messages.js"
     },
     {
       "method": "GET",
@@ -9685,8 +9685,8 @@
       "gates": "module:messages",
       "apiNeeds": "service:BrokerMessageVisibilityService; service:listingService::getById",
       "webUkPath": "/messages/{param}",
-      "webUkView": "messages/conversation; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\messages.js"
+      "webUkView": "messages/conversation",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\messages.js"
     },
     {
       "method": "GET",
@@ -10065,8 +10065,8 @@
       "gates": "module:notifications",
       "apiNeeds": "service:NotificationService",
       "webUkPath": "/notifications",
-      "webUkView": "notifications/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\notifications.js"
+      "webUkView": "notifications/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\notifications.js"
     },
     {
       "method": "POST",
@@ -10179,8 +10179,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/onboarding",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\onboarding-posts.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\onboarding-posts.js"
     },
     {
       "method": "GET",
@@ -10198,8 +10198,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/onboarding/{param}",
-      "webUkView": "onboarding/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\onboarding-posts.js"
+      "webUkView": "onboarding/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\onboarding-posts.js"
     },
     {
       "method": "POST",
@@ -10255,8 +10255,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/organisations",
-      "webUkView": "organisations; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "organisations",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -10274,8 +10274,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/organisations/{param}",
-      "webUkView": "organisation-detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "organisation-detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -10293,8 +10293,8 @@
       "gates": "feature:job_vacancies; feature:volunteering",
       "apiNeeds": "service:JobVacancyService",
       "webUkPath": "/organisations/{param}/jobs",
-      "webUkView": "organisations-jobs; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "organisations-jobs",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -10312,8 +10312,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/organisations/browse",
-      "webUkView": "organisations-browse; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "organisations-browse",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -10331,8 +10331,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/organisations/manage",
-      "webUkView": "organisations-manage; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "organisations-manage",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -10350,8 +10350,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/organisations/opportunities/{param}/apply",
-      "webUkView": "organisations-apply; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "organisations-apply",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -10369,8 +10369,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/organisations/register",
-      "webUkView": "organisations-register; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "organisations-register",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "POST",
@@ -10426,8 +10426,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/password/reset",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "POST",
@@ -10464,8 +10464,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts",
-      "webUkView": "podcasts/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
+      "webUkView": "podcasts/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "GET",
@@ -10483,8 +10483,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/{param}",
-      "webUkView": "podcasts/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
+      "webUkView": "podcasts/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "GET",
@@ -10502,8 +10502,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/{param}/episodes/{param}",
-      "webUkView": "podcasts/episode; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
+      "webUkView": "podcasts/episode",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "GET",
@@ -10521,8 +10521,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/studio",
-      "webUkView": "podcasts/studio; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
+      "webUkView": "podcasts/studio",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "GET",
@@ -10540,8 +10540,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/studio/{param}",
-      "webUkView": "podcasts/manage; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
+      "webUkView": "podcasts/manage",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "GET",
@@ -10559,8 +10559,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/studio/new",
-      "webUkView": "podcasts/form; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
+      "webUkView": "podcasts/form",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "POST",
@@ -10730,8 +10730,8 @@
       "gates": "feature:polls",
       "apiNeeds": "",
       "webUkPath": "/polls",
-      "webUkView": "polls/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
+      "webUkView": "polls/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
     },
     {
       "method": "GET",
@@ -10749,8 +10749,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/polls/{param}",
-      "webUkView": "polls/detail; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
+      "webUkView": "polls/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
     },
     {
       "method": "GET",
@@ -10768,8 +10768,8 @@
       "gates": "",
       "apiNeeds": "service:PollExportService",
       "webUkPath": "/polls/{param}/export",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
     },
     {
       "method": "GET",
@@ -10787,8 +10787,8 @@
       "gates": "",
       "apiNeeds": "service:PollRankingService",
       "webUkPath": "/polls/{param}/rank",
-      "webUkView": "polls/rank; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
+      "webUkView": "polls/rank",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
     },
     {
       "method": "GET",
@@ -10806,8 +10806,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/polls/parity/create",
-      "webUkView": "polls/create; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
+      "webUkView": "polls/create",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
     },
     {
       "method": "GET",
@@ -10825,8 +10825,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/polls/parity/manage",
-      "webUkView": "polls/manage; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
+      "webUkView": "polls/manage",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\poll-actions.js"
     },
     {
       "method": "POST",
@@ -10977,8 +10977,8 @@
       "gates": "feature:member_premium",
       "apiNeeds": "",
       "webUkPath": "/premium",
-      "webUkView": "premium/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\premium.js"
+      "webUkView": "premium/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\premium.js"
     },
     {
       "method": "GET",
@@ -10996,8 +10996,8 @@
       "gates": "feature:member_premium",
       "apiNeeds": "",
       "webUkPath": "/premium/manage",
-      "webUkView": "premium/manage; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\premium.js"
+      "webUkView": "premium/manage",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\premium.js"
     },
     {
       "method": "GET",
@@ -11015,8 +11015,8 @@
       "gates": "feature:member_premium",
       "apiNeeds": "",
       "webUkPath": "/premium/return",
-      "webUkView": "premium/return; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\premium.js"
+      "webUkView": "premium/return",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\premium.js"
     },
     {
       "method": "POST",
@@ -11091,8 +11091,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/profile",
-      "webUkView": "profile/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\profile.js"
+      "webUkView": "profile/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\profile.js"
     },
     {
       "method": "GET",
@@ -11490,8 +11490,8 @@
       "gates": "feature:maps",
       "apiNeeds": "",
       "webUkPath": "/register",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "POST",
@@ -11528,8 +11528,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/report-a-problem",
-      "webUkView": "report-problem; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\contact-support.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "report-problem",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\contact-support.js"
     },
     {
       "method": "POST",
@@ -11566,8 +11566,8 @@
       "gates": "feature:resources",
       "apiNeeds": "service:ResourceService",
       "webUkPath": "/resources",
-      "webUkView": "resources/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
+      "webUkView": "resources/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
     },
     {
       "method": "GET",
@@ -11585,8 +11585,8 @@
       "gates": "feature:resources",
       "apiNeeds": "",
       "webUkPath": "/resources/{param}/comments",
-      "webUkView": "resources/comments; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
+      "webUkView": "resources/comments",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
     },
     {
       "method": "GET",
@@ -11604,8 +11604,8 @@
       "gates": "feature:resources",
       "apiNeeds": "",
       "webUkPath": "/resources/{param}/delete",
-      "webUkView": "resources/delete; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
+      "webUkView": "resources/delete",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
     },
     {
       "method": "GET",
@@ -11623,8 +11623,8 @@
       "gates": "feature:resources",
       "apiNeeds": "",
       "webUkPath": "/resources/{param}/download",
-      "webUkView": "resources/download; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
+      "webUkView": "resources/download",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
     },
     {
       "method": "GET",
@@ -11642,8 +11642,8 @@
       "gates": "feature:resources",
       "apiNeeds": "",
       "webUkPath": "/resources/library",
-      "webUkView": "resources/library; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
+      "webUkView": "resources/library",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
     },
     {
       "method": "GET",
@@ -11661,8 +11661,8 @@
       "gates": "feature:resources",
       "apiNeeds": "",
       "webUkPath": "/resources/upload",
-      "webUkView": "resources/upload; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
+      "webUkView": "resources/upload",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\resources.js"
     },
     {
       "method": "POST",
@@ -11965,8 +11965,8 @@
       "gates": "feature:search",
       "apiNeeds": "service:SearchService",
       "webUkPath": "/search",
-      "webUkView": "search/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\search.js"
+      "webUkView": "search/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\search.js"
     },
     {
       "method": "GET",
@@ -12326,8 +12326,8 @@
       "gates": "",
       "apiNeeds": "service:SkillTaxonomyService",
       "webUkPath": "/skills",
-      "webUkView": "skills/index; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\skills.js"
+      "webUkView": "skills/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\skills.js"
     },
     {
       "method": "GET",
@@ -12440,8 +12440,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "service:CommunityProjectService; service:VolunteerMatchingService",
       "webUkPath": "/volunteering",
-      "webUkView": "static-page; volunteering",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "volunteering",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -12668,8 +12668,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/volunteering/opportunities/{param}",
-      "webUkView": "static-page; volunteer-opportunity",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkView": "volunteer-opportunity",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -13428,8 +13428,8 @@
       "gates": "module:wallet",
       "apiNeeds": "service:WalletService",
       "webUkPath": "/wallet",
-      "webUkView": "static-page; wallet/index",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\wallet.js"
+      "webUkView": "wallet/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\wallet.js"
     },
     {
       "method": "GET",
