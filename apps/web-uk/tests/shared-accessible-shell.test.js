@@ -61,6 +61,7 @@ jest.mock('../src/lib/api', () => ({
   callCourseApi: jest.fn().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } }),
   callGroupApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callJobDownload: jest.fn(),
   getJobs: jest.fn(),
   getJob: jest.fn(),
   applyForJob: jest.fn(),
@@ -4184,6 +4185,71 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
 
     expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/applications/91/history');
+    expect(response.status).toBe(404);
+  });
+
+  it('streams the Laravel-backed application CV download', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const cvBody = Buffer.from('%PDF-1.4 test cv\n', 'utf8');
+    api.callJobDownload.mockResolvedValueOnce({
+      body: cvBody,
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': 'attachment; filename="Alex_Morgan_CV.pdf"',
+        'content-length': String(cvBody.length)
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/applications/91/cv')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobDownload).toHaveBeenCalledWith('test-token', '/applications/91/cv');
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('application/pdf');
+    expect(response.headers['content-disposition']).toBe('attachment; filename="Alex_Morgan_CV.pdf"');
+    expect(response.headers['content-length']).toBe(String(cvBody.length));
+    expect(response.body.equals(cvBody)).toBe(true);
+  });
+
+  it('redirects signed-out visitors away from CV downloads before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobDownload.mockClear();
+
+    const response = await request(app).get('/jobs/applications/91/cv');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobDownload).not.toHaveBeenCalled();
+  });
+
+  it('returns forbidden when Laravel denies application CV access', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobDownload.mockRejectedValueOnce(new api.ApiError('Forbidden', 403, {}));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/applications/91/cv')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobDownload).toHaveBeenCalledWith('test-token', '/applications/91/cv');
+    expect(response.status).toBe(403);
+  });
+
+  it('returns not found when Laravel has no application CV to download', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobDownload.mockRejectedValueOnce(new api.ApiError('No CV', 404, {}));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/applications/91/cv')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobDownload).toHaveBeenCalledWith('test-token', '/applications/91/cv');
     expect(response.status).toBe(404);
   });
 

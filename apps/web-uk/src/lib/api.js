@@ -86,6 +86,65 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
+async function downloadRequest(endpoint, options = {}) {
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  const headers = {
+    ...options.headers
+  };
+
+  if (TENANT_ID) {
+    headers['X-Tenant-ID'] = TENANT_ID;
+  }
+
+  const config = {
+    ...options,
+    headers
+  };
+
+  let response;
+  try {
+    response = await fetch(url, config);
+  } catch (error) {
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.message.includes('fetch failed')) {
+      throw new ApiOfflineError();
+    }
+    throw error;
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+
+  if (!response.ok) {
+    let data;
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    throw new ApiError(
+      data.error || data.message || data.title || 'API request failed',
+      response.status,
+      data
+    );
+  }
+
+  return {
+    status: response.status,
+    body: Buffer.from(await response.arrayBuffer()),
+    headers: {
+      'content-type': contentType,
+      'content-disposition': response.headers.get('content-disposition') || '',
+      'content-length': response.headers.get('content-length') || '',
+      'cache-control': response.headers.get('cache-control') || '',
+      pragma: response.headers.get('pragma') || '',
+      expires: response.headers.get('expires') || '',
+      etag: response.headers.get('etag') || '',
+      'last-modified': response.headers.get('last-modified') || ''
+    }
+  };
+}
+
 // Auth
 async function login(email, password, tenantSlug) {
   return request('/api/auth/login', {
@@ -519,6 +578,15 @@ async function callJobApi(token, method, path = '', data = undefined) {
   }
 
   return request(`/api/v2/jobs${normalizedPath}`, options);
+}
+
+async function callJobDownload(token, path = '') {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+
+  return downloadRequest(`/api/v2/jobs${normalizedPath}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
 }
 
 async function callUgcTranslateApi(token, data) {
@@ -2111,6 +2179,7 @@ module.exports = {
   getJobs,
   getJob,
   callJobApi,
+  callJobDownload,
   // Wallet
   getBalance,
   getTransactions,

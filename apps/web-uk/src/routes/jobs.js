@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { ApiError, callJobApi, getJobs, getJob, getProfile } = require('../lib/api');
+const { ApiError, callJobApi, callJobDownload, getJobs, getJob, getProfile } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -130,6 +130,16 @@ const JOB_APPLICANT_ERROR_MESSAGES = {
   'status-failed': 'We could not update the application. Please try again.',
   'export-failed': 'We could not prepare the download. Please try again.'
 };
+const DOWNLOAD_HEADER_NAMES = [
+  'content-type',
+  'content-disposition',
+  'content-length',
+  'cache-control',
+  'pragma',
+  'expires',
+  'etag',
+  'last-modified'
+];
 
 router.use(requireAuth);
 
@@ -193,6 +203,14 @@ async function callJob(token, method, path, data = undefined) {
   }
 
   return callJobApi(token, method, path, data);
+}
+
+function applyDownloadHeaders(res, headers = {}) {
+  DOWNLOAD_HEADER_NAMES.forEach((name) => {
+    if (headers[name]) {
+      res.set(name, headers[name]);
+    }
+  });
 }
 
 function dataFrom(result) {
@@ -927,6 +945,32 @@ router.get('/applications/:appId(\\d+)/history', asyncRoute(async (req, res) => 
     applicationId: appId,
     history: collectionItems(result).map(decorateApplicationHistory)
   });
+}));
+
+router.get('/applications/:appId(\\d+)/cv', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const appId = Number(req.params.appId);
+  let download;
+
+  try {
+    download = await callJobDownload(token, `/applications/${appId}/cv`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  applyDownloadHeaders(res, download.headers);
+  return res.send(Buffer.isBuffer(download.body) ? download.body : Buffer.from(download.body || ''));
 }));
 
 router.get('/mine', asyncRoute(async (req, res) => {
