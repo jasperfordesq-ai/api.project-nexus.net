@@ -71,6 +71,12 @@
           <div id="image-hint" class="govuk-hint">
             Upload an optional JPG, PNG, GIF or WebP cover image.
           </div>
+          {% set currentImage = event.cover_image or event.coverImage %}
+          {% if currentImage %}
+            <figure class="govuk-!-margin-bottom-4 govuk-!-margin-top-2">
+              <img src="{{ currentImage }}" alt="Current image for {{ event.title }}" style="max-width:100%;max-height:240px;" loading="lazy">
+            </figure>
+          {% endif %}
           <input class="govuk-file-upload" id="image" name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="image-hint">
         </div>
 

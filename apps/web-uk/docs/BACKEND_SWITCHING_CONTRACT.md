@@ -115,7 +115,10 @@ Before switching backends, every certified route family needs proof for:
 - Request shape: query params, form fields, multipart names, and route params.
 - Response shape: page data, lists, pagination, empty states, errors, and status
   codes.
-- Uploads: avatar, listing images, resources, and any media constraints.
+- Uploads: avatar, listing images, event cover images, resources, and any media
+  constraints. Event cover-image clearing/removal still needs an explicit
+  Laravel-compatible API contract before this frontend can expose the Blade
+  remove-current-image checkbox.
 - Redirects: success/failure destinations and flash messages.
 - Localization: locale selection, RTL, translated labels, and validation copy.
 - Realtime or async status: messages, notifications, and unread-count behavior.

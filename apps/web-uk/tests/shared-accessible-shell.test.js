@@ -8389,6 +8389,36 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
+  it('renders the current Laravel event cover image on the edit form', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.getEvent.mockResolvedValueOnce({
+      event: {
+        id: 42,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        location: 'Village hall',
+        cover_image: '/uploads/events/garden.webp',
+        max_attendees: 20,
+        starts_at: '2026-08-01T10:00:00'
+      }
+    });
+    api.getMyGroups.mockResolvedValueOnce({ data: [] });
+
+    const page = await agent
+      .get('/events/42/edit')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('/uploads/events/garden.webp');
+    expect(page.text).toContain('Current image for Community garden day');
+    expect(csrfMatch).not.toBeNull();
+  });
+
   it('submits Laravel listing action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

@@ -214,9 +214,11 @@ declarations backed by Laravel v2 event, poll, and UGC translation APIs. The
 aliases cover waitlist join/leave, attendee check-in, poll attach/update, poll
 vote, recurring event update, translation request redirects, and cover image
 uploads from the Blade-style create/edit forms through
-`/api/v2/events/{id}/image` while preserving Laravel status keys and `#poll-*`
-fragments. This remains partial: cover image removal, Blade list/detail
-rendering, owner/participant authorization depth, rendered
+`/api/v2/events/{id}/image` while the edit form shows the current Laravel cover
+image when the event payload includes one. Redirects preserve Laravel status
+keys and `#poll-*` fragments. This remains partial: cover image removal is still
+blocked by the absence of a Laravel v2 clear/delete event-image API contract,
+and Blade list/detail rendering, owner/participant authorization depth, rendered
 translation result display, event notification/XP/waitlist promotion side
 effects, tenant/feature gates, localization, runtime smoke tests, and ASP.NET
 backend compatibility are not certified.
