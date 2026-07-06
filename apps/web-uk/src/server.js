@@ -1049,6 +1049,7 @@ app.get('/organisations/:id(\\d+)', (req, res) => {
 });
 
 app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
+app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
@@ -1132,7 +1133,6 @@ app.use('/polls', doubleCsrfProtection, postOnly(formLimiter), pollActionRoutes)
 app.use('/federation', doubleCsrfProtection, postOnly(formLimiter), federationActionRoutes);
 app.use(doubleCsrfProtection, postOnly(formLimiter), savedSocialRoutes);
 app.use(laravelPrepRoutes);
-app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);
 
 // CSRF error handler (must be before 404 handler since 404 is a catch-all)
 app.use((err, req, res, next) => {

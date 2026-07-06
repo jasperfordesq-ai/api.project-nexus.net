@@ -230,6 +230,11 @@ describe('shared accessible frontend shell', () => {
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callGroupApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callJobApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.getJobs.mockReset().mockResolvedValue({
+      items: [],
+      meta: { total: 0, has_more: false, offset: 0, per_page: 12 }
+    });
+    api.getJob.mockReset().mockResolvedValue({ data: null });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -3536,6 +3541,150 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Job openings at Community Club');
     expect(response.text).toContain('This organisation has no open job openings at the moment.');
     expect(response.text).toContain('Sign in to load Laravel-backed job openings.');
+  });
+
+  it('renders the Laravel-backed jobs browse page with Blade filters and pagination', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getJobs.mockResolvedValueOnce({
+      items: [
+        {
+          id: 501,
+          title: 'Volunteer Coordinator',
+          type: 'volunteer',
+          commitment: 'part_time',
+          is_remote: true,
+          description: 'Coordinate volunteer shifts.',
+          organization: { name: 'Community Club' },
+          deadline: '2026-08-01',
+          salary_min: 20000,
+          salary_max: 30000,
+          salary_currency: 'EUR',
+          views_count: 8,
+          applications_count: 3,
+          status: 'open'
+        }
+      ],
+      meta: { total: 1, has_more: true, offset: 12, per_page: 12 }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs?q=coordinator&type=paid&commitment=part_time&sort=deadline&remote=1&offset=12')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getJobs).toHaveBeenCalledWith('test-token', {
+      limit: 12,
+      offset: 12,
+      status: 'open',
+      sort: 'deadline',
+      search: 'coordinator',
+      type: 'paid',
+      commitment: 'part_time',
+      is_remote: 1
+    });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Jobs');
+    expect(response.text).toContain('Roles and opportunities in this community.');
+    expect(response.text).toContain('Browse opportunities');
+    expect(response.text).toContain('Saved');
+    expect(response.text).toContain('My applications');
+    expect(response.text).toContain('Find an opportunity');
+    expect(response.text).toContain('name="q"');
+    expect(response.text).toContain('name="type"');
+    expect(response.text).toContain('name="commitment"');
+    expect(response.text).toContain('name="sort"');
+    expect(response.text).toContain('name="remote"');
+    expect(response.text).toContain('1 opportunity');
+    expect(response.text).toContain('href="/jobs/501"');
+    expect(response.text).toContain('Volunteer Coordinator');
+    expect(response.text).toContain('Posted by Community Club');
+    expect(response.text).toContain('Volunteer');
+    expect(response.text).toContain('Part time');
+    expect(response.text).toContain('Remote');
+    expect(response.text).toContain('Closing date');
+    expect(response.text).toContain('Load more');
+    expect(response.text).not.toContain('Job pages will follow the Laravel accessible frontend contract');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from the jobs browse page before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.getJobs.mockClear();
+
+    const response = await request(app).get('/jobs');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.getJobs).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed job detail page with save and apply actions', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getJob.mockResolvedValueOnce({
+      data: {
+        id: 501,
+        title: 'Volunteer Coordinator',
+        type: 'paid',
+        commitment: 'part_time',
+        is_remote: false,
+        location: 'Cork',
+        description: 'Coordinate volunteer shifts.',
+        organization: { name: 'Community Club' },
+        creator: { name: 'Aisha Khan' },
+        deadline: '2026-08-01',
+        salary_min: 20000,
+        salary_max: 30000,
+        salary_currency: 'EUR',
+        views_count: 8,
+        applications_count: 3,
+        skills: ['Scheduling', 'Community outreach'],
+        has_applied: false,
+        is_saved: false,
+        user_id: 99,
+        status: 'open'
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501?status=saved')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getJob).toHaveBeenCalledWith('test-token', '501');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/jobs"');
+    expect(response.text).toContain('Opportunity saved.');
+    expect(response.text).toContain('Community Club');
+    expect(response.text).toContain('Volunteer Coordinator');
+    expect(response.text).toContain('Paid');
+    expect(response.text).toContain('Save opportunity');
+    expect(response.text).toContain('name="from" value="detail"');
+    expect(response.text).toContain('Part time');
+    expect(response.text).toContain('Cork');
+    expect(response.text).toContain('EUR 20,000 - EUR 30,000');
+    expect(response.text).toContain('Applications received');
+    expect(response.text).toContain('3');
+    expect(response.text).toContain('Coordinate volunteer shifts.');
+    expect(response.text).toContain('Scheduling');
+    expect(response.text).toContain('Community outreach');
+    expect(response.text).toContain('Apply for this opportunity');
+    expect(response.text).toContain('name="cover_letter"');
+    expect(response.text).toContain('Why are you a good fit? (optional)');
+    expect(response.text).not.toContain('Laravel Blade route');
+    expect(response.text).not.toContain('does not certify ASP.NET route or workflow');
+  });
+
+  it('redirects signed-out visitors away from job detail pages before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.getJob.mockClear();
+
+    const response = await request(app).get('/jobs/501');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.getJob).not.toHaveBeenCalled();
   });
 
   it('renders the Blade-style volunteering opportunity detail page from the Laravel volunteering contract', async () => {

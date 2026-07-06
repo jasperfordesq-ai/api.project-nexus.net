@@ -585,6 +585,32 @@ async function getOrganisationJobs(organisationId, token, params = {}) {
   });
 }
 
+async function getJobs(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset !== undefined && params.offset !== null) query.set('offset', params.offset);
+  if (params.status) query.set('status', params.status);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.search) query.set('search', params.search);
+  if (params.type) query.set('type', params.type);
+  if (params.commitment) query.set('commitment', params.commitment);
+  if (params.is_remote) query.set('is_remote', params.is_remote);
+  if (params.organization_id) query.set('organization_id', params.organization_id);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const endpoint = `/api/v2/jobs${query.toString() ? `?${query.toString()}` : ''}`;
+
+  return request(endpoint, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+}
+
+async function getJob(token, id) {
+  return request(`/api/v2/jobs/${encodeURIComponent(id)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+}
+
 // Wallet
 async function getBalance(token) {
   return request('/api/wallet/balance', {
@@ -2082,6 +2108,8 @@ module.exports = {
   callProfileApi,
   callWebAuthnApi,
   getOrganisationJobs,
+  getJobs,
+  getJob,
   callJobApi,
   // Wallet
   getBalance,

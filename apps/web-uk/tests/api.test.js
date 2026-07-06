@@ -286,6 +286,68 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getJobs', () => {
+    it('should call the Laravel jobs endpoint with browse filters and auth', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          items: [
+            { id: 501, title: 'Volunteer Coordinator', type: 'volunteer' }
+          ],
+          meta: { total: 1, has_more: false, offset: 12, per_page: 12 }
+        })
+      });
+
+      const result = await api.getJobs('test-token', {
+        limit: 12,
+        offset: 12,
+        status: 'open',
+        sort: 'deadline',
+        search: 'coordinator',
+        type: 'paid',
+        commitment: 'part_time',
+        is_remote: 1
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/jobs?limit=12&offset=12&status=open&sort=deadline&search=coordinator&type=paid&commitment=part_time&is_remote=1',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(result.items[0].title).toBe('Volunteer Coordinator');
+    });
+  });
+
+  describe('getJob', () => {
+    it('should call the Laravel job detail endpoint with auth', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: { id: 501, title: 'Volunteer Coordinator', type: 'volunteer' }
+        })
+      });
+
+      const result = await api.getJob('test-token', 501);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/jobs/501',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(result.data.title).toBe('Volunteer Coordinator');
+    });
+  });
+
   describe('callJobApi', () => {
     it('should call Laravel v2 job action endpoints with auth, method, and optional payload', async () => {
       mockFetch.mockResolvedValueOnce({

@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { ApiError, callJobApi } = require('../lib/api');
+const { ApiError, callJobApi, getJobs, getJob } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -14,6 +14,19 @@ const JOB_TYPES = ['paid', 'volunteer', 'timebank'];
 const JOB_COMMITMENTS = ['full_time', 'part_time', 'flexible', 'one_off'];
 const JOB_SALARY_TYPES = ['hourly', 'monthly', 'annual'];
 const JOB_STATUSES = ['open', 'draft'];
+const JOB_SORTS = ['newest', 'deadline', 'salary_desc'];
+const JOBS_PER_PAGE = 12;
+const JOB_TYPE_LABELS = {
+  paid: 'Paid',
+  volunteer: 'Volunteer',
+  timebank: 'Time credits'
+};
+const JOB_COMMITMENT_LABELS = {
+  full_time: 'Full time',
+  part_time: 'Part time',
+  flexible: 'Flexible',
+  one_off: 'One-off'
+};
 const APPLICATION_STATUSES = [
   'applied',
   'pending',
@@ -26,13 +39,7 @@ const APPLICATION_STATUSES = [
   'rejected'
 ];
 
-router.use((req, res, next) => {
-  if (req.method !== 'POST') {
-    return next();
-  }
-
-  return requireAuth(req, res, next);
-});
+router.use(requireAuth);
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -51,6 +58,10 @@ function checkedOne(value) {
   return String(value || '') === '1';
 }
 
+function checked(value) {
+  return value === true || value === 1 || value === '1';
+}
+
 function allowed(value, choices, fallback) {
   const text = trimmed(value);
   return choices.includes(text) ? text : fallback;
@@ -59,6 +70,16 @@ function allowed(value, choices, fallback) {
 function positiveInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function nonNegativeInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 ? number : 0;
+}
+
+function finiteNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
 function isAuthError(error) {
@@ -86,6 +107,171 @@ function dataFrom(result) {
   return result && typeof result === 'object' && result.data !== undefined
     ? result.data
     : result;
+}
+
+function collectionItems(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(result && result.items)) return result.items;
+  if (Array.isArray(data && data.items)) return data.items;
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
+function collectionMeta(result, filters) {
+  const data = dataFrom(result);
+  const source = result && typeof result === 'object' ? result : {};
+  const itemCount = collectionItems(result).length;
+  const meta = (source.meta && typeof source.meta === 'object')
+    ? source.meta
+    : ((data && data.meta && typeof data.meta === 'object') ? data.meta : {});
+
+  return {
+    total: finiteNumber(meta.total ?? source.total ?? (Array.isArray(data) ? data.length : itemCount), itemCount),
+    has_more: Boolean(meta.has_more ?? source.has_more ?? false),
+    offset: finiteNumber(meta.offset ?? source.offset ?? filters.offset, filters.offset),
+    per_page: finiteNumber(meta.per_page ?? meta.limit ?? source.per_page ?? JOBS_PER_PAGE, JOBS_PER_PAGE)
+  };
+}
+
+function jobFilters(query) {
+  return {
+    q: trimmed(query.q, 255),
+    type: allowed(query.type, JOB_TYPES, ''),
+    commitment: allowed(query.commitment, JOB_COMMITMENTS, ''),
+    sort: allowed(query.sort, JOB_SORTS, 'newest'),
+    remote: checkedOne(query.remote),
+    offset: nonNegativeInteger(query.offset)
+  };
+}
+
+function jobsApiParams(filters) {
+  const params = {
+    limit: JOBS_PER_PAGE,
+    offset: filters.offset,
+    status: 'open',
+    sort: filters.sort
+  };
+
+  if (filters.q !== '') params.search = filters.q;
+  if (filters.type !== '') params.type = filters.type;
+  if (filters.commitment !== '') params.commitment = filters.commitment;
+  if (filters.remote) params.is_remote = 1;
+
+  return params;
+}
+
+function jobsHref(filters, offset = null) {
+  const query = new URLSearchParams();
+  if (filters.q !== '') query.set('q', filters.q);
+  if (filters.type !== '') query.set('type', filters.type);
+  if (filters.commitment !== '') query.set('commitment', filters.commitment);
+  if (filters.sort !== 'newest') query.set('sort', filters.sort);
+  if (filters.remote) query.set('remote', '1');
+  if (offset !== null && offset > 0) query.set('offset', offset);
+
+  const queryString = query.toString();
+  return `/jobs${queryString ? `?${queryString}` : ''}`;
+}
+
+function formatDateLong(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return trimmed(value);
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+function money(value, currency) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  const amount = Number.isFinite(number)
+    ? number.toLocaleString('en-IE', { maximumFractionDigits: 0 })
+    : trimmed(value);
+  return trimmed(`${currency || ''} ${amount}`);
+}
+
+function salaryLabel(job) {
+  const currency = trimmed(job.salary_currency, 10);
+  const min = money(job.salary_min, currency);
+  const max = money(job.salary_max, currency);
+  if (min && max) return `${min} - ${max}`;
+  return min || max || '';
+}
+
+function personName(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return trimmed(value);
+  if (typeof value === 'object') return trimmed(value.name || value.display_name || value.title || '');
+  return '';
+}
+
+function skillsFrom(job) {
+  if (Array.isArray(job.skills)) {
+    return job.skills.map((skill) => trimmed(skill)).filter(Boolean);
+  }
+
+  return trimmed(job.skills_required, 2000)
+    .split(',')
+    .map((skill) => trimmed(skill))
+    .filter(Boolean);
+}
+
+function countLabel(count, singular, plural, zero) {
+  if (count === 0 && zero) return zero;
+  if (count === 1) return `1 ${singular}`;
+  return `${count} ${plural}`;
+}
+
+function resultsLabel(total) {
+  if (total === 0) return 'No opportunities found';
+  if (total === 1) return '1 opportunity';
+  return `${total} opportunities`;
+}
+
+function decorateJob(job) {
+  const organizationName = personName(job.organization || job.organisation);
+  const posterName = organizationName || personName(job.creator || job.user);
+  const viewsCount = finiteNumber(job.views_count ?? job.viewsCount, 0);
+  const applicationsCount = finiteNumber(job.applications_count ?? job.applicationsCount, 0);
+
+  return {
+    ...job,
+    id: job.id,
+    title: trimmed(job.title, 255) || 'Jobs',
+    description: trimmed(job.description, 20000),
+    typeLabel: JOB_TYPE_LABELS[job.type] || JOB_TYPE_LABELS.volunteer,
+    commitmentLabel: JOB_COMMITMENT_LABELS[job.commitment] || '',
+    organizationName,
+    posterName,
+    locationLabel: checked(job.is_remote) ? 'Remote' : trimmed(job.location, 255),
+    salaryLabel: salaryLabel(job),
+    deadlineLabel: formatDateLong(job.deadline),
+    skillsList: skillsFrom(job),
+    viewsCount,
+    applicationsCount,
+    viewsLabel: countLabel(viewsCount, 'view', 'views', 'No views'),
+    applicationsLabel: countLabel(applicationsCount, 'application', 'applications', 'No applications'),
+    isFeatured: checked(job.is_featured || job.isFeatured),
+    hasApplied: checked(job.has_applied || job.hasApplied),
+    isSaved: checked(job.is_saved || job.isSaved),
+    isRemote: checked(job.is_remote)
+  };
+}
+
+function statusMessage(status) {
+  const messages = {
+    applied: 'Your application has been submitted.',
+    saved: 'Opportunity saved.',
+    unsaved: 'Opportunity removed from your saved list.',
+    created: 'Opportunity created.',
+    updated: 'Opportunity updated.',
+    renewed: 'Opportunity renewed.'
+  };
+
+  return messages[status] || '';
 }
 
 function resultId(result) {
@@ -156,6 +342,69 @@ function alertPayload(body) {
 function notePayload(body) {
   return { notes: trimmed(body.note, 1000) };
 }
+
+router.get('/', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const filters = jobFilters(req.query);
+  const params = jobsApiParams(filters);
+  let result = null;
+  let loadError = false;
+
+  try {
+    result = await getJobs(token, params);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = true;
+  }
+
+  const jobs = collectionItems(result).map(decorateJob);
+  const jobsMeta = collectionMeta(result, filters);
+  const nextOffset = jobsMeta.offset + jobsMeta.per_page;
+
+  return res.render('jobs/index', {
+    title: 'Jobs',
+    activeNav: 'explore',
+    jobs,
+    filters,
+    jobsMeta,
+    resultsLabel: resultsLabel(jobsMeta.total),
+    nextHref: jobsMeta.has_more ? jobsHref(filters, nextOffset) : '',
+    status: req.query.status || '',
+    successMessage: statusMessage(req.query.status),
+    loadError
+  });
+}));
+
+router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  let result;
+
+  try {
+    result = await getJob(token, req.params.id);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const job = dataFrom(result);
+  if (!job || typeof job !== 'object' || !job.id) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  const decorated = decorateJob(job);
+  return res.render('jobs/detail', {
+    title: decorated.title,
+    activeNav: 'explore',
+    job: decorated,
+    status: req.query.status || '',
+    successMessage: statusMessage(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
 
 router.post('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

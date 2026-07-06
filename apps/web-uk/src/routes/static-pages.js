@@ -24,10 +24,6 @@ const pages = {
     title: 'Blog',
     body: 'Blog pages will follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
   },
-  '/jobs': {
-    title: 'Jobs',
-    body: 'Job pages will follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
   '/polls': {
     title: 'Polls',
     body: 'Poll pages will follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
