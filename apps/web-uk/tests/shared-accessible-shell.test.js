@@ -3405,6 +3405,52 @@ describe('shared accessible frontend shell', () => {
     expect(api.deleteResource).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel-backed simple resources directory for signed-in members', async () => {
+    const staticPageRoutes = require('../src/routes/static-pages');
+    const api = require('../src/lib/api');
+
+    api.getResources.mockResolvedValue({
+      data: [
+        {
+          id: 42,
+          title: 'Community handbook',
+          description: 'A practical guide for getting help and sharing support in the community.',
+          file_type: 'pdf',
+          file_path: 'uploads/resources/community-handbook.pdf'
+        }
+      ],
+      meta: { has_more: false }
+    });
+
+    const unsigned = await request(app).get('/resources');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/resources?q=handbook')
+      .set('Cookie', signedCookieHeader());
+
+    expect(staticPageRoutes.pages['/resources']).toBeUndefined();
+    expect(api.getResources).toHaveBeenCalledWith('test-token', {
+      search: 'handbook',
+      per_page: 30
+    });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Resources');
+    expect(response.text).toContain('Guides and reference materials shared with the community.');
+    expect(response.text).toContain('Open the full resource library');
+    expect(response.text).toContain('Find a resource');
+    expect(response.text).toContain('value="handbook"');
+    expect(response.text).toContain('Community handbook');
+    expect(response.text).toContain('PDF');
+    expect(response.text).toContain('A practical guide for getting help and sharing support');
+    expect(response.text).toContain('href="/uploads/resources/community-handbook.pdf"');
+    expect(response.text).toContain('Download');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(response.text).not.toContain('Resource library pages will follow the Laravel accessible frontend contract.');
+  });
+
   it('submits the Laravel resource delete route through the resources API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

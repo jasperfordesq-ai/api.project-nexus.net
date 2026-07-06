@@ -19,7 +19,7 @@ const router = express.Router();
 const RESOURCE_REACTIONS = new Set(['like', 'love', 'laugh', 'wow', 'sad', 'celebrate']);
 
 function tokenFrom(req) {
-  return req.signedCookies.token || '';
+  return (req.signedCookies && req.signedCookies.token) || '';
 }
 
 function trimmed(value, limit = null) {
@@ -85,6 +85,64 @@ function resourceItemsFrom(result) {
   if (result && Array.isArray(result.items)) return result.items;
   return [];
 }
+
+function resourceHref(resource) {
+  const rawPath = trimmed(resource.file_path || resource.url || resource.file_url);
+  if (!rawPath) return '';
+  if (/^https?:\/\//i.test(rawPath) || rawPath.startsWith('/')) {
+    return rawPath;
+  }
+  return `/${rawPath.replace(/^\/+/, '')}`;
+}
+
+function resourceType(resource) {
+  const explicitType = trimmed(resource.file_type).toUpperCase();
+  if (explicitType) return explicitType;
+
+  const path = trimmed(resource.file_path || resource.url || resource.file_url);
+  const match = path.match(/\.([a-z0-9]+)(?:[?#].*)?$/i);
+  return match ? match[1].toUpperCase() : '';
+}
+
+function truncate(value, length) {
+  const text = trimmed(value);
+  if (text.length <= length) return text;
+  return `${text.slice(0, Math.max(0, length - 3))}...`;
+}
+
+function normalizeResource(resource) {
+  const item = resource && typeof resource === 'object' ? resource : {};
+  return {
+    id: positiveInteger(item.id),
+    title: trimmed(item.title) || 'Resources',
+    description: truncate(item.description, 200),
+    type: resourceType(item),
+    href: resourceHref(item)
+  };
+}
+
+router.get('/', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const resourcesQuery = trimmed(req.query && req.query.q);
+  const params = { per_page: 30 };
+  if (resourcesQuery) {
+    params.search = resourcesQuery;
+  }
+
+  const result = await getResources(token, params);
+  const resources = resourceItemsFrom(result).map(normalizeResource);
+
+  return res.render('resources/index', {
+    title: 'Resources',
+    activeNav: 'explore',
+    resources,
+    resourcesQuery
+  });
+}, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Resources' }));
 
 function normalizeOrderItems(items) {
   if (!Array.isArray(items)) return [];
