@@ -36,8 +36,32 @@ const APPLICATION_STATUSES = [
   'interview',
   'offer',
   'accepted',
-  'rejected'
+  'rejected',
+  'withdrawn'
 ];
+const JOB_APPLICATION_STATUSES = [
+  'applied',
+  'pending',
+  'screening',
+  'reviewed',
+  'interview',
+  'offer',
+  'accepted',
+  'rejected',
+  'withdrawn'
+];
+const JOB_TERMINAL_APPLICATION_STATUSES = ['accepted', 'rejected', 'withdrawn'];
+const JOB_APPLICATION_LABELS = {
+  applied: 'Applied',
+  pending: 'Pending',
+  screening: 'Screening',
+  reviewed: 'Reviewed',
+  interview: 'Interview',
+  offer: 'Offer',
+  accepted: 'Accepted',
+  rejected: 'Not selected',
+  withdrawn: 'Withdrawn'
+};
 
 router.use(requireAuth);
 
@@ -121,15 +145,19 @@ function collectionMeta(result, filters) {
   const data = dataFrom(result);
   const source = result && typeof result === 'object' ? result : {};
   const itemCount = collectionItems(result).length;
+  const dataSource = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
   const meta = (source.meta && typeof source.meta === 'object')
     ? source.meta
     : ((data && data.meta && typeof data.meta === 'object') ? data.meta : {});
+  const filterOffset = filters && filters.offset !== undefined ? filters.offset : 0;
+  const rawCursor = meta.cursor ?? source.cursor ?? dataSource.cursor ?? '';
 
   return {
     total: finiteNumber(meta.total ?? source.total ?? (Array.isArray(data) ? data.length : itemCount), itemCount),
-    has_more: Boolean(meta.has_more ?? source.has_more ?? false),
-    offset: finiteNumber(meta.offset ?? source.offset ?? filters.offset, filters.offset),
-    per_page: finiteNumber(meta.per_page ?? meta.limit ?? source.per_page ?? JOBS_PER_PAGE, JOBS_PER_PAGE)
+    has_more: Boolean(meta.has_more ?? source.has_more ?? dataSource.has_more ?? false),
+    offset: finiteNumber(meta.offset ?? source.offset ?? dataSource.offset ?? filterOffset, filterOffset),
+    per_page: finiteNumber(meta.per_page ?? meta.limit ?? source.per_page ?? source.limit ?? dataSource.per_page ?? dataSource.limit ?? JOBS_PER_PAGE, JOBS_PER_PAGE),
+    cursor: rawCursor ? trimmed(rawCursor, 500) : ''
   };
 }
 
@@ -171,6 +199,51 @@ function jobsHref(filters, offset = null) {
 
   const queryString = query.toString();
   return `/jobs${queryString ? `?${queryString}` : ''}`;
+}
+
+function queryPath(path, params) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') {
+      query.set(key, value);
+    }
+  });
+
+  const queryString = query.toString();
+  return `${path}${queryString ? `?${queryString}` : ''}`;
+}
+
+function savedJobsPath(cursor) {
+  return queryPath('/saved', {
+    per_page: JOBS_PER_PAGE,
+    cursor: cursor || null
+  });
+}
+
+function savedJobsHref(cursor) {
+  return queryPath('/jobs/saved', { cursor: cursor || null });
+}
+
+function applicationFilters(query) {
+  return {
+    statusFilter: allowed(query.status_filter, JOB_APPLICATION_STATUSES, ''),
+    cursor: trimmed(query.cursor, 500)
+  };
+}
+
+function applicationsPath(filters) {
+  return queryPath('/my-applications', {
+    per_page: JOBS_PER_PAGE,
+    status: filters.statusFilter || null,
+    cursor: filters.cursor || null
+  });
+}
+
+function applicationsHref(filters, cursor) {
+  return queryPath('/jobs/applications', {
+    status_filter: filters.statusFilter || null,
+    cursor: cursor || null
+  });
 }
 
 function formatDateLong(value) {
@@ -261,11 +334,32 @@ function decorateJob(job) {
   };
 }
 
+function decorateApplication(application) {
+  const vacancy = application.vacancy || application.job || application.job_vacancy || {};
+  const vacancyId = positiveInteger(vacancy.id)
+    || positiveInteger(application.vacancy_id)
+    || positiveInteger(application.job_id)
+    || 0;
+  const status = allowed(application.status, JOB_APPLICATION_STATUSES, 'applied');
+
+  return {
+    ...application,
+    id: positiveInteger(application.id) || 0,
+    vacancyId,
+    title: trimmed(vacancy.title, 255) || 'Jobs',
+    status,
+    statusLabel: JOB_APPLICATION_LABELS[status] || JOB_APPLICATION_LABELS.applied,
+    appliedOnLabel: formatDateLong(application.created_at || application.applied_at),
+    canWithdraw: !JOB_TERMINAL_APPLICATION_STATUSES.includes(status)
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     applied: 'Your application has been submitted.',
     saved: 'Opportunity saved.',
     unsaved: 'Opportunity removed from your saved list.',
+    withdrawn: 'Your application has been withdrawn.',
     created: 'Opportunity created.',
     updated: 'Opportunity updated.',
     renewed: 'Opportunity renewed.'
@@ -372,6 +466,70 @@ router.get('/', asyncRoute(async (req, res) => {
     status: req.query.status || '',
     successMessage: statusMessage(req.query.status),
     loadError
+  });
+}));
+
+router.get('/saved', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const cursor = trimmed(req.query.cursor, 500);
+  let result = null;
+  let loadError = false;
+
+  try {
+    result = await callJob(token, 'GET', savedJobsPath(cursor));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = true;
+  }
+
+  const jobs = collectionItems(result).map(decorateJob);
+  const jobsMeta = collectionMeta(result, { offset: 0 });
+
+  return res.render('jobs/saved', {
+    title: 'Saved opportunities',
+    activeNav: 'explore',
+    jobs,
+    jobsMeta,
+    nextHref: jobsMeta.has_more && jobsMeta.cursor ? savedJobsHref(jobsMeta.cursor) : '',
+    status: req.query.status || '',
+    successMessage: statusMessage(req.query.status),
+    loadError,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/applications', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const filters = applicationFilters(req.query);
+  let result = null;
+  let loadError = false;
+
+  try {
+    result = await callJob(token, 'GET', applicationsPath(filters));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = true;
+  }
+
+  const applications = collectionItems(result).map(decorateApplication);
+  const jobsMeta = collectionMeta(result, { offset: 0 });
+
+  return res.render('jobs/applications', {
+    title: 'My applications',
+    activeNav: 'explore',
+    applications,
+    filters,
+    statusOptions: JOB_APPLICATION_STATUSES.map((status) => ({
+      value: status,
+      label: JOB_APPLICATION_LABELS[status] || status
+    })),
+    jobsMeta,
+    nextHref: jobsMeta.has_more && jobsMeta.cursor ? applicationsHref(filters, jobsMeta.cursor) : '',
+    status: req.query.status || '',
+    successMessage: statusMessage(req.query.status),
+    errorMessage: req.query.status === 'withdraw-failed' ? 'Your application could not be withdrawn. Try again.' : '',
+    loadError,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 

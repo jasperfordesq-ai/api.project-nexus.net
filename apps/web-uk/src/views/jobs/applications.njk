@@ -1,0 +1,140 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">Project NEXUS Accessible</span>
+  <h1 class="govuk-heading-xl">My applications</h1>
+  <p class="govuk-body-l">Opportunities you have applied for and their status.</p>
+
+  <p class="govuk-body">
+    <a class="govuk-link" href="/jobs/responses">Responses</a>
+  </p>
+
+  <div class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4">
+    <h2 class="govuk-tabs__title">Jobs</h2>
+    <ul class="govuk-tabs__list">
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs">Browse opportunities</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/saved">Saved</a>
+      </li>
+      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+        <a class="govuk-tabs__tab" href="/jobs/applications" aria-current="page">My applications</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/responses">Responses</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/alerts">Job alerts</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/mine">My postings</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/create">Post a job</a>
+      </li>
+    </ul>
+  </div>
+
+  {% if successMessage %}
+    {% set notificationMessage = successMessage %}
+    {% set notificationType = "success" %}
+    {% include "partials/notification-banner.njk" %}
+  {% endif %}
+
+  {% if errorMessage %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-list govuk-error-summary__list">
+            <li>{{ errorMessage }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if loadError %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">Applications could not be loaded. Try again.</p>
+    </div>
+  {% endif %}
+
+  <form method="get" action="/jobs/applications" class="govuk-!-margin-bottom-6">
+    <div class="govuk-form-group">
+      <label class="govuk-label" for="status_filter">Status</label>
+      <select class="govuk-select" id="status_filter" name="status_filter">
+        <option value=""{% if filters.statusFilter == "" %} selected{% endif %}>All statuses</option>
+        {% for option in statusOptions %}
+          <option value="{{ option.value }}"{% if filters.statusFilter == option.value %} selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
+  </form>
+
+  {% if applications.length == 0 %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">You have not applied for any opportunities yet.</p>
+    </div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for app in applications %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-module-row">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+              {% if app.vacancyId %}
+                <a class="govuk-link" href="/jobs/{{ app.vacancyId }}">{{ app.title }}</a>
+              {% else %}
+                {{ app.title }}
+              {% endif %}
+            </h2>
+            <strong class="govuk-tag govuk-tag--blue">{{ app.statusLabel }}</strong>
+          </div>
+
+          {% if app.appliedOnLabel %}
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Applied on {{ app.appliedOnLabel }}</p>
+          {% endif %}
+
+          {% if app.id %}
+            <p class="govuk-body-s govuk-!-margin-bottom-1">
+              <a class="govuk-link" href="/jobs/applications/{{ app.id }}/history">View application history</a>
+            </p>
+          {% endif %}
+
+          {% if app.canWithdraw %}
+            <form method="post" action="/jobs/applications/{{ app.id }}/withdraw" class="govuk-!-margin-top-2">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <div class="govuk-warning-text govuk-!-margin-bottom-2">
+                <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+                <strong class="govuk-warning-text__text">
+                  <span class="govuk-visually-hidden">Warning</span>
+                  Withdraw this application only if you no longer want to be considered.
+                </strong>
+              </div>
+              <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Withdraw application</button>
+            </form>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if jobsMeta.has_more and nextHref %}
+      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Pagination">
+        <div class="govuk-pagination__next">
+          <a class="govuk-link govuk-pagination__link" rel="next" href="{{ nextHref }}">
+            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-visually-hidden">:</span>
+            <span class="govuk-pagination__link-label">More results</span>
+          </a>
+        </div>
+      </nav>
+    {% endif %}
+  {% endif %}
+{% endblock %}

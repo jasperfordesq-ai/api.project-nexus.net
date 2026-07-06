@@ -3687,6 +3687,122 @@ describe('shared accessible frontend shell', () => {
     expect(api.getJob).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel-backed saved jobs page with unsave actions', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 501,
+          title: 'Volunteer Coordinator',
+          type: 'volunteer',
+          commitment: 'part_time',
+          is_remote: true,
+          organization: { name: 'Community Club' },
+          deadline: '2026-08-01',
+          is_saved: true
+        }
+      ],
+      cursor: 'next-saved',
+      has_more: true
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/saved?cursor=abc&status=unsaved')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/saved?per_page=12&cursor=abc');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Saved opportunities');
+    expect(response.text).toContain('Opportunities you have bookmarked.');
+    expect(response.text).toContain('Browse opportunities');
+    expect(response.text).toContain('Saved');
+    expect(response.text).toContain('Opportunity removed from your saved list.');
+    expect(response.text).toContain('href="/jobs/501"');
+    expect(response.text).toContain('Volunteer Coordinator');
+    expect(response.text).toContain('Posted by Community Club');
+    expect(response.text).toContain('Part time');
+    expect(response.text).toContain('Remote');
+    expect(response.text).toContain('Remove from saved');
+    expect(response.text).toContain('action="/jobs/501/unsave"');
+    expect(response.text).toContain('name="from" value="saved"');
+    expect(response.text).toContain('Load more');
+    expect(response.text).toContain('cursor=next-saved');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from saved jobs before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/saved');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed jobs applications page with status filters and withdrawal actions', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 91,
+            vacancy_id: 501,
+            status: 'interview',
+            created_at: '2026-07-01',
+            vacancy: {
+              id: 501,
+              title: 'Volunteer Coordinator'
+            }
+          }
+        ],
+        cursor: 'next-apps',
+        has_more: true
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/applications?status_filter=interview&cursor=abc&status=withdrawn')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith(
+      'test-token',
+      'GET',
+      '/my-applications?per_page=12&status=interview&cursor=abc'
+    );
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('My applications');
+    expect(response.text).toContain('Opportunities you have applied for and their status.');
+    expect(response.text).toContain('Browse opportunities');
+    expect(response.text).toContain('Your application has been withdrawn.');
+    expect(response.text).toContain('name="status_filter"');
+    expect(response.text).toContain('Interview');
+    expect(response.text).toContain('href="/jobs/501"');
+    expect(response.text).toContain('Volunteer Coordinator');
+    expect(response.text).toContain('Applied on 1 July 2026');
+    expect(response.text).toContain('Withdraw application');
+    expect(response.text).toContain('action="/jobs/applications/91/withdraw"');
+    expect(response.text).toContain('Load more');
+    expect(response.text).toContain('cursor=next-apps');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from job applications before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/applications');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
   it('renders the Blade-style volunteering opportunity detail page from the Laravel volunteering contract', async () => {
     const api = require('../src/lib/api');
     api.getVolunteerOpportunity.mockResolvedValueOnce({
