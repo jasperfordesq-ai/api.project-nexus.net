@@ -58,6 +58,7 @@ jest.mock('../src/lib/api', () => ({
   getGoals: jest.fn(),
   getGoal: jest.fn(),
   callGoalApi: jest.fn().mockResolvedValue({ data: { id: 42, action: 'liked' } }),
+  callCourseApi: jest.fn().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } }),
   getJobs: jest.fn(),
   getJob: jest.fn(),
   applyForJob: jest.fn(),
@@ -5056,6 +5057,211 @@ describe('shared accessible frontend shell', () => {
     expect(api.toggleFeedLike).not.toHaveBeenCalled();
     expect(api.createComment).not.toHaveBeenCalled();
     expect(api.deleteComment).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel course learner and instructor action aliases', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.callCourseApi.mockReset().mockImplementation(async (_token, _method, pathName) => {
+      if (pathName === '') {
+        return { data: { id: 91 } };
+      }
+      if (pathName === '/42/publish') {
+        return { data: { id: 42, moderation_status: 'approved' } };
+      }
+      if (pathName === '/42/lessons/7/complete') {
+        return { data: { course_completed: false } };
+      }
+      if (pathName === '/quizzes/51/attempt') {
+        return { data: { passed: true, needs_review: false } };
+      }
+      return { data: { id: 42 } };
+    });
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const enrolResponse = await post('/courses/42/enrol');
+    expect(enrolResponse.status).toBe(302);
+    expect(enrolResponse.headers.location).toBe('/courses/42?status=enrolled');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/enroll');
+
+    const completeResponse = await post('/courses/42/lessons/7/complete', {
+      watch_percent: '80'
+    });
+    expect(completeResponse.headers.location).toBe('/courses/42/learn?status=lesson-completed');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/lessons/7/complete', {
+      watch_percent: 80
+    });
+
+    const quizResponse = await post('/courses/42/lessons/7/quiz', {
+      quiz_id: '51',
+      answers: {
+        101: 'b',
+        102: ['x', 'y']
+      }
+    });
+    expect(quizResponse.headers.location).toBe('/courses/42/learn?lesson=7&status=quiz-passed');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '/quizzes/51/attempt', {
+      answers: {
+        101: 'b',
+        102: ['x', 'y']
+      }
+    });
+
+    const reviewResponse = await post('/courses/42/reviews', {
+      rating: '5',
+      body: ' Very useful '
+    });
+    expect(reviewResponse.headers.location).toBe('/courses/42?status=review-saved#reviews');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/reviews', {
+      rating: 5,
+      body: 'Very useful'
+    });
+
+    const createResponse = await post('/courses/instructor/new', {
+      title: ' Community teaching ',
+      summary: ' Practical skills ',
+      description: ' Build lessons ',
+      level: 'intermediate',
+      visibility: 'public',
+      enrollment_type: 'cohort',
+      credit_cost: '12.50',
+      category_id: '3'
+    });
+    expect(createResponse.headers.location).toBe('/courses/instructor/91/edit?status=created');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '', {
+      title: 'Community teaching',
+      summary: 'Practical skills',
+      description: 'Build lessons',
+      level: 'intermediate',
+      visibility: 'public',
+      enrollment_type: 'cohort',
+      credit_cost: 12.5,
+      category_id: 3
+    });
+
+    const updateResponse = await post('/courses/instructor/42/update', {
+      title: ' Updated course ',
+      summary: ' New summary ',
+      description: ' New description ',
+      level: 'advanced',
+      visibility: 'members',
+      enrollment_type: 'self_paced',
+      credit_cost: '0',
+      category_id: ''
+    });
+    expect(updateResponse.headers.location).toBe('/courses/instructor/42/edit?status=saved');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42', {
+      title: 'Updated course',
+      summary: 'New summary',
+      description: 'New description',
+      level: 'advanced',
+      visibility: 'members',
+      enrollment_type: 'self_paced',
+      credit_cost: 0,
+      category_id: null
+    });
+
+    const publishResponse = await post('/courses/instructor/42/publish');
+    expect(publishResponse.headers.location).toBe('/courses/instructor/42/edit?status=published');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/publish');
+
+    const unpublishResponse = await post('/courses/instructor/42/unpublish');
+    expect(unpublishResponse.headers.location).toBe('/courses/instructor/42/edit?status=unpublished');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/unpublish');
+
+    const deleteResponse = await post('/courses/instructor/42/delete');
+    expect(deleteResponse.headers.location).toBe('/courses/instructor?status=deleted');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42');
+
+    const gradeResponse = await post('/courses/instructor/42/grading/99', {
+      score_percent: '88',
+      passed: '1',
+      feedback: ' Strong answer '
+    });
+    expect(gradeResponse.headers.location).toBe('/courses/instructor/42/grading?status=graded');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '/attempts/99/grade', {
+      score_percent: 88,
+      passed: true,
+      feedback: 'Strong answer'
+    });
+
+    const sectionResponse = await post('/courses/instructor/42/sections', {
+      section_title: ' Basics '
+    });
+    expect(sectionResponse.headers.location).toBe('/courses/instructor/42/edit?status=section-added');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/sections', {
+      title: 'Basics'
+    });
+
+    const sectionUpdateResponse = await post('/courses/instructor/42/sections/5/update', {
+      section_title: ' Foundations '
+    });
+    expect(sectionUpdateResponse.headers.location).toBe('/courses/instructor/42/edit?status=section-saved');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/sections/5', {
+      title: 'Foundations'
+    });
+
+    const sectionDeleteResponse = await post('/courses/instructor/42/sections/5/delete');
+    expect(sectionDeleteResponse.headers.location).toBe('/courses/instructor/42/edit?status=section-deleted');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/sections/5');
+
+    const lessonResponse = await post('/courses/instructor/42/lessons', {
+      lesson_title: ' Intro video ',
+      section_id: '5',
+      content_type: 'video',
+      body: ' Watch this first ',
+      media_url: ' https://video.test/intro '
+    });
+    expect(lessonResponse.headers.location).toBe('/courses/instructor/42/edit?status=lesson-added');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/lessons', {
+      title: 'Intro video',
+      content_type: 'video',
+      body: 'Watch this first',
+      section_id: 5,
+      video_url: 'https://video.test/intro'
+    });
+
+    const lessonUpdateResponse = await post('/courses/instructor/42/lessons/7/update', {
+      lesson_title: ' Updated lesson ',
+      section_id: '',
+      content_type: 'pdf',
+      body: ' Read this ',
+      media_url: ' https://docs.test/guide.pdf '
+    });
+    expect(lessonUpdateResponse.headers.location).toBe('/courses/instructor/42/edit?status=lesson-saved');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/lessons/7', {
+      title: 'Updated lesson',
+      content_type: 'pdf',
+      body: 'Read this',
+      attachment_url: 'https://docs.test/guide.pdf'
+    });
+
+    const lessonDeleteResponse = await post('/courses/instructor/42/lessons/7/delete');
+    expect(lessonDeleteResponse.headers.location).toBe('/courses/instructor/42/edit?status=lesson-deleted');
+    expect(api.callCourseApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/lessons/7');
+
+    api.callCourseApi.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/courses/42/enrol')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1] });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callCourseApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {

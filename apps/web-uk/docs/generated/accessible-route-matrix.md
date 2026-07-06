@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T12:22:10.555Z
+Generated: 2026-07-06T12:34:14.704Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 641 |
-| Matched routes | 559 |
-| Missing routes | 49 |
+| web-uk routes | 657 |
+| Matched routes | 575 |
+| Missing routes | 33 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -30,7 +30,7 @@ Generated: 2026-07-06T12:22:10.555Z
 | cookie-consent | 1 | 0 | 0 |
 | cookies | 1 | 0 | 0 |
 | coupons | 2 | 0 | 0 |
-| courses | 10 | 16 | 0 |
+| courses | 26 | 0 | 0 |
 | dashboard | 1 | 0 | 0 |
 | events | 21 | 0 | 2 |
 | exchanges | 4 | 0 | 0 |
@@ -96,22 +96,6 @@ Generated: 2026-07-06T12:22:10.555Z
 
 | Method | Path | Family | Handler | Blade view | Auth | Gates |
 | --- | --- | --- | --- | --- | --- | --- |
-| POST | `/courses/{param}/enrol` | courses | enrolCourse |  | auth-optional | feature:courses |
-| POST | `/courses/{param}/lessons/{param}/complete` | courses | commerceCompleteLesson |  | auth-optional | feature:courses |
-| POST | `/courses/{param}/lessons/{param}/quiz` | courses | commerceCourseQuizSubmit |  | auth-optional | feature:courses |
-| POST | `/courses/{param}/reviews` | courses | submitCourseReview |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/delete` | courses | commerceDeleteCourse |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/grading/{param}` | courses | commerceGradeAttempt |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/lessons` | courses | commerceStoreCourseLesson |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/lessons/{param}/delete` | courses | commerceDeleteCourseLesson |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/lessons/{param}/update` | courses | commerceUpdateCourseLesson |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/publish` | courses | commercePublishCourse |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/sections` | courses | commerceStoreCourseSection |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/sections/{param}/delete` | courses | commerceDeleteCourseSection |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/sections/{param}/update` | courses | commerceUpdateCourseSection |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/unpublish` | courses | commerceUnpublishCourse |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/{param}/update` | courses | commerceUpdateCourse |  | auth-optional | feature:courses |
-| POST | `/courses/instructor/new` | courses | commerceStoreCourse |  | auth-optional | feature:courses |
 | POST | `/groups/{param}/announcements` | groups | groupsCreateAnnouncement |  | public-or-unknown |  |
 | POST | `/groups/{param}/announcements/{param}/delete` | groups | groupsDeleteAnnouncement |  | public-or-unknown |  |
 | POST | `/groups/{param}/announcements/{param}/edit` | groups | groupsUpdateAnnouncement |  | public-or-unknown |  |
