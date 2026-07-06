@@ -853,6 +853,82 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel member premium helpers', () => {
+    it('should create a member premium checkout session through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { checkout_url: 'https://checkout.stripe.test/session' } })
+      });
+
+      await api.createMemberPremiumCheckout('test-token', {
+        tier_id: 7,
+        interval: 'yearly',
+        return_url: '/premium/return?status=success'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/member-premium/checkout',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            tier_id: 7,
+            interval: 'yearly',
+            return_url: '/premium/return?status=success'
+          })
+        })
+      );
+    });
+
+    it('should create a member premium billing portal session through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { portal_url: 'https://billing.stripe.test/session' } })
+      });
+
+      await api.createMemberPremiumPortal('test-token', {
+        return_url: '/premium/manage'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/member-premium/billing-portal',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            return_url: '/premium/manage'
+          })
+        })
+      );
+    });
+
+    it('should cancel member premium through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { cancelled: true } })
+      });
+
+      await api.cancelMemberPremium('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/member-premium/cancel',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
   describe('Laravel onboarding helpers', () => {
     it('should save safeguarding preferences through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

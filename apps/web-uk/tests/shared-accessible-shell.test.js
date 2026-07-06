@@ -65,6 +65,9 @@ jest.mock('../src/lib/api', () => ({
   performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   rateExchange: jest.fn().mockResolvedValue({ data: { ratings: [] } }),
   sendAiChat: jest.fn().mockResolvedValue({ data: { conversation_id: 123 } }),
+  createMemberPremiumCheckout: jest.fn().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } }),
+  createMemberPremiumPortal: jest.fn().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } }),
+  cancelMemberPremium: jest.fn().mockResolvedValue({ data: { cancelled: true } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -122,6 +125,9 @@ describe('shared accessible frontend shell', () => {
     api.performExchangeAction.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.rateExchange.mockReset().mockResolvedValue({ data: { ratings: [] } });
     api.sendAiChat.mockReset().mockResolvedValue({ data: { conversation_id: 123 } });
+    api.createMemberPremiumCheckout.mockReset().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } });
+    api.createMemberPremiumPortal.mockReset().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } });
+    api.cancelMemberPremium.mockReset().mockResolvedValue({ data: { cancelled: true } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -1076,6 +1082,99 @@ describe('shared accessible frontend shell', () => {
       .send({
         _csrf: csrfMatch[1],
         message: 'Find me a gardener'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+  });
+
+  it('submits the Laravel premium subscribe route through the checkout API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/premium/subscribe')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        tier_id: '7',
+        interval: 'year'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('https://checkout.stripe.test/session');
+    expect(api.createMemberPremiumCheckout).toHaveBeenCalledWith('test-token', {
+      tier_id: 7,
+      interval: 'yearly',
+      return_url: '/premium/return?status=success'
+    });
+  });
+
+  it('submits the Laravel premium portal route through the billing portal API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/premium/portal')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('https://billing.stripe.test/session');
+    expect(api.createMemberPremiumPortal).toHaveBeenCalledWith('test-token', {
+      return_url: '/premium/manage'
+    });
+  });
+
+  it('submits the Laravel premium cancel route through the cancel API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/premium/cancel')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/premium/manage?status=cancel-scheduled');
+    expect(api.cancelMemberPremium).toHaveBeenCalledWith('test-token');
+  });
+
+  it('redirects signed-out Laravel premium subscribe submissions to the auth-required status', async () => {
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/premium/subscribe')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        tier_id: '7'
       });
 
     expect(response.status).toBe(302);

@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T09:25:28.051Z
+Generated: 2026-07-06T09:30:52.568Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 420 |
-| Matched routes | 338 |
-| Missing routes | 270 |
+| web-uk routes | 423 |
+| Matched routes | 341 |
+| Missing routes | 267 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -68,7 +68,7 @@ Generated: 2026-07-06T09:25:28.051Z
 | password | 2 | 0 | 0 |
 | podcasts | 6 | 8 | 0 |
 | polls | 6 | 7 | 0 |
-| premium | 3 | 3 | 0 |
+| premium | 6 | 0 | 0 |
 | privacy | 0 | 0 | 1 |
 | profile | 5 | 16 | 2 |
 | progress | 0 | 0 | 4 |
@@ -299,9 +299,6 @@ Generated: 2026-07-06T09:25:28.051Z
 | POST | `/polls/{param}/rank` | polls | gamificationStoreRankedVote |  | public-or-unknown |  |
 | POST | `/polls/{param}/vote` | polls | storePollVote |  | auth-optional | feature:polls |
 | POST | `/polls/parity/create` | polls | gamificationStorePoll |  | public-or-unknown |  |
-| POST | `/premium/cancel` | premium | commercePremiumCancel |  | auth-optional | feature:member_premium |
-| POST | `/premium/portal` | premium | commercePremiumPortal |  | auth-optional | feature:member_premium |
-| POST | `/premium/subscribe` | premium | subscribePremium |  | auth-optional | feature:member_premium |
 | POST | `/profile/data-export` | profile | requestDataExport |  | auth-optional |  |
 | POST | `/profile/delete-account` | profile | deleteAccount |  | auth-optional |  |
 | POST | `/profile/email` | profile | updateProfileEmail |  | auth-optional |  |

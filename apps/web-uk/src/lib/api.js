@@ -514,6 +514,29 @@ async function sendAiChat(token, data) {
   });
 }
 
+async function createMemberPremiumCheckout(token, data) {
+  return request('/api/v2/member-premium/checkout', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function createMemberPremiumPortal(token, data) {
+  return request('/api/v2/member-premium/billing-portal', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function cancelMemberPremium(token) {
+  return request('/api/v2/member-premium/cancel', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Messages
 async function getConversations(token) {
   return request('/api/messages', {
@@ -1422,6 +1445,9 @@ module.exports = {
   performExchangeAction,
   rateExchange,
   sendAiChat,
+  createMemberPremiumCheckout,
+  createMemberPremiumPortal,
+  cancelMemberPremium,
   // Messages
   getConversations,
   getConversation,
