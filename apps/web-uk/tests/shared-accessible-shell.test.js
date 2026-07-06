@@ -122,6 +122,7 @@ jest.mock('../src/lib/api', () => ({
   getVolunteerOrganisation: jest.fn(),
   getMyVolunteerOrganisations: jest.fn(),
   createVolunteerOrganisation: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callVolunteeringApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getVolunteerOpportunity: jest.fn(),
   getOrganisationOpportunities: jest.fn(),
   getOrganisationReviews: jest.fn(),
@@ -206,6 +207,7 @@ describe('shared accessible frontend shell', () => {
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
     api.createVolunteerOrganisation.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.getNotifications.mockReset().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } });
     api.markNotificationRead.mockReset().mockResolvedValue({});
     api.markAllNotificationsRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
@@ -3631,6 +3633,430 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community Kitchen Helper');
     expect(response.text).toContain('Sign in to send a Laravel-backed volunteer application.');
     expect(response.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
+  });
+
+  it('submits core Laravel volunteering member action aliases', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const applyResponse = await agent
+      .post('/volunteering/opportunities/77/apply')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], message: ' Happy to help ', shift_id: '501' });
+    expect(applyResponse.headers.location).toBe('/volunteering/opportunities/77?status=apply-created');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/opportunities/77/apply', {
+      message: 'Happy to help',
+      shift_id: 501
+    });
+
+    const signupResponse = await agent
+      .post('/volunteering/opportunities/77/shifts/501/signup')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(signupResponse.headers.location).toBe('/volunteering/opportunities/77?status=shift-signed-up');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/shifts/501/signup');
+
+    const cancelResponse = await agent
+      .post('/volunteering/opportunities/77/shifts/501/cancel')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(cancelResponse.headers.location).toBe('/volunteering/opportunities/77?status=shift-cancelled');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/shifts/501/signup');
+
+    const withdrawResponse = await agent
+      .post('/volunteering/applications/91/withdraw')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(withdrawResponse.headers.location).toBe('/volunteering?tab=applications&status=application-withdrawn');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/applications/91');
+
+    const hoursResponse = await agent
+      .post('/volunteering/hours')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        organization_id: '42',
+        opportunity_id: '77',
+        date: '2026-08-03',
+        hours: '2.5',
+        description: ' Helped on reception '
+      });
+    expect(hoursResponse.headers.location).toBe('/volunteering/hours?status=hours-created');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/hours', {
+      organization_id: 42,
+      opportunity_id: 77,
+      date: '2026-08-03',
+      hours: 2.5,
+      description: 'Helped on reception'
+    });
+
+    const accessibilityResponse = await agent
+      .post('/volunteering/accessibility')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        need_types: ['mobility', 'sensory'],
+        description: ' Step-free access ',
+        accommodations_required: ' Ramp ',
+        emergency_contact_name: ' Alex ',
+        emergency_contact_phone: ' 12345 '
+      });
+    expect(accessibilityResponse.headers.location).toBe('/volunteering/accessibility?status=accessibility-saved');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/accessibility-needs', {
+      need_types: ['mobility', 'sensory'],
+      description: 'Step-free access',
+      accommodations_required: 'Ramp',
+      emergency_contact_name: 'Alex',
+      emergency_contact_phone: '12345'
+    });
+
+    const certificateResponse = await agent
+      .post('/volunteering/certificates/generate')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(certificateResponse.headers.location).toBe('/volunteering/certificates?status=certificate-generated');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/certificates');
+  });
+
+  it('submits Laravel volunteering depth aliases for wellbeing, donations, groups, expenses, and safeguarding', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const waitlistResponse = await agent
+      .post('/volunteering/waitlist/501/leave')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(waitlistResponse.headers.location).toBe('/volunteering/waitlist?status=waitlist-left');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/shifts/501/waitlist');
+
+    const swapResponse = await agent
+      .post('/volunteering/swaps')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        from_shift_id: '501',
+        to_shift_id: '502',
+        to_user_id: '77',
+        message: ' Could swap? '
+      });
+    expect(swapResponse.headers.location).toBe('/volunteering/swaps?status=swap-requested');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/swaps', {
+      from_shift_id: 501,
+      to_shift_id: 502,
+      to_user_id: 77,
+      message: 'Could swap?'
+    });
+
+    const swapRespondResponse = await agent
+      .post('/volunteering/swaps/12/respond')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], action: 'accept' });
+    expect(swapRespondResponse.headers.location).toBe('/volunteering/swaps?status=swap-accepted');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/swaps/12', { action: 'accept' });
+
+    const swapCancelResponse = await agent
+      .post('/volunteering/swaps/12/cancel')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(swapCancelResponse.headers.location).toBe('/volunteering/swaps?status=swap-cancelled');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/swaps/12');
+
+    const emergencyResponse = await agent
+      .post('/volunteering/emergency-alerts/9/respond')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], response: 'declined' });
+    expect(emergencyResponse.headers.location).toBe('/volunteering/emergency-alerts?status=alert-declined');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/emergency-alerts/9', { response: 'declined' });
+
+    const deleteCredentialResponse = await agent
+      .post('/volunteering/credentials/44/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(deleteCredentialResponse.headers.location).toBe('/volunteering/credentials?status=credential-deleted');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/credentials/44');
+
+    const wellbeingResponse = await agent
+      .post('/volunteering/wellbeing/checkin')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], mood: '4', note: ' Feeling steady ' });
+    expect(wellbeingResponse.headers.location).toBe('/volunteering/wellbeing?status=checkin-saved');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/wellbeing/checkin', {
+      mood: 4,
+      note: 'Feeling steady'
+    });
+
+    const donationResponse = await agent
+      .post('/volunteering/donations')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        amount: '25',
+        payment_method: 'paypal',
+        giving_day_id: '7',
+        message: ' For supplies ',
+        is_anonymous: 'on'
+      });
+    expect(donationResponse.headers.location).toBe('/volunteering/donations?status=donate-recorded#donate');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/donations', {
+      amount: 25,
+      currency: 'EUR',
+      payment_method: 'paypal',
+      giving_day_id: 7,
+      message: 'For supplies',
+      is_anonymous: true
+    });
+
+    const groupAddResponse = await agent
+      .post('/volunteering/group-signups/30/members')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], user_id: '55' });
+    expect(groupAddResponse.headers.location).toBe('/volunteering/group-signups?status=member-added');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/group-reservations/30/members', { user_id: 55 });
+
+    const groupRemoveResponse = await agent
+      .post('/volunteering/group-signups/30/members/55/remove')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(groupRemoveResponse.headers.location).toBe('/volunteering/group-signups?status=member-removed');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/group-reservations/30/members/55');
+
+    const groupCancelResponse = await agent
+      .post('/volunteering/group-signups/30/cancel')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(groupCancelResponse.headers.location).toBe('/volunteering/group-signups?status=reservation-cancelled');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/group-reservations/30');
+
+    const expenseResponse = await agent
+      .post('/volunteering/expenses')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        organization_id: '42',
+        expense_type: 'travel',
+        amount: '12.5',
+        description: ' Bus fare ',
+        currency: ' GBP '
+      });
+    expect(expenseResponse.headers.location).toBe('/volunteering/expenses?status=expense-submitted');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/expenses', {
+      organization_id: 42,
+      expense_type: 'travel',
+      amount: 12.5,
+      description: 'Bus fare',
+      currency: 'GBP'
+    });
+
+    const trainingResponse = await agent
+      .post('/volunteering/training')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        training_type: 'first_aid',
+        training_name: ' Basic first aid ',
+        provider: ' Red Cross ',
+        completed_at: '2026-06-01',
+        expires_at: '2027-06-01'
+      });
+    expect(trainingResponse.headers.location).toBe('/volunteering/training?status=training-added&tab=training');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/training', {
+      training_type: 'first_aid',
+      training_name: 'Basic first aid',
+      provider: 'Red Cross',
+      completed_at: '2026-06-01',
+      expires_at: '2027-06-01'
+    });
+
+    const incidentResponse = await agent
+      .post('/volunteering/incidents')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        title: ' Wet floor ',
+        description: 'A wet floor caused a near miss by the entrance.',
+        severity: 'medium',
+        category: 'site'
+      });
+    expect(incidentResponse.headers.location).toBe('/volunteering/incidents?status=incident-reported&tab=incidents');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/incidents', {
+      title: 'Wet floor',
+      description: 'A wet floor caused a near miss by the entrance.',
+      severity: 'medium',
+      category: 'site',
+      incident_type: 'other'
+    });
+  });
+
+  it('submits Laravel volunteering organisation management aliases', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const applicationResponse = await agent
+      .post('/volunteering/organisations/42/applications/91')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], action: 'decline', org_note: ' Not this time ' });
+    expect(applicationResponse.headers.location).toBe('/volunteering/organisations/42/manage?status=application-declined');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/applications/91', {
+      action: 'decline',
+      org_note: 'Not this time'
+    });
+
+    const hoursVerifyResponse = await agent
+      .post('/volunteering/organisations/42/hours/19')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], action: 'approve' });
+    expect(hoursVerifyResponse.headers.location).toBe('/volunteering/organisations/42/manage?status=hours-approved');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/hours/19/verify', { action: 'approve' });
+
+    const settingsResponse = await agent
+      .post('/volunteering/organisations/42/settings')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: ' Community Club ',
+        description: ' Local help ',
+        contact_email: ' hello@example.org ',
+        website: ' https://example.org '
+      });
+    expect(settingsResponse.headers.location).toBe('/volunteering/organisations/42/settings?status=settings-saved');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/organisations/42', {
+      name: 'Community Club',
+      description: 'Local help',
+      contact_email: 'hello@example.org',
+      website: 'https://example.org'
+    });
+
+    const depositResponse = await agent
+      .post('/volunteering/organisations/42/wallet/deposit')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], amount: '5', note: ' Float ' });
+    expect(depositResponse.headers.location).toBe('/volunteering/organisations/42/wallet?status=deposit-made');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/organisations/42/wallet/deposit', {
+      amount: 5,
+      note: 'Float'
+    });
+
+    const autoPayResponse = await agent
+      .post('/volunteering/organisations/42/wallet/auto-pay')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], enabled: '1' });
+    expect(autoPayResponse.headers.location).toBe('/volunteering/organisations/42/wallet?status=autopay-enabled');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/organisations/42/wallet/auto-pay', {
+      enabled: true
+    });
+
+    api.callVolunteeringApi.mockResolvedValueOnce({ data: { id: 88 } });
+    const createOpportunityResponse = await agent
+      .post('/volunteering/opportunities/create')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        organization_id: '42',
+        title: ' Kitchen helper ',
+        description: ' Help prep food ',
+        location: 'Derry',
+        is_remote: '1',
+        skills_needed: 'Cooking',
+        start_date: '2026-08-01',
+        end_date: '2026-09-01',
+        category_id: '3',
+        federated_visibility: '1'
+      });
+    expect(createOpportunityResponse.headers.location).toBe('/volunteering/opportunities/88?status=opp-created');
+    expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/opportunities', {
+      organization_id: 42,
+      title: 'Kitchen helper',
+      description: 'Help prep food',
+      location: 'Derry',
+      is_remote: true,
+      skills_needed: 'Cooking',
+      start_date: '2026-08-01',
+      end_date: '2026-09-01',
+      category_id: 3,
+      federated_visibility: 'network'
+    });
+  });
+
+  it('fails the Laravel volunteering credential upload route safely until multipart proxying exists', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/volunteering/credentials')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], credential_type: 'garda_vetting' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/volunteering/credentials?status=credential-upload-failed');
+    expect(api.callVolunteeringApi).not.toHaveBeenCalled();
+  });
+
+  it('redirects signed-out Laravel volunteering POST aliases to login status without calling Laravel APIs', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/volunteering/hours')
+      .type('form')
+      .send({ _csrf: csrfMatch[1], organization_id: '42', hours: '2' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.callVolunteeringApi).not.toHaveBeenCalled();
   });
 
   it('keeps the rendered footer clear of official government identity claims', async () => {

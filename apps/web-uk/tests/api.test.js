@@ -527,6 +527,31 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callVolunteeringApi', () => {
+    it('should call Laravel v2 volunteering action endpoints with auth, method, and payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { ok: true } })
+      });
+
+      await api.callVolunteeringApi('test-token', 'PUT', '/organisations/42/wallet/auto-pay', {
+        enabled: true
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/organisations/42/wallet/auto-pay',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ enabled: true })
+        })
+      );
+    });
+  });
+
   describe('donateCredits', () => {
     it('should call the Laravel wallet donation endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

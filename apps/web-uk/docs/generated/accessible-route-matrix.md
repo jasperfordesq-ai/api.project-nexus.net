@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T10:38:09.172Z
+Generated: 2026-07-06T10:51:55.994Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 476 |
-| Matched routes | 394 |
-| Missing routes | 214 |
+| web-uk routes | 504 |
+| Matched routes | 422 |
+| Missing routes | 186 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -89,7 +89,7 @@ Generated: 2026-07-06T10:38:09.172Z
 | users | 3 | 0 | 0 |
 | verify-2fa | 0 | 0 | 1 |
 | verify-email | 1 | 0 | 0 |
-| volunteering | 24 | 28 | 0 |
+| volunteering | 52 | 0 | 0 |
 | wallet | 6 | 0 | 3 |
 
 ## Missing Laravel Routes
@@ -282,31 +282,3 @@ Generated: 2026-07-06T10:38:09.172Z
 | POST | `/settings/linked-accounts/permissions` | settings | settingsUpdateLinkedPermissions |  | auth-optional |  |
 | POST | `/settings/linked-accounts/request` | settings | settingsRequestLinkedAccount |  | auth-optional |  |
 | POST | `/settings/linked-accounts/revoke` | settings | settingsRevokeLinkedAccount |  | auth-optional |  |
-| POST | `/volunteering/accessibility` | volunteering | updateVolunteerAccessibility |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/applications/{param}/withdraw` | volunteering | withdrawVolunteerApplication |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/certificates/generate` | volunteering | generateVolunteerCertificate |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/credentials` | volunteering | volunteeringUploadCredential |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/credentials/{param}/delete` | volunteering | volunteeringDeleteCredential |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/donations` | volunteering | volunteeringStoreDonation |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/emergency-alerts/{param}/respond` | volunteering | volunteeringRespondEmergencyAlert |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/expenses` | volunteering | volunteeringSubmitExpense |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/group-signups/{param}/cancel` | volunteering | volunteeringCancelGroupReservation |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/group-signups/{param}/members` | volunteering | volunteeringAddGroupMember |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/group-signups/{param}/members/{param}/remove` | volunteering | volunteeringRemoveGroupMember |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/hours` | volunteering | storeVolunteeringHours |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/incidents` | volunteering | volunteeringSafeguardingReportIncident |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/opportunities/{param}/apply` | volunteering | applyVolunteerOpportunity |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/opportunities/{param}/shifts/{param}/cancel` | volunteering | cancelVolunteerShift |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/opportunities/{param}/shifts/{param}/signup` | volunteering | signUpForVolunteerShift |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/opportunities/create` | volunteering | volunteeringStoreOpportunity |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/organisations/{param}/applications/{param}` | volunteering | handleVolunteerOrgApplication |  | public-or-unknown |  |
-| POST | `/volunteering/organisations/{param}/hours/{param}` | volunteering | verifyVolunteerOrgHours |  | public-or-unknown |  |
-| POST | `/volunteering/organisations/{param}/settings` | volunteering | volunteeringUpdateOrgSettings |  | public-or-unknown |  |
-| POST | `/volunteering/organisations/{param}/wallet/auto-pay` | volunteering | volunteeringOrgAutoPay |  | public-or-unknown |  |
-| POST | `/volunteering/organisations/{param}/wallet/deposit` | volunteering | volunteeringOrgWalletDeposit |  | public-or-unknown |  |
-| POST | `/volunteering/swaps` | volunteering | requestVolunteerSwap |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/swaps/{param}/cancel` | volunteering | cancelVolunteerSwap |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/swaps/{param}/respond` | volunteering | respondVolunteerSwap |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/training` | volunteering | volunteeringSafeguardingLogTraining |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/waitlist/{param}/leave` | volunteering | leaveVolunteerWaitlist |  | auth-optional | feature:volunteering |
-| POST | `/volunteering/wellbeing/checkin` | volunteering | volunteeringWellbeingCheckin |  | auth-optional | feature:volunteering |

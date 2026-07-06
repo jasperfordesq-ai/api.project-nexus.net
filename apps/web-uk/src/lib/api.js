@@ -359,6 +359,20 @@ async function createVolunteerOrganisation(token, data) {
   });
 }
 
+async function callVolunteeringApi(token, method, path, data = undefined) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/volunteering${normalizedPath}`, options);
+}
+
 async function getOrganisationJobs(organisationId, token, params = {}) {
   const query = new URLSearchParams();
   query.set('organization_id', organisationId);
@@ -1790,6 +1804,7 @@ module.exports = {
   getOrganisationReviews,
   getMyVolunteerOrganisations,
   createVolunteerOrganisation,
+  callVolunteeringApi,
   getOrganisationJobs,
   // Wallet
   getBalance,

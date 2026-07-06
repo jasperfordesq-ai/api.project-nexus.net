@@ -151,10 +151,16 @@ using `search`, `category_id`, `is_remote`, `per_page`, and `cursor`
 parameters. Its `/volunteering/opportunities/{id}` page is backed by
 `/api/v2/volunteering/opportunities/{id}` and renders the Blade-style public
 detail, organisation summary, opportunity metadata, available shifts, and safe
-apply link. This remains partial: applications, recommended shifts, hours,
-organisation owner tools, apply POST, shift signup/cancel, feature gates,
-tenant-prefixed routes, localization, runtime smoke tests, and ASP.NET backend
-compatibility are not certified.
+apply link. Laravel POST aliases now cover applications, shift signup/cancel,
+application withdrawal, hours, accessibility needs, certificate generation,
+waitlists, swaps, emergency alert responses, credential delete plus safe upload
+failure, wellbeing check-ins, donations, group reservations, expenses, training,
+incidents, opportunity creation, and organisation owner application/hour,
+settings, and wallet actions through Laravel v2 volunteering APIs. This remains
+partial: recommended shifts and other GET depth pages still use generated
+preparation pages, multipart credential upload proxying is not implemented, and
+feature gates, tenant-prefixed routes, localization, runtime smoke tests, and
+ASP.NET backend compatibility are not certified.
 
 The `/organisations` page is now a local Blade-style candidate for the Laravel
 accessible organisations directory. It includes the caption, subnavigation,
@@ -181,9 +187,9 @@ openings view and, when a signed token is present, reads
 `/organisations/opportunities/{id}/apply` page renders the Blade-style apply
 confirmation page and reads `/api/v2/volunteering/opportunities/{id}`. This
 remains partial: auth enforcement, volunteering/job feature gates,
-tenant-prefixed routes, organisation registration runtime persistence, apply POST
-workflow, localization, runtime smoke tests, and ASP.NET backend compatibility are
-not certified.
+tenant-prefixed routes, organisation registration runtime persistence, apply
+confirmation depth, localization, runtime smoke tests, and ASP.NET backend
+compatibility are not certified.
 
 Additional preparation docs:
 
@@ -196,8 +202,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 476 `apps/web-uk` route declarations, 394 exact
-method/path matches, 214 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 504 `apps/web-uk` route declarations, 422 exact
+method/path matches, 186 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 
