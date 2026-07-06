@@ -847,6 +847,53 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callPodcastApi', () => {
+    it('should call Laravel v2 podcast endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42 } })
+      });
+
+      await api.callPodcastApi('test-token', 'POST', '/42/episodes', {
+        title: 'Community update',
+        audio_url: 'https://media.example/audio.mp3'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/podcasts/42/episodes',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            title: 'Community update',
+            audio_url: 'https://media.example/audio.mp3'
+          })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { deleted: true } })
+      });
+
+      await api.callPodcastApi('test-token', 'DELETE', '/42');
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/podcasts/42',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
   describe('donateCredits', () => {
     it('should call the Laravel wallet donation endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

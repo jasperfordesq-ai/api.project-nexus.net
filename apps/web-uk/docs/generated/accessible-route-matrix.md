@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T11:44:00.363Z
+Generated: 2026-07-06T11:50:04.682Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 591 |
-| Matched routes | 509 |
-| Missing routes | 99 |
+| web-uk routes | 599 |
+| Matched routes | 517 |
+| Missing routes | 91 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -66,7 +66,7 @@ Generated: 2026-07-06T11:44:00.363Z
 | onboarding | 4 | 0 | 0 |
 | organisations | 9 | 0 | 0 |
 | password | 2 | 0 | 0 |
-| podcasts | 6 | 8 | 0 |
+| podcasts | 14 | 0 | 0 |
 | polls | 13 | 0 | 0 |
 | premium | 6 | 0 | 0 |
 | privacy | 0 | 0 | 1 |
@@ -171,14 +171,6 @@ Generated: 2026-07-06T11:44:00.363Z
 | POST | `/jobs/interviews/{param}/decline` | jobs | jobsDeclineInterview |  | public-or-unknown |  |
 | POST | `/jobs/offers/{param}/accept` | jobs | jobsAcceptOffer |  | public-or-unknown |  |
 | POST | `/jobs/offers/{param}/reject` | jobs | jobsRejectOffer |  | public-or-unknown |  |
-| POST | `/podcasts/{param}/subscribe` | podcasts | podcastSubscribe |  | auth-optional | feature:podcasts |
-| POST | `/podcasts/studio/{param}/delete` | podcasts | commerceDeletePodcast |  | auth-optional | feature:podcasts |
-| POST | `/podcasts/studio/{param}/episodes` | podcasts | commerceStorePodcastEpisode |  | auth-optional | feature:podcasts |
-| POST | `/podcasts/studio/{param}/episodes/{param}/delete` | podcasts | commerceDeletePodcastEpisode |  | auth-optional | feature:podcasts |
-| POST | `/podcasts/studio/{param}/episodes/{param}/publish` | podcasts | commercePublishPodcastEpisode |  | auth-optional | feature:podcasts |
-| POST | `/podcasts/studio/{param}/publish` | podcasts | commercePublishPodcast |  | auth-optional | feature:podcasts |
-| POST | `/podcasts/studio/{param}/update` | podcasts | commerceUpdatePodcast |  | auth-optional | feature:podcasts |
-| POST | `/podcasts/studio/new` | podcasts | commerceStorePodcast |  | auth-optional | feature:podcasts |
 | POST | `/profile/data-export` | profile | requestDataExport |  | auth-optional |  |
 | POST | `/profile/delete-account` | profile | deleteAccount |  | auth-optional |  |
 | POST | `/profile/email` | profile | updateProfileEmail |  | auth-optional |  |

@@ -52,6 +52,7 @@ const achievementsRoutes = require('./routes/achievements');
 const resourcesRoutes = require('./routes/resources');
 const blogPostRoutes = require('./routes/blog-posts');
 const pollActionRoutes = require('./routes/poll-actions');
+const podcastActionRoutes = require('./routes/podcast-actions');
 const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
@@ -1094,6 +1095,7 @@ app.use('/listings', doubleCsrfProtection, postOnly(formLimiter), listingsRoutes
 app.use('/profile', doubleCsrfProtection, profileRoutes);
 app.use('/wallet', doubleCsrfProtection, postOnly(walletLimiter), walletRoutes);
 app.use('/messages', doubleCsrfProtection, postOnly(formLimiter), messagesRoutes);
+app.use('/podcasts', doubleCsrfProtection, postOnly(formLimiter), podcastActionRoutes);
 app.use('/connections', doubleCsrfProtection, postOnly(formLimiter), connectionsRoutes);
 app.use('/members', doubleCsrfProtection, membersRoutes);
 app.use('/notifications', doubleCsrfProtection, notificationsRoutes);

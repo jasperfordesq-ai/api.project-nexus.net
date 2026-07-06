@@ -807,6 +807,20 @@ async function callConversationApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/conversations${normalizedPath}`, options);
 }
 
+async function callPodcastApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/podcasts${normalizedPath}`, options);
+}
+
 async function getConversations(token) {
   return request('/api/messages', {
     headers: { Authorization: `Bearer ${token}` }
@@ -1979,6 +1993,7 @@ module.exports = {
   // Messages
   callMessageApi,
   callConversationApi,
+  callPodcastApi,
   getConversations,
   getConversation,
   getUnreadCount,

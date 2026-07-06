@@ -119,6 +119,7 @@ jest.mock('../src/lib/api', () => ({
   getTransactions: jest.fn(),
   callMessageApi: jest.fn().mockResolvedValue({ data: { id: 12, action: 'added' } }),
   callConversationApi: jest.fn().mockResolvedValue({ data: { id: 33 } }),
+  callPodcastApi: jest.fn().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } }),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteeringOpportunities: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteerOrganisation: jest.fn(),
@@ -234,6 +235,7 @@ describe('shared accessible frontend shell', () => {
     api.deleteNotification.mockReset().mockResolvedValue({});
     api.callMessageApi.mockReset().mockResolvedValue({ data: { id: 12, action: 'added' } });
     api.callConversationApi.mockReset().mockResolvedValue({ data: { id: 33 } });
+    api.callPodcastApi.mockReset().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } });
     api.verify2fa.mockReset();
     api.createFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.updateFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -4366,6 +4368,106 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callMessageApi).not.toHaveBeenCalled();
     expect(api.callConversationApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel podcast action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const subscribeResponse = await post('/podcasts/7/subscribe', {
+      notify_new_episodes: 'on'
+    });
+    expect(subscribeResponse.headers.location).toBe('/podcasts/7?status=subscribed');
+    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/subscribe', {
+      notify_new_episodes: true
+    });
+
+    const createResponse = await post('/podcasts/studio/new', {
+      title: ' Community stories ',
+      summary: ' Local audio ',
+      description: ' Interviews and updates ',
+      category: 'community',
+      visibility: 'members'
+    });
+    expect(createResponse.headers.location).toBe('/podcasts/studio/42?status=show-created');
+    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'POST', '', {
+      title: 'Community stories',
+      summary: 'Local audio',
+      description: 'Interviews and updates',
+      category: 'community',
+      visibility: 'members'
+    });
+
+    const updateResponse = await post('/podcasts/studio/42/update', {
+      title: ' Updated stories ',
+      summary: ' New summary ',
+      description: ' New description ',
+      category: 'local',
+      visibility: 'public'
+    });
+    expect(updateResponse.headers.location).toBe('/podcasts/studio/42?status=show-saved');
+    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42', {
+      title: 'Updated stories',
+      summary: 'New summary',
+      description: 'New description',
+      category: 'local',
+      visibility: 'public'
+    });
+
+    const publishResponse = await post('/podcasts/studio/42/publish');
+    expect(publishResponse.headers.location).toBe('/podcasts/studio/42?status=show-published');
+    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/publish');
+
+    const episodeResponse = await post('/podcasts/studio/42/episodes', {
+      episode_title: ' First update ',
+      episode_summary: ' Short summary ',
+      episode_description: ' Longer notes ',
+      episode_number: '3',
+      audio_url: ' https://media.example/audio.mp3 '
+    });
+    expect(episodeResponse.headers.location).toBe('/podcasts/studio/42?status=episode-added');
+    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/episodes', {
+      title: 'First update',
+      summary: 'Short summary',
+      description: 'Longer notes',
+      audio_url: 'https://media.example/audio.mp3',
+      episode_number: 3
+    });
+
+    const publishEpisodeResponse = await post('/podcasts/studio/42/episodes/99/publish');
+    expect(publishEpisodeResponse.headers.location).toBe('/podcasts/studio/42?status=episode-published');
+    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/episodes/99/publish');
+
+    const deleteEpisodeResponse = await post('/podcasts/studio/42/episodes/99/delete');
+    expect(deleteEpisodeResponse.headers.location).toBe('/podcasts/studio/42?status=episode-deleted');
+    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/episodes/99');
+
+    const deleteResponse = await post('/podcasts/studio/42/delete');
+    expect(deleteResponse.headers.location).toBe('/podcasts/studio?status=show-deleted');
+    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42');
+
+    api.callPodcastApi.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/podcasts/7/subscribe')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1] });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callPodcastApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {

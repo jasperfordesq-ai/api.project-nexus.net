@@ -177,6 +177,14 @@ no-JS Stripe checkout redirects, address/onboarding depth, multipart media
 uploads, tenant/feature gates, localization, runtime smoke tests, and ASP.NET
 backend compatibility are not certified.
 
+Podcast GET pages remain preparation pages, but the Laravel accessible POST
+aliases under `/podcasts` are now local route declarations backed by Laravel v2
+podcast APIs. The aliases cover show subscription, studio show
+create/update/publish/delete, and episode add/publish/delete. This remains
+partial: multipart audio upload is not proxied, RSS/media rendering, author
+configuration gates, moderation state, localization, runtime smoke tests, and
+ASP.NET backend compatibility are not certified.
+
 Ideation GET pages remain preparation pages, but the Laravel accessible POST
 aliases under `/ideation` are now local route declarations backed by Laravel v2
 ideation APIs. The aliases cover challenge create/update/status/favorite,
@@ -268,8 +276,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 591 `apps/web-uk` route declarations, 509 exact
-method/path matches, 99 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 599 `apps/web-uk` route declarations, 517 exact
+method/path matches, 91 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 
