@@ -81,6 +81,15 @@ gating, full account-link coverage, per-module backend data, route availability
 checks, localization, runtime smoke tests, and ASP.NET backend compatibility are
 not certified.
 
+The cookie banner and `/cookies` page are now local Blade-style no-JS
+candidates. The shell renders the GOV.UK cookie banner before the skip link
+until the Laravel-compatible `nexus_alpha_cookie_consent` cookie is present.
+Accept/reject/save posts use `/cookie-consent` and store `all` or `essential`
+locally, matching Laravel's first-party choice cookie values. This remains
+partial: Laravel `cookie_consents` audit persistence, tenant scoping, route-name
+generation, localization, runtime smoke tests, and ASP.NET backend
+compatibility are not certified.
+
 The `/volunteering` page is now a local Blade-style public landing candidate
 for the Laravel accessible volunteering page. It renders the caption, lead,
 organisation browse link, how-volunteering-works inset, sign-in notice, filter

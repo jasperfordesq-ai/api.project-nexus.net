@@ -18,6 +18,10 @@
 
 {% block pageTitle %}{{ title }} - {{ serviceName }}{% endblock %}
 
+{% block bodyStart %}
+  {% include "partials/cookie-banner.njk" %}
+{% endblock %}
+
 {% block skipLink %}
   <a href="#main-content" class="govuk-skip-link" data-module="govuk-skip-link">Skip to main content</a>
 {% endblock %}

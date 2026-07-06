@@ -41,6 +41,13 @@ not a backend adapter and does not certify Laravel tenant feature gates, full
 account-link coverage, route availability checks, per-module response contracts,
 or ASP.NET backend readiness.
 
+`/cookies` GET and `/cookie-consent` POST are local Blade-style no-JS cookie
+candidates. They render the Laravel-style analytics settings form and set the
+same first-party `nexus_alpha_cookie_consent` values (`all` or `essential`) used
+by Laravel's accessible frontend. They do not certify Laravel `cookie_consents`
+audit persistence, tenant-scoped consent behavior, localized copy, report-a-
+problem workflows, or ASP.NET backend readiness.
+
 `/volunteering` GET is a local Blade-style public landing/search candidate
 based on the Laravel accessible volunteering page. It reads
 `/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`,

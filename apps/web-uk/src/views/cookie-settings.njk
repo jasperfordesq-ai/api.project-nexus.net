@@ -1,0 +1,61 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">Cookies on {{ tenantName }}</span>
+      <h1 class="govuk-heading-xl">Cookies</h1>
+
+      {% if status == 'saved' %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" data-module="govuk-notification-banner" aria-labelledby="cookie-saved-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="cookie-saved-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">Your cookie settings were saved</p>
+          </div>
+        </div>
+      {% endif %}
+
+      <p class="govuk-body-l">Cookies are small files saved on your device when you visit a website. We use cookies to make this service work and to improve it.</p>
+
+      <h2 class="govuk-heading-m">Essential cookies</h2>
+      <p class="govuk-body">These keep the service secure and remember your language and display choices. They are always on because the service cannot work properly without them.</p>
+
+      <form method="post" action="/cookie-consent">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <input type="hidden" name="cookies" value="save">
+
+        <h2 class="govuk-heading-m">Analytics cookies</h2>
+        <p class="govuk-body">With your permission, we use analytics cookies to understand how the service is used so we can improve it.</p>
+
+        <div class="govuk-form-group">
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Do you want to accept analytics cookies?</legend>
+            <div class="govuk-radios" data-module="govuk-radios">
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="analytics-yes" name="analytics" type="radio" value="yes" {% if analyticsOn %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="analytics-yes">Yes</label>
+              </div>
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="analytics-no" name="analytics" type="radio" value="no" {% if not analyticsOn %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="analytics-no">No</label>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        <button class="govuk-button" data-module="govuk-button" type="submit">Save cookie settings</button>
+      </form>
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="/legal/cookies">Read our full cookies policy</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}

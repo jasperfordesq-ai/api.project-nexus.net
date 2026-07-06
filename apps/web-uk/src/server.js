@@ -46,6 +46,8 @@ const PORT = process.env.PORT || 3001;
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
 const SESSION_SECRET = process.env.SESSION_SECRET || COOKIE_SECRET;
 const NODE_ENV = process.env.NODE_ENV || 'development';
+const ALPHA_COOKIE_NAME = 'nexus_alpha_cookie_consent';
+const ALPHA_COOKIE_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
 
 if (!COOKIE_SECRET) {
   console.error('COOKIE_SECRET environment variable is required');
@@ -262,6 +264,16 @@ app.use(async (req, res, next) => {
   res.locals.isAuthenticated = !!token;
   Object.assign(res.locals, buildShellLocals(req, res.locals.isAuthenticated));
 
+  const alphaCookieChoice = req.session ? req.session.alphaCookieChoice : '';
+  if (alphaCookieChoice && req.session) {
+    delete req.session.alphaCookieChoice;
+  }
+
+  res.locals.alphaCookieChoice = alphaCookieChoice || '';
+  res.locals.alphaCookieConsent = req.cookies[ALPHA_COOKIE_NAME] || '';
+  res.locals.alphaHasCookieChoice = req.cookies[ALPHA_COOKIE_NAME] !== undefined;
+  res.locals.showAlphaCookieBanner = !!alphaCookieChoice || !res.locals.alphaHasCookieChoice;
+
   // Make CSRF token available to all views
   res.locals.csrfToken = req.csrfToken ? req.csrfToken() : '';
 
@@ -339,6 +351,39 @@ app.get('/about', (req, res) => {
     researchFoundation,
     otherAcknowledgements
   });
+});
+
+app.get('/cookies', (req, res) => {
+  res.render('cookie-settings', {
+    title: 'Cookies',
+    activeNav: '',
+    status: typeof req.query.status === 'string' ? req.query.status : '',
+    analyticsOn: req.cookies[ALPHA_COOKIE_NAME] === 'all'
+  });
+});
+
+app.post('/cookie-consent', doubleCsrfProtection, (req, res) => {
+  const choice = typeof req.body.cookies === 'string' ? req.body.cookies : '';
+  const analyticsOn = choice === 'accept' || (choice === 'save' && req.body.analytics === 'yes');
+  const cookieValue = analyticsOn ? 'all' : 'essential';
+
+  res.cookie(ALPHA_COOKIE_NAME, cookieValue, {
+    path: '/',
+    maxAge: ALPHA_COOKIE_MAX_AGE,
+    sameSite: 'lax',
+    secure: NODE_ENV === 'production',
+    httpOnly: false
+  });
+
+  if (choice === 'save') {
+    return res.redirect('/cookies?status=saved');
+  }
+
+  if (req.session) {
+    req.session.alphaCookieChoice = analyticsOn ? 'accepted' : 'rejected';
+  }
+
+  return res.redirect(safeLocalPath(req.body.return, '/'));
 });
 
 app.get('/account', (req, res) => {
@@ -932,6 +977,14 @@ function postOnly(limiter) {
     }
     return limiter(req, res, next);
   };
+}
+
+function safeLocalPath(input, fallback = '/') {
+  const value = typeof input === 'string' ? input.trim() : '';
+  if (value && value.startsWith('/') && !value.startsWith('//')) {
+    return value;
+  }
+  return fallback;
 }
 
 // Protected routes with CSRF and rate limiting

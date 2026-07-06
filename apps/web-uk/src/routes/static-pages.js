@@ -48,10 +48,6 @@ const pages = {
     title: 'Accessibility statement',
     body: 'The accessibility statement must match the production Laravel accessible frontend before shared use.'
   },
-  '/cookies': {
-    title: 'Cookies',
-    body: 'Cookie settings and consent handling must match the Laravel accessible frontend before shared use.'
-  },
   '/report-a-problem': {
     title: 'Report a problem with this page',
     body: 'Problem reporting must be wired to the shared accessible frontend reporting contract before production use.'

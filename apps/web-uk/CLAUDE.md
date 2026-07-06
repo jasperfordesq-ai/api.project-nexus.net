@@ -202,6 +202,12 @@ Follow the Laravel Blade accessible frontend for:
   notifications, profile, and settings cards when signed in. Laravel tenant
   feature gating, full account-link coverage, and backend data certification
   still need module-by-module proof.
+- Cookie banner and settings as a Blade-style no-JS candidate. The shell renders
+  the GOV.UK cookie banner before the skip link until the Laravel-compatible
+  `nexus_alpha_cookie_consent` cookie is present. `/cookies` renders the
+  analytics yes/no settings form, and `POST /cookie-consent` stores `all` or
+  `essential` locally. Laravel `cookie_consents` audit persistence, tenant
+  scoping, localization, and ASP.NET backend compatibility are not certified.
 - Volunteering as a Blade-style public landing/search candidate. The GET route
   reads `/api/v2/volunteering/opportunities` with search, category, remote, and
   cursor parameters, and renders the Blade public structure: organisation link,

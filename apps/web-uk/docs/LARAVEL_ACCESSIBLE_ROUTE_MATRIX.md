@@ -27,7 +27,7 @@ ASP.NET candidate:
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files. |
-| ASP.NET `apps/web-uk` | 171 | Express app/router declarations scanned from local source after shell prep; this includes route modules that may not be mounted as certified workflows yet. |
+| ASP.NET `apps/web-uk` | 172 | Express app/router declarations scanned from local source after shell prep; this includes route modules that may not be mounted as certified workflows yet. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families include POST
@@ -50,7 +50,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Sign in | `/login` | `/login` | Implemented local equivalent. |
 | Register | `/register` | `/register` | Implemented local equivalent. |
 | Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Preparation skeleton. |
-| Cookies | `/cookies` | `/cookies` | Preparation skeleton. |
+| Cookies | `/cookies`, `/cookie-consent` POST | `/cookies`, `/cookie-consent` POST | Partial Blade-style candidate: banner renders before the skip link until `nexus_alpha_cookie_consent` is present; settings page renders the analytics yes/no form; POST stores local `all` or `essential` values. Laravel `cookie_consents` audit persistence, tenant scoping, localization, and runtime certification are not complete. |
 
 ## Footer Column Contract
 
@@ -92,7 +92,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Family | Examples | Current status |
 | --- | --- | --- |
 | Tenant routing | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Not implemented in `apps/web-uk`. |
-| Cookie/report POST workflows | `/cookie-consent`, `/report-a-problem` POST | Skeleton GET pages only. |
+| Cookie/report POST workflows | `/cookie-consent`, `/report-a-problem` POST | Cookie choice POST is a partial local candidate only; report problem remains a skeleton GET and POST is not certified. Cookie audit persistence, tenant scoping, localization, and runtime behavior are not certified. |
 | Legal document sourcing | `/legal/*` tenant documents | Skeleton GET pages only. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
 | Account hub depth | matches, group exchanges, gamification, linked accounts, saved items, reviews, activity, jobs, appearance | Partial `/account` candidate only. Feature-gated account links, per-module data, route availability checks, tenant behavior, and ASP.NET backend compatibility are not certified. |

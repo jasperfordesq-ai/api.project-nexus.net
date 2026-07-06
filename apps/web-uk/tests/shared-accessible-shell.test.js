@@ -122,6 +122,76 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('does not certify ASP.NET route or workflow');
   });
 
+  it('renders the Laravel-style cookie banner until a cookie choice has been made', async () => {
+    const response = await request(app).get('/');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('class="govuk-cookie-banner"');
+    expect(response.text).toContain('Cookies on Project NEXUS Accessible');
+    expect(response.text).toContain('We use some essential cookies to make this service work.');
+    expect(response.text).toContain('We would also like to use analytics cookies');
+    expect(response.text).toContain('method="post" action="/cookie-consent"');
+    expect(response.text).toContain('name="return" value="/"');
+    expect(response.text).toContain('name="cookies" value="accept"');
+    expect(response.text).toContain('Accept analytics cookies');
+    expect(response.text).toContain('name="cookies" value="reject"');
+    expect(response.text).toContain('Reject analytics cookies');
+    expect(response.text).toContain('href="/cookies"');
+    expect(response.text).toContain('View cookies');
+
+    const dismissed = await request(app)
+      .get('/')
+      .set('Cookie', ['nexus_alpha_cookie_consent=all']);
+
+    expect(dismissed.status).toBe(200);
+    expect(dismissed.text).not.toContain('class="govuk-cookie-banner"');
+    expect(dismissed.text).not.toContain('Accept analytics cookies');
+  });
+
+  it('stores the Laravel-compatible cookie choice from the no-JS banner post', async () => {
+    const agent = request.agent(app);
+    const first = await agent.get('/');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/cookie-consent')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        cookies: 'reject',
+        return: '/explore'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/explore');
+    expect(response.headers['set-cookie'].join(';')).toContain('nexus_alpha_cookie_consent=essential');
+  });
+
+  it('renders the Blade-style cookie settings page instead of the static skeleton', async () => {
+    const response = await request(app)
+      .get('/cookies?status=saved')
+      .set('Cookie', ['nexus_alpha_cookie_consent=all']);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Cookies on Project NEXUS Accessible');
+    expect(response.text).toContain('Your cookie settings were saved');
+    expect(response.text).toContain('Cookies are small files saved on your device');
+    expect(response.text).toContain('Essential cookies');
+    expect(response.text).toContain('These keep the service secure and remember your language and display choices.');
+    expect(response.text).toContain('Analytics cookies');
+    expect(response.text).toContain('Do you want to accept analytics cookies?');
+    expect(response.text).toContain('method="post" action="/cookie-consent"');
+    expect(response.text).toContain('name="cookies" value="save"');
+    expect(response.text).toContain('id="analytics-yes" name="analytics" type="radio" value="yes" checked');
+    expect(response.text).toContain('id="analytics-no" name="analytics" type="radio" value="no"');
+    expect(response.text).toContain('Save cookie settings');
+    expect(response.text).toContain('href="/legal/cookies"');
+    expect(response.text).toContain('Read our full cookies policy');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('redirects the account hub to sign in when unsigned, matching Laravel auth behaviour', async () => {
     const staticPageRoutes = require('../src/routes/static-pages');
 

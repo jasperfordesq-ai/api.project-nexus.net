@@ -136,7 +136,8 @@ The application will be available at **http://localhost:5180**
 | `GET /help` | Shared accessible frontend preparation skeleton |
 | `GET /kb` | Shared accessible frontend preparation skeleton |
 | `GET /trust-and-safety` | Shared accessible frontend preparation skeleton |
-| `GET /cookies` | Shared accessible frontend preparation skeleton |
+| `GET /cookies` | Blade-style cookie settings candidate using the Laravel `nexus_alpha_cookie_consent` choice cookie; backend consent audit persistence/tenant certification still not complete |
+| `POST /cookie-consent` | No-JS cookie choice handler matching Laravel accept/reject/save form behavior; sets `all` or `essential` locally, without certifying backend consent storage parity |
 | `GET /report-a-problem` | Shared accessible frontend preparation skeleton |
 | `GET /accessibility` | Shared accessible frontend preparation skeleton |
 | `GET /legal` | Shared accessible frontend preparation skeleton |
