@@ -41,9 +41,9 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 178 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons and route modules that may not be certified workflows yet. |
-| Exact method/path matches | 96 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
-| Missing Laravel routes | 512 | Laravel accessible declarations without an exact local method/path equivalent. |
+| ASP.NET `apps/web-uk` | 395 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| Exact method/path matches | 313 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
+| Missing Laravel routes | 295 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
 | Extra `apps/web-uk` routes | 83 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
@@ -109,19 +109,19 @@ runtime tests before `apps/web-uk` can be shared:
 | Family | Missing route count | Examples | Current status |
 | --- | ---: | --- | --- |
 | Tenant routing | structural | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Not implemented in `apps/web-uk`. |
-| Cookie/report POST workflows | 1 | `/report-a-problem` POST | Cookie choice POST is a partial local candidate only; report problem remains a skeleton GET and POST is not certified. Cookie audit persistence, tenant scoping, localization, and runtime behavior are not certified. |
+| Cookie/report POST workflows | 1 | `/report-a-problem` POST | Cookie choice POST is a partial local candidate only; report problem GET has a preparation page and POST is not certified. Cookie audit persistence, tenant scoping, localization, and runtime behavior are not certified. |
 | Legal document sourcing | 0 exact route gaps | `/legal/*` tenant documents | Skeleton GET pages only; document data sourcing and tenant-specific fallback behavior are not certified. |
-| Onboarding | 4 | `/onboarding`, `/onboarding/{step}` | Missing. |
+| Onboarding | 2 | `/onboarding/{step}` POST, `/onboarding/avatar` POST | GET routes now have generated Laravel preparation pages. Multi-step state, avatar upload, validation, session behavior, and redirects are not certified. |
 | Account hub depth | varies by family | matches, group exchanges, gamification, linked accounts, saved items, reviews, activity, jobs, appearance | Partial `/account` candidate only. Feature-gated account links, per-module data, route availability checks, tenant behavior, and ASP.NET backend compatibility are not certified. |
-| Volunteering | 50 | opportunities, hours, organisations, expenses, wellbeing, safeguards, certificates, waitlists, swaps | Partial Laravel-backed candidate for `/volunteering` GET and `/volunteering/opportunities/{id}` GET only. Landing reads `/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`, `per_page`, and `cursor`; detail reads `/api/v2/volunteering/opportunities/{id}`. Both render public Blade-style content with mocked contract tests. Applications, recommended shifts, hours, organisations owner tools, expenses, wellbeing, tenant-prefixed routes, auth redirects, feature gates, apply POST, shift signup/cancel, other POST workflows, localization, and runtime certification are not complete. |
+| Volunteering | 28 | applications, hours, organisations, expenses, wellbeing, safeguards, certificates, waitlists, swaps | Partial Laravel-backed candidate for `/volunteering` GET and `/volunteering/opportunities/{id}` GET only. Other GET routes now have generated Laravel preparation pages. Landing reads `/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`, `per_page`, and `cursor`; detail reads `/api/v2/volunteering/opportunities/{id}`. Applications, recommended shifts, hours, organisations owner tools, expenses, wellbeing, tenant-prefixed routes, auth redirects, feature gates, apply POST, shift signup/cancel, other POST workflows, localization, and runtime certification are not complete. |
 | Organisations | 2 | `/organisations` POST, `/organisations/register` POST | Partial Laravel-backed candidate for `/organisations`, `/organisations/browse`, `/organisations/register` GET, `/organisations/manage` GET, `/organisations/{id}` GET, `/organisations/{id}/jobs` GET, and `/organisations/opportunities/{id}/apply` GET only. Directory/search and browse use `/api/v2/volunteering/organisations`; register GET renders the Blade-style form and validation status anchors without POST persistence; manage GET reads `/api/v2/volunteering/my-organisations` when signed in; detail uses `/api/v2/volunteering/organisations/{id}?include=public_contract`, `/api/v2/volunteering/opportunities?organization_id={id}`, and `/api/v2/volunteering/reviews/organization/{id}`; organisation jobs reads `/api/v2/jobs?organization_id={id}&status=open` when signed in; apply GET reads `/api/v2/volunteering/opportunities/{id}`, all with mocked contract tests. Auth enforcement, volunteering/job feature gates, tenant-prefixed routes, registration persistence, apply POST workflow, localization, and runtime certification are not complete. |
-| Exchanges and group exchanges | 12 | requests, accept/decline, ready/confirm/cancel, group exchange participants | Skeleton landing only. |
-| Feed typed engagement | 21 | likes, comments, reactions, share, save, hide, report, hashtag and item detail routes | Partial route equivalents only. |
-| Marketplace/commerce | 47 | marketplace, seller, orders, coupons, courses, premium, podcasts | Mostly skeleton links only. |
-| Federation | 27 | members, listings, events, groups, messages, transfers, partner onboarding | Skeleton landing only. |
-| Jobs | 37 | alerts, applications, employer brand, onboarding, talent search, qualification, analytics | Skeleton landing only. |
-| Ideation | 33 | campaigns, challenges, drafts, outcomes, tags, idea voting | Skeleton landing only. |
-| Resources/search/saved/settings | 31 | resources comments/upload, advanced search, saved searches, linked accounts, appearance, data rights, insurance, availability | Partial or missing. |
+| Exchanges and group exchanges | 8 | requests, accept/decline, ready/confirm/cancel, group exchange participants | GET routes have preparation pages; POST workflows are not certified. |
+| Feed typed engagement | 17 | likes, comments, reactions, share, save, hide, report | Partial route equivalents only; generated GET preparation pages cover missing read routes. |
+| Marketplace/commerce | 25 | marketplace, seller, orders, coupons, courses, premium, podcasts | GET routes have preparation pages; seller/buyer POST workflows are not certified. |
+| Federation | 11 | connections, messages, transfers, opt-in/out, settings | GET routes have preparation pages; federation POST workflows are not certified. |
+| Jobs | 17 | alerts, applications, employer brand, onboarding, talent search, qualification, analytics | GET routes have preparation pages; job application/employer POST workflows are not certified. |
+| Ideation | 22 | campaigns, challenges, drafts, outcomes, tags, idea voting | GET routes have preparation pages; challenge/idea POST workflows are not certified. |
+| Resources/search/saved/settings | 28 | resources comments/upload/delete, saved searches, linked accounts, appearance, data rights, insurance, availability | Partial or missing POST workflow coverage. |
 
 ## Next Certification Work
 
@@ -139,3 +139,8 @@ Use `docs/generated/accessible-route-matrix.csv` as the working backlog seed.
 It includes the Laravel handler, inferred Blade view, auth classification,
 feature/module gates, API/service hints, and current `apps/web-uk` target view
 where a static method/path match exists.
+
+Missing Laravel GET routes are also served by
+`src/routes/laravel-prep-pages.js` after all real route modules. These pages are
+deliberate preparation fallbacks; they prevent 404s and preserve route
+discoverability, but they do not certify page workflow parity.

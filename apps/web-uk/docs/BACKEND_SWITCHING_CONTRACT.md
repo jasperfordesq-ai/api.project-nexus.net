@@ -111,6 +111,11 @@ and records Laravel route names, handlers, inferred Blade views, feature/module
 gates, auth classification, API/service hints, and current `apps/web-uk`
 method/path matches.
 
+`src/routes/laravel-prep-pages.js` registers generated Laravel GET preparation
+pages after all real route modules. These fallback pages count as route
+existence only. They are not backend adapters and must not be used as proof of
+Laravel or ASP.NET workflow compatibility.
+
 ## Local Environment Shape
 
 Keep three local surfaces distinct:

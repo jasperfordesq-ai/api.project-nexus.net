@@ -364,6 +364,19 @@ function findNextRouteBoundary(text, start) {
 }
 
 function parseRouterFile(routeFile, prefix) {
+  if (path.basename(routeFile) === 'laravel-prep-pages.js') {
+    delete require.cache[require.resolve(routeFile)];
+    const moduleExports = require(routeFile);
+    if (Array.isArray(moduleExports.prepPages)) {
+      return moduleExports.prepPages.map((page) => ({
+        method: 'GET',
+        path: joinRoutePath(prefix, page.expressPath),
+        webUkFile: routeFile,
+        webUkView: 'static-page'
+      }));
+    }
+  }
+
   const text = readText(routeFile);
   const routes = [];
   const routerPattern = /router\.(get|post|put|patch|delete)\s*\(\s*['"]([^'"]+)['"]/g;

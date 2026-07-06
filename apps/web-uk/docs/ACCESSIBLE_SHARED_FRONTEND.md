@@ -142,9 +142,10 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 178 `apps/web-uk` route declarations, 96 exact
-method/path matches, 512 missing Laravel routes, and 83 local-only routes. These
-counts are backlog evidence only and do not certify workflow parity.
+accessible route declarations, 395 `apps/web-uk` route declarations, 313 exact
+method/path matches, 295 missing Laravel routes, and 83 local-only routes. These
+counts include generated Laravel GET preparation pages and are backlog evidence
+only; they do not certify workflow parity.
 
 ## Before Extraction To Its Own Repo
 

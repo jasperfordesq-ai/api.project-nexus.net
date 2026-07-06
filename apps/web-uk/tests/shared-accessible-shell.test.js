@@ -122,6 +122,15 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('does not certify ASP.NET route or workflow');
   });
 
+  it('serves a Laravel route preparation page for missing GET routes', async () => {
+    const response = await request(app).get('/onboarding');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Onboarding');
+    expect(response.text).toContain('Laravel Blade route');
+    expect(response.text).toContain('does not certify ASP.NET route or workflow');
+  });
+
   it('renders the Laravel-style cookie banner until a cookie choice has been made', async () => {
     const response = await request(app).get('/');
 
