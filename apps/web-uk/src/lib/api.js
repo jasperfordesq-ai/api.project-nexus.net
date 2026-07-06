@@ -356,6 +356,16 @@ async function getUsers(token) {
   });
 }
 
+async function searchUsers(token, query, params = {}) {
+  const search = new URLSearchParams();
+  search.set('q', query || '');
+  if (params.limit) search.set('limit', params.limit);
+
+  return request(`/api/v2/users/search?${search.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function getUser(token, id) {
   return request(`/api/users/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -2635,6 +2645,7 @@ module.exports = {
   saveOnboardingSafeguarding,
   completeOnboarding,
   getUsers,
+  searchUsers,
   getUser,
   // Listings
   getListings,

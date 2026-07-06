@@ -258,15 +258,20 @@ upload proxying, team conversion runtime behavior, tenant/feature gates,
 localization, runtime smoke tests, and ASP.NET backend compatibility are not
 certified.
 
-Group exchange GET pages remain preparation pages, but the Laravel accessible
-POST aliases under `/group-exchanges` are now local route declarations backed by
-Laravel `/api/v2/group-exchanges`. The aliases cover group exchange creation,
-participant add/remove, participant confirmation, organiser completion, and
-organiser cancellation while preserving Laravel status redirects and
-`#group-exchange-top` fragments. This remains partial: Blade detail rendering,
-organiser/participant authorization depth, same-tenant member search, time-credit
-settlement runtime behavior, feature gates, localization, runtime smoke tests,
-and ASP.NET backend compatibility are not certified.
+The `/group-exchanges`, `/group-exchanges/new`, and `/group-exchanges/{id}` GET
+pages are now partial Laravel-backed candidates for the Blade group exchange
+workflow. Unsigned visitors redirect to `/login?status=auth-required`; signed
+list/detail requests call Laravel `/api/v2/group-exchanges` and
+`/api/v2/group-exchanges/{id}`, detail pages also read `/api/v2/users/search`
+for the organiser participant picker, and create/detail pages render the
+Laravel-style forms that post to the existing aliases. POST aliases under
+`/group-exchanges` still call Laravel `/api/v2/group-exchanges` for exchange
+creation, participant add/remove, participant confirmation, organiser
+completion, and organiser cancellation while preserving Laravel status redirects
+and `#group-exchange-top` fragments. This remains partial: full
+organiser/participant authorization depth, same-tenant member search parity,
+time-credit settlement runtime behavior, feature gates, localization, runtime
+smoke tests, and ASP.NET backend compatibility are not certified.
 
 Event GET pages remain existing local/protected pages or preparation pages, but
 the Laravel accessible POST aliases under `/events` are now local route

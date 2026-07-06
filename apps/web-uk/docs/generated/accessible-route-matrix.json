@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T22:36:33.675Z",
+    "generatedAt": "2026-07-06T22:48:57.122Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -5296,8 +5296,8 @@
       "gates": "feature:group_exchanges",
       "apiNeeds": "service:GroupExchangeService",
       "webUkPath": "/group-exchanges",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "group-exchanges/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\group-exchanges.js"
     },
     {
       "method": "GET",
@@ -5315,8 +5315,8 @@
       "gates": "feature:group_exchanges",
       "apiNeeds": "service:GroupExchangeService",
       "webUkPath": "/group-exchanges/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "group-exchanges/detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\group-exchanges.js"
     },
     {
       "method": "GET",
@@ -5334,8 +5334,8 @@
       "gates": "feature:group_exchanges",
       "apiNeeds": "",
       "webUkPath": "/group-exchanges/new",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "group-exchanges/create",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\group-exchanges.js"
     },
     {
       "method": "POST",

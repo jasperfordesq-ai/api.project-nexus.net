@@ -49,6 +49,7 @@ jest.mock('../src/lib/api', () => ({
   saveOnboardingSafeguarding: jest.fn().mockResolvedValue({}),
   completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
   getUser: jest.fn(),
+  searchUsers: jest.fn().mockResolvedValue({ data: { items: [] } }),
   getListings: jest.fn(),
   getConversations: jest.fn().mockResolvedValue({ data: [] }),
   getConversation: jest.fn().mockResolvedValue({ id: 77, messages: [] }),
@@ -245,6 +246,7 @@ describe('shared accessible frontend shell', () => {
     api.saveOnboardingSafeguarding.mockReset().mockResolvedValue({});
     api.completeOnboarding.mockReset().mockResolvedValue({ data: { message: 'complete' } });
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
+    api.searchUsers.mockReset().mockResolvedValue({ data: { items: [] } });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
     api.sendAppreciation.mockReset().mockResolvedValue({ data: { id: 55 } });
@@ -4059,6 +4061,13 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
 
     api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Avery Stone' } });
+    api.searchUsers.mockResolvedValue({
+      data: {
+        items: [
+          { id: 77, name: 'Morgan Lee' }
+        ]
+      }
+    });
     api.getResources.mockResolvedValue({
       data: [
         {
@@ -8171,6 +8180,124 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
+  });
+
+  it('redirects signed-out visitors away from Laravel group exchange GET pages before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+
+    const index = await request(app).get('/group-exchanges');
+    const create = await request(app).get('/group-exchanges/new');
+    const detail = await request(app).get('/group-exchanges/7');
+
+    expect(index.status).toBe(302);
+    expect(index.headers.location).toBe('/login?status=auth-required');
+    expect(create.status).toBe(302);
+    expect(create.headers.location).toBe('/login?status=auth-required');
+    expect(detail.status).toBe(302);
+    expect(detail.headers.location).toBe('/login?status=auth-required');
+    expect(api.callGroupExchangeApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed group exchange list, create, and detail pages', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Avery Stone' } });
+    api.searchUsers.mockResolvedValue({
+      data: {
+        items: [
+          { id: 77, name: 'Morgan Lee' }
+        ]
+      }
+    });
+    api.callGroupExchangeApi
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            {
+              id: 7,
+              title: 'Community garden build',
+              status: 'active',
+              total_hours: 12.5
+            },
+            {
+              id: 8,
+              title: 'Neighbour cooking circle',
+              status: 'completed',
+              total_hours: 6
+            }
+          ],
+          has_more: false
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 7,
+          title: 'Community garden build',
+          description: 'Build raised beds on Saturday.',
+          status: 'draft',
+          total_hours: 12.5,
+          organizer_id: 101,
+          participants: [
+            { user_id: 101, name: 'Avery Stone', role: 'provider', hours: 4, confirmed: true },
+            { user_id: 55, name: 'Sam Taylor', role: 'receiver', hours: 8.5, confirmed: false }
+          ],
+          calculated_split: [
+            { user_id: 101, hours: 4 },
+            { user_id: 55, hours: 8.5 }
+          ]
+        }
+      });
+
+    const index = await request(app)
+      .get('/group-exchanges?state=active&status=cancelled')
+      .set('Cookie', signedCookieHeader());
+    const detail = await request(app)
+      .get('/group-exchanges/7?status=participant-added&participant_q=morgan')
+      .set('Cookie', signedCookieHeader());
+    const create = await request(app)
+      .get('/group-exchanges/new?status=create-invalid')
+      .set('Cookie', signedCookieHeader());
+
+    expect(index.status).toBe(200);
+    expect(index.text).toContain('Group exchanges');
+    expect(index.text).toContain('Exchanges of time between several members at once');
+    expect(index.text).toContain('Start a group exchange');
+    expect(index.text).toContain('The group exchange has been cancelled.');
+    expect(index.text).toContain('Community garden build');
+    expect(index.text).toContain('Neighbour cooking circle');
+    expect(index.text).toContain('12.50');
+    expect(index.text).toContain('href="/group-exchanges/7"');
+    expect(index.text).not.toContain('shared accessible frontend preparation page');
+
+    expect(detail.status).toBe(200);
+    expect(detail.text).toContain('id="group-exchange-top"');
+    expect(detail.text).toContain('Community garden build');
+    expect(detail.text).toContain('Build raised beds on Saturday.');
+    expect(detail.text).toContain('Person added to the exchange');
+    expect(detail.text).toContain('People in this exchange');
+    expect(detail.text).toContain('Avery Stone');
+    expect(detail.text).toContain('Sam Taylor');
+    expect(detail.text).toContain('Giving time');
+    expect(detail.text).toContain('Receiving time');
+    expect(detail.text).toContain('Not yet');
+    expect(detail.text).toContain('method="post" action="/group-exchanges/7/participants/55/remove"');
+    expect(detail.text).toContain('method="post" action="/group-exchanges/7/participants"');
+    expect(detail.text).toContain('Morgan Lee');
+    expect(detail.text).toContain('method="post" action="/group-exchanges/7/complete"');
+    expect(detail.text).toContain('method="post" action="/group-exchanges/7/cancel"');
+
+    expect(create.status).toBe(200);
+    expect(create.text).toContain('Start a group exchange');
+    expect(create.text).toContain('name="title"');
+    expect(create.text).toContain('name="total_hours"');
+    expect(create.text).toContain('name="split_type"');
+    expect(create.text).toContain('Create group exchange');
+    expect(create.text).toContain('Something went wrong. Please try again.');
+    expect(create.text).not.toContain('shared accessible frontend preparation page');
+
+    expect(api.callGroupExchangeApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '?limit=50&status=active');
+    expect(api.callGroupExchangeApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/7');
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(api.searchUsers).toHaveBeenCalledWith('test-token', 'morgan', { limit: 20 });
   });
 
   it('submits Laravel group exchange action aliases and redirects signed-out visitors', async () => {
