@@ -86,9 +86,11 @@ entry and, when a signed token is present, reads
 `/api/v2/volunteering/my-organisations` for owner/admin and pending rows. Its
 detail page is backed by
 `/api/v2/volunteering/organisations/{id}?include=public_contract` for profile,
-contact, and basic public stats. This remains partial: auth enforcement,
-volunteering feature gates, tenant-prefixed routes, organisation registration
-persistence, jobs/apply workflows, detail depth
+contact, and basic public stats. Its `/organisations/{id}/jobs` page renders
+the Blade-style organisation job openings view and, when a signed token is
+present, reads `/api/v2/jobs?organization_id={id}&status=open`. This remains
+partial: auth enforcement, volunteering/job feature gates, tenant-prefixed
+routes, organisation registration persistence, apply workflows, detail depth
 opportunities/reviews, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 

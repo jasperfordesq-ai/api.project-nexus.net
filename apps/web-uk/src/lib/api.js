@@ -285,6 +285,20 @@ async function getMyVolunteerOrganisations(token, params = {}) {
   });
 }
 
+async function getOrganisationJobs(organisationId, token, params = {}) {
+  const query = new URLSearchParams();
+  query.set('organization_id', organisationId);
+  query.set('status', params.status || 'open');
+  if (params.limit) query.set('limit', params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const endpoint = `/api/v2/jobs?${query.toString()}`;
+
+  return request(endpoint, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Wallet
 async function getBalance(token) {
   return request('/api/wallet/balance', {
@@ -1176,6 +1190,7 @@ module.exports = {
   getVolunteerOrganisations,
   getVolunteerOrganisation,
   getMyVolunteerOrganisations,
+  getOrganisationJobs,
   // Wallet
   getBalance,
   getTransactions,

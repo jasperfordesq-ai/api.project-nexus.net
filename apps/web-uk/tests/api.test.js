@@ -226,6 +226,34 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getOrganisationJobs', () => {
+    it('should call the Laravel jobs endpoint for open jobs at an organisation with auth', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          items: [
+            { id: 501, title: 'Volunteer Coordinator', type: 'volunteer' }
+          ],
+          meta: { limit: 20 }
+        })
+      });
+
+      const result = await api.getOrganisationJobs(42, 'test-token', { limit: 20 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/jobs?organization_id=42&status=open&limit=20',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(result.items[0].title).toBe('Volunteer Coordinator');
+    });
+  });
+
   describe('network errors', () => {
     it('should throw ApiOfflineError on connection refused', async () => {
       const error = new Error('fetch failed');

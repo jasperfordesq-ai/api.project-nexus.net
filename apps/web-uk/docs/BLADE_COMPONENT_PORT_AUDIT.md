@@ -1,6 +1,6 @@
 # Blade Component Port Audit
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-06
 
 ## Purpose
 
@@ -23,6 +23,7 @@ Frontend stack.
 | Organisations register | `views/organisations-register.blade.php` | `src/views/organisations-register.njk` | Partial. Back link, caption, standalone form, field hints, validation status anchors, terms, cancel link, and pending notice are present. POST persistence, auth redirect, feature gate, tenant routing, and runtime behavior are not certified. |
 | Organisations manage | `views/organisations-manage.blade.php` | `src/views/organisations-manage.njk` | Partial. Back link, caption, empty state, owner/admin cards, pending cards, dashboard links, and register CTA are present. Data loads from Laravel `/api/v2/volunteering/my-organisations` only when signed in; auth redirect, feature gate, tenant routing, and runtime behavior are not certified. |
 | Organisation detail | `views/organisation-detail.blade.php` | `src/views/organisation-detail.njk` | Partial. Back link, caption, profile copy, contact summary, jobs link, basic public stats, and empty depth sections are present. Detail data loads from Laravel `/api/v2/volunteering/organisations/{id}?include=public_contract`. |
+| Organisation jobs | `views/organisations-jobs.blade.php` | `src/views/organisations-jobs.njk` | Partial. Back link, caption, heading, empty state, job cards, type tags, remote/location, deadline, and view-role links are present. Data loads from Laravel `/api/v2/jobs?organization_id={id}&status=open` only when signed in; auth redirect, feature gate, tenant routing, and runtime behavior are not certified. |
 
 ## Still To Port
 
@@ -35,7 +36,7 @@ Frontend stack.
 | Account hub | Blade moves wallet, messages, connections, matches, group exchanges, gamification, profile, and settings into My account. | Build an `account` route/view fed by existing modules, then certify backend calls. |
 | Module and feature gating | Blade only shows modules enabled for the tenant. | Add a feature/module flag local from ASP.NET tenant bootstrap, matching Laravel semantics. |
 | Live Explore content | Blade shows recent listings and upcoming events. | Add data loaders after Laravel-compatible listing/event response shapes are proven. |
-| Organisations workflows | Blade protects the page with auth and volunteering feature checks, lists real organisations, shows detail depth data, and posts registrations through `VolunteerService`. | Directory, browse, manage, and detail data now read Laravel's organisations APIs. Register GET is visually ported. Tenant routing, auth redirects, feature gates, depth opportunities/reviews, registration validation/persistence, and success/error redirects still need certification. |
+| Organisations workflows | Blade protects the page with auth, volunteering, and job-vacancy feature checks, lists real organisations, shows detail depth data, posts registrations through `VolunteerService`, and reads organisation jobs through `JobVacancyService`. | Directory, browse, manage, detail, and organisation jobs GET data now read Laravel-compatible APIs. Register GET is visually ported. Tenant routing, auth redirects, feature gates, apply workflow, depth opportunities/reviews, registration validation/persistence, and success/error redirects still need certification. |
 | Page-specific subnavs | Commerce, federation, gamification, jobs, messages, and ideation have Blade partial navs. | Port each partial into Nunjucks during module-by-module route parity work. |
 | Error and validation summaries | Blade uses consistent GOV.UK error summary behavior. | Audit every form after route/workflow parity is mapped. |
 

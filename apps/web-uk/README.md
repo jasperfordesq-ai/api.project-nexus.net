@@ -128,6 +128,7 @@ The application will be available at **http://localhost:5180**
 | `GET /organisations/register` | Blade-style organisation registration form candidate; POST persistence/auth/tenant workflow still not certified |
 | `GET /organisations/manage` | Blade-style manage organisations candidate; reads Laravel `/api/v2/volunteering/my-organisations` when signed in, with auth/tenant workflow still not certified |
 | `GET /organisations/:id` | Blade-style organisation detail candidate; reads Laravel `/api/v2/volunteering/organisations/{id}?include=public_contract`, with depth workflows still not certified |
+| `GET /organisations/:id/jobs` | Blade-style organisation jobs candidate; reads Laravel `/api/v2/jobs?organization_id=:id&status=open` when signed in, with auth/tenant workflow still not certified |
 | `GET /help` | Shared accessible frontend preparation skeleton |
 | `GET /kb` | Shared accessible frontend preparation skeleton |
 | `GET /trust-and-safety` | Shared accessible frontend preparation skeleton |

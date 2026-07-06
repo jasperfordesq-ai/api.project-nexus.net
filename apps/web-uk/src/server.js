@@ -531,6 +531,85 @@ app.get('/organisations/manage', (req, res) => {
     });
 });
 
+app.get('/organisations/:id(\\d+)/jobs', (req, res) => {
+  const token = req.signedCookies.token;
+  const { ApiError, getOrganisationJobs, getVolunteerOrganisation } = require('./lib/api');
+
+  const normalizeOrganisation = (result) => {
+    const data = result?.data && typeof result.data === 'object' ? result.data : {};
+    const publicContract = data.public_contract && typeof data.public_contract === 'object'
+      ? data.public_contract
+      : {};
+
+    return {
+      ...data,
+      ...publicContract
+    };
+  };
+
+  const normalizeJob = (job) => {
+    const type = String(job.type || '');
+    const typeLabels = {
+      paid: 'Paid',
+      volunteer: 'Volunteer',
+      timebank: 'Time credits'
+    };
+    const typeTagClasses = {
+      paid: 'govuk-tag--green',
+      volunteer: 'govuk-tag--blue',
+      timebank: 'govuk-tag--yellow'
+    };
+
+    return {
+      ...job,
+      typeLabel: typeLabels[type] || type,
+      typeTagClass: typeTagClasses[type] || 'govuk-tag--blue'
+    };
+  };
+
+  const renderJobs = ({ organisation, jobs = [], error = false, authRequired = false }) => {
+    res.render('organisations-jobs', {
+      title: `Job openings at ${organisation.name || 'Organisations'}`,
+      activeNav: 'explore',
+      organisation,
+      jobs,
+      error,
+      authRequired
+    });
+  };
+
+  return getVolunteerOrganisation(req.params.id)
+    .then((result) => {
+      const organisation = normalizeOrganisation(result);
+
+      if (!token) {
+        return renderJobs({ organisation, authRequired: true });
+      }
+
+      return getOrganisationJobs(req.params.id, token, { limit: 20 })
+        .then((jobsResult) => {
+          const jobs = Array.isArray(jobsResult?.items)
+            ? jobsResult.items
+            : (Array.isArray(jobsResult?.data) ? jobsResult.data : []);
+
+          renderJobs({
+            organisation,
+            jobs: jobs.map(normalizeJob)
+          });
+        })
+        .catch(() => {
+          renderJobs({ organisation, error: true });
+        });
+    })
+    .catch((error) => {
+      if (error instanceof ApiError && error.status === 404) {
+        return res.status(404).render('errors/404', { title: 'Page not found' });
+      }
+
+      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+    });
+});
+
 app.get('/organisations/:id(\\d+)', (req, res) => {
   const { ApiError, getVolunteerOrganisation } = require('./lib/api');
 
