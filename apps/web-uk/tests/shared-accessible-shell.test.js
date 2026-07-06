@@ -3542,6 +3542,62 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders Laravel admin resource reorder controls only in admin reorder mode', async () => {
+    const api = require('../src/lib/api');
+
+    api.getProfile.mockResolvedValue({ data: { id: 101, role: 'admin' } });
+    api.getResources.mockResolvedValue({
+      data: [
+        {
+          id: 42,
+          title: 'Community handbook',
+          file_path: 'community-handbook.pdf',
+          file_type: 'application/pdf',
+          sort_order: 0,
+          uploader_id: 101
+        },
+        {
+          id: 43,
+          title: 'Welcome checklist',
+          file_path: 'welcome-checklist.pdf',
+          file_type: 'application/pdf',
+          sort_order: 1,
+          uploader_id: 202
+        }
+      ],
+      meta: { has_more: false }
+    });
+    api.getResourceCategories.mockResolvedValue({
+      data: [{ id: 7, name: 'Guides', color: 'green', resource_count: 2 }]
+    });
+    api.getResourceCategoryTree.mockResolvedValue({ data: [] });
+
+    const adminList = await request(app)
+      .get('/resources/library?q=handbook&category_id=7')
+      .set('Cookie', signedCookieHeader());
+
+    expect(adminList.status).toBe(200);
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(adminList.text).toContain('href="/resources/library?q=handbook&amp;category_id=7&amp;reorder=1"');
+    expect(adminList.text).toContain('Reorder resources');
+    expect(adminList.text).not.toContain('Move Community handbook down');
+
+    const reorder = await request(app)
+      .get('/resources/library?q=handbook&category_id=7&reorder=1')
+      .set('Cookie', signedCookieHeader());
+
+    expect(reorder.status).toBe(200);
+    expect(reorder.text).toContain('href="/resources/library?q=handbook&amp;category_id=7"');
+    expect(reorder.text).toContain('Done reordering');
+    expect(reorder.text).toContain('method="post" action="/resources/reorder"');
+    expect(reorder.text).toContain('name="resource_id" value="42"');
+    expect(reorder.text).toContain('name="direction" value="down"');
+    expect(reorder.text).toContain('Move Community handbook down');
+    expect(reorder.text).toContain('name="resource_id" value="43"');
+    expect(reorder.text).toContain('name="direction" value="up"');
+    expect(reorder.text).toContain('Move Welcome checklist up');
+  });
+
   it('renders the Laravel-backed resource upload form for signed-in members', async () => {
     const api = require('../src/lib/api');
 

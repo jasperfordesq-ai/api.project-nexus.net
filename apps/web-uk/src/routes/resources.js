@@ -280,6 +280,12 @@ function canManageResource(resource, currentUserId) {
   return Boolean(item.can_manage || item.can_delete || item.is_owner || item.is_admin || (currentUserId && ownerId === currentUserId));
 }
 
+function isResourceAdmin(profile) {
+  const user = objectFrom(profile);
+  const role = trimmed(user.role || user.user_role || user.account_role);
+  return ['admin', 'super_admin', 'tenant_admin'].includes(role) || Boolean(user.is_super_admin);
+}
+
 function statusMessage(status) {
   switch (status) {
     case 'resource-uploaded':
@@ -357,6 +363,10 @@ function libraryQuery(params) {
   return text ? `?${text}` : '';
 }
 
+function libraryHref(params) {
+  return `/resources/library${libraryQuery(params)}`;
+}
+
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
@@ -396,13 +406,23 @@ router.get('/library', asyncRoute(async (req, res) => {
   if (selectedCategory !== null) params.category_id = selectedCategory;
   if (cursor) params.cursor = cursor;
 
-  const [resourcesResult, categoriesResult, treeResult] = await Promise.all([
+  const [profileResult, resourcesResult, categoriesResult, treeResult] = await Promise.all([
+    getProfile(token).catch(() => null),
     getResources(token, params),
     getResourceCategories(token),
     getResourceCategoryTree(token)
   ]);
 
-  const resources = resourceItemsFrom(resourcesResult).map(normalizeLibraryResource);
+  const profile = objectFrom(dataFrom(profileResult));
+  const currentUserId = positiveInteger(profile.id || profile.user_id);
+  const isAdmin = isResourceAdmin(profile);
+  const resources = resourceItemsFrom(resourcesResult).map((resource) => {
+    const normalized = normalizeLibraryResource(resource);
+    return {
+      ...normalized,
+      canManage: isAdmin || normalized.canManage || canManageResource(resource, currentUserId)
+    };
+  });
   const meta = metaFrom(resourcesResult);
   const nextCursor = trimmed(meta.next_cursor || meta.nextCursor || meta.cursor);
   const hasMore = Boolean(meta.has_more || meta.hasMore || nextCursor);
@@ -416,6 +436,7 @@ router.get('/library', asyncRoute(async (req, res) => {
     resources,
     categoryTree,
     flatCategories,
+    isAdmin,
     selectedCategory,
     searchQuery,
     cursor,
@@ -423,13 +444,15 @@ router.get('/library', asyncRoute(async (req, res) => {
     nextCursor,
     hasFilters,
     status: statusMessage(trimmed(req.query && req.query.status)),
-    reorderMode,
+    reorderMode: reorderMode && isAdmin,
+    reorderOnHref: libraryHref({ q: searchQuery, category_id: selectedCategory, reorder: '1' }),
+    reorderOffHref: libraryHref({ q: searchQuery, category_id: selectedCategory }),
     resourceCountText: resources.length === 0 ? 'No resources' : resources.length === 1 ? '1 resource' : `${resources.length} resources`,
     clearHref: '/resources/library',
     loadMoreHref: hasMore && nextCursor ? `/resources/library${libraryQuery({
       q: searchQuery,
       category_id: selectedCategory,
-      reorder: reorderMode ? '1' : '',
+      reorder: reorderMode && isAdmin ? '1' : '',
       cursor: nextCursor
     })}` : ''
   });
