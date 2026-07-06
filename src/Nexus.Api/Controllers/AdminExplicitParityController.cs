@@ -66,6 +66,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpDelete("/api/v2/admin/help/faqs/{id}")]
     [HttpDelete("/api/v2/admin/invite-codes/{id}")]
     [HttpDelete("/api/v2/admin/jobs/templates/{id}")]
+    [HttpDelete("/api/v2/admin/listings/{id}")]
     [HttpDelete("/api/v2/admin/member-premium/tiers/{id}")]
     [HttpDelete("/api/v2/admin/reports/municipal-impact/templates/{id}")]
     [HttpDelete("/api/v2/admin/translation/glossary/{id}")]
@@ -80,6 +81,7 @@ public class AdminExplicitParityController : ControllerBase
         {
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await DeleteFederationWebhook(webhookId),
             _ when TryGetLastInt(path, "/api/v2/admin/invite-codes/", out var inviteCodeId) => await DeactivateInviteCode(inviteCodeId),
+            _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await DeleteListing(listingId),
             _ => await PersistCompatibilityWrite("delete")
         };
     }
@@ -721,6 +723,36 @@ public class AdminExplicitParityController : ControllerBase
                     listing.UpdatedAt
                 }
             });
+    }
+
+    private async Task<IActionResult> DeleteListing(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var listing = await _db.Listings
+            .FirstOrDefaultAsync(l => l.TenantId == tenantId && l.Id == id);
+
+        if (listing == null)
+        {
+            return NotFound(new
+            {
+                error = "NOT_FOUND",
+                message = "Listing not found."
+            });
+        }
+
+        _db.Listings.Remove(listing);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                deleted = true,
+                id
+            }
+        });
     }
 
     private async Task<IActionResult> GetBillingSubscription()

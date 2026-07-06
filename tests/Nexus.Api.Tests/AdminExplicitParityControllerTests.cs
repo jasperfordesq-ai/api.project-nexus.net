@@ -50,6 +50,48 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminListingsDeleteV2_RemovesTenantListingWithLaravelReactContract()
+    {
+        int listingId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var listing = new Listing
+            {
+                TenantId = TestData.Tenant1.Id,
+                UserId = TestData.MemberUser.Id,
+                Title = "Parity listing to delete",
+                Description = "Listing seeded for Laravel React admin delete parity.",
+                Type = ListingType.Offer,
+                Status = ListingStatus.Active,
+                CreatedAt = DateTime.UtcNow.AddDays(-2),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            };
+            db.Listings.Add(listing);
+            await db.SaveChangesAsync();
+            listingId = listing.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.DeleteAsync($"/api/v2/admin/listings/{listingId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var data = json.GetProperty("data");
+        data.GetProperty("deleted").GetBoolean().Should().BeTrue();
+        data.GetProperty("id").GetInt32().Should().Be(listingId);
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var deleted = await verifyDb.Listings
+            .IgnoreQueryFilters()
+            .AnyAsync(l => l.TenantId == TestData.Tenant1.Id && l.Id == listingId);
+        deleted.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task InviteCodesV2_GenerateListAndDeactivateUseLaravelReactContract()
     {
         await AuthenticateAsAdminAsync();
