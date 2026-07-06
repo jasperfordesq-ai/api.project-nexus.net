@@ -63,6 +63,9 @@ function partnerHref(id) {
 function normalizePartner(partner) {
   const name = trimmed(partner && partner.name) || 'Federated community';
   const id = partner && partner.id !== undefined ? partner.id : '';
+  const permissions = Array.isArray(partner && partner.permissions)
+    ? partner.permissions.map((permission) => trimmed(permission)).filter(Boolean)
+    : [];
 
   return {
     id,
@@ -74,7 +77,8 @@ function normalizePartner(partner) {
     listingCount: numberOrZero(partner && partner.listing_count),
     levelName: trimmed(partner && (partner.federation_level_name || partner.level_name || partner.level)),
     partnershipSince: partner && partner.partnership_since ? partner.partnership_since : '',
-    isExternal: bool(partner && partner.is_external)
+    isExternal: bool(partner && partner.is_external),
+    permissions
   };
 }
 
@@ -154,6 +158,30 @@ router.get('/', asyncRoute(async (req, res) => {
     partnerTotal,
     activity,
     statusBanner: statusBanner(req.query.status)
+  });
+}));
+
+router.get('/partners', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  let partnersResult;
+  try {
+    partnersResult = await callFederationApi(token, 'GET', '/partners');
+  } catch (error) {
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const partners = asList(dataFrom(partnersResult)).map(normalizePartner);
+
+  return res.render('federation/partners', {
+    title: 'Federation partners',
+    activeNav: 'explore',
+    federationActiveTab: 'partners',
+    partners
   });
 }));
 

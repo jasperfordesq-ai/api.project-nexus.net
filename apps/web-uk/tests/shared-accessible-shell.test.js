@@ -434,6 +434,67 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Federation pages will follow the Laravel accessible frontend contract.');
   });
 
+  it('renders the Laravel-backed Federation partners list', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/partners') {
+        return {
+          data: [
+            {
+              id: 12,
+              name: 'North Timebank',
+              tagline: 'Neighbouring community exchange',
+              location: 'Derry',
+              member_count: 40,
+              listing_count: 8,
+              federation_level_name: 'Social',
+              partnership_since: '2026-02-01T00:00:00Z',
+              permissions: ['profiles', 'messaging']
+            },
+            {
+              id: 'ext-7',
+              name: 'External Commons',
+              tagline: 'External federation partner',
+              member_count: 9,
+              listing_count: 3,
+              is_external: true,
+              permissions: ['listings']
+            }
+          ]
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/federation/partners');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/partners')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Federation partners');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).toContain('Neighbouring community exchange');
+    expect(response.text).toContain('Derry');
+    expect(response.text).toContain('40');
+    expect(response.text).toContain('8');
+    expect(response.text).toContain('Social');
+    expect(response.text).toContain('profiles');
+    expect(response.text).toContain('messaging');
+    expect(response.text).toContain('href="/federation/partners/12"');
+    expect(response.text).toContain('External Commons');
+    expect(response.text).toContain('External');
+    expect(response.text).toContain('href="/federation/partners/ext-7"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 

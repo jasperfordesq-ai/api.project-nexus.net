@@ -1,0 +1,67 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <p class="govuk-body"><a class="govuk-back-link" href="/federation">Back to Federation</a></p>
+
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Federation partners</h1>
+  <p class="govuk-body-l">Browse partner communities connected to this community through federation.</p>
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  {% if partners.length %}
+    <div class="nexus-alpha-card-list">
+      {% for partner in partners %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-module-row">
+            <h2 class="govuk-heading-m govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ partner.href }}">{{ partner.name }}</a></h2>
+            {% if partner.isExternal %}
+              <strong class="govuk-tag govuk-tag--grey">External</strong>
+            {% elif partner.levelName %}
+              <strong class="govuk-tag govuk-tag--purple">{{ partner.levelName }}</strong>
+            {% endif %}
+          </div>
+
+          {% if partner.tagline %}
+            <p class="govuk-body govuk-!-margin-bottom-2">{{ partner.tagline }}</p>
+          {% endif %}
+
+          <dl class="nexus-alpha-inline-list">
+            {% if partner.location %}<div><dt>Location</dt><dd>{{ partner.location }}</dd></div>{% endif %}
+            <div><dt>Members</dt><dd>{{ partner.memberCount }}</dd></div>
+            <div><dt>Listings</dt><dd>{{ partner.listingCount }}</dd></div>
+            {% if partner.partnershipSince %}<div><dt>Since</dt><dd>{{ partner.partnershipSince | date }}</dd></div>{% endif %}
+          </dl>
+
+          {% if partner.permissions.length %}
+            <ul class="govuk-list govuk-!-margin-bottom-2" aria-label="Federation permissions for {{ partner.name }}">
+              {% for permission in partner.permissions %}
+                <li class="govuk-!-display-inline-block govuk-!-margin-right-1 govuk-!-margin-bottom-1"><strong class="govuk-tag govuk-tag--grey">{{ permission }}</strong></li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ partner.href }}">View community</a></p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body govuk-!-margin-bottom-0">No partner communities are available yet.</p>
+    </div>
+  {% endif %}
+{% endblock %}
