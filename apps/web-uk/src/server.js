@@ -33,6 +33,7 @@ const eventsRoutes = require('./routes/events');
 const feedRoutes = require('./routes/feed');
 const feedActionRoutes = require('./routes/feed-actions');
 const marketplaceActionRoutes = require('./routes/marketplace-actions');
+const marketplaceRoutes = require('./routes/marketplace');
 const volunteeringActionRoutes = require('./routes/volunteering-actions');
 const ideationActionRoutes = require('./routes/ideation-actions');
 const groupExchangeActionRoutes = require('./routes/group-exchange-actions');
@@ -1052,6 +1053,7 @@ app.get('/organisations/:id(\\d+)', (req, res) => {
 app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
 app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);
 app.use('/podcasts', doubleCsrfProtection, podcastRoutes);
+app.use('/marketplace', doubleCsrfProtection, marketplaceRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {

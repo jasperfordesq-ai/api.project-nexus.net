@@ -7196,6 +7196,247 @@ describe('shared accessible frontend shell', () => {
     expect(api.callCourseApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel-backed marketplace browse page', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 42,
+            title: 'Community bike',
+            tagline: 'Freshly serviced',
+            price: 15.5,
+            price_currency: 'GBP',
+            condition: 'good',
+            location: 'Belfast',
+            image: { thumbnail_url: '/uploads/bike-thumb.jpg' }
+          }
+        ],
+        meta: { cursor: null, has_more: false, per_page: 30 }
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 9, name: 'Transport', slug: 'transport' }
+        ]
+      });
+
+    const response = await request(app)
+      .get('/marketplace?q=bike&category_id=9')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/listings?limit=30&q=bike&category_id=9');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/categories');
+    expect(response.text).toContain('Marketplace');
+    expect(response.text).toContain('Buy, sell and swap goods and services with your community.');
+    expect(response.text).toContain('Filter listings');
+    expect(response.text).toContain('Community bike');
+    expect(response.text).toContain('Freshly serviced');
+    expect(response.text).toContain('GBP 15.50');
+    expect(response.text).toContain('Belfast');
+    expect(response.text).toContain('href="/marketplace/42"');
+    expect(response.text).toContain('href="/marketplace/category/transport"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from marketplace GET pages before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockClear();
+
+    const response = await request(app).get('/marketplace');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed marketplace detail page', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Community bike',
+        description: 'A road-ready bicycle for local trips.',
+        price: 15.5,
+        price_currency: 'GBP',
+        condition: 'good',
+        location: 'Belfast',
+        delivery_method: 'pickup',
+        user: { id: 77, name: 'Aisha Khan' },
+        images: [{ url: '/uploads/bike.jpg' }]
+      }
+    });
+
+    const response = await request(app)
+      .get('/marketplace/42?status=saved')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings/42');
+    expect(response.text).toContain('Back to marketplace');
+    expect(response.text).toContain('This item has been saved.');
+    expect(response.text).toContain('Community bike');
+    expect(response.text).toContain('A road-ready bicycle for local trips.');
+    expect(response.text).toContain('GBP 15.50');
+    expect(response.text).toContain('Condition');
+    expect(response.text).toContain('good');
+    expect(response.text).toContain('Seller');
+    expect(response.text).toContain('Aisha Khan');
+    expect(response.text).toContain('Buy this item');
+    expect(response.text).toContain('href="/marketplace/42/buy"');
+    expect(response.text).toContain('href="/marketplace/42/offer"');
+    expect(response.text).toContain('href="/marketplace/42/report"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace create form', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: [{ id: 9, name: 'Transport', slug: 'transport' }]
+    });
+
+    const response = await request(app)
+      .get('/marketplace/create?status=listing-validation')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/categories');
+    expect(response.text).toContain('Create a listing');
+    expect(response.text).toContain('Check the listing details and try again.');
+    expect(response.text).toContain('About the item');
+    expect(response.text).toContain('Title');
+    expect(response.text).toContain('How are you pricing this item?');
+    expect(response.text).toContain('Fixed price');
+    expect(response.text).toContain('Open to offers');
+    expect(response.text).toContain('Free to a good home');
+    expect(response.text).toContain('Transport');
+    expect(response.text).toContain('Publish listing');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace edit form', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: {
+          id: 42,
+          title: 'Community bike',
+          tagline: 'Freshly serviced',
+          description: 'A road-ready bicycle.',
+          price: 15.5,
+          price_currency: 'GBP',
+          price_type: 'fixed',
+          condition: 'good',
+          category_id: 9,
+          delivery_method: 'both',
+          location: 'Belfast',
+          quantity: 2
+        }
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 9, name: 'Transport', slug: 'transport' }]
+      });
+
+    const response = await request(app)
+      .get('/marketplace/42/edit')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/listings/42');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/categories');
+    expect(response.text).toContain('Edit your listing');
+    expect(response.text).toContain('Community bike');
+    expect(response.text).toContain('Freshly serviced');
+    expect(response.text).toContain('A road-ready bicycle.');
+    expect(response.text).toContain('value="15.5"');
+    expect(response.text).toContain('value="GBP"');
+    expect(response.text).toContain('value="Belfast"');
+    expect(response.text).toContain('value="2"');
+    expect(response.text).toContain('Save changes');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace buy form', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Community bike',
+        price: 15.5,
+        price_currency: 'GBP',
+        user: { id: 77, name: 'Aisha Khan' }
+      }
+    });
+
+    const response = await request(app)
+      .get('/marketplace/42/buy?status=order-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings/42');
+    expect(response.text).toContain('Confirm your purchase');
+    expect(response.text).toContain('Sorry, your order could not be placed. Please try again.');
+    expect(response.text).toContain('Community bike');
+    expect(response.text).toContain('GBP 15.50');
+    expect(response.text).toContain('Quantity');
+    expect(response.text).toContain('Delivery notes');
+    expect(response.text).toContain('Confirm order');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace offer form', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Community bike',
+        price: 15.5,
+        price_currency: 'GBP'
+      }
+    });
+
+    const response = await request(app)
+      .get('/marketplace/42/offer?status=offer-amount-invalid')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings/42');
+    expect(response.text).toContain('Make an offer');
+    expect(response.text).toContain('Enter an offer amount greater than zero');
+    expect(response.text).toContain('Community bike');
+    expect(response.text).toContain('Asking price');
+    expect(response.text).toContain('GBP 15.50');
+    expect(response.text).toContain('Your offer');
+    expect(response.text).toContain('Message to the seller');
+    expect(response.text).toContain('Send offer');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace report form', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Community bike'
+      }
+    });
+
+    const response = await request(app)
+      .get('/marketplace/42/report?status=report-validation')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings/42');
+    expect(response.text).toContain('Report a listing');
+    expect(response.text).toContain('Select a reason for reporting');
+    expect(response.text).toContain('Community bike');
+    expect(response.text).toContain('Why are you reporting this listing?');
+    expect(response.text).toContain('Unsafe or dangerous');
+    expect(response.text).toContain('Tell us more');
+    expect(response.text).toContain('Send report');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('submits Laravel marketplace listing and buyer action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

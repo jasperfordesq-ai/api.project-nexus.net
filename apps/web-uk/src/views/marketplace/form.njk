@@ -1,0 +1,154 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/marketplace/mine">Back to my listings</a>
+
+  {% if status %}
+    <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">
+      <div role="alert">
+        <h2 class="{% if status.type == 'error' %}govuk-error-summary__title{% else %}govuk-notification-banner__title{% endif %}">{% if status.type == 'error' %}There is a problem{% else %}Success{% endif %}</h2>
+        <div class="{% if status.type == 'error' %}govuk-error-summary__body{% else %}govuk-notification-banner__content{% endif %}">
+          <p class="govuk-body">{{ status.message }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <span class="govuk-caption-l">Sell or give away an item at {{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">{% if isEdit %}Edit your listing{% else %}Create a listing{% endif %}</h1>
+  <p class="govuk-body-l">Add a clear title, an honest description and a price so buyers know what to expect.</p>
+
+  <form method="post" action="{{ action }}" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <fieldset class="govuk-fieldset">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">About the item</h2>
+      </legend>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="title">Title</label>
+        <div id="title-hint" class="govuk-hint">A short, descriptive name for your item.</div>
+        <input class="govuk-input" id="title" name="title" type="text" maxlength="200" value="{{ listing.title if listing.id else '' }}" aria-describedby="title-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="tagline">Short summary <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="tagline-hint" class="govuk-hint">A one-line summary shown in search results.</div>
+        <input class="govuk-input" id="tagline" name="tagline" type="text" maxlength="300" value="{{ listing.tagline }}" aria-describedby="tagline-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="description">Description</label>
+        <div id="description-hint" class="govuk-hint">Describe the item, its condition and anything a buyer should know.</div>
+        <textarea class="govuk-textarea" id="description" name="description" rows="6" aria-describedby="description-hint">{{ listing.description }}</textarea>
+      </div>
+    </fieldset>
+
+    <fieldset class="govuk-fieldset govuk-!-margin-top-4">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">Price</h2>
+      </legend>
+
+      <div class="govuk-form-group">
+        <fieldset class="govuk-fieldset" aria-describedby="price_type-hint">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">How are you pricing this item?</legend>
+          <div id="price_type-hint" class="govuk-hint govuk-visually-hidden">How are you pricing this item?</div>
+          <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+            {% for option in priceTypes %}
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="{{ 'price_type' if loop.first else 'price_type-' ~ option.value }}" name="price_type" type="radio" value="{{ option.value }}" {% if listing.priceType == option.value %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="{{ 'price_type' if loop.first else 'price_type-' ~ option.value }}">{{ option.label }}</label>
+              </div>
+            {% endfor %}
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-one-half">
+          <div class="govuk-form-group">
+            <label class="govuk-label govuk-label--s" for="price">Price <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+            <div id="price-hint" class="govuk-hint">Enter an amount in money. Leave blank if you are pricing in time credits only.</div>
+            <input class="govuk-input govuk-input--width-10" id="price" name="price" type="text" inputmode="decimal" value="{{ listing.price }}" aria-describedby="price-hint">
+          </div>
+        </div>
+        <div class="govuk-grid-column-one-half">
+          <div class="govuk-form-group">
+            <label class="govuk-label govuk-label--s" for="price_currency">Currency</label>
+            <input class="govuk-input govuk-input--width-5" id="price_currency" name="price_currency" type="text" maxlength="3" value="{{ listing.priceCurrency }}">
+          </div>
+        </div>
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="time_credit_price">Time credit price <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="time_credit_price-hint" class="govuk-hint">Enter the number of time credits a buyer pays instead of money.</div>
+        <input class="govuk-input govuk-input--width-5" id="time_credit_price" name="time_credit_price" type="text" inputmode="decimal" value="{{ listing.timeCreditPrice }}" aria-describedby="time_credit_price-hint">
+      </div>
+    </fieldset>
+
+    <fieldset class="govuk-fieldset govuk-!-margin-top-4">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">Details</h2>
+      </legend>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="condition">Condition</label>
+        <select class="govuk-select" id="condition" name="condition">
+          <option value="">Not specified</option>
+          {% for option in conditions %}
+            <option value="{{ option.value }}" {% if listing.condition == option.value %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if categories.length %}
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--s" for="category_id">Category</label>
+          <select class="govuk-select" id="category_id" name="category_id">
+            <option value="">No category</option>
+            {% for category in categories %}
+              <option value="{{ category.id }}" {% if listing.categoryId == category.id %}selected{% endif %}>{{ category.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
+      <div class="govuk-form-group">
+        <fieldset class="govuk-fieldset">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">How will the buyer get the item?</legend>
+          <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+            {% for option in deliveryMethods %}
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="{{ 'delivery_method' if loop.first else 'delivery_method-' ~ option.value }}" name="delivery_method" type="radio" value="{{ option.value }}" {% if listing.deliveryMethod == option.value %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="{{ 'delivery_method' if loop.first else 'delivery_method-' ~ option.value }}">{{ option.label }}</label>
+              </div>
+            {% endfor %}
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="location">Location <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="location-hint" class="govuk-hint">A town or area so local buyers can find your item.</div>
+        <input class="govuk-input" id="location" name="location" type="text" maxlength="255" value="{{ listing.location }}" autocomplete="off" aria-describedby="location-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="quantity">Quantity</label>
+        <input class="govuk-input govuk-input--width-5" id="quantity" name="quantity" type="number" min="1" step="1" inputmode="numeric" value="{{ listing.quantity }}">
+      </div>
+    </fieldset>
+
+    <div class="govuk-button-group govuk-!-margin-top-4">
+      <button class="govuk-button" data-module="govuk-button">{{ submitLabel }}</button>
+      <a class="govuk-link" href="/marketplace/mine">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

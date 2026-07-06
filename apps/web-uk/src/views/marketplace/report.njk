@@ -1,0 +1,66 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/marketplace/{{ item.id }}">Back to listing</a>
+
+  {% if status %}
+    <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">
+      <div role="alert">
+        <h2 class="{% if status.type == 'error' %}govuk-error-summary__title{% else %}govuk-notification-banner__title{% endif %}">{% if status.type == 'error' %}There is a problem{% else %}Success{% endif %}</h2>
+        <div class="{% if status.type == 'error' %}govuk-error-summary__body{% else %}govuk-notification-banner__content{% endif %}">
+          <p class="govuk-body">{{ status.message }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <span class="govuk-caption-xl">Report an item at {{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">Report a listing</h1>
+  <p class="govuk-body-l">Tell us why you think this listing breaks the rules. Our team will review it.</p>
+
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Listing</dt>
+      <dd class="govuk-summary-list__value">{{ item.title }}</dd>
+    </div>
+  </dl>
+
+  <form method="post" action="/marketplace/{{ item.id }}/report" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <div class="govuk-form-group{% if status and status.type == 'error' %} govuk-form-group--error{% endif %}">
+      <fieldset class="govuk-fieldset" {% if status and status.type == 'error' %}aria-describedby="reason-error"{% endif %}>
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+          <h2 class="govuk-fieldset__heading">Why are you reporting this listing?</h2>
+        </legend>
+        {% if status and status.type == 'error' %}
+          <p id="reason-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+        {% endif %}
+        <div class="govuk-radios" data-module="govuk-radios">
+          {% for reason in reasons %}
+            <div class="govuk-radios__item">
+              <input class="govuk-radios__input" id="{{ 'reason' if loop.first else 'reason-' ~ reason.value }}" name="reason" type="radio" value="{{ reason.value }}">
+              <label class="govuk-label govuk-radios__label" for="{{ 'reason' if loop.first else 'reason-' ~ reason.value }}">{{ reason.label }}</label>
+            </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="description">Tell us more</label>
+      <div id="description-hint" class="govuk-hint">Give as much detail as you can to help us review the report.</div>
+      <textarea class="govuk-textarea" id="description" name="description" rows="5" aria-describedby="description-hint"></textarea>
+    </div>
+
+    <div class="govuk-button-group">
+      <button class="govuk-button govuk-button--warning" data-module="govuk-button">Send report</button>
+      <a class="govuk-link" href="/marketplace/{{ item.id }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

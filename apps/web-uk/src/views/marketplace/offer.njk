@@ -1,0 +1,59 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/marketplace/{{ item.id }}">Back to listing</a>
+
+  {% if status %}
+    <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">
+      <div role="alert">
+        <h2 class="{% if status.type == 'error' %}govuk-error-summary__title{% else %}govuk-notification-banner__title{% endif %}">{% if status.type == 'error' %}There is a problem{% else %}Success{% endif %}</h2>
+        <div class="{% if status.type == 'error' %}govuk-error-summary__body{% else %}govuk-notification-banner__content{% endif %}">
+          <p class="govuk-body">{{ status.message }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <span class="govuk-caption-xl">Offer for an item at {{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">Make an offer</h1>
+  <p class="govuk-body-l">Suggest a price to the seller. They can accept, decline or counter your offer.</p>
+
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Item</dt>
+      <dd class="govuk-summary-list__value">{{ item.title }}</dd>
+    </div>
+    {% if item.priceLabel != 'Free' %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Asking price</dt>
+        <dd class="govuk-summary-list__value">{{ item.priceLabel }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  <form method="post" action="/marketplace/{{ item.id }}/offer" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+    <div class="govuk-form-group{% if status and status.type == 'error' %} govuk-form-group--error{% endif %}">
+      <label class="govuk-label govuk-label--s" for="amount">Your offer</label>
+      <div id="amount-hint" class="govuk-hint">Enter the amount you would like to pay.</div>
+      {% if status and status.type == 'error' %}
+        <p id="amount-error" class="govuk-error-message"><span class="govuk-visually-hidden">Error:</span> {{ status.message }}</p>
+      {% endif %}
+      <input class="govuk-input govuk-input--width-10{% if status and status.type == 'error' %} govuk-input--error{% endif %}" id="amount" name="amount" type="text" inputmode="decimal" value="" aria-describedby="amount-hint{% if status and status.type == 'error' %} amount-error{% endif %}">
+    </div>
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="message">Message to the seller <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+      <div id="message-hint" class="govuk-hint">Optional. Add a short note to support your offer.</div>
+      <textarea class="govuk-textarea" id="message" name="message" rows="3" aria-describedby="message-hint"></textarea>
+    </div>
+    <div class="govuk-button-group">
+      <button class="govuk-button" data-module="govuk-button">Send offer</button>
+      <a class="govuk-link" href="/marketplace/{{ item.id }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}
