@@ -85,6 +85,7 @@ jest.mock('../src/lib/api', () => ({
   uploadJobApplication: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   callAdminJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callJobDownload: jest.fn(),
+  uploadEventImage: jest.fn().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } }),
   getJobs: jest.fn(),
   getJob: jest.fn(),
   applyForJob: jest.fn(),
@@ -175,6 +176,9 @@ jest.mock('../src/lib/api', () => ({
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  getEvent: jest.fn().mockResolvedValue({ event: { id: 42, title: 'Community garden day', starts_at: '2026-08-01T10:00:00' } }),
+  createEvent: jest.fn().mockResolvedValue({ id: 42 }),
+  updateEvent: jest.fn().mockResolvedValue({ id: 42 }),
   callUserSettingsApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callProfileApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callWebAuthnApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
@@ -320,6 +324,10 @@ describe('shared accessible frontend shell', () => {
     api.getOnboardingSafeguardingOptions.mockReset().mockResolvedValue({ data: [] });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.uploadEventImage.mockReset().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } });
+    api.getEvent.mockReset().mockResolvedValue({ event: { id: 42, title: 'Community garden day', starts_at: '2026-08-01T10:00:00' } });
+    api.createEvent.mockReset().mockResolvedValue({ id: 42 });
+    api.updateEvent.mockReset().mockResolvedValue({ id: 42 });
     api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callProfileApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callWebAuthnApi.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -8272,6 +8280,113 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callEventApi).not.toHaveBeenCalled();
+  });
+
+  it('renders and submits Laravel event cover images with multipart data', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.getMyGroups.mockResolvedValueOnce({ data: [] });
+    api.createEvent.mockResolvedValueOnce({ id: 42 });
+
+    const page = await agent
+      .get('/events/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('action="/events/new"');
+    expect(page.text).toContain('enctype="multipart/form-data"');
+    expect(page.text).toContain('name="image"');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/events/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('title', ' Community garden day ')
+      .field('description', ' Planting and tea ')
+      .field('starts_at_date', '2026-08-01')
+      .field('starts_at_time', '10:00')
+      .attach('image', Buffer.from('fake event image', 'utf8'), {
+        filename: 'garden.webp',
+        contentType: 'image/webp'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42');
+    expect(api.createEvent).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      title: 'Community garden day',
+      description: 'Planting and tea',
+      starts_at: '2026-08-01T10:00:00'
+    }));
+    expect(api.uploadEventImage).toHaveBeenCalledWith('test-token', 42, {
+      file: expect.objectContaining({
+        filename: 'garden.webp',
+        contentType: 'image/webp',
+        buffer: Buffer.from('fake event image', 'utf8')
+      })
+    });
+  });
+
+  it('renders and submits Laravel event edit cover images with multipart data', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.getEvent.mockResolvedValueOnce({
+      event: {
+        id: 42,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        location: 'Village hall',
+        max_attendees: 20,
+        starts_at: '2026-08-01T10:00:00'
+      }
+    });
+    api.getMyGroups.mockResolvedValueOnce({ data: [] });
+
+    const page = await agent
+      .get('/events/42/edit')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('action="/events/42/edit"');
+    expect(page.text).toContain('enctype="multipart/form-data"');
+    expect(page.text).toContain('name="image"');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/events/42/edit')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('title', ' Community garden day ')
+      .field('description', ' Planting and tea ')
+      .field('starts_at_date', '2026-08-01')
+      .field('starts_at_time', '10:00')
+      .attach('image', Buffer.from('updated event image', 'utf8'), {
+        filename: 'updated-garden.webp',
+        contentType: 'image/webp'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42');
+    expect(api.updateEvent).toHaveBeenCalledWith('test-token', '42', expect.objectContaining({
+      title: 'Community garden day',
+      description: 'Planting and tea',
+      starts_at: '2026-08-01T10:00:00'
+    }));
+    expect(api.uploadEventImage).toHaveBeenCalledWith('test-token', '42', {
+      file: expect.objectContaining({
+        filename: 'updated-garden.webp',
+        contentType: 'image/webp',
+        buffer: Buffer.from('updated event image', 'utf8')
+      })
+    });
   });
 
   it('submits Laravel listing action aliases and redirects signed-out visitors', async () => {

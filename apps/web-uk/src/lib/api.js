@@ -576,6 +576,23 @@ async function uploadMarketplaceListingImages(token, listingId, data) {
   });
 }
 
+async function uploadEventImage(token, eventId, data) {
+  const form = new globalThis.FormData();
+  const file = data.file || data.image;
+  if (file && file.buffer) {
+    const blob = new globalThis.Blob([file.buffer], {
+      type: file.contentType || 'application/octet-stream'
+    });
+    form.append('image', blob, file.filename || 'event-image');
+  }
+
+  return request(`/api/v2/events/${eventId}/image`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function callIdeationApi(token, method, path, data = undefined) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const options = {
@@ -2561,6 +2578,7 @@ module.exports = {
   callIdeationApi,
   callGroupExchangeApi,
   callEventApi,
+  uploadEventImage,
   getGoals,
   getGoal,
   callGoalApi,

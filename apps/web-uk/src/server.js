@@ -1060,6 +1060,8 @@ app.use('/settings/insurance', parseMultipartForm({ maxFileSize: 10 * 1024 * 102
 app.use('/feed/posts', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use('/marketplace/create', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use(/^\/marketplace\/\d+\/update$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+app.use('/events/new', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+app.use(/^\/events\/\d+\/edit$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use(/^\/messages\/\d+$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024, multiples: true }));
 app.use(/^\/messages\/\d+\/voice$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use(/^\/groups\/\d+\/image$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));

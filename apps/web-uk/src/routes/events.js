@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const {
   getEvents,
   getMyEvents,
@@ -17,6 +18,7 @@ const {
   removeEventRsvp,
   votePoll,
   callEventApi,
+  uploadEventImage,
   callUgcTranslateApi,
   getMyGroups,
   ApiError
@@ -43,6 +45,38 @@ function positiveInteger(value) {
 
 function checked(value) {
   return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
+}
+
+function resultEventId(result) {
+  return result?.event?.id || result?.data?.id || result?.id;
+}
+
+async function uploadEventCoverImage(token, eventId, image) {
+  if (!image || !image.filepath || !eventId) return;
+
+  const buffer = await fs.readFile(image.filepath);
+  await uploadEventImage(token, eventId, {
+    file: {
+      buffer,
+      filename: trimmed(image.originalFilename) || 'event-image',
+      contentType: trimmed(image.mimetype) || 'application/octet-stream',
+      size: image.size
+    }
+  });
 }
 
 function loginRedirect() {
@@ -307,6 +341,7 @@ router.get('/new', asyncRoute(async (req, res) => {
 // Create event
 router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
   const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id } = req.body;
+  const image = uploadedFile(req, 'image');
 
   const errors = [];
 
@@ -334,11 +369,12 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
 
   // Helper to render form with errors
   const renderFormWithErrors = async (errorList) => {
+    await removeUploadedFile(image);
     let myGroups = [];
     try {
       const myGroupsResult = await getMyGroups(req.token);
       myGroups = myGroupsResult.data || [];
-    } catch (e) {
+    } catch {
       // Ignore - render with empty groups
     }
 
@@ -368,14 +404,28 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
     };
 
     const result = await createEvent(req.token, eventData);
+    const eventId = resultEventId(result);
+
+    try {
+      await uploadEventCoverImage(req.token, eventId, image);
+    } catch (uploadError) {
+      if (uploadError instanceof ApiError && uploadError.status === 401) {
+        throw uploadError;
+      }
+      if (req.flash) {
+        req.flash('error', uploadError.message || 'Event created, but the image could not be uploaded');
+      }
+    } finally {
+      await removeUploadedFile(image);
+    }
 
     if (req.flash) {
       req.flash('success', 'Event created successfully');
     }
 
-    const eventId = result.event?.id || result.id;
     res.redirect(`/events/${eventId}`);
   } catch (error) {
+    await removeUploadedFile(image);
     // Handle validation errors from API by re-rendering form
     if (error instanceof ApiError && error.status !== 401) {
       return renderFormWithErrors([{ text: error.message || 'Unable to create event' }]);
@@ -446,6 +496,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
 router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
   const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees } = req.body;
+  const image = uploadedFile(req, 'image');
 
   const errors = [];
 
@@ -471,11 +522,12 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
 
   // Helper to render form with errors
   const renderFormWithErrors = async (errorList) => {
+    await removeUploadedFile(image);
     let myGroups = [];
     try {
       const myGroupsResult = await getMyGroups(req.token);
       myGroups = myGroupsResult.data || [];
-    } catch (e) {
+    } catch {
       // Ignore - render with empty groups
     }
 
@@ -506,12 +558,26 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
       max_attendees: max_attendees ? parseInt(max_attendees, 10) : null
     });
 
+    try {
+      await uploadEventCoverImage(req.token, id, image);
+    } catch (uploadError) {
+      if (uploadError instanceof ApiError && uploadError.status === 401) {
+        throw uploadError;
+      }
+      if (req.flash) {
+        req.flash('error', uploadError.message || 'Event updated, but the image could not be uploaded');
+      }
+    } finally {
+      await removeUploadedFile(image);
+    }
+
     if (req.flash) {
       req.flash('success', 'Event updated successfully');
     }
 
     res.redirect(`/events/${id}`);
   } catch (error) {
+    await removeUploadedFile(image);
     // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
       if (req.flash) {

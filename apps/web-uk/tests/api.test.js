@@ -871,6 +871,34 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should upload event cover images through Laravel multipart data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { cover_image: '/uploads/events/garden.webp' } })
+      });
+
+      await api.uploadEventImage('test-token', 42, {
+        file: {
+          buffer: Buffer.from('fake event image', 'utf8'),
+          filename: 'garden.webp',
+          contentType: 'image/webp'
+        }
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/events/42/image',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
   });
 
   describe('getGoals', () => {
