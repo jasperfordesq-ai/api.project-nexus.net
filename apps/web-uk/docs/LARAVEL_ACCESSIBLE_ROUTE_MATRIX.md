@@ -41,9 +41,9 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 395 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
-| Exact method/path matches | 313 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
-| Missing Laravel routes | 295 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
+| ASP.NET `apps/web-uk` | 397 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| Exact method/path matches | 315 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
+| Missing Laravel routes | 293 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
 | Extra `apps/web-uk` routes | 83 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
@@ -66,7 +66,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Explore | `/explore` | `/explore` | Implemented skeleton. |
 | Sign in | `/login` | `/login` | Implemented local equivalent. |
 | Register | `/register` | `/register` | Implemented local equivalent. |
-| Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Preparation skeleton. |
+| Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Partial Laravel-backed candidate. Signed-out visitors redirect to `/contact?problem_url=...`; signed-in visitors get a structured support report form that posts to Laravel `/api/v2/support/reports`. |
 | Cookies | `/cookies`, `/cookie-consent` POST | `/cookies`, `/cookie-consent` POST | Partial Blade-style candidate: banner renders before the skip link until `nexus_alpha_cookie_consent` is present; settings page renders the analytics yes/no form; POST stores local `all` or `essential` values. Laravel `cookie_consents` audit persistence, tenant scoping, localization, and runtime certification are not complete. |
 
 ## Footer Column Contract
@@ -109,7 +109,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Family | Missing route count | Examples | Current status |
 | --- | ---: | --- | --- |
 | Tenant routing | structural | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Not implemented in `apps/web-uk`. |
-| Cookie/report POST workflows | 1 | `/report-a-problem` POST | Cookie choice POST is a partial local candidate only; report problem GET has a preparation page and POST is not certified. Cookie audit persistence, tenant scoping, localization, and runtime behavior are not certified. |
+| Cookie/report POST workflows | 0 | none exact | Cookie choice POST is a partial local candidate. Contact POST and report-problem POST are Laravel-backed candidates using `/api/v2/contact` and `/api/v2/support/reports`, with status-key redirects and mocked contract tests. Cookie audit persistence, tenant scoping, production Turnstile, localization, notification side effects, and ASP.NET backend compatibility are not certified. |
 | Legal document sourcing | 0 exact route gaps | `/legal/*` tenant documents | Skeleton GET pages only; document data sourcing and tenant-specific fallback behavior are not certified. |
 | Onboarding | 2 | `/onboarding/{step}` POST, `/onboarding/avatar` POST | GET routes now have generated Laravel preparation pages. Multi-step state, avatar upload, validation, session behavior, and redirects are not certified. |
 | Account hub depth | varies by family | matches, group exchanges, gamification, linked accounts, saved items, reviews, activity, jobs, appearance | Partial `/account` candidate only. Feature-gated account links, per-module data, route availability checks, tenant behavior, and ASP.NET backend compatibility are not certified. |

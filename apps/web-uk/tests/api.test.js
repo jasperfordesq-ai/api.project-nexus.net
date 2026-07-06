@@ -382,4 +382,71 @@ describe('API Request Functions', () => {
         .rejects.toThrow(api.ApiOfflineError);
     });
   });
+
+  describe('submitContact', () => {
+    it('should call the Laravel v2 contact endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { message: 'received' } })
+      });
+
+      await api.submitContact({
+        name: 'Ada Lovelace',
+        email: 'ada@example.org',
+        subject: 'technical',
+        message: 'The page did not load.',
+        turnstile_token: ''
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/contact',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Ada Lovelace',
+            email: 'ada@example.org',
+            subject: 'technical',
+            message: 'The page did not load.',
+            turnstile_token: ''
+          })
+        })
+      );
+    });
+  });
+
+  describe('submitSupportReport', () => {
+    it('should call the Laravel v2 support report endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { report: { reference: 'NXR-260706-ABC123' } } })
+      });
+
+      await api.submitSupportReport('test-token', {
+        summary: 'Broken page',
+        description: 'The accessible page failed to render.',
+        impact: 'major',
+        page_url: '/explore',
+        route: '/report-a-problem'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/support/reports',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            summary: 'Broken page',
+            description: 'The accessible page failed to render.',
+            impact: 'major',
+            page_url: '/explore',
+            route: '/report-a-problem'
+          })
+        })
+      );
+    });
+  });
 });

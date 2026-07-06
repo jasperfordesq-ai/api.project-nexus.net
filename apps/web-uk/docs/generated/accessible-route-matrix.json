@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T07:49:18.668Z",
+    "generatedAt": "2026-07-06T08:08:45.625Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 395,
-    "matchedRoutes": 313,
-    "missingRoutes": 295,
+    "webUkRoutes": 397,
+    "matchedRoutes": 315,
+    "missingRoutes": 293,
     "extraWebUkRoutes": 83,
     "familyCounts": {
       "admin": {
@@ -175,8 +175,8 @@
         "extraWebUk": 0
       },
       "contact": {
-        "matched": 1,
-        "missing": 1,
+        "matched": 2,
+        "missing": 0,
         "extraWebUk": 0
       },
       "cookie-consent": {
@@ -350,8 +350,8 @@
         "extraWebUk": 0
       },
       "report-a-problem": {
-        "matched": 1,
-        "missing": 1,
+        "matched": 2,
+        "missing": 0,
         "extraWebUk": 0
       },
       "resources": {
@@ -2428,7 +2428,26 @@
       "apiNeeds": "",
       "webUkPath": "/contact",
       "webUkView": "contact; static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\contact-support.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+    },
+    {
+      "method": "POST",
+      "path": "/contact",
+      "family": "contact",
+      "status": "matched",
+      "laravelRouteName": "contact.store",
+      "laravelHandler": "storeContact",
+      "laravelView": "",
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
+      "laravelMiddleware": "'throttle:5,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "yes",
+      "gates": "",
+      "apiNeeds": "service:TurnstileService",
+      "webUkPath": "/contact",
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\contact-support.js"
     },
     {
       "method": "POST",
@@ -6911,8 +6930,27 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/report-a-problem",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
+      "webUkView": "report-problem; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\contact-support.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+    },
+    {
+      "method": "POST",
+      "path": "/report-a-problem",
+      "family": "report-a-problem",
+      "status": "matched",
+      "laravelRouteName": "report-problem.store",
+      "laravelHandler": "storeReportProblem",
+      "laravelView": "",
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\CookieSupportParity.php",
+      "laravelMiddleware": "'throttle:10,1'",
+      "auth": "auth-optional",
+      "tenantScoped": "yes",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/report-a-problem",
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\contact-support.js"
     },
     {
       "method": "GET",
@@ -8164,25 +8202,6 @@
       "tenantScoped": "yes",
       "gates": "feature:ai_chat",
       "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/contact",
-      "family": "contact",
-      "status": "missing",
-      "laravelRouteName": "contact.store",
-      "laravelHandler": "storeContact",
-      "laravelView": "",
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
-      "laravelMiddleware": "'throttle:5,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "yes",
-      "gates": "",
-      "apiNeeds": "service:TurnstileService",
       "webUkPath": "",
       "webUkView": "",
       "webUkFile": ""
@@ -12534,25 +12553,6 @@
       "tenantScoped": "yes",
       "gates": "",
       "apiNeeds": "service:TotpService",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/report-a-problem",
-      "family": "report-a-problem",
-      "status": "missing",
-      "laravelRouteName": "report-problem.store",
-      "laravelHandler": "storeReportProblem",
-      "laravelView": "",
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\CookieSupportParity.php",
-      "laravelMiddleware": "'throttle:10,1'",
-      "auth": "auth-optional",
-      "tenantScoped": "yes",
-      "gates": "",
-      "apiNeeds": "",
       "webUkPath": "",
       "webUkView": "",
       "webUkFile": ""

@@ -116,6 +116,13 @@ pages after all real route modules. These fallback pages count as route
 existence only. They are not backend adapters and must not be used as proof of
 Laravel or ASP.NET workflow compatibility.
 
+`src/routes/contact-support.js` is a Laravel-backed candidate for the accessible
+contact/support routes. `/contact` POST submits to Laravel `/api/v2/contact`;
+signed-in `/report-a-problem` POST submits to Laravel `/api/v2/support/reports`.
+The routes mirror Laravel status keys and validation shape, but tenant-domain
+routing, Turnstile production behavior, localization, notification side effects,
+and ASP.NET backend compatibility still need runtime certification.
+
 ## Local Environment Shape
 
 Keep three local surfaces distinct:

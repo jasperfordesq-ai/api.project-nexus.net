@@ -125,6 +125,13 @@ async function logout(token) {
   });
 }
 
+async function submitContact(data) {
+  return request('/api/v2/contact', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
 async function verify2fa(token, code) {
   return request('/api/auth/2fa/verify', {
     method: 'POST',
@@ -826,6 +833,14 @@ async function submitReport(token, data) {
   });
 }
 
+async function submitSupportReport(token, data) {
+  return request('/api/v2/support/reports', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function getMyReports(token, params = {}) {
   const query = new URLSearchParams();
   if (params.page) query.set('page', params.page);
@@ -1205,6 +1220,7 @@ module.exports = {
   register,
   refreshToken,
   logout,
+  submitContact,
   forgotPassword,
   resetPassword,
   changePassword,
@@ -1295,6 +1311,7 @@ module.exports = {
   deleteFeedComment,
   // Reports
   submitReport,
+  submitSupportReport,
   getMyReports,
   // Gamification
   getGamificationProfile,

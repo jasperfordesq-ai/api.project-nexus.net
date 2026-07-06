@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T07:49:18.668Z
+Generated: 2026-07-06T08:08:45.625Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 395 |
-| Matched routes | 313 |
-| Missing routes | 295 |
+| web-uk routes | 397 |
+| Matched routes | 315 |
+| Missing routes | 293 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -26,7 +26,7 @@ Generated: 2026-07-06T07:49:18.668Z
 | clubs | 1 | 0 | 0 |
 | components | 0 | 0 | 1 |
 | connections | 5 | 0 | 1 |
-| contact | 1 | 1 | 0 |
+| contact | 2 | 0 | 0 |
 | cookie-consent | 1 | 0 | 0 |
 | cookies | 1 | 0 | 0 |
 | coupons | 2 | 0 | 0 |
@@ -73,7 +73,7 @@ Generated: 2026-07-06T07:49:18.668Z
 | profile | 5 | 16 | 2 |
 | progress | 0 | 0 | 4 |
 | register | 2 | 0 | 0 |
-| report-a-problem | 1 | 1 | 0 |
+| report-a-problem | 2 | 0 | 0 |
 | reports | 0 | 0 | 3 |
 | reset-password | 0 | 0 | 2 |
 | resources | 6 | 6 | 0 |
@@ -109,7 +109,6 @@ Generated: 2026-07-06T07:49:18.668Z
 | POST | `/blog/comments/{param}/react` | blog | blogReviewsCommentReaction |  | auth-optional | feature:blog |
 | POST | `/blog/comments/{param}/update` | blog | blogReviewsUpdateComment |  | auth-optional | feature:blog |
 | POST | `/chat` | chat | aiChatSend |  | auth-optional | feature:ai_chat |
-| POST | `/contact` | contact | storeContact |  | public-or-unknown |  |
 | POST | `/courses/{param}/enrol` | courses | enrolCourse |  | auth-optional | feature:courses |
 | POST | `/courses/{param}/lessons/{param}/complete` | courses | commerceCompleteLesson |  | auth-optional | feature:courses |
 | POST | `/courses/{param}/lessons/{param}/quiz` | courses | commerceCourseQuizSubmit |  | auth-optional | feature:courses |
@@ -339,7 +338,6 @@ Generated: 2026-07-06T07:49:18.668Z
 | POST | `/profile/skills/remove` | profile | removeProfileSkill |  | auth-optional |  |
 | POST | `/profile/two-factor/disable` | profile | disableTwoFactor |  | auth-optional |  |
 | POST | `/profile/two-factor/verify` | profile | verifyTwoFactorSetup | two-factor-setup | auth-optional |  |
-| POST | `/report-a-problem` | report-a-problem | storeReportProblem |  | auth-optional |  |
 | POST | `/resources/{param}/comments/{param}/delete` | resources | resourcesDeleteComment |  | auth-optional | feature:resources |
 | POST | `/resources/{param}/comments/add` | resources | resourcesStoreComment |  | auth-optional | feature:resources |
 | POST | `/resources/{param}/delete` | resources | resourcesDelete |  | auth-optional | feature:resources |

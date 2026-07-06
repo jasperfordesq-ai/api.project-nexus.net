@@ -56,7 +56,9 @@ jest.mock('../src/lib/api', () => ({
   getVolunteerOpportunity: jest.fn(),
   getOrganisationOpportunities: jest.fn(),
   getOrganisationReviews: jest.fn(),
-  getOrganisationJobs: jest.fn()
+  getOrganisationJobs: jest.fn(),
+  submitContact: jest.fn().mockResolvedValue({}),
+  submitSupportReport: jest.fn().mockResolvedValue({ data: { report: { reference: 'NXR-260706-ABC123' } } })
 }));
 
 process.env.COOKIE_SECRET = 'test-secret-at-least-32-characters';
@@ -68,6 +70,14 @@ describe('shared accessible frontend shell', () => {
 
   beforeAll(() => {
     app = require('../src/server');
+  });
+
+  beforeEach(() => {
+    const api = require('../src/lib/api');
+    api.submitContact.mockReset().mockResolvedValue({});
+    api.submitSupportReport.mockReset().mockResolvedValue({
+      data: { report: { reference: 'NXR-260706-ABC123' } }
+    });
   });
 
   it('renders the Laravel-style accessible shell on the home page', async () => {
@@ -129,6 +139,174 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Onboarding');
     expect(response.text).toContain('Laravel Blade route');
     expect(response.text).toContain('does not certify ASP.NET route or workflow');
+  });
+
+  it('renders the Laravel-style contact form with report-problem prefill', async () => {
+    const response = await request(app).get('/contact?problem_url=/explore');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Contact us');
+    expect(response.text).toContain('method="post" action="/contact"');
+    expect(response.text).toContain('name="_csrf"');
+    expect(response.text).toContain('id="name" name="name"');
+    expect(response.text).toContain('id="email" name="email"');
+    expect(response.text).toContain('id="subject" name="subject"');
+    expect(response.text).toContain('value="technical" selected');
+    expect(response.text).toContain('I am reporting a problem with /explore');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('submits the contact form to the Laravel contact API contract', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/contact')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Ada Lovelace',
+        email: 'ada@example.org',
+        subject: 'technical',
+        message: 'The accessible page did not load.'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/contact?status=contact-sent');
+    expect(api.submitContact).toHaveBeenCalledWith({
+      name: 'Ada Lovelace',
+      email: 'ada@example.org',
+      subject: 'technical',
+      message: 'The accessible page did not load.',
+      turnstile_token: ''
+    });
+  });
+
+  it('redirects contact validation errors with the Laravel status key', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/contact')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: '',
+        email: 'not-an-email',
+        message: ''
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/contact?status=contact-validation');
+    expect(api.submitContact).not.toHaveBeenCalled();
+
+    const follow = await agent.get('/contact?status=contact-validation');
+    expect(follow.text).toContain('There is a problem');
+    expect(follow.text).toContain('Enter your name');
+    expect(follow.text).toContain('Enter a valid email address');
+    expect(follow.text).toContain('Enter a message');
+  });
+
+  it('redirects signed-out report-problem users to the contact prefill path', async () => {
+    const response = await request(app).get('/report-a-problem?return=/explore');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/contact?problem_url=%2Fexplore');
+  });
+
+  it('renders the signed-in Laravel-style report-problem form', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/report-a-problem?return=/explore')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Report a problem with this page');
+    expect(response.text).toContain('method="post" action="/report-a-problem"');
+    expect(response.text).toContain('name="page_url" value="/explore"');
+    expect(response.text).toContain('id="summary" name="summary"');
+    expect(response.text).toContain('id="description" name="description"');
+    expect(response.text).toContain('id="impact-blocked" name="impact" type="radio" value="blocked"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('submits signed-in report-problem forms to the Laravel support report API contract', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/report-a-problem?return=/explore')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/report-a-problem')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        page_url: '/explore',
+        summary: 'Broken page',
+        description: 'The accessible route returned an unexpected blank area.',
+        impact: 'major'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/report-a-problem?return=%2Fexplore&status=sent&ref=NXR-260706-ABC123');
+    expect(api.submitSupportReport).toHaveBeenCalledWith('test-token', {
+      summary: 'Broken page',
+      description: 'The accessible route returned an unexpected blank area.',
+      impact: 'major',
+      source: 'accessible',
+      page_url: '/explore',
+      route: '/report-a-problem'
+    });
+  });
+
+  it('validates signed-in report-problem forms before calling the Laravel API', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/report-a-problem?return=/explore')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/report-a-problem')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        page_url: '/explore',
+        summary: 'No',
+        description: 'Short',
+        impact: 'unknown'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/report-a-problem?return=%2Fexplore&status=invalid');
+    expect(api.submitSupportReport).not.toHaveBeenCalled();
+
+    const follow = await agent
+      .get('/report-a-problem?return=/explore&status=invalid')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(follow.text).toContain('There is a problem');
+    expect(follow.text).toContain('Enter a summary between 3 and 180 characters');
+    expect(follow.text).toContain('Enter details between 10 and 5000 characters');
+    expect(follow.text).toContain('Select how this affects you');
   });
 
   it('renders the Laravel-style cookie banner until a cookie choice has been made', async () => {

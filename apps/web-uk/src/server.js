@@ -35,6 +35,7 @@ const reviewsRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');
 const exploreRoutes = require('./routes/explore');
 const staticPageRoutes = require('./routes/static-pages');
+const contactSupportRoutes = require('./routes/contact-support');
 const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
@@ -333,10 +334,6 @@ app.get('/privacy', (req, res) => {
 
 app.get('/terms', (req, res) => {
   res.render('terms', { title: 'Terms and conditions' });
-});
-
-app.get('/contact', (req, res) => {
-  res.render('contact', { title: 'Contact us' });
 });
 
 app.get('/about', (req, res) => {
@@ -951,6 +948,7 @@ app.get('/organisations/:id(\\d+)', (req, res) => {
     });
 });
 
+app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
