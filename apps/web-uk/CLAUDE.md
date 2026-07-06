@@ -27,6 +27,17 @@ Route and backend preparation docs live beside this app:
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
 - `docs/BACKEND_SWITCHING_CONTRACT.md`
 
+Generated route-matrix artifacts live under `docs/generated/` and are refreshed
+with:
+
+```bash
+npm run route:matrix
+```
+
+Treat those generated counts as backlog evidence only. They do not certify
+workflow parity, tenant routing, auth behavior, API contracts, localization, or
+production readiness.
+
 Do not claim route parity, workflow parity, tenant-domain parity, localization
 parity, API compatibility, production readiness, or shared-frontend readiness
 from skeleton or styling work.

@@ -140,6 +140,12 @@ Additional preparation docs:
 - `BACKEND_SWITCHING_CONTRACT.md` documents future Laravel/ASP.NET backend
   switching requirements without implementing a real adapter yet.
 
+Generated route-matrix artifacts live under `docs/generated/` and are refreshed
+with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
+accessible route declarations, 178 `apps/web-uk` route declarations, 96 exact
+method/path matches, 512 missing Laravel routes, and 83 local-only routes. These
+counts are backlog evidence only and do not certify workflow parity.
+
 ## Before Extraction To Its Own Repo
 
 - Keep this `docs/` folder.

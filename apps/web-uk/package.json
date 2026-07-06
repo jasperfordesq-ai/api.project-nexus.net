@@ -13,7 +13,8 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "route:matrix": "node scripts/generate-accessible-route-matrix.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",

@@ -105,6 +105,12 @@ Before switching backends, every certified route family needs proof for:
 - Localization: locale selection, RTL, translated labels, and validation copy.
 - Realtime or async status: messages, notifications, and unread-count behavior.
 
+Use `docs/generated/accessible-route-matrix.csv` as the route-by-route backlog
+seed before certifying any family. It is refreshed with `npm run route:matrix`
+and records Laravel route names, handlers, inferred Blade views, feature/module
+gates, auth classification, API/service hints, and current `apps/web-uk`
+method/path matches.
+
 ## Local Environment Shape
 
 Keep three local surfaces distinct:

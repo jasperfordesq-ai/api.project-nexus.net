@@ -24,10 +24,27 @@ ASP.NET candidate:
 
 ## Current Static Count
 
+Generated artifacts live in:
+
+```text
+docs/generated/accessible-route-matrix.md
+docs/generated/accessible-route-matrix.csv
+docs/generated/accessible-route-matrix.json
+```
+
+Refresh them with:
+
+```bash
+npm run route:matrix
+```
+
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
-| Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files. |
-| ASP.NET `apps/web-uk` | 172 | Express app/router declarations scanned from local source after shell prep; this includes route modules that may not be mounted as certified workflows yet. |
+| Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
+| ASP.NET `apps/web-uk` | 178 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons and route modules that may not be certified workflows yet. |
+| Exact method/path matches | 96 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
+| Missing Laravel routes | 512 | Laravel accessible declarations without an exact local method/path equivalent. |
+| Extra `apps/web-uk` routes | 83 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families include POST
@@ -89,20 +106,22 @@ workflow handlers that `apps/web-uk` does not have yet.
 These Laravel route families still need detailed page-by-page mapping and
 runtime tests before `apps/web-uk` can be shared:
 
-| Family | Examples | Current status |
-| --- | --- | --- |
-| Tenant routing | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Not implemented in `apps/web-uk`. |
-| Cookie/report POST workflows | `/cookie-consent`, `/report-a-problem` POST | Cookie choice POST is a partial local candidate only; report problem remains a skeleton GET and POST is not certified. Cookie audit persistence, tenant scoping, localization, and runtime behavior are not certified. |
-| Legal document sourcing | `/legal/*` tenant documents | Skeleton GET pages only. |
-| Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
-| Account hub depth | matches, group exchanges, gamification, linked accounts, saved items, reviews, activity, jobs, appearance | Partial `/account` candidate only. Feature-gated account links, per-module data, route availability checks, tenant behavior, and ASP.NET backend compatibility are not certified. |
-| Volunteering | opportunities, hours, organisations, expenses, wellbeing | Partial Laravel-backed candidate for `/volunteering` GET and `/volunteering/opportunities/{id}` GET only. Landing reads `/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`, `per_page`, and `cursor`; detail reads `/api/v2/volunteering/opportunities/{id}`. Both render public Blade-style content with mocked contract tests. Applications, recommended shifts, hours, organisations owner tools, expenses, wellbeing, tenant-prefixed routes, auth redirects, feature gates, apply POST, shift signup/cancel, other POST workflows, localization, and runtime certification are not complete. |
-| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | Partial Laravel-backed candidate for `/organisations`, `/organisations/browse`, `/organisations/register` GET, `/organisations/manage` GET, `/organisations/{id}` GET, `/organisations/{id}/jobs` GET, and `/organisations/opportunities/{id}/apply` GET only. Directory/search and browse use `/api/v2/volunteering/organisations`; register GET renders the Blade-style form and validation status anchors without POST persistence; manage GET reads `/api/v2/volunteering/my-organisations` when signed in; detail uses `/api/v2/volunteering/organisations/{id}?include=public_contract`, `/api/v2/volunteering/opportunities?organization_id={id}`, and `/api/v2/volunteering/reviews/organization/{id}`; organisation jobs reads `/api/v2/jobs?organization_id={id}&status=open` when signed in; apply GET reads `/api/v2/volunteering/opportunities/{id}`, all with mocked contract tests. Auth enforcement, volunteering/job feature gates, tenant-prefixed routes, registration persistence, apply POST workflow, localization, and runtime certification are not complete. |
-| Exchanges | requests, accept/decline, ready/confirm/cancel | Skeleton landing only. |
-| Feed typed engagement | likes, comments, reactions, share, save, hide, report | Partial route equivalents only. |
-| Marketplace/commerce | marketplace, seller, orders, coupons, courses, podcasts | Mostly skeleton links only. |
-| Federation | members, listings, events, groups, messages, transfers | Skeleton landing only. |
-| Resources/search/saved/settings | full parity route families | Partial or missing. |
+| Family | Missing route count | Examples | Current status |
+| --- | ---: | --- | --- |
+| Tenant routing | structural | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Not implemented in `apps/web-uk`. |
+| Cookie/report POST workflows | 1 | `/report-a-problem` POST | Cookie choice POST is a partial local candidate only; report problem remains a skeleton GET and POST is not certified. Cookie audit persistence, tenant scoping, localization, and runtime behavior are not certified. |
+| Legal document sourcing | 0 exact route gaps | `/legal/*` tenant documents | Skeleton GET pages only; document data sourcing and tenant-specific fallback behavior are not certified. |
+| Onboarding | 4 | `/onboarding`, `/onboarding/{step}` | Missing. |
+| Account hub depth | varies by family | matches, group exchanges, gamification, linked accounts, saved items, reviews, activity, jobs, appearance | Partial `/account` candidate only. Feature-gated account links, per-module data, route availability checks, tenant behavior, and ASP.NET backend compatibility are not certified. |
+| Volunteering | 50 | opportunities, hours, organisations, expenses, wellbeing, safeguards, certificates, waitlists, swaps | Partial Laravel-backed candidate for `/volunteering` GET and `/volunteering/opportunities/{id}` GET only. Landing reads `/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`, `per_page`, and `cursor`; detail reads `/api/v2/volunteering/opportunities/{id}`. Both render public Blade-style content with mocked contract tests. Applications, recommended shifts, hours, organisations owner tools, expenses, wellbeing, tenant-prefixed routes, auth redirects, feature gates, apply POST, shift signup/cancel, other POST workflows, localization, and runtime certification are not complete. |
+| Organisations | 2 | `/organisations` POST, `/organisations/register` POST | Partial Laravel-backed candidate for `/organisations`, `/organisations/browse`, `/organisations/register` GET, `/organisations/manage` GET, `/organisations/{id}` GET, `/organisations/{id}/jobs` GET, and `/organisations/opportunities/{id}/apply` GET only. Directory/search and browse use `/api/v2/volunteering/organisations`; register GET renders the Blade-style form and validation status anchors without POST persistence; manage GET reads `/api/v2/volunteering/my-organisations` when signed in; detail uses `/api/v2/volunteering/organisations/{id}?include=public_contract`, `/api/v2/volunteering/opportunities?organization_id={id}`, and `/api/v2/volunteering/reviews/organization/{id}`; organisation jobs reads `/api/v2/jobs?organization_id={id}&status=open` when signed in; apply GET reads `/api/v2/volunteering/opportunities/{id}`, all with mocked contract tests. Auth enforcement, volunteering/job feature gates, tenant-prefixed routes, registration persistence, apply POST workflow, localization, and runtime certification are not complete. |
+| Exchanges and group exchanges | 12 | requests, accept/decline, ready/confirm/cancel, group exchange participants | Skeleton landing only. |
+| Feed typed engagement | 21 | likes, comments, reactions, share, save, hide, report, hashtag and item detail routes | Partial route equivalents only. |
+| Marketplace/commerce | 47 | marketplace, seller, orders, coupons, courses, premium, podcasts | Mostly skeleton links only. |
+| Federation | 27 | members, listings, events, groups, messages, transfers, partner onboarding | Skeleton landing only. |
+| Jobs | 37 | alerts, applications, employer brand, onboarding, talent search, qualification, analytics | Skeleton landing only. |
+| Ideation | 33 | campaigns, challenges, drafts, outcomes, tags, idea voting | Skeleton landing only. |
+| Resources/search/saved/settings | 31 | resources comments/upload, advanced search, saved searches, linked accounts, appearance, data rights, insurance, availability | Partial or missing. |
 
 ## Next Certification Work
 
@@ -115,3 +134,8 @@ For each family, create a module matrix with:
 - Request, response, redirect, validation, CSRF, auth, tenant, feature-gate, and
   localization behavior.
 - Runtime smoke result against ASP.NET.
+
+Use `docs/generated/accessible-route-matrix.csv` as the working backlog seed.
+It includes the Laravel handler, inferred Blade view, auth classification,
+feature/module gates, API/service hints, and current `apps/web-uk` target view
+where a static method/path match exists.

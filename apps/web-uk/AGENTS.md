@@ -26,3 +26,7 @@ Preparation docs that future agents must keep current:
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
 - `docs/BACKEND_SWITCHING_CONTRACT.md`
+
+Generated route-matrix artifacts live under `docs/generated/` and are refreshed
+with `npm run route:matrix`. Treat generated counts as backlog evidence only,
+not as workflow/API/tenant/auth certification.
