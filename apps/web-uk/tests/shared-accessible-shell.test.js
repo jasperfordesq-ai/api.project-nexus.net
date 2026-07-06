@@ -3803,6 +3803,98 @@ describe('shared accessible frontend shell', () => {
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel-backed my job postings page with owner actions', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 501,
+          title: 'Volunteer Coordinator',
+          status: 'draft',
+          views_count: 12,
+          applications_count: 3
+        }
+      ],
+      cursor: 'next-postings',
+      has_more: true
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/mine?cursor=abc&status=deleted')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/my-postings?per_page=12&cursor=abc');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('My postings');
+    expect(response.text).toContain('Manage the opportunities you have posted.');
+    expect(response.text).toContain('Post an opportunity');
+    expect(response.text).toContain('The opportunity has been deleted.');
+    expect(response.text).toContain('href="/jobs/501"');
+    expect(response.text).toContain('Volunteer Coordinator');
+    expect(response.text).toContain('Draft');
+    expect(response.text).toContain('12 views');
+    expect(response.text).toContain('3 applications');
+    expect(response.text).toContain('Manage applications');
+    expect(response.text).toContain('href="/jobs/501/applications"');
+    expect(response.text).toContain('href="/jobs/501/edit"');
+    expect(response.text).toContain('action="/jobs/501/renew"');
+    expect(response.text).toContain('action="/jobs/501/delete"');
+    expect(response.text).toContain('Load more');
+    expect(response.text).toContain('cursor=next-postings');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from my job postings before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/mine');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-style create job form for signed-in users', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/create')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(200);
+    expect(api.callJobApi).not.toHaveBeenCalled();
+    expect(response.text).toContain('Post an opportunity');
+    expect(response.text).toContain('Share a paid role, volunteer role or time-credit exchange with the community.');
+    expect(response.text).toContain('action="/jobs"');
+    expect(response.text).toContain('name="title"');
+    expect(response.text).toContain('A short, clear role title.');
+    expect(response.text).toContain('name="description"');
+    expect(response.text).toContain('Describe the role, what is involved and who it suits.');
+    expect(response.text).toContain('name="type"');
+    expect(response.text).toContain('Volunteer');
+    expect(response.text).toContain('name="commitment"');
+    expect(response.text).toContain('name="is_remote"');
+    expect(response.text).toContain('This opportunity can be done remotely');
+    expect(response.text).toContain('name="salary_negotiable"');
+    expect(response.text).toContain('Publish now');
+    expect(response.text).toContain('Save as draft');
+    expect(response.text).toContain('Post opportunity');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from the create job form', async () => {
+    const response = await request(app).get('/jobs/create');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+  });
+
   it('renders the Blade-style volunteering opportunity detail page from the Laravel volunteering contract', async () => {
     const api = require('../src/lib/api');
     api.getVolunteerOpportunity.mockResolvedValueOnce({

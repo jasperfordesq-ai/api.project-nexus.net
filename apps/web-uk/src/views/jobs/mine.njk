@@ -1,0 +1,121 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">Project NEXUS Accessible</span>
+  <h1 class="govuk-heading-xl">My postings</h1>
+  <p class="govuk-body-l">Manage the opportunities you have posted.</p>
+
+  <div class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4">
+    <h2 class="govuk-tabs__title">Jobs</h2>
+    <ul class="govuk-tabs__list">
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs">Browse opportunities</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/saved">Saved</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/applications">My applications</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/responses">Responses</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/alerts">Job alerts</a>
+      </li>
+      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+        <a class="govuk-tabs__tab" href="/jobs/mine" aria-current="page">My postings</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/jobs/create">Post a job</a>
+      </li>
+    </ul>
+  </div>
+
+  {% if successMessage %}
+    {% set notificationMessage = successMessage %}
+    {% set notificationType = "success" %}
+    {% include "partials/notification-banner.njk" %}
+  {% endif %}
+
+  {% if errorMessage %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-list govuk-error-summary__list">
+            <li>{{ errorMessage }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if loadError %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">Your postings could not be loaded. Try again.</p>
+    </div>
+  {% endif %}
+
+  <div class="nexus-alpha-actions govuk-!-margin-bottom-6">
+    <a class="govuk-button" data-module="govuk-button" href="/jobs/create">Post an opportunity</a>
+    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/jobs/employer-onboarding">Employer onboarding</a>
+  </div>
+
+  {% if jobs.length == 0 %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">You have not posted any opportunities yet.</p>
+      <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link" href="/jobs/employer-onboarding">Employer onboarding</a></p>
+    </div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for job in jobs %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-module-row">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+              <a class="govuk-link" href="/jobs/{{ job.id }}">{{ job.title }}</a>
+            </h2>
+            <strong class="govuk-tag govuk-tag--blue">{{ job.statusLabel }}</strong>
+          </div>
+
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">
+            {{ job.viewsLabel }} &middot; {{ job.applicationsLabel }}
+          </p>
+
+          <div class="nexus-alpha-actions govuk-!-margin-bottom-2">
+            <a class="govuk-link" href="/jobs/{{ job.id }}/applications">Manage applications</a>
+            <a class="govuk-link" href="/jobs/{{ job.id }}/edit">Edit</a>
+          </div>
+
+          <div class="nexus-alpha-actions">
+            <form method="post" action="/jobs/{{ job.id }}/renew" class="nexus-alpha-linkform">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Renew</button>
+            </form>
+            <form method="post" action="/jobs/{{ job.id }}/delete" class="nexus-alpha-linkform">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Delete</button>
+            </form>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if jobsMeta.has_more and nextHref %}
+      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Pagination">
+        <div class="govuk-pagination__next">
+          <a class="govuk-link govuk-pagination__link" rel="next" href="{{ nextHref }}">
+            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-visually-hidden">:</span>
+            <span class="govuk-pagination__link-label">More results</span>
+          </a>
+        </div>
+      </nav>
+    {% endif %}
+  {% endif %}
+{% endblock %}

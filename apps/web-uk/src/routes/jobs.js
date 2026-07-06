@@ -62,6 +62,12 @@ const JOB_APPLICATION_LABELS = {
   rejected: 'Not selected',
   withdrawn: 'Withdrawn'
 };
+const JOB_POSTING_STATUS_LABELS = {
+  open: 'Open',
+  draft: 'Draft',
+  closed: 'Closed',
+  filled: 'Filled'
+};
 
 router.use(requireAuth);
 
@@ -246,6 +252,17 @@ function applicationsHref(filters, cursor) {
   });
 }
 
+function myPostingsPath(cursor) {
+  return queryPath('/my-postings', {
+    per_page: JOBS_PER_PAGE,
+    cursor: cursor || null
+  });
+}
+
+function myPostingsHref(cursor) {
+  return queryPath('/jobs/mine', { cursor: cursor || null });
+}
+
 function formatDateLong(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -330,7 +347,8 @@ function decorateJob(job) {
     isFeatured: checked(job.is_featured || job.isFeatured),
     hasApplied: checked(job.has_applied || job.hasApplied),
     isSaved: checked(job.is_saved || job.isSaved),
-    isRemote: checked(job.is_remote)
+    isRemote: checked(job.is_remote),
+    statusLabel: JOB_POSTING_STATUS_LABELS[job.status] || trimmed(job.status) || JOB_POSTING_STATUS_LABELS.open
   };
 }
 
@@ -360,9 +378,19 @@ function statusMessage(status) {
     saved: 'Opportunity saved.',
     unsaved: 'Opportunity removed from your saved list.',
     withdrawn: 'Your application has been withdrawn.',
+    deleted: 'The opportunity has been deleted.',
     created: 'Opportunity created.',
     updated: 'Opportunity updated.',
     renewed: 'Opportunity renewed.'
+  };
+
+  return messages[status] || '';
+}
+
+function statusErrorMessage(status) {
+  const messages = {
+    'delete-failed': 'We could not delete the opportunity. Please try again.',
+    'create-failed': 'The opportunity could not be saved. Check the details and try again.'
   };
 
   return messages[status] || '';
@@ -531,6 +559,46 @@ router.get('/applications', asyncRoute(async (req, res) => {
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
+}));
+
+router.get('/mine', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const cursor = trimmed(req.query.cursor, 500);
+  let result = null;
+  let loadError = false;
+
+  try {
+    result = await callJob(token, 'GET', myPostingsPath(cursor));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = true;
+  }
+
+  const jobs = collectionItems(result).map(decorateJob);
+  const jobsMeta = collectionMeta(result, { offset: 0 });
+
+  return res.render('jobs/mine', {
+    title: 'My postings',
+    activeNav: 'explore',
+    jobs,
+    jobsMeta,
+    nextHref: jobsMeta.has_more && jobsMeta.cursor ? myPostingsHref(jobsMeta.cursor) : '',
+    status: req.query.status || '',
+    successMessage: statusMessage(req.query.status),
+    errorMessage: statusErrorMessage(req.query.status),
+    loadError,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/create', (req, res) => res.render('jobs/form', {
+  title: 'Post an opportunity',
+  activeNav: 'explore',
+  formMode: 'create',
+  formAction: '/jobs',
+  jobForm: {},
+  jobFormErrors: [],
+  csrfToken: req.csrfToken ? req.csrfToken() : ''
 }));
 
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
