@@ -1002,6 +1002,23 @@ async function checkSavedItem(token, itemType, itemId) {
   });
 }
 
+async function getSavedCollections(token) {
+  return request('/api/v2/me/collections', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getSavedCollectionItems(token, id, params = {}) {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+  const queryString = query.toString();
+
+  return request(`/api/v2/me/collections/${encodeURIComponent(id)}/items${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function sendAppreciation(token, data) {
   return request('/api/v2/appreciations', {
     method: 'POST',
@@ -2703,6 +2720,8 @@ module.exports = {
   saveSavedItem,
   checkSavedItem,
   unsaveSavedItem,
+  getSavedCollections,
+  getSavedCollectionItems,
   sendAppreciation,
   reactToAppreciation,
   getResources,

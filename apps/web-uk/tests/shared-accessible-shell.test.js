@@ -115,6 +115,8 @@ jest.mock('../src/lib/api', () => ({
   downloadResource: jest.fn(),
   deleteResource: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   reorderResources: jest.fn().mockResolvedValue({ data: { message: 'reordered' } }),
+  getSavedCollections: jest.fn().mockResolvedValue({ data: [] }),
+  getSavedCollectionItems: jest.fn().mockResolvedValue({ data: { items: [], collection: null } }),
   createSavedCollection: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   updateSavedCollection: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   deleteSavedCollection: jest.fn().mockResolvedValue({}),
@@ -260,6 +262,8 @@ describe('shared accessible frontend shell', () => {
     api.downloadResource.mockReset();
     api.deleteResource.mockReset().mockResolvedValue({ data: { deleted: true } });
     api.reorderResources.mockReset().mockResolvedValue({ data: { message: 'reordered' } });
+    api.getSavedCollections.mockReset().mockResolvedValue({ data: [] });
+    api.getSavedCollectionItems.mockReset().mockResolvedValue({ data: { items: [], collection: null } });
     api.createSavedCollection.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.updateSavedCollection.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedCollection.mockReset().mockResolvedValue({});
@@ -2475,6 +2479,118 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/saved?status=bookmark-removed');
     expect(api.unsaveSavedItem).toHaveBeenCalledWith('test-token', 'listing', 42);
+  });
+
+  it('redirects signed-out visitors away from Laravel saved collection GET pages before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+
+    const index = await request(app).get('/me/collections');
+    const detail = await request(app).get('/me/collections/12');
+
+    expect(index.status).toBe(302);
+    expect(index.headers.location).toBe('/login?status=auth-required');
+    expect(detail.status).toBe(302);
+    expect(detail.headers.location).toBe('/login?status=auth-required');
+    expect(api.getSavedCollections).not.toHaveBeenCalled();
+    expect(api.getSavedCollectionItems).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed saved collection list and detail pages', async () => {
+    const api = require('../src/lib/api');
+    api.getSavedCollections.mockResolvedValue({
+      data: [
+        {
+          id: 12,
+          user_id: 101,
+          name: 'Skills to learn',
+          description: 'Courses and resources for later.',
+          color: '#0b7285',
+          items_count: 2,
+          is_public: true
+        },
+        {
+          id: 13,
+          user_id: 101,
+          name: 'Private planning',
+          description: '',
+          color: 'not-a-colour',
+          items_count: 0,
+          is_public: false
+        }
+      ]
+    });
+    api.getSavedCollectionItems.mockResolvedValue({
+      data: {
+        collection: {
+          id: 12,
+          user_id: 101,
+          name: 'Skills to learn',
+          description: 'Courses and resources for later.',
+          color: '#0b7285',
+          items_count: 2,
+          is_public: true
+        },
+        items: [
+          {
+            id: 99,
+            item_type: 'listing',
+            item_id: 42,
+            note: 'Ask about weekend availability.',
+            saved_at: '2026-07-05T10:30:00Z',
+            preview: { title: 'Garden tools offer' }
+          },
+          {
+            id: 100,
+            item_type: 'resource',
+            item_id: 7,
+            note: '',
+            saved_at: '',
+            preview_title: 'Safeguarding handbook'
+          }
+        ]
+      },
+      meta: { current_page: 1, last_page: 2, total: 2, per_page: 1 }
+    });
+
+    const index = await request(app)
+      .get('/me/collections?status=collection-created')
+      .set('Cookie', signedCookieHeader());
+    const detail = await request(app)
+      .get('/me/collections/12?page=1&status=item-removed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(index.status).toBe(200);
+    expect(index.text).toContain('My collections');
+    expect(index.text).toContain('Your saved collections at');
+    expect(index.text).toContain('Group the listings, posts, events and other items you have saved into collections.');
+    expect(index.text).toContain('Collection created.');
+    expect(index.text).toContain('Skills to learn');
+    expect(index.text).toContain('Courses and resources for later.');
+    expect(index.text).toContain('2 items');
+    expect(index.text).toContain('Public');
+    expect(index.text).toContain('Private planning');
+    expect(index.text).toContain('Private');
+    expect(index.text).toContain('method="post" action="/me/collections"');
+    expect(index.text).toContain('name="is_public"');
+    expect(index.text).not.toContain('shared accessible frontend preparation page');
+
+    expect(detail.status).toBe(200);
+    expect(detail.text).toContain('href="/me/collections"');
+    expect(detail.text).toContain('Skills to learn');
+    expect(detail.text).toContain('Item removed from the collection.');
+    expect(detail.text).toContain('Garden tools offer');
+    expect(detail.text).toContain('Listing');
+    expect(detail.text).toContain('Ask about weekend availability.');
+    expect(detail.text).toContain('Safeguarding handbook');
+    expect(detail.text).toContain('Resource');
+    expect(detail.text).toContain('method="post" action="/me/collections/12/items/99/remove"');
+    expect(detail.text).toContain('method="post" action="/me/collections/12/update"');
+    expect(detail.text).toContain('method="post" action="/me/collections/12/delete"');
+    expect(detail.text).toContain('href="/me/collections/12?page=2"');
+    expect(detail.text).not.toContain('shared accessible frontend preparation page');
+
+    expect(api.getSavedCollections).toHaveBeenCalledWith('test-token');
+    expect(api.getSavedCollectionItems).toHaveBeenCalledWith('test-token', 12, { page: 1, per_page: 20 });
   });
 
   it('submits the Laravel saved collection create route through the collections API helper', async () => {

@@ -87,10 +87,16 @@ The protected wallet module exposes a no-JS `/wallet/donate` form and POST route
 against Laravel `/api/v2/wallet/donate` with the same donation status keys.
 Saved-item removal and appreciation send/react POST aliases are also wired to
 Laravel `/api/v2/me/saved-items` and `/api/v2/appreciations`.
+Saved-collection GET list/detail pages now redirect unsigned visitors to
+`/login?status=auth-required`, read Laravel `/api/v2/me/collections` and
+`/api/v2/me/collections/{id}/items`, and render Blade-style collection cards,
+item cards, pagination, create/edit/delete, and remove-item controls.
 Saved-collection create/update/delete and item-remove POST aliases are wired to
 Laravel `/api/v2/me/collections` and `/api/v2/me/saved-items/{id}` while keeping
 Laravel status redirects such as `collection-created`, `collection-updated`,
-`collection-deleted`, and `item-removed`.
+`collection-deleted`, and `item-removed`. Public collection viewing,
+appreciation-wall GET depth, tenant routing, localization, runtime smoke tests,
+and ASP.NET backend compatibility are not certified.
 Match-dismiss POST aliases are wired to Laravel `/api/v2/matches/{id}/dismiss`
 for both `/matches/{id}/dismiss` and `/matches/board/{listingId}/dismiss`,
 including the board `source` redirect and `#matches-top` fragment.
