@@ -449,4 +449,28 @@ describe('API Request Functions', () => {
       );
     });
   });
+
+  describe('resetPassword', () => {
+    it('should call the Laravel reset-password endpoint with confirmation', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { message: 'reset' } })
+      });
+
+      await api.resetPassword('reset-token', 'correct horse battery staple', 'correct horse battery staple');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/auth/reset-password',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            token: 'reset-token',
+            password: 'correct horse battery staple',
+            password_confirmation: 'correct horse battery staple'
+          })
+        })
+      );
+    });
+  });
 });

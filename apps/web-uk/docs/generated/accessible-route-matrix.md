@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T08:08:45.625Z
+Generated: 2026-07-06T08:16:46.822Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 397 |
-| Matched routes | 315 |
-| Missing routes | 293 |
+| web-uk routes | 400 |
+| Matched routes | 318 |
+| Missing routes | 290 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -53,7 +53,7 @@ Generated: 2026-07-06T08:08:45.625Z
 | leaderboard | 5 | 0 | 0 |
 | legal | 6 | 0 | 0 |
 | listings | 11 | 8 | 1 |
-| login | 4 | 3 | 0 |
+| login | 6 | 1 | 0 |
 | logout | 1 | 0 | 1 |
 | marketplace | 23 | 25 | 0 |
 | matches | 2 | 2 | 0 |
@@ -65,7 +65,7 @@ Generated: 2026-07-06T08:08:45.625Z
 | notifications | 4 | 2 | 0 |
 | onboarding | 2 | 2 | 0 |
 | organisations | 7 | 2 | 0 |
-| password | 1 | 1 | 0 |
+| password | 2 | 0 | 0 |
 | podcasts | 6 | 8 | 0 |
 | polls | 6 | 7 | 0 |
 | premium | 3 | 3 | 0 |
@@ -246,9 +246,7 @@ Generated: 2026-07-06T08:08:45.625Z
 | POST | `/listings/{param}/save` | listings | saveListing |  | auth-optional | module:listings |
 | POST | `/listings/{param}/unsave` | listings | unsaveListing |  | auth-optional | module:listings |
 | POST | `/listings/generate-description` | listings | listingsGenerateDescription |  | auth-optional | module:listings |
-| POST | `/login/forgot-password` | login | sendPasswordReset |  | public-or-unknown |  |
 | POST | `/login/resend-verification` | login | resendVerification |  | public-or-unknown |  |
-| POST | `/login/two-factor` | login | storeTwoFactor |  | public-or-unknown |  |
 | POST | `/marketplace/{param}/buy` | marketplace | commerceStoreBuy |  | auth-optional | feature:marketplace |
 | POST | `/marketplace/{param}/delete` | marketplace | commerceDeleteListing |  | auth-optional | feature:marketplace |
 | POST | `/marketplace/{param}/offer` | marketplace | commerceStoreOffer |  | auth-optional | feature:marketplace |
@@ -303,7 +301,6 @@ Generated: 2026-07-06T08:08:45.625Z
 | POST | `/onboarding/avatar` | onboarding | onboardingAvatar |  | auth-optional |  |
 | POST | `/organisations` | organisations | storeOrganisation |  | public-or-unknown | feature:volunteering |
 | POST | `/organisations/register` | organisations | organisationsRegister |  | auth-optional | feature:volunteering |
-| POST | `/password/reset` | password | storeResetPassword |  | public-or-unknown |  |
 | POST | `/podcasts/{param}/subscribe` | podcasts | podcastSubscribe |  | auth-optional | feature:podcasts |
 | POST | `/podcasts/studio/{param}/delete` | podcasts | commerceDeletePodcast |  | auth-optional | feature:podcasts |
 | POST | `/podcasts/studio/{param}/episodes` | podcasts | commerceStorePodcastEpisode |  | auth-optional | feature:podcasts |

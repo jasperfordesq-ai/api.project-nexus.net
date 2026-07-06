@@ -85,12 +85,12 @@ router.post('/login', asyncRoute(async (req, res) => {
 }));
 
 // 2FA verification
-router.post('/verify-2fa', asyncRoute(async (req, res) => {
+async function handleTwoFactorPost(req, res) {
   const { code } = req.body;
   const pendingToken = req.session?.pending2faToken;
 
   if (!pendingToken) {
-    return res.redirect('/login');
+    return res.redirect('/login?status=two-factor-expired');
   }
 
   if (!code || !code.trim()) {
@@ -125,7 +125,20 @@ router.post('/verify-2fa', asyncRoute(async (req, res) => {
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
-}));
+}
+
+router.get('/login/two-factor', redirectIfAuthenticated, (req, res) => {
+  res.render('login', {
+    title: 'Two-factor authentication',
+    show2fa: true,
+    error: req.query.status ? 'Enter your authentication code' : '',
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
+    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
+  });
+});
+
+router.post('/verify-2fa', asyncRoute(handleTwoFactorPost));
+router.post('/login/two-factor', asyncRoute(handleTwoFactorPost));
 
 // Cloudflare Turnstile siteverify. Returns true when the env secret is
 // unset (dev mode) so local dev keeps working without Cloudflare.
@@ -352,17 +365,25 @@ router.get('/logout', asyncRoute(async (req, res) => {
 }));
 
 // Forgot password
-router.get('/forgot-password', redirectIfAuthenticated, (req, res) => {
+function renderForgotPassword(req, res) {
+  const status = req.query.status || '';
   res.render('forgot-password', {
     title: 'Reset your password',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null,
+    successMessage: status === 'forgot-sent'
+      ? 'If an account exists with this email, we have sent password reset instructions.'
+      : (req.flash ? req.flash('success')[0] : null),
+    formAction: req.path === '/login/forgot-password' ? '/login/forgot-password' : '/forgot-password',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
-});
+}
 
-router.post('/forgot-password', asyncRoute(async (req, res) => {
+router.get('/forgot-password', redirectIfAuthenticated, renderForgotPassword);
+router.get('/login/forgot-password', redirectIfAuthenticated, renderForgotPassword);
+
+async function handleForgotPasswordPost(req, res) {
   const { email, tenant_slug } = req.body;
+  const formAction = req.path === '/login/forgot-password' ? '/login/forgot-password' : '/forgot-password';
 
   // Turnstile gate intentionally removed from forgot-password (2026-05-15).
   // It was silently rejecting legitimate reset requests, so users saw the
@@ -388,6 +409,7 @@ router.post('/forgot-password', asyncRoute(async (req, res) => {
       errors,
       fieldErrors,
       values: { email, tenant_slug },
+      formAction,
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
@@ -407,26 +429,36 @@ router.post('/forgot-password', asyncRoute(async (req, res) => {
   if (req.flash) {
     req.flash('success', 'If an account exists with this email, we have sent password reset instructions.');
   }
-  res.redirect('/forgot-password');
-}));
+  res.redirect(req.path === '/login/forgot-password' ? '/login/forgot-password?status=forgot-sent' : '/forgot-password');
+}
+
+router.post('/forgot-password', asyncRoute(handleForgotPasswordPost));
+router.post('/login/forgot-password', asyncRoute(handleForgotPasswordPost));
 
 // Reset password (with token from email)
-router.get('/reset-password', redirectIfAuthenticated, (req, res) => {
+function renderResetPassword(req, res) {
   const { token } = req.query;
 
   if (!token) {
-    return res.redirect('/forgot-password');
+    return res.redirect(req.path === '/password/reset' ? '/login/forgot-password' : '/forgot-password');
   }
 
   res.render('reset-password', {
     title: 'Set a new password',
     resetToken: token,
+    formAction: req.path === '/password/reset' ? '/password/reset' : '/reset-password',
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
-});
+}
 
-router.post('/reset-password', asyncRoute(async (req, res) => {
-  const { token, password, confirm_password } = req.body;
+router.get('/reset-password', redirectIfAuthenticated, renderResetPassword);
+router.get('/password/reset', redirectIfAuthenticated, renderResetPassword);
+
+async function handleResetPasswordPost(req, res) {
+  const token = req.body.token;
+  const password = req.body.password;
+  const confirmPassword = req.body.password_confirmation || req.body.confirm_password;
+  const formAction = req.path === '/password/reset' ? '/password/reset' : '/reset-password';
 
   const errors = [];
   const fieldErrors = {};
@@ -443,9 +475,9 @@ router.post('/reset-password', asyncRoute(async (req, res) => {
     fieldErrors.password = 'Password must be at least 8 characters';
   }
 
-  if (password !== confirm_password) {
-    errors.push({ text: 'Passwords do not match', href: '#confirm_password' });
-    fieldErrors.confirm_password = 'Passwords do not match';
+  if (password !== confirmPassword) {
+    errors.push({ text: 'Passwords do not match', href: '#password_confirmation' });
+    fieldErrors.password_confirmation = 'Passwords do not match';
   }
 
   if (errors.length > 0) {
@@ -454,12 +486,13 @@ router.post('/reset-password', asyncRoute(async (req, res) => {
       errors,
       fieldErrors,
       resetToken: token,
+      formAction,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
 
   try {
-    await resetPassword(token, password);
+    await resetPassword(token, password, confirmPassword);
 
     if (req.flash) {
       req.flash('success', 'Your password has been reset. Please sign in with your new password.');
@@ -481,10 +514,14 @@ router.post('/reset-password', asyncRoute(async (req, res) => {
       errors: [{ text: errorMessage }],
       fieldErrors: {},
       resetToken: token,
+      formAction,
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
   }
-}));
+}
+
+router.post('/reset-password', asyncRoute(handleResetPasswordPost));
+router.post('/password/reset', asyncRoute(handleResetPasswordPost));
 
 module.exports = router;

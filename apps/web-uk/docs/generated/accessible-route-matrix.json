@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T08:08:45.625Z",
+    "generatedAt": "2026-07-06T08:16:46.822Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 397,
-    "matchedRoutes": 315,
-    "missingRoutes": 293,
+    "webUkRoutes": 400,
+    "matchedRoutes": 318,
+    "missingRoutes": 290,
     "extraWebUkRoutes": 83,
     "familyCounts": {
       "admin": {
@@ -280,8 +280,8 @@
         "extraWebUk": 0
       },
       "login": {
-        "matched": 4,
-        "missing": 3,
+        "matched": 6,
+        "missing": 1,
         "extraWebUk": 0
       },
       "marketplace": {
@@ -325,8 +325,8 @@
         "extraWebUk": 0
       },
       "password": {
-        "matched": 1,
-        "missing": 1,
+        "matched": 2,
+        "missing": 0,
         "extraWebUk": 0
       },
       "podcasts": {
@@ -5373,7 +5373,7 @@
       "apiNeeds": "",
       "webUkPath": "/login/forgot-password",
       "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -5392,7 +5392,7 @@
       "apiNeeds": "",
       "webUkPath": "/login/two-factor",
       "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "POST",
@@ -5410,6 +5410,44 @@
       "gates": "",
       "apiNeeds": "api:AuthController::login",
       "webUkPath": "/login",
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/login/forgot-password",
+      "family": "login",
+      "status": "matched",
+      "laravelRouteName": "login.forgot.store",
+      "laravelHandler": "sendPasswordReset",
+      "laravelView": "",
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
+      "laravelMiddleware": "'throttle:5,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "yes",
+      "gates": "",
+      "apiNeeds": "api:PasswordResetController::forgotPassword",
+      "webUkPath": "/login/forgot-password",
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/login/two-factor",
+      "family": "login",
+      "status": "matched",
+      "laravelRouteName": "login.twofactor.store",
+      "laravelHandler": "storeTwoFactor",
+      "laravelView": "",
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
+      "laravelMiddleware": "'throttle:10,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "yes",
+      "gates": "",
+      "apiNeeds": "api:TotpController::verify",
+      "webUkPath": "/login/two-factor",
       "webUkView": "",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
@@ -6494,7 +6532,26 @@
       "apiNeeds": "",
       "webUkPath": "/password/reset",
       "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/password/reset",
+      "family": "password",
+      "status": "matched",
+      "laravelRouteName": "password.reset.store",
+      "laravelHandler": "storeResetPassword",
+      "laravelView": "",
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
+      "laravelMiddleware": "'throttle:5,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "yes",
+      "gates": "",
+      "apiNeeds": "api:PasswordResetController::resetPassword",
+      "webUkPath": "/password/reset",
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
     {
       "method": "GET",
@@ -10811,25 +10868,6 @@
     },
     {
       "method": "POST",
-      "path": "/login/forgot-password",
-      "family": "login",
-      "status": "missing",
-      "laravelRouteName": "login.forgot.store",
-      "laravelHandler": "sendPasswordReset",
-      "laravelView": "",
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
-      "laravelMiddleware": "'throttle:5,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "yes",
-      "gates": "",
-      "apiNeeds": "api:PasswordResetController::forgotPassword",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
       "path": "/login/resend-verification",
       "family": "login",
       "status": "missing",
@@ -10843,25 +10881,6 @@
       "tenantScoped": "yes",
       "gates": "",
       "apiNeeds": "api:EmailVerificationController::resendVerificationByEmail",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/login/two-factor",
-      "family": "login",
-      "status": "missing",
-      "laravelRouteName": "login.twofactor.store",
-      "laravelHandler": "storeTwoFactor",
-      "laravelView": "",
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
-      "laravelMiddleware": "'throttle:10,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "yes",
-      "gates": "",
-      "apiNeeds": "api:TotpController::verify",
       "webUkPath": "",
       "webUkView": "",
       "webUkFile": ""
@@ -11888,25 +11907,6 @@
       "tenantScoped": "yes",
       "gates": "feature:volunteering",
       "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/password/reset",
-      "family": "password",
-      "status": "missing",
-      "laravelRouteName": "password.reset.store",
-      "laravelHandler": "storeResetPassword",
-      "laravelView": "",
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
-      "laravelMiddleware": "'throttle:5,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "yes",
-      "gates": "",
-      "apiNeeds": "api:PasswordResetController::resetPassword",
       "webUkPath": "",
       "webUkView": "",
       "webUkFile": ""

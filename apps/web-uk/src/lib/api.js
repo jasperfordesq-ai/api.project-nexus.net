@@ -150,12 +150,13 @@ async function forgotPassword(email, tenantSlug) {
   });
 }
 
-async function resetPassword(token, newPassword) {
+async function resetPassword(token, password, passwordConfirmation = password) {
   return request('/api/auth/reset-password', {
     method: 'POST',
     body: JSON.stringify({
       token,
-      new_password: newPassword
+      password,
+      password_confirmation: passwordConfirmation
     })
   });
 }

@@ -958,12 +958,18 @@ app.get('/service-unavailable', (req, res) => {
 // Auth routes (with stricter rate limiting on POST)
 app.get('/login', authRoutes);
 app.post('/login', authLimiter, doubleCsrfProtection, authRoutes);
+app.get('/login/two-factor', authRoutes);
+app.post('/login/two-factor', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/register', authRoutes);
 app.post('/register', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/logout', authRoutes);
 app.post('/logout', doubleCsrfProtection, authRoutes);
+app.get('/login/forgot-password', authRoutes);
+app.post('/login/forgot-password', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/forgot-password', authRoutes);
 app.post('/forgot-password', authLimiter, doubleCsrfProtection, authRoutes);
+app.get('/password/reset', authRoutes);
+app.post('/password/reset', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/reset-password', authRoutes);
 app.post('/reset-password', authLimiter, doubleCsrfProtection, authRoutes);
 app.post('/verify-2fa', authLimiter, doubleCsrfProtection, authRoutes);

@@ -32,6 +32,9 @@ jest.mock('../src/lib/api', () => ({
   },
   login: jest.fn(),
   register: jest.fn(),
+  forgotPassword: jest.fn().mockResolvedValue({}),
+  resetPassword: jest.fn().mockResolvedValue({}),
+  verify2fa: jest.fn(),
   validateToken: jest.fn(),
   getProfile: jest.fn(),
   getListings: jest.fn(),
@@ -78,6 +81,9 @@ describe('shared accessible frontend shell', () => {
     api.submitSupportReport.mockReset().mockResolvedValue({
       data: { report: { reference: 'NXR-260706-ABC123' } }
     });
+    api.forgotPassword.mockReset().mockResolvedValue({});
+    api.resetPassword.mockReset().mockResolvedValue({});
+    api.verify2fa.mockReset();
   });
 
   it('renders the Laravel-style accessible shell on the home page', async () => {
@@ -307,6 +313,90 @@ describe('shared accessible frontend shell', () => {
     expect(follow.text).toContain('Enter a summary between 3 and 180 characters');
     expect(follow.text).toContain('Enter details between 10 and 5000 characters');
     expect(follow.text).toContain('Select how this affects you');
+  });
+
+  it('serves the Laravel forgot-password alias with a matching form action', async () => {
+    const response = await request(app).get('/login/forgot-password');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Reset your password');
+    expect(response.text).toContain('method="post" action="/login/forgot-password"');
+    expect(response.text).toContain('name="_csrf"');
+  });
+
+  it('submits the Laravel forgot-password alias through the existing reset API helper', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/login/forgot-password');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/login/forgot-password')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        email: 'ada@example.org',
+        tenant_slug: 'acme'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login/forgot-password?status=forgot-sent');
+    expect(api.forgotPassword).toHaveBeenCalledWith('ada@example.org', 'acme');
+  });
+
+  it('serves the Laravel reset-password alias with a matching form action', async () => {
+    const response = await request(app).get('/password/reset?token=reset-token');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Set a new password');
+    expect(response.text).toContain('method="post" action="/password/reset"');
+    expect(response.text).toContain('name="token" value="reset-token"');
+    expect(response.text).toContain('name="password_confirmation"');
+  });
+
+  it('submits the Laravel reset-password alias with confirmation', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/password/reset?token=reset-token');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/password/reset')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        token: 'reset-token',
+        password: 'correct horse battery staple',
+        password_confirmation: 'correct horse battery staple'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.resetPassword).toHaveBeenCalledWith(
+      'reset-token',
+      'correct horse battery staple',
+      'correct horse battery staple'
+    );
+  });
+
+  it('serves the Laravel two-factor alias and preserves expired-session redirects', async () => {
+    const agent = request.agent(app);
+    const getResponse = await agent.get('/login/two-factor');
+
+    expect(getResponse.status).toBe(200);
+    expect(getResponse.text).toContain('name="code"');
+
+    const csrfMatch = getResponse.text.match(/name="_csrf" value="([^"]+)"/);
+    const postResponse = await agent
+      .post('/login/two-factor')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        code: '123456'
+      });
+
+    expect(postResponse.status).toBe(302);
+    expect(postResponse.headers.location).toBe('/login?status=two-factor-expired');
   });
 
   it('renders the Laravel-style cookie banner until a cookie choice has been made', async () => {
