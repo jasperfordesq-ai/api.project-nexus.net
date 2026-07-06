@@ -56,6 +56,7 @@ const achievementsRoutes = require('./routes/achievements');
 const resourcesRoutes = require('./routes/resources');
 const blogPostRoutes = require('./routes/blog-posts');
 const pollActionRoutes = require('./routes/poll-actions');
+const clubsRoutes = require('./routes/clubs');
 const podcastRoutes = require('./routes/podcasts');
 const podcastActionRoutes = require('./routes/podcast-actions');
 const federationRoutes = require('./routes/federation');
@@ -1060,6 +1061,7 @@ app.use('/premium', doubleCsrfProtection, postOnly(formLimiter), premiumRoutes);
 app.use('/federation', federationRoutes);
 app.use('/blog', doubleCsrfProtection, postOnly(formLimiter), blogPostRoutes);
 app.use('/polls', doubleCsrfProtection, postOnly(formLimiter), pollActionRoutes);
+app.use('/clubs', doubleCsrfProtection, postOnly(formLimiter), clubsRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {

@@ -63,6 +63,7 @@ jest.mock('../src/lib/api', () => ({
   getComments: jest.fn().mockResolvedValue({ data: { comments: [], count: 0 } }),
   getReactionSummary: jest.fn().mockResolvedValue({ data: { counts: {}, total: 0, user_reaction: null } }),
   getReactors: jest.fn().mockResolvedValue({ data: [], meta: { total: 0, has_more: false, page: 1 } }),
+  getClubs: jest.fn().mockResolvedValue({ data: [] }),
   getGoals: jest.fn(),
   getGoal: jest.fn(),
   callGoalApi: jest.fn().mockResolvedValue({ data: { id: 42, action: 'liked' } }),
@@ -227,6 +228,7 @@ describe('shared accessible frontend shell', () => {
     api.getComments.mockReset().mockResolvedValue({ data: { comments: [], count: 0 } });
     api.getReactionSummary.mockReset().mockResolvedValue({ data: { counts: {}, total: 0, user_reaction: null } });
     api.getReactors.mockReset().mockResolvedValue({ data: [], meta: { total: 0, has_more: false, page: 1 } });
+    api.getClubs.mockReset().mockResolvedValue({ data: [] });
     api.getPolls.mockReset().mockResolvedValue({ data: [] });
     api.getPoll.mockReset().mockResolvedValue({ data: { id: 42, question: 'Which project?' } });
     api.getPollCategories.mockReset().mockResolvedValue({ data: [] });
@@ -4906,6 +4908,53 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/notifications?status=all-notifications-deleted');
     expect(api.deleteAllNotifications).toHaveBeenCalledWith('test-token');
+  });
+
+  it('renders the Laravel-backed clubs directory for signed-in members', async () => {
+    const staticPageRoutes = require('../src/routes/static-pages');
+    const api = require('../src/lib/api');
+
+    api.getClubs.mockResolvedValue({
+      data: [
+        {
+          id: 7,
+          name: 'Velo Club',
+          description: 'Sunday cycling tours around the lake for new and experienced riders.',
+          logo_url: '/storage/velo-club.png',
+          contact_email: 'chair@example.test',
+          website: 'velo.example.test',
+          meeting_schedule: 'Sundays at 9am',
+          member_count: 24
+        }
+      ],
+      meta: { total: 1, page: 1, per_page: 50 }
+    });
+
+    const unsigned = await request(app).get('/clubs');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/clubs?q=velo')
+      .set('Cookie', signedCookieHeader());
+
+    expect(staticPageRoutes.pages['/clubs']).toBeUndefined();
+    expect(api.getClubs).toHaveBeenCalledWith({ search: 'velo', per_page: 50 });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Clubs');
+    expect(response.text).toContain('Clubs and associations organised within your community.');
+    expect(response.text).toContain('Find a club');
+    expect(response.text).toContain('value="velo"');
+    expect(response.text).toContain('Velo Club');
+    expect(response.text).toContain('24 members');
+    expect(response.text).toContain('Sunday cycling tours around the lake');
+    expect(response.text).toContain('Sundays at 9am');
+    expect(response.text).toContain('mailto:chair@example.test');
+    expect(response.text).toContain('href="https://velo.example.test"');
+    expect(response.text).toContain('opens in new tab');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(response.text).not.toContain('Club pages will follow the Laravel accessible frontend contract.');
   });
 
   it('renders the Blade-style organisations directory and registration form as a local candidate', async () => {

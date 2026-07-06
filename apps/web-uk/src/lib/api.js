@@ -395,6 +395,18 @@ async function getVolunteerOrganisations(params = {}) {
   return request(endpoint);
 }
 
+async function getClubs(params = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/clubs${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint);
+}
+
 async function getVolunteeringOpportunities(params = {}) {
   const query = new URLSearchParams();
   if (params.search) query.set('search', params.search);
@@ -2266,6 +2278,7 @@ module.exports = {
   callListingApi,
   // Laravel volunteering
   getVolunteerOrganisations,
+  getClubs,
   getVolunteeringOpportunities,
   getVolunteerOrganisation,
   getVolunteerOpportunity,
