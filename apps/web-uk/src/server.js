@@ -46,6 +46,7 @@ const premiumRoutes = require('./routes/premium');
 const achievementsRoutes = require('./routes/achievements');
 const resourcesRoutes = require('./routes/resources');
 const blogPostRoutes = require('./routes/blog-posts');
+const pollActionRoutes = require('./routes/poll-actions');
 const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
@@ -1109,6 +1110,7 @@ app.use('/reviews', doubleCsrfProtection, postOnly(formLimiter), reviewsRoutes);
 app.use('/admin', doubleCsrfProtection, adminRoutes);
 app.use('/resources', doubleCsrfProtection, postOnly(formLimiter), resourcesRoutes);
 app.use('/blog', doubleCsrfProtection, postOnly(formLimiter), blogPostRoutes);
+app.use('/polls', doubleCsrfProtection, postOnly(formLimiter), pollActionRoutes);
 app.use(doubleCsrfProtection, postOnly(formLimiter), savedSocialRoutes);
 app.use(laravelPrepRoutes);
 

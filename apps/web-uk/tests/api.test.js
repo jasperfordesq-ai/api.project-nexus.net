@@ -1334,6 +1334,181 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel poll helpers', () => {
+    it('should fetch polls through the Laravel v2 endpoint with supported filters', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [] })
+      });
+
+      await api.getPolls('test-token', {
+        status: 'open',
+        limit: 30,
+        cursor: 'abc',
+        mine: true,
+        category: 'local',
+        event_id: 5
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/polls?status=open&per_page=30&cursor=abc&mine=1&category=local&event_id=5',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should fetch a poll by ID through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42 } })
+      });
+
+      await api.getPoll('test-token', 42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/polls/42',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should create a poll through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42 } })
+      });
+
+      await api.createPoll('test-token', {
+        question: 'Which project?',
+        poll_type: 'standard',
+        options: ['Garden', 'Cafe']
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/polls',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            question: 'Which project?',
+            poll_type: 'standard',
+            options: ['Garden', 'Cafe']
+          })
+        })
+      );
+    });
+
+    it('should vote on a poll through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42 } })
+      });
+
+      await api.votePoll('test-token', 42, { option_id: 7 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/polls/42/vote',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ option_id: 7 })
+        })
+      );
+    });
+
+    it('should submit ranked poll choices through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { ranked_results: [] } })
+      });
+
+      await api.rankPoll('test-token', 42, {
+        rankings: [
+          { option_id: 9, rank: 1 },
+          { option_id: 8, rank: 2 }
+        ]
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/polls/42/rank',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            rankings: [
+              { option_id: 9, rank: 1 },
+              { option_id: 8, rank: 2 }
+            ]
+          })
+        })
+      );
+    });
+
+    it('should delete a poll through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { deleted: true } })
+      });
+
+      await api.deletePoll('test-token', 42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/polls/42',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should toggle a polymorphic feed like through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { action: 'liked' } })
+      });
+
+      await api.toggleFeedLike('test-token', {
+        target_type: 'poll',
+        target_id: 42
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/feed/like',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            target_type: 'poll',
+            target_id: 42
+          })
+        })
+      );
+    });
+  });
+
   describe('Laravel resource helpers', () => {
     it('should fetch resources through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

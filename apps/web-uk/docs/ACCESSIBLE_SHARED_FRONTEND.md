@@ -113,6 +113,10 @@ Blog POST aliases are wired to Laravel v2 blog/comment/reaction APIs for
 post comments, comment-thread replies, post likes/reactions, and comment
 update/delete/reactions while preserving Laravel post and comment-thread status
 anchors.
+Poll POST aliases are wired to Laravel v2 poll/comment/feed-like APIs for
+standard and ranked poll creation, votes, ranked votes, poll deletion, comments,
+and likes while preserving Laravel poll, poll detail, ranked-vote, and manage
+status redirects.
 The member onboarding POST aliases now cover `/onboarding/{step}` and
 `/onboarding/avatar`: profile saves bio through the profile API, interests and
 skills are held in the Express session, safeguarding uses Laravel's Blade-style
@@ -187,8 +191,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 452 `apps/web-uk` route declarations, 370 exact
-method/path matches, 238 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 459 `apps/web-uk` route declarations, 377 exact
+method/path matches, 231 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

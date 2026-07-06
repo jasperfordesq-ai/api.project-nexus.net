@@ -49,9 +49,12 @@ jest.mock('../src/lib/api', () => ({
   getJobs: jest.fn(),
   getJob: jest.fn(),
   applyForJob: jest.fn(),
-  getPolls: jest.fn(),
-  getPoll: jest.fn(),
-  votePoll: jest.fn(),
+  getPolls: jest.fn().mockResolvedValue({ data: [] }),
+  getPoll: jest.fn().mockResolvedValue({ data: { id: 42, question: 'Which project?' } }),
+  createPoll: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  deletePoll: jest.fn().mockResolvedValue({}),
+  votePoll: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  rankPoll: jest.fn().mockResolvedValue({ data: { ranked_results: [] } }),
   getBalance: jest.fn(),
   donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
@@ -76,6 +79,7 @@ jest.mock('../src/lib/api', () => ({
   updateComment: jest.fn().mockResolvedValue({ data: { id: 12, content: 'Updated' } }),
   deleteComment: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   toggleReaction: jest.fn().mockResolvedValue({ data: { action: 'added' } }),
+  toggleFeedLike: jest.fn().mockResolvedValue({ data: { action: 'liked' } }),
   saveSavedSearch: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   deleteSavedSearch: jest.fn().mockResolvedValue({ deleted: true }),
   runSavedSearch: jest.fn().mockResolvedValue({ data: { query_params: { q: 'gardening' } } }),
@@ -163,6 +167,13 @@ describe('shared accessible frontend shell', () => {
     api.toggleReaction.mockReset().mockResolvedValue({ data: { action: 'added' } });
     api.getBlogPosts.mockReset().mockResolvedValue({ data: [] });
     api.getBlogPost.mockReset().mockResolvedValue({ data: { id: 42, slug: 'community-news', title: 'Community news' } });
+    api.getPolls.mockReset().mockResolvedValue({ data: [] });
+    api.getPoll.mockReset().mockResolvedValue({ data: { id: 42, question: 'Which project?' } });
+    api.createPoll.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.deletePoll.mockReset().mockResolvedValue({});
+    api.votePoll.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.rankPoll.mockReset().mockResolvedValue({ data: { ranked_results: [] } });
+    api.toggleFeedLike.mockReset().mockResolvedValue({ data: { action: 'liked' } });
     api.saveSavedSearch.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedSearch.mockReset().mockResolvedValue({ deleted: true });
     api.runSavedSearch.mockReset().mockResolvedValue({ data: { query_params: { q: 'gardening' } } });
@@ -2185,6 +2196,233 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getBlogPost).not.toHaveBeenCalled();
     expect(api.createComment).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel poll store route through the v2 polls API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/polls')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        question: ' Which project next? ',
+        description: ' Community choice ',
+        options: ['Garden', 'Cafe'],
+        poll_type: 'multiple',
+        expires_at: '2026-08-01',
+        is_anonymous: 'on'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/polls?status=poll-created');
+    expect(api.createPoll).toHaveBeenCalledWith('test-token', {
+      question: 'Which project next?',
+      poll_type: 'multiple',
+      options: ['Garden', 'Cafe'],
+      description: 'Community choice',
+      expires_at: '2026-08-01',
+      is_anonymous: true
+    });
+  });
+
+  it('submits the Laravel poll vote route through the v2 vote API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/polls/42/vote')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        option_id: '7'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/polls?status=voted#poll-42');
+    expect(api.votePoll).toHaveBeenCalledWith('test-token', 42, { option_id: 7 });
+  });
+
+  it('submits the Laravel parity poll create route with ranked poll metadata', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/polls/parity/create')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        question: ' Rank the ideas ',
+        description: ' Choose an order ',
+        options: ['Library', 'Market'],
+        poll_type: 'ranked',
+        category: 'local',
+        expires_at: '2026-08-15'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/polls/parity/create?status=poll-created');
+    expect(api.createPoll).toHaveBeenCalledWith('test-token', {
+      question: 'Rank the ideas',
+      poll_type: 'ranked',
+      options: ['Library', 'Market'],
+      description: 'Choose an order',
+      expires_at: '2026-08-15',
+      category: 'local'
+    });
+  });
+
+  it('submits the Laravel ranked poll route through the v2 rank API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/polls/42/rank')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        'rank[8]': '2',
+        'rank[9]': '1'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/polls/42/rank?status=ranked');
+    expect(api.rankPoll).toHaveBeenCalledWith('test-token', 42, {
+      rankings: [
+        { option_id: 9, rank: 1 },
+        { option_id: 8, rank: 2 }
+      ]
+    });
+  });
+
+  it('submits the Laravel parity poll delete route through the v2 polls API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/polls/42/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/polls/parity/manage?status=poll-deleted');
+    expect(api.deletePoll).toHaveBeenCalledWith('test-token', 42);
+  });
+
+  it('submits the Laravel poll comment route through the comments API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/polls/42/comment')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        content: ' Helpful choice ',
+        parent_id: '5'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/polls/42?status=poll-comment-created#poll-comments');
+    expect(api.createComment).toHaveBeenCalledWith('test-token', {
+      target_type: 'poll',
+      target_id: 42,
+      content: 'Helpful choice',
+      parent_id: 5
+    });
+  });
+
+  it('submits the Laravel poll like route through the v2 feed like API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/polls/42/like')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/polls/42?status=poll-liked#poll-social');
+    expect(api.toggleFeedLike).toHaveBeenCalledWith('test-token', {
+      target_type: 'poll',
+      target_id: 42
+    });
+  });
+
+  it('redirects signed-out Laravel poll action submissions to the auth-required status', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/polls/42/vote')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        option_id: '7'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.votePoll).not.toHaveBeenCalled();
   });
 
   it('submits the Laravel reviews store route through the v2 reviews API helper', async () => {

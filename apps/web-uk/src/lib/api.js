@@ -533,6 +533,59 @@ async function getBlogPost(token = '', slug) {
   return request(`/api/v2/blog/${encodeURIComponent(slug)}`, { headers });
 }
 
+async function getPolls(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.set('status', params.status);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.user_id) query.set('user_id', params.user_id);
+  if (params.mine) query.set('mine', '1');
+  if (params.category) query.set('category', params.category);
+  if (params.event_id) query.set('event_id', params.event_id);
+
+  const queryString = query.toString();
+  return request(`/api/v2/polls${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getPoll(token, id) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function createPoll(token, data) {
+  return request('/api/v2/polls', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function deletePoll(token, id) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function votePoll(token, id, data) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function rankPoll(token, id, data) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}/rank`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function dismissMatch(token, id, reason) {
   return request(`/api/v2/matches/${encodeURIComponent(id)}/dismiss`, {
     method: 'POST',
@@ -1093,6 +1146,14 @@ async function unlikeFeedPost(token, postId) {
   return request(`/api/feed/${encodeURIComponent(postId)}/like`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function toggleFeedLike(token, data) {
+  return request('/api/v2/feed/like', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
   });
 }
 
@@ -1661,6 +1722,12 @@ module.exports = {
   deleteSavedItem,
   getBlogPosts,
   getBlogPost,
+  getPolls,
+  getPoll,
+  createPoll,
+  deletePoll,
+  votePoll,
+  rankPoll,
   dismissMatch,
   performExchangeAction,
   rateExchange,
@@ -1734,6 +1801,7 @@ module.exports = {
   deleteFeedPost,
   likeFeedPost,
   unlikeFeedPost,
+  toggleFeedLike,
   getFeedComments,
   addFeedComment,
   deleteFeedComment,

@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T10:15:54.682Z
+Generated: 2026-07-06T10:27:35.424Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 452 |
-| Matched routes | 370 |
-| Missing routes | 238 |
+| web-uk routes | 459 |
+| Matched routes | 377 |
+| Missing routes | 231 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -67,7 +67,7 @@ Generated: 2026-07-06T10:15:54.682Z
 | organisations | 9 | 0 | 0 |
 | password | 2 | 0 | 0 |
 | podcasts | 6 | 8 | 0 |
-| polls | 6 | 7 | 0 |
+| polls | 13 | 0 | 0 |
 | premium | 6 | 0 | 0 |
 | privacy | 0 | 0 | 1 |
 | profile | 5 | 16 | 2 |
@@ -275,13 +275,6 @@ Generated: 2026-07-06T10:15:54.682Z
 | POST | `/podcasts/studio/{param}/publish` | podcasts | commercePublishPodcast |  | auth-optional | feature:podcasts |
 | POST | `/podcasts/studio/{param}/update` | podcasts | commerceUpdatePodcast |  | auth-optional | feature:podcasts |
 | POST | `/podcasts/studio/new` | podcasts | commerceStorePodcast |  | auth-optional | feature:podcasts |
-| POST | `/polls` | polls | storePoll |  | auth-optional | feature:polls |
-| POST | `/polls/{param}/comment` | polls | gamificationPollComment |  | public-or-unknown |  |
-| POST | `/polls/{param}/delete` | polls | gamificationDeletePoll |  | public-or-unknown |  |
-| POST | `/polls/{param}/like` | polls | gamificationPollLike |  | public-or-unknown |  |
-| POST | `/polls/{param}/rank` | polls | gamificationStoreRankedVote |  | public-or-unknown |  |
-| POST | `/polls/{param}/vote` | polls | storePollVote |  | auth-optional | feature:polls |
-| POST | `/polls/parity/create` | polls | gamificationStorePoll |  | public-or-unknown |  |
 | POST | `/profile/data-export` | profile | requestDataExport |  | auth-optional |  |
 | POST | `/profile/delete-account` | profile | deleteAccount |  | auth-optional |  |
 | POST | `/profile/email` | profile | updateProfileEmail |  | auth-optional |  |
