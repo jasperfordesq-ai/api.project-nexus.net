@@ -269,6 +269,30 @@ async function updateProfile(token, data) {
   });
 }
 
+async function getOnboardingStatus(token) {
+  return request('/api/v2/onboarding/status', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getOnboardingConfig(token) {
+  return request('/api/v2/onboarding/config', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getOnboardingCategories(token) {
+  return request('/api/v2/onboarding/categories', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getOnboardingSafeguardingOptions(token) {
+  return request('/api/v2/onboarding/safeguarding-options', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function saveOnboardingSafeguarding(token, preferences) {
   return request('/api/v2/onboarding/safeguarding', {
     method: 'POST',
@@ -2181,6 +2205,10 @@ module.exports = {
   // Users
   getProfile,
   updateProfile,
+  getOnboardingStatus,
+  getOnboardingConfig,
+  getOnboardingCategories,
+  getOnboardingSafeguardingOptions,
   saveOnboardingSafeguarding,
   completeOnboarding,
   getUsers,

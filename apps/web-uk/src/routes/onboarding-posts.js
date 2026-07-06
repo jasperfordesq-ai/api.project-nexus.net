@@ -4,9 +4,13 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { requireAuth } = require('../middleware/auth');
 const {
+  getProfile,
   updateProfile,
+  getOnboardingStatus,
+  getOnboardingConfig,
+  getOnboardingCategories,
+  getOnboardingSafeguardingOptions,
   saveOnboardingSafeguarding,
   completeOnboarding,
   ApiError
@@ -23,10 +27,78 @@ function getBag(req) {
   return req.session[SESSION_KEY];
 }
 
+function tokenFrom(req) {
+  return (req.signedCookies && req.signedCookies.token) || '';
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')
+    ? result.data
+    : result;
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
 function asArray(value) {
   if (Array.isArray(value)) return value;
   if (value === undefined || value === null || value === '') return [];
   return [value];
+}
+
+function normalizeSteps(rawSteps) {
+  const steps = asArray(rawSteps)
+    .map((step) => {
+      const item = asObject(step);
+      const slug = String(item.slug || '').trim();
+      if (!DEFAULT_STEPS.includes(slug)) return null;
+      return {
+        slug,
+        label: String(item.label || slug),
+        required: Object.prototype.hasOwnProperty.call(item, 'required') ? Boolean(item.required) : true
+      };
+    })
+    .filter(Boolean);
+
+  return steps.length
+    ? steps
+    : DEFAULT_STEPS.map((slug) => ({ slug, label: slug, required: true }));
+}
+
+function normalizeCategory(category) {
+  const item = asObject(category);
+  return {
+    id: Number(item.id) || 0,
+    name: String(item.name || '').trim()
+  };
+}
+
+function normalizeSafeguardingOption(option) {
+  const item = asObject(option);
+  return {
+    id: Number(item.id) || 0,
+    option_key: String(item.option_key || '').trim(),
+    option_type: String(item.option_type || 'checkbox').trim() || 'checkbox',
+    label: String(item.label || '').trim(),
+    description: String(item.description || '').trim(),
+    help_url: String(item.help_url || '').trim(),
+    select_options: item.select_options && typeof item.select_options === 'object' ? item.select_options : {},
+    is_required: Boolean(item.is_required)
+  };
+}
+
+function statusBanner(status) {
+  const messages = {
+    'bio-too-short': { type: 'error', anchor: 'bio', message: 'Please add a short bio before continuing.' },
+    'avatar-required': { type: 'error', anchor: 'avatar', message: 'Please add a profile photo before continuing.' },
+    'avatar-failed': { type: 'error', anchor: 'avatar', message: 'We could not upload that photo. Please try again.' },
+    'safeguarding-failed': { type: 'error', anchor: null, message: 'We could not save your answers. Please try again.' },
+    'complete-failed': { type: 'error', anchor: null, message: 'Something went wrong. Please try again.' },
+    'avatar-saved': { type: 'success', message: 'Your photo has been uploaded.' }
+  };
+
+  return messages[String(status || '').trim()] || null;
 }
 
 function collectIds(value) {
@@ -102,11 +174,95 @@ function completeFailureRedirect(error) {
   return '/onboarding/confirm?status=complete-failed';
 }
 
-router.post('/avatar', requireAuth, (req, res) => {
+router.get('/', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect('/login?status=auth-required');
+
+  let status;
+  let configData;
+  try {
+    status = asObject(dataFrom(await getOnboardingStatus(token)));
+    if (status.onboarding_completed) return res.redirect('/dashboard');
+    configData = asObject(dataFrom(await getOnboardingConfig(token)));
+  } catch (error) {
+    if (isAuthError(error)) return res.redirect('/login?status=auth-required');
+    throw error;
+  }
+
+  const steps = normalizeSteps(configData.steps);
+  return res.redirect(`/onboarding/${steps[0]?.slug || 'confirm'}`);
+}));
+
+router.get('/:step([a-z]+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect('/login?status=auth-required');
+
+  const step = String(req.params.step || '');
+  let status;
+  let configData;
+  let categories = [];
+  let safeguardingOptions = [];
+  let onboardingUser = {};
+
+  try {
+    status = asObject(dataFrom(await getOnboardingStatus(token)));
+    if (status.onboarding_completed) return res.redirect('/dashboard');
+
+    configData = asObject(dataFrom(await getOnboardingConfig(token)));
+    const steps = normalizeSteps(configData.steps);
+    const slugs = steps.map((item) => item.slug);
+    if (!slugs.includes(step)) {
+      return res.redirect('/onboarding');
+    }
+
+    if (['interests', 'skills'].includes(step)) {
+      categories = asArray(dataFrom(await getOnboardingCategories(token))).map(normalizeCategory).filter((item) => item.id && item.name);
+    }
+
+    if (step === 'safeguarding') {
+      safeguardingOptions = asArray(dataFrom(await getOnboardingSafeguardingOptions(token)))
+        .map(normalizeSafeguardingOption)
+        .filter((item) => item.id && item.label);
+    }
+
+    if (['profile', 'confirm'].includes(step)) {
+      onboardingUser = asObject(dataFrom(await getProfile(token)));
+    }
+
+    const stepIndex = slugs.indexOf(step);
+    return res.render('onboarding/index', {
+      title: 'Set up your profile',
+      activeNav: 'dashboard',
+      step,
+      steps,
+      stepIndex,
+      stepNumber: stepIndex + 1,
+      totalSteps: steps.length,
+      stepRequired: Boolean(steps[stepIndex]?.required),
+      config: asObject(configData.config),
+      bag: getBag(req),
+      categories,
+      safeguardingOptions,
+      onboardingUser,
+      statusBanner: statusBanner(req.query && req.query.status)
+    });
+  } catch (error) {
+    if (isAuthError(error)) return res.redirect('/login?status=auth-required');
+    throw error;
+  }
+}));
+
+router.post('/avatar', (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect('/login?status=auth-required');
   res.redirect('/onboarding/profile?status=avatar-failed');
 });
 
-router.post('/:step([a-z]+)', requireAuth, asyncRoute(async (req, res) => {
+router.post('/:step([a-z]+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect('/login?status=auth-required');
+  req.token = token;
+
   const step = String(req.params.step || '');
   if (!DEFAULT_STEPS.includes(step)) {
     return res.redirect('/onboarding');

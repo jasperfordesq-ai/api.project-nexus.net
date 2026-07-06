@@ -39,6 +39,10 @@ jest.mock('../src/lib/api', () => ({
   validateToken: jest.fn(),
   getProfile: jest.fn(),
   updateProfile: jest.fn().mockResolvedValue({}),
+  getOnboardingStatus: jest.fn().mockResolvedValue({ data: { onboarding_completed: false } }),
+  getOnboardingConfig: jest.fn().mockResolvedValue({ data: { config: {}, steps: [] } }),
+  getOnboardingCategories: jest.fn().mockResolvedValue({ data: [] }),
+  getOnboardingSafeguardingOptions: jest.fn().mockResolvedValue({ data: [] }),
   saveOnboardingSafeguarding: jest.fn().mockResolvedValue({}),
   completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
   getUser: jest.fn(),
@@ -256,6 +260,10 @@ describe('shared accessible frontend shell', () => {
       meta: { total: 0, has_more: false, offset: 0, per_page: 12 }
     });
     api.getJob.mockReset().mockResolvedValue({ data: null });
+    api.getOnboardingStatus.mockReset().mockResolvedValue({ data: { onboarding_completed: false } });
+    api.getOnboardingConfig.mockReset().mockResolvedValue({ data: { config: {}, steps: [] } });
+    api.getOnboardingCategories.mockReset().mockResolvedValue({ data: [] });
+    api.getOnboardingSafeguardingOptions.mockReset().mockResolvedValue({ data: [] });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -1623,13 +1631,141 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('does not certify ASP.NET route or workflow');
   });
 
-  it('serves a Laravel route preparation page for missing GET routes', async () => {
-    const response = await request(app).get('/onboarding');
+  it('renders the Laravel-backed member onboarding wizard', async () => {
+    const api = require('../src/lib/api');
 
-    expect(response.status).toBe(200);
-    expect(response.text).toContain('Onboarding');
-    expect(response.text).toContain('Laravel Blade route');
-    expect(response.text).toContain('does not certify ASP.NET route or workflow');
+    api.getOnboardingStatus.mockResolvedValue({
+      data: {
+        onboarding_completed: false,
+        has_avatar: true,
+        has_bio: true,
+        interests: [2]
+      }
+    });
+    api.getOnboardingConfig.mockResolvedValue({
+      data: {
+        config: {
+          bio_required: true,
+          bio_min_length: 20,
+          avatar_required: true
+        },
+        steps: [
+          { slug: 'welcome', label: 'Welcome', required: true },
+          { slug: 'profile', label: 'Profile', required: true },
+          { slug: 'interests', label: 'Interests', required: true },
+          { slug: 'skills', label: 'Skills', required: true },
+          { slug: 'safeguarding', label: 'Safeguarding', required: false },
+          { slug: 'confirm', label: 'Confirm', required: true }
+        ]
+      }
+    });
+    api.getProfile.mockResolvedValue({
+      id: 42,
+      name: 'Test Member',
+      avatar_url: '/avatars/member.jpg',
+      bio: 'I can help with gardening and repairs.'
+    });
+    api.getOnboardingCategories.mockResolvedValue({
+      data: [
+        { id: 2, name: 'Gardening' },
+        { id: 3, name: 'Repairs' }
+      ]
+    });
+    api.getOnboardingSafeguardingOptions.mockResolvedValue({
+      data: [
+        {
+          id: 9,
+          option_key: 'disability',
+          option_type: 'checkbox',
+          label: 'I have access needs',
+          description: 'Tell coordinators if you need extra support.',
+          help_url: 'https://example.test/help',
+          is_required: false,
+          select_options: []
+        },
+        {
+          id: 10,
+          option_key: 'contact_preference',
+          option_type: 'select',
+          label: 'Preferred contact',
+          description: 'Choose how coordinators should contact you.',
+          select_options: { phone: 'Phone', email: 'Email' }
+        },
+        {
+          id: 11,
+          option_key: 'none_apply',
+          option_type: 'checkbox',
+          label: 'None of these apply to me'
+        }
+      ]
+    });
+
+    const unsigned = await request(app).get('/onboarding');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const entry = await request(app)
+      .get('/onboarding')
+      .set('Cookie', signedCookieHeader());
+
+    expect(entry.status).toBe(302);
+    expect(entry.headers.location).toBe('/onboarding/welcome');
+
+    const profile = await request(app)
+      .get('/onboarding/profile?status=bio-too-short')
+      .set('Cookie', signedCookieHeader());
+
+    expect(profile.status).toBe(200);
+    expect(api.getOnboardingStatus).toHaveBeenCalledWith('test-token');
+    expect(api.getOnboardingConfig).toHaveBeenCalledWith('test-token');
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(profile.text).toContain('Set up your profile');
+    expect(profile.text).toContain('Step 2 of 6');
+    expect(profile.text).toContain('Your profile');
+    expect(profile.text).toContain('Profile photo');
+    expect(profile.text).toContain('/avatars/member.jpg');
+    expect(profile.text).toContain('A sentence or two about yourself.');
+    expect(profile.text).toContain('Please add a short bio before continuing.');
+    expect(profile.text).toContain('method="post" action="/onboarding/avatar"');
+    expect(profile.text).toContain('enctype="multipart/form-data"');
+    expect(profile.text).toContain('method="post" action="/onboarding/profile"');
+    expect(profile.text).not.toContain('Laravel Blade route');
+
+    const interests = await request(app)
+      .get('/onboarding/interests')
+      .set('Cookie', signedCookieHeader());
+
+    expect(interests.status).toBe(200);
+    expect(api.getOnboardingCategories).toHaveBeenCalledWith('test-token');
+    expect(interests.text).toContain('Your interests');
+    expect(interests.text).toContain('id="interest-2" name="interests[]"');
+    expect(interests.text).toContain('Gardening');
+
+    const safeguarding = await request(app)
+      .get('/onboarding/safeguarding')
+      .set('Cookie', signedCookieHeader());
+
+    expect(safeguarding.status).toBe(200);
+    expect(api.getOnboardingSafeguardingOptions).toHaveBeenCalledWith('test-token');
+    expect(safeguarding.text).toContain('Safeguarding');
+    expect(safeguarding.text).toContain('I have access needs');
+    expect(safeguarding.text).toContain('Preferred contact');
+    expect(safeguarding.text).toContain('<option value="phone">Phone</option>');
+    expect(safeguarding.text).toContain('None of these apply to me');
+    expect(safeguarding.text).toContain('Skip for now');
+
+    const complete = await request(app)
+      .get('/onboarding/confirm')
+      .set('Cookie', signedCookieHeader());
+
+    expect(complete.status).toBe(200);
+    expect(complete.text).toContain('Check your answers');
+    expect(complete.text).toContain('Profile photo');
+    expect(complete.text).toContain('Added');
+    expect(complete.text).toContain('I can help with gardening and repairs.');
+    expect(complete.text).toContain('Finish and go to my dashboard');
+    expect(complete.text).not.toContain('Laravel Blade route');
   });
 
   it('submits the Laravel onboarding profile step through the profile API helper', async () => {
