@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
 using Nexus.Api.Tests.Fixtures;
 
@@ -343,6 +344,65 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         await AuthenticateAsMemberAsync();
 
         var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/admin/identity/audit-log")]
+    [InlineData("/api/v2/admin/identity/provider-health")]
+    [InlineData("/api/v2/admin/identity/sessions")]
+    [InlineData("/api/v2/admin/enterprise/dashboard")]
+    [InlineData("/api/v2/admin/enterprise/config")]
+    [InlineData("/api/v2/admin/moderation/queue")]
+    [InlineData("/api/v2/admin/moderation/stats")]
+    [InlineData("/api/v2/admin/tools/redirects")]
+    [InlineData("/api/v2/admin/tools/404-errors")]
+    [InlineData("/api/v2/admin/polls")]
+    [InlineData("/api/v2/admin/resources")]
+    [InlineData("/api/v2/admin/goals")]
+    [InlineData("/api/v2/admin/ideation")]
+    public async Task LaravelReactAdminOperationsV2ReadAliases_AsAdmin_AreRouted(string path)
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/connections")]
+    [InlineData("/api/v2/connections/pending")]
+    [InlineData("/api/v2/connections/suggestions")]
+    [InlineData("/api/v2/connections/status/me")]
+    [InlineData("/api/v2/bookmarks")]
+    [InlineData("/api/v2/bookmarks/status")]
+    [InlineData("/api/v2/gamification/daily-reward")]
+    [InlineData("/api/v2/gamification/seasons")]
+    [InlineData("/api/v2/me/verein-dues")]
+    public async Task LaravelReactSocialGamificationVereinV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/ads/impression")]
+    [InlineData("/api/v2/bookmarks")]
+    [InlineData("/api/v2/connections/request")]
+    [InlineData("/api/v2/gamification/daily-reward")]
+    public async Task LaravelReactSocialGamificationV2PostAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.PostAsJsonAsync(path, new { });
 
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);

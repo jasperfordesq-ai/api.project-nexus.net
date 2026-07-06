@@ -945,16 +945,22 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
         foreach (var prefix in new[]
         {
             "api/stories",
+            "api/users",
+            "api/connections",
             "api/exchanges",
             "api/group-exchanges",
             "api/messages",
             "api/polls",
             "api/members",
             "api/kb",
+            "api/bookmarks",
+            "api/gamification",
+            "api/ads/impression",
             "api/me/collections",
             "api/me/saved-items",
             "api/me/push-campaigns",
             "api/me/ad-campaigns",
+            "api/me/verein-dues",
             "api/comments",
             "api/resources",
             "api/group-chatrooms",
@@ -972,7 +978,15 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/admin/pages",
             "api/admin/federation",
             "api/admin/sso",
-            "api/admin/gamification"
+            "api/admin/gamification",
+            "api/admin/identity",
+            "api/admin/enterprise",
+            "api/admin/moderation",
+            "api/admin/tools",
+            "api/admin/polls",
+            "api/admin/resources",
+            "api/admin/goals",
+            "api/admin/ideation"
         })
         {
             if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))

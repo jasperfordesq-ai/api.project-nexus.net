@@ -110,6 +110,14 @@ function Get-AspNetV2AdminAlias {
         '/api/admin/safeguarding',
         '/api/admin/sso',
         '/api/admin/gamification',
+        '/api/admin/identity',
+        '/api/admin/enterprise',
+        '/api/admin/moderation',
+        '/api/admin/tools',
+        '/api/admin/polls',
+        '/api/admin/resources',
+        '/api/admin/goals',
+        '/api/admin/ideation',
         '/api/users',
         '/api/groups',
         '/api/jobs',
@@ -154,6 +162,10 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/users/me', '/api/v2/users/me'
     }
 
+    if ($normalized -eq '/api/users' -or $normalized.StartsWith('/api/users/')) {
+        return $normalized -replace '^/api/users', '/api/v2/users'
+    }
+
     if ($normalized -eq '/api/groups' -or $normalized.StartsWith('/api/groups/')) {
         return $normalized -replace '^/api/groups', '/api/v2/groups'
     }
@@ -186,6 +198,10 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/volunteering', '/api/v2/volunteering'
     }
 
+    if ($normalized -eq '/api/connections' -or $normalized.StartsWith('/api/connections/')) {
+        return $normalized -replace '^/api/connections', '/api/v2/connections'
+    }
+
     if ($normalized -eq '/api/stories' -or $normalized.StartsWith('/api/stories/')) {
         return $normalized -replace '^/api/stories', '/api/v2/stories'
     }
@@ -214,6 +230,18 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/kb', '/api/v2/kb'
     }
 
+    if ($normalized -eq '/api/bookmarks' -or $normalized.StartsWith('/api/bookmarks/')) {
+        return $normalized -replace '^/api/bookmarks', '/api/v2/bookmarks'
+    }
+
+    if ($normalized -eq '/api/gamification' -or $normalized.StartsWith('/api/gamification/')) {
+        return $normalized -replace '^/api/gamification', '/api/v2/gamification'
+    }
+
+    if ($normalized -eq '/api/ads/impression' -or $normalized.StartsWith('/api/ads/impression/')) {
+        return $normalized -replace '^/api/ads/impression', '/api/v2/ads/impression'
+    }
+
     if ($normalized -eq '/api/me/collections' -or $normalized.StartsWith('/api/me/collections/')) {
         return $normalized -replace '^/api/me/collections', '/api/v2/me/collections'
     }
@@ -228,6 +256,10 @@ function Get-AspNetV2RouteAlias {
 
     if ($normalized -eq '/api/me/ad-campaigns' -or $normalized.StartsWith('/api/me/ad-campaigns/')) {
         return $normalized -replace '^/api/me/ad-campaigns', '/api/v2/me/ad-campaigns'
+    }
+
+    if ($normalized -eq '/api/me/verein-dues' -or $normalized.StartsWith('/api/me/verein-dues/')) {
+        return $normalized -replace '^/api/me/verein-dues', '/api/v2/me/verein-dues'
     }
 
     if ($normalized -eq '/api/comments' -or $normalized.StartsWith('/api/comments/')) {
@@ -300,6 +332,38 @@ function Get-AspNetV2RouteAlias {
 
     if ($normalized -eq '/api/admin/gamification' -or $normalized.StartsWith('/api/admin/gamification/')) {
         return $normalized -replace '^/api/admin/gamification', '/api/v2/admin/gamification'
+    }
+
+    if ($normalized -eq '/api/admin/identity' -or $normalized.StartsWith('/api/admin/identity/')) {
+        return $normalized -replace '^/api/admin/identity', '/api/v2/admin/identity'
+    }
+
+    if ($normalized -eq '/api/admin/enterprise' -or $normalized.StartsWith('/api/admin/enterprise/')) {
+        return $normalized -replace '^/api/admin/enterprise', '/api/v2/admin/enterprise'
+    }
+
+    if ($normalized -eq '/api/admin/moderation' -or $normalized.StartsWith('/api/admin/moderation/')) {
+        return $normalized -replace '^/api/admin/moderation', '/api/v2/admin/moderation'
+    }
+
+    if ($normalized -eq '/api/admin/tools' -or $normalized.StartsWith('/api/admin/tools/')) {
+        return $normalized -replace '^/api/admin/tools', '/api/v2/admin/tools'
+    }
+
+    if ($normalized -eq '/api/admin/polls' -or $normalized.StartsWith('/api/admin/polls/')) {
+        return $normalized -replace '^/api/admin/polls', '/api/v2/admin/polls'
+    }
+
+    if ($normalized -eq '/api/admin/resources' -or $normalized.StartsWith('/api/admin/resources/')) {
+        return $normalized -replace '^/api/admin/resources', '/api/v2/admin/resources'
+    }
+
+    if ($normalized -eq '/api/admin/goals' -or $normalized.StartsWith('/api/admin/goals/')) {
+        return $normalized -replace '^/api/admin/goals', '/api/v2/admin/goals'
+    }
+
+    if ($normalized -eq '/api/admin/ideation' -or $normalized.StartsWith('/api/admin/ideation/')) {
+        return $normalized -replace '^/api/admin/ideation', '/api/v2/admin/ideation'
     }
 
     return ''
