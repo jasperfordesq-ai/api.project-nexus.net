@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T09:18:38.610Z
+Generated: 2026-07-06T09:25:28.051Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 419 |
-| Matched routes | 337 |
-| Missing routes | 271 |
+| web-uk routes | 420 |
+| Matched routes | 338 |
+| Missing routes | 270 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -22,7 +22,7 @@ Generated: 2026-07-06T09:18:38.610Z
 | admin | 0 | 0 | 24 |
 | appreciations | 1 | 0 | 0 |
 | blog | 5 | 7 | 0 |
-| chat | 1 | 1 | 0 |
+| chat | 2 | 0 | 0 |
 | clubs | 1 | 0 | 0 |
 | components | 0 | 0 | 1 |
 | connections | 5 | 0 | 1 |
@@ -107,7 +107,6 @@ Generated: 2026-07-06T09:18:38.610Z
 | POST | `/blog/comments/{param}/delete` | blog | blogReviewsDeleteComment |  | auth-optional | feature:blog |
 | POST | `/blog/comments/{param}/react` | blog | blogReviewsCommentReaction |  | auth-optional | feature:blog |
 | POST | `/blog/comments/{param}/update` | blog | blogReviewsUpdateComment |  | auth-optional | feature:blog |
-| POST | `/chat` | chat | aiChatSend |  | auth-optional | feature:ai_chat |
 | POST | `/courses/{param}/enrol` | courses | enrolCourse |  | auth-optional | feature:courses |
 | POST | `/courses/{param}/lessons/{param}/complete` | courses | commerceCompleteLesson |  | auth-optional | feature:courses |
 | POST | `/courses/{param}/lessons/{param}/quiz` | courses | commerceCourseQuizSubmit |  | auth-optional | feature:courses |

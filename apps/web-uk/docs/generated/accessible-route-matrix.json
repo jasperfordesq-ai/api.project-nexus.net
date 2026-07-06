@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T09:18:38.610Z",
+    "generatedAt": "2026-07-06T09:25:28.051Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 419,
-    "matchedRoutes": 337,
-    "missingRoutes": 271,
+    "webUkRoutes": 420,
+    "matchedRoutes": 338,
+    "missingRoutes": 270,
     "extraWebUkRoutes": 83,
     "familyCounts": {
       "admin": {
@@ -170,8 +170,8 @@
         "extraWebUk": 0
       },
       "chat": {
-        "matched": 1,
-        "missing": 1,
+        "matched": 2,
+        "missing": 0,
         "extraWebUk": 0
       },
       "clubs": {
@@ -2315,6 +2315,25 @@
       "webUkPath": "/chat",
       "webUkView": "static-page",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
+    },
+    {
+      "method": "POST",
+      "path": "/chat",
+      "family": "chat",
+      "status": "matched",
+      "laravelRouteName": "chat.send",
+      "laravelHandler": "aiChatSend",
+      "laravelView": "",
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\aichat.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\AiChatParity.php",
+      "laravelMiddleware": "'throttle:20,1'",
+      "auth": "auth-optional",
+      "tenantScoped": "yes",
+      "gates": "feature:ai_chat",
+      "apiNeeds": "",
+      "webUkPath": "/chat",
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\ai-chat.js"
     },
     {
       "method": "GET",
@@ -8581,25 +8600,6 @@
       "auth": "auth-optional",
       "tenantScoped": "yes",
       "gates": "feature:blog",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/chat",
-      "family": "chat",
-      "status": "missing",
-      "laravelRouteName": "chat.send",
-      "laravelHandler": "aiChatSend",
-      "laravelView": "",
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\aichat.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\AiChatParity.php",
-      "laravelMiddleware": "'throttle:20,1'",
-      "auth": "auth-optional",
-      "tenantScoped": "yes",
-      "gates": "feature:ai_chat",
       "apiNeeds": "",
       "webUkPath": "",
       "webUkView": "",

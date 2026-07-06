@@ -824,6 +824,35 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel AI chat helpers', () => {
+    it('should send a chat message through the Laravel AI endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { conversation_id: 123 } })
+      });
+
+      await api.sendAiChat('test-token', {
+        message: 'Find me a gardener',
+        conversation_id: 44
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/ai/chat',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            message: 'Find me a gardener',
+            conversation_id: 44
+          })
+        })
+      );
+    });
+  });
+
   describe('Laravel onboarding helpers', () => {
     it('should save safeguarding preferences through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

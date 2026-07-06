@@ -506,6 +506,14 @@ async function rateExchange(token, id, data) {
   });
 }
 
+async function sendAiChat(token, data) {
+  return request('/api/ai/chat', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 // Messages
 async function getConversations(token) {
   return request('/api/messages', {
@@ -1413,6 +1421,7 @@ module.exports = {
   dismissMatch,
   performExchangeAction,
   rateExchange,
+  sendAiChat,
   // Messages
   getConversations,
   getConversation,

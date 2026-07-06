@@ -64,6 +64,7 @@ jest.mock('../src/lib/api', () => ({
   dismissMatch: jest.fn().mockResolvedValue({ data: { dismissed: true } }),
   performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   rateExchange: jest.fn().mockResolvedValue({ data: { ratings: [] } }),
+  sendAiChat: jest.fn().mockResolvedValue({ data: { conversation_id: 123 } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -120,6 +121,7 @@ describe('shared accessible frontend shell', () => {
     api.dismissMatch.mockReset().mockResolvedValue({ data: { dismissed: true } });
     api.performExchangeAction.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.rateExchange.mockReset().mockResolvedValue({ data: { ratings: [] } });
+    api.sendAiChat.mockReset().mockResolvedValue({ data: { conversation_id: 123 } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -1007,6 +1009,77 @@ describe('shared accessible frontend shell', () => {
       rating: 5,
       comment: 'Great exchange'
     });
+  });
+
+  it('submits the Laravel AI chat route through the chat API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/chat')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        message: ' Find me a gardener ',
+        conversation_id: '44'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/chat?c=123&status=sent');
+    expect(api.sendAiChat).toHaveBeenCalledWith('test-token', {
+      message: 'Find me a gardener',
+      conversation_id: 44
+    });
+  });
+
+  it('redirects empty Laravel AI chat submissions with the empty status', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/chat')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        message: '   '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/chat?status=empty');
+    expect(api.sendAiChat).not.toHaveBeenCalled();
+  });
+
+  it('redirects signed-out Laravel AI chat submissions to the auth-required status', async () => {
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/chat')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        message: 'Find me a gardener'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
   });
 
   it('submits the Laravel appreciation send route through the appreciations API helper', async () => {
