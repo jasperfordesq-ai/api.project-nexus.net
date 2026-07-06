@@ -954,13 +954,25 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/members",
             "api/kb",
             "api/bookmarks",
+            "api/bookmark-collections",
             "api/gamification",
             "api/ads/impression",
+            "api/ideation-categories",
+            "api/ideation-tags",
+            "api/legal",
+            "api/link-preview",
+            "api/newsletter/unsubscribe",
+            "api/reactions",
+            "api/reviews",
+            "api/shares",
             "api/me/collections",
             "api/me/saved-items",
             "api/me/push-campaigns",
             "api/me/ad-campaigns",
             "api/me/verein-dues",
+            "api/me/fadp",
+            "api/me/residency-verification",
+            "api/me/verein-invitations",
             "api/comments",
             "api/resources",
             "api/group-chatrooms",
@@ -986,7 +998,9 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/admin/polls",
             "api/admin/resources",
             "api/admin/goals",
-            "api/admin/ideation"
+            "api/admin/ideation",
+            "api/admin/events",
+            "api/admin/members"
         })
         {
             if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))

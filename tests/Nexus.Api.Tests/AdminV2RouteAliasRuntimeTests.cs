@@ -407,4 +407,81 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/admin/events")]
+    [InlineData("/api/v2/admin/members/inactive")]
+    public async Task LaravelReactAdminEventsMembersV2ReadAliases_AsAdmin_AreRouted(string path)
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/ideation-categories")]
+    [InlineData("/api/v2/ideation-tags")]
+    [InlineData("/api/v2/ideation-tags/popular")]
+    [InlineData("/api/v2/bookmark-collections")]
+    [InlineData("/api/v2/link-preview?url=https%3A%2F%2Fexample.com")]
+    [InlineData("/api/v2/reactions/post/42")]
+    [InlineData("/api/v2/reviews/pending")]
+    [InlineData("/api/v2/reviews/user/1")]
+    [InlineData("/api/v2/me/fadp/consent-history")]
+    [InlineData("/api/v2/me/residency-verification")]
+    [InlineData("/api/v2/me/verein-invitations")]
+    public async Task LaravelReactMemberUtilityV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/newsletter/unsubscribe")]
+    [InlineData("/api/v2/legal/acceptance/status")]
+    public async Task LaravelReactPublicUtilityV2ReadAliases_AreRouted(string path)
+    {
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/ideation-categories")]
+    [InlineData("/api/v2/ideation-tags")]
+    [InlineData("/api/v2/bookmark-collections")]
+    [InlineData("/api/v2/link-preview")]
+    [InlineData("/api/v2/reactions")]
+    [InlineData("/api/v2/reviews")]
+    [InlineData("/api/v2/shares")]
+    [InlineData("/api/v2/me/fadp/consent")]
+    [InlineData("/api/v2/me/residency-verification")]
+    public async Task LaravelReactMemberUtilityV2PostAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.PostAsJsonAsync(path, new { });
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/newsletter/unsubscribe")]
+    [InlineData("/api/v2/legal/acceptance/accept-all")]
+    public async Task LaravelReactPublicUtilityV2PostAliases_AreRouted(string path)
+    {
+        var response = await Client.PostAsJsonAsync(path, new { });
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }

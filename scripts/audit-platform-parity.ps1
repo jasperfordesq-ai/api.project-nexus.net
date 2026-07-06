@@ -118,6 +118,8 @@ function Get-AspNetV2AdminAlias {
         '/api/admin/resources',
         '/api/admin/goals',
         '/api/admin/ideation',
+        '/api/admin/events',
+        '/api/admin/members',
         '/api/users',
         '/api/groups',
         '/api/jobs',
@@ -234,12 +236,48 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/bookmarks', '/api/v2/bookmarks'
     }
 
+    if ($normalized -eq '/api/bookmark-collections' -or $normalized.StartsWith('/api/bookmark-collections/')) {
+        return $normalized -replace '^/api/bookmark-collections', '/api/v2/bookmark-collections'
+    }
+
     if ($normalized -eq '/api/gamification' -or $normalized.StartsWith('/api/gamification/')) {
         return $normalized -replace '^/api/gamification', '/api/v2/gamification'
     }
 
     if ($normalized -eq '/api/ads/impression' -or $normalized.StartsWith('/api/ads/impression/')) {
         return $normalized -replace '^/api/ads/impression', '/api/v2/ads/impression'
+    }
+
+    if ($normalized -eq '/api/ideation-categories' -or $normalized.StartsWith('/api/ideation-categories/')) {
+        return $normalized -replace '^/api/ideation-categories', '/api/v2/ideation-categories'
+    }
+
+    if ($normalized -eq '/api/ideation-tags' -or $normalized.StartsWith('/api/ideation-tags/')) {
+        return $normalized -replace '^/api/ideation-tags', '/api/v2/ideation-tags'
+    }
+
+    if ($normalized -eq '/api/legal' -or $normalized.StartsWith('/api/legal/')) {
+        return $normalized -replace '^/api/legal', '/api/v2/legal'
+    }
+
+    if ($normalized -eq '/api/link-preview' -or $normalized.StartsWith('/api/link-preview/')) {
+        return $normalized -replace '^/api/link-preview', '/api/v2/link-preview'
+    }
+
+    if ($normalized -eq '/api/newsletter/unsubscribe' -or $normalized.StartsWith('/api/newsletter/unsubscribe/')) {
+        return $normalized -replace '^/api/newsletter/unsubscribe', '/api/v2/newsletter/unsubscribe'
+    }
+
+    if ($normalized -eq '/api/reactions' -or $normalized.StartsWith('/api/reactions/')) {
+        return $normalized -replace '^/api/reactions', '/api/v2/reactions'
+    }
+
+    if ($normalized -eq '/api/reviews' -or $normalized.StartsWith('/api/reviews/')) {
+        return $normalized -replace '^/api/reviews', '/api/v2/reviews'
+    }
+
+    if ($normalized -eq '/api/shares' -or $normalized.StartsWith('/api/shares/')) {
+        return $normalized -replace '^/api/shares', '/api/v2/shares'
     }
 
     if ($normalized -eq '/api/me/collections' -or $normalized.StartsWith('/api/me/collections/')) {
@@ -260,6 +298,18 @@ function Get-AspNetV2RouteAlias {
 
     if ($normalized -eq '/api/me/verein-dues' -or $normalized.StartsWith('/api/me/verein-dues/')) {
         return $normalized -replace '^/api/me/verein-dues', '/api/v2/me/verein-dues'
+    }
+
+    if ($normalized -eq '/api/me/fadp' -or $normalized.StartsWith('/api/me/fadp/')) {
+        return $normalized -replace '^/api/me/fadp', '/api/v2/me/fadp'
+    }
+
+    if ($normalized -eq '/api/me/residency-verification' -or $normalized.StartsWith('/api/me/residency-verification/')) {
+        return $normalized -replace '^/api/me/residency-verification', '/api/v2/me/residency-verification'
+    }
+
+    if ($normalized -eq '/api/me/verein-invitations' -or $normalized.StartsWith('/api/me/verein-invitations/')) {
+        return $normalized -replace '^/api/me/verein-invitations', '/api/v2/me/verein-invitations'
     }
 
     if ($normalized -eq '/api/comments' -or $normalized.StartsWith('/api/comments/')) {
@@ -364,6 +414,14 @@ function Get-AspNetV2RouteAlias {
 
     if ($normalized -eq '/api/admin/ideation' -or $normalized.StartsWith('/api/admin/ideation/')) {
         return $normalized -replace '^/api/admin/ideation', '/api/v2/admin/ideation'
+    }
+
+    if ($normalized -eq '/api/admin/events' -or $normalized.StartsWith('/api/admin/events/')) {
+        return $normalized -replace '^/api/admin/events', '/api/v2/admin/events'
+    }
+
+    if ($normalized -eq '/api/admin/members' -or $normalized.StartsWith('/api/admin/members/')) {
+        return $normalized -replace '^/api/admin/members', '/api/v2/admin/members'
     }
 
     return ''
