@@ -215,10 +215,13 @@ aliases cover waitlist join/leave, attendee check-in, poll attach/update, poll
 vote, recurring event update, translation request redirects, and cover image
 uploads from the Blade-style create/edit forms through
 `/api/v2/events/{id}/image` while the list, detail, and edit pages show the
-current Laravel cover image when the event payload includes one. Redirects
-preserve Laravel status keys and `#poll-*` fragments. This remains partial:
-cover image removal is still blocked by the absence of a Laravel v2 clear/delete
-event-image API contract, and full Blade list/detail rendering,
+current Laravel cover image when the event payload includes one. The create and
+edit forms now also carry Laravel's online/remote attendance fields
+(`is_online`, `online_link`, `allow_remote_attendance`, and `video_url`) into
+event create/update payloads. Redirects preserve Laravel status keys and
+`#poll-*` fragments. This remains partial: cover image removal is still blocked
+by the absence of a Laravel v2 clear/delete event-image API contract, and
+category selector data, recurrence form depth, full Blade list/detail rendering,
 owner/participant authorization depth, rendered translation result display,
 event notification/XP/waitlist promotion side effects, tenant/feature gates,
 localization, runtime smoke tests, and ASP.NET backend compatibility are not

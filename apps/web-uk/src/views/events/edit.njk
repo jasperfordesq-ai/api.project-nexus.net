@@ -93,6 +93,52 @@
           }
         }) }}
 
+        {% set isOnline = event.is_online or event.isOnline %}
+        <div class="govuk-form-group">
+          <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="is_online" name="is_online" type="checkbox" value="1" data-aria-controls="is-online-conditional" {% if isOnline %}checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="is_online">This is an online event</label>
+            </div>
+            <div class="govuk-checkboxes__conditional{% if not isOnline %} govuk-checkboxes__conditional--hidden{% endif %}" id="is-online-conditional">
+              {{ govukInput({
+                id: "online_link",
+                name: "online_link",
+                type: "url",
+                value: event.online_link or event.onlineLink,
+                label: {
+                  text: "Online event link"
+                }
+              }) }}
+            </div>
+          </div>
+        </div>
+
+        {% set allowRemote = event.allow_remote_attendance or event.allowRemoteAttendance %}
+        <div class="govuk-form-group">
+          <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="allow_remote_attendance" name="allow_remote_attendance" type="checkbox" value="1" aria-describedby="allow-remote-hint" data-aria-controls="remote-attendance-conditional" {% if allowRemote %}checked{% endif %}>
+              <label class="govuk-label govuk-checkboxes__label" for="allow_remote_attendance">Allow people to attend remotely</label>
+              <div id="allow-remote-hint" class="govuk-hint govuk-checkboxes__hint">Use this when an in-person event also has a remote option.</div>
+            </div>
+            <div class="govuk-checkboxes__conditional{% if not allowRemote %} govuk-checkboxes__conditional--hidden{% endif %}" id="remote-attendance-conditional">
+              {{ govukInput({
+                id: "video_url",
+                name: "video_url",
+                type: "url",
+                value: event.video_url or event.videoUrl,
+                label: {
+                  text: "Video link"
+                },
+                hint: {
+                  text: "Add the meeting or livestream URL."
+                }
+              }) }}
+            </div>
+          </div>
+        </div>
+
         {# Start date/time #}
         {% set startDateError = errors | selectattr('href', 'equalto', '#starts_at_date') | first if errors else undefined %}
         <div class="govuk-form-group {% if startDateError %}govuk-form-group--error{% endif %}">

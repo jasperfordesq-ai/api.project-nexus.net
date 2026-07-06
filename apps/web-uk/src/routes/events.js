@@ -340,7 +340,7 @@ router.get('/new', asyncRoute(async (req, res) => {
 
 // Create event
 router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
-  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id } = req.body;
+  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, is_online, online_link, allow_remote_attendance, video_url } = req.body;
   const image = uploadedFile(req, 'image');
 
   const errors = [];
@@ -381,7 +381,7 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
     return res.render('events/new', {
       title: 'Create an event',
       errors: errorList,
-      values: { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id },
+      values: { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, is_online, online_link, allow_remote_attendance, video_url },
       myGroups,
       selectedGroupId: group_id,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -400,7 +400,11 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
       starts_at: startsAt,
       ends_at: endsAt,
       max_attendees: max_attendees ? parseInt(max_attendees, 10) : null,
-      group_id: group_id ? parseInt(group_id, 10) : null
+      group_id: group_id ? parseInt(group_id, 10) : null,
+      is_online: checked(is_online),
+      online_link: trimmed(online_link) || null,
+      allow_remote_attendance: checked(allow_remote_attendance),
+      video_url: trimmed(video_url) || null
     };
 
     const result = await createEvent(req.token, eventData);
@@ -495,7 +499,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
 // Update event
 router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
-  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees } = req.body;
+  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, is_online, online_link, allow_remote_attendance, video_url } = req.body;
   const image = uploadedFile(req, 'image');
 
   const errors = [];
@@ -533,7 +537,7 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
 
     return res.render('events/edit', {
       title: 'Edit event',
-      event: { id, title, description, location, max_attendees },
+      event: { id, title, description, location, max_attendees, is_online, online_link, allow_remote_attendance, video_url },
       errors: errorList,
       myGroups,
       startsAtDate: starts_at_date,
@@ -555,7 +559,11 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
       location: location ? location.trim() : null,
       starts_at: startsAt,
       ends_at: endsAt,
-      max_attendees: max_attendees ? parseInt(max_attendees, 10) : null
+      max_attendees: max_attendees ? parseInt(max_attendees, 10) : null,
+      is_online: checked(is_online),
+      online_link: trimmed(online_link) || null,
+      allow_remote_attendance: checked(allow_remote_attendance),
+      video_url: trimmed(video_url) || null
     });
 
     try {

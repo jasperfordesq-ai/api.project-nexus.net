@@ -8393,6 +8393,105 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
+  it('renders and submits Laravel event online attendance fields on create', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+
+    api.getMyGroups.mockResolvedValueOnce({ data: [] });
+    api.createEvent.mockResolvedValueOnce({ id: 42 });
+
+    const page = await agent
+      .get('/events/new')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('name="is_online"');
+    expect(page.text).toContain('name="online_link"');
+    expect(page.text).toContain('name="allow_remote_attendance"');
+    expect(page.text).toContain('name="video_url"');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/events/new')
+      .set('Cookie', signedCookieHeader())
+      .field('_csrf', csrfMatch[1])
+      .field('title', ' Online garden planning ')
+      .field('description', ' Planning on a call ')
+      .field('location', ' Zoom ')
+      .field('starts_at_date', '2026-08-01')
+      .field('starts_at_time', '10:00')
+      .field('is_online', '1')
+      .field('online_link', ' https://meet.example/garden ')
+      .field('allow_remote_attendance', '1')
+      .field('video_url', ' https://video.example/garden ');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42');
+    expect(api.createEvent).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      is_online: true,
+      online_link: 'https://meet.example/garden',
+      allow_remote_attendance: true,
+      video_url: 'https://video.example/garden'
+    }));
+  });
+
+  it('renders and submits Laravel event online attendance fields on edit', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+
+    api.getEvent.mockResolvedValueOnce({
+      event: {
+        id: 42,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        location: 'Village hall',
+        is_online: true,
+        online_link: 'https://meet.example/garden',
+        allow_remote_attendance: true,
+        video_url: 'https://video.example/garden',
+        max_attendees: 20,
+        starts_at: '2026-08-01T10:00:00'
+      }
+    });
+    api.getMyGroups.mockResolvedValueOnce({ data: [] });
+
+    const page = await agent
+      .get('/events/42/edit')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('name="is_online"');
+    expect(page.text).toContain('value="https://meet.example/garden"');
+    expect(page.text).toContain('name="allow_remote_attendance"');
+    expect(page.text).toContain('value="https://video.example/garden"');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/events/42/edit')
+      .set('Cookie', signedCookieHeader())
+      .field('_csrf', csrfMatch[1])
+      .field('title', ' Community garden day ')
+      .field('description', ' Planting and tea ')
+      .field('location', ' Village hall ')
+      .field('starts_at_date', '2026-08-01')
+      .field('starts_at_time', '10:00')
+      .field('is_online', '1')
+      .field('online_link', ' https://meet.example/updated ')
+      .field('allow_remote_attendance', '1')
+      .field('video_url', ' https://video.example/updated ');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42');
+    expect(api.updateEvent).toHaveBeenCalledWith('test-token', '42', expect.objectContaining({
+      is_online: true,
+      online_link: 'https://meet.example/updated',
+      allow_remote_attendance: true,
+      video_url: 'https://video.example/updated'
+    }));
+  });
+
   it('renders the current Laravel event cover image on the edit form', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
