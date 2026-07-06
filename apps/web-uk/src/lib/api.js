@@ -1085,6 +1085,36 @@ async function getXpHistory(token, params = {}) {
   });
 }
 
+async function claimDailyReward(token) {
+  return request('/api/v2/gamification/daily-reward', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function claimGamificationChallenge(token, id) {
+  return request(`/api/v2/gamification/challenges/${encodeURIComponent(id)}/claim`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function purchaseGamificationShopItem(token, itemId) {
+  return request('/api/v2/gamification/shop/purchase', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ item_id: itemId })
+  });
+}
+
+async function updateGamificationShowcase(token, badgeKeys) {
+  return request('/api/v2/gamification/showcase', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ badge_keys: badgeKeys })
+  });
+}
+
 // Search
 async function search(token, query, type = 'all', page = 1, limit = 20) {
   const params = new URLSearchParams();
@@ -1566,6 +1596,10 @@ module.exports = {
   getMyBadges,
   getLeaderboard,
   getXpHistory,
+  claimDailyReward,
+  claimGamificationChallenge,
+  purchaseGamificationShopItem,
+  updateGamificationShowcase,
   // Search
   search,
   searchSuggestions,

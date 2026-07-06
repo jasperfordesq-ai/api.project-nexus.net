@@ -74,6 +74,10 @@ jest.mock('../src/lib/api', () => ({
   saveSavedSearch: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   deleteSavedSearch: jest.fn().mockResolvedValue({ deleted: true }),
   runSavedSearch: jest.fn().mockResolvedValue({ data: { query_params: { q: 'gardening' } } }),
+  claimDailyReward: jest.fn().mockResolvedValue({ data: { claimed: true } }),
+  claimGamificationChallenge: jest.fn().mockResolvedValue({ data: { claimed: true } }),
+  purchaseGamificationShopItem: jest.fn().mockResolvedValue({ data: { success: true } }),
+  updateGamificationShowcase: jest.fn().mockResolvedValue({ data: { message: 'updated' } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -140,6 +144,10 @@ describe('shared accessible frontend shell', () => {
     api.saveSavedSearch.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedSearch.mockReset().mockResolvedValue({ deleted: true });
     api.runSavedSearch.mockReset().mockResolvedValue({ data: { query_params: { q: 'gardening' } } });
+    api.claimDailyReward.mockReset().mockResolvedValue({ data: { claimed: true } });
+    api.claimGamificationChallenge.mockReset().mockResolvedValue({ data: { claimed: true } });
+    api.purchaseGamificationShopItem.mockReset().mockResolvedValue({ data: { success: true } });
+    api.updateGamificationShowcase.mockReset().mockResolvedValue({ data: { message: 'updated' } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -1338,6 +1346,189 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.saveSavedSearch).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel achievement daily reward route through the gamification API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/achievements/daily-reward')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/achievements?status=daily-reward-claimed');
+    expect(api.claimDailyReward).toHaveBeenCalledWith('test-token');
+  });
+
+  it('maps Laravel achievement daily reward conflicts to the failed status', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.claimDailyReward.mockRejectedValueOnce(new api.ApiError('already claimed', 409));
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/achievements/daily-reward')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/achievements?status=daily-reward-failed');
+  });
+
+  it('submits the Laravel challenge claim route through the gamification API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/achievements/challenges/7/claim')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/achievements?status=challenge-claimed');
+    expect(api.claimGamificationChallenge).toHaveBeenCalledWith('test-token', 7);
+  });
+
+  it('submits the Laravel achievement shop purchase route through the gamification API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/achievements/shop/purchase')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        item_id: '42'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/achievements/shop?status=purchased');
+    expect(api.purchaseGamificationShopItem).toHaveBeenCalledWith('test-token', 42);
+  });
+
+  it('redirects invalid Laravel achievement shop purchases with the failed status', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/achievements/shop/purchase')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        item_id: 'nope'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/achievements/shop?status=purchase-failed');
+    expect(api.purchaseGamificationShopItem).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel achievement showcase route through the gamification API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/achievements/showcase')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        'badge_keys[]': ['helper', 'mentor']
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/achievements/showcase?status=showcase-updated');
+    expect(api.updateGamificationShowcase).toHaveBeenCalledWith('test-token', ['helper', 'mentor']);
+  });
+
+  it('redirects oversized Laravel achievement showcase submissions without calling the API', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/achievements/showcase')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        'badge_keys[]': ['one', 'two', 'three', 'four', 'five', 'six']
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/achievements/showcase?status=showcase-too-many');
+    expect(api.updateGamificationShowcase).not.toHaveBeenCalled();
+  });
+
+  it('redirects signed-out Laravel achievement submissions to the auth-required status', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/achievements/daily-reward')
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.claimDailyReward).not.toHaveBeenCalled();
   });
 
   it('submits the Laravel reviews store route through the v2 reviews API helper', async () => {

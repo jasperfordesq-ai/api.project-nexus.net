@@ -931,6 +931,90 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel gamification helpers', () => {
+    it('should claim the daily reward through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { claimed: true } })
+      });
+
+      await api.claimDailyReward('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/gamification/daily-reward',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should claim a gamification challenge through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { claimed: true, challenge_id: 7 } })
+      });
+
+      await api.claimGamificationChallenge('test-token', 7);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/gamification/challenges/7/claim',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should purchase a gamification shop item through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { success: true } })
+      });
+
+      await api.purchaseGamificationShopItem('test-token', 42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/gamification/shop/purchase',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ item_id: 42 })
+        })
+      );
+    });
+
+    it('should update the gamification showcase through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { message: 'updated' } })
+      });
+
+      await api.updateGamificationShowcase('test-token', ['helper', 'mentor']);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/gamification/showcase',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ badge_keys: ['helper', 'mentor'] })
+        })
+      );
+    });
+  });
+
   describe('Laravel member premium helpers', () => {
     it('should create a member premium checkout session through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

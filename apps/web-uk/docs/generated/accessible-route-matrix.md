@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T09:48:20.278Z
+Generated: 2026-07-06T09:53:49.008Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 429 |
-| Matched routes | 347 |
-| Missing routes | 261 |
+| web-uk routes | 433 |
+| Matched routes | 351 |
+| Missing routes | 257 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -17,7 +17,7 @@ Generated: 2026-07-06T09:48:20.278Z
 | about | 1 | 0 | 0 |
 | accessibility | 1 | 0 | 0 |
 | account | 1 | 0 | 0 |
-| achievements | 6 | 4 | 0 |
+| achievements | 10 | 0 | 0 |
 | activity | 2 | 0 | 0 |
 | admin | 0 | 0 | 24 |
 | appreciations | 1 | 0 | 0 |
@@ -96,10 +96,6 @@ Generated: 2026-07-06T09:48:20.278Z
 
 | Method | Path | Family | Handler | Blade view | Auth | Gates |
 | --- | --- | --- | --- | --- | --- | --- |
-| POST | `/achievements/challenges/{param}/claim` | achievements | claimChallengeReward |  | auth-optional | feature:gamification |
-| POST | `/achievements/daily-reward` | achievements | dailyReward |  | auth-optional | feature:gamification |
-| POST | `/achievements/shop/purchase` | achievements | gamificationPurchase |  | public-or-unknown |  |
-| POST | `/achievements/showcase` | achievements | gamificationUpdateShowcase |  | public-or-unknown |  |
 | POST | `/blog/{param}/comments` | blog | storeBlogComment |  | auth-optional | feature:blog |
 | POST | `/blog/{param}/comments/add` | blog | blogReviewsStorePostComment |  | auth-optional | feature:blog |
 | POST | `/blog/{param}/like` | blog | blogTogglePostLike |  | auth-optional | feature:blog |
