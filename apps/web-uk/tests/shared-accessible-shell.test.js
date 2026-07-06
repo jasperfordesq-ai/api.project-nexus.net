@@ -716,6 +716,69 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation transfer confirmation page', async () => {
+    const api = require('../src/lib/api');
+    api.getBalance.mockResolvedValue({ balance: 6 });
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/members/77?tenant_id=12') {
+        return {
+          data: {
+            id: 77,
+            name: 'Avery Stone',
+            tenant_id: 12,
+            tenant_name: 'North Timebank',
+            transactions_enabled: true
+          }
+        };
+      }
+      if (pathValue === '/settings') {
+        return {
+          data: {
+            enabled: true,
+            settings: {
+              federation_optin: true,
+              transactions_enabled_federated: true
+            }
+          }
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/federation/members/77/transfer?tenant_id=12');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/members/77/transfer?tenant_id=12&status=transfer-description-required')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/members/77?tenant_id=12');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
+    expect(api.getBalance).toHaveBeenCalledWith('test-token');
+    expect(response.text).toContain('href="/federation/members/77?tenant_id=12"');
+    expect(response.text).toContain('Federation transfer');
+    expect(response.text).toContain('Transfer time credits');
+    expect(response.text).toContain('Send time credits to a member in a partner community.');
+    expect(response.text).toContain('Enter a transfer description');
+    expect(response.text).toContain('Recipient');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('Community');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).toContain('Balance');
+    expect(response.text).toContain('6 hours available');
+    expect(response.text).toContain('This transfer moves time credits to a member in another community.');
+    expect(response.text).toContain('action="/federation/members/77/transfer"');
+    expect(response.text).toContain('name="receiver_tenant_id" value="12"');
+    expect(response.text).toContain('id="amount" name="amount"');
+    expect(response.text).toContain('id="description" name="description"');
+    expect(response.text).toContain('Send transfer');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 

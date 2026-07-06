@@ -7,7 +7,8 @@ const express = require('express');
 const {
   ApiError,
   ApiOfflineError,
-  callFederationApi
+  callFederationApi,
+  getBalance
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
@@ -208,6 +209,22 @@ function memberStatusBanner(status) {
   return banners[trimmed(status)] || null;
 }
 
+function transferStatusBanner(status) {
+  const banners = {
+    'transfer-sent': { type: 'success', message: 'Transfer sent' },
+    'transfer-not-enabled': { type: 'error', message: 'Federation transfers are not enabled' },
+    'transfer-amount-invalid': { type: 'error', message: 'Enter a transfer amount from 1 to 100' },
+    'transfer-description-required': { type: 'error', message: 'Enter a transfer description' },
+    'transfer-description-too-long': { type: 'error', message: 'Transfer description is too long' },
+    'transfer-recipient-unavailable': { type: 'error', message: 'This member cannot receive a federation transfer' },
+    'transfer-self': { type: 'error', message: 'You cannot transfer time credits to yourself' },
+    'transfer-insufficient': { type: 'error', message: 'You do not have enough time credits' },
+    'transfer-failed': { type: 'error', message: 'Transfer could not be sent' }
+  };
+
+  return banners[trimmed(status)] || null;
+}
+
 function renderFederationError(error, res) {
   if (error instanceof ApiError && error.status === 401) {
     res.redirect('/login?status=auth-required');
@@ -360,6 +377,57 @@ router.get('/members', asyncRoute(async (req, res) => {
       partnerId: trimmed(req.query.partner_id),
       serviceReach: trimmed(req.query.service_reach)
     }
+  });
+}));
+
+router.get('/members/:id/transfer', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const id = trimmed(req.params.id, 32);
+  if (!/^\d+$/.test(id)) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  const tenantId = trimmed(req.query.tenant_id, 32);
+  const tenantQuery = tenantId ? `?tenant_id=${encodeURIComponent(tenantId)}` : '';
+
+  let memberResult;
+  let settingsResult;
+  let balanceResult;
+  try {
+    memberResult = await callFederationApi(token, 'GET', `/members/${id}${tenantQuery}`);
+    settingsResult = await callFederationApi(token, 'GET', '/settings');
+    balanceResult = await getBalance(token);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const member = normalizeMember(asObject(dataFrom(memberResult)), { bioLimit: null });
+  if (!member.transactionsEnabled) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  const settingsData = asObject(dataFrom(settingsResult));
+  const settings = asObject(settingsData.settings);
+  const balanceData = dataFrom(balanceResult);
+  const balanceObject = asObject(balanceData);
+  const balance = numberOrZero(balanceObject.balance !== undefined ? balanceObject.balance : balanceData);
+
+  return res.render('federation/transfer', {
+    title: 'Transfer time credits',
+    activeNav: 'explore',
+    federationActiveTab: 'members',
+    member,
+    balance,
+    viewerEnabled: (bool(settings.federation_optin) || bool(settingsData.enabled)) && bool(settings.transactions_enabled_federated),
+    statusBanner: transferStatusBanner(req.query.status)
   });
 }));
 

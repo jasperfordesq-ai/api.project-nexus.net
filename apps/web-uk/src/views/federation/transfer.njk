@@ -1,0 +1,105 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% set backHref = "/federation/members/" + member.id + "?tenant_id=" + member.tenantId %}
+
+{% block mainContent %}
+  <a href="{{ backHref }}" class="govuk-back-link">Back to federation member</a>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-xl">Federation transfer</span>
+      <h1 class="govuk-heading-xl">Transfer time credits</h1>
+      <p class="govuk-body-l">Send time credits to a member in a partner community.</p>
+
+      <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+        <ul class="govuk-service-navigation__list">
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+          <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+          <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+        </ul>
+      </nav>
+
+      {% if statusBanner %}
+        {% if statusBanner.type == "error" %}
+          <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+            <div role="alert">
+              <h2 class="govuk-error-summary__title">There is a problem</h2>
+              <div class="govuk-error-summary__body">
+                <ul class="govuk-list govuk-error-summary__list">
+                  <li><a href="#amount">{{ statusBanner.message }}</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="fed-transfer-status">
+            <div class="govuk-notification-banner__header">
+              <h2 class="govuk-notification-banner__title" id="fed-transfer-status">Success</h2>
+            </div>
+            <div class="govuk-notification-banner__content">
+              <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
+            </div>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Recipient</dt>
+          <dd class="govuk-summary-list__value">{{ member.name }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Community</dt>
+          <dd class="govuk-summary-list__value">{{ member.tenantName }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Balance</dt>
+          <dd class="govuk-summary-list__value">{{ balance }} hours available</dd>
+        </div>
+      </dl>
+
+      {% if not viewerEnabled %}
+        <div class="govuk-inset-text"><p class="govuk-body">Federation transfers are not enabled for your account.</p></div>
+        <a class="govuk-link" href="/federation/settings">Change federation settings</a>
+      {% else %}
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-visually-hidden">Warning</span>
+            This transfer moves time credits to a member in another community.
+          </strong>
+        </div>
+
+        <form method="post" action="/federation/members/{{ member.id }}/transfer">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="receiver_tenant_id" value="{{ member.tenantId }}">
+
+          <div class="govuk-form-group">
+            <label class="govuk-label govuk-label--m" for="amount">Amount</label>
+            <div id="amount-hint" class="govuk-hint">Enter a whole number of hours from 1 to 100.</div>
+            <input class="govuk-input govuk-input--width-5" id="amount" name="amount" type="number" inputmode="numeric" min="1" max="100" step="1" aria-describedby="amount-hint">
+          </div>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label govuk-label--m" for="description">Description</label>
+            <div id="description-hint" class="govuk-hint">Briefly explain what the transfer is for.</div>
+            <input class="govuk-input govuk-!-width-two-thirds" id="description" name="description" type="text" maxlength="500" aria-describedby="description-hint">
+          </div>
+
+          <div class="govuk-button-group">
+            <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Send transfer</button>
+            <a class="govuk-link" href="{{ backHref }}">Cancel</a>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
