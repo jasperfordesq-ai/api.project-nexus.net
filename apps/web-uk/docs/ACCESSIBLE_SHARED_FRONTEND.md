@@ -111,8 +111,8 @@ wallet transfers while preserving Laravel profile status redirects.
 Message POST aliases are wired to Laravel v2 message and group conversation
 APIs for archive/restore, message edit/delete/translate, group create/reply,
 member add/remove, and group reactions while preserving Laravel status redirects
-and anchors. Voice-message upload is registered but fails safely with
-`voice-required` until multipart proxying exists.
+and anchors. Voice-message upload proxies multipart audio to
+`/api/v2/messages/voice` with Laravel-compatible status redirects.
 Resource POST aliases are wired to Laravel v2 APIs for resource upload,
 resource delete, admin reorder, resource comments, comment deletion, and
 resource reactions while preserving Laravel library/comment status redirects.
@@ -140,8 +140,8 @@ The member onboarding POST aliases now cover `/onboarding/{step}` and
 `/onboarding/avatar`: profile saves bio through the profile API, interests and
 skills are held in the Express session, safeguarding uses Laravel's Blade-style
 `safeguarding[id]` fields and `/api/v2/onboarding/safeguarding`, and confirm
-uses `/api/v2/onboarding/complete`. Avatar upload currently fails safely because
-multipart proxying is not implemented yet.
+uses `/api/v2/onboarding/complete`. Avatar upload proxies multipart image data
+to `/api/v2/users/me/avatar`.
 This remains partial: Laravel tenant feature gating, full account-link coverage,
 per-module backend data, route availability checks, localization, realtime
 behavior, runtime smoke tests, and ASP.NET backend compatibility are not

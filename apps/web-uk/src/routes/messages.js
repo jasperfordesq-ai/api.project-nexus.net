@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const { requireAuth } = require('../middleware/auth');
 const {
   getConversations,
@@ -17,6 +18,7 @@ const {
   markConversationRead,
   getProfile,
   callMessageApi,
+  uploadVoiceMessage,
   callConversationApi,
   ApiError
 } = require('../lib/api');
@@ -45,6 +47,20 @@ function checked(value) {
 function positiveInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
 }
 
 function dataFrom(result) {
@@ -227,7 +243,31 @@ router.post('/:userId(\\d+)/voice', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return res.redirect(loginRedirect());
 
-  return res.redirect(messageRedirect(Number(req.params.userId), 'voice-required'));
+  const userId = Number(req.params.userId);
+  const file = uploadedFile(req, 'voice');
+  if (!file) {
+    return res.redirect(messageRedirect(userId, 'voice-required'));
+  }
+
+  try {
+    const buffer = await fs.readFile(file.filepath);
+    await uploadVoiceMessage(token, {
+      recipient_id: userId,
+      file: {
+        buffer,
+        filename: trimmed(file.originalFilename) || 'voice-message',
+        contentType: trimmed(file.mimetype) || 'application/octet-stream',
+        size: file.size
+      }
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(messageRedirect(userId, 'voice-failed'));
+  } finally {
+    await removeUploadedFile(file);
+  }
+
+  return res.redirect(messageRedirect(userId, 'message-sent'));
 }));
 
 router.post('/groups', asyncRoute(async (req, res) => {

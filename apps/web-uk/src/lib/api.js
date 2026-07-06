@@ -1214,6 +1214,24 @@ async function callMessageApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/messages${normalizedPath}`, options);
 }
 
+async function uploadVoiceMessage(token, data) {
+  const form = new globalThis.FormData();
+  form.append('recipient_id', String(data.recipient_id || data.recipientId || ''));
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('voice_message', blob, data.file.filename || 'voice-message');
+  }
+
+  return request('/api/v2/messages/voice', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function callConversationApi(token, method, path = '', data = undefined) {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
   const options = {
@@ -2461,6 +2479,7 @@ module.exports = {
   cancelMemberPremium,
   // Messages
   callMessageApi,
+  uploadVoiceMessage,
   callConversationApi,
   callPodcastApi,
   callFederationApi,

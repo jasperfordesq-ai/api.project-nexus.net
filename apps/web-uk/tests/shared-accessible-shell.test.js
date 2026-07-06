@@ -147,6 +147,7 @@ jest.mock('../src/lib/api', () => ({
   deleteNotification: jest.fn().mockResolvedValue({}),
   getTransactions: jest.fn(),
   callMessageApi: jest.fn().mockResolvedValue({ data: { id: 12, action: 'added' } }),
+  uploadVoiceMessage: jest.fn().mockResolvedValue({ data: { id: 12, is_voice: true } }),
   callConversationApi: jest.fn().mockResolvedValue({ data: { id: 33 } }),
   callPodcastApi: jest.fn().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } }),
   callFederationApi: jest.fn().mockResolvedValue({ data: { id: 42, success: true } }),
@@ -307,6 +308,7 @@ describe('shared accessible frontend shell', () => {
     api.deleteAllNotifications.mockReset().mockResolvedValue({ data: { deleted: 2 } });
     api.deleteNotification.mockReset().mockResolvedValue({});
     api.callMessageApi.mockReset().mockResolvedValue({ data: { id: 12, action: 'added' } });
+    api.uploadVoiceMessage.mockReset().mockResolvedValue({ data: { id: 12, is_voice: true } });
     api.callConversationApi.mockReset().mockResolvedValue({ data: { id: 33 } });
     api.callPodcastApi.mockReset().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } });
     api.callFederationApi.mockReset().mockResolvedValue({ data: { id: 42, success: true } });
@@ -8407,11 +8409,6 @@ describe('shared accessible frontend shell', () => {
       target_language: 'ga'
     });
 
-    api.callMessageApi.mockClear();
-    const voiceResponse = await post('/messages/77/voice');
-    expect(voiceResponse.headers.location).toBe('/messages/77?status=voice-required');
-    expect(api.callMessageApi).not.toHaveBeenCalled();
-
     const groupCreateResponse = await post('/messages/groups', {
       name: ' Local helpers ',
       member_ids: ['44', '55']
@@ -8463,6 +8460,39 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callMessageApi).not.toHaveBeenCalled();
     expect(api.callConversationApi).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel voice message route with multipart audio data', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/messages/77/voice')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .attach('voice', Buffer.from('fake webm audio bytes', 'utf8'), {
+        filename: 'voice-note.webm',
+        contentType: 'audio/webm'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/messages/77?status=message-sent');
+    expect(api.uploadVoiceMessage).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      recipient_id: 77,
+      file: expect.objectContaining({
+        filename: 'voice-note.webm',
+        contentType: 'audio/webm',
+        buffer: Buffer.from('fake webm audio bytes', 'utf8')
+      })
+    }));
   });
 
   it('renders the Laravel-backed podcast index page', async () => {

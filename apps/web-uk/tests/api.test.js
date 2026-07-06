@@ -1301,6 +1301,35 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should upload voice messages to Laravel with multipart audio data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12, is_voice: true } })
+      });
+
+      await api.uploadVoiceMessage('test-token', {
+        recipient_id: 77,
+        file: {
+          buffer: Buffer.from('fake webm audio bytes', 'utf8'),
+          filename: 'voice-note.webm',
+          contentType: 'audio/webm'
+        }
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/messages/voice',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
   });
 
   describe('callPodcastApi', () => {

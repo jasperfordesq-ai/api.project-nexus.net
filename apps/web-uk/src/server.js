@@ -1057,6 +1057,7 @@ app.use('/resources/upload', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 
 app.use('/volunteering/credentials', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use('/onboarding/avatar', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use('/settings/insurance', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use(/^\/messages\/\d+\/voice$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 
 app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
 app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);
