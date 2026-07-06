@@ -50,6 +50,63 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task InviteCodesV2_GenerateListAndDeactivateUseLaravelReactContract()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var generate = await Client.PostAsJsonAsync("/api/v2/admin/invite-codes", new
+        {
+            count = 2,
+            max_uses = 3,
+            expires_at = DateTime.UtcNow.AddDays(7).ToString("O"),
+            note = "Laravel React invite-code compatibility"
+        });
+
+        generate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var generateJson = await generate.Content.ReadFromJsonAsync<JsonElement>();
+        generateJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var generateData = generateJson.GetProperty("data");
+        generateData.GetProperty("count").GetInt32().Should().Be(2);
+        var generatedCodes = generateData.GetProperty("codes")
+            .EnumerateArray()
+            .Select(code => code.GetString())
+            .ToArray();
+        generatedCodes.Should().HaveCount(2);
+        generatedCodes.Should().OnlyContain(code => !string.IsNullOrWhiteSpace(code));
+
+        var list = await Client.GetAsync("/api/v2/admin/invite-codes?limit=10&offset=0");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var listData = listJson.GetProperty("data");
+        listData.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(2);
+        var items = listData.GetProperty("items").EnumerateArray().ToArray();
+        items.Select(item => item.GetProperty("code").GetString())
+            .Should().Contain(generatedCodes);
+
+        var firstGenerated = items.First(item => item.GetProperty("code").GetString() == generatedCodes[0]);
+        firstGenerated.GetProperty("max_uses").GetInt32().Should().Be(3);
+        firstGenerated.GetProperty("uses_count").GetInt32().Should().Be(0);
+        firstGenerated.GetProperty("is_active").GetBoolean().Should().BeTrue();
+        firstGenerated.GetProperty("note").GetString().Should().Be("Laravel React invite-code compatibility");
+
+        var deactivate = await Client.DeleteAsync($"/api/v2/admin/invite-codes/{firstGenerated.GetProperty("id").GetInt32()}");
+
+        deactivate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deactivateJson = await deactivate.Content.ReadFromJsonAsync<JsonElement>();
+        deactivateJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        deactivateJson.GetProperty("data").GetProperty("deactivated").GetBoolean().Should().BeTrue();
+
+        var relist = await Client.GetAsync("/api/v2/admin/invite-codes?limit=10&offset=0");
+        var relistJson = await relist.Content.ReadFromJsonAsync<JsonElement>();
+        var deactivated = relistJson.GetProperty("data").GetProperty("items")
+            .EnumerateArray()
+            .First(item => item.GetProperty("id").GetInt32() == firstGenerated.GetProperty("id").GetInt32());
+        deactivated.GetProperty("is_active").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
     public async Task BillingSnapshot_UsesSubscriptionPlanStorage()
     {
         using (var scope = Factory.Services.CreateScope())

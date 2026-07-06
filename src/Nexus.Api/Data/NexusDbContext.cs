@@ -271,6 +271,7 @@ public class NexusDbContext : DbContext
 
     // Registration Policy Engine
     public DbSet<TenantRegistrationPolicy> TenantRegistrationPolicies => Set<TenantRegistrationPolicy>();
+    public DbSet<TenantInviteCode> TenantInviteCodes => Set<TenantInviteCode>();
     public DbSet<TenantProviderCredential> TenantProviderCredentials => Set<TenantProviderCredential>();
     public DbSet<IdentityVerificationSession> IdentityVerificationSessions => Set<IdentityVerificationSession>();
     public DbSet<IdentityVerificationEvent> IdentityVerificationEvents => Set<IdentityVerificationEvent>();

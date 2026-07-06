@@ -29,11 +29,23 @@ public class CaringCommunityInviteCodesControllerUnitTests
 
         typeof(AdminCaringCommunityInviteCodesController)
             .GetMethod(nameof(AdminCaringCommunityInviteCodesController.Index))
-            ?.GetCustomAttribute<HttpGetAttribute>()?.Template.Should().BeNull();
+            ?.GetCustomAttributes<HttpGetAttribute>()
+            .Select(a => a.Template)
+            .Should().BeEquivalentTo(new string?[]
+            {
+                null,
+                "/api/v2/admin/caring-community/invite-codes"
+            });
 
         typeof(AdminCaringCommunityInviteCodesController)
             .GetMethod(nameof(AdminCaringCommunityInviteCodesController.Store))
-            ?.GetCustomAttribute<HttpPostAttribute>()?.Template.Should().BeNull();
+            ?.GetCustomAttributes<HttpPostAttribute>()
+            .Select(a => a.Template)
+            .Should().BeEquivalentTo(new string?[]
+            {
+                null,
+                "/api/v2/admin/caring-community/invite-codes"
+            });
 
         typeof(CaringCommunityInviteController)
             .GetCustomAttribute<RouteAttribute>()?.Template

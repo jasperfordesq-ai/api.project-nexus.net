@@ -99,3 +99,34 @@ public class TenantRegistrationPolicy : ITenantEntity
     // Navigation
     public Tenant? Tenant { get; set; }
 }
+
+/// <summary>
+/// Tenant-scoped invite code batch item used by Laravel-compatible v2 admin registration policy endpoints.
+/// Mirrors Laravel's tenant_invite_codes table shape.
+/// </summary>
+public class TenantInviteCode : ITenantEntity
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+
+    [MaxLength(12)]
+    public string Code { get; set; } = string.Empty;
+
+    public int? CreatedBy { get; set; }
+    public int MaxUses { get; set; } = 1;
+    public int UsesCount { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+
+    [MaxLength(255)]
+    public string? Note { get; set; }
+
+    public bool IsActive { get; set; } = true;
+    public DateTime? LastUsedAt { get; set; }
+    public int? LastUsedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    public Tenant? Tenant { get; set; }
+    public User? CreatedByUser { get; set; }
+    public User? LastUsedByUser { get; set; }
+}

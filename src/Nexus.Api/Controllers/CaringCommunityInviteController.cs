@@ -52,6 +52,7 @@ public sealed class AdminCaringCommunityInviteCodesController : ControllerBase
     }
 
     [HttpGet]
+    [HttpGet("/api/v2/admin/caring-community/invite-codes")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var guard = await GuardAsync(ct);
@@ -65,6 +66,7 @@ public sealed class AdminCaringCommunityInviteCodesController : ControllerBase
     }
 
     [HttpPost]
+    [HttpPost("/api/v2/admin/caring-community/invite-codes")]
     public async Task<IActionResult> Store(
         [FromBody] CaringInviteCodeGenerateRequest? request,
         CancellationToken ct)

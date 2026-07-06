@@ -10,6 +10,7 @@ using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Services.Federation;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -52,6 +53,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpDelete("/api/v2/admin/group-collections/{id}")]
     [HttpDelete("/api/v2/admin/group-tags/{tagid}")]
     [HttpDelete("/api/v2/admin/help/faqs/{id}")]
+    [HttpDelete("/api/v2/admin/invite-codes/{id}")]
     [HttpDelete("/api/v2/admin/jobs/templates/{id}")]
     [HttpDelete("/api/v2/admin/member-premium/tiers/{id}")]
     [HttpDelete("/api/v2/admin/reports/municipal-impact/templates/{id}")]
@@ -66,6 +68,7 @@ public class AdminExplicitParityController : ControllerBase
         return path switch
         {
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await DeleteFederationWebhook(webhookId),
+            _ when TryGetLastInt(path, "/api/v2/admin/invite-codes/", out var inviteCodeId) => await DeactivateInviteCode(inviteCodeId),
             _ => await PersistCompatibilityWrite("delete")
         };
     }
@@ -136,6 +139,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/group-tags")]
     [HttpGet("/api/v2/admin/help/faqs")]
     [HttpGet("/api/v2/admin/identity/provider-credentials")]
+    [HttpGet("/api/v2/admin/invite-codes")]
     [HttpGet("/api/v2/admin/jobs/bias-audit")]
     [HttpGet("/api/v2/admin/jobs/interviews")]
     [HttpGet("/api/v2/admin/jobs/moderation-queue")]
@@ -259,6 +263,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/federation/topics/mine" => await GetFederationTopicSubscriptions(),
             "/api/v2/admin/federation/webhooks" => await GetFederationWebhooks(),
             "/api/v2/admin/help/faqs" => await GetFaqs(),
+            "/api/v2/admin/invite-codes" => await GetInviteCodes(),
             "/api/v2/admin/jobs/interviews" => await GetJobInterviews(),
             "/api/v2/admin/jobs/moderation-queue" => await GetJobModerationQueue(),
             "/api/v2/admin/jobs/moderation-stats" => await GetJobModerationStats(),
@@ -448,6 +453,7 @@ public class AdminExplicitParityController : ControllerBase
         return path switch
         {
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
+            "/api/v2/admin/invite-codes" => await GenerateInviteCodes(),
             "/api/v2/admin/member-premium/connect/onboarding" => await CreateMemberPremiumConnectOnboarding(),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/test", out var webhookId) => await TestFederationWebhook(webhookId),
             _ when TryGetJobModerationAction(path, out var jobId, out var action) => await ModerateJob(jobId, action),
@@ -1539,6 +1545,122 @@ public class AdminExplicitParityController : ControllerBase
             .ToListAsync();
 
         return Ok(new { data = rows, meta = new { total = rows.Count } });
+    }
+
+    private async Task<IActionResult> GetInviteCodes()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var limit = QueryInt("limit", 50, 1, 100);
+        var offset = QueryInt("offset", 0, 0, int.MaxValue);
+
+        var query = _db.TenantInviteCodes
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip(offset)
+            .Take(limit)
+            .Select(c => new
+            {
+                c.Id,
+                c.TenantId,
+                c.Code,
+                created_by = c.CreatedBy,
+                creator_name = c.CreatedByUser == null ? null : c.CreatedByUser.FirstName,
+                max_uses = c.MaxUses,
+                uses_count = c.UsesCount,
+                expires_at = c.ExpiresAt,
+                note = c.Note,
+                is_active = c.IsActive,
+                last_used_at = c.LastUsedAt,
+                last_used_by = c.LastUsedBy,
+                created_at = c.CreatedAt,
+                updated_at = c.UpdatedAt
+            })
+            .ToListAsync();
+
+        var data = new { items, total, limit, offset };
+        return Ok(new { success = true, data, items, total, limit, offset });
+    }
+
+    private async Task<IActionResult> GenerateInviteCodes()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var count = JsonInt(payload, "count", 1, 1, 100);
+        var maxUses = JsonInt(payload, "max_uses", 1, 1, int.MaxValue);
+        var note = Truncate(JsonString(payload, "note"), 255);
+        var expiresAtText = JsonString(payload, "expires_at");
+        DateTime? expiresAt = null;
+
+        if (!string.IsNullOrWhiteSpace(expiresAtText))
+        {
+            if (!DateTimeOffset.TryParse(expiresAtText, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed))
+            {
+                return UnprocessableEntity(new
+                {
+                    error = "VALIDATION_INVALID_FORMAT",
+                    message = "expires_at must be a valid date/time."
+                });
+            }
+
+            expiresAt = parsed.UtcDateTime;
+        }
+
+        var now = DateTime.UtcNow;
+        var adminId = GetCurrentAdminUserId();
+        var rows = new List<TenantInviteCode>(capacity: count);
+
+        for (var i = 0; i < count; i++)
+        {
+            rows.Add(new TenantInviteCode
+            {
+                TenantId = tenantId,
+                Code = await GenerateUniqueInviteCode(tenantId),
+                CreatedBy = adminId,
+                MaxUses = maxUses,
+                UsesCount = 0,
+                ExpiresAt = expiresAt,
+                Note = note,
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        _db.TenantInviteCodes.AddRange(rows);
+        await _db.SaveChangesAsync();
+
+        var codes = rows.Select(r => r.Code).ToArray();
+        var data = new { codes, count = codes.Length };
+        return Ok(new { success = true, data, codes, count = codes.Length });
+    }
+
+    private async Task<IActionResult> DeactivateInviteCode(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var row = await _db.TenantInviteCodes
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == id);
+
+        if (row == null)
+        {
+            return NotFound(new
+            {
+                error = "RESOURCE_NOT_FOUND",
+                message = "Invite code not found."
+            });
+        }
+
+        row.IsActive = false;
+        row.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { deactivated = true } });
     }
 
     private async Task<IActionResult> GetJobModerationQueue()
@@ -3070,6 +3192,70 @@ public class AdminExplicitParityController : ControllerBase
         }
 
         return null;
+    }
+
+    private static int JsonInt(Dictionary<string, JsonElement> payload, string key, int fallback, int min, int max)
+    {
+        foreach (var item in payload)
+        {
+            if (!string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            int? parsed = item.Value.ValueKind switch
+            {
+                JsonValueKind.Number when item.Value.TryGetInt32(out var number) => number,
+                JsonValueKind.String when int.TryParse(item.Value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) => number,
+                _ => null
+            };
+
+            return Math.Clamp(parsed ?? fallback, min, max);
+        }
+
+        return fallback;
+    }
+
+    private static string? Truncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private async Task<string> GenerateUniqueInviteCode(int tenantId)
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            var code = RandomInviteCode(chars, length: 8);
+            var exists = await _db.TenantInviteCodes
+                .AsNoTracking()
+                .AnyAsync(c => c.TenantId == tenantId && c.Code == code);
+
+            if (!exists)
+            {
+                return code;
+            }
+        }
+
+        return RandomInviteCode(chars, length: 12);
+    }
+
+    private static string RandomInviteCode(string chars, int length)
+    {
+        var buffer = new char[length];
+        for (var i = 0; i < buffer.Length; i++)
+        {
+            buffer[i] = chars[RandomNumberGenerator.GetInt32(chars.Length)];
+        }
+
+        return new string(buffer);
     }
 
     private static string FederationWebhookLogsKey(int webhookId)

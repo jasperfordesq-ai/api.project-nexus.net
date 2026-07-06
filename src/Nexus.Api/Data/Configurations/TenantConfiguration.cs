@@ -117,6 +117,50 @@ public class TenantConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        // Laravel-compatible tenant invite codes for /api/v2/admin/invite-codes
+        modelBuilder.Entity<TenantInviteCode>(entity =>
+        {
+            entity.ToTable("tenant_invite_codes");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.Code).HasColumnName("code").HasMaxLength(12).IsRequired();
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.MaxUses).HasColumnName("max_uses").HasDefaultValue(1);
+            entity.Property(e => e.UsesCount).HasColumnName("uses_count");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.Note).HasColumnName("note").HasMaxLength(255);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.LastUsedAt).HasColumnName("last_used_at");
+            entity.Property(e => e.LastUsedBy).HasColumnName("last_used_by");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Code })
+                .IsUnique()
+                .HasDatabaseName("tenant_invite_codes_tenant_code_unique");
+            entity.HasIndex(e => new { e.TenantId, e.IsActive, e.CreatedAt })
+                .HasDatabaseName("tenant_invite_codes_tenant_active_created_idx");
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.LastUsedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.LastUsedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         // TenantProviderCredential configuration
         modelBuilder.Entity<TenantProviderCredential>(entity =>
         {
