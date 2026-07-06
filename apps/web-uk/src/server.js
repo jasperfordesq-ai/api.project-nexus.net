@@ -51,6 +51,7 @@ const staticPageRoutes = require('./routes/static-pages');
 const kbRoutes = require('./routes/kb');
 const supportRoutes = require('./routes/support');
 const legalRoutes = require('./routes/legal');
+const publicInfoRoutes = require('./routes/public-info');
 const contactSupportRoutes = require('./routes/contact-support');
 const onboardingPostRoutes = require('./routes/onboarding-posts');
 const savedCollectionRoutes = require('./routes/saved-collections');
@@ -1097,6 +1098,7 @@ app.use('/group-exchanges', doubleCsrfProtection, postOnly(formLimiter), groupEx
 app.use('/kb', kbRoutes);
 app.use(supportRoutes);
 app.use(legalRoutes);
+app.use(publicInfoRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {

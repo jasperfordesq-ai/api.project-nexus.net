@@ -662,6 +662,34 @@ describe('shared accessible frontend shell', () => {
     expect(api.getLegalDocument).toHaveBeenNthCalledWith(2, 'privacy');
   });
 
+  it('renders the Laravel-style guide and features pages', async () => {
+    const staticPageRoutes = require('../src/routes/static-pages');
+
+    const guide = await request(app).get('/guide');
+    const features = await request(app).get('/features');
+
+    expect(staticPageRoutes.pages['/guide']).toBeUndefined();
+    expect(staticPageRoutes.pages['/features']).toBeUndefined();
+    expect(guide.status).toBe(200);
+    expect(guide.text).toContain('How timebanking works');
+    expect(guide.text).toContain("Everyone's time is equal");
+    expect(guide.text).toContain('The three steps');
+    expect(guide.text).toContain('Give your time');
+    expect(guide.text).toContain('Earn time credits');
+    expect(guide.text).toContain('Spend your credits');
+    expect(guide.text).toContain('href="/register"');
+    expect(guide.text).toContain('href="/listings"');
+    expect(guide.text).not.toContain('Guide content will be ported');
+
+    expect(features.status).toBe(200);
+    expect(features.text).toContain('What you can do in this community.');
+    expect(features.text).toContain('Find members who can help with what you need');
+    expect(features.text).toContain('Earn and spend time credits');
+    expect(features.text).toContain('Discover and host community events');
+    expect(features.text).toContain('href="/guide"');
+    expect(features.text).not.toContain('Feature guidance will be ported');
+  });
+
   it('renders the Laravel-backed Federation hub with stats, partners, and activity', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {

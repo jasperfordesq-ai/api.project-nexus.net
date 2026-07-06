@@ -8,14 +8,6 @@ const express = require('express');
 const router = express.Router();
 
 const pages = {
-  '/guide': {
-    title: 'Guide',
-    body: 'Guide content will be ported from the Laravel accessible frontend.'
-  },
-  '/features': {
-    title: 'Features',
-    body: 'Feature guidance will be ported from the Laravel accessible frontend.'
-  },
   '/marketplace': {
     title: 'Marketplace',
     body: 'Marketplace pages will follow the Laravel accessible frontend contract.'
