@@ -801,10 +801,13 @@ public class AdminCompatibilityController : ControllerBase
             ? autoDetectValue
             : true;
 
+        var activeLanguages = locales.Where(l => l.IsActive).Select(l => l.Locale).ToArray();
+
         return Ok(new
         {
             default_language = locales.FirstOrDefault(l => l.IsDefault)?.Locale ?? "en",
-            available_languages = locales.Where(l => l.IsActive).Select(l => l.Locale).ToArray(),
+            supported_languages = activeLanguages,
+            available_languages = activeLanguages,
             locales = locales.Select(MapLocale),
             auto_detect = autoDetect
         });
@@ -815,7 +818,7 @@ public class AdminCompatibilityController : ControllerBase
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
         var defaultLanguage = GetStringProperty(request, "default_language", "default_locale", "locale");
-        var requestedLocales = ExtractStringArray(request, "available_languages", "locales", "languages");
+        var requestedLocales = ExtractStringArray(request, "supported_languages", "available_languages", "locales", "languages");
 
         if (!string.IsNullOrWhiteSpace(defaultLanguage) && requestedLocales.Count == 0)
             requestedLocales.Add(defaultLanguage);
@@ -824,7 +827,13 @@ public class AdminCompatibilityController : ControllerBase
             return BadRequest(new { error = "default_language, available_languages, or auto_detect is required" });
 
         var existing = await _db.SupportedLocales.ToListAsync();
-        foreach (var code in requestedLocales.Select(NormalizeLocaleCode).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.OrdinalIgnoreCase))
+        var normalizedRequestedLocales = requestedLocales
+            .Select(NormalizeLocaleCode)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var code in normalizedRequestedLocales)
         {
             var locale = existing.FirstOrDefault(l => l.Locale.Equals(code, StringComparison.OrdinalIgnoreCase));
             if (locale == null)
@@ -845,6 +854,13 @@ public class AdminCompatibilityController : ControllerBase
             {
                 locale.IsActive = true;
             }
+        }
+
+        if (normalizedRequestedLocales.Count > 0)
+        {
+            var requestedLocaleSet = normalizedRequestedLocales.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var locale in existing)
+                locale.IsActive = requestedLocaleSet.Contains(locale.Locale);
         }
 
         if (!string.IsNullOrWhiteSpace(defaultLanguage))

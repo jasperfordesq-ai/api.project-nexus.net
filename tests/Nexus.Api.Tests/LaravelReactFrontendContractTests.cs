@@ -296,6 +296,367 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         clearData.GetProperty("type").GetString().Should().Be("tenant");
     }
 
+    [Fact]
+    public async Task AdminLanguageConfigV2_AcceptsAndReturnsLaravelReactSupportedLanguagesShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/admin/config/languages", new
+        {
+            default_language = "ga",
+            supported_languages = new[] { "en", "ga", "fr" }
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        var updateData = updateJson.GetProperty("data");
+        updateData.GetProperty("default_language").GetString().Should().Be("ga");
+        updateData.GetProperty("supported_languages").EnumerateArray().Select(x => x.GetString())
+            .Should().BeEquivalentTo(["en", "ga", "fr"]);
+
+        var get = await Client.GetAsync("/api/v2/admin/config/languages");
+
+        get.StatusCode.Should().Be(HttpStatusCode.OK);
+        var getJson = await get.Content.ReadFromJsonAsync<JsonElement>();
+        getJson.GetProperty("default_language").GetString().Should().Be("ga");
+        getJson.GetProperty("supported_languages").EnumerateArray().Select(x => x.GetString())
+            .Should().BeEquivalentTo(["en", "ga", "fr"]);
+    }
+
+    [Fact]
+    public async Task AdminGroupConfigV2_ReturnsAndPersistsLaravelReactModuleConfigShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/config/groups");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        var initialData = initialJson.GetProperty("data");
+        initialData.GetProperty("config").ValueKind.Should().Be(JsonValueKind.Object);
+        initialData.GetProperty("defaults").ValueKind.Should().Be(JsonValueKind.Object);
+
+        var singleUpdate = await Client.PutAsJsonAsync("/api/v2/admin/config/groups", new
+        {
+            key = "max_members_per_group",
+            value = 250
+        });
+
+        singleUpdate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var singleJson = await singleUpdate.Content.ReadFromJsonAsync<JsonElement>();
+        var singleData = singleJson.GetProperty("data");
+        singleData.GetProperty("key").GetString().Should().Be("max_members_per_group");
+        singleData.GetProperty("value").GetInt32().Should().Be(250);
+
+        var bulkUpdate = await Client.PutAsJsonAsync("/api/v2/admin/config/groups/bulk", new
+        {
+            settings = new
+            {
+                allow_private_groups = true,
+                max_members_per_group = 300
+            }
+        });
+
+        bulkUpdate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bulkJson = await bulkUpdate.Content.ReadFromJsonAsync<JsonElement>();
+        var updated = bulkJson.GetProperty("data").GetProperty("updated");
+        updated.GetProperty("allow_private_groups").GetBoolean().Should().BeTrue();
+        updated.GetProperty("max_members_per_group").GetInt32().Should().Be(300);
+
+        var saved = await Client.GetAsync("/api/v2/admin/config/groups");
+        saved.StatusCode.Should().Be(HttpStatusCode.OK);
+        var savedJson = await saved.Content.ReadFromJsonAsync<JsonElement>();
+        var config = savedJson.GetProperty("data").GetProperty("config");
+        config.GetProperty("allow_private_groups").GetBoolean().Should().BeTrue();
+        config.GetProperty("max_members_per_group").GetInt32().Should().Be(300);
+    }
+
+    [Fact]
+    public async Task AdminIdentityConfigV2_ReturnsAndPersistsLaravelReactModuleConfigShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/config/identity");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        var initialData = initialJson.GetProperty("data");
+        initialData.GetProperty("config").GetProperty("identity_verification_fee_cents")
+            .GetInt32().Should().Be(500);
+        initialData.GetProperty("defaults").GetProperty("identity_verification_fee_cents")
+            .GetInt32().Should().Be(500);
+
+        var bulkUpdate = await Client.PutAsJsonAsync("/api/v2/admin/config/identity/bulk", new
+        {
+            settings = new
+            {
+                identity_verification_fee_cents = 0
+            }
+        });
+
+        bulkUpdate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bulkJson = await bulkUpdate.Content.ReadFromJsonAsync<JsonElement>();
+        bulkJson.GetProperty("data").GetProperty("updated")
+            .GetProperty("identity_verification_fee_cents").GetInt32().Should().Be(0);
+
+        var saved = await Client.GetAsync("/api/v2/admin/config/identity");
+        saved.StatusCode.Should().Be(HttpStatusCode.OK);
+        var savedJson = await saved.Content.ReadFromJsonAsync<JsonElement>();
+        savedJson.GetProperty("data").GetProperty("config")
+            .GetProperty("identity_verification_fee_cents").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AdminTranslationConfigV2_ReturnsAndPersistsLaravelReactConfigShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/config/translation");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        var initialData = initialJson.GetProperty("data");
+        initialData.GetProperty("config").GetProperty("translation.engine")
+            .GetString().Should().Be("openai");
+        initialData.GetProperty("defaults").GetProperty("translation.max_per_user_per_hour")
+            .GetInt32().Should().Be(100);
+
+        var update = await Client.PutAsJsonAsync("/api/v2/admin/config/translation", new
+        {
+            key = "translation.auto_translate_default",
+            value = true
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        var updateData = updateJson.GetProperty("data");
+        updateData.GetProperty("key").GetString().Should().Be("translation.auto_translate_default");
+        updateData.GetProperty("value").GetBoolean().Should().BeTrue();
+
+        var saved = await Client.GetAsync("/api/v2/admin/config/translation");
+        saved.StatusCode.Should().Be(HttpStatusCode.OK);
+        var savedJson = await saved.Content.ReadFromJsonAsync<JsonElement>();
+        savedJson.GetProperty("data").GetProperty("config")
+            .GetProperty("translation.auto_translate_default").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminTranslationGlossaryV2_ReturnsCreatesAndDeletesLaravelReactShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var empty = await Client.GetAsync("/api/v2/admin/translation/glossary?language=ga");
+
+        empty.StatusCode.Should().Be(HttpStatusCode.OK);
+        var emptyJson = await empty.Content.ReadFromJsonAsync<JsonElement>();
+        emptyJson.GetProperty("data").GetProperty("items").ValueKind.Should().Be(JsonValueKind.Array);
+        emptyJson.GetProperty("data").GetProperty("total").GetInt32().Should().Be(0);
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/translation/glossary", new
+        {
+            source_term = "hello",
+            target_term = "dia dhuit",
+            target_language = "ga"
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var createdId = createJson.GetProperty("data").GetProperty("id").GetInt32();
+        createdId.Should().BeGreaterThan(0);
+
+        var list = await Client.GetAsync("/api/v2/admin/translation/glossary?language=ga");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var data = listJson.GetProperty("data");
+        data.GetProperty("total").GetInt32().Should().Be(1);
+        var item = data.GetProperty("items").EnumerateArray().Single();
+        item.GetProperty("id").GetInt32().Should().Be(createdId);
+        item.GetProperty("source_term").GetString().Should().Be("hello");
+        item.GetProperty("target_term").GetString().Should().Be("dia dhuit");
+        item.GetProperty("target_language").GetString().Should().Be("ga");
+        item.GetProperty("is_active").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/translation/glossary/{createdId}");
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminListingConfigV2_ReturnsFrontendDefaultsAndPersistsUpdates()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/config/listings");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        var defaults = initialJson.GetProperty("data").GetProperty("defaults");
+        defaults.GetProperty("listing.max_per_user").GetInt32().Should().Be(50);
+        defaults.GetProperty("listing.max_images").GetInt32().Should().Be(5);
+        defaults.GetProperty("listing.allow_offers").GetBoolean().Should().BeTrue();
+        defaults.GetProperty("listing.enable_map_view").GetBoolean().Should().BeTrue();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/admin/config/listings", new
+        {
+            key = "listing.max_per_user",
+            value = 25
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("data").GetProperty("value").GetInt32().Should().Be(25);
+
+        var bulk = await Client.PutAsJsonAsync("/api/v2/admin/config/listings/bulk", new
+        {
+            settings = new Dictionary<string, object?>
+            {
+                ["listing.max_images"] = 3,
+                ["listing.require_image"] = true
+            }
+        });
+
+        bulk.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bulkJson = await bulk.Content.ReadFromJsonAsync<JsonElement>();
+        var updated = bulkJson.GetProperty("data").GetProperty("updated");
+        updated.GetProperty("listing.max_images").GetInt32().Should().Be(3);
+        updated.GetProperty("listing.require_image").GetBoolean().Should().BeTrue();
+
+        var saved = await Client.GetAsync("/api/v2/admin/config/listings");
+        saved.StatusCode.Should().Be(HttpStatusCode.OK);
+        var config = (await saved.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("config");
+        config.GetProperty("listing.max_per_user").GetInt32().Should().Be(25);
+        config.GetProperty("listing.max_images").GetInt32().Should().Be(3);
+        config.GetProperty("listing.require_image").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminVolunteeringConfigV2_ReturnsFrontendDefaultsAndPersistsBulkUpdates()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/config/volunteering");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        var defaults = initialJson.GetProperty("data").GetProperty("defaults");
+        defaults.GetProperty("volunteering.tab_opportunities").GetBoolean().Should().BeTrue();
+        defaults.GetProperty("volunteering.cancellation_deadline_hours").GetInt32().Should().Be(24);
+        defaults.GetProperty("volunteering.max_hours_per_shift").GetInt32().Should().Be(8);
+        defaults.GetProperty("volunteering.expense_max_amount").GetInt32().Should().Be(500);
+        defaults.GetProperty("volunteering.enable_matching").GetBoolean().Should().BeTrue();
+
+        var bulk = await Client.PutAsJsonAsync("/api/v2/admin/config/volunteering/bulk", new
+        {
+            settings = new Dictionary<string, object?>
+            {
+                ["volunteering.max_hours_per_shift"] = 6,
+                ["volunteering.expense_require_receipt"] = true,
+                ["volunteering.enable_matching"] = false
+            }
+        });
+
+        bulk.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bulkJson = await bulk.Content.ReadFromJsonAsync<JsonElement>();
+        var updated = bulkJson.GetProperty("data").GetProperty("updated");
+        updated.GetProperty("volunteering.max_hours_per_shift").GetInt32().Should().Be(6);
+        updated.GetProperty("volunteering.expense_require_receipt").GetBoolean().Should().BeTrue();
+        updated.GetProperty("volunteering.enable_matching").GetBoolean().Should().BeFalse();
+
+        var saved = await Client.GetAsync("/api/v2/admin/config/volunteering");
+        saved.StatusCode.Should().Be(HttpStatusCode.OK);
+        var config = (await saved.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("config");
+        config.GetProperty("volunteering.max_hours_per_shift").GetInt32().Should().Be(6);
+        config.GetProperty("volunteering.expense_require_receipt").GetBoolean().Should().BeTrue();
+        config.GetProperty("volunteering.enable_matching").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AdminJobsConfigV2_ReturnsFrontendDefaultsAndPersistsBulkUpdates()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/config/jobs");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        var defaults = initialJson.GetProperty("data").GetProperty("defaults");
+        defaults.GetProperty("jobs.tab_browse").GetBoolean().Should().BeTrue();
+        defaults.GetProperty("jobs.default_currency").GetString().Should().Be("EUR");
+        defaults.GetProperty("jobs.max_postings_per_user").GetInt32().Should().Be(20);
+        defaults.GetProperty("jobs.default_deadline_days").GetInt32().Should().Be(30);
+        defaults.GetProperty("jobs.enable_cv_upload").GetBoolean().Should().BeTrue();
+        defaults.GetProperty("jobs.featured_duration_days").GetInt32().Should().Be(7);
+
+        var bulk = await Client.PutAsJsonAsync("/api/v2/admin/config/jobs/bulk", new
+        {
+            settings = new Dictionary<string, object?>
+            {
+                ["jobs.max_postings_per_user"] = 12,
+                ["jobs.require_salary"] = true,
+                ["jobs.enable_blind_hiring"] = true
+            }
+        });
+
+        bulk.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bulkJson = await bulk.Content.ReadFromJsonAsync<JsonElement>();
+        var updated = bulkJson.GetProperty("data").GetProperty("updated");
+        updated.GetProperty("jobs.max_postings_per_user").GetInt32().Should().Be(12);
+        updated.GetProperty("jobs.require_salary").GetBoolean().Should().BeTrue();
+        updated.GetProperty("jobs.enable_blind_hiring").GetBoolean().Should().BeTrue();
+
+        var saved = await Client.GetAsync("/api/v2/admin/config/jobs");
+        saved.StatusCode.Should().Be(HttpStatusCode.OK);
+        var config = (await saved.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("config");
+        config.GetProperty("jobs.max_postings_per_user").GetInt32().Should().Be(12);
+        config.GetProperty("jobs.require_salary").GetBoolean().Should().BeTrue();
+        config.GetProperty("jobs.enable_blind_hiring").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminPodcastConfigV2_ReturnsFrontendDefaultsAndPersistsBulkUpdates()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/config/podcasts");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        var defaults = initialJson.GetProperty("defaults");
+        defaults.GetProperty("podcasts.allow_member_show_creation").GetBoolean().Should().BeTrue();
+        defaults.GetProperty("podcasts.max_shows_per_user").GetInt32().Should().Be(5);
+        defaults.GetProperty("podcasts.max_audio_size_mb").GetInt32().Should().Be(250);
+        defaults.GetProperty("podcasts.enable_media_scanning").GetBoolean().Should().BeTrue();
+        defaults.GetProperty("podcasts.enable_media_processing").GetBoolean().Should().BeTrue();
+
+        var bulk = await Client.PutAsJsonAsync("/api/v2/admin/config/podcasts/bulk", new
+        {
+            settings = new Dictionary<string, object?>
+            {
+                ["podcasts.max_shows_per_user"] = 2,
+                ["podcasts.enable_rss_feed"] = false,
+                ["podcasts.media_storage_driver"] = "cloud"
+            }
+        });
+
+        bulk.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bulkJson = await bulk.Content.ReadFromJsonAsync<JsonElement>();
+        var updated = bulkJson.GetProperty("updated");
+        updated.GetProperty("podcasts.max_shows_per_user").GetInt32().Should().Be(2);
+        updated.GetProperty("podcasts.enable_rss_feed").GetBoolean().Should().BeFalse();
+        updated.GetProperty("podcasts.media_storage_driver").GetString().Should().Be("cloud");
+
+        var saved = await Client.GetAsync("/api/v2/admin/config/podcasts");
+        saved.StatusCode.Should().Be(HttpStatusCode.OK);
+        var config = (await saved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("config");
+        config.GetProperty("podcasts.max_shows_per_user").GetInt32().Should().Be(2);
+        config.GetProperty("podcasts.enable_rss_feed").GetBoolean().Should().BeFalse();
+        config.GetProperty("podcasts.media_storage_driver").GetString().Should().Be("cloud");
+    }
+
     private async Task SeedRegionalAnalyticsSubscriptionAsync(string token)
     {
         using var scope = Factory.Services.CreateScope();

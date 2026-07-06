@@ -31,6 +31,8 @@ public class AdminExplicitParityController : ControllerBase
     private const string MemberPremiumConnectAccountKey = "donations.stripe_connect_account_id";
     private const string MemberPremiumDisputesKey = "donations.disputes";
     private const string SupportReportsKey = "admin_explicit.support_reports";
+    private const string ModuleConfigPrefix = "admin_explicit.module_config.";
+    private const string TranslationGlossaryKey = "admin_explicit.translation_glossary";
     private const string ModerationSettingPrefix = "moderation.";
     private static readonly string[] ModerationSettingKeys =
     [
@@ -41,6 +43,142 @@ public class AdminExplicitParityController : ControllerBase
         "require_comment",
         "auto_filter"
     ];
+
+    private static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> ModuleConfigDefaults =
+        new Dictionary<string, IReadOnlyDictionary<string, object?>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["groups"] = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["allow_user_group_creation"] = true,
+                ["require_group_approval"] = false,
+                ["max_groups_per_user"] = 10,
+                ["max_members_per_group"] = 500,
+                ["allow_private_groups"] = true,
+                ["default_visibility"] = "public",
+                ["enable_discussions"] = true,
+                ["enable_feedback"] = true,
+                ["enable_achievements"] = true,
+                ["moderation_enabled"] = true
+            },
+            ["listings"] = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["listing.moderation_enabled"] = false,
+                ["listing.auto_approve_trusted"] = false,
+                ["listing.max_per_user"] = 50,
+                ["listing.max_images"] = 5,
+                ["listing.max_image_size_mb"] = 8,
+                ["listing.require_image"] = false,
+                ["listing.min_title_length"] = 5,
+                ["listing.min_description_length"] = 20,
+                ["listing.allow_offers"] = true,
+                ["listing.allow_requests"] = true,
+                ["listing.require_category"] = true,
+                ["listing.require_location"] = false,
+                ["listing.require_hours_estimate"] = false,
+                ["listing.enable_skill_tags"] = true,
+                ["listing.enable_service_type"] = true,
+                ["listing.auto_expire_days"] = 0,
+                ["listing.max_renewals"] = 12,
+                ["listing.renewal_days"] = 30,
+                ["listing.expiry_reminders"] = true,
+                ["listing.enable_featured"] = true,
+                ["listing.featured_duration_days"] = 7,
+                ["listing.enable_ai_descriptions"] = true,
+                ["listing.enable_reporting"] = true,
+                ["listing.enable_favourites"] = true,
+                ["listing.enable_map_view"] = true,
+                ["listing.enable_reciprocity"] = true
+            },
+            ["volunteering"] = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["volunteering.tab_opportunities"] = true,
+                ["volunteering.tab_applications"] = true,
+                ["volunteering.tab_hours"] = true,
+                ["volunteering.tab_recommended"] = true,
+                ["volunteering.tab_certificates"] = true,
+                ["volunteering.tab_alerts"] = true,
+                ["volunteering.tab_wellbeing"] = true,
+                ["volunteering.tab_credentials"] = true,
+                ["volunteering.tab_waitlist"] = true,
+                ["volunteering.tab_swaps"] = true,
+                ["volunteering.tab_group_signups"] = true,
+                ["volunteering.tab_hours_review"] = true,
+                ["volunteering.tab_expenses"] = true,
+                ["volunteering.tab_safeguarding"] = true,
+                ["volunteering.tab_community_projects"] = true,
+                ["volunteering.tab_donations"] = true,
+                ["volunteering.tab_accessibility"] = true,
+                ["volunteering.swap_requires_admin"] = false,
+                ["volunteering.auto_approve_applications"] = false,
+                ["volunteering.require_org_note_on_decline"] = false,
+                ["volunteering.cancellation_deadline_hours"] = 24,
+                ["volunteering.max_hours_per_shift"] = 8,
+                ["volunteering.hours_require_verification"] = true,
+                ["volunteering.min_hours_for_certificate"] = 1,
+                ["volunteering.alert_default_expiry_hours"] = 24,
+                ["volunteering.alert_skill_matching"] = true,
+                ["volunteering.expenses_enabled"] = true,
+                ["volunteering.expense_require_receipt"] = false,
+                ["volunteering.expense_max_amount"] = 500,
+                ["volunteering.burnout_detection"] = true,
+                ["volunteering.guardian_consent_required"] = false,
+                ["volunteering.enable_qr_checkin"] = true,
+                ["volunteering.enable_recurring_shifts"] = true,
+                ["volunteering.enable_reviews"] = true,
+                ["volunteering.enable_matching"] = true
+            },
+            ["jobs"] = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["jobs.tab_browse"] = true,
+                ["jobs.tab_saved"] = true,
+                ["jobs.tab_my_postings"] = true,
+                ["jobs.page_kanban"] = true,
+                ["jobs.page_analytics"] = true,
+                ["jobs.page_bias_audit"] = true,
+                ["jobs.page_talent_search"] = true,
+                ["jobs.page_alerts"] = true,
+                ["jobs.allow_paid"] = true,
+                ["jobs.allow_volunteer"] = true,
+                ["jobs.allow_timebank"] = true,
+                ["jobs.require_salary"] = false,
+                ["jobs.default_currency"] = "EUR",
+                ["jobs.max_postings_per_user"] = 20,
+                ["jobs.default_deadline_days"] = 30,
+                ["jobs.moderation_enabled"] = false,
+                ["jobs.spam_detection"] = true,
+                ["jobs.auto_approve_trusted"] = false,
+                ["jobs.enable_cv_upload"] = true,
+                ["jobs.require_cover_message"] = false,
+                ["jobs.enable_interview_scheduling"] = true,
+                ["jobs.enable_offers"] = true,
+                ["jobs.enable_scorecards"] = true,
+                ["jobs.enable_pipeline_rules"] = true,
+                ["jobs.enable_blind_hiring"] = false,
+                ["jobs.enable_featured"] = true,
+                ["jobs.featured_duration_days"] = 7,
+                ["jobs.enable_ai_descriptions"] = true,
+                ["jobs.enable_skills_matching"] = true,
+                ["jobs.enable_referrals"] = true,
+                ["jobs.enable_templates"] = true,
+                ["jobs.enable_rss_feed"] = true,
+                ["jobs.enable_saved_profiles"] = true,
+                ["jobs.enable_employer_branding"] = true
+            },
+            ["identity"] = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["identity_verification_fee_cents"] = 500
+            },
+            ["translation"] = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["translation.enabled"] = true,
+                ["translation.engine"] = "openai",
+                ["translation.context_aware"] = false,
+                ["translation.context_messages"] = 5,
+                ["translation.auto_translate_default"] = false,
+                ["translation.max_per_user_per_hour"] = 100,
+                ["translation.glossary_enabled"] = false
+            }
+        };
 
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -86,6 +224,7 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await DeleteGroup(groupId),
             _ when TryGetLastInt(path, "/api/v2/admin/invite-codes/", out var inviteCodeId) => await DeactivateInviteCode(inviteCodeId),
             _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await DeleteListing(listingId),
+            _ when TryGetLastInt(path, "/api/v2/admin/translation/glossary/", out var glossaryId) => await DeleteTranslationGlossaryEntry(glossaryId),
             _ => await PersistCompatibilityWrite("delete")
         };
     }
@@ -265,8 +404,14 @@ public class AdminExplicitParityController : ControllerBase
             "/api/admin/users/search" => await SearchUsers(),
             "/api/v2/admin/billing/subscription" => await GetBillingSubscription(),
             "/api/v2/admin/billing/invoices" => await GetBillingInvoices(),
+            "/api/v2/admin/config/groups" => await GetModuleConfig("groups"),
+            "/api/v2/admin/config/identity" => await GetModuleConfig("identity"),
             "/api/v2/admin/config/landing-page" => await GetLandingPageMetadata(),
+            "/api/v2/admin/config/listings" => await GetModuleConfig("listings"),
+            "/api/v2/admin/config/jobs" => await GetModuleConfig("jobs"),
             "/api/v2/admin/config/sitemap-stats" => await GetSitemapStats(),
+            "/api/v2/admin/config/translation" => await GetModuleConfig("translation"),
+            "/api/v2/admin/config/volunteering" => await GetModuleConfig("volunteering"),
             "/api/v2/admin/enterprise/config/features" => await GetEnterpriseFeatures(),
             "/api/v2/admin/enterprise/gdpr/consent-types" => await GetGdprConsentTypes(),
             "/api/v2/admin/enterprise/gdpr/statistics" => await GetGdprStatistics(),
@@ -307,6 +452,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/super/billing/export" => await GetBillingExportCsv(),
             "/api/v2/admin/super/billing/revenue" => await GetBillingRevenue(),
             "/api/v2/admin/super/billing/snapshot" => await GetBillingSnapshot(),
+            "/api/v2/admin/translation/glossary" => await GetTranslationGlossary(),
             "/api/v2/admin/volunteering/organizations" => await GetVolunteeringOrganizations(),
             _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/breaches/", out var breachId) => await GetGdprBreach(breachId),
             _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/requests/", out var requestId) => await GetGdprRequest(requestId),
@@ -477,6 +623,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/federation/credit-agreements" => await CreateFederationCreditAgreement(),
             "/api/v2/admin/invite-codes" => await GenerateInviteCodes(),
             "/api/v2/admin/member-premium/connect/onboarding" => await CreateMemberPremiumConnectOnboarding(),
+            "/api/v2/admin/translation/glossary" => await CreateTranslationGlossaryEntry(),
             _ when TryGetFederationCreditAgreementAction(path, out var creditAgreementId, out var creditAgreementAction) => await UpdateFederationCreditAgreementStatus(creditAgreementId, creditAgreementAction),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/test", out var webhookId) => await TestFederationWebhook(webhookId),
             _ when TryGetJobModerationAction(path, out var jobId, out var action) => await ModerateJob(jobId, action),
@@ -569,6 +716,15 @@ public class AdminExplicitParityController : ControllerBase
 
         return path switch
         {
+            "/api/v2/admin/config/groups" => await PutModuleConfig("groups"),
+            "/api/v2/admin/config/groups/bulk" => await PutModuleConfigBulk("groups"),
+            "/api/v2/admin/config/identity/bulk" => await PutModuleConfigBulk("identity"),
+            "/api/v2/admin/config/listings" => await PutModuleConfig("listings"),
+            "/api/v2/admin/config/listings/bulk" => await PutModuleConfigBulk("listings"),
+            "/api/v2/admin/config/translation" => await PutModuleConfig("translation"),
+            "/api/v2/admin/config/translation/bulk" => await PutModuleConfigBulk("translation"),
+            "/api/v2/admin/config/jobs/bulk" => await PutModuleConfigBulk("jobs"),
+            "/api/v2/admin/config/volunteering/bulk" => await PutModuleConfigBulk("volunteering"),
             "/api/v2/admin/federation/topics/mine" => await PutFederationTopicSubscriptions(),
             "/api/v2/admin/member-premium/settings" => await PutMemberPremiumSettings(),
             "/api/v2/admin/moderation/settings" => await PutModerationSettings(),
@@ -3078,6 +3234,242 @@ public class AdminExplicitParityController : ControllerBase
             : DateTime.MinValue;
     }
 
+    private async Task<IActionResult> GetTranslationGlossary()
+    {
+        var language = Request.Query["language"].FirstOrDefault()?.Trim();
+        var entries = await LoadTranslationGlossaryAsync();
+        var filtered = string.IsNullOrWhiteSpace(language)
+            ? entries
+            : entries.Where(e => string.Equals(e.TargetLanguage, language, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                items = filtered.Select(ToTranslationGlossaryResponse).ToList(),
+                total = filtered.Count
+            }
+        });
+    }
+
+    private async Task<IActionResult> CreateTranslationGlossaryEntry()
+    {
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        using var doc = JsonDocument.Parse(payloadJson);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            return BadRequest(new { error = "source_term, target_term, and target_language are required" });
+
+        var sourceTerm = TryFindProperty(doc.RootElement, "source_term", out var source)
+            ? JsonElementToString(source)?.Trim()
+            : null;
+        var targetTerm = TryFindProperty(doc.RootElement, "target_term", out var target)
+            ? JsonElementToString(target)?.Trim()
+            : null;
+        var targetLanguage = TryFindProperty(doc.RootElement, "target_language", out var language)
+            ? JsonElementToString(language)?.Trim()
+            : null;
+
+        if (string.IsNullOrWhiteSpace(sourceTerm) ||
+            string.IsNullOrWhiteSpace(targetTerm) ||
+            string.IsNullOrWhiteSpace(targetLanguage))
+        {
+            return BadRequest(new { error = "source_term, target_term, and target_language are required" });
+        }
+
+        var entries = await LoadTranslationGlossaryAsync();
+        var entry = new TranslationGlossaryEntry
+        {
+            Id = entries.Count == 0 ? 1 : entries.Max(e => e.Id) + 1,
+            SourceTerm = sourceTerm,
+            TargetTerm = targetTerm,
+            TargetLanguage = targetLanguage.ToLowerInvariant(),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        entries.Add(entry);
+        await SaveTranslationGlossaryAsync(entries);
+
+        return Created($"/api/v2/admin/translation/glossary/{entry.Id}", new
+        {
+            success = true,
+            data = ToTranslationGlossaryResponse(entry)
+        });
+    }
+
+    private async Task<IActionResult> DeleteTranslationGlossaryEntry(int id)
+    {
+        var entries = await LoadTranslationGlossaryAsync();
+        var entry = entries.FirstOrDefault(e => e.Id == id);
+        if (entry == null)
+            return NotFound(new { error = "Glossary entry not found" });
+
+        entries.Remove(entry);
+        await SaveTranslationGlossaryAsync(entries);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                deleted = true,
+                id
+            }
+        });
+    }
+
+    private async Task<List<TranslationGlossaryEntry>> LoadTranslationGlossaryAsync()
+    {
+        var raw = await GetTenantConfigValueAsync(TranslationGlossaryKey);
+        if (string.IsNullOrWhiteSpace(raw))
+            return [];
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<TranslationGlossaryEntry>>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private async Task SaveTranslationGlossaryAsync(List<TranslationGlossaryEntry> entries)
+    {
+        await UpsertTenantConfigValueAsync(TranslationGlossaryKey, JsonSerializer.Serialize(entries, StoreJsonOptions));
+        await _db.SaveChangesAsync();
+    }
+
+    private static object ToTranslationGlossaryResponse(TranslationGlossaryEntry entry) => new
+    {
+        id = entry.Id,
+        source_term = entry.SourceTerm,
+        target_term = entry.TargetTerm,
+        target_language = entry.TargetLanguage,
+        is_active = entry.IsActive,
+        created_at = entry.CreatedAt,
+        updated_at = entry.UpdatedAt
+    };
+
+    private async Task<IActionResult> GetModuleConfig(string module)
+    {
+        var settings = await LoadModuleConfigAsync(module);
+        var defaults = GetModuleConfigDefaults(module);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                config = settings,
+                defaults
+            }
+        });
+    }
+
+    private async Task<IActionResult> PutModuleConfig(string module)
+    {
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        using var doc = JsonDocument.Parse(payloadJson);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object ||
+            !TryFindProperty(doc.RootElement, "key", out var keyElement) ||
+            !TryFindProperty(doc.RootElement, "value", out var valueElement))
+        {
+            return BadRequest(new { error = "key and value are required" });
+        }
+
+        var key = JsonElementToString(keyElement)?.Trim();
+        if (string.IsNullOrWhiteSpace(key))
+            return BadRequest(new { error = "key is required" });
+
+        var settings = await LoadModuleConfigAsync(module);
+        var value = ConvertJsonValue(valueElement);
+        settings[key] = value;
+        await SaveModuleConfigAsync(module, settings);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                key,
+                value
+            }
+        });
+    }
+
+    private async Task<IActionResult> PutModuleConfigBulk(string module)
+    {
+        var payloadJson = await ReadRequestPayloadJsonAsync();
+        using var doc = JsonDocument.Parse(payloadJson);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            return BadRequest(new { error = "settings are required" });
+
+        var source = doc.RootElement;
+        if (TryFindProperty(doc.RootElement, "settings", out var settingsElement))
+            source = settingsElement;
+
+        if (source.ValueKind != JsonValueKind.Object)
+            return BadRequest(new { error = "settings must be an object" });
+
+        var settings = await LoadModuleConfigAsync(module);
+        var updated = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var property in source.EnumerateObject())
+        {
+            var value = ConvertJsonValue(property.Value);
+            settings[property.Name] = value;
+            updated[property.Name] = value;
+        }
+
+        await SaveModuleConfigAsync(module, settings);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                updated
+            }
+        });
+    }
+
+    private async Task<Dictionary<string, object?>> LoadModuleConfigAsync(string module)
+    {
+        var settings = new Dictionary<string, object?>(GetModuleConfigDefaults(module), StringComparer.OrdinalIgnoreCase);
+        var raw = await GetTenantConfigValueAsync(ModuleConfigPrefix + module);
+        if (string.IsNullOrWhiteSpace(raw))
+            return settings;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                return settings;
+
+            foreach (var property in doc.RootElement.EnumerateObject())
+                settings[property.Name] = ConvertJsonValue(property.Value);
+        }
+        catch (JsonException)
+        {
+            return settings;
+        }
+
+        return settings;
+    }
+
+    private async Task SaveModuleConfigAsync(string module, Dictionary<string, object?> settings)
+    {
+        var json = JsonSerializer.Serialize(settings, StoreJsonOptions);
+        await UpsertTenantConfigValueAsync(ModuleConfigPrefix + module, json);
+        await _db.SaveChangesAsync();
+    }
+
+    private static IReadOnlyDictionary<string, object?> GetModuleConfigDefaults(string module) =>
+        ModuleConfigDefaults.TryGetValue(module, out var defaults)
+            ? defaults
+            : new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
     private async Task<IActionResult> GetPersistedCompatibilityRead(string path)
     {
         if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
@@ -4047,6 +4439,17 @@ public class AdminExplicitParityController : ControllerBase
         public string Status { get; set; } = "pending";
         public int? ApprovedByFrom { get; set; }
         public int? ApprovedByTo { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    private sealed class TranslationGlossaryEntry
+    {
+        public int Id { get; set; }
+        public string SourceTerm { get; set; } = string.Empty;
+        public string TargetTerm { get; set; } = string.Empty;
+        public string TargetLanguage { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }

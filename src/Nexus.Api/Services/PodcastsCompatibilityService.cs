@@ -502,11 +502,14 @@ public sealed class PodcastsCompatibilityService
     public async Task<IReadOnlyDictionary<string, object?>> UpdateConfigAsync(int tenantId, IReadOnlyDictionary<string, object?> settings, CancellationToken ct)
     {
         var state = await LoadAsync(tenantId, ct);
-        foreach (var (key, value) in settings)
+        var incoming = ExtractConfigSettings(settings);
+        var defaults = DefaultConfig();
+        foreach (var (key, value) in incoming)
         {
-            if (DefaultConfig().ContainsKey(key))
+            var normalizedKey = NormalizeConfigKey(key);
+            if (defaults.ContainsKey(normalizedKey))
             {
-                state.Config[key] = value;
+                state.Config[normalizedKey] = value;
             }
         }
 
@@ -777,21 +780,21 @@ public sealed class PodcastsCompatibilityService
 
     private static IReadOnlyDictionary<string, object?> DefaultConfig() => new Dictionary<string, object?>
     {
-        ["allow_member_show_creation"] = true,
-        ["max_shows_per_user"] = 0,
-        ["moderation_enabled"] = false,
-        ["enable_rss_feed"] = true,
-        ["enable_private_shows"] = true,
-        ["enable_transcripts"] = true,
-        ["enable_chapters"] = true,
-        ["enable_episode_reactions"] = true,
-        ["enable_listen_analytics"] = true,
-        ["max_audio_size_mb"] = 500,
-        ["media_storage_driver"] = "local",
-        ["cloud_storage_disk"] = "s3",
-        ["cloud_cdn_base_url"] = null,
-        ["enable_media_scanning"] = false,
-        ["enable_media_processing"] = false
+        ["podcasts.allow_member_show_creation"] = true,
+        ["podcasts.max_shows_per_user"] = 5,
+        ["podcasts.moderation_enabled"] = false,
+        ["podcasts.enable_rss_feed"] = true,
+        ["podcasts.enable_private_shows"] = true,
+        ["podcasts.enable_transcripts"] = true,
+        ["podcasts.enable_chapters"] = true,
+        ["podcasts.enable_episode_reactions"] = true,
+        ["podcasts.enable_listen_analytics"] = true,
+        ["podcasts.max_audio_size_mb"] = 250,
+        ["podcasts.media_storage_driver"] = "local",
+        ["podcasts.cloud_storage_disk"] = "s3",
+        ["podcasts.cloud_cdn_base_url"] = "",
+        ["podcasts.enable_media_scanning"] = true,
+        ["podcasts.enable_media_processing"] = true
     };
 
     private static IReadOnlyDictionary<string, object?> EffectiveConfig(PodcastCompatibilityState state)
@@ -799,20 +802,73 @@ public sealed class PodcastsCompatibilityService
         var config = new Dictionary<string, object?>(DefaultConfig());
         foreach (var (key, value) in state.Config)
         {
-            config[key] = value;
+            config[NormalizeConfigKey(key)] = value;
         }
 
         return config;
     }
 
     private static bool ConfigBool(PodcastCompatibilityState state, string key) =>
-        EffectiveConfig(state).TryGetValue(key, out var value) && value switch
+        EffectiveConfig(state).TryGetValue(NormalizeConfigKey(key), out var value) && value switch
         {
             bool b => b,
             string s => bool.TryParse(s, out var parsed) && parsed,
             JsonElement { ValueKind: JsonValueKind.True } => true,
             _ => false
         };
+
+    private static string NormalizeConfigKey(string key) =>
+        key.StartsWith("podcasts.", StringComparison.OrdinalIgnoreCase)
+            ? key
+            : $"podcasts.{key}";
+
+    private static IReadOnlyDictionary<string, object?> ExtractConfigSettings(IReadOnlyDictionary<string, object?> settings)
+    {
+        if (settings.Count == 1 &&
+            settings.TryGetValue("settings", out var nested) &&
+            TryConvertConfigSettings(nested, out var nestedSettings))
+        {
+            return nestedSettings;
+        }
+
+        return settings;
+    }
+
+    private static bool TryConvertConfigSettings(object? value, out IReadOnlyDictionary<string, object?> settings)
+    {
+        if (value is IReadOnlyDictionary<string, object?> typed)
+        {
+            settings = typed;
+            return true;
+        }
+
+        if (value is IDictionary<string, object?> dictionary)
+        {
+            settings = new Dictionary<string, object?>(dictionary, StringComparer.OrdinalIgnoreCase);
+            return true;
+        }
+
+        if (value is JsonElement { ValueKind: JsonValueKind.Object } element)
+        {
+            settings = element.EnumerateObject()
+                .ToDictionary(property => property.Name, property => ConvertConfigJsonValue(property.Value), StringComparer.OrdinalIgnoreCase);
+            return true;
+        }
+
+        settings = new Dictionary<string, object?>();
+        return false;
+    }
+
+    private static object? ConvertConfigJsonValue(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString(),
+        JsonValueKind.Number when value.TryGetInt64(out var longValue) => longValue,
+        JsonValueKind.Number when value.TryGetDecimal(out var decimalValue) => decimalValue,
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        JsonValueKind.Null => null,
+        _ => value.GetRawText()
+    };
 
     private static string EscapeXml(string value) =>
         value.Replace("&", "&amp;", StringComparison.Ordinal)
