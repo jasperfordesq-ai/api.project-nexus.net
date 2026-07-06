@@ -1,0 +1,49 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% if backHref %}
+    <a class="govuk-back-link" href="{{ backHref }}">{{ backLabel or 'Back to marketplace' }}</a>
+  {% endif %}
+
+  {% include "marketplace/_nav.njk" %}
+  {% include "marketplace/_status-banner.njk" %}
+
+  <span class="govuk-caption-xl">{{ caption }} at {{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">{{ heading }}</h1>
+  <p class="govuk-body-l">{{ description }}</p>
+
+  {% if mode == 'category' %}
+    <form method="get" action="/marketplace/category/{{ category.slug }}" class="govuk-!-margin-bottom-6">
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="q">Search this category</label>
+        <div id="q-hint" class="govuk-hint">Search by title.</div>
+        <input class="govuk-input govuk-input--width-20" id="q" name="q" type="search" value="{{ query }}" aria-describedby="q-hint">
+      </div>
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search category</button>
+    </form>
+  {% endif %}
+
+  {% if not listings.length %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">{{ emptyMessage }}</p>
+    </div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for item in listings %}
+        {% include "marketplace/_listing-card.njk" %}
+        {% if mode == 'saved' %}
+          <form method="post" action="/marketplace/{{ item.id }}/unsave" class="govuk-!-margin-bottom-6">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <input type="hidden" name="redirect_to" value="saved">
+            <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Remove from saved</button>
+          </form>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

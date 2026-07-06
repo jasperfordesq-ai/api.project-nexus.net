@@ -1,0 +1,145 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% include "marketplace/_nav.njk" %}
+  {% include "marketplace/_status-banner.njk" %}
+
+  <span class="govuk-caption-xl">{% if isSeller %}Your sales{% else %}Your purchases{% endif %} at {{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">{% if isSeller %}Sales{% else %}My orders{% endif %}</h1>
+  <p class="govuk-body-l">{% if isSeller %}Manage incoming orders, mark items as shipped and track fulfilment.{% else %}Track the items you have bought and confirm delivery when they arrive.{% endif %}</p>
+
+  <nav class="govuk-tabs govuk-!-margin-bottom-4" aria-label="{% if isSeller %}Sales{% else %}My orders{% endif %}">
+    <ul class="govuk-tabs__list">
+      {% for tabItem in tabs %}
+        <li class="govuk-tabs__list-item{% if tabItem.active %} govuk-tabs__list-item--selected{% endif %}">
+          <a class="govuk-tabs__tab" href="{{ tabItem.href }}" {% if tabItem.active %}aria-current="page"{% endif %}>{{ tabItem.label }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  {% if not orders.length %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">There are no orders to show here.</p>
+    </div>
+  {% else %}
+    {% for order in orders %}
+      <section class="nexus-alpha-card govuk-!-margin-bottom-6">
+        <div class="nexus-alpha-module-row">
+          <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ order.orderNumberLabel }}</h2>
+          <strong class="govuk-tag {{ order.statusTagClass }}">{{ order.statusLabel }}</strong>
+        </div>
+        <dl class="govuk-summary-list govuk-summary-list--no-border govuk-!-margin-bottom-2">
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Item</dt>
+            <dd class="govuk-summary-list__value">{{ order.listingTitle }}</dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Total</dt>
+            <dd class="govuk-summary-list__value">{{ order.totalLabel }}</dd>
+          </div>
+          {% if order.counterparty %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">{{ order.counterpartyLabel }}</dt>
+              <dd class="govuk-summary-list__value">{{ order.counterparty }}</dd>
+            </div>
+          {% endif %}
+          {% if order.trackingNumber %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Tracking number</dt>
+              <dd class="govuk-summary-list__value">{{ order.trackingNumber }}</dd>
+            </div>
+          {% endif %}
+        </dl>
+
+        {% if order.canShip %}
+          <details class="govuk-details" data-module="govuk-details">
+            <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Mark as shipped</span></summary>
+            <div class="govuk-details__text">
+              <form method="post" action="/marketplace/orders/{{ order.id }}/ship">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <div class="govuk-form-group">
+                  <label class="govuk-label govuk-label--s" for="tracking_number_{{ order.id }}">Tracking number (optional)</label>
+                  <input class="govuk-input govuk-input--width-20" id="tracking_number_{{ order.id }}" name="tracking_number" type="text" maxlength="255">
+                </div>
+                <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Mark as shipped</button>
+              </form>
+            </div>
+          </details>
+        {% endif %}
+
+        {% if order.canConfirm %}
+          <div class="govuk-warning-text">
+            <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+            <strong class="govuk-warning-text__text">
+              <span class="govuk-visually-hidden">Important</span>
+              Only confirm once you have received the item. This releases the order to the seller.
+            </strong>
+          </div>
+          <form method="post" action="/marketplace/orders/{{ order.id }}/confirm" class="govuk-!-margin-bottom-2">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Confirm delivery</button>
+          </form>
+        {% endif %}
+
+        {% if order.canPay %}
+          <form method="post" action="/marketplace/orders/{{ order.id }}/pay" class="govuk-!-margin-bottom-2">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Pay by card</button>
+          </form>
+          <p class="govuk-body-s nexus-alpha-meta">You will be taken to our secure payment provider to complete your payment.</p>
+        {% endif %}
+
+        {% if order.canCancel %}
+          <details class="govuk-details" data-module="govuk-details">
+            <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Cancel order</span></summary>
+            <div class="govuk-details__text">
+              <form method="post" action="/marketplace/orders/{{ order.id }}/cancel">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <div class="govuk-form-group">
+                  <label class="govuk-label govuk-label--s" for="reason_{{ order.id }}">Reason for cancelling</label>
+                  <input class="govuk-input" id="reason_{{ order.id }}" name="reason" type="text" maxlength="500">
+                </div>
+                <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Cancel order</button>
+              </form>
+            </div>
+          </details>
+        {% endif %}
+
+        {% if order.canRate %}
+          <details class="govuk-details" data-module="govuk-details">
+            <summary class="govuk-details__summary"><span class="govuk-details__summary-text">Leave a rating</span></summary>
+            <div class="govuk-details__text">
+              <form method="post" action="/marketplace/orders/{{ order.id }}/rate">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <div class="govuk-form-group">
+                  <fieldset class="govuk-fieldset">
+                    <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Your rating</legend>
+                    <div class="govuk-radios govuk-radios--inline govuk-radios--small" data-module="govuk-radios">
+                      {% for star in [5, 4, 3, 2, 1] %}
+                        <div class="govuk-radios__item">
+                          <input class="govuk-radios__input" id="rating_{{ order.id }}_{{ star }}" name="rating" type="radio" value="{{ star }}">
+                          <label class="govuk-label govuk-radios__label" for="rating_{{ order.id }}_{{ star }}">{{ star }} out of 5</label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </fieldset>
+                </div>
+                <div class="govuk-form-group">
+                  <label class="govuk-label govuk-label--s" for="comment_{{ order.id }}">Comment (optional)</label>
+                  <textarea class="govuk-textarea" id="comment_{{ order.id }}" name="comment" rows="2"></textarea>
+                </div>
+                <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Leave a rating</button>
+              </form>
+            </div>
+          </details>
+        {% endif %}
+      </section>
+    {% endfor %}
+  {% endif %}
+{% endblock %}

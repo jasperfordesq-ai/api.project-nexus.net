@@ -7437,6 +7437,281 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed marketplace my listings dashboard', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          title: 'Expired bike',
+          tagline: 'Ready to renew',
+          status: 'expired',
+          price: 0,
+          price_currency: 'GBP',
+          location: 'Belfast'
+        },
+        { id: 43, title: 'Active helmet', status: 'active', price: 8, price_currency: 'GBP' }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/marketplace/mine?tab=expired&status=renewed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings?limit=100');
+    expect(response.text).toContain('My listings');
+    expect(response.text).toContain('Your listing was renewed.');
+    expect(response.text).toContain('Expired bike');
+    expect(response.text).toContain('Ready to renew');
+    expect(response.text).toContain('Renew');
+    expect(response.text).toContain('href="/marketplace/42/edit"');
+    expect(response.text).not.toContain('Active helmet');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace saved and free listing pages', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: [
+          { id: 42, title: 'Saved bike', tagline: 'Saved for later', price: 15.5, price_currency: 'GBP' }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 77, title: 'Free table', tagline: 'Collection only', price: 0, price_currency: 'GBP' }
+        ]
+      });
+
+    const saved = await request(app)
+      .get('/marketplace/saved?status=unsaved')
+      .set('Cookie', signedCookieHeader());
+    const free = await request(app)
+      .get('/marketplace/free')
+      .set('Cookie', signedCookieHeader());
+
+    expect(saved.status).toBe(200);
+    expect(free.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/listings/saved?limit=50');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/listings/free?limit=50');
+    expect(saved.text).toContain('Saved items');
+    expect(saved.text).toContain('Item removed from your saved list.');
+    expect(saved.text).toContain('Saved bike');
+    expect(saved.text).toContain('Remove from saved');
+    expect(free.text).toContain('Free items');
+    expect(free.text).toContain('Items being given away for free');
+    expect(free.text).toContain('Free table');
+    expect(free.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace category page', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: [
+          { id: 9, name: 'Transport', slug: 'transport' },
+          { id: 10, name: 'Home', slug: 'home' }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 42, title: 'Category bike', tagline: 'Transport item', price: 12, price_currency: 'GBP' }
+        ]
+      });
+
+    const response = await request(app)
+      .get('/marketplace/category/transport?q=bike')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/categories');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/listings?limit=30&q=bike&category=transport');
+    expect(response.text).toContain('Back to marketplace');
+    expect(response.text).toContain('Transport');
+    expect(response.text).toContain('1 item');
+    expect(response.text).toContain('Category bike');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace advanced search page', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: [
+          { id: 42, title: 'Filtered bike', condition: 'good', price: 20, price_currency: 'GBP' }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 9, name: 'Transport', slug: 'transport' }]
+      });
+
+    const response = await request(app)
+      .get('/marketplace/search?q=bike&category_id=9&price_min=10&price_max=50&condition=good&condition=fair&seller_type=private&delivery_method=pickup&posted_within=7&sort=price_asc')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/listings?limit=30&q=bike&category_id=9&price_min=10&price_max=50&condition=good&condition=fair&seller_type=private&delivery_method=pickup&posted_within=7&sort=price_asc');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/categories');
+    expect(response.text).toContain('Advanced search');
+    expect(response.text).toContain('Narrow your search by price, condition, delivery and more.');
+    expect(response.text).toContain('Filtered bike');
+    expect(response.text).toContain('Good');
+    expect(response.text).toContain('Price: low to high');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace seller profile page', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: {
+          id: 77,
+          user_id: 77,
+          display_name: 'Aisha Khan',
+          avatar_url: '/uploads/aisha.jpg',
+          avg_rating: 4.7,
+          total_ratings: 9,
+          total_sales: 14,
+          created_at: '2026-01-15T12:00:00Z',
+          is_verified: true
+        }
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 42, title: 'Seller bike', tagline: 'From Aisha', price: 15.5, price_currency: 'GBP' }
+        ]
+      });
+
+    const response = await request(app)
+      .get('/marketplace/seller/77')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/sellers/77');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/sellers/77/listings?per_page=50');
+    expect(response.text).toContain('Seller profile');
+    expect(response.text).toContain('Aisha Khan');
+    expect(response.text).toContain('Average rating: 4.7 out of 5 from 9 reviews');
+    expect(response.text).toContain('14 completed sales');
+    expect(response.text).toContain('Seller bike');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace offers dashboard', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 12,
+          amount: 13.25,
+          currency: 'GBP',
+          status: 'pending',
+          message: 'Can collect today',
+          listing: { id: 42, title: 'Community bike' },
+          buyer: { name: 'Sam Buyer' }
+        }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/marketplace/offers?tab=received&status=accepted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/my-offers/received?per_page=50');
+    expect(response.text).toContain('My offers');
+    expect(response.text).toContain('You accepted the offer.');
+    expect(response.text).toContain('Community bike');
+    expect(response.text).toContain('GBP 13.25');
+    expect(response.text).toContain('From: Sam Buyer');
+    expect(response.text).toContain('Accept');
+    expect(response.text).toContain('action="/marketplace/offers/12/decline"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace buyer and seller order dashboards', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 91,
+            order_number: 'MKT-91',
+            status: 'shipped',
+            total_price: 15.5,
+            currency: 'GBP',
+            tracking_number: 'TRACK123',
+            listing: { title: 'Community bike' },
+            seller: { name: 'Aisha Khan' }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 92,
+            order_number: 'MKT-92',
+            status: 'paid',
+            total_price: 25,
+            currency: 'GBP',
+            listing: { title: 'Garden chair' },
+            buyer: { name: 'Sam Buyer' }
+          }
+        ]
+      });
+
+    const buyer = await request(app)
+      .get('/marketplace/orders?tab=completed&status=confirmed')
+      .set('Cookie', signedCookieHeader());
+    const seller = await request(app)
+      .get('/marketplace/sales?tab=paid&status=shipped')
+      .set('Cookie', signedCookieHeader());
+
+    expect(buyer.status).toBe(200);
+    expect(seller.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/orders/purchases?limit=50&status=completed');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/orders/sales?limit=50&status=paid');
+    expect(buyer.text).toContain('My orders');
+    expect(buyer.text).toContain('Delivery confirmed. Thank you.');
+    expect(buyer.text).toContain('Order MKT-91');
+    expect(buyer.text).toContain('Community bike');
+    expect(buyer.text).toContain('Confirm delivery');
+    expect(seller.text).toContain('Sales');
+    expect(seller.text).toContain('The order was marked as shipped.');
+    expect(seller.text).toContain('Garden chair');
+    expect(seller.text).toContain('Mark as shipped');
+    expect(seller.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace pickups page', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 5,
+          order_id: 91,
+          listing_title: 'Community bike',
+          status: 'reserved',
+          qr_code: 'PICKUP-123',
+          slot: { slot_start: '2026-07-07T10:30:00Z' }
+        }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/marketplace/pickups')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/me/pickups');
+    expect(response.text).toContain('My collections');
+    expect(response.text).toContain('Community bike');
+    expect(response.text).toContain('Reserved');
+    expect(response.text).toContain('PICKUP-123');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('submits Laravel marketplace listing and buyer action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

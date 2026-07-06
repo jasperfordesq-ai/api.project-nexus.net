@@ -1,0 +1,38 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% set active = activeTab or 'browse' %}
+<nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Marketplace">
+  <h2 class="govuk-tabs__title">Marketplace</h2>
+  <ul class="govuk-tabs__list">
+    <li class="govuk-tabs__list-item{% if active == 'browse' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/marketplace" {% if active == 'browse' %}aria-current="page"{% endif %}>Browse</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if active == 'saved' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/marketplace/saved" {% if active == 'saved' %}aria-current="page"{% endif %}>Saved</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if active == 'offers' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/marketplace/offers" {% if active == 'offers' %}aria-current="page"{% endif %}>Offers</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if active == 'orders' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/marketplace/orders" {% if active == 'orders' %}aria-current="page"{% endif %}>My orders</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if active == 'pickups' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/marketplace/pickups" {% if active == 'pickups' %}aria-current="page"{% endif %}>My collections</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if active == 'sales' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/marketplace/sales" {% if active == 'sales' %}aria-current="page"{% endif %}>Sales</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if active == 'mine' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/marketplace/mine" {% if active == 'mine' %}aria-current="page"{% endif %}>My listings</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if active == 'sell' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/marketplace/create" {% if active == 'sell' %}aria-current="page"{% endif %}>Sell an item</a>
+    </li>
+    <li class="govuk-tabs__list-item{% if active == 'slots' %} govuk-tabs__list-item--selected{% endif %}">
+      <a class="govuk-tabs__tab" href="/marketplace/slots" {% if active == 'slots' %}aria-current="page"{% endif %}>Pickup slots</a>
+    </li>
+  </ul>
+</nav>

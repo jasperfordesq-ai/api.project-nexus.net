@@ -44,20 +44,78 @@ const REPORT_REASON_LABELS = {
 };
 const MARKETPLACE_SUCCESS_MESSAGES = {
   saved: 'This item has been saved.',
-  unsaved: 'This item has been removed from your saved items.',
+  unsaved: 'Item removed from your saved list.',
   reported: 'Thank you. Your report has been sent to our team.',
   'listing-created': 'Your listing has been published.',
-  'listing-saved': 'Your changes were saved.'
+  'listing-saved': 'Your changes were saved.',
+  deleted: 'Your listing was deleted.',
+  renewed: 'Your listing was renewed.',
+  accepted: 'You accepted the offer.',
+  declined: 'You declined the offer.',
+  withdrawn: 'You withdrew your offer.',
+  ordered: 'Your order was placed.',
+  'payment-submitted': 'Thank you. Your payment is being confirmed - your order will update to paid shortly.',
+  'payment-cancelled': 'Your card payment was cancelled. Your order is still awaiting payment.',
+  shipped: 'The order was marked as shipped.',
+  confirmed: 'Delivery confirmed. Thank you.',
+  cancelled: 'The order was cancelled.',
+  rated: 'Thank you for your rating.'
 };
 const MARKETPLACE_ERROR_MESSAGES = {
   'listing-validation': 'Check the listing details and try again.',
   'listing-create-failed': 'Sorry, your listing could not be created. Please try again.',
   'listing-save-failed': 'Sorry, your changes could not be saved. Please try again.',
+  'delete-failed': 'Sorry, the listing could not be deleted.',
+  'renew-failed': 'Sorry, the listing could not be renewed.',
   'order-failed': 'Sorry, your order could not be placed. Please try again.',
   'offer-amount-invalid': 'Enter an offer amount greater than zero',
   'offer-failed': 'Sorry, your offer could not be sent. Please try again.',
   'report-validation': 'Select a reason for reporting',
-  'report-failed': 'Sorry, your report could not be sent.'
+  'report-failed': 'Sorry, your report could not be sent.',
+  'accept-failed': 'Sorry, that action could not be completed.',
+  'decline-failed': 'Sorry, that action could not be completed.',
+  'withdraw-failed': 'Sorry, that action could not be completed.',
+  'pay-not-pending': 'This order is not awaiting payment.',
+  'pay-not-required': 'This order does not require a card payment.',
+  'pay-unavailable': 'Card payment is not available for this order yet - the seller has not finished setting up payments.',
+  'pay-failed': 'Sorry, we could not start your card payment. Please try again.',
+  'ship-failed': 'Sorry, the order could not be marked as shipped.',
+  'confirm-failed': 'Sorry, delivery could not be confirmed.',
+  'cancel-failed': 'Sorry, the order could not be cancelled.',
+  'rate-failed': 'Sorry, your rating could not be saved.',
+  'rate-invalid': 'Choose a rating between 1 and 5 stars.'
+};
+const LISTING_STATUS_TABS = ['active', 'draft', 'sold', 'expired'];
+const OFFER_TABS = ['received', 'sent'];
+const BUYER_ORDER_TABS = ['all', 'active', 'completed', 'cancelled'];
+const SELLER_ORDER_TABS = ['all', 'paid', 'shipped', 'completed'];
+const LISTING_STATUS_LABELS = {
+  active: 'Active',
+  draft: 'Draft',
+  sold: 'Sold',
+  expired: 'Expired'
+};
+const OFFER_STATUS_LABELS = {
+  pending: 'Pending',
+  accepted: 'Accepted',
+  declined: 'Declined',
+  countered: 'Countered',
+  withdrawn: 'Withdrawn',
+  expired: 'Expired'
+};
+const ORDER_STATUS_LABELS = {
+  pending_payment: 'Awaiting payment',
+  paid: 'Paid',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  completed: 'Completed',
+  cancelled: 'Cancelled'
+};
+const PICKUP_STATUS_LABELS = {
+  reserved: 'Reserved',
+  picked_up: 'Picked up',
+  cancelled: 'Cancelled',
+  no_show: 'No show'
 };
 
 function tokenFrom(req) {
@@ -102,9 +160,36 @@ function decimalNumber(value) {
   return Number.isFinite(number) ? number : 0;
 }
 
+function booleanValue(value) {
+  return value === true || value === 1 || value === '1' || value === 'true';
+}
+
 function allowed(value, choices, fallback) {
   const text = trimmed(value);
   return choices.includes(text) ? text : fallback;
+}
+
+function arrayFrom(value) {
+  if (Array.isArray(value)) return value;
+  if (value === undefined || value === null || value === '') return [];
+  return [value];
+}
+
+function appendText(params, key, value) {
+  const text = trimmed(value);
+  if (text) params.append(key, text);
+}
+
+function appendPositive(params, key, value) {
+  const number = positiveInteger(value);
+  if (number !== null) params.append(key, String(number));
+}
+
+function appendDecimal(params, key, value) {
+  const text = trimmed(value);
+  if (text === '') return;
+  const number = Number(text);
+  if (Number.isFinite(number) && number >= 0) params.append(key, String(number));
 }
 
 function dataFrom(result) {
@@ -124,6 +209,12 @@ function rowsFrom(result) {
 function objectFrom(result) {
   const data = dataFrom(result);
   return data && typeof data === 'object' && !Array.isArray(data) ? data : null;
+}
+
+function metaFrom(result) {
+  return result && typeof result === 'object' && result.meta && typeof result.meta === 'object'
+    ? result.meta
+    : {};
 }
 
 async function callMarketplace(token, method, path) {
@@ -272,6 +363,129 @@ function decorateListing(listing) {
   };
 }
 
+function decorateSeller(seller) {
+  const row = seller && typeof seller === 'object' ? seller : {};
+  const user = row.user && typeof row.user === 'object' ? row.user : {};
+  const name = trimmed(row.display_name || row.name || user.name || row.seller_name) || 'Seller profile';
+  const ratings = positiveInteger(row.total_ratings) || positiveInteger(row.rating_count) || 0;
+  const averageRating = Number(row.avg_rating ?? row.average_rating ?? 0);
+  const totalSales = positiveInteger(row.total_sales) || 0;
+  const createdAt = trimmed(row.created_at || row.member_since || user.created_at);
+  const verified = booleanValue(row.is_verified || row.identity_verified || row.verified);
+
+  return {
+    ...row,
+    id: positiveInteger(row.user_id) || positiveInteger(row.id),
+    name,
+    avatarUrl: safeRelativeOrAbsoluteUrl(row.avatar_url || user.avatar_url),
+    verified,
+    createdAt,
+    averageRating: Number.isFinite(averageRating) ? averageRating : 0,
+    averageRatingLabel: Number.isFinite(averageRating) ? averageRating.toFixed(1) : '0.0',
+    totalRatings: ratings,
+    totalSales,
+    ratingText: ratings > 0
+      ? `Average rating: ${(Number.isFinite(averageRating) ? averageRating : 0).toFixed(1)} out of 5 from ${ratings} reviews`
+      : 'No reviews yet',
+    totalSalesText: `${totalSales} completed sales`
+  };
+}
+
+function decorateOffer(offer, tab) {
+  const row = offer && typeof offer === 'object' ? offer : {};
+  const listing = row.listing && typeof row.listing === 'object' ? row.listing : {};
+  const buyer = row.buyer && typeof row.buyer === 'object' ? row.buyer : {};
+  const seller = row.seller && typeof row.seller === 'object' ? row.seller : {};
+  const status = trimmed(row.status) || 'pending';
+  const listingId = positiveInteger(listing.id) || positiveInteger(row.listing_id);
+  const counterparty = tab === 'sent'
+    ? trimmed(seller.name || row.seller_name)
+    : trimmed(buyer.name || row.buyer_name);
+
+  return {
+    ...row,
+    id: positiveInteger(row.id),
+    listingId,
+    listingTitle: trimmed(listing.title || row.listing_title) || 'Marketplace',
+    href: listingId ? `/marketplace/${listingId}` : '',
+    amountLabel: formatMoney(row.amount, row.currency || row.price_currency || 'EUR'),
+    status,
+    statusLabel: OFFER_STATUS_LABELS[status] || status,
+    statusTagClass: status === 'accepted' ? 'govuk-tag--green' : (status === 'pending' ? 'govuk-tag--blue' : 'govuk-tag--grey'),
+    counterparty,
+    counterpartyLabel: tab === 'sent' ? 'To' : 'From',
+    message: limitText(row.message || '', 200),
+    canAct: status === 'pending' || status === 'countered'
+  };
+}
+
+function decorateOrder(order, role) {
+  const row = order && typeof order === 'object' ? order : {};
+  const listing = row.listing && typeof row.listing === 'object' ? row.listing : {};
+  const buyer = row.buyer && typeof row.buyer === 'object' ? row.buyer : {};
+  const seller = row.seller && typeof row.seller === 'object' ? row.seller : {};
+  const status = trimmed(row.status);
+  const orderId = positiveInteger(row.id);
+  const number = trimmed(row.order_number || row.number || row.id);
+  const isSeller = role === 'seller';
+  const counterparty = isSeller
+    ? trimmed(buyer.name || row.buyer_name)
+    : trimmed(seller.name || row.seller_name);
+  const ratings = Array.isArray(row.ratings) ? row.ratings : [];
+  const alreadyRated = ratings.some((rating) => rating && rating.rater_role === role);
+
+  return {
+    ...row,
+    id: orderId,
+    number,
+    orderNumberLabel: `Order ${number}`,
+    listingTitle: trimmed(listing.title || row.listing_title) || 'Marketplace',
+    status,
+    statusLabel: ORDER_STATUS_LABELS[status] || status,
+    statusTagClass: ['completed', 'delivered'].includes(status)
+      ? 'govuk-tag--green'
+      : (status === 'cancelled' ? 'govuk-tag--red' : 'govuk-tag--blue'),
+    totalLabel: formatMoney(row.total_price ?? row.total ?? row.amount, row.currency || row.price_currency || 'EUR'),
+    counterparty,
+    counterpartyLabel: isSeller ? 'Buyer' : 'Seller',
+    trackingNumber: trimmed(row.tracking_number),
+    canShip: isSeller && ['paid', 'shipped'].includes(status),
+    canConfirm: !isSeller && ['shipped', 'paid', 'delivered'].includes(status),
+    canPay: !isSeller && status === 'pending_payment' && decimalNumber(row.total_price ?? row.total) > 0,
+    canCancel: ['pending_payment', 'paid'].includes(status),
+    canRate: ['completed', 'delivered'].includes(status) && !alreadyRated
+  };
+}
+
+function decorateReservation(reservation) {
+  const row = reservation && typeof reservation === 'object' ? reservation : {};
+  const slot = row.slot && typeof row.slot === 'object' ? row.slot : {};
+  const status = trimmed(row.status) || 'reserved';
+  return {
+    ...row,
+    id: positiveInteger(row.id),
+    orderId: positiveInteger(row.order_id),
+    title: trimmed(row.listing_title || row.listing?.title) || `Order ${positiveInteger(row.order_id) || ''}`.trim(),
+    status,
+    statusLabel: PICKUP_STATUS_LABELS[status] || status,
+    statusTagClass: status === 'picked_up'
+      ? 'govuk-tag--green'
+      : (status === 'cancelled' ? 'govuk-tag--red' : (status === 'reserved' ? 'govuk-tag--blue' : 'govuk-tag--yellow')),
+    qrCode: trimmed(row.qr_code),
+    slotStart: trimmed(slot.slot_start || row.slot_start || row.reserved_at)
+  };
+}
+
+function listingTabs(activeTab, counts) {
+  return LISTING_STATUS_TABS.map((value) => ({
+    value,
+    label: LISTING_STATUS_LABELS[value],
+    href: `/marketplace/mine?tab=${value}`,
+    count: counts[value] || 0,
+    active: activeTab === value
+  }));
+}
+
 function indexPath(query) {
   const params = new URLSearchParams();
   params.set('limit', '30');
@@ -286,6 +500,59 @@ function indexPath(query) {
   if (cursor) params.set('cursor', cursor);
 
   return `/listings?${params.toString()}`;
+}
+
+function myListingsPath() {
+  return '/listings?limit=100';
+}
+
+function savedListingsPath() {
+  return '/listings/saved?limit=50';
+}
+
+function freeListingsPath() {
+  return '/listings/free?limit=50';
+}
+
+function categoryListingsPath(slug, query) {
+  const params = new URLSearchParams();
+  params.set('limit', '30');
+  appendText(params, 'q', query.q);
+  appendText(params, 'category', slug);
+  return `/listings?${params.toString()}`;
+}
+
+function advancedSearchPath(query) {
+  const params = new URLSearchParams();
+  params.set('limit', '30');
+  appendText(params, 'q', query.q);
+  appendPositive(params, 'category_id', query.category_id);
+  appendDecimal(params, 'price_min', query.price_min);
+  appendDecimal(params, 'price_max', query.price_max);
+  arrayFrom(query.condition)
+    .map((value) => allowed(value, CONDITIONS, ''))
+    .filter(Boolean)
+    .forEach((value) => params.append('condition', value));
+  appendText(params, 'seller_type', allowed(query.seller_type, ['private', 'business'], ''));
+  appendText(params, 'delivery_method', allowed(query.delivery_method, DELIVERY_METHODS, ''));
+  const postedWithin = allowed(query.posted_within, ['1', '7', '30', '90'], '');
+  appendText(params, 'posted_within', postedWithin);
+  const sort = allowed(query.sort, ['newest', 'price_asc', 'price_desc', 'popular'], 'newest');
+  if (sort !== 'newest') params.append('sort', sort);
+  appendText(params, 'cursor', query.cursor);
+  return `/listings?${params.toString()}`;
+}
+
+function offersPath(tab) {
+  return `/my-offers/${tab}?per_page=50`;
+}
+
+function ordersPath(role, tab) {
+  const params = new URLSearchParams();
+  params.set('limit', '50');
+  if (tab !== 'all') params.set('status', tab);
+  const base = role === 'seller' ? '/orders/sales' : '/orders/purchases';
+  return `${base}?${params.toString()}`;
 }
 
 function statusEntry(status) {
@@ -323,6 +590,74 @@ async function loadListing(token, id) {
     throw new ApiError('Listing not found', 404);
   }
   return decorateListing(listing);
+}
+
+async function loadListingRows(token, path) {
+  const result = await callMarketplace(token, 'GET', path);
+  return {
+    rows: rowsFrom(result).map(decorateListing),
+    meta: metaFrom(result)
+  };
+}
+
+function countsByStatus(listings) {
+  return listings.reduce((counts, listing) => {
+    const status = trimmed(listing.status);
+    if (Object.prototype.hasOwnProperty.call(counts, status)) counts[status] += 1;
+    return counts;
+  }, { active: 0, draft: 0, sold: 0, expired: 0 });
+}
+
+function itemCountLabel(count) {
+  return `${count} ${count === 1 ? 'item' : 'items'}`;
+}
+
+function advancedSearchState(query) {
+  const selectedConditions = arrayFrom(query.condition)
+    .map((value) => allowed(value, CONDITIONS, ''))
+    .filter(Boolean);
+  return {
+    query: trimmed(query.q),
+    categoryId: positiveInteger(query.category_id),
+    priceMin: trimmed(query.price_min),
+    priceMax: trimmed(query.price_max),
+    selectedConditions,
+    sellerType: allowed(query.seller_type, ['private', 'business'], ''),
+    deliveryMethod: allowed(query.delivery_method, DELIVERY_METHODS, ''),
+    postedWithin: allowed(query.posted_within, ['1', '7', '30', '90'], ''),
+    sort: allowed(query.sort, ['newest', 'price_asc', 'price_desc', 'popular'], 'newest')
+  };
+}
+
+function advancedSearchOptions() {
+  return {
+    conditionOptions: CONDITIONS.map((value) => ({ value, label: CONDITION_LABELS[value] })),
+    deliveryOptions: [
+      { value: '', label: 'Any' },
+      { value: 'pickup', label: 'Collection only' },
+      { value: 'shipping', label: 'Postage' },
+      { value: 'both', label: 'Collection or postage' },
+      { value: 'community_delivery', label: 'Community delivery' }
+    ],
+    sellerTypeOptions: [
+      { value: '', label: 'Any' },
+      { value: 'private', label: 'Private seller' },
+      { value: 'business', label: 'Business' }
+    ],
+    postedWithinOptions: [
+      { value: '', label: 'Any time' },
+      { value: '1', label: 'Last 24 hours' },
+      { value: '7', label: 'Last 7 days' },
+      { value: '30', label: 'Last 30 days' },
+      { value: '90', label: 'Last 90 days' }
+    ],
+    sortOptions: [
+      { value: 'newest', label: 'Newest first' },
+      { value: 'price_asc', label: 'Price: low to high' },
+      { value: 'price_desc', label: 'Price: high to low' },
+      { value: 'popular', label: 'Most popular' }
+    ]
+  };
 }
 
 function blankListing() {
@@ -377,6 +712,228 @@ router.get('/create', asyncRoute(async (req, res) => {
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Create a listing');
+  }
+}));
+
+router.get('/mine', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const allListings = (await loadListingRows(token, myListingsPath())).rows;
+    const tab = allowed(req.query.tab, LISTING_STATUS_TABS, 'active');
+    const counts = countsByStatus(allListings);
+    return res.render('marketplace/manage', {
+      title: 'My listings',
+      activeNav: 'explore',
+      activeTab: 'mine',
+      listings: allListings.filter((listing) => trimmed(listing.status) === tab),
+      tab,
+      tabs: listingTabs(tab, counts),
+      status: statusEntry(req.query.status)
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'My listings');
+  }
+}));
+
+router.get('/saved', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const { rows: listings } = await loadListingRows(token, savedListingsPath());
+    return res.render('marketplace/listing-list', {
+      title: 'Saved items',
+      heading: 'Saved items',
+      caption: 'Your saved items',
+      description: 'Items you have saved to look at later.',
+      emptyMessage: 'You have not saved any items yet. Select Save on a listing to keep it here.',
+      activeNav: 'explore',
+      activeTab: 'saved',
+      listings,
+      mode: 'saved',
+      status: statusEntry(req.query.status)
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'Saved items');
+  }
+}));
+
+router.get('/free', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const { rows: listings } = await loadListingRows(token, freeListingsPath());
+    return res.render('marketplace/listing-list', {
+      title: 'Free items',
+      heading: 'Free items',
+      caption: 'Free items',
+      description: 'Items being given away for free by members of your community.',
+      emptyMessage: 'There are no free items available right now.',
+      activeNav: 'explore',
+      activeTab: 'browse',
+      listings,
+      mode: 'free',
+      status: null
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'Free items');
+  }
+}));
+
+router.get('/category/:slug([A-Za-z0-9_-]+)', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  const slug = trimmed(req.params.slug, 120);
+  try {
+    const [categories, listingResult] = await Promise.all([
+      loadCategories(token),
+      loadListingRows(token, categoryListingsPath(slug, req.query))
+    ]);
+    const category = categories.find((item) => item.slug === slug);
+    if (!category) throw new ApiError('Category not found', 404);
+    return res.render('marketplace/listing-list', {
+      title: category.name,
+      heading: category.name,
+      caption: 'Marketplace category',
+      description: itemCountLabel(listingResult.rows.length),
+      emptyMessage: 'There are no items in this category right now.',
+      activeNav: 'explore',
+      activeTab: 'browse',
+      backHref: '/marketplace',
+      backLabel: 'Back to marketplace',
+      listings: listingResult.rows,
+      mode: 'category',
+      query: trimmed(req.query.q),
+      category,
+      status: null
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'Marketplace category');
+  }
+}));
+
+router.get('/search', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const [listingResult, categories] = await Promise.all([
+      loadListingRows(token, advancedSearchPath(req.query)),
+      loadCategories(token)
+    ]);
+    return res.render('marketplace/search', {
+      title: 'Advanced search',
+      activeNav: 'explore',
+      activeTab: 'browse',
+      listings: listingResult.rows,
+      categories,
+      state: advancedSearchState(req.query),
+      ...advancedSearchOptions()
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'Advanced search');
+  }
+}));
+
+router.get('/seller/:sellerId(\\d+)', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const [sellerResult, listingResult] = await Promise.all([
+      callMarketplace(token, 'GET', `/sellers/${req.params.sellerId}`),
+      loadListingRows(token, `/sellers/${req.params.sellerId}/listings?per_page=50`)
+    ]);
+    const seller = decorateSeller(objectFrom(sellerResult));
+    return res.render('marketplace/seller', {
+      title: seller.name,
+      activeNav: 'explore',
+      seller,
+      listings: listingResult.rows
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'Seller profile');
+  }
+}));
+
+router.get('/offers', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  const tab = allowed(req.query.tab, OFFER_TABS, 'received');
+  try {
+    const result = await callMarketplace(token, 'GET', offersPath(tab));
+    return res.render('marketplace/offers', {
+      title: 'My offers',
+      activeNav: 'explore',
+      activeTab: 'offers',
+      tab,
+      offers: rowsFrom(result).map((offer) => decorateOffer(offer, tab)),
+      status: statusEntry(req.query.status)
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'My offers');
+  }
+}));
+
+async function ordersViewModel(req, res, role) {
+  const token = requireToken(req, res);
+  if (!token) return null;
+
+  const isSeller = role === 'seller';
+  const allowedTabs = isSeller ? SELLER_ORDER_TABS : BUYER_ORDER_TABS;
+  const tab = allowed(req.query.tab, allowedTabs, 'all');
+  try {
+    const result = await callMarketplace(token, 'GET', ordersPath(role, tab));
+    return {
+      title: isSeller ? 'Sales' : 'My orders',
+      activeNav: 'explore',
+      activeTab: isSeller ? 'sales' : 'orders',
+      role,
+      isSeller,
+      tab,
+      tabs: allowedTabs.map((value) => ({
+        value,
+        label: value.charAt(0).toUpperCase() + value.slice(1),
+        href: `${isSeller ? '/marketplace/sales' : '/marketplace/orders'}?tab=${value}`,
+        active: value === tab
+      })),
+      orders: rowsFrom(result).map((order) => decorateOrder(order, role)),
+      status: statusEntry(req.query.status)
+    };
+  } catch (error) {
+    renderMarketplaceError(error, res, isSeller ? 'Sales' : 'My orders');
+    return null;
+  }
+}
+
+router.get('/orders', asyncRoute(async (req, res) => {
+  const viewModel = await ordersViewModel(req, res, 'buyer');
+  return viewModel ? res.render('marketplace/orders', viewModel) : undefined;
+}));
+router.get('/sales', asyncRoute(async (req, res) => {
+  const viewModel = await ordersViewModel(req, res, 'seller');
+  return viewModel ? res.render('marketplace/orders', viewModel) : undefined;
+}));
+
+router.get('/pickups', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const result = await callMarketplace(token, 'GET', '/me/pickups');
+    return res.render('marketplace/pickups', {
+      title: 'My collections',
+      activeNav: 'explore',
+      activeTab: 'pickups',
+      reservations: rowsFrom(result).map(decorateReservation)
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'My collections');
   }
 }));
 
