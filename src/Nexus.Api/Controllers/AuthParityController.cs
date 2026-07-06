@@ -4,9 +4,15 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Security.Cryptography;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Nexus.Api.Data;
 using Nexus.Api.Extensions;
 
 namespace Nexus.Api.Controllers;
@@ -15,6 +21,15 @@ namespace Nexus.Api.Controllers;
 [Route("api/auth")]
 public class AuthParityController : ControllerBase
 {
+    private readonly NexusDbContext _db;
+    private readonly IConfiguration _config;
+
+    public AuthParityController(NexusDbContext db, IConfiguration config)
+    {
+        _db = db;
+        _config = config;
+    }
+
     [HttpGet("csrf-token")]
     [AllowAnonymous]
     public IActionResult CsrfToken() => Ok(new { csrf_token = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant() });
@@ -24,8 +39,39 @@ public class AuthParityController : ControllerBase
     public IActionResult CheckSession() => Ok(new { authenticated = true, user_id = User.GetUserId(), role = User.GetRole() });
 
     [HttpPost("admin-session")]
-    [Authorize]
-    public IActionResult AdminSession() => Ok(new { authenticated = User.IsAdmin(), admin = User.IsAdmin(), user_id = User.GetUserId() });
+    [AllowAnonymous]
+    public async Task<IActionResult> AdminSession()
+    {
+        var token = await GetSubmittedTokenAsync();
+        var redirect = SanitizeLegacyAdminRedirect(await GetSubmittedRedirectAsync());
+
+        if (string.IsNullOrWhiteSpace(token))
+            return BadRequest(new { success = false, error = "missing_token", code = "AUTH_TOKEN_MISSING" });
+
+        var principal = ValidateSubmittedJwt(token);
+        if (principal == null)
+            return Unauthorized(new { success = false, error = "invalid_or_expired_token", code = "AUTH_TOKEN_INVALID" });
+
+        var userIdValue = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var tenantIdValue = principal.FindFirst("tenant_id")?.Value;
+        if (!int.TryParse(userIdValue, out var userId) || !int.TryParse(tenantIdValue, out var tenantId))
+            return Unauthorized(new { success = false, error = "invalid_token_payload", code = "AUTH_TOKEN_INVALID" });
+
+        var user = await _db.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.Id == userId && u.TenantId == tenantId)
+            .Select(u => new { u.Id, u.Role, u.IsActive })
+            .FirstOrDefaultAsync();
+
+        if (user == null || !user.IsActive)
+            return NotFound(new { success = false, error = "user_not_found", code = "RESOURCE_NOT_FOUND" });
+
+        if (user.Role != "admin" && user.Role != "super_admin" && user.Role != "tenant_admin")
+            return StatusCode(StatusCodes.Status403Forbidden, new { success = false, error = "admin_access_required", code = "AUTH_INSUFFICIENT_PERMISSIONS" });
+
+        return Redirect(redirect);
+    }
 
     [HttpPost("heartbeat")]
     [Authorize]
@@ -88,4 +134,73 @@ public class AuthParityController : ControllerBase
     [HttpDelete("oauth/{provider}/unlink")]
     [Authorize]
     public IActionResult UnlinkOAuth(string provider) => Ok(new { data = new { provider, linked = false } });
+
+    private async Task<string?> GetSubmittedTokenAsync()
+    {
+        if (Request.HasFormContentType)
+            return (await Request.ReadFormAsync())["token"].FirstOrDefault();
+
+        if (Request.Headers.Authorization.FirstOrDefault() is { } authorization &&
+            authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return authorization["Bearer ".Length..].Trim();
+        }
+
+        return Request.Query["token"].FirstOrDefault();
+    }
+
+    private async Task<string?> GetSubmittedRedirectAsync()
+    {
+        if (Request.HasFormContentType)
+            return (await Request.ReadFormAsync())["redirect"].FirstOrDefault();
+
+        return Request.Query["redirect"].FirstOrDefault();
+    }
+
+    private ClaimsPrincipal? ValidateSubmittedJwt(string token)
+    {
+        var secret = _config["Jwt:Secret"];
+        if (string.IsNullOrWhiteSpace(secret))
+            return null;
+
+        var issuer = _config["Jwt:Issuer"];
+        var audience = _config["Jwt:Audience"];
+        var parameters = new TokenValidationParameters
+        {
+            NameClaimType = "sub",
+            RoleClaimType = "role",
+            ValidateIssuer = !string.IsNullOrWhiteSpace(issuer),
+            ValidateAudience = !string.IsNullOrWhiteSpace(audience),
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+
+        try
+        {
+            return new JwtSecurityTokenHandler().ValidateToken(token, parameters, out _);
+        }
+        catch (SecurityTokenException)
+        {
+            return null;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static string SanitizeLegacyAdminRedirect(string? redirect)
+    {
+        if (string.IsNullOrWhiteSpace(redirect) ||
+            !redirect.StartsWith("/admin-legacy", StringComparison.Ordinal))
+        {
+            return "/admin-legacy";
+        }
+
+        return redirect;
+    }
 }

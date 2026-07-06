@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -176,6 +177,125 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         export.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
 
+    [Fact]
+    public async Task AdminSession_FormToken_BridgesToLegacyAdminRedirect()
+    {
+        var token = await GetAccessTokenAsync("admin@test.com", "test-tenant");
+        ClearAuthToken();
+        using var redirectClient = Factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var response = await redirectClient.PostAsync("/api/auth/admin-session", new FormUrlEncodedContent([
+            new KeyValuePair<string, string>("token", token),
+            new KeyValuePair<string, string>("redirect", "/admin-legacy")
+        ]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location?.ToString().Should().Be("/admin-legacy");
+    }
+
+    [Fact]
+    public async Task AdminAttributesV2_ReturnsLaravelReactAttributeShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/attributes", new
+        {
+            name = "Skill Level",
+            type = "select",
+            category_id = (int?)null
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var created = createJson.GetProperty("data");
+        created.GetProperty("slug").GetString().Should().Be("skill-level");
+        created.GetProperty("type").GetString().Should().Be("select");
+        created.GetProperty("category_id").ValueKind.Should().Be(JsonValueKind.Null);
+        created.GetProperty("is_active").GetBoolean().Should().BeTrue();
+        var id = created.GetProperty("id").GetInt32();
+
+        var list = await Client.GetAsync("/api/v2/admin/attributes");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(attribute => attribute.GetProperty("id").GetInt32() == id);
+        listed.GetProperty("slug").GetString().Should().Be("skill-level");
+        listed.GetProperty("options").ValueKind.Should().Be(JsonValueKind.Null);
+        listed.GetProperty("category_name").ValueKind.Should().Be(JsonValueKind.Null);
+        listed.GetProperty("target_type").GetString().Should().Be("any");
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/admin/attributes/{id}", new
+        {
+            name = "Skill Rating",
+            is_active = false
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        var updated = updateJson.GetProperty("data");
+        updated.GetProperty("slug").GetString().Should().Be("skill-rating");
+        updated.GetProperty("is_active").GetBoolean().Should().BeFalse();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/attributes/{id}");
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminBackgroundJobsV2_ReturnsLaravelReactOperationsShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var list = await Client.GetAsync("/api/v2/admin/background-jobs");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var jobs = listJson.GetProperty("data").EnumerateArray().ToList();
+        jobs.Select(job => job.GetProperty("id").GetString()).Should().BeEquivalentTo([
+            "digest_emails",
+            "badge_checker",
+            "streak_updater"
+        ]);
+        jobs.Should().OnlyContain(job => HasLaravelBackgroundJobShape(job));
+
+        var run = await Client.PostAsync("/api/v2/admin/background-jobs/digest_emails/run", null);
+
+        run.StatusCode.Should().Be(HttpStatusCode.OK);
+        var runJson = await run.Content.ReadFromJsonAsync<JsonElement>();
+        runJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = runJson.GetProperty("data");
+        data.GetProperty("triggered").GetBoolean().Should().BeTrue();
+        data.GetProperty("job").GetString().Should().Be("digest_emails");
+    }
+
+    [Fact]
+    public async Task AdminCacheStatsV2_ReturnsLaravelReactOperationsShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/v2/admin/cache/stats");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = json.GetProperty("data");
+        data.GetProperty("redis_connected").ValueKind.Should().BeOneOf(JsonValueKind.True, JsonValueKind.False);
+        data.GetProperty("redis_memory_used").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("redis_keys_count").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        data.GetProperty("cache_hit_rate").GetDouble().Should().BeGreaterThanOrEqualTo(0);
+
+        var clear = await Client.PostAsJsonAsync("/api/v2/admin/cache/clear", new { type = "tenant" });
+        clear.StatusCode.Should().Be(HttpStatusCode.OK);
+        var clearJson = await clear.Content.ReadFromJsonAsync<JsonElement>();
+        clearJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var clearData = clearJson.GetProperty("data");
+        clearData.GetProperty("cleared").GetBoolean().Should().BeTrue();
+        clearData.GetProperty("type").GetString().Should().Be("tenant");
+    }
+
     private async Task SeedRegionalAnalyticsSubscriptionAsync(string token)
     {
         using var scope = Factory.Services.CreateScope();
@@ -205,6 +325,13 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             FileUrl = "/storage/regional-analytics/report.pdf"
         });
         await db.SaveChangesAsync();
+    }
+
+    private static bool HasLaravelBackgroundJobShape(JsonElement job)
+    {
+        return !string.IsNullOrWhiteSpace(job.GetProperty("name").GetString()) &&
+            job.TryGetProperty("last_run_at", out _) &&
+            job.TryGetProperty("next_run_at", out _);
     }
 
     private async Task SeedShippingOptionAsync(int sellerId)

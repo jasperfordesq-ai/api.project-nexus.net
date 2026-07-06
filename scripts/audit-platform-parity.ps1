@@ -170,6 +170,11 @@ function Add-V15FrontendApiExpansion {
     )
 
     $fileName = Split-Path -Leaf $File
+    if ($fileName -eq 'nav-helpers.ts' -and $Raw -eq '/api/auth/admin-session') {
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'POST' $Raw '/api/auth/admin-session' $File $Line
+        return $true
+    }
+
     if ($fileName -eq 'PartnerDashboardPage.tsx' -and $Raw.StartsWith('/api/partner-analytics')) {
         Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' '/api/partner-analytics/me/dashboard' '/api/partner-analytics/me/dashboard' $File $Line
         Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' '/api/partner-analytics/me/reports' '/api/partner-analytics/me/reports' $File $Line
@@ -1054,7 +1059,7 @@ function Export-FrontendApiMatrix {
     foreach ($apiString in $ApiStrings) {
         $path = Normalize-RoutePath $apiString.normalized
         $methodHint = ([string]$apiString.method_hint).ToUpperInvariant()
-        $matches = @()
+        $routeMatches = @()
         $status = 'missing'
         $methodKey = "$methodHint $path"
         $methodShapeKey = "$methodHint $(Convert-ToRouteShape $path)"
@@ -1062,47 +1067,47 @@ function Export-FrontendApiMatrix {
         if (Test-UnresolvedTemplate $path) {
             $status = 'dynamic-unresolved'
         } elseif ($methodHint -and $AspNetIndex.ByMethodPath.ContainsKey($methodKey)) {
-            $matches = Get-RouteIndexMatches $AspNetIndex 'ByMethodPath' $methodKey
-            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            $routeMatches = Get-RouteIndexMatches $AspNetIndex 'ByMethodPath' $methodKey
+            $controllers = ($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
             if ($controllers -match 'Compatibility') {
                 $status = 'exists-compatibility'
             } else {
                 $status = 'exists'
             }
         } elseif ($methodHint -and $AspNetIndex.ByMethodShape.ContainsKey($methodShapeKey)) {
-            $matches = Get-RouteIndexMatches $AspNetIndex 'ByMethodShape' $methodShapeKey
-            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            $routeMatches = Get-RouteIndexMatches $AspNetIndex 'ByMethodShape' $methodShapeKey
+            $controllers = ($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
             if ($controllers -match 'Compatibility') {
                 $status = 'exists-compatibility'
             } else {
                 $status = 'exists'
             }
         } elseif ($AspNetIndex.ByPath.ContainsKey($path)) {
-            $matches = Get-RouteIndexMatches $AspNetIndex 'ByPath' $path
-            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            $routeMatches = Get-RouteIndexMatches $AspNetIndex 'ByPath' $path
+            $controllers = ($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
             if ($controllers -match 'Compatibility') {
                 $status = 'exists-compatibility'
             } else {
-                $methods = @($matches | ForEach-Object { $_.method } | Sort-Object -Unique)
+                $methods = @($routeMatches | ForEach-Object { $_.method } | Sort-Object -Unique)
                 $status = if ($methodHint) { 'method-mismatch' } elseif ($methods.Count -eq 1) { 'exists-unambiguous-method' } else { 'exists-any-method' }
             }
         } elseif ($AspNetIndex.ByShape.ContainsKey((Convert-ToRouteShape $path))) {
-            $matches = Get-RouteIndexMatches $AspNetIndex 'ByShape' (Convert-ToRouteShape $path)
-            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            $routeMatches = Get-RouteIndexMatches $AspNetIndex 'ByShape' (Convert-ToRouteShape $path)
+            $controllers = ($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
             if ($controllers -match 'Compatibility') {
                 $status = 'exists-compatibility'
             } else {
-                $methods = @($matches | ForEach-Object { $_.method } | Sort-Object -Unique)
+                $methods = @($routeMatches | ForEach-Object { $_.method } | Sort-Object -Unique)
                 $status = if ($methodHint) { 'method-mismatch' } elseif ($methods.Count -eq 1) { 'exists-unambiguous-method' } else { 'exists-any-method' }
             }
         } else {
-            $matches = Get-RouteTemplateMatches $AspNetIndex $path $methodHint
-            if ($matches.Count -gt 0) {
-                $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            $routeMatches = Get-RouteTemplateMatches $AspNetIndex $path $methodHint
+            if ($routeMatches.Count -gt 0) {
+                $controllers = ($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
                 if ($controllers -match 'Compatibility') {
                     $status = 'exists-compatibility'
                 } else {
-                    $methods = @($matches | ForEach-Object { $_.method } | Sort-Object -Unique)
+                    $methods = @($routeMatches | ForEach-Object { $_.method } | Sort-Object -Unique)
                     $status = if ($methodHint) { 'exists' } elseif ($methods.Count -eq 1) { 'exists-unambiguous-method' } else { 'exists-any-method' }
                 }
             }
@@ -1113,8 +1118,8 @@ function Export-FrontendApiMatrix {
             raw = $apiString.raw
             normalized = $path
             status = $status
-            aspnet_methods = (($matches | ForEach-Object { $_.method } | Sort-Object -Unique) -join ';')
-            aspnet_controllers = (($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';')
+            aspnet_methods = (($routeMatches | ForEach-Object { $_.method } | Sort-Object -Unique) -join ';')
+            aspnet_controllers = (($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';')
             frontend_file = $apiString.file
             frontend_line = $apiString.line
         })
@@ -1134,19 +1139,19 @@ function Export-LaravelToAspNetMatrix {
         $method = ([string]$route.method).ToUpperInvariant()
         $methodKey = "$method $path"
         $methodShapeKey = "$method $(Convert-ToRouteShape $path)"
-        $matches = @()
+        $routeMatches = @()
         $status = 'missing'
 
         if ($AspNetIndex.ByMethodPath.ContainsKey($methodKey)) {
-            $matches = Get-RouteIndexMatches $AspNetIndex 'ByMethodPath' $methodKey
-            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            $routeMatches = Get-RouteIndexMatches $AspNetIndex 'ByMethodPath' $methodKey
+            $controllers = ($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
             $status = if ($controllers -match 'Compatibility') { 'method-path-compatibility' } else { 'method-path-exact' }
         } elseif ($AspNetIndex.ByMethodShape.ContainsKey($methodShapeKey)) {
-            $matches = Get-RouteIndexMatches $AspNetIndex 'ByMethodShape' $methodShapeKey
-            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            $routeMatches = Get-RouteIndexMatches $AspNetIndex 'ByMethodShape' $methodShapeKey
+            $controllers = ($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
             $status = if ($controllers -match 'Compatibility') { 'method-path-compatibility' } else { 'method-path-exact' }
         } elseif ($AspNetIndex.ByPath.ContainsKey($path)) {
-            $matches = Get-RouteIndexMatches $AspNetIndex 'ByPath' $path
+            $routeMatches = Get-RouteIndexMatches $AspNetIndex 'ByPath' $path
             $status = 'path-exists-method-mismatch'
         }
 
@@ -1155,9 +1160,9 @@ function Export-LaravelToAspNetMatrix {
             v15_path = $path
             v15_handler = $route.handler
             status = $status
-            aspnet_methods = (($matches | ForEach-Object { $_.method } | Sort-Object -Unique) -join ';')
-            aspnet_controllers = (($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';')
-            aspnet_actions = (($matches | ForEach-Object { $_.action } | Sort-Object -Unique) -join ';')
+            aspnet_methods = (($routeMatches | ForEach-Object { $_.method } | Sort-Object -Unique) -join ';')
+            aspnet_controllers = (($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';')
+            aspnet_actions = (($routeMatches | ForEach-Object { $_.action } | Sort-Object -Unique) -join ';')
         })
     }
 

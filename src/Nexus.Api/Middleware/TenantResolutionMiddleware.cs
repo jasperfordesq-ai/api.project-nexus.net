@@ -43,6 +43,7 @@ public class TenantResolutionMiddleware
         "/api/v2/health",
         "/swagger",                  // Swagger UI and JSON spec
         "/api/auth/login",           // Login determines tenant from credentials
+        "/api/auth/admin-session",   // Legacy admin bridge resolves tenant from submitted JWT token
         "/api/auth/register",        // Register determines tenant from request body
         "/api/v2/auth/register",     // Laravel-compatible register
         "/api/auth/refresh",         // Refresh determines tenant from token lookup
