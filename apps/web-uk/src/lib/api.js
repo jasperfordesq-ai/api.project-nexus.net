@@ -549,14 +549,35 @@ async function markNotificationRead(token, id) {
 }
 
 async function markAllNotificationsRead(token) {
-  const result = await request('/api/notifications/read-all', {
-    method: 'PUT',
+  const result = await request('/api/v2/notifications/read-all', {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` }
   });
 
   // Invalidate notification unread count cache
   cache.delete(cacheKey(token, 'notif-unread'));
 
+  return result;
+}
+
+async function markNotificationGroupRead(token, groupKey) {
+  const result = await request('/api/v2/notifications/group/read', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ group_key: groupKey })
+  });
+
+  cache.delete(cacheKey(token, 'notif-unread'));
+  return result;
+}
+
+async function deleteAllNotifications(token) {
+  const result = await request('/api/v2/notifications', {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  cache.delete(cacheKey(token, 'notif-unread'));
   return result;
 }
 
@@ -1290,6 +1311,8 @@ module.exports = {
   getNotificationUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
+  markNotificationGroupRead,
+  deleteAllNotifications,
   deleteNotification,
   // Groups
   getGroups,

@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T08:31:07.249Z
+Generated: 2026-07-06T08:36:53.554Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 403 |
-| Matched routes | 321 |
-| Missing routes | 287 |
+| web-uk routes | 405 |
+| Matched routes | 323 |
+| Missing routes | 285 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -62,7 +62,7 @@ Generated: 2026-07-06T08:31:07.249Z
 | messages | 7 | 11 | 2 |
 | newsletter | 1 | 0 | 0 |
 | nexus-score | 2 | 0 | 0 |
-| notifications | 4 | 2 | 0 |
+| notifications | 6 | 0 | 0 |
 | onboarding | 2 | 2 | 0 |
 | organisations | 9 | 0 | 0 |
 | password | 2 | 0 | 0 |
@@ -294,8 +294,6 @@ Generated: 2026-07-06T08:31:07.249Z
 | POST | `/messages/groups/{param}/m/{param}/react` | messages | messagesToggleReaction |  | auth-optional | module:messages |
 | POST | `/messages/groups/{param}/members` | messages | messagesGroupAddMember |  | auth-optional | module:messages |
 | POST | `/messages/groups/{param}/members/{param}/remove` | messages | messagesGroupRemoveMember |  | auth-optional | module:messages |
-| POST | `/notifications/delete-all` | notifications | deleteAllNotifications |  | auth-optional | module:notifications |
-| POST | `/notifications/group/read` | notifications | markGroupNotificationsRead |  | auth-optional | module:notifications |
 | POST | `/onboarding/{param}` | onboarding | onboardingStepPost |  | auth-optional |  |
 | POST | `/onboarding/avatar` | onboarding | onboardingAvatar |  | auth-optional |  |
 | POST | `/podcasts/{param}/subscribe` | podcasts | podcastSubscribe |  | auth-optional | feature:podcasts |

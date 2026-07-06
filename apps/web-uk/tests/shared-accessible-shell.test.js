@@ -51,7 +51,13 @@ jest.mock('../src/lib/api', () => ({
   votePoll: jest.fn(),
   getBalance: jest.fn(),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
+  getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
+  markNotificationRead: jest.fn().mockResolvedValue({}),
+  markAllNotificationsRead: jest.fn().mockResolvedValue({ data: { marked_read: 2 } }),
+  markNotificationGroupRead: jest.fn().mockResolvedValue({ data: { marked_read: 2 } }),
+  deleteAllNotifications: jest.fn().mockResolvedValue({ data: { deleted: 2 } }),
+  deleteNotification: jest.fn().mockResolvedValue({}),
   getTransactions: jest.fn(),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteeringOpportunities: jest.fn().mockResolvedValue({ data: [] }),
@@ -87,6 +93,12 @@ describe('shared accessible frontend shell', () => {
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
     api.createVolunteerOrganisation.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.getNotifications.mockReset().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } });
+    api.markNotificationRead.mockReset().mockResolvedValue({});
+    api.markAllNotificationsRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
+    api.markNotificationGroupRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
+    api.deleteAllNotifications.mockReset().mockResolvedValue({ data: { deleted: 2 } });
+    api.deleteNotification.mockReset().mockResolvedValue({});
     api.verify2fa.mockReset();
   });
 
@@ -526,6 +538,65 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('method="post" action="/logout"');
     expect(response.text).toContain('Sign out');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('submits the Laravel grouped notification read route through the v2 API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.getNotifications.mockResolvedValueOnce({
+      data: [{ id: 7, type: 'system', title: 'System notice', is_read: false }],
+      unreadCount: 1,
+      pagination: { page: 1, totalPages: 1 }
+    });
+
+    const first = await agent
+      .get('/notifications')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/notifications/group/read')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        group_key: 'post_like:/feed/posts/7'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/notifications?status=group-marked-read');
+    expect(api.markNotificationGroupRead).toHaveBeenCalledWith('test-token', 'post_like:/feed/posts/7');
+  });
+
+  it('submits the Laravel delete-all notification route through the v2 API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.getNotifications.mockResolvedValueOnce({
+      data: [{ id: 8, type: 'system', title: 'System notice', is_read: false }],
+      unreadCount: 1,
+      pagination: { page: 1, totalPages: 1 }
+    });
+
+    const first = await agent
+      .get('/notifications')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/notifications/delete-all')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1]
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/notifications?status=all-notifications-deleted');
+    expect(api.deleteAllNotifications).toHaveBeenCalledWith('test-token');
   });
 
   it('renders the Blade-style organisations directory and registration form as a local candidate', async () => {
