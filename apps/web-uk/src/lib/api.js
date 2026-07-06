@@ -439,6 +439,24 @@ async function unsaveSavedItem(token, itemType, itemId) {
   });
 }
 
+async function saveSavedItem(token, data) {
+  return request('/api/v2/me/saved-items', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function checkSavedItem(token, itemType, itemId) {
+  const query = new URLSearchParams();
+  query.set('item_type', itemType);
+  query.set('item_id', itemId);
+
+  return request(`/api/v2/me/saved-items/check?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function sendAppreciation(token, data) {
   return request('/api/v2/appreciations', {
     method: 'POST',
@@ -1120,6 +1138,14 @@ async function createFeedPost(token, data) {
   });
 }
 
+async function createFeedPostV2(token, data) {
+  return request('/api/v2/feed/posts', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function updateFeedPost(token, id, data) {
   return request(`/api/feed/${encodeURIComponent(id)}`, {
     method: 'PUT',
@@ -1128,8 +1154,23 @@ async function updateFeedPost(token, id, data) {
   });
 }
 
+async function updateFeedPostV2(token, id, data) {
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function deleteFeedPost(token, id) {
   return request(`/api/feed/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function deleteFeedPostV2(token, id) {
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -1151,6 +1192,53 @@ async function unlikeFeedPost(token, postId) {
 
 async function toggleFeedLike(token, data) {
   return request('/api/v2/feed/like', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function markFeedItemNotInterested(token, id, data = {}) {
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}/not-interested`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function hideFeedItem(token, id, data = {}) {
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}/hide`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function reportFeedItem(token, type, id, data = {}) {
+  return request(`/api/v2/feed/items/${encodeURIComponent(type)}/${encodeURIComponent(id)}/report`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function muteFeedUser(token, id) {
+  return request(`/api/v2/feed/users/${encodeURIComponent(id)}/mute`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function shareFeedItem(token, data) {
+  return request('/api/v2/shares', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function voteFeedPoll(token, id, data) {
+  return request(`/api/v2/feed/polls/${encodeURIComponent(id)}/vote`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
@@ -1710,6 +1798,8 @@ module.exports = {
   transferCredits,
   transferWalletCredits,
   donateCredits,
+  saveSavedItem,
+  checkSavedItem,
   unsaveSavedItem,
   sendAppreciation,
   reactToAppreciation,
@@ -1797,11 +1887,20 @@ module.exports = {
   getFeedPosts,
   getFeedPost,
   createFeedPost,
+  createFeedPostV2,
   updateFeedPost,
+  updateFeedPostV2,
   deleteFeedPost,
+  deleteFeedPostV2,
   likeFeedPost,
   unlikeFeedPost,
   toggleFeedLike,
+  markFeedItemNotInterested,
+  hideFeedItem,
+  reportFeedItem,
+  muteFeedUser,
+  shareFeedItem,
+  voteFeedPoll,
   getFeedComments,
   addFeedComment,
   deleteFeedComment,

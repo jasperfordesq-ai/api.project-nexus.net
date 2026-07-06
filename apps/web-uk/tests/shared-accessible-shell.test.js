@@ -42,6 +42,17 @@ jest.mock('../src/lib/api', () => ({
   saveOnboardingSafeguarding: jest.fn().mockResolvedValue({}),
   completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
   getListings: jest.fn(),
+  createFeedPostV2: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  updateFeedPostV2: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  deleteFeedPostV2: jest.fn().mockResolvedValue({ data: { deleted: true } }),
+  hideFeedItem: jest.fn().mockResolvedValue({ data: { hidden: true } }),
+  markFeedItemNotInterested: jest.fn().mockResolvedValue({ data: { success: true } }),
+  muteFeedUser: jest.fn().mockResolvedValue({ data: { muted: true } }),
+  reportFeedItem: jest.fn().mockResolvedValue({ data: { reported: true } }),
+  shareFeedItem: jest.fn().mockResolvedValue({ data: { shared: true } }),
+  saveSavedItem: jest.fn().mockResolvedValue({ data: { id: 72 } }),
+  checkSavedItem: jest.fn().mockResolvedValue({ data: { saved: false } }),
+  voteFeedPoll: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getBlogPosts: jest.fn().mockResolvedValue({ data: [] }),
   getBlogPost: jest.fn().mockResolvedValue({ data: { id: 42, slug: 'community-news', title: 'Community news' } }),
   getGoals: jest.fn(),
@@ -202,6 +213,17 @@ describe('shared accessible frontend shell', () => {
     api.deleteAllNotifications.mockReset().mockResolvedValue({ data: { deleted: 2 } });
     api.deleteNotification.mockReset().mockResolvedValue({});
     api.verify2fa.mockReset();
+    api.createFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.updateFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.deleteFeedPostV2.mockReset().mockResolvedValue({ data: { deleted: true } });
+    api.hideFeedItem.mockReset().mockResolvedValue({ data: { hidden: true } });
+    api.markFeedItemNotInterested.mockReset().mockResolvedValue({ data: { success: true } });
+    api.muteFeedUser.mockReset().mockResolvedValue({ data: { muted: true } });
+    api.reportFeedItem.mockReset().mockResolvedValue({ data: { reported: true } });
+    api.shareFeedItem.mockReset().mockResolvedValue({ data: { shared: true } });
+    api.saveSavedItem.mockReset().mockResolvedValue({ data: { id: 72 } });
+    api.checkSavedItem.mockReset().mockResolvedValue({ data: { saved: false } });
+    api.voteFeedPoll.mockReset().mockResolvedValue({ data: { id: 42 } });
   });
 
   it('renders the Laravel-style accessible shell on the home page', async () => {
@@ -2196,6 +2218,257 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getBlogPost).not.toHaveBeenCalled();
     expect(api.createComment).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel feed post store route through the v2 feed API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/feed/posts')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        content: ' Community update '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/feed?status=post-created');
+    expect(api.createFeedPostV2).toHaveBeenCalledWith('test-token', {
+      content: 'Community update',
+      visibility: 'public'
+    });
+  });
+
+  it('submits Laravel feed typed like and comment aliases through v2 social helpers', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const likeResponse = await agent
+      .post('/feed/items/listing/77/like')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(likeResponse.status).toBe(302);
+    expect(likeResponse.headers.location).toBe('/feed?status=like-added#feed-item-listing-77');
+    expect(api.toggleFeedLike).toHaveBeenCalledWith('test-token', {
+      target_type: 'listing',
+      target_id: 77
+    });
+
+    const commentResponse = await agent
+      .post('/feed/items/event/88/comments')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        content: ' See you there ',
+        parent_id: '4'
+      });
+
+    expect(commentResponse.status).toBe(302);
+    expect(commentResponse.headers.location).toBe('/feed?status=comment-created#feed-item-event-88');
+    expect(api.createComment).toHaveBeenCalledWith('test-token', {
+      target_type: 'event',
+      target_id: 88,
+      content: 'See you there',
+      parent_id: 4
+    });
+  });
+
+  it('submits Laravel feed post update, delete, hide, report, share, and save aliases', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const updateResponse = await agent
+      .post('/feed/posts/42/update')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], content: ' Updated post ' });
+    expect(updateResponse.headers.location).toBe('/feed?status=post-updated');
+    expect(api.updateFeedPostV2).toHaveBeenCalledWith('test-token', 42, { content: 'Updated post' });
+
+    const deleteResponse = await agent
+      .post('/feed/posts/42/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(deleteResponse.headers.location).toBe('/feed?status=post-deleted');
+    expect(api.deleteFeedPostV2).toHaveBeenCalledWith('test-token', 42);
+
+    const hideResponse = await agent
+      .post('/feed/posts/42/hide')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], type: 'poll' });
+    expect(hideResponse.headers.location).toBe('/feed?status=content-hidden');
+    expect(api.hideFeedItem).toHaveBeenCalledWith('test-token', 42, { type: 'poll' });
+
+    const reportResponse = await agent
+      .post('/feed/posts/42/report')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], type: 'post', reason: ' Spam ' });
+    expect(reportResponse.headers.location).toBe('/feed?status=content-reported');
+    expect(api.reportFeedItem).toHaveBeenCalledWith('test-token', 'post', 42, { reason: 'Spam' });
+
+    const shareResponse = await agent
+      .post('/feed/posts/42/share')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], comment: ' Worth reading ' });
+    expect(shareResponse.headers.location).toBe('/feed?status=share-added#feed-item-post-42');
+    expect(api.shareFeedItem).toHaveBeenCalledWith('test-token', {
+      type: 'post',
+      id: 42,
+      comment: 'Worth reading'
+    });
+
+    const saveResponse = await agent
+      .post('/feed/posts/42/save')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(saveResponse.headers.location).toBe('/feed?status=save-added#feed-item-post-42');
+    expect(api.checkSavedItem).toHaveBeenCalledWith('test-token', 'post', 42);
+    expect(api.saveSavedItem).toHaveBeenCalledWith('test-token', {
+      item_type: 'post',
+      item_id: 42
+    });
+  });
+
+  it('submits Laravel feed typed not-interested, reaction, poll vote, and mute aliases', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const notInterestedResponse = await agent
+      .post('/feed/items/resource/42/not-interested')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(notInterestedResponse.headers.location).toBe('/feed?status=not-interested#feed-item-resource-42');
+    expect(api.markFeedItemNotInterested).toHaveBeenCalledWith('test-token', 42, { type: 'resource' });
+
+    const reactionResponse = await agent
+      .post('/feed/items/blog/42/react')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], emoji: 'celebrate' });
+    expect(reactionResponse.headers.location).toBe('/feed?status=reaction-added#feed-item-blog-42');
+    expect(api.toggleReaction).toHaveBeenCalledWith('test-token', {
+      target_type: 'blog',
+      target_id: 42,
+      reaction_type: 'celebrate'
+    });
+
+    const pollResponse = await agent
+      .post('/feed/polls/42/vote')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], option_id: '9' });
+    expect(pollResponse.headers.location).toBe('/feed?status=poll-voted#feed-item-poll-42');
+    expect(api.voteFeedPoll).toHaveBeenCalledWith('test-token', 42, { option_id: 9 });
+
+    const muteResponse = await agent
+      .post('/feed/users/77/mute')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(muteResponse.headers.location).toBe('/feed?status=author-muted');
+    expect(api.muteFeedUser).toHaveBeenCalledWith('test-token', 77);
+  });
+
+  it('submits Laravel feed comment update, delete, and reaction aliases', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const updateResponse = await agent
+      .post('/feed/comments/12/update')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], content: ' Updated comment ' });
+    expect(updateResponse.headers.location).toBe('/feed?status=comment-updated');
+    expect(api.updateComment).toHaveBeenCalledWith('test-token', 12, { content: 'Updated comment' });
+
+    const deleteResponse = await agent
+      .post('/feed/comments/12/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(deleteResponse.headers.location).toBe('/feed?status=comment-deleted');
+    expect(api.deleteComment).toHaveBeenCalledWith('test-token', 12);
+
+    const reactResponse = await agent
+      .post('/feed/comments/12/react')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], emoji: 'love' });
+    expect(reactResponse.headers.location).toBe('/feed?status=reaction-added#feed-item-comment-12');
+    expect(api.toggleReaction).toHaveBeenCalledWith('test-token', {
+      target_type: 'comment',
+      target_id: 12,
+      reaction_type: 'love'
+    });
+  });
+
+  it('redirects signed-out Laravel feed aliases using feed status redirects', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const createResponse = await agent
+      .post('/feed/posts')
+      .type('form')
+      .send({ _csrf: csrfMatch[1], content: 'Signed out post' });
+    expect(createResponse.status).toBe(302);
+    expect(createResponse.headers.location).toBe('/feed');
+
+    const actionResponse = await agent
+      .post('/feed/posts/42/share')
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+    expect(actionResponse.status).toBe(302);
+    expect(actionResponse.headers.location).toBe('/feed?status=auth-required#feed-item-post-42');
+    expect(api.createFeedPostV2).not.toHaveBeenCalled();
+    expect(api.shareFeedItem).not.toHaveBeenCalled();
   });
 
   it('submits the Laravel poll store route through the v2 polls API helper', async () => {

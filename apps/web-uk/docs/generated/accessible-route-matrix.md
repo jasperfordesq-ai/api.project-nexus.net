@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T10:27:35.424Z
+Generated: 2026-07-06T10:38:09.172Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 459 |
-| Matched routes | 377 |
-| Missing routes | 231 |
+| web-uk routes | 476 |
+| Matched routes | 394 |
+| Missing routes | 214 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -38,7 +38,7 @@ Generated: 2026-07-06T10:27:35.424Z
 | faq | 1 | 0 | 0 |
 | features | 1 | 0 | 0 |
 | federation | 17 | 11 | 0 |
-| feed | 5 | 17 | 10 |
+| feed | 22 | 0 | 10 |
 | forgot-password | 0 | 0 | 2 |
 | goals | 12 | 15 | 0 |
 | group-exchanges | 3 | 6 | 0 |
@@ -130,23 +130,6 @@ Generated: 2026-07-06T10:27:35.424Z
 | POST | `/federation/opt-in` | federation | storeFederationOptIn |  | auth-optional | feature:federation |
 | POST | `/federation/opt-out` | federation | storeFederationOptOut |  | auth-optional | feature:federation |
 | POST | `/federation/settings` | federation | updateFederationSettings |  | auth-optional | feature:federation |
-| POST | `/feed/comments/{param}/delete` | feed | deleteFeedComment |  | auth-optional | module:feed |
-| POST | `/feed/comments/{param}/react` | feed | storeFeedCommentReaction |  | public-or-unknown |  |
-| POST | `/feed/comments/{param}/update` | feed | updateFeedComment |  | auth-optional | module:feed |
-| POST | `/feed/items/{param}/{param}/comments` | feed | storeFeedComment |  | auth-optional | module:feed |
-| POST | `/feed/items/{param}/{param}/like` | feed | storeFeedLike |  | auth-optional | module:feed |
-| POST | `/feed/items/{param}/{param}/not-interested` | feed | feedItemNotInterested |  | auth-optional | module:feed |
-| POST | `/feed/items/{param}/{param}/react` | feed | feedItemReaction |  | auth-optional | module:feed |
-| POST | `/feed/polls/{param}/vote` | feed | storeFeedPollVote |  | auth-optional | module:feed |
-| POST | `/feed/posts` | feed | storeFeedPost |  | auth-optional | module:feed |
-| POST | `/feed/posts/{param}/delete` | feed | deleteFeedPost |  | auth-optional | module:feed |
-| POST | `/feed/posts/{param}/hide` | feed | hideFeedItem |  | auth-optional | module:feed |
-| POST | `/feed/posts/{param}/react` | feed | storeFeedPostReaction |  | public-or-unknown |  |
-| POST | `/feed/posts/{param}/report` | feed | reportFeedItem |  | auth-optional | module:feed |
-| POST | `/feed/posts/{param}/save` | feed | storeFeedPostSave |  | auth-optional | module:feed |
-| POST | `/feed/posts/{param}/share` | feed | storeFeedPostShare |  | auth-optional | module:feed |
-| POST | `/feed/posts/{param}/update` | feed | updateFeedPost |  | auth-optional | module:feed |
-| POST | `/feed/users/{param}/mute` | feed | muteFeedUser |  | auth-optional | module:feed |
 | POST | `/goals` | goals | storeGoal |  | public-or-unknown | feature:goals |
 | POST | `/goals/{param}/buddy` | goals | becomeGoalBuddy |  | auth-optional | feature:goals |
 | POST | `/goals/{param}/buddy-actions` | goals | goalsStoreBuddyAction |  | auth-optional |  |

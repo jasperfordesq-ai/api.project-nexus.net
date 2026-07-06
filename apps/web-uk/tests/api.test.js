@@ -1509,6 +1509,176 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel feed action helpers', () => {
+    it('should create, update, and delete feed posts through Laravel v2 endpoints', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { deleted: true } })
+        });
+
+      await api.createFeedPostV2('test-token', { content: 'Hello', visibility: 'public' });
+      await api.updateFeedPostV2('test-token', 42, { content: 'Updated' });
+      await api.deleteFeedPostV2('test-token', 42);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(1,
+        'http://localhost:5000/api/v2/feed/posts',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ content: 'Hello', visibility: 'public' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:5000/api/v2/feed/posts/42',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ content: 'Updated' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(3,
+        'http://localhost:5000/api/v2/feed/posts/42',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
+    it('should call Laravel v2 feed moderation helpers', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { hidden: true } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { success: true } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { reported: true } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { muted: true } })
+        });
+
+      await api.hideFeedItem('test-token', 42, { type: 'poll' });
+      await api.markFeedItemNotInterested('test-token', 42, { type: 'resource' });
+      await api.reportFeedItem('test-token', 'listing', 77, { reason: 'Spam' });
+      await api.muteFeedUser('test-token', 99);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(1,
+        'http://localhost:5000/api/v2/feed/posts/42/hide',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ type: 'poll' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:5000/api/v2/feed/posts/42/not-interested',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ type: 'resource' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(3,
+        'http://localhost:5000/api/v2/feed/items/listing/77/report',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ reason: 'Spam' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(4,
+        'http://localhost:5000/api/v2/feed/users/99/mute',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
+    it('should call Laravel v2 feed share, save, saved-check, and poll vote helpers', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { shared: true } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 72 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { saved: false } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42 } })
+        });
+
+      await api.shareFeedItem('test-token', { type: 'post', id: 42, comment: 'Worth reading' });
+      await api.saveSavedItem('test-token', { item_type: 'post', item_id: 42 });
+      await api.checkSavedItem('test-token', 'post', 42);
+      await api.voteFeedPoll('test-token', 42, { option_id: 9 });
+
+      expect(mockFetch).toHaveBeenNthCalledWith(1,
+        'http://localhost:5000/api/v2/shares',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ type: 'post', id: 42, comment: 'Worth reading' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:5000/api/v2/me/saved-items',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ item_type: 'post', item_id: 42 })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(3,
+        'http://localhost:5000/api/v2/me/saved-items/check?item_type=post&item_id=42',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(4,
+        'http://localhost:5000/api/v2/feed/polls/42/vote',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ option_id: 9 })
+        })
+      );
+    });
+  });
+
   describe('Laravel resource helpers', () => {
     it('should fetch resources through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
