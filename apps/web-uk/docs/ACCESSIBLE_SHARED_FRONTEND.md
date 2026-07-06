@@ -81,6 +81,8 @@ the Laravel accessible `/notifications/group/read` and
 `/notifications/delete-all` POST aliases against the Laravel v2 notification API.
 The protected wallet module exposes a no-JS `/wallet/donate` form and POST route
 against Laravel `/api/v2/wallet/donate` with the same donation status keys.
+Saved-item removal and appreciation send/react POST aliases are also wired to
+Laravel `/api/v2/me/saved-items` and `/api/v2/appreciations`.
 This remains partial: Laravel tenant feature gating, full account-link coverage,
 per-module backend data, route availability checks, localization, realtime
 behavior, runtime smoke tests, and ASP.NET backend compatibility are not
@@ -149,8 +151,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 406 `apps/web-uk` route declarations, 324 exact
-method/path matches, 284 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 409 `apps/web-uk` route declarations, 327 exact
+method/path matches, 281 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

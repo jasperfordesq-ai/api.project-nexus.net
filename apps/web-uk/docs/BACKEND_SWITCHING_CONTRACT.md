@@ -41,10 +41,11 @@ notifications module includes Laravel accessible aliases for
 `/notifications/group/read` and `/notifications/delete-all`, backed by
 `/api/v2/notifications/group/read` and `DELETE /api/v2/notifications`. The wallet
 module includes the Laravel accessible `/wallet/donate` POST, backed by
-`/api/v2/wallet/donate`. It is not a backend adapter and does not certify Laravel
-tenant feature gates, full account-link coverage, route availability checks,
-per-module response contracts, realtime notification behavior, or ASP.NET backend
-readiness.
+`/api/v2/wallet/donate`. Saved-item removal and appreciation send/react aliases
+are backed by `/api/v2/me/saved-items` and `/api/v2/appreciations`. It is not a
+backend adapter and does not certify Laravel tenant feature gates, full
+account-link coverage, route availability checks, per-module response contracts,
+realtime notification behavior, or ASP.NET backend readiness.
 
 `/cookies` GET and `/cookie-consent` POST are local Blade-style no-JS cookie
 candidates. They render the Laravel-style analytics settings form and set the

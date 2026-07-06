@@ -51,6 +51,9 @@ jest.mock('../src/lib/api', () => ({
   votePoll: jest.fn(),
   getBalance: jest.fn(),
   donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
+  unsaveSavedItem: jest.fn().mockResolvedValue({}),
+  sendAppreciation: jest.fn().mockResolvedValue({ data: { id: 55 } }),
+  reactToAppreciation: jest.fn().mockResolvedValue({ data: { reaction_type: 'heart' } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -94,6 +97,9 @@ describe('shared accessible frontend shell', () => {
     api.getTransactions.mockReset().mockResolvedValue({ data: [] });
     api.getProfile.mockReset().mockResolvedValue({ id: 101 });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
+    api.unsaveSavedItem.mockReset().mockResolvedValue({});
+    api.sendAppreciation.mockReset().mockResolvedValue({ data: { id: 55 } });
+    api.reactToAppreciation.mockReset().mockResolvedValue({ data: { reaction_type: 'heart' } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -618,6 +624,89 @@ describe('shared accessible frontend shell', () => {
       amount: 2,
       message: 'Thank you'
     }));
+  });
+
+  it('submits the Laravel saved destroy route through the saved-items API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/account')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/saved/destroy')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        type: 'listing',
+        id: '42'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/saved?status=bookmark-removed');
+    expect(api.unsaveSavedItem).toHaveBeenCalledWith('test-token', 'listing', 42);
+  });
+
+  it('submits the Laravel appreciation send route through the appreciations API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/account')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/users/77/appreciations')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        message: ' Thank you for helping ',
+        is_public: '1'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/users/77/appreciations?status=appreciation-sent');
+    expect(api.sendAppreciation).toHaveBeenCalledWith('test-token', {
+      receiver_id: 77,
+      message: 'Thank you for helping',
+      context_type: 'general',
+      is_public: true
+    });
+  });
+
+  it('submits the Laravel appreciation reaction route through the reaction API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/account')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/appreciations/55/react')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        owner_id: '77',
+        reaction_type: 'heart'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/users/77/appreciations?status=reaction-updated#appreciation-55');
+    expect(api.reactToAppreciation).toHaveBeenCalledWith('test-token', 55, 'heart');
   });
 
   it('submits the Laravel grouped notification read route through the v2 API helper', async () => {

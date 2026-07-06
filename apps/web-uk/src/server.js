@@ -36,6 +36,7 @@ const adminRoutes = require('./routes/admin');
 const exploreRoutes = require('./routes/explore');
 const staticPageRoutes = require('./routes/static-pages');
 const contactSupportRoutes = require('./routes/contact-support');
+const savedSocialRoutes = require('./routes/saved-social');
 const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
@@ -1085,6 +1086,7 @@ app.use('/progress', doubleCsrfProtection, gamificationRoutes);
 app.use('/search', doubleCsrfProtection, searchRoutes);
 app.use('/reviews', doubleCsrfProtection, postOnly(formLimiter), reviewsRoutes);
 app.use('/admin', doubleCsrfProtection, adminRoutes);
+app.use(doubleCsrfProtection, postOnly(formLimiter), savedSocialRoutes);
 app.use(laravelPrepRoutes);
 
 // CSRF error handler (must be before 404 handler since 404 is a catch-all)

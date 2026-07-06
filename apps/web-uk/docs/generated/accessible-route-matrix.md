@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T08:41:39.808Z
+Generated: 2026-07-06T08:51:45.567Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 406 |
-| Matched routes | 324 |
-| Missing routes | 284 |
+| web-uk routes | 409 |
+| Matched routes | 327 |
+| Missing routes | 281 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -20,7 +20,7 @@ Generated: 2026-07-06T08:41:39.808Z
 | achievements | 6 | 4 | 0 |
 | activity | 2 | 0 | 0 |
 | admin | 0 | 0 | 24 |
-| appreciations | 0 | 1 | 0 |
+| appreciations | 1 | 0 | 0 |
 | blog | 5 | 7 | 0 |
 | chat | 1 | 1 | 0 |
 | clubs | 1 | 0 | 0 |
@@ -78,7 +78,7 @@ Generated: 2026-07-06T08:41:39.808Z
 | reset-password | 0 | 0 | 2 |
 | resources | 6 | 6 | 0 |
 | reviews | 4 | 3 | 4 |
-| saved | 1 | 1 | 0 |
+| saved | 2 | 0 | 0 |
 | search | 3 | 3 | 1 |
 | service-unavailable | 0 | 0 | 1 |
 | session | 0 | 0 | 1 |
@@ -86,7 +86,7 @@ Generated: 2026-07-06T08:41:39.808Z
 | skills | 1 | 0 | 0 |
 | terms | 0 | 0 | 1 |
 | trust-and-safety | 1 | 0 | 0 |
-| users | 2 | 1 | 0 |
+| users | 3 | 0 | 0 |
 | verify-2fa | 0 | 0 | 1 |
 | verify-email | 1 | 0 | 0 |
 | volunteering | 24 | 28 | 0 |
@@ -100,7 +100,6 @@ Generated: 2026-07-06T08:41:39.808Z
 | POST | `/achievements/daily-reward` | achievements | dailyReward |  | auth-optional | feature:gamification |
 | POST | `/achievements/shop/purchase` | achievements | gamificationPurchase |  | public-or-unknown |  |
 | POST | `/achievements/showcase` | achievements | gamificationUpdateShowcase |  | public-or-unknown |  |
-| POST | `/appreciations/{param}/react` | appreciations | savedReactAppreciation |  | auth-optional |  |
 | POST | `/blog/{param}/comments` | blog | storeBlogComment |  | auth-optional | feature:blog |
 | POST | `/blog/{param}/comments/add` | blog | blogReviewsStorePostComment |  | auth-optional | feature:blog |
 | POST | `/blog/{param}/like` | blog | blogTogglePostLike |  | auth-optional | feature:blog |
@@ -339,7 +338,6 @@ Generated: 2026-07-06T08:41:39.808Z
 | POST | `/reviews` | reviews | storeReview |  | auth-optional | feature:reviews |
 | POST | `/reviews/{param}/comments` | reviews | blogReviewsStoreReviewComment |  | auth-optional | feature:reviews |
 | POST | `/reviews/{param}/react` | reviews | blogReviewsReviewReaction |  | auth-optional | feature:reviews |
-| POST | `/saved/destroy` | saved | destroySaved |  | auth-optional |  |
 | POST | `/search/saved` | search | searchSaveSearch |  | auth-optional | feature:search |
 | POST | `/search/saved/{param}/delete` | search | searchDeleteSaved |  | auth-optional | feature:search |
 | POST | `/search/saved/{param}/run` | search | searchRunSaved |  | auth-optional | feature:search |
@@ -351,7 +349,6 @@ Generated: 2026-07-06T08:41:39.808Z
 | POST | `/settings/linked-accounts/permissions` | settings | settingsUpdateLinkedPermissions |  | auth-optional |  |
 | POST | `/settings/linked-accounts/request` | settings | settingsRequestLinkedAccount |  | auth-optional |  |
 | POST | `/settings/linked-accounts/revoke` | settings | settingsRevokeLinkedAccount |  | auth-optional |  |
-| POST | `/users/{param}/appreciations` | users | savedSendAppreciation |  | auth-optional |  |
 | POST | `/volunteering/accessibility` | volunteering | updateVolunteerAccessibility |  | auth-optional | feature:volunteering |
 | POST | `/volunteering/applications/{param}/withdraw` | volunteering | withdrawVolunteerApplication |  | auth-optional | feature:volunteering |
 | POST | `/volunteering/certificates/generate` | volunteering | generateVolunteerCertificate |  | auth-optional | feature:volunteering |

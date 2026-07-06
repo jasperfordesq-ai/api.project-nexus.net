@@ -558,6 +558,80 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel saved and appreciation helpers', () => {
+    it('should remove a saved item by item pair through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => '' },
+        text: async () => ''
+      });
+
+      await api.unsaveSavedItem('test-token', 'listing', 42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/me/saved-items?item_type=listing&item_id=42',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should send an appreciation through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 55 } })
+      });
+
+      await api.sendAppreciation('test-token', {
+        receiver_id: 77,
+        message: 'Thank you',
+        context_type: 'general',
+        is_public: true
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/appreciations',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            receiver_id: 77,
+            message: 'Thank you',
+            context_type: 'general',
+            is_public: true
+          })
+        })
+      );
+    });
+
+    it('should react to an appreciation through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { reaction_type: 'heart' } })
+      });
+
+      await api.reactToAppreciation('test-token', 55, 'heart');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/appreciations/55/react',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ reaction_type: 'heart' })
+        })
+      );
+    });
+  });
+
   describe('Laravel notification helpers', () => {
     it('should mark all notifications read through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

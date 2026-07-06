@@ -404,6 +404,33 @@ async function donateCredits(token, data) {
   });
 }
 
+async function unsaveSavedItem(token, itemType, itemId) {
+  const query = new URLSearchParams();
+  query.set('item_type', itemType);
+  query.set('item_id', itemId);
+
+  return request(`/api/v2/me/saved-items?${query.toString()}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function sendAppreciation(token, data) {
+  return request('/api/v2/appreciations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function reactToAppreciation(token, id, reactionType) {
+  return request(`/api/v2/appreciations/${encodeURIComponent(id)}/react`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ reaction_type: reactionType })
+  });
+}
+
 // Messages
 async function getConversations(token) {
   return request('/api/messages', {
@@ -1299,6 +1326,9 @@ module.exports = {
   getTransaction,
   transferCredits,
   donateCredits,
+  unsaveSavedItem,
+  sendAppreciation,
+  reactToAppreciation,
   // Messages
   getConversations,
   getConversation,
