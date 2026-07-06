@@ -690,6 +690,13 @@ describe('shared accessible frontend shell', () => {
     expect(features.text).not.toContain('Feature guidance will be ported');
   });
 
+  it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
+    const staticPageRoutes = require('../src/routes/static-pages');
+
+    expect(staticPageRoutes.pages['/marketplace']).toBeUndefined();
+    expect(staticPageRoutes.pages['/podcasts']).toBeUndefined();
+  });
+
   it('renders the Laravel-backed Federation hub with stats, partners, and activity', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
