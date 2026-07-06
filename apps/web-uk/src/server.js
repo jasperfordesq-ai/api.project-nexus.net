@@ -1054,6 +1054,7 @@ app.get('/organisations/:id(\\d+)', (req, res) => {
 });
 
 app.use('/resources/upload', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use('/volunteering/credentials', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 
 app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
 app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);

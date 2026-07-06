@@ -483,6 +483,27 @@ async function callVolunteeringApi(token, method, path, data = undefined) {
   return request(`/api/v2/volunteering${normalizedPath}`, options);
 }
 
+async function uploadVolunteerCredential(token, data) {
+  const form = new globalThis.FormData();
+  form.append('credential_type', data.credential_type || data.type || '');
+  if (data.expires_at) {
+    form.append('expires_at', data.expires_at);
+  }
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('file', blob, data.file.filename || 'credential');
+  }
+
+  return request('/api/v2/volunteering/credentials', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function callMarketplaceApi(token, method, path, data = undefined) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const options = {
@@ -2327,6 +2348,7 @@ module.exports = {
   getMyVolunteerOrganisations,
   createVolunteerOrganisation,
   callVolunteeringApi,
+  uploadVolunteerCredential,
   callMarketplaceApi,
   callCourseApi,
   getMyCourses,

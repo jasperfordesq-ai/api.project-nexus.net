@@ -94,6 +94,7 @@ jest.mock('../src/lib/api', () => ({
   getResourceCategories: jest.fn().mockResolvedValue({ data: [] }),
   getResourceCategoryTree: jest.fn().mockResolvedValue({ data: [] }),
   uploadResource: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  uploadVolunteerCredential: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   downloadResource: jest.fn(),
   deleteResource: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   reorderResources: jest.fn().mockResolvedValue({ data: { message: 'reordered' } }),
@@ -209,6 +210,7 @@ describe('shared accessible frontend shell', () => {
     api.getResourceCategories.mockReset().mockResolvedValue({ data: [] });
     api.getResourceCategoryTree.mockReset().mockResolvedValue({ data: [] });
     api.uploadResource.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.uploadVolunteerCredential.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.downloadResource.mockReset();
     api.deleteResource.mockReset().mockResolvedValue({ data: { deleted: true } });
     api.reorderResources.mockReset().mockResolvedValue({ data: { message: 'reordered' } });
@@ -11138,7 +11140,7 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
-  it('fails the Laravel volunteering credential upload route safely until multipart proxying exists', async () => {
+  it('submits the Laravel volunteering credential upload route with multipart file data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
@@ -11151,12 +11153,25 @@ describe('shared accessible frontend shell', () => {
     const response = await agent
       .post('/volunteering/credentials')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
-      .type('form')
-      .send({ _csrf: csrfMatch[1], credential_type: 'garda_vetting' });
+      .field('_csrf', csrfMatch[1])
+      .field('credential_type', 'garda_vetting')
+      .field('expires_at', '2026-12-31')
+      .attach('file', Buffer.from('%PDF volunteer credential', 'utf8'), {
+        filename: 'garda-vetting.pdf',
+        contentType: 'application/pdf'
+      });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/volunteering/credentials?status=credential-upload-failed');
-    expect(api.callVolunteeringApi).not.toHaveBeenCalled();
+    expect(response.headers.location).toBe('/volunteering/credentials?status=credential-uploaded');
+    expect(api.uploadVolunteerCredential).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      credential_type: 'garda_vetting',
+      expires_at: '2026-12-31',
+      file: expect.objectContaining({
+        filename: 'garda-vetting.pdf',
+        contentType: 'application/pdf',
+        buffer: Buffer.from('%PDF volunteer credential', 'utf8')
+      })
+    }));
   });
 
   it('redirects signed-out Laravel volunteering POST aliases to login status without calling Laravel APIs', async () => {

@@ -4,7 +4,8 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { ApiError, callVolunteeringApi } = require('../lib/api');
+const fs = require('fs/promises');
+const { ApiError, callVolunteeringApi, uploadVolunteerCredential } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -39,6 +40,20 @@ function stringArray(value) {
 
   const single = trimmed(value);
   return single ? [single] : [];
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
 }
 
 function loginRedirect() {
@@ -337,11 +352,39 @@ router.post('/emergency-alerts/:id(\\d+)/respond', asyncRoute(async (req, res) =
 }));
 
 router.post('/credentials', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) {
+  const token = tokenFrom(req);
+  if (!token) {
     return res.redirect(loginRedirect());
   }
 
-  return res.redirect('/volunteering/credentials?status=credential-upload-failed');
+  const type = trimmed(req.body.credential_type || req.body.type, 100);
+  const expiresAt = trimmed(req.body.expires_at || req.body.expiry_date);
+  const file = uploadedFile(req, 'file') || uploadedFile(req, 'document');
+  if (!type || !file) {
+    await removeUploadedFile(file);
+    return res.redirect('/volunteering/credentials?status=credential-upload-failed');
+  }
+
+  try {
+    const buffer = await fs.readFile(file.filepath);
+    await uploadVolunteerCredential(token, {
+      credential_type: type,
+      expires_at: expiresAt,
+      file: {
+        buffer,
+        filename: trimmed(file.originalFilename) || 'credential',
+        contentType: trimmed(file.mimetype) || 'application/octet-stream',
+        size: file.size
+      }
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect('/volunteering/credentials?status=credential-upload-failed');
+  } finally {
+    await removeUploadedFile(file);
+  }
+
+  return res.redirect('/volunteering/credentials?status=credential-uploaded');
 }));
 
 router.post('/credentials/:id(\\d+)/delete', asyncRoute(async (req, res) => {

@@ -656,6 +656,36 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should upload volunteer credentials to Laravel with multipart file data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42 } })
+      });
+
+      await api.uploadVolunteerCredential('test-token', {
+        credential_type: 'garda_vetting',
+        expires_at: '2026-12-31',
+        file: {
+          buffer: Buffer.from('%PDF volunteer credential', 'utf8'),
+          filename: 'garda-vetting.pdf',
+          contentType: 'application/pdf'
+        }
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/credentials',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
   });
 
   describe('callMarketplaceApi', () => {
