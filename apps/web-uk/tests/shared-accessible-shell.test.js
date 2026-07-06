@@ -896,6 +896,100 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation messages page', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/settings') {
+        return {
+          data: {
+            enabled: true,
+            settings: {
+              federation_optin: true,
+              messaging_enabled_federated: true
+            }
+          }
+        };
+      }
+      if (pathValue === '/messages') {
+        return {
+          data: [
+            {
+              id: 33,
+              subject: 'Workshop plans',
+              body: 'Can we confirm tools for Saturday?',
+              direction: 'inbound',
+              status: 'delivered',
+              read_at: null,
+              created_at: '2026-07-02T12:00:00Z',
+              sender: {
+                id: 77,
+                name: 'Avery Stone',
+                tenant_id: 12,
+                tenant_name: 'North Timebank'
+              },
+              receiver: {
+                id: 5,
+                name: 'Jasper Ford',
+                tenant_id: 1,
+                tenant_name: 'Local Timebank'
+              }
+            },
+            {
+              id: 32,
+              subject: 'Re: Workshop plans',
+              body: 'Yes, I can bring the repair kit.',
+              direction: 'outbound',
+              status: 'read',
+              read_at: '2026-07-01T15:00:00Z',
+              created_at: '2026-07-01T14:00:00Z',
+              sender: {
+                id: 5,
+                name: 'Jasper Ford',
+                tenant_id: 1,
+                tenant_name: 'Local Timebank'
+              },
+              receiver: {
+                id: 77,
+                name: 'Avery Stone',
+                tenant_id: 12,
+                tenant_name: 'North Timebank'
+              }
+            }
+          ]
+        };
+      }
+
+      return { data: [] };
+    });
+
+    const unsigned = await request(app).get('/federation/messages');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/messages?q=avery&status=message-sent')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/messages');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Federated messages');
+    expect(response.text).toContain('Messages exchanged with members across the community network.');
+    expect(response.text).toContain('Your message has been sent.');
+    expect(response.text).toContain('Search conversations');
+    expect(response.text).toContain('value="avery"');
+    expect(response.text).toContain('Browse federated members');
+    expect(response.text).toContain('Conversations');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).toContain('1 unread');
+    expect(response.text).toContain('Can we confirm tools for Saturday?');
+    expect(response.text).toContain('href="/federation/messages/conversation/77?tenant_id=12"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 
