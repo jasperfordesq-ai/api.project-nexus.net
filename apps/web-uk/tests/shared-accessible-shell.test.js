@@ -93,6 +93,7 @@ jest.mock('../src/lib/api', () => ({
   getResources: jest.fn().mockResolvedValue({ data: [{ id: 10, sort_order: 0 }, { id: 20, sort_order: 1 }] }),
   getResourceCategories: jest.fn().mockResolvedValue({ data: [] }),
   getResourceCategoryTree: jest.fn().mockResolvedValue({ data: [] }),
+  uploadResource: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   downloadResource: jest.fn(),
   deleteResource: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   reorderResources: jest.fn().mockResolvedValue({ data: { message: 'reordered' } }),
@@ -207,6 +208,8 @@ describe('shared accessible frontend shell', () => {
     api.getResources.mockReset().mockResolvedValue({ data: [{ id: 10, sort_order: 0 }, { id: 20, sort_order: 1 }] });
     api.getResourceCategories.mockReset().mockResolvedValue({ data: [] });
     api.getResourceCategoryTree.mockReset().mockResolvedValue({ data: [] });
+    api.uploadResource.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.downloadResource.mockReset();
     api.deleteResource.mockReset().mockResolvedValue({ data: { deleted: true } });
     api.reorderResources.mockReset().mockResolvedValue({ data: { message: 'reordered' } });
     api.createSavedCollection.mockReset().mockResolvedValue({ data: { id: 12 } });
@@ -3385,7 +3388,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.getMemberConnectionStatus).not.toHaveBeenCalled();
   });
 
-  it('keeps the Laravel resource upload route as a safe failure until multipart proxying exists', async () => {
+  it('submits the Laravel resource upload route with multipart file data', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
@@ -3395,19 +3398,32 @@ describe('shared accessible frontend shell', () => {
       .get('/contact')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
     const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const csrfCookies = (first.headers['set-cookie'] || []).map((cookie) => cookie.split(';')[0]);
 
     const response = await agent
       .post('/resources/upload')
-      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
-      .type('form')
-      .send({
-        _csrf: csrfMatch[1],
-        title: 'Community handbook'
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`, ...csrfCookies].join('; '))
+      .field('_csrf', csrfMatch[1])
+      .field('title', 'Community handbook')
+      .field('description', 'A practical guide for neighbours')
+      .field('category_id', '7')
+      .attach('file', Buffer.from('plain text guide', 'utf8'), {
+        filename: 'community-handbook.txt',
+        contentType: 'text/plain'
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/resources/upload?status=resource-upload-failed');
-    expect(api.deleteResource).not.toHaveBeenCalled();
+    expect(response.headers.location).toBe('/resources/library?status=resource-uploaded');
+    expect(api.uploadResource).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      title: 'Community handbook',
+      description: 'A practical guide for neighbours',
+      category_id: '7',
+      file: expect.objectContaining({
+        filename: 'community-handbook.txt',
+        contentType: 'text/plain',
+        buffer: Buffer.from('plain text guide', 'utf8')
+      })
+    }));
   });
 
   it('renders the Laravel-backed simple resources directory for signed-in members', async () => {

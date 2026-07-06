@@ -40,9 +40,10 @@ class ApiOfflineError extends Error {
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
+  const isFormData = typeof globalThis.FormData !== 'undefined' && options.body instanceof globalThis.FormData;
 
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers
   };
 
@@ -865,6 +866,28 @@ async function downloadResource(token, id) {
   return downloadRequest(`/api/v2/resources/${encodeURIComponent(id)}/download`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function uploadResource(token, data) {
+  const form = new globalThis.FormData();
+  form.append('title', data.title || '');
+  form.append('description', data.description || '');
+  if (data.category_id) {
+    form.append('category_id', data.category_id);
+  }
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('file', blob, data.file.filename || 'resource');
+  }
+
+  return request('/api/v2/resources', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
   });
 }
 
@@ -2339,6 +2362,7 @@ module.exports = {
   getResources,
   getResourceCategories,
   getResourceCategoryTree,
+  uploadResource,
   downloadResource,
   deleteResource,
   reorderResources,

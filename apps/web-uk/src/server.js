@@ -66,6 +66,7 @@ const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
 const { getContributorGroups, getResearchFoundation } = require('./lib/contributors');
 const { buildShellLocals } = require('./lib/accessible-shell');
+const { parseMultipartForm } = require('./middleware/multipart');
 
 const app = express();
 
@@ -1051,6 +1052,8 @@ app.get('/organisations/:id(\\d+)', (req, res) => {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
     });
 });
+
+app.use('/resources/upload', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 
 app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
 app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);

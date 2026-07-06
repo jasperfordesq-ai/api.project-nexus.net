@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const {
   getResources,
   getResourceCategories,
@@ -11,6 +12,7 @@ const {
   getProfile,
   getComments,
   getReactionSummary,
+  uploadResource,
   downloadResource,
   deleteResource,
   reorderResources,
@@ -327,6 +329,23 @@ function uploadStatusMessage(status) {
   }
 }
 
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  if (!file || typeof file !== 'object' || !file.filepath) {
+    return null;
+  }
+  return file;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
+}
+
 function libraryQuery(params) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -621,7 +640,35 @@ router.post('/upload', asyncRoute(async (req, res) => {
     return res.redirect('/login?status=auth-required');
   }
 
-  return res.redirect('/resources/upload?status=resource-upload-failed');
+  const file = uploadedFile(req, 'file');
+  const title = trimmed(req.body.title, 255);
+  if (!title || !file) {
+    await removeUploadedFile(file);
+    return res.redirect('/resources/upload?status=resource-upload-failed');
+  }
+
+  try {
+    const buffer = await fs.readFile(file.filepath);
+    await uploadResource(token, {
+      title,
+      description: trimmed(req.body.description, 5000),
+      category_id: trimmed(req.body.category_id),
+      file: {
+        buffer,
+        filename: trimmed(file.originalFilename) || 'resource',
+        contentType: trimmed(file.mimetype) || 'application/octet-stream',
+        size: file.size
+      }
+    });
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isForbidden(error)) throw error;
+    return res.redirect('/resources/upload?status=resource-upload-failed');
+  } finally {
+    await removeUploadedFile(file);
+  }
+
+  return res.redirect('/resources/library?status=resource-uploaded');
 }));
 
 router.post('/reorder', asyncRoute(async (req, res) => {
