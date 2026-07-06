@@ -385,10 +385,11 @@ and ASP.NET backend compatibility are not certified.
 The public guide pages now replace the static Guide and Features placeholders.
 `/guide` renders the Blade-style timebanking explanation, equal-time principle,
 three-step ordered list, and signed-in or signed-out CTA group. `/features`
-renders the Blade-style community feature list and link back to `/guide`. This
-remains partial: tenant-domain routing, module-gated CTA visibility,
-localization, runtime behavior, and ASP.NET backend compatibility are not
-certified.
+renders the Blade-style community feature list and link back to `/guide`.
+`/faq` renders the Blade-style GOV.UK accordion with the five translated
+timebanking questions and answers. This remains partial: tenant-domain routing,
+module-gated CTA visibility, localization, runtime behavior, and ASP.NET
+backend compatibility are not certified.
 
 Additional preparation docs:
 

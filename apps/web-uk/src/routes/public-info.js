@@ -16,6 +16,29 @@ const FEATURES = [
   'Earn badges and see how you are contributing.'
 ];
 
+const FAQS = [
+  {
+    question: 'What is a time credit?',
+    answer: 'A time credit is one hour of your time. You earn a credit for every hour you give, and spend credits to receive help from others.'
+  },
+  {
+    question: "Is everyone's time worth the same?",
+    answer: 'Yes. One hour always equals one time credit, whatever the task. This is what makes timebanking fair.'
+  },
+  {
+    question: 'How do I start?',
+    answer: 'Create a listing to offer a skill or ask for help, browse what others are offering, and connect with members near you.'
+  },
+  {
+    question: 'How do I send credits to someone?',
+    answer: 'Open your wallet, search for the member, choose an amount and send. Credits move immediately.'
+  },
+  {
+    question: 'Is my information private?',
+    answer: 'You control what other members can see in your privacy settings, and you can export or delete your data at any time.'
+  }
+];
+
 function communityName(res) {
   return res.locals.tenantName || res.locals.serviceName || 'Project NEXUS Accessible';
 }
@@ -35,6 +58,15 @@ router.get('/features', (req, res) => {
     activeNav: 'features',
     communityName: communityName(res),
     features: FEATURES
+  });
+});
+
+router.get('/faq', (req, res) => {
+  res.render('public-info/faq', {
+    title: 'Frequently asked questions',
+    activeNav: 'faq',
+    communityName: communityName(res),
+    faqs: FAQS
   });
 });
 

@@ -690,6 +690,21 @@ describe('shared accessible frontend shell', () => {
     expect(features.text).not.toContain('Feature guidance will be ported');
   });
 
+  it('renders the Laravel-style FAQ page', async () => {
+    const response = await request(app).get('/faq');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Frequently asked questions');
+    expect(response.text).toContain('Answers to common questions about timebanking.');
+    expect(response.text).toContain('class="govuk-accordion"');
+    expect(response.text).toContain('id="faq-accordion"');
+    expect(response.text).toContain('What is a time credit?');
+    expect(response.text).toContain('Is everyone&#39;s time worth the same?');
+    expect(response.text).toContain('How do I send credits to someone?');
+    expect(response.text).toContain('You control what other members can see in your privacy settings');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
     const staticPageRoutes = require('../src/routes/static-pages');
 
