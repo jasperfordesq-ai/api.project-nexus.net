@@ -37,6 +37,7 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             AddCaringCommunityControllerAliases(controller, existingRoutes);
             AddVolunteeringControllerAliases(controller, existingRoutes);
             AddSimpleV2ControllerAliases(controller, existingRoutes);
+            AddSimpleV2ControllerActionAliases(controller, existingRoutes);
             AddGroupsControllerActionAliases(controller, existingRoutes);
             AddIdeationControllerActionAliases(controller, existingRoutes);
             AddUsersMeActionAliases(controller, existingRoutes);
@@ -426,6 +427,53 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
                     Selector = selector,
                     Alias = ToGroupsV2Alias(CombineRoute("api/groups", selector.AttributeRouteModel!.Template))
                 })
+                .Where(item => item.Alias is not null)
+                .ToArray();
+
+            foreach (var item in aliases)
+            {
+                if (HasRoute(action.Selectors, item.Alias!) || HasExistingActionRoute(existingRoutes, item.Selector, item.Alias!))
+                {
+                    continue;
+                }
+
+                var aliasSelector = new SelectorModel(item.Selector)
+                {
+                    AttributeRouteModel = new AttributeRouteModel(item.Selector.AttributeRouteModel!)
+                    {
+                        Template = item.Alias
+                    }
+                };
+
+                action.Selectors.Add(aliasSelector);
+                AddRouteKeys(existingRoutes, aliasSelector);
+            }
+        }
+    }
+
+    private static void AddSimpleV2ControllerActionAliases(ControllerModel controller, ISet<string> existingRoutes)
+    {
+        var controllerPrefixes = controller.Selectors
+            .Select(selector => Normalize(selector.AttributeRouteModel?.Template))
+            .Where(template => template.Equals("api", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (controllerPrefixes.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var action in controller.Actions)
+        {
+            var aliases = controllerPrefixes
+                .SelectMany(prefix => action.Selectors
+                    .Where(selector => selector.AttributeRouteModel is not null)
+                    .Select(selector => new
+                    {
+                        Selector = selector,
+                        Alias = ToSimpleV2Alias(CombineRoute(prefix, selector.AttributeRouteModel!.Template))
+                    }))
                 .Where(item => item.Alias is not null)
                 .ToArray();
 
@@ -891,7 +939,7 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
     private static string? ToSimpleV2Alias(string? template)
     {
         var normalized = Normalize(template);
-        foreach (var prefix in new[] { "api/stories", "api/exchanges", "api/group-exchanges" })
+        foreach (var prefix in new[] { "api/stories", "api/exchanges", "api/group-exchanges", "api/messages", "api/polls", "api/members" })
         {
             if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {

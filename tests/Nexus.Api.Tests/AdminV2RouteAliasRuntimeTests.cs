@@ -196,4 +196,24 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/messages/unread-count")]
+    [InlineData("/api/v2/messages/restriction-status")]
+    [InlineData("/api/v2/messages/reactions/batch")]
+    [InlineData("/api/v2/polls")]
+    [InlineData("/api/v2/polls/categories")]
+    [InlineData("/api/v2/members/nearby")]
+    [InlineData("/api/v2/members/top-endorsed")]
+    [InlineData("/api/v2/members/availability/available")]
+    [InlineData("/api/v2/members/availability/compatible")]
+    public async Task LaravelReactMessagesPollsMembersV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
