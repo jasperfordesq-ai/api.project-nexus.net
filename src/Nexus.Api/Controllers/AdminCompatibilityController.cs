@@ -25,6 +25,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin")]
+[Route("api/v2/admin")]
 [Authorize(Policy = "AdminOnly")]
 public class AdminCompatibilityController : ControllerBase
 {
@@ -1645,6 +1646,7 @@ public class AdminCompatibilityController : ControllerBase
         return Accepted(result);
     }
 
+    [HttpGet("tools/seo-audit")]
     [HttpPost("tools/seo-audit")]
     public async Task<IActionResult> RunSeoAudit()
     {

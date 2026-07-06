@@ -1,0 +1,27 @@
+// Copyright 2024-2026 Jasper Ford
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+using System.Net;
+using FluentAssertions;
+using Nexus.Api.Tests.Fixtures;
+
+namespace Nexus.Api.Tests;
+
+[Collection("Integration")]
+public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
+{
+    public AdminV2RouteAliasRuntimeTests(NexusWebApplicationFactory factory) : base(factory) { }
+
+    [Theory]
+    [InlineData("/api/v2/admin/categories")]
+    [InlineData("/api/v2/admin/attributes")]
+    [InlineData("/api/v2/admin/gamification/campaigns")]
+    public async Task LaravelReactAdminV2ReadAliases_AsAdmin_ReturnOk(string path)
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+}

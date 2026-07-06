@@ -25,6 +25,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin")]
+[Route("api/v2/admin")]
 [Authorize(Policy = "AdminOnly")]
 public class AdminController : ControllerBase
 {
@@ -362,6 +363,7 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Suspend a user.
     /// </summary>
+    [HttpPost("users/{id:int}/suspend")]
     [HttpPut("users/{id:int}/suspend")]
     public async Task<IActionResult> SuspendUser(int id, [FromBody] SuspendUserRequest request)
     {
@@ -522,6 +524,7 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Approve a pending listing.
     /// </summary>
+    [HttpPost("listings/{id:int}/approve")]
     [HttpPut("listings/{id:int}/approve")]
     public async Task<IActionResult> ApproveListing(int id)
     {
