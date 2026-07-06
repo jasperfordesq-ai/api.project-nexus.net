@@ -180,4 +180,20 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/stories")]
+    [InlineData("/api/v2/stories/archive")]
+    [InlineData("/api/v2/exchanges")]
+    [InlineData("/api/v2/exchanges/config")]
+    [InlineData("/api/v2/group-exchanges")]
+    public async Task LaravelReactStoriesAndExchangesV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }

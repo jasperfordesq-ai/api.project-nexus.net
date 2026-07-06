@@ -184,6 +184,18 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/volunteering', '/api/v2/volunteering'
     }
 
+    if ($normalized -eq '/api/stories' -or $normalized.StartsWith('/api/stories/')) {
+        return $normalized -replace '^/api/stories', '/api/v2/stories'
+    }
+
+    if ($normalized -eq '/api/exchanges' -or $normalized.StartsWith('/api/exchanges/')) {
+        return $normalized -replace '^/api/exchanges', '/api/v2/exchanges'
+    }
+
+    if ($normalized -eq '/api/group-exchanges' -or $normalized.StartsWith('/api/group-exchanges/')) {
+        return $normalized -replace '^/api/group-exchanges', '/api/v2/group-exchanges'
+    }
+
     return ''
 }
 
