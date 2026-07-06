@@ -696,6 +696,81 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callProfileApi', () => {
+    it('should call arbitrary Laravel v2 profile-adjacent endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { language: 'ga' } })
+      });
+
+      await api.callProfileApi('test-token', 'PUT', '/users/me/language', {
+        language: 'ga'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users/me/language',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ language: 'ga' })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { revoked: true } })
+      });
+
+      await api.callProfileApi('test-token', 'POST', '/safeguarding/revoke', {
+        option_id: 9
+      });
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/safeguarding/revoke',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ option_id: 9 })
+        })
+      );
+    });
+  });
+
+  describe('callWebAuthnApi', () => {
+    it('should call Laravel passkey endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { device_name: 'Laptop' } })
+      });
+
+      await api.callWebAuthnApi('test-token', 'POST', '/rename', {
+        credential_id: 'cred-1',
+        device_name: 'Laptop'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/webauthn/rename',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            credential_id: 'cred-1',
+            device_name: 'Laptop'
+          })
+        })
+      );
+    });
+  });
+
   describe('callListingApi', () => {
     it('should call Laravel v2 listing action endpoints with auth, method, and optional payload', async () => {
       mockFetch.mockResolvedValueOnce({

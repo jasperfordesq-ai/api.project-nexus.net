@@ -132,6 +132,8 @@ jest.mock('../src/lib/api', () => ({
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callUserSettingsApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callProfileApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callWebAuthnApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callListingApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   createExchangeRequest: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   callUgcTranslateApi: jest.fn().mockResolvedValue({ data: { translated_text: 'Dia duit' } }),
@@ -225,6 +227,8 @@ describe('shared accessible frontend shell', () => {
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callProfileApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callWebAuthnApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callListingApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.createExchangeRequest.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.callUgcTranslateApi.mockReset().mockResolvedValue({ data: { translated_text: 'Dia duit' } });
@@ -4653,6 +4657,235 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callFederationApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel profile action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const settingsResponse = await post('/profile/settings', {
+      first_name: ' Ada ',
+      last_name: ' Lovelace ',
+      phone: ' 07123456789 ',
+      profile_type: 'organisation',
+      organization_name: ' Analytical Engine Club ',
+      tagline: ' Community computing ',
+      bio: ' Helps neighbours with maths ',
+      location: ' London ',
+      privacy_profile: 'members',
+      privacy_search: 'on',
+      newsletter_opt_in: 'on'
+    });
+    expect(settingsResponse.headers.location).toBe('/profile?status=profile-updated');
+    expect(api.callUserSettingsApi).toHaveBeenNthCalledWith(1, 'test-token', 'PUT', '', {
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      phone: '07123456789',
+      profile_type: 'organisation',
+      organization_name: 'Analytical Engine Club',
+      tagline: 'Community computing',
+      bio: 'Helps neighbours with maths',
+      location: 'London',
+      newsletter_opt_in: true
+    });
+    expect(api.callUserSettingsApi).toHaveBeenNthCalledWith(2, 'test-token', 'PUT', '/preferences', {
+      privacy: {
+        privacy_profile: 'members',
+        privacy_search: true,
+        privacy_contact: false
+      }
+    });
+
+    const emailResponse = await post('/profile/email', {
+      email: ' new@example.org ',
+      current_password: 'current-password'
+    });
+    expect(emailResponse.headers.location).toBe('/profile/settings?status=email-changed');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '', {
+      email: 'new@example.org',
+      current_password: 'current-password'
+    });
+
+    const passwordResponse = await post('/profile/password', {
+      current_password: 'current-password',
+      new_password: 'correct horse battery staple',
+      new_password_confirmation: 'correct horse battery staple'
+    });
+    expect(passwordResponse.headers.location).toBe('/profile/settings?status=password-changed');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'POST', '/password', {
+      current_password: 'current-password',
+      new_password: 'correct horse battery staple'
+    });
+
+    const languageResponse = await post('/profile/language', {
+      language: 'ga'
+    });
+    expect(languageResponse.headers.location).toBe('/profile/settings?status=language-changed');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/language', {
+      language: 'ga'
+    });
+
+    const notificationsResponse = await post('/profile/notifications', {
+      email_messages: 'on',
+      email_connections: 'on',
+      email_reviews: 'on',
+      email_digest: 'on',
+      push_enabled: 'on',
+      federation_notifications_enabled: 'on',
+      digest_frequency: 'daily'
+    });
+    expect(notificationsResponse.headers.location).toBe('/profile/settings?status=notifications-saved#notifications');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/notifications', {
+      email_messages: true,
+      email_connections: true,
+      caring_smart_nudges: false,
+      email_listings: false,
+      email_transactions: false,
+      email_reviews: true,
+      email_gamification_digest: false,
+      email_gamification_milestones: false,
+      email_digest: true,
+      email_org_payments: false,
+      email_org_transfers: false,
+      email_org_membership: false,
+      email_org_admin: false,
+      push_enabled: true,
+      push_campaigns_opted_in: false,
+      federation_notifications_enabled: true,
+      digest_frequency: 'daily'
+    });
+
+    const renamePasskeyResponse = await post('/profile/passkeys/rename', {
+      credential_id: 'cred-1',
+      device_name: ' Work laptop '
+    });
+    expect(renamePasskeyResponse.headers.location).toBe('/profile/settings?status=passkey-renamed#passkeys');
+    expect(api.callWebAuthnApi).toHaveBeenLastCalledWith('test-token', 'POST', '/rename', {
+      credential_id: 'cred-1',
+      device_name: 'Work laptop'
+    });
+
+    const removePasskeyResponse = await post('/profile/passkeys/remove', {
+      credential_id: 'cred-1'
+    });
+    expect(removePasskeyResponse.headers.location).toBe('/profile/settings?status=passkey-removed#passkeys');
+    expect(api.callWebAuthnApi).toHaveBeenLastCalledWith('test-token', 'POST', '/remove', {
+      credential_id: 'cred-1'
+    });
+
+    const personalisationResponse = await post('/profile/personalisation', {
+      prefers_chronological: 'on',
+      auto_translate_ugc: 'on',
+      auto_translate_target_locale: 'ga'
+    });
+    expect(personalisationResponse.headers.location).toBe('/profile/settings?status=personalisation-saved#personalisation');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/preferences', {
+      feed: {
+        prefers_chronological: true
+      },
+      translation: {
+        auto_translate_ugc: true,
+        auto_translate_target_locale: 'ga'
+      }
+    });
+
+    const matchResponse = await post('/profile/match-preferences', {
+      notification_frequency: 'daily',
+      notify_hot_matches: 'on'
+    });
+    expect(matchResponse.headers.location).toBe('/profile/settings?status=match-prefs-saved#match-preferences');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/match-preferences', {
+      notification_frequency: 'daily',
+      notify_hot_matches: true,
+      notify_mutual_matches: false
+    });
+
+    const addSkillResponse = await post('/profile/skills/add', {
+      skill_name: ' Gardening ',
+      is_offering: 'on',
+      is_requesting: 'on'
+    });
+    expect(addSkillResponse.headers.location).toBe('/profile/settings?status=skill-added#skills');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'POST', '/skills', {
+      skill_name: 'Gardening',
+      is_offering: true,
+      is_requesting: true
+    });
+
+    const removeSkillResponse = await post('/profile/skills/remove', {
+      user_skill_id: '88'
+    });
+    expect(removeSkillResponse.headers.location).toBe('/profile/settings?status=skill-removed#skills');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/skills/88');
+
+    const safeguardingResponse = await post('/profile/safeguarding/revoke', {
+      option_id: '9'
+    });
+    expect(safeguardingResponse.headers.location).toBe('/profile/settings?status=safeguarding-revoked#safeguarding');
+    expect(api.callProfileApi).toHaveBeenLastCalledWith('test-token', 'POST', '/safeguarding/revoke', {
+      option_id: 9
+    });
+
+    const dataExportResponse = await post('/profile/data-export');
+    expect(dataExportResponse.headers.location).toBe('/profile/settings?status=data-export-requested');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'POST', '/gdpr-request', {
+      type: 'portability',
+      notes: 'Accessible frontend data export request'
+    });
+
+    const deleteResponse = await post('/profile/delete-account', {
+      password: 'current-password',
+      confirm: 'on',
+      reason: ' No longer needed '
+    });
+    expect(deleteResponse.headers.location).toBe('/login?status=account-deletion-requested');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '', {
+      password: 'current-password',
+      reason: 'No longer needed'
+    });
+
+    const verify2faResponse = await post('/profile/two-factor/verify', {
+      code: '123456'
+    });
+    expect(verify2faResponse.headers.location).toBe('/profile/two-factor?status=2fa-enabled');
+    expect(api.callProfileApi).toHaveBeenLastCalledWith('test-token', 'POST', '/auth/2fa/verify', {
+      code: '123456'
+    });
+
+    const disable2faResponse = await post('/profile/two-factor/disable', {
+      password: 'current-password'
+    });
+    expect(disable2faResponse.headers.location).toBe('/profile/two-factor?status=2fa-disabled');
+    expect(api.callProfileApi).toHaveBeenLastCalledWith('test-token', 'POST', '/auth/2fa/disable', {
+      password: 'current-password'
+    });
+
+    api.callUserSettingsApi.mockClear();
+    api.callProfileApi.mockClear();
+    api.callWebAuthnApi.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/profile/language')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1], language: 'ga' });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callUserSettingsApi).not.toHaveBeenCalled();
+    expect(api.callProfileApi).not.toHaveBeenCalled();
+    expect(api.callWebAuthnApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {

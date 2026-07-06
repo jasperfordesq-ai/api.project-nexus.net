@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T11:59:27.650Z
+Generated: 2026-07-06T12:11:02.847Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 610 |
-| Matched routes | 528 |
-| Missing routes | 80 |
+| web-uk routes | 626 |
+| Matched routes | 544 |
+| Missing routes | 64 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -70,7 +70,7 @@ Generated: 2026-07-06T11:59:27.650Z
 | polls | 13 | 0 | 0 |
 | premium | 6 | 0 | 0 |
 | privacy | 0 | 0 | 1 |
-| profile | 5 | 16 | 2 |
+| profile | 21 | 0 | 2 |
 | progress | 0 | 0 | 4 |
 | register | 2 | 0 | 0 |
 | report-a-problem | 2 | 0 | 0 |
@@ -160,19 +160,3 @@ Generated: 2026-07-06T11:59:27.650Z
 | POST | `/jobs/interviews/{param}/decline` | jobs | jobsDeclineInterview |  | public-or-unknown |  |
 | POST | `/jobs/offers/{param}/accept` | jobs | jobsAcceptOffer |  | public-or-unknown |  |
 | POST | `/jobs/offers/{param}/reject` | jobs | jobsRejectOffer |  | public-or-unknown |  |
-| POST | `/profile/data-export` | profile | requestDataExport |  | auth-optional |  |
-| POST | `/profile/delete-account` | profile | deleteAccount |  | auth-optional |  |
-| POST | `/profile/email` | profile | updateProfileEmail |  | auth-optional |  |
-| POST | `/profile/language` | profile | updateProfileLanguage |  | auth-optional |  |
-| POST | `/profile/match-preferences` | profile | updateProfileMatchPreferences |  | auth-optional |  |
-| POST | `/profile/notifications` | profile | updateProfileNotifications |  | auth-optional |  |
-| POST | `/profile/passkeys/remove` | profile | removeProfilePasskey |  | auth-optional |  |
-| POST | `/profile/passkeys/rename` | profile | renameProfilePasskey |  | auth-optional |  |
-| POST | `/profile/password` | profile | updateProfilePassword |  | auth-optional |  |
-| POST | `/profile/personalisation` | profile | updateProfilePersonalisation |  | auth-optional |  |
-| POST | `/profile/safeguarding/revoke` | profile | revokeProfileSafeguarding |  | auth-optional |  |
-| POST | `/profile/settings` | profile | updateProfileSettings |  | auth-optional |  |
-| POST | `/profile/skills/add` | profile | addProfileSkill |  | auth-optional |  |
-| POST | `/profile/skills/remove` | profile | removeProfileSkill |  | auth-optional |  |
-| POST | `/profile/two-factor/disable` | profile | disableTwoFactor |  | auth-optional |  |
-| POST | `/profile/two-factor/verify` | profile | verifyTwoFactorSetup | two-factor-setup | auth-optional |  |
