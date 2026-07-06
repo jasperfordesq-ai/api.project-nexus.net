@@ -1,75 +1,81 @@
-{# Copyright © 2024–2026 Jasper Ford #}
+{# Copyright (c) 2024-2026 Jasper Ford #}
 {# SPDX-License-Identifier: AGPL-3.0-or-later #}
 {# Author: Jasper Ford #}
 {# See NOTICE file for attribution and acknowledgements. #}
 
 {% extends "layouts/base.njk" %}
 
-{% from "govuk/components/tag/macro.njk" import govukTag %}
-{% from "govuk/components/pagination/macro.njk" import govukPagination %}
-
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
+      <span class="govuk-caption-l">This community</span>
       <h1 class="govuk-heading-xl">Blog</h1>
-      <p class="govuk-body-l">News and updates from the community.</p>
+      <p class="govuk-body-l">News, stories and updates from this community.</p>
 
-      {% if posts and posts.length > 0 %}
-        {% for post in posts %}
-          <div class="govuk-!-margin-bottom-6">
-            <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
-              <a href="/blog/{{ post.id }}" class="govuk-link govuk-link--no-visited-state">
-                {{ post.title }}
-              </a>
-            </h2>
-            <p class="govuk-body-s govuk-!-margin-bottom-2" style="color: #505a5f;">
-              {{ (post.created_at or post.createdAt) | formatDate }}
-              {% if post.category or post.category_name %}
-                - {{ govukTag({ text: post.category or post.category_name, classes: "govuk-tag--blue" }) }}
-              {% endif %}
-            </p>
-            {% if post.excerpt or post.summary %}
-              <p class="govuk-body">{{ post.excerpt or post.summary }}</p>
-            {% elif post.content %}
-              <p class="govuk-body">{{ post.content | truncate(200) }}</p>
-            {% endif %}
-            <hr class="govuk-section-break govuk-section-break--visible">
+      <form method="get" action="/blog" class="govuk-!-margin-bottom-6">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="q">Search the blog</label>
+          <div id="q-hint" class="govuk-hint">Search by title or content.</div>
+          <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ searchQuery }}" aria-describedby="q-hint">
+        </div>
+        {% if categories.length %}
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="category">Category</label>
+            <select class="govuk-select" id="category" name="category">
+              <option value="">All categories</option>
+              {% for category in categories %}
+                <option value="{{ category.id }}"{% if categoryId == category.id %} selected{% endif %}>{{ category.name }}</option>
+              {% endfor %}
+            </select>
           </div>
-        {% endfor %}
-
-        {# Pagination #}
-        {% set totalPages = pagination.totalPages or pagination.total_pages or 1 %}
-        {% if totalPages > 1 %}
-          {% set paginationItems = [] %}
-          {% for i in range(1, totalPages + 1) %}
-            {% set paginationItems = (paginationItems.push({
-              number: i,
-              href: "/blog?page=" + i + ("&category=" + category if category else ""),
-              current: i == pagination.page
-            }), paginationItems) %}
-          {% endfor %}
-          {{ govukPagination({
-            previous: { href: "/blog?page=" + (pagination.page - 1) } if pagination.page > 1 else undefined,
-            next: { href: "/blog?page=" + (pagination.page + 1) } if pagination.page < totalPages else undefined,
-            items: paginationItems
-          }) }}
         {% endif %}
-      {% else %}
-        {% set emptyState = {
-          icon: "📝",
-          heading: "No blog posts yet",
-          message: "Check back soon for community news and updates."
-        } %}
-        {% include "partials/empty-state.njk" %}
-      {% endif %}
+        <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Search</button>
+      </form>
 
+      <h2 class="govuk-heading-m">Posts</h2>
+
+      {% if not posts.length %}
+        <div class="govuk-inset-text">
+          {% if searchQuery or categoryId %}No posts match your search.{% else %}No blog posts have been published yet.{% endif %}
+        </div>
+      {% else %}
+        <ul class="govuk-list nexus-alpha-card-list">
+          {% for post in posts %}
+            <li class="nexus-alpha-card">
+              {% if post.featuredImage %}
+                <p class="govuk-!-margin-bottom-2">
+                  <img class="nexus-alpha-card-thumb" src="{{ post.featuredImage }}" alt="Image for {{ post.title }}" width="120" height="90" loading="lazy" decoding="async">
+                </p>
+              {% endif %}
+              {% if loop.first %}
+                <strong class="govuk-tag govuk-tag--blue govuk-!-margin-bottom-2">Featured</strong>
+              {% endif %}
+              <h3 class="govuk-heading-m govuk-!-margin-bottom-1">
+                <a class="govuk-link" href="/blog/{{ post.slug }}">{{ post.title }}</a>
+              </h3>
+              {% if post.excerpt %}
+                <p class="govuk-body govuk-!-margin-bottom-1">{{ post.excerpt }}</p>
+              {% endif %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
+                {% if post.category.name %}{{ post.category.name }} - {% endif %}
+                {% if post.author.name %}{{ post.author.name }} - {% endif %}
+                {% if post.publishedAt %}{{ post.publishedAt | formatDate }} - {% endif %}
+                {% if post.readingTime %}{{ post.readingTime }} min read{% endif %}
+              </p>
+            </li>
+          {% endfor %}
+        </ul>
+
+        {% if hasMore and nextCursor %}
+          <nav class="govuk-pagination govuk-pagination--block" role="navigation" aria-label="More posts">
+            <div class="govuk-pagination__next">
+              <a class="govuk-link govuk-pagination__link" href="/blog?q={{ searchQuery | urlencode }}{% if categoryId %}&category={{ categoryId }}{% endif %}&cursor={{ nextCursor | urlencode }}" rel="next">
+                <span class="govuk-pagination__link-title">Load more</span>
+              </a>
+            </div>
+          </nav>
+        {% endif %}
+      {% endif %}
     </div>
   </div>
 {% endblock %}

@@ -903,6 +903,31 @@ async function getBlogPost(token = '', slug) {
   return request(`/api/v2/blog/${encodeURIComponent(slug)}`, { headers });
 }
 
+async function getComments(token = '', params = {}) {
+  const query = new URLSearchParams();
+  if (params.target_type) query.set('target_type', params.target_type);
+  if (params.target_id) query.set('target_id', params.target_id);
+
+  const queryString = query.toString();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/comments${queryString ? `?${queryString}` : ''}`, { headers });
+}
+
+async function getReactionSummary(token = '', type, id) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/reactions/${encodeURIComponent(type)}/${encodeURIComponent(id)}`, { headers });
+}
+
+async function getReactors(token = '', type, id, reactionType, params = {}) {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+
+  const queryString = query.toString();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/reactions/${encodeURIComponent(type)}/${encodeURIComponent(id)}/users/${encodeURIComponent(reactionType)}${queryString ? `?${queryString}` : ''}`, { headers });
+}
+
 async function getPolls(token, params = {}) {
   const query = new URLSearchParams();
   if (params.status) query.set('status', params.status);
@@ -2271,6 +2296,9 @@ module.exports = {
   deleteSavedItem,
   getBlogPosts,
   getBlogPost,
+  getComments,
+  getReactionSummary,
+  getReactors,
   getPolls,
   getPoll,
   createPoll,

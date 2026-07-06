@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T18:35:48.948Z",
+    "generatedAt": "2026-07-06T18:46:48.124Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -2294,8 +2294,8 @@
       "gates": "feature:blog",
       "apiNeeds": "service:BlogService",
       "webUkPath": "/blog",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
+      "webUkView": "blog/index; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
     },
     {
       "method": "GET",
@@ -2313,8 +2313,8 @@
       "gates": "feature:blog",
       "apiNeeds": "service:BlogService",
       "webUkPath": "/blog/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "blog/detail; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
     },
     {
       "method": "GET",
@@ -2332,8 +2332,8 @@
       "gates": "feature:blog",
       "apiNeeds": "",
       "webUkPath": "/blog/{param}/comments",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "blog/comments; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
     },
     {
       "method": "GET",
@@ -2351,8 +2351,8 @@
       "gates": "feature:blog",
       "apiNeeds": "",
       "webUkPath": "/blog/{param}/likers/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "blog/likers; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
     },
     {
       "method": "GET",
@@ -2371,7 +2371,7 @@
       "apiNeeds": "service:BlogService",
       "webUkPath": "/blog/feed.xml",
       "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\blog-posts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
     },
     {
       "method": "POST",

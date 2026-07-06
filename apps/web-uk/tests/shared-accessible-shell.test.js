@@ -60,6 +60,9 @@ jest.mock('../src/lib/api', () => ({
   voteFeedPoll: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getBlogPosts: jest.fn().mockResolvedValue({ data: [] }),
   getBlogPost: jest.fn().mockResolvedValue({ data: { id: 42, slug: 'community-news', title: 'Community news' } }),
+  getComments: jest.fn().mockResolvedValue({ data: { comments: [], count: 0 } }),
+  getReactionSummary: jest.fn().mockResolvedValue({ data: { counts: {}, total: 0, user_reaction: null } }),
+  getReactors: jest.fn().mockResolvedValue({ data: [], meta: { total: 0, has_more: false, page: 1 } }),
   getGoals: jest.fn(),
   getGoal: jest.fn(),
   callGoalApi: jest.fn().mockResolvedValue({ data: { id: 42, action: 'liked' } }),
@@ -218,6 +221,9 @@ describe('shared accessible frontend shell', () => {
     api.toggleReaction.mockReset().mockResolvedValue({ data: { action: 'added' } });
     api.getBlogPosts.mockReset().mockResolvedValue({ data: [] });
     api.getBlogPost.mockReset().mockResolvedValue({ data: { id: 42, slug: 'community-news', title: 'Community news' } });
+    api.getComments.mockReset().mockResolvedValue({ data: { comments: [], count: 0 } });
+    api.getReactionSummary.mockReset().mockResolvedValue({ data: { counts: {}, total: 0, user_reaction: null } });
+    api.getReactors.mockReset().mockResolvedValue({ data: [], meta: { total: 0, has_more: false, page: 1 } });
     api.getPolls.mockReset().mockResolvedValue({ data: [] });
     api.getPoll.mockReset().mockResolvedValue({ data: { id: 42, question: 'Which project?' } });
     api.createPoll.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -3554,6 +3560,147 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.createComment).not.toHaveBeenCalled();
+  });
+
+  it('renders Laravel-backed blog index, detail, comments and likers pages', async () => {
+    const api = require('../src/lib/api');
+
+    const blogPost = {
+      id: 42,
+      slug: 'community-news',
+      title: 'Community garden opens',
+      excerpt: 'A new garden is now open for everyone.',
+      content: '<p>The community garden opened this week.</p>',
+      featured_image: '/images/garden.jpg',
+      category: { id: 3, name: 'Community' },
+      author: { id: 77, name: 'Ada Lovelace' },
+      published_at: '2026-07-01T12:00:00Z',
+      reading_time: 4
+    };
+
+    api.getBlogPosts.mockResolvedValue({
+      data: {
+        items: [blogPost],
+        categories: [{ id: 3, name: 'Community' }],
+        has_more: true,
+        cursor: 'next-cursor'
+      }
+    });
+    api.getBlogPost.mockResolvedValue({ data: blogPost });
+    api.getComments.mockResolvedValue({
+      data: {
+        comments: [
+          {
+            id: 12,
+            content: 'This is brilliant news.',
+            user: { id: 88, name: 'Grace Hopper' },
+            created_at: '2026-07-02T10:00:00Z',
+            replies: [
+              {
+                id: 13,
+                content: 'I can help on Saturday.',
+                user: { id: 89, name: 'Alan Turing' },
+                created_at: '2026-07-02T11:00:00Z',
+                replies: []
+              }
+            ]
+          }
+        ],
+        count: 2
+      }
+    });
+    api.getReactionSummary.mockResolvedValue({
+      data: {
+        counts: { like: 2, love: 1 },
+        total: 3,
+        user_reaction: 'love'
+      }
+    });
+    api.getReactors.mockResolvedValue({
+      data: [
+        { id: 88, name: 'Grace Hopper' },
+        { id: 89, name: 'Alan Turing' }
+      ],
+      meta: { total: 2, has_more: false, page: 1 }
+    });
+
+    const index = await request(app).get('/blog?q=garden&category=3&cursor=abc');
+
+    expect(index.status).toBe(200);
+    expect(api.getBlogPosts).toHaveBeenCalledWith('', {
+      search: 'garden',
+      category_id: 3,
+      cursor: 'abc',
+      per_page: 12
+    });
+    expect(index.text).toContain('Blog');
+    expect(index.text).toContain('News, stories and updates from');
+    expect(index.text).toContain('Search the blog');
+    expect(index.text).toContain('value="garden"');
+    expect(index.text).toContain('Community garden opens');
+    expect(index.text).toContain('Featured');
+    expect(index.text).toContain('/images/garden.jpg');
+    expect(index.text).toContain('Ada Lovelace');
+    expect(index.text).toContain('4 min read');
+    expect(index.text).toContain('cursor=next-cursor');
+    expect(index.text).not.toContain('Laravel Blade route');
+
+    const detail = await request(app).get('/blog/community-news?status=comment-added');
+
+    expect(detail.status).toBe(200);
+    expect(api.getBlogPost).toHaveBeenCalledWith('', 'community-news');
+    expect(detail.text).toContain('Back to the blog');
+    expect(detail.text).toContain('Community garden opens');
+    expect(detail.text).toContain('The community garden opened this week.');
+    expect(detail.text).toContain('Written by');
+    expect(detail.text).toContain('No likes yet');
+    expect(detail.text).toContain('Comments');
+    expect(detail.text).toContain('Sign in to read and join the discussion.');
+    expect(detail.text).toContain('href="/blog/community-news/comments"');
+    expect(detail.text).not.toContain('Laravel Blade route');
+
+    const unsignedComments = await request(app).get('/blog/community-news/comments');
+
+    expect(unsignedComments.status).toBe(302);
+    expect(unsignedComments.headers.location).toBe('/login?status=auth-required');
+
+    const comments = await request(app)
+      .get('/blog/community-news/comments?status=reply-added')
+      .set('Cookie', signedCookieHeader());
+
+    expect(comments.status).toBe(200);
+    expect(api.getComments).toHaveBeenCalledWith('test-token', {
+      target_type: 'blog',
+      target_id: 42
+    });
+    expect(api.getReactionSummary).toHaveBeenCalledWith('test-token', 'blog', 42);
+    expect(comments.text).toContain('Blog discussion');
+    expect(comments.text).toContain('React to this post');
+    expect(comments.text).toContain('3 reactions');
+    expect(comments.text).toContain('Love (1)');
+    expect(comments.text).toContain('See who reacted (2)');
+    expect(comments.text).toContain('This is brilliant news.');
+    expect(comments.text).toContain('I can help on Saturday.');
+    expect(comments.text).toContain('Your reply has been posted.');
+    expect(comments.text).toContain('action="/blog/community-news/comments/add"');
+    expect(comments.text).toContain('action="/blog/comments/12/update"');
+    expect(comments.text).toContain('action="/blog/comments/12/delete"');
+
+    const likers = await request(app)
+      .get('/blog/community-news/likers/like?page=1')
+      .set('Cookie', signedCookieHeader());
+
+    expect(likers.status).toBe(200);
+    expect(api.getReactors).toHaveBeenCalledWith('test-token', 'blog', 42, 'like', {
+      page: 1,
+      per_page: 20
+    });
+    expect(likers.text).toContain('Blog reactions');
+    expect(likers.text).toContain('People who reacted');
+    expect(likers.text).toContain('2 people');
+    expect(likers.text).toContain('Grace Hopper');
+    expect(likers.text).toContain('Alan Turing');
+    expect(likers.text).not.toContain('Laravel Blade route');
   });
 
   it('submits the Laravel blog comment route through the blog and comments API helpers', async () => {
