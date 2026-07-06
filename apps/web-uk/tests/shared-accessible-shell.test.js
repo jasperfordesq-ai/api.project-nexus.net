@@ -90,6 +90,8 @@ jest.mock('../src/lib/api', () => ({
   performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   rateExchange: jest.fn().mockResolvedValue({ data: { ratings: [] } }),
   sendAiChat: jest.fn().mockResolvedValue({ data: { conversation_id: 123 } }),
+  getMemberPremiumTiers: jest.fn().mockResolvedValue({ data: { tiers: [] } }),
+  getMemberPremiumMe: jest.fn().mockResolvedValue({ data: { subscription: null, entitled_tier: null, unlocked_features: [] } }),
   createMemberPremiumCheckout: jest.fn().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } }),
   createMemberPremiumPortal: jest.fn().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } }),
   cancelMemberPremium: jest.fn().mockResolvedValue({ data: { cancelled: true } }),
@@ -198,6 +200,8 @@ describe('shared accessible frontend shell', () => {
     api.performExchangeAction.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.rateExchange.mockReset().mockResolvedValue({ data: { ratings: [] } });
     api.sendAiChat.mockReset().mockResolvedValue({ data: { conversation_id: 123 } });
+    api.getMemberPremiumTiers.mockReset().mockResolvedValue({ data: { tiers: [] } });
+    api.getMemberPremiumMe.mockReset().mockResolvedValue({ data: { subscription: null, entitled_tier: null, unlocked_features: [] } });
     api.createMemberPremiumCheckout.mockReset().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } });
     api.createMemberPremiumPortal.mockReset().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } });
     api.cancelMemberPremium.mockReset().mockResolvedValue({ data: { cancelled: true } });
@@ -1227,6 +1231,81 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
+  });
+
+  it('renders Laravel-backed premium pricing, management, and return GET pages', async () => {
+    const api = require('../src/lib/api');
+    api.getMemberPremiumTiers.mockResolvedValue({
+      data: {
+        tiers: [
+          {
+            id: 7,
+            name: 'Community Champion',
+            description: 'Support local projects every month.',
+            monthly_price_cents: 500,
+            yearly_price_cents: 5000,
+            features: ['Supporter badge', 'Early event access']
+          }
+        ]
+      }
+    });
+    api.getMemberPremiumMe.mockResolvedValue({
+      data: {
+        subscription: {
+          tier_name: 'Community Champion',
+          status: 'active',
+          billing_interval: 'yearly',
+          current_period_end: '2026-09-01T00:00:00Z',
+          features: ['Supporter badge']
+        },
+        entitled_tier: {
+          tier_name: 'Community Champion',
+          features: ['Supporter badge']
+        },
+        unlocked_features: ['Supporter badge']
+      }
+    });
+
+    const unsigned = await request(app).get('/premium');
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(api.getMemberPremiumTiers).not.toHaveBeenCalled();
+
+    const pricing = await request(app)
+      .get('/premium?status=subscribe-failed')
+      .set('Cookie', signedCookieHeader());
+    expect(pricing.status).toBe(200);
+    expect(api.getMemberPremiumTiers).toHaveBeenCalledWith('test-token');
+    expect(api.getMemberPremiumMe).toHaveBeenCalledWith('test-token');
+    expect(pricing.text).toContain('Support this community');
+    expect(pricing.text).toContain('Community Champion');
+    expect(pricing.text).toContain('Support local projects every month.');
+    expect(pricing.text).toContain('5.00 per month');
+    expect(pricing.text).toContain('50.00 per year');
+    expect(pricing.text).toContain('Supporter badge');
+    expect(pricing.text).toContain('Sorry, we could not start checkout. Please try again.');
+    expect(pricing.text).toContain('method="post" action="/premium/subscribe"');
+    expect(pricing.text).not.toContain('shared accessible frontend preparation page');
+
+    const manage = await request(app)
+      .get('/premium/manage?status=cancel-scheduled')
+      .set('Cookie', signedCookieHeader());
+    expect(manage.status).toBe(200);
+    expect(manage.text).toContain('Manage your support');
+    expect(manage.text).toContain('Community Champion');
+    expect(manage.text).toContain('Active');
+    expect(manage.text).toContain('Yearly');
+    expect(manage.text).toContain('Your cancellation has been scheduled.');
+    expect(manage.text).toContain('method="post" action="/premium/portal"');
+    expect(manage.text).toContain('method="post" action="/premium/cancel"');
+
+    const returned = await request(app)
+      .get('/premium/return?status=success')
+      .set('Cookie', signedCookieHeader());
+    expect(returned.status).toBe(200);
+    expect(returned.text).toContain('Your support is set up');
+    expect(returned.text).toContain('Community Champion');
+    expect(returned.text).toContain('href="/premium/manage"');
   });
 
   it('submits the Laravel premium subscribe route through the checkout API helper', async () => {

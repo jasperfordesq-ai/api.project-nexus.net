@@ -1,0 +1,39 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/premium" class="govuk-back-link">Back to support tiers</a>
+
+  {% if returnStatus == 'success' %}
+    <div class="govuk-panel govuk-panel--confirmation">
+      <h1 class="govuk-panel__title">Your support is set up</h1>
+      <div class="govuk-panel__body">
+        {% if tierName %}
+          You are now supporting this community with {{ tierName }}.
+        {% else %}
+          Your recurring support is now active.
+        {% endif %}
+      </div>
+    </div>
+    <p class="govuk-body"><a class="govuk-link" href="/premium/manage">Manage your support</a></p>
+  {% elif returnStatus == 'pending' %}
+    <h1 class="govuk-heading-l">Your support is being set up</h1>
+    <div class="govuk-inset-text"><p class="govuk-body">We are waiting for confirmation from the payment provider. Check again shortly.</p></div>
+    <p class="govuk-body"><a class="govuk-link" href="/premium/manage">Check your support status</a></p>
+  {% else %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-list govuk-error-summary__list"><li>We could not confirm your support plan.</li></ul>
+        </div>
+      </div>
+    </div>
+    <h1 class="govuk-heading-l">Support was not confirmed</h1>
+    <p class="govuk-body"><a class="govuk-button" role="button" draggable="false" data-module="govuk-button" href="/premium">Choose a support tier</a></p>
+  {% endif %}
+{% endblock %}

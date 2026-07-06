@@ -96,10 +96,6 @@ const pages = {
     title: 'Coupons',
     body: 'Coupon pages will follow the Laravel accessible frontend contract.'
   },
-  '/premium': {
-    title: 'Premium',
-    body: 'Premium member pages will follow the Laravel accessible frontend contract.'
-  },
   '/ideation': {
     title: 'Ideation',
     body: 'Ideation pages will follow the Laravel accessible frontend contract.'

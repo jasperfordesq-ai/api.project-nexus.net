@@ -977,6 +977,18 @@ async function sendAiChat(token, data) {
   });
 }
 
+async function getMemberPremiumTiers(token) {
+  return request('/api/v2/member-premium/tiers', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getMemberPremiumMe(token) {
+  return request('/api/v2/member-premium/me', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function createMemberPremiumCheckout(token, data) {
   return request('/api/v2/member-premium/checkout', {
     method: 'POST',
@@ -2236,6 +2248,8 @@ module.exports = {
   createExchangeRequest,
   rateExchange,
   sendAiChat,
+  getMemberPremiumTiers,
+  getMemberPremiumMe,
   createMemberPremiumCheckout,
   createMemberPremiumPortal,
   cancelMemberPremium,

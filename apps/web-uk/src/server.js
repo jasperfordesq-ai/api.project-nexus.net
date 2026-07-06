@@ -1055,6 +1055,7 @@ app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);
 app.use('/podcasts', doubleCsrfProtection, podcastRoutes);
 app.use('/marketplace', doubleCsrfProtection, marketplaceRoutes);
 app.use('/courses', doubleCsrfProtection, postOnly(formLimiter), coursesRoutes);
+app.use('/premium', doubleCsrfProtection, postOnly(formLimiter), premiumRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
@@ -1123,7 +1124,6 @@ app.use('/reports', doubleCsrfProtection, postOnly(formLimiter), reportsRoutes);
 app.use('/matches', doubleCsrfProtection, postOnly(formLimiter), matchesRoutes);
 app.use('/exchanges', doubleCsrfProtection, postOnly(formLimiter), exchangeRoutes);
 app.use('/chat', doubleCsrfProtection, postOnly(formLimiter), aiChatRoutes);
-app.use('/premium', doubleCsrfProtection, postOnly(formLimiter), premiumRoutes);
 app.use('/achievements', doubleCsrfProtection, postOnly(formLimiter), achievementsRoutes);
 app.use('/progress', doubleCsrfProtection, gamificationRoutes);
 app.use('/onboarding', doubleCsrfProtection, postOnly(formLimiter), onboardingPostRoutes);

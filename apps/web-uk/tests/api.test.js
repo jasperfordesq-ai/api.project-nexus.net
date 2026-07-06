@@ -2024,6 +2024,44 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel member premium helpers', () => {
+    it('should fetch member premium tiers through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { tiers: [] } })
+      });
+
+      await api.getMemberPremiumTiers('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/member-premium/tiers',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should fetch the current member premium subscription through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { subscription: null, entitled_tier: null } })
+      });
+
+      await api.getMemberPremiumMe('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/member-premium/me',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
     it('should create a member premium checkout session through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
