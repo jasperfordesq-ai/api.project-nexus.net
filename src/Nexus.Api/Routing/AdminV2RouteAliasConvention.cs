@@ -35,11 +35,13 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             AddFederationControllerAliases(controller, existingRoutes);
             AddGoalsControllerAliases(controller, existingRoutes);
             AddGroupsControllerActionAliases(controller, existingRoutes);
+            AddIdeationControllerActionAliases(controller, existingRoutes);
             AddUsersMeActionAliases(controller, existingRoutes);
             AddGroupsActionAliases(controller, existingRoutes);
             AddJobsActionAliases(controller, existingRoutes);
             AddFederationActionAliases(controller, existingRoutes);
             AddGoalsActionAliases(controller, existingRoutes);
+            AddIdeationActionAliases(controller, existingRoutes);
         }
     }
 
@@ -256,6 +258,41 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
         }
     }
 
+    private static void AddIdeationActionAliases(ControllerModel controller, ISet<string> existingRoutes)
+    {
+        foreach (var action in controller.Actions)
+        {
+            var aliases = action.Selectors
+                .Where(selector => selector.AttributeRouteModel is not null)
+                .Select(selector => new
+                {
+                    Selector = selector,
+                    Alias = ToIdeationV2Alias(selector.AttributeRouteModel!.Template)
+                })
+                .Where(item => item.Alias is not null)
+                .ToArray();
+
+            foreach (var item in aliases)
+            {
+                if (HasRoute(action.Selectors, item.Alias!) || HasExistingActionRoute(existingRoutes, item.Selector, item.Alias!))
+                {
+                    continue;
+                }
+
+                var aliasSelector = new SelectorModel(item.Selector)
+                {
+                    AttributeRouteModel = new AttributeRouteModel(item.Selector.AttributeRouteModel!)
+                    {
+                        Template = item.Alias
+                    }
+                };
+
+                action.Selectors.Add(aliasSelector);
+                AddRouteKeys(existingRoutes, aliasSelector);
+            }
+        }
+    }
+
     private static void AddGroupsControllerActionAliases(ControllerModel controller, ISet<string> existingRoutes)
     {
         var groupPrefixes = controller.Selectors
@@ -277,6 +314,52 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
                 {
                     Selector = selector,
                     Alias = ToGroupsV2Alias(CombineRoute("api/groups", selector.AttributeRouteModel!.Template))
+                })
+                .Where(item => item.Alias is not null)
+                .ToArray();
+
+            foreach (var item in aliases)
+            {
+                if (HasRoute(action.Selectors, item.Alias!) || HasExistingActionRoute(existingRoutes, item.Selector, item.Alias!))
+                {
+                    continue;
+                }
+
+                var aliasSelector = new SelectorModel(item.Selector)
+                {
+                    AttributeRouteModel = new AttributeRouteModel(item.Selector.AttributeRouteModel!)
+                    {
+                        Template = item.Alias
+                    }
+                };
+
+                action.Selectors.Add(aliasSelector);
+                AddRouteKeys(existingRoutes, aliasSelector);
+            }
+        }
+    }
+
+    private static void AddIdeationControllerActionAliases(ControllerModel controller, ISet<string> existingRoutes)
+    {
+        var apiPrefixes = controller.Selectors
+            .Select(selector => Normalize(selector.AttributeRouteModel?.Template))
+            .Where(template => template.Equals("api", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (apiPrefixes.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var action in controller.Actions)
+        {
+            var aliases = action.Selectors
+                .Where(selector => selector.AttributeRouteModel is not null)
+                .Select(selector => new
+                {
+                    Selector = selector,
+                    Alias = ToIdeationV2Alias(CombineRoute("api", selector.AttributeRouteModel!.Template))
                 })
                 .Where(item => item.Alias is not null)
                 .ToArray();
@@ -571,6 +654,19 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
         var normalized = Normalize(template);
         return normalized.StartsWith("api/goals", StringComparison.OrdinalIgnoreCase)
             ? "/api/v2/goals" + normalized["api/goals".Length..]
+            : null;
+    }
+
+    private static string? ToIdeationV2Alias(string? template)
+    {
+        var normalized = Normalize(template);
+        if (normalized.StartsWith("api/ideation-challenges", StringComparison.OrdinalIgnoreCase))
+        {
+            return "/api/v2/ideation-challenges" + normalized["api/ideation-challenges".Length..];
+        }
+
+        return normalized.StartsWith("api/ideation-ideas", StringComparison.OrdinalIgnoreCase)
+            ? "/api/v2/ideation-ideas" + normalized["api/ideation-ideas".Length..]
             : null;
     }
 
