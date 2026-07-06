@@ -253,6 +253,12 @@ function reactionSummaryFrom(result) {
   };
 }
 
+function canManageResource(resource, currentUserId) {
+  const item = objectFrom(resource);
+  const ownerId = positiveInteger(item.user_id || item.owner_id || item.uploader_id);
+  return Boolean(item.can_manage || item.can_delete || item.is_owner || item.is_admin || (currentUserId && ownerId === currentUserId));
+}
+
 function statusMessage(status) {
   switch (status) {
     case 'resource-uploaded':
@@ -414,6 +420,36 @@ router.get('/upload', asyncRoute(async (req, res) => {
     status: uploadStatusMessage(trimmed(req.query && req.query.status))
   });
 }, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Upload a resource' }));
+
+router.get('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const resourceId = Number(req.params.id);
+  const [profileResult, resourcesResult] = await Promise.all([
+    getProfile(token).catch(() => null),
+    getResources(token, { per_page: 50 })
+  ]);
+  const profile = objectFrom(dataFrom(profileResult));
+  const currentUserId = positiveInteger(profile.id || profile.user_id);
+  const resource = resourceItemsFrom(resourcesResult).find((item) => positiveInteger(item && item.id) === resourceId);
+
+  if (!resource) {
+    throw new ApiError('Resource not found', 404);
+  }
+  if (!canManageResource(resource, currentUserId)) {
+    throw new ApiError('Resource forbidden', 403);
+  }
+
+  return res.render('resources/delete', {
+    title: 'Delete resource',
+    activeNav: 'explore',
+    resourceId,
+    resourceTitle: trimmed(resource.title) || 'File'
+  });
+}, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Delete resource' }));
 
 router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

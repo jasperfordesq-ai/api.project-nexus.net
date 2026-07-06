@@ -1,0 +1,35 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/resources/library">Back to resource library</a>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">Resource library</span>
+      <h1 class="govuk-heading-xl">Delete resource</h1>
+
+      <div class="govuk-warning-text">
+        <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+        <strong class="govuk-warning-text__text">
+          <span class="govuk-visually-hidden">Warning:</span>
+          This action cannot be undone.
+        </strong>
+      </div>
+
+      <p class="govuk-body">Are you sure you want to delete {{ resourceTitle }}?</p>
+
+      <form method="post" action="/resources/{{ resourceId }}/delete" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <div class="govuk-button-group">
+          <button class="govuk-button govuk-button--warning" data-module="govuk-button" type="submit">Delete resource</button>
+          <a class="govuk-link" href="/resources/library">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

@@ -3642,6 +3642,41 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-backed resource delete confirmation page for owners', async () => {
+    const api = require('../src/lib/api');
+
+    api.getResources.mockResolvedValue({
+      data: [
+        {
+          id: 42,
+          title: 'Community handbook',
+          user_id: 101,
+          can_delete: true
+        }
+      ]
+    });
+
+    const unsigned = await request(app).get('/resources/42/delete');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/resources/42/delete')
+      .set('Cookie', signedCookieHeader());
+
+    expect(api.getResources).toHaveBeenCalledWith('test-token', { per_page: 50 });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Back to resource library');
+    expect(response.text).toContain('Delete resource');
+    expect(response.text).toContain('This action cannot be undone.');
+    expect(response.text).toContain('Are you sure you want to delete Community handbook?');
+    expect(response.text).toContain('method="post" action="/resources/42/delete"');
+    expect(response.text).toContain('Delete resource');
+    expect(response.text).toContain('Cancel');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits the Laravel resource delete route through the resources API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
