@@ -229,15 +229,16 @@ function listingHref(listing) {
   return tenantId && id ? `/federation/listings/${encodeURIComponent(tenantId)}/${encodeURIComponent(id)}` : '';
 }
 
-function normalizeListing(listing) {
+function normalizeListing(listing, options = {}) {
   const author = asObject(listing && (listing.author || listing.owner));
   const timebank = asObject(listing && listing.timebank);
   const tenantId = listing && listing.tenant_id !== undefined ? listing.tenant_id : timebank.id;
   const type = trimmed(listing && listing.type) === 'request' ? 'request' : 'offer';
+  const descriptionLimit = Object.prototype.hasOwnProperty.call(options, 'descriptionLimit') ? options.descriptionLimit : 160;
   const normalized = {
     id: listing && listing.id,
     title: trimmed(listing && listing.title) || 'Federated listing',
-    description: trimmed(listing && listing.description, 160),
+    description: trimmed(listing && listing.description, descriptionLimit),
     type,
     categoryName: trimmed((listing && listing.category_name) || (listing && listing.category)),
     imageUrl: trimmed(listing && listing.image_url),
@@ -257,6 +258,13 @@ function normalizeListing(listing) {
 
   normalized.href = listingHref(normalized);
   return normalized;
+}
+
+function listingMemberHref(listing) {
+  const authorId = trimmed(listing && listing.authorId, 32);
+  const tenantId = trimmed(listing && listing.tenantId, 32);
+  const query = tenantId ? `?tenant_id=${encodeURIComponent(tenantId)}` : '';
+  return authorId ? `/federation/members/${encodeURIComponent(authorId)}${query}` : '';
 }
 
 function participantName(participant) {
@@ -443,6 +451,36 @@ function listingsQuery(filters) {
 
 function listingsLoadMoreHref(filters, cursor) {
   return `/federation/listings${listingsQuery({ ...filters, cursor })}`;
+}
+
+function listingDetailQuery(tenantId, cursor = '') {
+  const params = new URLSearchParams();
+  params.set('partner_id', tenantId);
+  params.set('per_page', '100');
+  if (cursor) params.set('cursor', cursor);
+  return `?${params.toString()}`;
+}
+
+async function loadFederatedListing(token, tenantId, id) {
+  let cursor = '';
+
+  for (let page = 0; page < 10; page += 1) {
+    const result = await callFederationApi(token, 'GET', `/listings${listingDetailQuery(tenantId, cursor)}`);
+    const listing = asList(dataFrom(result))
+      .map((item) => normalizeListing(item, { descriptionLimit: null }))
+      .find((item) => trimmed(item.id) === id && trimmed(item.tenantId) === tenantId);
+
+    if (listing) {
+      return listing;
+    }
+
+    const meta = metaFrom(result);
+    const nextCursor = trimmed(meta.cursor || meta.next_cursor);
+    if (!nextCursor) break;
+    cursor = nextCursor;
+  }
+
+  return null;
 }
 
 function normalizeActivity(item) {
@@ -743,6 +781,62 @@ router.get('/listings', asyncRoute(async (req, res) => {
     filters,
     loadError: false,
     loadMoreHref: nextCursor ? listingsLoadMoreHref(filters, nextCursor) : ''
+  });
+}));
+
+router.get('/listings/:tenantId/:id', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const tenantId = trimmed(req.params.tenantId, 32);
+  const id = trimmed(req.params.id, 32);
+  if (!/^\d+$/.test(tenantId) || !/^\d+$/.test(id)) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  let listing;
+  let member = null;
+  let settingsData = {};
+  try {
+    listing = await loadFederatedListing(token, tenantId, id);
+    if (!listing) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+
+    if (listing.authorId) {
+      try {
+        const tenantQuery = `?tenant_id=${encodeURIComponent(tenantId)}`;
+        const memberResult = await callFederationApi(token, 'GET', `/members/${encodeURIComponent(listing.authorId)}${tenantQuery}`);
+        member = normalizeMember(asObject(dataFrom(memberResult)), { bioLimit: null });
+        const settingsResult = await callFederationApi(token, 'GET', '/settings');
+        settingsData = asObject(dataFrom(settingsResult));
+      } catch (error) {
+        if (!(error instanceof ApiError && [403, 404].includes(error.status))) {
+          throw error;
+        }
+      }
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const settings = asObject(settingsData.settings);
+  listing.memberHref = listingMemberHref(listing);
+  listing.canContact = Boolean(member && member.messagingEnabled)
+    && (bool(settings.federation_optin) || bool(settingsData.enabled))
+    && bool(settings.messaging_enabled_federated);
+
+  return res.render('federation/listing-show', {
+    title: listing.title,
+    activeNav: 'explore',
+    federationActiveTab: 'listings',
+    listing
   });
 }));
 

@@ -1109,6 +1109,91 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation listing detail page', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/listings?partner_id=12&per_page=100') {
+        return {
+          data: [
+            {
+              id: 93,
+              title: 'Bike repair help',
+              description: 'Can help diagnose punctures.\nI can also adjust brakes and show you how to patch an inner tube.',
+              type: 'offer',
+              category_name: 'Repairs',
+              image_url: '/uploads/listings/bike.jpg',
+              estimated_hours: 2.5,
+              location: 'North Hall',
+              author: {
+                id: 77,
+                name: 'Avery Stone',
+                avatar: null
+              },
+              timebank: {
+                id: 12,
+                name: 'North Timebank'
+              },
+              created_at: '2026-07-01T10:00:00Z'
+            }
+          ]
+        };
+      }
+      if (pathValue === '/members/77?tenant_id=12') {
+        return {
+          data: {
+            id: 77,
+            name: 'Avery Stone',
+            tenant_id: 12,
+            tenant_name: 'North Timebank',
+            messaging_enabled: true
+          }
+        };
+      }
+      if (pathValue === '/settings') {
+        return {
+          data: {
+            enabled: true,
+            settings: {
+              federation_optin: true,
+              messaging_enabled_federated: true
+            }
+          }
+        };
+      }
+
+      return { data: [] };
+    });
+
+    const unsigned = await request(app).get('/federation/listings/12/93');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/listings/12/93')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/listings?partner_id=12&per_page=100');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/members/77?tenant_id=12');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
+    expect(response.text).toContain('href="/federation/listings"');
+    expect(response.text).toContain('Bike repair help');
+    expect(response.text).toContain('Offer');
+    expect(response.text).toContain('Repairs');
+    expect(response.text).toContain('Community: North Timebank');
+    expect(response.text).toContain('src="/uploads/listings/bike.jpg"');
+    expect(response.text).toContain('2.5 hours');
+    expect(response.text).toContain('North Hall');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('1 Jul 2026');
+    expect(response.text).toContain('Can help diagnose punctures.');
+    expect(response.text).toContain('I can also adjust brakes and show you how to patch an inner tube.');
+    expect(response.text).toContain('href="/federation/members/77?tenant_id=12"');
+    expect(response.text).toContain('Contact author');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('renders the Laravel-backed Federation events page', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
