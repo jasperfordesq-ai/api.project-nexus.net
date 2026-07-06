@@ -164,6 +164,79 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task VolunteeringOrganizationsV2_ReturnsTenantOrganisationsWithLaravelReactShape()
+    {
+        int organisationId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var now = DateTime.UtcNow;
+            var seededOrganisation = new Organisation
+            {
+                TenantId = TestData.Tenant1.Id,
+                Name = "Parity Volunteer Hub",
+                Slug = "parity-volunteer-hub-" + Guid.NewGuid().ToString("N"),
+                Description = "Volunteer hub exposed through the Laravel React admin API.",
+                WebsiteUrl = "https://volunteer.example.test",
+                Email = "volunteer-hub@example.test",
+                Type = "charity",
+                Status = "verified",
+                OwnerId = TestData.AdminUser.Id,
+                CreatedAt = now.AddDays(-4),
+                UpdatedAt = now.AddDays(-1),
+                VerifiedAt = now.AddDays(-2)
+            };
+            db.Organisations.Add(seededOrganisation);
+            await db.SaveChangesAsync();
+
+            organisationId = seededOrganisation.Id;
+            db.OrganisationMembers.Add(new OrganisationMember
+            {
+                TenantId = TestData.Tenant1.Id,
+                OrganisationId = organisationId,
+                UserId = TestData.MemberUser.Id,
+                Role = "volunteer",
+                JoinedAt = now.AddDays(-3)
+            });
+            db.OrgWallets.Add(new OrgWallet
+            {
+                TenantId = TestData.Tenant1.Id,
+                OrganisationId = organisationId,
+                Balance = 42.5m,
+                TotalReceived = 55m,
+                TotalSpent = 12.5m,
+                CreatedAt = now.AddDays(-3),
+                UpdatedAt = now.AddDays(-1)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/v2/admin/volunteering/organizations");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var organisation = json.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == organisationId);
+        organisation.GetProperty("org_id").GetInt32().Should().Be(organisationId);
+        organisation.GetProperty("name").GetString().Should().Be("Parity Volunteer Hub");
+        organisation.GetProperty("org_name").GetString().Should().Be("Parity Volunteer Hub");
+        organisation.GetProperty("description").GetString().Should().Be("Volunteer hub exposed through the Laravel React admin API.");
+        organisation.GetProperty("contact_email").GetString().Should().Be("volunteer-hub@example.test");
+        organisation.GetProperty("website").GetString().Should().Be("https://volunteer.example.test");
+        organisation.GetProperty("org_type").GetString().Should().Be("charity");
+        organisation.GetProperty("status").GetString().Should().Be("verified");
+        organisation.GetProperty("balance").GetDecimal().Should().Be(42.5m);
+        organisation.GetProperty("member_count").GetInt32().Should().Be(1);
+        organisation.GetProperty("volunteer_count").GetInt32().Should().Be(1);
+        organisation.GetProperty("opportunity_count").GetInt32().Should().Be(0);
+        organisation.GetProperty("total_hours").GetDecimal().Should().Be(0m);
+        json.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+    }
+
+    [Fact]
     public async Task BillingSnapshot_UsesSubscriptionPlanStorage()
     {
         using (var scope = Factory.Services.CreateScope())

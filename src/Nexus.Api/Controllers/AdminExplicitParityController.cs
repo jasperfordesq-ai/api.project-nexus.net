@@ -241,6 +241,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/volunteering/guardian-consents")]
     [HttpGet("/api/v2/admin/volunteering/hours")]
     [HttpGet("/api/v2/admin/volunteering/incidents")]
+    [HttpGet("/api/v2/admin/volunteering/organizations")]
     [HttpGet("/api/v2/admin/volunteering/organizations/{id}/members")]
     [HttpGet("/api/v2/admin/volunteering/organizations/{id}/wallet/transactions")]
     [HttpGet("/api/v2/admin/volunteering/reminder-logs")]
@@ -300,6 +301,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/super/billing/export" => await GetBillingExportCsv(),
             "/api/v2/admin/super/billing/revenue" => await GetBillingRevenue(),
             "/api/v2/admin/super/billing/snapshot" => await GetBillingSnapshot(),
+            "/api/v2/admin/volunteering/organizations" => await GetVolunteeringOrganizations(),
             _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/breaches/", out var breachId) => await GetGdprBreach(breachId),
             _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/requests/", out var requestId) => await GetGdprRequest(requestId),
             _ when TryGetSlugBeforeSuffix(path, "/api/v2/admin/enterprise/gdpr/consent-types/", "/users", out var usersSlug) => await GetConsentTypeUsers(usersSlug),
@@ -1839,6 +1841,100 @@ public class AdminExplicitParityController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { success = true, data = new { deactivated = true } });
+    }
+
+    private async Task<IActionResult> GetVolunteeringOrganizations()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var organizations = await _db.Organisations
+            .AsNoTracking()
+            .Where(o => o.TenantId == tenantId)
+            .OrderBy(o => o.Name)
+            .Take(100)
+            .Select(o => new
+            {
+                o.Id,
+                o.Name,
+                o.Description,
+                o.Email,
+                o.WebsiteUrl,
+                o.Type,
+                o.Status,
+                o.CreatedAt
+            })
+            .ToListAsync();
+
+        var organizationIds = organizations.Select(o => o.Id).ToArray();
+        var memberStats = await _db.OrganisationMembers
+            .AsNoTracking()
+            .Where(m => m.TenantId == tenantId && organizationIds.Contains(m.OrganisationId))
+            .GroupBy(m => m.OrganisationId)
+            .Select(g => new
+            {
+                OrganizationId = g.Key,
+                MemberCount = g.Count(),
+                VolunteerCount = g.Count(m => m.Role == "volunteer")
+            })
+            .ToDictionaryAsync(g => g.OrganizationId);
+
+        var walletStats = await _db.OrgWallets
+            .AsNoTracking()
+            .Where(w => w.TenantId == tenantId && organizationIds.Contains(w.OrganisationId))
+            .Select(w => new
+            {
+                w.OrganisationId,
+                w.Balance,
+                w.TotalReceived,
+                w.TotalSpent
+            })
+            .ToDictionaryAsync(w => w.OrganisationId);
+
+        var hoursByOrganization = await _db.VolunteerLogs
+            .AsNoTracking()
+            .Where(l =>
+                l.TenantId == tenantId &&
+                l.OrganizationId.HasValue &&
+                organizationIds.Contains(l.OrganizationId.Value) &&
+                l.Status == "approved")
+            .GroupBy(l => l.OrganizationId!.Value)
+            .Select(g => new
+            {
+                OrganizationId = g.Key,
+                TotalHours = g.Sum(l => l.Hours)
+            })
+            .ToDictionaryAsync(g => g.OrganizationId, g => g.TotalHours);
+
+        var data = organizations.Select(o =>
+        {
+            memberStats.TryGetValue(o.Id, out var members);
+            walletStats.TryGetValue(o.Id, out var wallet);
+            hoursByOrganization.TryGetValue(o.Id, out var totalHours);
+
+            return new
+            {
+                id = o.Id,
+                org_id = o.Id,
+                name = o.Name,
+                org_name = o.Name,
+                description = o.Description,
+                contact_email = o.Email,
+                website = o.WebsiteUrl,
+                org_type = o.Type,
+                meeting_schedule = (string?)null,
+                status = o.Status,
+                created_at = o.CreatedAt,
+                balance = wallet?.Balance ?? 0m,
+                member_count = members?.MemberCount ?? 0,
+                volunteer_count = members?.VolunteerCount ?? 0,
+                opportunity_count = 0,
+                total_hours = totalHours,
+                total_in = wallet?.TotalReceived ?? 0m,
+                total_out = wallet?.TotalSpent ?? 0m
+            };
+        }).ToList();
+
+        return Ok(new { data, meta = new { total = data.Count } });
     }
 
     private async Task<IActionResult> GetJobModerationQueue()
