@@ -779,6 +779,34 @@ async function cancelMemberPremium(token) {
 }
 
 // Messages
+async function callMessageApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/messages${normalizedPath}`, options);
+}
+
+async function callConversationApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/conversations${normalizedPath}`, options);
+}
+
 async function getConversations(token) {
   return request('/api/messages', {
     headers: { Authorization: `Bearer ${token}` }
@@ -1949,6 +1977,8 @@ module.exports = {
   createMemberPremiumPortal,
   cancelMemberPremium,
   // Messages
+  callMessageApi,
+  callConversationApi,
   getConversations,
   getConversation,
   getUnreadCount,

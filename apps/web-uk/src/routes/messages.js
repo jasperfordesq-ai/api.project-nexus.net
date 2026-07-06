@@ -5,11 +5,334 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { getConversations, getConversation, getUnreadCount, sendMessage, replyToConversation, startConversation, getUser, getConnections, markConversationRead, getProfile, ApiError } = require('../lib/api');
+const {
+  getConversations,
+  getConversation,
+  getUnreadCount,
+  sendMessage,
+  replyToConversation,
+  startConversation,
+  getUser,
+  getConnections,
+  markConversationRead,
+  getProfile,
+  callMessageApi,
+  callConversationApi,
+  ApiError
+} = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
+
+function tokenFrom(req) {
+  return (req.signedCookies && req.signedCookies.token) || req.token || '';
+}
+
+function loginRedirect() {
+  return '/login?status=auth-required';
+}
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function checked(value) {
+  return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined
+    ? result.data
+    : result;
+}
+
+function apiErrorCode(error) {
+  const data = error && error.data && typeof error.data === 'object' ? error.data : {};
+  const errors = Array.isArray(data.errors) ? data.errors : [];
+  return String(data.code || data.error || (errors[0] && errors[0].code) || '').toUpperCase();
+}
+
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function redirectOnAuthError(error, res) {
+  if (isAuthError(error)) {
+    res.redirect(loginRedirect());
+    return true;
+  }
+  return false;
+}
+
+async function callMessage(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callMessageApi(token, method, path);
+  }
+
+  return callMessageApi(token, method, path, data);
+}
+
+async function callConversation(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callConversationApi(token, method, path);
+  }
+
+  return callConversationApi(token, method, path, data);
+}
+
+function statusRedirect(path, status, fragment = '') {
+  return `${path}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+function messageRedirect(userId, status, fragment = '') {
+  return statusRedirect(`/messages/${userId}`, status, fragment);
+}
+
+function groupRedirect(conversationId, status, fragment = '') {
+  return statusRedirect(`/messages/groups/${conversationId}`, status, fragment);
+}
+
+function memberIdsFrom(raw) {
+  const values = Array.isArray(raw) ? raw : String(raw || '').split(',');
+  const seen = new Set();
+  values.forEach((value) => {
+    const id = positiveInteger(value);
+    if (id !== null) seen.add(id);
+  });
+  return Array.from(seen);
+}
+
+function editFailureStatus(error) {
+  const code = apiErrorCode(error);
+  if (code.includes('FORBIDDEN')) return 'message-edit-forbidden';
+  if (code.includes('EDIT_EXPIRED')) return 'message-edit-expired';
+  return 'message-edit-failed';
+}
+
+function groupMemberFailureStatus(error) {
+  const code = apiErrorCode(error);
+  if (code.includes('FORBIDDEN')) return 'group-member-forbidden';
+  if (code.includes('NOT_FOUND')) return 'group-member-not-found';
+  if (code.includes('LIMIT')) return 'group-member-limit';
+  return 'group-member-failed';
+}
+
+function translateFailureStatus(error) {
+  const code = apiErrorCode(error);
+  if (code.includes('FEATURE_DISABLED')) return 'translate-unavailable';
+  if (code.includes('NO_CONTENT')) return 'translate-empty';
+  return 'translate-failed';
+}
+
+router.post('/:id(\\d+)/archive', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  let status = 'conversation-archived';
+  try {
+    await callMessage(token, 'DELETE', `/conversations/${id}`, { scope: 'self' });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'conversation-archive-failed';
+  }
+
+  return res.redirect(statusRedirect('/messages', status));
+}));
+
+router.post('/:id(\\d+)/restore', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  let status = 'conversation-restored';
+  try {
+    await callMessage(token, 'POST', `/conversations/${id}/restore`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'conversation-restore-failed';
+  }
+
+  return res.redirect(`/messages?archived=1&status=${encodeURIComponent(status)}`);
+}));
+
+router.post('/:userId(\\d+)/m/:messageId(\\d+)/edit', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const userId = Number(req.params.userId);
+  const messageId = Number(req.params.messageId);
+  const body = trimmed(req.body.body, 10000);
+  if (body === '') {
+    return res.redirect(messageRedirect(userId, 'message-empty'));
+  }
+
+  let status = 'message-edited';
+  try {
+    await callMessage(token, 'PUT', `/${messageId}`, { body });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = editFailureStatus(error);
+  }
+
+  return res.redirect(messageRedirect(userId, status));
+}));
+
+router.post('/:userId(\\d+)/m/:messageId(\\d+)/delete', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const userId = Number(req.params.userId);
+  const messageId = Number(req.params.messageId);
+  const scope = ['self', 'everyone'].includes(req.body.scope) ? req.body.scope : 'everyone';
+  let status = 'message-deleted';
+  try {
+    await callMessage(token, 'DELETE', `/${messageId}`, { scope });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'message-delete-failed';
+  }
+
+  return res.redirect(messageRedirect(userId, status));
+}));
+
+router.post('/:userId(\\d+)/m/:messageId(\\d+)/translate', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const userId = Number(req.params.userId);
+  const messageId = Number(req.params.messageId);
+  const targetLanguage = trimmed(req.body.target_language || req.body.target_locale || 'en', 10) || 'en';
+  let status = 'translate-done';
+  try {
+    await callMessage(token, 'POST', `/${messageId}/translate`, {
+      target_language: targetLanguage
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = translateFailureStatus(error);
+  }
+
+  return res.redirect(messageRedirect(userId, status, `#m-${messageId}`));
+}));
+
+router.post('/:userId(\\d+)/voice', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  return res.redirect(messageRedirect(Number(req.params.userId), 'voice-required'));
+}));
+
+router.post('/groups', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const payload = {
+    name: trimmed(req.body.name),
+    member_ids: memberIdsFrom(req.body.member_ids || req.body.members)
+  };
+
+  try {
+    const result = await callConversation(token, 'POST', '/groups', payload);
+    const data = dataFrom(result);
+    const conversationId = positiveInteger(data && (data.id || data.conversation_id || (data.conversation && data.conversation.id)));
+    if (conversationId !== null) {
+      return res.redirect(groupRedirect(conversationId, 'group-created'));
+    }
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  return res.redirect(statusRedirect('/messages/groups/new', 'group-create-failed'));
+}));
+
+router.post('/groups/:conversationId(\\d+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const conversationId = Number(req.params.conversationId);
+  const body = trimmed(req.body.body, 10000);
+  if (body === '') return res.redirect(groupRedirect(conversationId, 'group-message-empty'));
+  if (String(req.body.body || '').length > 10000) return res.redirect(groupRedirect(conversationId, 'group-message-too-long'));
+
+  let status = 'group-message-sent';
+  try {
+    await callConversation(token, 'POST', `/${conversationId}/messages`, { body });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && error.status === 403 ? 'group-message-forbidden' : 'group-message-failed';
+  }
+
+  return res.redirect(groupRedirect(conversationId, status));
+}));
+
+router.post('/groups/:conversationId(\\d+)/members', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const conversationId = Number(req.params.conversationId);
+  const userId = positiveInteger(req.body.user_id);
+  if (userId === null) return res.redirect(groupRedirect(conversationId, 'group-member-invalid'));
+
+  let status = 'group-member-added';
+  try {
+    await callConversation(token, 'POST', `/${conversationId}/participants`, { user_id: userId });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = groupMemberFailureStatus(error);
+  }
+
+  return res.redirect(groupRedirect(conversationId, status));
+}));
+
+router.post('/groups/:conversationId(\\d+)/members/:targetUserId(\\d+)/remove', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const conversationId = Number(req.params.conversationId);
+  const targetUserId = Number(req.params.targetUserId);
+  const selfLeave = checked(req.body.self_leave);
+  let status = selfLeave ? 'group-left' : 'group-member-removed';
+  try {
+    await callConversation(token, 'DELETE', `/${conversationId}/participants/${targetUserId}`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = selfLeave ? 'group-leave-failed' : groupMemberFailureStatus(error);
+  }
+
+  return selfLeave
+    ? res.redirect(statusRedirect('/messages/groups', status))
+    : res.redirect(groupRedirect(conversationId, status));
+}));
+
+router.post('/groups/:conversationId(\\d+)/m/:messageId(\\d+)/react', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const conversationId = Number(req.params.conversationId);
+  const messageId = Number(req.params.messageId);
+  const emoji = trimmed(req.body.emoji, 16);
+  if (emoji === '') return res.redirect(groupRedirect(conversationId, 'reaction-invalid', `#m-${messageId}`));
+
+  let status = 'reaction-added';
+  try {
+    const result = await callMessage(token, 'POST', `/${messageId}/reactions`, { emoji });
+    const data = dataFrom(result);
+    status = data && data.action === 'removed' ? 'reaction-removed' : 'reaction-added';
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && error.status === 403 ? 'reaction-forbidden' : 'reaction-failed';
+  }
+
+  return res.redirect(groupRedirect(conversationId, status, `#m-${messageId}`));
+}));
 
 router.use(requireAuth);
 

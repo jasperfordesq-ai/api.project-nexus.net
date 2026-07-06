@@ -801,6 +801,52 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel message helpers', () => {
+    it('should call Laravel v2 message and conversation endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12 } })
+      });
+
+      await api.callMessageApi('test-token', 'PUT', '/12', {
+        body: 'Updated message'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/messages/12',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ body: 'Updated message' })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 33 } })
+      });
+
+      await api.callConversationApi('test-token', 'POST', '/33/messages', {
+        body: 'Hello group'
+      });
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/conversations/33/messages',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ body: 'Hello group' })
+        })
+      );
+    });
+  });
+
   describe('donateCredits', () => {
     it('should call the Laravel wallet donation endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

@@ -117,6 +117,8 @@ jest.mock('../src/lib/api', () => ({
   deleteAllNotifications: jest.fn().mockResolvedValue({ data: { deleted: 2 } }),
   deleteNotification: jest.fn().mockResolvedValue({}),
   getTransactions: jest.fn(),
+  callMessageApi: jest.fn().mockResolvedValue({ data: { id: 12, action: 'added' } }),
+  callConversationApi: jest.fn().mockResolvedValue({ data: { id: 33 } }),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteeringOpportunities: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteerOrganisation: jest.fn(),
@@ -230,6 +232,8 @@ describe('shared accessible frontend shell', () => {
     api.markNotificationGroupRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
     api.deleteAllNotifications.mockReset().mockResolvedValue({ data: { deleted: 2 } });
     api.deleteNotification.mockReset().mockResolvedValue({});
+    api.callMessageApi.mockReset().mockResolvedValue({ data: { id: 12, action: 'added' } });
+    api.callConversationApi.mockReset().mockResolvedValue({ data: { id: 33 } });
     api.verify2fa.mockReset();
     api.createFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.updateFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -4255,6 +4259,113 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callUserSettingsApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel message action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const archiveResponse = await post('/messages/77/archive');
+    expect(archiveResponse.headers.location).toBe('/messages?status=conversation-archived');
+    expect(api.callMessageApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/conversations/77', {
+      scope: 'self'
+    });
+
+    const restoreResponse = await post('/messages/77/restore');
+    expect(restoreResponse.headers.location).toBe('/messages?archived=1&status=conversation-restored');
+    expect(api.callMessageApi).toHaveBeenLastCalledWith('test-token', 'POST', '/conversations/77/restore');
+
+    const editResponse = await post('/messages/77/m/12/edit', {
+      body: ' Updated hello '
+    });
+    expect(editResponse.headers.location).toBe('/messages/77?status=message-edited');
+    expect(api.callMessageApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/12', {
+      body: 'Updated hello'
+    });
+
+    const deleteResponse = await post('/messages/77/m/12/delete', {
+      scope: 'self'
+    });
+    expect(deleteResponse.headers.location).toBe('/messages/77?status=message-deleted');
+    expect(api.callMessageApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/12', {
+      scope: 'self'
+    });
+
+    const translateResponse = await post('/messages/77/m/12/translate', {
+      target_language: 'ga'
+    });
+    expect(translateResponse.headers.location).toBe('/messages/77?status=translate-done#m-12');
+    expect(api.callMessageApi).toHaveBeenLastCalledWith('test-token', 'POST', '/12/translate', {
+      target_language: 'ga'
+    });
+
+    api.callMessageApi.mockClear();
+    const voiceResponse = await post('/messages/77/voice');
+    expect(voiceResponse.headers.location).toBe('/messages/77?status=voice-required');
+    expect(api.callMessageApi).not.toHaveBeenCalled();
+
+    const groupCreateResponse = await post('/messages/groups', {
+      name: ' Local helpers ',
+      member_ids: ['44', '55']
+    });
+    expect(groupCreateResponse.headers.location).toBe('/messages/groups/33?status=group-created');
+    expect(api.callConversationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/groups', {
+      name: 'Local helpers',
+      member_ids: [44, 55]
+    });
+
+    const groupMessageResponse = await post('/messages/groups/33', {
+      body: ' Hello group '
+    });
+    expect(groupMessageResponse.headers.location).toBe('/messages/groups/33?status=group-message-sent');
+    expect(api.callConversationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/33/messages', {
+      body: 'Hello group'
+    });
+
+    const addMemberResponse = await post('/messages/groups/33/members', {
+      user_id: '66'
+    });
+    expect(addMemberResponse.headers.location).toBe('/messages/groups/33?status=group-member-added');
+    expect(api.callConversationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/33/participants', {
+      user_id: 66
+    });
+
+    const removeMemberResponse = await post('/messages/groups/33/members/66/remove');
+    expect(removeMemberResponse.headers.location).toBe('/messages/groups/33?status=group-member-removed');
+    expect(api.callConversationApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/33/participants/66');
+
+    const reactResponse = await post('/messages/groups/33/m/12/react', {
+      emoji: '\u2764\ufe0f'
+    });
+    expect(reactResponse.headers.location).toBe('/messages/groups/33?status=reaction-added#m-12');
+    expect(api.callMessageApi).toHaveBeenLastCalledWith('test-token', 'POST', '/12/reactions', {
+      emoji: '\u2764\ufe0f'
+    });
+
+    api.callMessageApi.mockClear();
+    api.callConversationApi.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/messages/77/archive')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1] });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callMessageApi).not.toHaveBeenCalled();
+    expect(api.callConversationApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {
