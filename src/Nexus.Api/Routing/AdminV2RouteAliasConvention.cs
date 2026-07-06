@@ -456,6 +456,9 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
         var controllerPrefixes = controller.Selectors
             .Select(selector => Normalize(selector.AttributeRouteModel?.Template))
             .Where(template => template.Equals("api", StringComparison.OrdinalIgnoreCase))
+            .Concat(controller.Selectors
+                .Select(selector => Normalize(selector.AttributeRouteModel?.Template))
+                .Where(template => template.Equals("api/auth", StringComparison.OrdinalIgnoreCase) || template.Equals("api/resources", StringComparison.OrdinalIgnoreCase) || template.Equals("api/skills", StringComparison.OrdinalIgnoreCase) || template.Equals("api/search", StringComparison.OrdinalIgnoreCase)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -939,7 +942,7 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
     private static string? ToSimpleV2Alias(string? template)
     {
         var normalized = Normalize(template);
-        foreach (var prefix in new[] { "api/stories", "api/exchanges", "api/group-exchanges", "api/messages", "api/polls", "api/members" })
+        foreach (var prefix in new[] { "api/stories", "api/exchanges", "api/group-exchanges", "api/messages", "api/polls", "api/members", "api/kb", "api/me/collections", "api/me/saved-items", "api/resources/categories", "api/skills/categories", "api/search/saved", "api/auth/2fa", "api/auth/oauth" })
         {
             if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {

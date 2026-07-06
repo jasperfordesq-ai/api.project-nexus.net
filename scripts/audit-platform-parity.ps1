@@ -208,6 +208,38 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/members', '/api/v2/members'
     }
 
+    if ($normalized -eq '/api/kb' -or $normalized.StartsWith('/api/kb/')) {
+        return $normalized -replace '^/api/kb', '/api/v2/kb'
+    }
+
+    if ($normalized -eq '/api/me/collections' -or $normalized.StartsWith('/api/me/collections/')) {
+        return $normalized -replace '^/api/me/collections', '/api/v2/me/collections'
+    }
+
+    if ($normalized -eq '/api/me/saved-items' -or $normalized.StartsWith('/api/me/saved-items/')) {
+        return $normalized -replace '^/api/me/saved-items', '/api/v2/me/saved-items'
+    }
+
+    if ($normalized -eq '/api/resources/categories' -or $normalized.StartsWith('/api/resources/categories/')) {
+        return $normalized -replace '^/api/resources/categories', '/api/v2/resources/categories'
+    }
+
+    if ($normalized -eq '/api/skills/categories' -or $normalized.StartsWith('/api/skills/categories/')) {
+        return $normalized -replace '^/api/skills/categories', '/api/v2/skills/categories'
+    }
+
+    if ($normalized -eq '/api/search/saved' -or $normalized.StartsWith('/api/search/saved/')) {
+        return $normalized -replace '^/api/search/saved', '/api/v2/search/saved'
+    }
+
+    if ($normalized -eq '/api/auth/2fa' -or $normalized.StartsWith('/api/auth/2fa/')) {
+        return $normalized -replace '^/api/auth/2fa', '/api/v2/auth/2fa'
+    }
+
+    if ($normalized -eq '/api/auth/oauth' -or $normalized.StartsWith('/api/auth/oauth/')) {
+        return $normalized -replace '^/api/auth/oauth', '/api/v2/auth/oauth'
+    }
+
     return ''
 }
 

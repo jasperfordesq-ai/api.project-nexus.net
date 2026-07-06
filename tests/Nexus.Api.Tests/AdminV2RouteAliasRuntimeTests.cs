@@ -216,4 +216,70 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/auth/oauth/enabled-providers")]
+    [InlineData("/api/v2/auth/oauth/google/redirect")]
+    public async Task LaravelReactOAuthV2AnonymousReadAliases_AreRouted(string path)
+    {
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/auth/oauth/me/identities")]
+    public async Task LaravelReactOAuthV2MemberReadAliases_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/kb")]
+    [InlineData("/api/v2/kb/search?q=care")]
+    [InlineData("/api/v2/kb/slug/getting-started")]
+    public async Task LaravelReactKnowledgeBaseV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/me/collections")]
+    [InlineData("/api/v2/me/saved-items/check")]
+    [InlineData("/api/v2/resources/categories")]
+    [InlineData("/api/v2/resources/categories/tree")]
+    [InlineData("/api/v2/search/saved")]
+    [InlineData("/api/v2/skills/categories")]
+    public async Task LaravelReactMemberResourceUtilityV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/auth/2fa/status")]
+    public async Task LaravelReactTwoFactorV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
