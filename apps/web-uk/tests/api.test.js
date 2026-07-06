@@ -653,6 +653,78 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callListingApi', () => {
+    it('should call Laravel v2 listing action endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { saved: true } })
+      });
+
+      await api.callListingApi('test-token', 'POST', '/42/save');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/listings/42/save',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { description: 'Generated listing copy' } })
+      });
+
+      await api.callListingApi('test-token', 'POST', '/generate-description', {
+        title: 'Garden help'
+      });
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/listings/generate-description',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ title: 'Garden help' })
+        })
+      );
+    });
+  });
+
+  describe('createExchangeRequest', () => {
+    it('should create a Laravel v2 exchange request with listing payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 88 } })
+      });
+
+      await api.createExchangeRequest('test-token', {
+        listing_id: 42,
+        proposed_hours: 2.5
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/exchanges',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            listing_id: 42,
+            proposed_hours: 2.5
+          })
+        })
+      );
+    });
+  });
+
   describe('callUgcTranslateApi', () => {
     it('should call the Laravel v2 UGC translation endpoint with auth and payload', async () => {
       mockFetch.mockResolvedValueOnce({

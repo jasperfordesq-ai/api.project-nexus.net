@@ -127,6 +127,8 @@ jest.mock('../src/lib/api', () => ({
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callListingApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  createExchangeRequest: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   callUgcTranslateApi: jest.fn().mockResolvedValue({ data: { translated_text: 'Dia duit' } }),
   getVolunteerOpportunity: jest.fn(),
   getOrganisationOpportunities: jest.fn(),
@@ -217,6 +219,8 @@ describe('shared accessible frontend shell', () => {
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callListingApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.createExchangeRequest.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.callUgcTranslateApi.mockReset().mockResolvedValue({ data: { translated_text: 'Dia duit' } });
     api.getNotifications.mockReset().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } });
     api.markNotificationRead.mockReset().mockResolvedValue({});
@@ -4039,6 +4043,103 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callEventApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel listing action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const saveResponse = await post('/listings/42/save');
+    expect(saveResponse.headers.location).toBe('/listings/42?status=listing-saved');
+    expect(api.callListingApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/save');
+
+    const unsaveResponse = await post('/listings/42/unsave');
+    expect(unsaveResponse.headers.location).toBe('/listings/42?status=listing-unsaved');
+    expect(api.callListingApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/save');
+
+    const renewResponse = await post('/listings/42/renew');
+    expect(renewResponse.headers.location).toBe('/listings/42?status=listing-renewed');
+    expect(api.callListingApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/renew');
+
+    const likeResponse = await post('/listings/42/like');
+    expect(likeResponse.headers.location).toBe('/listings/42?status=liked#like');
+    expect(api.toggleFeedLike).toHaveBeenLastCalledWith('test-token', {
+      target_type: 'listing',
+      target_id: 42
+    });
+
+    const commentResponse = await post('/listings/42/comments', {
+      body: ' Looks useful ',
+      parent_id: '5'
+    });
+    expect(commentResponse.headers.location).toBe('/listings/42/comments?status=reply-added#add-comment');
+    expect(api.createComment).toHaveBeenLastCalledWith('test-token', {
+      target_type: 'listing',
+      target_id: 42,
+      content: 'Looks useful',
+      parent_id: 5
+    });
+
+    const exchangeResponse = await post('/listings/42/exchange-request', {
+      proposed_hours: '2.5',
+      prep_time: '0.5',
+      message: ' Could you help next week? '
+    });
+    expect(exchangeResponse.headers.location).toBe('/exchanges/88?status=exchange-created');
+    expect(api.createExchangeRequest).toHaveBeenLastCalledWith('test-token', {
+      listing_id: 42,
+      proposed_hours: 2.5,
+      prep_time: 0.5,
+      message: 'Could you help next week?'
+    });
+
+    const reportResponse = await post('/listings/42/report', {
+      reason: 'spam',
+      details: ' Duplicate spam '
+    });
+    expect(reportResponse.headers.location).toBe('/listings/42?status=listing-reported');
+    expect(api.callListingApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/report', {
+      reason: 'spam',
+      details: 'Duplicate spam'
+    });
+
+    const generateResponse = await post('/listings/generate-description', {
+      listing_id: '42',
+      title: ' Garden help ',
+      type: 'request',
+      category: 'Gardening',
+      description: ' I need help clearing weeds. '
+    });
+    expect(generateResponse.headers.location).toBe('/listings/42/edit?status=ai-generated#description');
+    expect(api.callListingApi).toHaveBeenLastCalledWith('test-token', 'POST', '/generate-description', {
+      title: 'Garden help',
+      type: 'request',
+      category: 'Gardening',
+      notes: 'I need help clearing weeds.'
+    });
+
+    api.callListingApi.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/listings/42/save')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1] });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callListingApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {

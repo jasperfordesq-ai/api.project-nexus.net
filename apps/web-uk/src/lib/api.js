@@ -285,6 +285,20 @@ async function deleteListing(token, id) {
   });
 }
 
+async function callListingApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/listings${normalizedPath}`, options);
+}
+
 // Laravel volunteering API
 async function getVolunteerOrganisations(params = {}) {
   const query = new URLSearchParams();
@@ -698,6 +712,14 @@ async function performExchangeAction(token, id, action, data = {}) {
 
   return request(endpoint, {
     method: action === 'cancel' ? 'DELETE' : 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function createExchangeRequest(token, data) {
+  return request('/api/v2/exchanges', {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data)
   });
@@ -1859,6 +1881,7 @@ module.exports = {
   createListing,
   updateListing,
   deleteListing,
+  callListingApi,
   // Laravel volunteering
   getVolunteerOrganisations,
   getVolunteeringOpportunities,
@@ -1904,6 +1927,7 @@ module.exports = {
   rankPoll,
   dismissMatch,
   performExchangeAction,
+  createExchangeRequest,
   rateExchange,
   sendAiChat,
   createMemberPremiumCheckout,

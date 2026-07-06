@@ -142,6 +142,17 @@ partial: Laravel `cookie_consents` audit persistence, tenant scoping, route-name
 generation, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 
+Listing GET pages remain local/protected pages or generated preparation pages,
+but the Laravel accessible POST aliases under `/listings` are now local route
+declarations backed by Laravel v2 listing, comment, feed-like, and exchange
+APIs. The aliases cover save/unsave, renew, report, like, comment/reply,
+exchange request creation, and AI description generation redirects while
+preserving Laravel status keys and `#like` / `#add-comment` fragments. This
+remains partial: Blade listing/detail/comment/report/exchange-request rendering,
+generated description value repopulation, image and skill-tag form parity,
+owner/requester authorization depth, tenant/feature gates, localization, runtime
+smoke tests, and ASP.NET backend compatibility are not certified.
+
 Marketplace GET pages remain preparation pages, but the Laravel accessible POST
 aliases under `/marketplace` are now local route declarations backed by Laravel
 v2 marketplace APIs. The aliases cover listing create/update/delete/renew,
@@ -244,8 +255,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 564 `apps/web-uk` route declarations, 482 exact
-method/path matches, 126 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 572 `apps/web-uk` route declarations, 490 exact
+method/path matches, 118 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

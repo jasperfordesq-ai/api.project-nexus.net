@@ -11,6 +11,10 @@ const {
   createListing,
   updateListing,
   deleteListing,
+  callListingApi,
+  createExchangeRequest,
+  createComment,
+  toggleFeedLike,
   getListingReviews,
   getProfile,
   ApiError
@@ -19,6 +23,292 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
+
+function tokenFrom(req) {
+  return (req.signedCookies && req.signedCookies.token) || req.token || '';
+}
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function boundedNumber(value, min, max, fallback = null) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+  return Math.max(min, Math.min(max, number));
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined
+    ? result.data
+    : result;
+}
+
+function loginRedirect() {
+  return '/login?status=auth-required';
+}
+
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function apiErrorCode(error) {
+  const data = error && error.data && typeof error.data === 'object' ? error.data : {};
+  return String(data.code || data.error || '').toUpperCase();
+}
+
+function redirectOnAuthError(error, res) {
+  if (isAuthError(error)) {
+    res.redirect(loginRedirect());
+    return true;
+  }
+  return false;
+}
+
+function listingRedirect(id, status, fragment = '') {
+  return `/listings/${id}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+async function callListing(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callListingApi(token, method, path);
+  }
+
+  return callListingApi(token, method, path, data);
+}
+
+async function runListingAction(req, res, method, path, data, successRedirect, failureRedirect) {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  try {
+    await callListing(token, method, path, data);
+    return res.redirect(successRedirect);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(failureRedirect);
+  }
+}
+
+function listingType(value) {
+  const type = trimmed(value).toLowerCase();
+  return ['offer', 'request'].includes(type) ? type : 'offer';
+}
+
+function generateDescriptionRedirect(listingId, status) {
+  const target = listingId === null ? '/listings/new' : `/listings/${listingId}/edit`;
+  return `${target}?status=${encodeURIComponent(status)}#description`;
+}
+
+function reportPayload(body) {
+  const allowedReasons = new Set(['inappropriate', 'safety_concern', 'misleading', 'spam', 'not_timebank_service', 'other']);
+  const reason = trimmed(body.reason);
+  if (!allowedReasons.has(reason)) {
+    return null;
+  }
+
+  return {
+    reason,
+    details: trimmed(body.details, 500) || null
+  };
+}
+
+router.post('/generate-description', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const listingId = positiveInteger(req.body.listing_id);
+  const title = trimmed(req.body.title, 255);
+  if (title === '') {
+    return res.redirect(generateDescriptionRedirect(listingId, 'ai-title-required'));
+  }
+
+  const payload = {
+    title,
+    type: listingType(req.body.type),
+    category: trimmed(req.body.category || req.body.category_name || req.body.category_id),
+    notes: trimmed(req.body.notes || req.body.description, 5000)
+  };
+
+  if (payload.category === '') delete payload.category;
+  if (payload.notes === '') delete payload.notes;
+
+  let status = 'ai-generated';
+  try {
+    await callListing(token, 'POST', '/generate-description', payload);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && error.status === 403 ? 'ai-disabled' : 'ai-failed';
+  }
+
+  return res.redirect(generateDescriptionRedirect(listingId, status));
+}));
+
+router.post('/:id(\\d+)/save', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runListingAction(
+    req,
+    res,
+    'POST',
+    `/${id}/save`,
+    undefined,
+    listingRedirect(id, 'listing-saved'),
+    listingRedirect(id, 'save-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/unsave', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runListingAction(
+    req,
+    res,
+    'DELETE',
+    `/${id}/save`,
+    undefined,
+    listingRedirect(id, 'listing-unsaved'),
+    listingRedirect(id, 'unsave-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/renew', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runListingAction(
+    req,
+    res,
+    'POST',
+    `/${id}/renew`,
+    undefined,
+    listingRedirect(id, 'listing-renewed'),
+    listingRedirect(id, 'renew-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/like', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  let status = 'like-failed';
+  try {
+    const result = await toggleFeedLike(token, {
+      target_type: 'listing',
+      target_id: id
+    });
+    const data = dataFrom(result);
+    status = data && data.action === 'unliked' ? 'unliked' : 'liked';
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  return res.redirect(listingRedirect(id, status, '#like'));
+}));
+
+router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const body = trimmed(req.body.body || req.body.content, 5000);
+  if (body === '') {
+    return res.redirect(`/listings/${id}/comments?status=comment-invalid#add-comment`);
+  }
+
+  const parentId = positiveInteger(req.body.parent_id);
+  const payload = {
+    target_type: 'listing',
+    target_id: id,
+    content: body
+  };
+  if (parentId !== null) {
+    payload.parent_id = parentId;
+  }
+
+  let status = parentId !== null ? 'reply-added' : 'comment-added';
+  try {
+    await createComment(token, payload);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && [400, 422].includes(error.status)
+      ? 'comment-invalid'
+      : 'comment-failed';
+  }
+
+  return res.redirect(`/listings/${id}/comments?status=${status}#add-comment`);
+}));
+
+router.post('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const listingId = Number(req.params.listingId);
+  const prepTime = boundedNumber(req.body.prep_time, 0, 24, null);
+  const message = trimmed(req.body.message, 5000);
+  const payload = {
+    listing_id: listingId,
+    proposed_hours: boundedNumber(req.body.proposed_hours, 0.25, 24, 1)
+  };
+  if (prepTime !== null) {
+    payload.prep_time = prepTime;
+  }
+  if (message !== '') {
+    payload.message = message;
+  }
+
+  try {
+    const result = await createExchangeRequest(token, payload);
+    const data = dataFrom(result);
+    const exchangeId = positiveInteger(
+      data && (data.id || data.exchange_id || (data.exchange && data.exchange.id))
+    );
+    if (exchangeId !== null) {
+      return res.redirect(`/exchanges/${exchangeId}?status=exchange-created`);
+    }
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    if (code === 'COMPLIANCE_VIOLATION') {
+      return res.redirect(`/listings/${listingId}/exchange-request?status=compliance-failed`);
+    }
+    if (code === 'FEATURE_DISABLED') {
+      return res.redirect(listingRedirect(listingId, 'exchange-disabled'));
+    }
+  }
+
+  return res.redirect(`/listings/${listingId}/exchange-request?status=exchange-failed`);
+}));
+
+router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const payload = reportPayload(req.body);
+  if (payload === null) {
+    return res.redirect(`/listings/${id}/report?status=report-invalid`);
+  }
+
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let status = 'listing-reported';
+  try {
+    await callListing(token, 'POST', `/${id}/report`, payload);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && error.status === 409
+      ? 'already-reported'
+      : 'report-failed';
+  }
+
+  return res.redirect(listingRedirect(id, status));
+}));
 
 router.use(requireAuth);
 

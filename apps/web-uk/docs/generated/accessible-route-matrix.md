@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T11:22:54.247Z
+Generated: 2026-07-06T11:30:30.099Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 564 |
-| Matched routes | 482 |
-| Missing routes | 126 |
+| web-uk routes | 572 |
+| Matched routes | 490 |
+| Missing routes | 118 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -52,7 +52,7 @@ Generated: 2026-07-06T11:22:54.247Z
 | kb | 2 | 0 | 0 |
 | leaderboard | 5 | 0 | 0 |
 | legal | 6 | 0 | 0 |
-| listings | 11 | 8 | 1 |
+| listings | 19 | 0 | 1 |
 | login | 7 | 0 | 0 |
 | logout | 1 | 0 | 1 |
 | marketplace | 48 | 0 | 0 |
@@ -171,14 +171,6 @@ Generated: 2026-07-06T11:22:54.247Z
 | POST | `/jobs/interviews/{param}/decline` | jobs | jobsDeclineInterview |  | public-or-unknown |  |
 | POST | `/jobs/offers/{param}/accept` | jobs | jobsAcceptOffer |  | public-or-unknown |  |
 | POST | `/jobs/offers/{param}/reject` | jobs | jobsRejectOffer |  | public-or-unknown |  |
-| POST | `/listings/{param}/comments` | listings | listingsStoreComment |  | auth-optional | module:listings |
-| POST | `/listings/{param}/exchange-request` | listings | storeExchangeRequest |  | auth-optional | module:listings |
-| POST | `/listings/{param}/like` | listings | listingsToggleLike |  | auth-optional | module:listings |
-| POST | `/listings/{param}/renew` | listings | renewListing |  | auth-optional | module:listings |
-| POST | `/listings/{param}/report` | listings | storeListingReport |  | auth-optional | module:listings |
-| POST | `/listings/{param}/save` | listings | saveListing |  | auth-optional | module:listings |
-| POST | `/listings/{param}/unsave` | listings | unsaveListing |  | auth-optional | module:listings |
-| POST | `/listings/generate-description` | listings | listingsGenerateDescription |  | auth-optional | module:listings |
 | POST | `/messages/{param}/archive` | messages | archiveConversation |  | auth-optional | module:messages |
 | POST | `/messages/{param}/m/{param}/delete` | messages | deleteMessage |  | auth-optional | module:messages |
 | POST | `/messages/{param}/m/{param}/edit` | messages | updateMessage |  | auth-optional | module:messages |
