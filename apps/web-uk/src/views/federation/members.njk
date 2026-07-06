@@ -1,0 +1,124 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% set reachLabels = {
+  local_only: "Local help only",
+  remote_ok: "Remote help possible",
+  travel_ok: "Can travel"
+} %}
+
+{% block mainContent %}
+  <a href="/federation" class="govuk-back-link">Back to Federation</a>
+
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Federation members</h1>
+  <p class="govuk-body-l">Find people from partner communities who have chosen to appear in federation search.</p>
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  <form method="get" action="/federation/members" class="govuk-!-margin-bottom-6">
+    <fieldset class="govuk-fieldset">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter federation members</legend>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="q">Search members</label>
+        <div id="q-hint" class="govuk-hint">Search by name, bio, or shared skills.</div>
+        <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="partner_id">Community</label>
+        <select class="govuk-select" id="partner_id" name="partner_id">
+          <option value=""{% if not filters.partnerId %} selected{% endif %}>All communities</option>
+          {% for partner in partnerOptions %}
+            <option value="{{ partner.id }}"{% if filters.partnerId == partner.id %} selected{% endif %}>{{ partner.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="skills">Skills</label>
+        <div id="skills-hint" class="govuk-hint">Separate multiple skills with commas.</div>
+        <input class="govuk-input govuk-!-width-two-thirds" id="skills" name="skills" type="text" value="{{ filters.skills }}" aria-describedby="skills-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="service_reach">Service reach</label>
+        <select class="govuk-select" id="service_reach" name="service_reach">
+          <option value=""{% if not filters.serviceReach %} selected{% endif %}>Any reach</option>
+          <option value="local_only"{% if filters.serviceReach == "local_only" %} selected{% endif %}>Local help only</option>
+          <option value="remote_ok"{% if filters.serviceReach == "remote_ok" %} selected{% endif %}>Remote help possible</option>
+          <option value="travel_ok"{% if filters.serviceReach == "travel_ok" %} selected{% endif %}>Can travel</option>
+        </select>
+      </div>
+
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
+    </fieldset>
+  </form>
+
+  {% if total !== null %}
+    <p class="govuk-body-s">Showing {{ members.length }} of {{ total }} members</p>
+  {% endif %}
+
+  {% if members.length %}
+    <div class="nexus-alpha-card-list">
+      {% for member in members %}
+        <article class="nexus-alpha-card">
+          <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ member.href }}">{{ member.name }}</a></h2>
+
+          {% if member.tenantName %}
+            <p class="govuk-body-s govuk-!-margin-bottom-1"><strong class="govuk-tag govuk-tag--grey">Community: {{ member.tenantName }}</strong></p>
+          {% endif %}
+
+          {% if member.bio %}
+            <p class="govuk-body govuk-!-margin-bottom-1">{{ member.bio }}</p>
+          {% endif %}
+
+          {% if member.location %}
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Location: {{ member.location }}</p>
+          {% endif %}
+
+          {% if reachLabels[member.serviceReach] %}
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Reach: {{ reachLabels[member.serviceReach] }}</p>
+          {% endif %}
+
+          {% if member.skills.length %}
+            <p class="govuk-body-s govuk-!-margin-bottom-2 nexus-alpha-inline-list">
+              {% for skill in member.skills %}
+                <strong class="govuk-tag govuk-tag--grey govuk-!-margin-right-1">{{ skill }}</strong>
+              {% endfor %}
+            </p>
+          {% endif %}
+
+          <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ member.href }}">View profile</a></p>
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if loadMoreHref %}
+      <p class="govuk-body govuk-!-margin-top-4"><a class="govuk-link" href="{{ loadMoreHref }}">Load more members</a></p>
+    {% endif %}
+  {% else %}
+    {% if not partnerOptions.length %}
+      <div class="govuk-inset-text">
+        <h2 class="govuk-heading-s govuk-!-margin-bottom-1">No partner communities</h2>
+        <p class="govuk-body govuk-!-margin-bottom-0">Partner communities will appear here when federation is available.</p>
+      </div>
+    {% else %}
+      <div class="govuk-inset-text"><p class="govuk-body govuk-!-margin-bottom-0">No federation members match these filters.</p></div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

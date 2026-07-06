@@ -92,6 +92,56 @@ function isInternalPartner(partner) {
   return partner && !partner.isExternal && /^\d+$/.test(String(partner.id || ''));
 }
 
+function memberHref(member) {
+  const id = trimmed(member && member.id, 32);
+  const tenantId = trimmed(member && member.tenantId, 32);
+  const query = tenantId ? `?tenant_id=${encodeURIComponent(tenantId)}` : '';
+  return id ? `/federation/members/${encodeURIComponent(id)}${query}` : '/federation/members';
+}
+
+function normalizeMember(member) {
+  const timebank = asObject(member && member.timebank);
+  const tenantId = member && member.tenant_id !== undefined ? member.tenant_id : timebank.id;
+  const name = trimmed(member && member.name) || trimmed(`${trimmed(member && member.first_name)} ${trimmed(member && member.last_name)}`) || 'Federation member';
+  const skills = Array.isArray(member && member.skills)
+    ? member.skills.map((skill) => trimmed(skill)).filter(Boolean)
+    : [];
+
+  return {
+    id: member && member.id !== undefined ? member.id : '',
+    name,
+    href: memberHref({ id: member && member.id, tenantId }),
+    bio: trimmed(member && member.bio, 220),
+    location: trimmed(member && member.location),
+    serviceReach: trimmed(member && member.service_reach),
+    skills,
+    tenantId,
+    tenantName: trimmed((member && member.tenant_name) || timebank.name),
+    messagingEnabled: bool(member && member.messaging_enabled)
+  };
+}
+
+function federationQuery(req, keys) {
+  const params = new URLSearchParams();
+  keys.forEach((key) => {
+    const value = trimmed(req.query && req.query[key]);
+    if (value) params.set(key, value);
+  });
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+function loadMoreHref(basePath, req, cursor) {
+  const params = new URLSearchParams();
+  ['q', 'skills', 'partner_id', 'service_reach'].forEach((key) => {
+    const value = trimmed(req.query && req.query[key]);
+    if (value) params.set(key, value);
+  });
+  if (cursor) params.set('cursor', cursor);
+  const query = params.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
 function normalizeActivity(item) {
   const actor = asObject(item && item.actor);
 
@@ -227,6 +277,45 @@ router.get('/partners/:id', asyncRoute(async (req, res) => {
     activeNav: 'explore',
     federationActiveTab: 'partners',
     partner
+  });
+}));
+
+router.get('/members', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  let membersResult;
+  let partnersResult;
+  try {
+    partnersResult = await callFederationApi(token, 'GET', '/partners');
+    membersResult = await callFederationApi(token, 'GET', `/members${federationQuery(req, ['q', 'skills', 'partner_id', 'service_reach', 'cursor'])}`);
+  } catch (error) {
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const members = asList(dataFrom(membersResult)).map(normalizeMember);
+  const meta = metaFrom(membersResult);
+  const partnerOptions = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner);
+  const nextCursor = trimmed(meta.cursor);
+
+  return res.render('federation/members', {
+    title: 'Federation members',
+    activeNav: 'explore',
+    federationActiveTab: 'members',
+    members,
+    partnerOptions,
+    total: meta.total_items !== undefined ? numberOrZero(meta.total_items) : null,
+    nextCursor,
+    loadMoreHref: nextCursor ? loadMoreHref('/federation/members', req, nextCursor) : '',
+    filters: {
+      q: trimmed(req.query.q),
+      skills: trimmed(req.query.skills),
+      partnerId: trimmed(req.query.partner_id),
+      serviceReach: trimmed(req.query.service_reach)
+    }
   });
 }));
 

@@ -552,6 +552,75 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation members list', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/partners') {
+        return {
+          data: [
+            { id: 12, name: 'North Timebank', is_external: false },
+            { id: 'ext-7', name: 'External Commons', is_external: true }
+          ]
+        };
+      }
+      if (pathValue === '/members?q=repair&skills=sewing&partner_id=12&service_reach=remote_ok&cursor=abc') {
+        return {
+          data: [
+            {
+              id: 77,
+              name: 'Avery Stone',
+              bio: 'Can repair household textiles and small appliances',
+              location: 'Derry',
+              service_reach: 'remote_ok',
+              skills: ['sewing', 'repairs'],
+              tenant_id: 12,
+              tenant_name: 'North Timebank',
+              messaging_enabled: true
+            }
+          ],
+          meta: {
+            total_items: 1,
+            cursor: 'next-cursor',
+            has_more: true
+          }
+        };
+      }
+
+      return { data: [] };
+    });
+
+    const unsigned = await request(app).get('/federation/members');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/members?q=repair&skills=sewing&partner_id=12&service_reach=remote_ok&cursor=abc')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/members?q=repair&skills=sewing&partner_id=12&service_reach=remote_ok&cursor=abc');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Federation members');
+    expect(response.text).toContain('value="repair"');
+    expect(response.text).toContain('value="sewing"');
+    expect(response.text).toContain('value="12" selected');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).not.toContain('value="ext-7"');
+    expect(response.text).toContain('value="remote_ok" selected');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('Can repair household textiles and small appliances');
+    expect(response.text).toContain('Community: North Timebank');
+    expect(response.text).toContain('Location: Derry');
+    expect(response.text).toContain('Reach: Remote help possible');
+    expect(response.text).toContain('sewing');
+    expect(response.text).toContain('repairs');
+    expect(response.text).toContain('href="/federation/members/77?tenant_id=12"');
+    expect(response.text).toContain('cursor=next-cursor');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 
