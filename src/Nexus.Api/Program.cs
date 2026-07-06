@@ -14,6 +14,7 @@ using Nexus.Api.Extensions;
 using Nexus.Api.Hubs;
 using Nexus.Api.Middleware;
 using Nexus.Api.Observability;
+using Nexus.Api.Routing;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -99,6 +100,7 @@ if (!builder.Environment.IsDevelopment())
 builder.Services.AddControllers(opt =>
 {
     opt.Filters.Add<Nexus.Api.Middleware.TwoFactorSetupGate>();
+    opt.Conventions.Add(new AdminV2RouteAliasConvention());
 });
 
 // Global request body size limit (5MB) to prevent abuse

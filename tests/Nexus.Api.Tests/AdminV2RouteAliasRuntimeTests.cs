@@ -28,4 +28,20 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Theory]
+    [InlineData("/api/v2/admin/caring-community/regional-points/config")]
+    [InlineData("/api/v2/admin/caring-community/municipal-roi")]
+    [InlineData("/api/v2/admin/caring-community/pilot-scoreboard")]
+    [InlineData("/api/v2/admin/caring-community/sub-regions")]
+    [InlineData("/api/v2/admin/caring-community/providers")]
+    public async Task LaravelReactAdminCaringCommunityV2ReadAliases_AsAdmin_AreRouted(string path)
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }

@@ -101,6 +101,24 @@ function Join-RoutePath {
     return Normalize-RoutePath $combined
 }
 
+function Get-AspNetV2AdminAlias {
+    param([string]$Prefix)
+
+    $normalized = Normalize-RoutePath $Prefix
+    $aliasedPrefixes = @(
+        '/api/admin/caring-community',
+        '/api/admin/safeguarding'
+    )
+
+    foreach ($aliasedPrefix in $aliasedPrefixes) {
+        if ($normalized -eq $aliasedPrefix -or $normalized.StartsWith("$aliasedPrefix/")) {
+            return $normalized -replace '^/api/admin/', '/api/v2/admin/'
+        }
+    }
+
+    return ''
+}
+
 function Export-AspNetRoutes {
     param([string]$Root, [string]$Destination)
 
@@ -126,7 +144,7 @@ function Export-AspNetRoutes {
         ForEach-Object {
             $file = $_
             $text = Get-Content -LiteralPath $file.FullName -Raw
-            $classMatches = [regex]::Matches($text, '(?m)^\s*(?:public\s+)?(?:partial\s+)?class\s+([A-Za-z0-9_]+)\b')
+            $classMatches = [regex]::Matches($text, '(?m)^\s*(?:(?:public|internal)\s+)?(?:(?:sealed|abstract|partial|static)\s+)*class\s+([A-Za-z0-9_]+)\b')
             if ($classMatches.Count -eq 0) {
                 $classMatches = @([pscustomobject]@{ Index = 0; Groups = @(@{ Value = $file.BaseName }) })
             }
@@ -144,7 +162,12 @@ function Export-AspNetRoutes {
                 $routeMatches = [regex]::Matches($attributeWindow, '\[Route\("([^"]+)"\)\]')
                 $prefixes = New-Object System.Collections.Generic.List[string]
                 foreach ($routeMatch in $routeMatches) {
-                    $prefixes.Add(($routeMatch.Groups[1].Value -replace '\[controller\]', $controllerName))
+                    $prefix = $routeMatch.Groups[1].Value -replace '\[controller\]', $controllerName
+                    $prefixes.Add($prefix)
+                    $alias = Get-AspNetV2AdminAlias $prefix
+                    if (-not [string]::IsNullOrWhiteSpace($alias) -and -not $prefixes.Contains($alias.TrimStart('/'))) {
+                        $prefixes.Add($alias.TrimStart('/'))
+                    }
                 }
                 if ($prefixes.Count -eq 0) {
                     $prefixes.Add('')
