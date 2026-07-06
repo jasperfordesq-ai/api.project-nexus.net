@@ -113,11 +113,9 @@ APIs for archive/restore, message edit/delete/translate, group create/reply,
 member add/remove, and group reactions while preserving Laravel status redirects
 and anchors. Voice-message upload is registered but fails safely with
 `voice-required` until multipart proxying exists.
-Resource POST aliases are wired to Laravel v2 APIs for resource delete, admin
-reorder, resource comments, comment deletion, and resource reactions while
-preserving Laravel library/comment status redirects. Resource upload POST is
-registered but fails safely with `resource-upload-failed` until multipart
-proxying exists.
+Resource POST aliases are wired to Laravel v2 APIs for resource upload,
+resource delete, admin reorder, resource comments, comment deletion, and
+resource reactions while preserving Laravel library/comment status redirects.
 Settings POST aliases are wired to Laravel v2 user settings and sub-account
 APIs for appearance/theme, weekly availability, GDPR data-right requests,
 linked-account request/approve/permission/revoke, and insurance upload safe

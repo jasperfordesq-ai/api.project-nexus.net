@@ -48,12 +48,12 @@ Saved-collection aliases are backed by `/api/v2/me/collections` plus
 Match-dismiss aliases are backed by `/api/v2/matches/{id}/dismiss`.
 Exchange action/rating aliases are backed by `/api/v2/exchanges/{id}` action
 endpoints and `/api/v2/exchanges/{id}/rate`.
-Onboarding step POSTs use `/api/users/me`, `/api/v2/onboarding/safeguarding`,
-and `/api/v2/onboarding/complete`; avatar upload is still a safe failure until
-multipart proxying is implemented. It is not a backend adapter and does not
-certify Laravel tenant feature gates, full account-link coverage, route
-availability checks, per-module response contracts, realtime notification
-behavior, onboarding visual parity, or ASP.NET backend readiness.
+Onboarding step POSTs use `/api/users/me`, `/api/v2/users/me/avatar`,
+`/api/v2/onboarding/safeguarding`, and `/api/v2/onboarding/complete`. It is not
+a backend adapter and does not certify Laravel tenant feature gates, full
+account-link coverage, route availability checks, per-module response contracts,
+realtime notification behavior, onboarding visual parity, or ASP.NET backend
+readiness.
 
 `/cookies` GET and `/cookie-consent` POST are local Blade-style no-JS cookie
 candidates. They render the Laravel-style analytics settings form and set the
