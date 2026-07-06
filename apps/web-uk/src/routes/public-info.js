@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { getContributors } = require('../lib/contributors');
-const { callNewsletterApi } = require('../lib/api');
+const { callNewsletterApi, verifyEmail } = require('../lib/api');
 
 const router = express.Router();
 
@@ -161,6 +161,27 @@ router.get('/newsletter/unsubscribe', async (req, res) => {
   res.render('public-info/newsletter-unsubscribe', {
     title: 'Unsubscribe from emails',
     activeNav: '',
+    state
+  });
+});
+
+router.get('/verify-email', async (req, res) => {
+  const token = typeof req.query.token === 'string' ? req.query.token.trim() : '';
+  let state = 'missing';
+
+  if (token) {
+    try {
+      const result = await verifyEmail(token);
+      const verified = Boolean(result?.data?.verified ?? result?.verified);
+      state = verified ? 'success' : 'invalid';
+    } catch {
+      state = 'invalid';
+    }
+  }
+
+  res.render('public-info/email-verify', {
+    title: 'Verify your email address',
+    activeNav: 'login',
     state
   });
 });

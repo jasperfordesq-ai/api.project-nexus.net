@@ -38,6 +38,7 @@ jest.mock('../src/lib/api', () => ({
   verify2fa: jest.fn(),
   validateToken: jest.fn(),
   getProfile: jest.fn(),
+  verifyEmail: jest.fn().mockResolvedValue({ data: { verified: true } }),
   callNewsletterApi: jest.fn().mockResolvedValue({ data: { success: true } }),
   getFeedPosts: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } }),
   getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
@@ -748,6 +749,34 @@ describe('shared accessible frontend shell', () => {
     expect(invalid.status).toBe(200);
     expect(invalid.text).toContain('This unsubscribe link is invalid or has expired.');
     expect(api.callNewsletterApi).toHaveBeenNthCalledWith(2, 'GET', '?token=expired-token');
+    expect(invalid.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the Laravel-style email verification states', async () => {
+    const api = require('../src/lib/api');
+    api.verifyEmail.mockResolvedValueOnce({ data: { verified: true } });
+    api.verifyEmail.mockResolvedValueOnce({ data: { verified: false } });
+
+    const missing = await request(app).get('/verify-email');
+    const success = await request(app).get('/verify-email?token=valid-token');
+    const invalid = await request(app).get('/verify-email?token=expired-token');
+
+    expect(missing.status).toBe(200);
+    expect(missing.text).toContain('Verify your email address');
+    expect(missing.text).toContain('No verification link was provided. Use the link in your verification email.');
+    expect(missing.text).toContain('You can request a new verification email from the sign-in page.');
+    expect(missing.text).toContain('Back to sign in');
+
+    expect(success.status).toBe(200);
+    expect(success.text).toContain('govuk-panel--confirmation');
+    expect(success.text).toContain('Email address verified');
+    expect(success.text).toContain('Thank you. Your email address has been confirmed.');
+    expect(success.text).toContain('Continue to sign in');
+    expect(api.verifyEmail).toHaveBeenNthCalledWith(1, 'valid-token');
+
+    expect(invalid.status).toBe(200);
+    expect(invalid.text).toContain('This verification link is invalid or has expired.');
+    expect(api.verifyEmail).toHaveBeenNthCalledWith(2, 'expired-token');
     expect(invalid.text).not.toContain('shared accessible frontend preparation page');
   });
 

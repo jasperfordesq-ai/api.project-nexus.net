@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T23:49:09.784Z",
+    "generatedAt": "2026-07-06T23:54:13.303Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -12421,8 +12421,8 @@
       "gates": "",
       "apiNeeds": "api:EmailVerificationController::verifyEmail",
       "webUkPath": "/verify-email",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "public-info/email-verify",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\public-info.js"
     },
     {
       "method": "GET",

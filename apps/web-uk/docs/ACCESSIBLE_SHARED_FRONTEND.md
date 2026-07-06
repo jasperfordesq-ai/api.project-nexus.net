@@ -85,12 +85,13 @@ editing, tenant routing, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 
 The public auth and email aliases include Laravel-style forgot-password,
-reset-password, two-factor, and newsletter unsubscribe pages. The
-`/newsletter/unsubscribe` page renders the Blade missing, invalid, and
-confirmation states; when a token is present it calls Laravel
-`/api/v2/newsletter/unsubscribe` before rendering the confirmation or invalid
-state. Tenant-domain routing, localization, and live email-token runtime
-behavior are not certified.
+reset-password, two-factor, email verification, and newsletter unsubscribe
+pages. `/verify-email` renders the Blade missing, invalid, and confirmation
+states and calls Laravel `/api/auth/verify-email` when a token is present.
+`/newsletter/unsubscribe` renders the Blade missing, invalid, and confirmation
+states; when a token is present it calls Laravel `/api/v2/newsletter/unsubscribe`
+before rendering the confirmation or invalid state. Tenant-domain routing,
+localization, and live email-token runtime behavior are not certified.
 
 The `/account` page is now a local Blade-style protected account hub candidate.
 Unsigned requests redirect to `/login`, matching the Laravel accessible account
