@@ -167,6 +167,18 @@ generated description value repopulation, image and skill-tag form parity,
 owner/requester authorization depth, tenant/feature gates, localization, runtime
 smoke tests, and ASP.NET backend compatibility are not certified.
 
+The `/exchanges` and `/exchanges/{id}` pages are now partial Laravel-backed
+candidates for the Blade exchange list and detail workflows. Signed-in GET
+requests call Laravel `/api/v2/exchanges/config`, `/api/v2/exchanges`,
+`/api/v2/exchanges/{id}`, and completed-exchange ratings from
+`/api/v2/exchanges/{id}/ratings` to render the Blade-style tab filter, exchange
+cards, detail summary, member action link, role-appropriate no-JS action forms,
+review form, ratings, and timeline. POST `/exchanges/{id}` and
+`/exchanges/{id}/rate` continue to use Laravel v2 exchange action/rating APIs
+with Laravel status redirects. This remains partial: exact module/feature gates,
+tenant behavior, authorization edge cases, localization, live workflow side
+effects, and ASP.NET backend compatibility are not certified.
+
 The `/chat` page is now a partial Laravel-backed candidate for the Blade AI
 assistant. Signed-in GET requests call Laravel `/api/ai/conversations` and, when
 `?c=` is present, `/api/ai/conversations/{id}` to render the conversation list,

@@ -1229,6 +1229,36 @@ async function performExchangeAction(token, id, action, data = {}) {
   });
 }
 
+async function getExchangeConfig(token) {
+  return request('/api/v2/exchanges/config', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExchanges(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.status) query.set('status', params.status);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  return request(`/api/v2/exchanges${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExchange(token, id) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getExchangeRatings(token, id) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/ratings`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function createExchangeRequest(token, data) {
   return request('/api/v2/exchanges', {
     method: 'POST',
@@ -2655,6 +2685,10 @@ module.exports = {
   votePoll,
   rankPoll,
   dismissMatch,
+  getExchangeConfig,
+  getExchanges,
+  getExchange,
+  getExchangeRatings,
   performExchangeAction,
   createExchangeRequest,
   rateExchange,

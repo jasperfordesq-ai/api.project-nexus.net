@@ -1,0 +1,222 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block beforeContent %}
+  <a class="govuk-back-link" href="/exchanges">Back to exchanges</a>
+{% endblock %}
+
+{% block mainContent %}
+  {% if status == "exchange-created" or status == "exchange-updated" or status == "rating-submitted" %}
+    {{ govukNotificationBanner({
+      type: "success",
+      titleText: "Success",
+      text: "Exchange updated."
+    }) }}
+  {% endif %}
+
+  {% if status == "exchange-action-failed" or status == "rating-failed" or status == "rating-invalid" %}
+    {{ govukErrorSummary({
+      titleText: "There is a problem",
+      errorList: [
+        {
+          text: "The exchange could not be updated.",
+          href: "#main-content"
+        }
+      ]
+    }) }}
+  {% endif %}
+
+  <span class="govuk-caption-l">Exchange detail</span>
+  <h1 class="govuk-heading-xl">{{ exchange.listingTitle }}</h1>
+
+  {% set isRequester = currentUserId and exchange.requesterId == currentUserId %}
+  {% set isProvider = currentUserId and exchange.providerId == currentUserId %}
+  <p class="govuk-body-l">{% if isRequester %}You requested this exchange.{% elseif isProvider %}You are the provider for this exchange.{% else %}You are viewing this exchange.{% endif %}</p>
+  <strong class="govuk-tag {{ exchange.statusTagClass }} govuk-!-margin-bottom-4">{{ exchange.statusLabel }}</strong>
+
+  <h2 class="govuk-heading-l govuk-!-margin-top-7">Summary</h2>
+  <dl class="govuk-summary-list">
+    {% if exchange.listingId %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Listing</dt>
+        <dd class="govuk-summary-list__value"><a class="govuk-link" href="/listings/{{ exchange.listingId }}">{{ exchange.listingTitle }}</a></dd>
+      </div>
+    {% endif %}
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Requester</dt>
+      <dd class="govuk-summary-list__value">{{ exchange.requesterName }}</dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Provider</dt>
+      <dd class="govuk-summary-list__value">{{ exchange.providerName }}</dd>
+    </div>
+    {% if exchange.proposedHoursText %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Proposed hours</dt>
+        <dd class="govuk-summary-list__value">{{ exchange.proposedHoursText }}</dd>
+      </div>
+    {% endif %}
+    {% if exchange.prepTimeText %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Preparation time</dt>
+        <dd class="govuk-summary-list__value">{{ exchange.prepTimeText }}</dd>
+      </div>
+    {% endif %}
+    {% if exchange.finalHoursText %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Final hours</dt>
+        <dd class="govuk-summary-list__value">{{ exchange.finalHoursText }}</dd>
+      </div>
+    {% endif %}
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Risk</dt>
+      <dd class="govuk-summary-list__value">{{ exchange.riskLabel }}</dd>
+    </div>
+    {% if exchange.createdAt %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Created</dt>
+        <dd class="govuk-summary-list__value">{{ exchange.createdAt | formatDate }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  {% if exchange.message %}
+    <h2 class="govuk-heading-m">Message</h2>
+    <div class="govuk-inset-text">{{ exchange.message | nl2br | safe }}</div>
+  {% endif %}
+
+  <div class="nexus-alpha-actions govuk-!-margin-bottom-7">
+    {% if isRequester and exchange.providerId %}
+      <a class="govuk-button govuk-button--secondary" href="/messages/{{ exchange.providerId }}" role="button" draggable="false" data-module="govuk-button">Message member</a>
+    {% elseif isProvider and exchange.requesterId %}
+      <a class="govuk-button govuk-button--secondary" href="/messages/{{ exchange.requesterId }}" role="button" draggable="false" data-module="govuk-button">Message member</a>
+    {% endif %}
+  </div>
+
+  <h2 class="govuk-heading-l">Actions</h2>
+  {% set canAccept = isProvider and exchange.status == "pending_provider" %}
+  {% set canStart = isProvider and exchange.status == "accepted" %}
+  {% set canComplete = isProvider and exchange.status == "in_progress" %}
+  {% set canConfirm = (isRequester or isProvider) and (exchange.status == "in_progress" or exchange.status == "pending_confirmation") %}
+  {% set canCancel = (isRequester or isProvider) and (exchange.status == "pending_provider" or exchange.status == "pending_broker" or exchange.status == "accepted") %}
+
+  {% if canAccept or canStart or canComplete or canConfirm or canCancel %}
+    <div class="govuk-button-group govuk-!-margin-bottom-5">
+      {% if canAccept %}
+        <form method="post" action="/exchanges/{{ exchange.id }}">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="action" value="accept">
+          {{ govukButton({ text: "Accept" }) }}
+        </form>
+        <form method="post" action="/exchanges/{{ exchange.id }}">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="action" value="decline">
+          {{ govukButton({ text: "Decline", classes: "govuk-button--warning" }) }}
+        </form>
+      {% endif %}
+      {% if canStart %}
+        <form method="post" action="/exchanges/{{ exchange.id }}">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="action" value="start">
+          {{ govukButton({ text: "Start exchange" }) }}
+        </form>
+      {% endif %}
+      {% if canComplete %}
+        <form method="post" action="/exchanges/{{ exchange.id }}">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="action" value="complete">
+          {{ govukButton({ text: "Mark ready" }) }}
+        </form>
+      {% endif %}
+    </div>
+
+    {% if canConfirm %}
+      <form method="post" action="/exchanges/{{ exchange.id }}" class="govuk-!-margin-bottom-5">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <input type="hidden" name="action" value="confirm">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="hours">Confirm hours</label>
+          <input class="govuk-input govuk-input--width-5" id="hours" name="hours" type="number" min="0.25" max="24" step="0.25" value="{{ exchange.proposedHours or 1 }}" required>
+        </div>
+        {{ govukButton({ text: "Confirm hours" }) }}
+      </form>
+    {% endif %}
+
+    {% if canCancel %}
+      <form method="post" action="/exchanges/{{ exchange.id }}">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <input type="hidden" name="action" value="cancel">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="cancel-reason">Reason</label>
+          <textarea class="govuk-textarea" id="cancel-reason" name="reason" rows="3"></textarea>
+        </div>
+        {{ govukButton({ text: "Cancel exchange", classes: "govuk-button--warning" }) }}
+      </form>
+    {% endif %}
+  {% else %}
+    <div class="govuk-inset-text">No action is needed right now.</div>
+  {% endif %}
+
+  {% if exchange.status == "completed" %}
+    <h2 class="govuk-heading-l govuk-!-margin-top-7">Review this exchange</h2>
+    {% if canReview %}
+      <form method="post" action="/exchanges/{{ exchange.id }}/rate">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="rating">Rating</label>
+          <select class="govuk-select govuk-input--width-10" id="rating" name="rating" required>
+            <option value="5">5 out of 5</option>
+            <option value="4">4 out of 5</option>
+            <option value="3">3 out of 5</option>
+            <option value="2">2 out of 5</option>
+            <option value="1">1 out of 5</option>
+          </select>
+        </div>
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="comment">Comment</label>
+          <textarea class="govuk-textarea" id="comment" name="comment" rows="4"></textarea>
+        </div>
+        {{ govukButton({ text: "Submit review" }) }}
+      </form>
+    {% else %}
+      <div class="govuk-inset-text">Thank you for reviewing this exchange.</div>
+    {% endif %}
+  {% endif %}
+
+  {% if ratings and ratings.length %}
+    <h2 class="govuk-heading-l govuk-!-margin-top-7">Ratings</h2>
+    <ul class="govuk-list">
+      {% for rating in ratings %}
+        <li class="nexus-alpha-card govuk-!-margin-bottom-3">
+          <p class="govuk-body govuk-!-margin-bottom-1"><strong>{{ rating.name }}</strong> - {{ rating.rating }} out of 5</p>
+          {% if rating.comment %}
+            <p class="govuk-body govuk-!-margin-bottom-0">{{ rating.comment | nl2br | safe }}</p>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <h2 class="govuk-heading-l govuk-!-margin-top-8">Timeline</h2>
+  {% if exchange.history and exchange.history.length %}
+    <ol class="govuk-list govuk-list--spaced">
+      {% for entry in exchange.history %}
+        <li>
+          <strong>{{ entry.new_status or entry.old_status }}</strong>
+          {% if entry.actor_name %}<span class="govuk-hint govuk-!-margin-bottom-0">By {{ entry.actor_name }}</span>{% endif %}
+          {% if entry.created_at %}<span class="govuk-hint govuk-!-margin-bottom-0">{{ entry.created_at | formatDate }}</span>{% endif %}
+          {% if entry.notes %}<p class="govuk-body">{{ entry.notes | nl2br | safe }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <div class="govuk-inset-text">There is no timeline yet.</div>
+  {% endif %}
+{% endblock %}

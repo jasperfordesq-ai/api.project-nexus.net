@@ -119,6 +119,10 @@ jest.mock('../src/lib/api', () => ({
   deleteSavedCollection: jest.fn().mockResolvedValue({}),
   deleteSavedItem: jest.fn().mockResolvedValue({}),
   dismissMatch: jest.fn().mockResolvedValue({ data: { dismissed: true } }),
+  getExchangeConfig: jest.fn().mockResolvedValue({ data: { workflow_enabled: true } }),
+  getExchanges: jest.fn().mockResolvedValue({ data: [] }),
+  getExchange: jest.fn().mockResolvedValue({ data: { id: 88 } }),
+  getExchangeRatings: jest.fn().mockResolvedValue({ data: { ratings: [], has_rated: false } }),
   performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   rateExchange: jest.fn().mockResolvedValue({ data: { ratings: [] } }),
   sendAiChat: jest.fn().mockResolvedValue({ data: { conversation_id: 123 } }),
@@ -255,9 +259,15 @@ describe('shared accessible frontend shell', () => {
     api.deleteSavedCollection.mockReset().mockResolvedValue({});
     api.deleteSavedItem.mockReset().mockResolvedValue({});
     api.dismissMatch.mockReset().mockResolvedValue({ data: { dismissed: true } });
+    api.getExchangeConfig.mockReset().mockResolvedValue({ data: { workflow_enabled: true } });
+    api.getExchanges.mockReset().mockResolvedValue({ data: [] });
+    api.getExchange.mockReset().mockResolvedValue({ data: { id: 88 } });
+    api.getExchangeRatings.mockReset().mockResolvedValue({ data: { ratings: [], has_rated: false } });
     api.performExchangeAction.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.rateExchange.mockReset().mockResolvedValue({ data: { ratings: [] } });
     api.sendAiChat.mockReset().mockResolvedValue({ data: { conversation_id: 123 } });
+    api.getAiConversations.mockReset().mockResolvedValue({ data: [] });
+    api.getAiConversation.mockReset().mockResolvedValue({ data: { id: 77, messages: [] } });
     api.getExplore.mockReset().mockResolvedValue({ data: {} });
     api.getMemberPremiumTiers.mockReset().mockResolvedValue({ data: { tiers: [] } });
     api.getMemberPremiumMe.mockReset().mockResolvedValue({ data: { subscription: null, entitled_tier: null, unlocked_features: [] } });
@@ -2610,6 +2620,100 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/matches/board?source=listing&status=match-dismissed#matches-top');
     expect(api.dismissMatch).toHaveBeenCalledWith('test-token', 77, 'too_far');
+  });
+
+  it('renders the Laravel-backed exchanges list page with tabs and exchange cards', async () => {
+    const api = require('../src/lib/api');
+    api.getExchanges.mockResolvedValueOnce({
+      data: [
+        {
+          id: 88,
+          listing: { id: 42, title: 'Repair a bicycle' },
+          requester: { id: 101, name: 'Avery Morgan' },
+          provider: { id: 202, name: 'Sam Taylor' },
+          requester_id: 101,
+          provider_id: 202,
+          status: 'pending_confirmation',
+          proposed_hours: 2.5,
+          created_at: '2026-07-05T10:00:00Z'
+        }
+      ],
+      meta: { has_more: true, cursor: 'next-cursor' }
+    });
+
+    const response = await request(app)
+      .get('/exchanges?tab=needs_confirmation&cursor=abc')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Exchanges');
+    expect(response.text).toContain('All');
+    expect(response.text).toContain('Needs confirmation');
+    expect(response.text).toContain('Repair a bicycle');
+    expect(response.text).toContain('Sam Taylor');
+    expect(response.text).toContain('2.5 hours');
+    expect(response.text).toContain('/exchanges/88');
+    expect(response.text).toContain('cursor=next-cursor');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getExchangeConfig).toHaveBeenCalledWith('test-token');
+    expect(api.getExchanges).toHaveBeenCalledWith('test-token', {
+      per_page: 20,
+      status: 'needs_confirmation',
+      cursor: 'abc'
+    });
+  });
+
+  it('renders the Laravel-backed exchange detail page with role actions, timeline, and rating form', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ id: 202 });
+    api.getExchange.mockResolvedValueOnce({
+      data: {
+        id: 88,
+        listing: { id: 42, title: 'Repair a bicycle' },
+        requester: { id: 101, name: 'Avery Morgan' },
+        provider: { id: 202, name: 'Sam Taylor' },
+        requester_id: 101,
+        provider_id: 202,
+        status: 'completed',
+        proposed_hours: 2,
+        final_hours: 2.25,
+        risk_level: 'low',
+        message: 'The chain is slipping when changing gear.',
+        requester_confirmed_at: '2026-07-05T12:00:00Z',
+        provider_confirmed_at: '2026-07-05T12:10:00Z',
+        status_history: [
+          { new_status: 'completed', actor_name: 'Sam Taylor', notes: 'Finished and checked.', created_at: '2026-07-05T12:10:00Z' }
+        ],
+        created_at: '2026-07-05T10:00:00Z'
+      }
+    });
+    api.getExchangeRatings.mockResolvedValueOnce({
+      data: {
+        has_rated: false,
+        ratings: [
+          { id: 1, rating: 5, comment: 'Great exchange', rater_first_name: 'Avery', rater_last_name: 'Morgan' }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/exchanges/88?status=rating-submitted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Repair a bicycle');
+    expect(response.text).toContain('Message member');
+    expect(response.text).toContain('The chain is slipping when changing gear.');
+    expect(response.text).toContain('Final hours');
+    expect(response.text).toContain('2.25 hours');
+    expect(response.text).toContain('Rating');
+    expect(response.text).toContain('Great exchange');
+    expect(response.text).toContain('Finished and checked.');
+    expect(response.text).toContain('method="post" action="/exchanges/88/rate"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(api.getExchange).toHaveBeenCalledWith('test-token', 88);
+    expect(api.getExchangeRatings).toHaveBeenCalledWith('test-token', 88);
   });
 
   it('submits the Laravel exchange action route through the exchanges API helper', async () => {

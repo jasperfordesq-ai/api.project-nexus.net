@@ -1,0 +1,94 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block mainContent %}
+  <span class="govuk-caption-l">Exchanges</span>
+  <h1 class="govuk-heading-xl">Exchanges</h1>
+  <p class="govuk-body-l">See your exchange requests, agreements, and time-credit activity.</p>
+
+  {% if not workflowEnabled %}
+    {{ govukNotificationBanner({
+      titleText: "Exchange workflow unavailable",
+      text: "Exchange workflow controls are currently disabled for this community."
+    }) }}
+  {% endif %}
+
+  {% set tabs = [
+    { key: "all", label: "All", href: "/exchanges?tab=all" },
+    { key: "active", label: "Active", href: "/exchanges?tab=active" },
+    { key: "needs_confirmation", label: "Needs confirmation", href: "/exchanges?tab=needs_confirmation" },
+    { key: "completed", label: "Completed", href: "/exchanges?tab=completed" }
+  ] %}
+  <nav aria-label="Filter exchanges" class="govuk-!-margin-bottom-7">
+    <ul class="nexus-alpha-filter-nav">
+      {% for tab in tabs %}
+        <li>
+          <a class="govuk-link{% if activeTab == tab.key %} govuk-link--no-visited-state{% endif %}" href="{{ tab.href }}"{% if activeTab == tab.key %} aria-current="true"{% endif %}>{{ tab.label }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <h2 class="govuk-heading-l">Exchange requests</h2>
+  <p class="govuk-body nexus-alpha-result-count" aria-live="polite">{{ exchanges.length }} exchange{% if exchanges.length != 1 %}s{% endif %}</p>
+
+  {% if exchanges and exchanges.length %}
+    <div class="nexus-alpha-card-list">
+      {% for exchange in exchanges %}
+        <article class="nexus-alpha-card">
+          <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
+            <a class="govuk-link" href="/exchanges/{{ exchange.id }}">{{ exchange.listingTitle }}</a>
+          </h3>
+          <strong class="govuk-tag {{ exchange.statusTagClass }}">{{ exchange.statusLabel }}</strong>
+          <dl class="nexus-alpha-inline-list govuk-!-margin-top-3">
+            {% if exchange.proposedHoursText %}
+              <div>
+                <dt>Proposed hours</dt>
+                <dd>{{ exchange.proposedHoursText }}</dd>
+              </div>
+            {% endif %}
+            <div>
+              <dt>Requester</dt>
+              <dd>{{ exchange.requesterName }}</dd>
+            </div>
+            <div>
+              <dt>Provider</dt>
+              <dd>{{ exchange.providerName }}</dd>
+            </div>
+            {% if exchange.createdAt %}
+              <div>
+                <dt>Created</dt>
+                <dd>{{ exchange.createdAt | formatDate }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            <a class="govuk-link govuk-link--no-visited-state" href="/exchanges/{{ exchange.id }}">View exchange</a>
+          </p>
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if meta.hasMore and meta.cursor %}
+      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Exchange pagination">
+        <div class="govuk-pagination__next">
+          <a class="govuk-link govuk-pagination__link" href="/exchanges?tab={{ activeTab }}&cursor={{ meta.cursor }}" rel="next">
+            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-visually-hidden">:</span>
+            <span class="govuk-pagination__link-label">more exchanges</span>
+          </a>
+        </div>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-m">No results</h2>
+      <p class="govuk-body">There are no exchanges in this view.</p>
+    </div>
+  {% endif %}
+{% endblock %}
