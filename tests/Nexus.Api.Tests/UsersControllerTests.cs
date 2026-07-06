@@ -5,6 +5,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -24,6 +26,31 @@ public class UsersControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         content.GetProperty("email").GetString().Should().Be("member@test.com");
+    }
+
+    [Fact]
+    public async Task DeleteMe_V2Alias_WithPassword_AnonymizesUserForLaravelReact()
+    {
+        await AuthenticateAsMemberAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "/api/v2/users/me")
+        {
+            Content = JsonContent.Create(new { password = TestDataSeeder.TestPassword })
+        };
+
+        var response = await Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+        content.GetProperty("meta").GetProperty("base_url").GetString().Should().NotBeNullOrWhiteSpace();
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var deletedUser = await db.Users.FindAsync(TestData.MemberUser.Id);
+        deletedUser.Should().NotBeNull();
+        deletedUser!.Email.Should().Be($"deleted-{TestData.MemberUser.Id}@anonymized.local");
+        deletedUser.IsActive.Should().BeFalse();
+        deletedUser.PasswordHash.Should().Be("DELETED");
     }
 
     [Fact]

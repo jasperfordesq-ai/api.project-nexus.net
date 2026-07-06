@@ -27,13 +27,15 @@ public class UsersController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly FileUploadService _fileService;
+    private readonly GdprService _gdprService;
     private readonly ILogger<UsersController> _logger;
 
-    public UsersController(NexusDbContext db, TenantContext tenantContext, FileUploadService fileService, ILogger<UsersController> logger)
+    public UsersController(NexusDbContext db, TenantContext tenantContext, FileUploadService fileService, GdprService gdprService, ILogger<UsersController> logger)
     {
         _db = db;
         _tenantContext = tenantContext;
         _fileService = fileService;
+        _gdprService = gdprService;
         _logger = logger;
     }
 
@@ -226,6 +228,69 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Delete the current user's account after password re-authentication.
+    /// DELETE /api/v2/users/me
+    /// </summary>
+    [HttpDelete("me")]
+    public async Task<IActionResult> DeleteMe([FromBody] DeleteAccountRequest? request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+        {
+            return Unauthorized(new { error = "Invalid token" });
+        }
+
+        var password = request?.Password ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    new { code = "VALIDATION_ERROR", message = "Password is required.", field = "password" }
+                }
+            });
+        }
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+        if (user == null)
+        {
+            return NotFound(new { error = "User not found" });
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                errors = new[]
+                {
+                    new { code = "INVALID_PASSWORD", message = "Invalid password.", field = "password" }
+                }
+            });
+        }
+
+        var deletionRequest = new DataDeletionRequest
+        {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            UserId = user.Id,
+            Status = DeletionStatus.Approved,
+            Reason = "Self-service account deletion",
+            ReviewedAt = DateTime.UtcNow
+        };
+
+        _db.Set<DataDeletionRequest>().Add(deletionRequest);
+        await _db.SaveChangesAsync();
+        await _gdprService.ProcessDataDeletionAsync(deletionRequest.Id);
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}".TrimEnd('/');
+        return Ok(new
+        {
+            data = new { message = "Account deleted." },
+            meta = new { base_url = baseUrl }
+        });
+    }
+
+    /// <summary>
     /// Upload/update profile photo for the current user.
     /// POST /api/users/me/avatar
     /// Accepts multipart form with field "avatar" or "file".
@@ -339,4 +404,10 @@ public class UpdateProfileRequest
 
     [JsonPropertyName("bio")]
     public string? Bio { get; set; }
+}
+
+public class DeleteAccountRequest
+{
+    [JsonPropertyName("password")]
+    public string? Password { get; set; }
 }
