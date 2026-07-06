@@ -47,18 +47,20 @@ anchors, but POST persistence is not certified. The manage GET reads
 renders owner/admin and pending rows, but Laravel auth redirect behavior is not
 certified. Its detail GET reads
 `/api/v2/volunteering/organisations/{id}?include=public_contract` and renders
-profile, contact, jobs-link, basic public stats, and empty depth sections. The
-organisation jobs GET reads `/api/v2/jobs?organization_id={id}&status=open`
-when signed in and renders Blade-style job cards. The organisation opportunity
-apply GET reads `/api/v2/volunteering/opportunities/{id}` and renders the
-Blade-style confirmation page that posts to the existing volunteering apply
-route when signed in. It is
+profile, contact, jobs-link, basic public stats, active opportunities from
+`/api/v2/volunteering/opportunities?organization_id={id}`, and volunteer
+reviews from `/api/v2/volunteering/reviews/organization/{id}`. The organisation
+jobs GET reads `/api/v2/jobs?organization_id={id}&status=open` when signed in
+and renders Blade-style job cards. The organisation opportunity apply GET reads
+`/api/v2/volunteering/opportunities/{id}` and renders the Blade-style
+confirmation page that posts to the existing volunteering apply route when
+signed in. It is
 not a backend adapter and must not be treated as proof that Laravel or ASP.NET
 organisation workflows are ready in this app. The remaining work includes
 tenant-prefixed routing, auth redirects, volunteering feature gates,
 job-vacancy feature gates, registration persistence, POST validation behavior,
-redirects, organisation apply POST workflow, detail opportunities/reviews depth
-data, localization, and runtime smoke tests.
+redirects, organisation apply POST workflow, localization, and runtime smoke
+tests.
 
 ## Required Compatibility Areas
 

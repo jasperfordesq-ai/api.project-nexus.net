@@ -86,15 +86,18 @@ entry and, when a signed token is present, reads
 `/api/v2/volunteering/my-organisations` for owner/admin and pending rows. Its
 detail page is backed by
 `/api/v2/volunteering/organisations/{id}?include=public_contract` for profile,
-contact, and basic public stats. Its `/organisations/{id}/jobs` page renders
-the Blade-style organisation job openings view and, when a signed token is
-present, reads `/api/v2/jobs?organization_id={id}&status=open`. Its
+contact, basic public stats, and Laravel-backed depth sections from
+`/api/v2/volunteering/opportunities?organization_id={id}` and
+`/api/v2/volunteering/reviews/organization/{id}`. Its
+`/organisations/{id}/jobs` page renders the Blade-style organisation job
+openings view and, when a signed token is present, reads
+`/api/v2/jobs?organization_id={id}&status=open`. Its
 `/organisations/opportunities/{id}/apply` page renders the Blade-style apply
 confirmation page and reads `/api/v2/volunteering/opportunities/{id}`. This
 remains partial: auth enforcement, volunteering/job feature gates,
 tenant-prefixed routes, organisation registration persistence, apply POST
-workflow, detail depth opportunities/reviews, localization, runtime smoke
-tests, and ASP.NET backend compatibility are not certified.
+workflow, localization, runtime smoke tests, and ASP.NET backend compatibility
+are not certified.
 
 Additional preparation docs:
 

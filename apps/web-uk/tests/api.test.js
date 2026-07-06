@@ -285,6 +285,61 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getOrganisationOpportunities', () => {
+    it('should call the Laravel volunteering opportunities endpoint for an organisation', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: [
+            { id: 77, title: 'Community Kitchen Helper', is_remote: true }
+          ],
+          meta: { per_page: 10 }
+        })
+      });
+
+      const result = await api.getOrganisationOpportunities(42, { per_page: 10 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/opportunities?organization_id=42&per_page=10',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      expect(result.data[0].title).toBe('Community Kitchen Helper');
+    });
+  });
+
+  describe('getOrganisationReviews', () => {
+    it('should call the Laravel volunteering organisation reviews endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: {
+            reviews: [
+              { id: 12, rating: 5, comment: 'Helpful and welcoming.' }
+            ]
+          }
+        })
+      });
+
+      const result = await api.getOrganisationReviews(42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/reviews/organization/42',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      expect(result.data.reviews[0].rating).toBe(5);
+    });
+  });
+
   describe('network errors', () => {
     it('should throw ApiOfflineError on connection refused', async () => {
       const error = new Error('fetch failed');

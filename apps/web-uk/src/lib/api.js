@@ -279,6 +279,19 @@ async function getVolunteerOpportunity(id, token = '') {
   return request(`/api/v2/volunteering/opportunities/${encodeURIComponent(id)}`, options);
 }
 
+async function getOrganisationOpportunities(organisationId, params = {}) {
+  const query = new URLSearchParams();
+  query.set('organization_id', organisationId);
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  return request(`/api/v2/volunteering/opportunities?${query.toString()}`);
+}
+
+async function getOrganisationReviews(organisationId) {
+  return request(`/api/v2/volunteering/reviews/organization/${encodeURIComponent(organisationId)}`);
+}
+
 async function getMyVolunteerOrganisations(token, params = {}) {
   const query = new URLSearchParams();
   if (params.per_page) query.set('per_page', params.per_page);
@@ -1198,6 +1211,8 @@ module.exports = {
   getVolunteerOrganisations,
   getVolunteerOrganisation,
   getVolunteerOpportunity,
+  getOrganisationOpportunities,
+  getOrganisationReviews,
   getMyVolunteerOrganisations,
   getOrganisationJobs,
   // Wallet

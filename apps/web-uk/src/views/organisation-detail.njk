@@ -7,6 +7,8 @@
 
 {% set organisationName = organisation.name or "Organisations" %}
 {% set organisationDescription = organisation.description or organisation.excerpt or "" %}
+{% set opportunities = orgOpportunities or [] %}
+{% set reviews = orgReviews or [] %}
 
 {% block mainContent %}
   <a class="govuk-back-link" href="/organisations">Organisations</a>
@@ -79,8 +81,65 @@
   </dl>
 
   <h2 class="govuk-heading-l">Volunteering opportunities</h2>
-  <div class="govuk-inset-text">There are no current volunteering opportunities at this organisation.</div>
+  {% if opportunities and opportunities.length %}
+    <p class="govuk-body">Open volunteering opportunities posted by {{ organisationName }}.</p>
+    <div class="nexus-alpha-card-list">
+      {% for opportunity in opportunities %}
+        {% if opportunity.id %}
+          <article class="nexus-alpha-card">
+            <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
+              <a class="govuk-link" href="/volunteering/opportunities/{{ opportunity.id }}">{{ opportunity.title or "Organisations" }}</a>
+            </h3>
+
+            {% if opportunity.is_remote %}
+              <p class="govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--turquoise">Remote</strong></p>
+            {% endif %}
+
+            {% if opportunity.summary %}
+              <p class="govuk-body">{{ opportunity.summary }}</p>
+            {% endif %}
+
+            <div class="nexus-alpha-actions">
+              <a class="govuk-link" href="/volunteering/opportunities/{{ opportunity.id }}">View opportunity</a>
+              <a class="govuk-link" href="/organisations/opportunities/{{ opportunity.id }}/apply">Apply to volunteer</a>
+            </div>
+          </article>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="govuk-inset-text">There are no current volunteering opportunities at this organisation.</div>
+  {% endif %}
 
   <h2 class="govuk-heading-l">Volunteer reviews</h2>
-  <div class="govuk-inset-text">This organisation has no reviews yet.</div>
+  {% if reviews and reviews.length %}
+    <div class="nexus-alpha-card-list">
+      {% for review in reviews %}
+        {% set author = review.author or {} %}
+        {% set authorName = author.name or "Someone" %}
+        {% set rating = review.rating or 0 %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-card-head">
+            {% if author.avatar %}
+              <img class="nexus-alpha-avatar" src="{{ author.avatar }}" alt="" width="48" height="48" loading="lazy" decoding="async">
+            {% else %}
+              <span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">{{ authorName | first | upper }}</span>
+            {% endif %}
+            <span class="govuk-body govuk-!-margin-bottom-0 govuk-!-font-weight-bold">{{ authorName }}</span>
+          </div>
+
+          <p class="govuk-!-margin-bottom-2">
+            <progress max="5" value="{{ rating }}" aria-label="{{ rating }} out of 5">{{ rating }} out of 5</progress>
+            <span class="govuk-!-margin-left-2">{{ rating }} out of 5</span>
+          </p>
+
+          {% if review.comment %}
+            <div class="govuk-body">{{ review.comment | nl2br | safe }}</div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="govuk-inset-text">This organisation has no reviews yet.</div>
+  {% endif %}
 {% endblock %}

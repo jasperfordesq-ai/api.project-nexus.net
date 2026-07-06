@@ -53,6 +53,8 @@ jest.mock('../src/lib/api', () => ({
   getVolunteerOrganisation: jest.fn(),
   getMyVolunteerOrganisations: jest.fn(),
   getVolunteerOpportunity: jest.fn(),
+  getOrganisationOpportunities: jest.fn(),
+  getOrganisationReviews: jest.fn(),
   getOrganisationJobs: jest.fn()
 }));
 
@@ -325,10 +327,35 @@ describe('shared accessible frontend shell', () => {
         }
       }
     });
+    api.getOrganisationOpportunities.mockResolvedValueOnce({
+      data: [
+        {
+          id: 77,
+          title: 'Community Kitchen Helper',
+          description: 'Help prepare meals and welcome visitors at a weekly community kitchen.',
+          is_remote: true
+        }
+      ],
+      meta: { per_page: 10, has_more: false }
+    });
+    api.getOrganisationReviews.mockResolvedValueOnce({
+      data: {
+        reviews: [
+          {
+            id: 12,
+            rating: 5,
+            comment: 'Helpful and welcoming.',
+            author: { name: 'Aisha Khan' }
+          }
+        ]
+      }
+    });
 
     const response = await request(app).get('/organisations/42');
 
     expect(api.getVolunteerOrganisation).toHaveBeenCalledWith('42');
+    expect(api.getOrganisationOpportunities).toHaveBeenCalledWith('42', { per_page: 10 });
+    expect(api.getOrganisationReviews).toHaveBeenCalledWith('42');
     expect(response.status).toBe(200);
     expect(response.text).toContain('href="/organisations"');
     expect(response.text).toContain('Community Club');
@@ -345,8 +372,18 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Hours contributed');
     expect(response.text).toContain('17.5');
     expect(response.text).toContain('Volunteer reviews');
-    expect(response.text).toContain('There are no current volunteering opportunities at this organisation.');
-    expect(response.text).toContain('This organisation has no reviews yet.');
+    expect(response.text).toContain('Open volunteering opportunities posted by Community Club.');
+    expect(response.text).toContain('href="/volunteering/opportunities/77"');
+    expect(response.text).toContain('Community Kitchen Helper');
+    expect(response.text).toContain('Remote');
+    expect(response.text).toContain('View opportunity');
+    expect(response.text).toContain('href="/organisations/opportunities/77/apply"');
+    expect(response.text).toContain('Apply to volunteer');
+    expect(response.text).toContain('Aisha Khan');
+    expect(response.text).toContain('5 out of 5');
+    expect(response.text).toContain('Helpful and welcoming.');
+    expect(response.text).not.toContain('There are no current volunteering opportunities at this organisation.');
+    expect(response.text).not.toContain('This organisation has no reviews yet.');
   });
 
   it('renders the Blade-style organisation jobs page from the Laravel jobs contract', async () => {
@@ -518,7 +555,7 @@ describe('shared accessible frontend shell', () => {
     const contract = fs.readFileSync(path.join(__dirname, '..', 'docs', 'BACKEND_SWITCHING_CONTRACT.md'), 'utf8');
 
     expect(matrix).toContain('Laravel `govuk-alpha*`');
-    expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/:id`, `/organisations/:id/jobs`, `/organisations/opportunities/:id/apply` | Partial Laravel-backed candidate: directory/search and browse render `/api/v2/volunteering/organisations`; register and manage GET render Blade-style forms/pages; manage calls `/api/v2/volunteering/my-organisations` when signed in; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`; jobs reads `/api/v2/jobs?organization_id={id}&status=open` when signed in; apply GET reads `/api/v2/volunteering/opportunities/{id}`; auth/tenant gates not certified. |');
+    expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/:id`, `/organisations/:id/jobs`, `/organisations/opportunities/:id/apply` | Partial Laravel-backed candidate: directory/search and browse render `/api/v2/volunteering/organisations`; register and manage GET render Blade-style forms/pages; manage calls `/api/v2/volunteering/my-organisations` when signed in; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`, `/api/v2/volunteering/opportunities?organization_id={id}`, and `/api/v2/volunteering/reviews/organization/{id}`; jobs reads `/api/v2/jobs?organization_id={id}&status=open` when signed in; apply GET reads `/api/v2/volunteering/opportunities/{id}`; auth/tenant gates not certified. |');
     expect(matrix).toContain('It does not certify route parity');
     expect(contract).toContain('Its default backend contract is now Laravel-first');
     expect(contract).toContain('| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |');

@@ -202,7 +202,9 @@ Follow the Laravel Blade accessible frontend for:
   `/api/v2/volunteering/organisations` collection, register GET renders the
   Blade-style form, manage GET reads
   `/api/v2/volunteering/my-organisations` when signed in, and detail GET reads
-  `/api/v2/volunteering/organisations/{id}?include=public_contract`. The
+  `/api/v2/volunteering/organisations/{id}?include=public_contract` plus
+  `/api/v2/volunteering/opportunities?organization_id={id}` and
+  `/api/v2/volunteering/reviews/organization/{id}` for depth sections. The
   organisation jobs GET reads `/api/v2/jobs?organization_id={id}&status=open`
   when signed in. The organisation opportunity apply GET reads
   `/api/v2/volunteering/opportunities/{id}` and renders the Blade-style

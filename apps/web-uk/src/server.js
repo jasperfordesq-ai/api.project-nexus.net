@@ -652,10 +652,15 @@ app.get('/organisations/opportunities/:id(\\d+)/apply', (req, res) => {
 });
 
 app.get('/organisations/:id(\\d+)', (req, res) => {
-  const { ApiError, getVolunteerOrganisation } = require('./lib/api');
+  const {
+    ApiError,
+    getOrganisationOpportunities,
+    getOrganisationReviews,
+    getVolunteerOrganisation
+  } = require('./lib/api');
 
   getVolunteerOrganisation(req.params.id)
-    .then((result) => {
+    .then(async (result) => {
       const data = result?.data && typeof result.data === 'object' ? result.data : {};
       const publicContract = data.public_contract && typeof data.public_contract === 'object'
         ? data.public_contract
@@ -672,12 +677,35 @@ app.get('/organisations/:id(\\d+)', (req, res) => {
       const websiteHref = website
         ? (/^https?:\/\//i.test(website) ? website : `https://${website}`)
         : '';
+      const [opportunitiesResult, reviewsResult] = await Promise.allSettled([
+        getOrganisationOpportunities(req.params.id, { per_page: 10 }),
+        getOrganisationReviews(req.params.id)
+      ]);
+      const opportunitiesPayload = opportunitiesResult.status === 'fulfilled' ? opportunitiesResult.value : null;
+      const reviewsPayload = reviewsResult.status === 'fulfilled' ? reviewsResult.value : null;
+      const opportunities = Array.isArray(opportunitiesPayload?.data)
+        ? opportunitiesPayload.data
+        : (Array.isArray(opportunitiesPayload?.items) ? opportunitiesPayload.items : []);
+      const reviewsData = reviewsPayload?.data && typeof reviewsPayload.data === 'object'
+        ? reviewsPayload.data
+        : {};
+      const reviews = Array.isArray(reviewsData.reviews)
+        ? reviewsData.reviews
+        : (Array.isArray(reviewsPayload?.reviews) ? reviewsPayload.reviews : []);
 
       res.render('organisation-detail', {
         title: organisation.name || 'Organisations',
         activeNav: 'explore',
         organisation,
         orgStats: stats,
+        orgOpportunities: opportunities.map((opportunity) => {
+          const description = opportunity.description || '';
+          return {
+            ...opportunity,
+            summary: description.length > 180 ? `${description.slice(0, 177)}...` : description
+          };
+        }),
+        orgReviews: reviews,
         contactEmail: organisation.contact_email || organisation.email || '',
         website,
         websiteHref
