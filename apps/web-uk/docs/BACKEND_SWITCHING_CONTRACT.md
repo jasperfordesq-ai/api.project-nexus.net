@@ -34,14 +34,17 @@ src/lib/backend-contract.js
 
 ## Current Page Candidates
 
-`/organisations`, `/organisations/browse`, and `/organisations/register` GET are
-local Blade-style visual/data candidates based on the Laravel accessible
-organisations pages. The directory GET reads
+`/organisations`, `/organisations/browse`, `/organisations/register`, and
+`/organisations/manage` GET are local Blade-style visual/data candidates based
+on the Laravel accessible organisations pages. The directory GET reads
 `/api/v2/volunteering/organisations` with `search` and `per_page` query params
 and keeps a warning state for API unavailability. The browse GET uses the same
 collection with `search`, `per_page`, and cursor-style load-more pagination. The
 register GET renders the standalone Blade-style form and validation status
-anchors, but POST persistence is not certified. Its detail GET reads
+anchors, but POST persistence is not certified. The manage GET reads
+`/api/v2/volunteering/my-organisations` when a signed token is present and
+renders owner/admin and pending rows, but Laravel auth redirect behavior is not
+certified. Its detail GET reads
 `/api/v2/volunteering/organisations/{id}?include=public_contract` and renders
 profile, contact, jobs-link, basic public stats, and empty depth sections. It is
 not a backend adapter and must not be treated as proof that Laravel or ASP.NET

@@ -491,6 +491,46 @@ app.get('/organisations/register', (req, res) => {
   });
 });
 
+app.get('/organisations/manage', (req, res) => {
+  const token = req.signedCookies.token;
+  const renderManage = ({ organisations = [], error = false, authRequired = false } = {}) => {
+    const manageableOrganisations = organisations.filter((organisation) => {
+      const status = String(organisation.status || '');
+      const role = String(organisation.member_role || organisation.role || '');
+      return ['approved', 'active'].includes(status) && ['owner', 'admin'].includes(role);
+    });
+    const pendingOrganisations = organisations.filter((organisation) => {
+      const status = String(organisation.status || '');
+      return status === 'pending';
+    });
+
+    res.render('organisations-manage', {
+      title: 'Manage my organisations',
+      activeNav: 'explore',
+      manageableOrganisations,
+      pendingOrganisations,
+      error,
+      authRequired
+    });
+  };
+
+  if (!token) {
+    return renderManage({ authRequired: true });
+  }
+
+  const { getMyVolunteerOrganisations } = require('./lib/api');
+  return getMyVolunteerOrganisations(token, { per_page: 50 })
+    .then((result) => {
+      const organisations = Array.isArray(result?.items)
+        ? result.items
+        : (Array.isArray(result?.data) ? result.data : []);
+      renderManage({ organisations });
+    })
+    .catch(() => {
+      renderManage({ error: true });
+    });
+});
+
 app.get('/organisations/:id(\\d+)', (req, res) => {
   const { ApiError, getVolunteerOrganisation } = require('./lib/api');
 

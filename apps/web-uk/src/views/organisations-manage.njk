@@ -1,0 +1,92 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% macro roleLabel(role) %}
+  {% if role == "owner" %}
+    Owner
+  {% elseif role == "admin" %}
+    Administrator
+  {% else %}
+    Member
+  {% endif %}
+{% endmacro %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/organisations/browse">Back to organisations</a>
+
+  <span class="govuk-caption-xl">Organisations in {{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Manage my organisations</h1>
+
+  {% if error %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-list govuk-error-summary__list">
+            <li>We could not load the organisations. Please try again.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if authRequired %}
+    <div class="govuk-notification-banner" role="region" aria-labelledby="manage-auth-title" data-module="govuk-notification-banner">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="manage-auth-title">Sign in required</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-body">Sign in to load your Laravel-backed organisations.</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <p class="govuk-body-l">Organisations you own or help administer. Open the dashboard to review applications and approve volunteer hours.</p>
+
+  {% if (not manageableOrganisations or manageableOrganisations.length == 0) and (not pendingOrganisations or pendingOrganisations.length == 0) %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-m govuk-!-margin-bottom-2">You do not manage any organisations</h2>
+      <p class="govuk-body">When you own or administer an organisation, it will appear here.</p>
+      <a class="govuk-button" data-module="govuk-button" href="/organisations/register">Register an organisation</a>
+    </div>
+  {% else %}
+    {% if manageableOrganisations and manageableOrganisations.length %}
+      <div class="nexus-alpha-card-list">
+        {% for organisation in manageableOrganisations %}
+          <article class="nexus-alpha-card">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ organisation.name or "Manage my organisations" }}</h2>
+            <dl class="nexus-alpha-inline-list nexus-alpha-meta">
+              <div>
+                <dt>Your role</dt>
+                <dd>{{ roleLabel(organisation.member_role or organisation.role or "member") }}</dd>
+              </div>
+            </dl>
+            <div class="nexus-alpha-actions">
+              <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" href="/volunteering/organisations/{{ organisation.id }}/manage">Open dashboard</a>
+              <a class="govuk-link" href="/organisations/{{ organisation.id }}">View organisation</a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if pendingOrganisations and pendingOrganisations.length %}
+      <h2 class="govuk-heading-l govuk-!-margin-top-6">Awaiting approval</h2>
+      <div class="nexus-alpha-card-list">
+        {% for organisation in pendingOrganisations %}
+          <article class="nexus-alpha-card">
+            <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ organisation.name or "Manage my organisations" }}</h3>
+            <p class="govuk-body govuk-!-margin-bottom-0">
+              <strong class="govuk-tag govuk-tag--yellow">Awaiting approval</strong>
+            </p>
+            <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">This organisation is awaiting administrator approval. You can manage it once it is approved.</p>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

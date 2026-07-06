@@ -81,11 +81,14 @@ parameters. Its `/organisations/browse` page is also backed by that collection,
 using `search`, `per_page`, and cursor-style load-more pagination. Its
 `/organisations/register` page renders the Blade-style standalone registration
 form and Laravel validation status anchors, but does not certify POST
-persistence. Its detail page is backed by
+persistence. Its `/organisations/manage` page renders the Blade-style manage
+entry and, when a signed token is present, reads
+`/api/v2/volunteering/my-organisations` for owner/admin and pending rows. Its
+detail page is backed by
 `/api/v2/volunteering/organisations/{id}?include=public_contract` for profile,
 contact, and basic public stats. This remains partial: auth enforcement,
 volunteering feature gates, tenant-prefixed routes, organisation registration
-persistence, manage/jobs/apply workflows, detail depth
+persistence, jobs/apply workflows, detail depth
 opportunities/reviews, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 

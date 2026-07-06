@@ -198,6 +198,34 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getMyVolunteerOrganisations', () => {
+    it('should call the Laravel my organisations endpoint with auth and per_page params', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          items: [
+            { id: 7, name: 'Community Club', status: 'approved', member_role: 'owner' }
+          ],
+          meta: { per_page: 50 }
+        })
+      });
+
+      const result = await api.getMyVolunteerOrganisations('test-token', { per_page: 50 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/my-organisations?per_page=50',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(result.items[0].name).toBe('Community Club');
+    });
+  });
+
   describe('network errors', () => {
     it('should throw ApiOfflineError on connection refused', async () => {
       const error = new Error('fetch failed');

@@ -271,6 +271,20 @@ async function getVolunteerOrganisation(id) {
   return request(`/api/v2/volunteering/organisations/${encodeURIComponent(id)}?include=public_contract`);
 }
 
+async function getMyVolunteerOrganisations(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.status) query.set('status', params.status);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/volunteering/my-organisations${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Wallet
 async function getBalance(token) {
   return request('/api/wallet/balance', {
@@ -1161,6 +1175,7 @@ module.exports = {
   // Laravel volunteering
   getVolunteerOrganisations,
   getVolunteerOrganisation,
+  getMyVolunteerOrganisations,
   // Wallet
   getBalance,
   getTransactions,

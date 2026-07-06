@@ -50,7 +50,8 @@ jest.mock('../src/lib/api', () => ({
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getTransactions: jest.fn(),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
-  getVolunteerOrganisation: jest.fn()
+  getVolunteerOrganisation: jest.fn(),
+  getMyVolunteerOrganisations: jest.fn()
 }));
 
 process.env.COOKIE_SECRET = 'test-secret-at-least-32-characters';
@@ -239,6 +240,64 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Your organisation will be reviewed by an administrator before it is listed.');
   });
 
+  it('renders the Blade-style manage organisations page as a local preparation page', async () => {
+    const api = require('../src/lib/api');
+
+    const response = await request(app).get('/organisations/manage');
+
+    expect(api.getMyVolunteerOrganisations).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/organisations/browse"');
+    expect(response.text).toContain('Back to organisations');
+    expect(response.text).toContain('Organisations in Project NEXUS Accessible');
+    expect(response.text).toContain('Manage my organisations');
+    expect(response.text).toContain('Organisations you own or help administer.');
+    expect(response.text).toContain('You do not manage any organisations');
+    expect(response.text).toContain('When you own or administer an organisation, it will appear here.');
+    expect(response.text).toContain('href="/organisations/register"');
+    expect(response.text).toContain('Register an organisation');
+    expect(response.text).toContain('Sign in to load your Laravel-backed organisations.');
+  });
+
+  it('renders manageable and pending organisation rows from the Laravel my-organisations contract', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getMyVolunteerOrganisations.mockResolvedValueOnce({
+      items: [
+        {
+          id: 42,
+          name: 'Community Club',
+          status: 'approved',
+          member_role: 'owner'
+        },
+        {
+          id: 99,
+          name: 'New Mutual Aid Group',
+          status: 'pending',
+          member_role: 'owner'
+        }
+      ]
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/organisations/manage')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getMyVolunteerOrganisations).toHaveBeenCalledWith('test-token', { per_page: 50 });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Community Club');
+    expect(response.text).toContain('Your role');
+    expect(response.text).toContain('Owner');
+    expect(response.text).toContain('href="/volunteering/organisations/42/manage"');
+    expect(response.text).toContain('Open dashboard');
+    expect(response.text).toContain('href="/organisations/42"');
+    expect(response.text).toContain('View organisation');
+    expect(response.text).toContain('Awaiting approval');
+    expect(response.text).toContain('New Mutual Aid Group');
+    expect(response.text).toContain('This organisation is awaiting administrator approval.');
+  });
+
   it('renders the Blade-style organisation detail page from the Laravel public organisation contract', async () => {
     const api = require('../src/lib/api');
     api.getVolunteerOrganisation.mockResolvedValueOnce({
@@ -315,7 +374,7 @@ describe('shared accessible frontend shell', () => {
     const contract = fs.readFileSync(path.join(__dirname, '..', 'docs', 'BACKEND_SWITCHING_CONTRACT.md'), 'utf8');
 
     expect(matrix).toContain('Laravel `govuk-alpha*`');
-    expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/{id}` | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/:id` | Partial Laravel-backed candidate: directory/search and browse render `/api/v2/volunteering/organisations`; register GET renders the Blade-style form without certified POST persistence; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`; auth/tenant gates not certified. |');
+    expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}` | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/:id` | Partial Laravel-backed candidate: directory/search and browse render `/api/v2/volunteering/organisations`; register and manage GET render Blade-style forms/pages; manage calls `/api/v2/volunteering/my-organisations` when signed in; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`; auth/tenant gates not certified. |');
     expect(matrix).toContain('It does not certify route parity');
     expect(contract).toContain('Its default backend contract is now Laravel-first');
     expect(contract).toContain('| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |');
