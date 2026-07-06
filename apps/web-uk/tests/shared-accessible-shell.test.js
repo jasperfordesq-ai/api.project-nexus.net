@@ -358,6 +358,82 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('This page is a shared-accessible-frontend preparation skeleton');
   });
 
+  it('renders the Laravel-backed Federation hub with stats, partners, and activity', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/status') {
+        return {
+          data: {
+            enabled: true,
+            tenant_federation_enabled: true,
+            federation_optin: true,
+            partnerships_count: 2,
+            messages_count: 5,
+            transactions_count: 1
+          }
+        };
+      }
+      if (pathValue === '/partners') {
+        return {
+          data: [
+            {
+              id: 12,
+              name: 'North Timebank',
+              tagline: 'Neighbouring community exchange',
+              location: 'Derry',
+              member_count: 40,
+              listing_count: 8,
+              federation_level_name: 'Social',
+              partnership_since: '2026-02-01T00:00:00Z'
+            }
+          ],
+          meta: { total: 1 }
+        };
+      }
+      if (pathValue === '/activity') {
+        return {
+          data: [
+            {
+              title: 'New federation message',
+              description: 'A partner community sent an update',
+              actor: { tenant_name: 'North Timebank' },
+              created_at: '2026-07-01T10:00:00Z'
+            }
+          ]
+        };
+      }
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/federation');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation?status=opted-in')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/status');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/activity');
+    expect(response.text).toContain('Federation');
+    expect(response.text).toContain('You are connected to the federation network.');
+    expect(response.text).toContain('2');
+    expect(response.text).toContain('5');
+    expect(response.text).toContain('1');
+    expect(response.text).toContain('Opted in');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).toContain('Neighbouring community exchange');
+    expect(response.text).toContain('href="/federation/partners/12"');
+    expect(response.text).toContain('New federation message');
+    expect(response.text).toContain('A partner community sent an update');
+    expect(response.text).toContain('Browse partner communities');
+    expect(response.text).toContain('Federation settings');
+    expect(response.text).not.toContain('Federation pages will follow the Laravel accessible frontend contract.');
+  });
+
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 

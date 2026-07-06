@@ -58,6 +58,7 @@ const blogPostRoutes = require('./routes/blog-posts');
 const pollActionRoutes = require('./routes/poll-actions');
 const podcastRoutes = require('./routes/podcasts');
 const podcastActionRoutes = require('./routes/podcast-actions');
+const federationRoutes = require('./routes/federation');
 const federationActionRoutes = require('./routes/federation-actions');
 const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
@@ -1056,6 +1057,7 @@ app.use('/podcasts', doubleCsrfProtection, podcastRoutes);
 app.use('/marketplace', doubleCsrfProtection, marketplaceRoutes);
 app.use('/courses', doubleCsrfProtection, postOnly(formLimiter), coursesRoutes);
 app.use('/premium', doubleCsrfProtection, postOnly(formLimiter), premiumRoutes);
+app.use('/federation', federationRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {

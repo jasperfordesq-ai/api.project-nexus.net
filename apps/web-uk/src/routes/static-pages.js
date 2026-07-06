@@ -100,10 +100,6 @@ const pages = {
     title: 'Ideation',
     body: 'Ideation pages will follow the Laravel accessible frontend contract.'
   },
-  '/federation': {
-    title: 'Federation',
-    body: 'Federation pages will follow the Laravel accessible frontend contract.'
-  },
   '/clubs': {
     title: 'Clubs',
     body: 'Club pages will follow the Laravel accessible frontend contract.'
