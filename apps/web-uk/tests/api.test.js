@@ -1289,6 +1289,51 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel blog helpers', () => {
+    it('should fetch blog posts through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [] })
+      });
+
+      await api.getBlogPosts('test-token', {
+        q: 'community',
+        category: 7,
+        cursor: 'abc',
+        limit: 12
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/blog?search=community&category_id=7&cursor=abc&per_page=12',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should fetch a blog post by slug through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42, slug: 'community-news' } })
+      });
+
+      await api.getBlogPost('test-token', 'community-news');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/blog/community-news',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
   describe('Laravel resource helpers', () => {
     it('should fetch resources through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -1425,6 +1470,27 @@ describe('API Request Functions', () => {
             content: 'Helpful context',
             parent_id: 4
           })
+        })
+      );
+    });
+
+    it('should update a polymorphic comment through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12, content: 'Updated' } })
+      });
+
+      await api.updateComment('test-token', 12, { content: 'Updated' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/comments/12',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ content: 'Updated' })
         })
       );
     });

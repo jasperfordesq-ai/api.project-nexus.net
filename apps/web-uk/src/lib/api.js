@@ -514,6 +514,25 @@ async function deleteSavedItem(token, id) {
   });
 }
 
+async function getBlogPosts(token = '', params = {}) {
+  const query = new URLSearchParams();
+  if (params.search || params.q) query.set('search', params.search || params.q);
+  if (params.category_id || params.category) query.set('category_id', params.category_id || params.category);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/blog${queryString ? `?${queryString}` : ''}`;
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  return request(endpoint, { headers });
+}
+
+async function getBlogPost(token = '', slug) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/blog/${encodeURIComponent(slug)}`, { headers });
+}
+
 async function dismissMatch(token, id, reason) {
   return request(`/api/v2/matches/${encodeURIComponent(id)}/dismiss`, {
     method: 'POST',
@@ -1352,6 +1371,14 @@ async function createComment(token, data) {
   });
 }
 
+async function updateComment(token, id, data) {
+  return request(`/api/v2/comments/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function deleteComment(token, id) {
   return request(`/api/v2/comments/${encodeURIComponent(id)}`, {
     method: 'DELETE',
@@ -1632,6 +1659,8 @@ module.exports = {
   updateSavedCollection,
   deleteSavedCollection,
   deleteSavedItem,
+  getBlogPosts,
+  getBlogPost,
   dismissMatch,
   performExchangeAction,
   rateExchange,
@@ -1740,6 +1769,7 @@ module.exports = {
   deleteReview,
   createReview,
   createComment,
+  updateComment,
   deleteComment,
   toggleReaction,
   // Admin

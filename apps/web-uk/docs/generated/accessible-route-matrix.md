@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T10:10:53.470Z
+Generated: 2026-07-06T10:15:54.682Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 445 |
-| Matched routes | 363 |
-| Missing routes | 245 |
+| web-uk routes | 452 |
+| Matched routes | 370 |
+| Missing routes | 238 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -21,7 +21,7 @@ Generated: 2026-07-06T10:10:53.470Z
 | activity | 2 | 0 | 0 |
 | admin | 0 | 0 | 24 |
 | appreciations | 1 | 0 | 0 |
-| blog | 5 | 7 | 0 |
+| blog | 12 | 0 | 0 |
 | chat | 2 | 0 | 0 |
 | clubs | 1 | 0 | 0 |
 | components | 0 | 0 | 1 |
@@ -96,13 +96,6 @@ Generated: 2026-07-06T10:10:53.470Z
 
 | Method | Path | Family | Handler | Blade view | Auth | Gates |
 | --- | --- | --- | --- | --- | --- | --- |
-| POST | `/blog/{param}/comments` | blog | storeBlogComment |  | auth-optional | feature:blog |
-| POST | `/blog/{param}/comments/add` | blog | blogReviewsStorePostComment |  | auth-optional | feature:blog |
-| POST | `/blog/{param}/like` | blog | blogTogglePostLike |  | auth-optional | feature:blog |
-| POST | `/blog/{param}/react` | blog | blogReviewsPostReaction |  | auth-optional | feature:blog |
-| POST | `/blog/comments/{param}/delete` | blog | blogReviewsDeleteComment |  | auth-optional | feature:blog |
-| POST | `/blog/comments/{param}/react` | blog | blogReviewsCommentReaction |  | auth-optional | feature:blog |
-| POST | `/blog/comments/{param}/update` | blog | blogReviewsUpdateComment |  | auth-optional | feature:blog |
 | POST | `/courses/{param}/enrol` | courses | enrolCourse |  | auth-optional | feature:courses |
 | POST | `/courses/{param}/lessons/{param}/complete` | courses | commerceCompleteLesson |  | auth-optional | feature:courses |
 | POST | `/courses/{param}/lessons/{param}/quiz` | courses | commerceCourseQuizSubmit |  | auth-optional | feature:courses |

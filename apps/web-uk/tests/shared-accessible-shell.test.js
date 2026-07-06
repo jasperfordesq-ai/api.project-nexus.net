@@ -42,8 +42,8 @@ jest.mock('../src/lib/api', () => ({
   saveOnboardingSafeguarding: jest.fn().mockResolvedValue({}),
   completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
   getListings: jest.fn(),
-  getBlogPosts: jest.fn(),
-  getBlogPost: jest.fn(),
+  getBlogPosts: jest.fn().mockResolvedValue({ data: [] }),
+  getBlogPost: jest.fn().mockResolvedValue({ data: { id: 42, slug: 'community-news', title: 'Community news' } }),
   getGoals: jest.fn(),
   getGoal: jest.fn(),
   getJobs: jest.fn(),
@@ -73,6 +73,7 @@ jest.mock('../src/lib/api', () => ({
   cancelMemberPremium: jest.fn().mockResolvedValue({ data: { cancelled: true } }),
   createReview: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   createComment: jest.fn().mockResolvedValue({ data: { id: 12 } }),
+  updateComment: jest.fn().mockResolvedValue({ data: { id: 12, content: 'Updated' } }),
   deleteComment: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   toggleReaction: jest.fn().mockResolvedValue({ data: { action: 'added' } }),
   saveSavedSearch: jest.fn().mockResolvedValue({ data: { id: 12 } }),
@@ -157,8 +158,11 @@ describe('shared accessible frontend shell', () => {
     api.cancelMemberPremium.mockReset().mockResolvedValue({ data: { cancelled: true } });
     api.createReview.mockReset().mockResolvedValue({ data: { id: 91 } });
     api.createComment.mockReset().mockResolvedValue({ data: { id: 12 } });
+    api.updateComment.mockReset().mockResolvedValue({ data: { id: 12, content: 'Updated' } });
     api.deleteComment.mockReset().mockResolvedValue({ data: { deleted: true } });
     api.toggleReaction.mockReset().mockResolvedValue({ data: { action: 'added' } });
+    api.getBlogPosts.mockReset().mockResolvedValue({ data: [] });
+    api.getBlogPost.mockReset().mockResolvedValue({ data: { id: 42, slug: 'community-news', title: 'Community news' } });
     api.saveSavedSearch.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedSearch.mockReset().mockResolvedValue({ deleted: true });
     api.runSavedSearch.mockReset().mockResolvedValue({ data: { query_params: { q: 'gardening' } } });
@@ -1960,6 +1964,226 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.createComment).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel blog comment route through the blog and comments API helpers', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/blog/community-news/comments')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        body: ' Great update '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/blog/community-news?status=comment-added#comments');
+    expect(api.getBlogPost).toHaveBeenCalledWith('test-token', 'community-news');
+    expect(api.createComment).toHaveBeenCalledWith('test-token', {
+      target_type: 'blog',
+      target_id: 42,
+      content: 'Great update',
+      parent_id: null
+    });
+  });
+
+  it('submits the Laravel blog comment-thread add route through the comments API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/blog/community-news/comments/add')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        body: ' I agree ',
+        parent_id: '7'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/blog/community-news/comments?status=reply-added#comments');
+    expect(api.createComment).toHaveBeenCalledWith('test-token', {
+      target_type: 'blog',
+      target_id: 42,
+      content: 'I agree',
+      parent_id: 7
+    });
+  });
+
+  it('submits the Laravel blog like route through the reactions API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/blog/community-news/like')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/blog/community-news?status=liked#reactions');
+    expect(api.toggleReaction).toHaveBeenCalledWith('test-token', {
+      target_type: 'blog',
+      target_id: 42,
+      reaction_type: 'like'
+    });
+  });
+
+  it('submits the Laravel blog post reaction route through the reactions API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/blog/community-news/react')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        emoji: 'love'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/blog/community-news/comments?status=reaction-added#post-reactions');
+    expect(api.toggleReaction).toHaveBeenCalledWith('test-token', {
+      target_type: 'blog',
+      target_id: 42,
+      reaction_type: 'love'
+    });
+  });
+
+  it('submits the Laravel blog comment update route through the comments API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/blog/comments/12/update')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        slug: 'community-news',
+        content: ' Updated comment '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/blog/community-news/comments?status=comment-updated#comments');
+    expect(api.updateComment).toHaveBeenCalledWith('test-token', 12, {
+      content: 'Updated comment'
+    });
+  });
+
+  it('submits the Laravel blog comment delete route through the comments API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/blog/comments/12/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        slug: 'community-news'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/blog/community-news/comments?status=comment-deleted#comments');
+    expect(api.deleteComment).toHaveBeenCalledWith('test-token', 12);
+  });
+
+  it('submits the Laravel blog comment reaction route through the reactions API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/blog/comments/12/react')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        slug: 'community-news',
+        emoji: 'wow'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/blog/community-news/comments?status=reaction-added#comment-12');
+    expect(api.toggleReaction).toHaveBeenCalledWith('test-token', {
+      target_type: 'comment',
+      target_id: 12,
+      reaction_type: 'wow'
+    });
+  });
+
+  it('redirects signed-out Laravel blog action submissions to the auth-required status', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/blog/community-news/comments')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        body: 'Great update'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.getBlogPost).not.toHaveBeenCalled();
     expect(api.createComment).not.toHaveBeenCalled();
   });
 
