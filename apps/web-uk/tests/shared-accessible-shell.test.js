@@ -3895,6 +3895,179 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/login');
   });
 
+  it('renders the Laravel-backed edit job form with existing opportunity values', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getJob.mockResolvedValueOnce({
+      data: {
+        id: 501,
+        user_id: 101,
+        title: 'Volunteer Coordinator',
+        description: 'Coordinate community volunteers.',
+        type: 'volunteer',
+        commitment: 'part_time',
+        category: 'Community',
+        location: 'Cork',
+        is_remote: true,
+        skills_required: 'Planning, communication',
+        deadline: '2099-08-15T00:00:00Z',
+        salary_min: 1000,
+        salary_max: 2000,
+        salary_currency: 'EUR',
+        salary_type: 'monthly',
+        salary_negotiable: true,
+        hours_per_week: 12,
+        time_credits: 4,
+        contact_email: 'jobs@example.org',
+        status: 'draft'
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/edit')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getJob).toHaveBeenCalledWith('test-token', 501);
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Edit opportunity');
+    expect(response.text).toContain('Update the details of your opportunity.');
+    expect(response.text).toContain('action="/jobs/501/update"');
+    expect(response.text).toContain('value="Volunteer Coordinator"');
+    expect(response.text).toContain('Coordinate community volunteers.');
+    expect(response.text).toContain('value="volunteer" selected');
+    expect(response.text).toContain('value="part_time" selected');
+    expect(response.text).toContain('value="Community"');
+    expect(response.text).toContain('value="Cork"');
+    expect(response.text).toContain('name="is_remote" type="checkbox" value="1" checked');
+    expect(response.text).toContain('value="Planning, communication"');
+    expect(response.text).toContain('value="2099-08-15"');
+    expect(response.text).toContain('value="1000"');
+    expect(response.text).toContain('value="2000"');
+    expect(response.text).toContain('value="EUR"');
+    expect(response.text).toContain('value="monthly" selected');
+    expect(response.text).toContain('name="salary_negotiable" type="checkbox" value="1" checked');
+    expect(response.text).toContain('value="12"');
+    expect(response.text).toContain('value="4"');
+    expect(response.text).toContain('value="jobs@example.org"');
+    expect(response.text).toContain('value="draft" checked');
+    expect(response.text).toContain('Save changes');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from the edit job form before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.getJob.mockClear();
+    api.getProfile.mockClear();
+
+    const response = await request(app).get('/jobs/501/edit');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.getJob).not.toHaveBeenCalled();
+    expect(api.getProfile).not.toHaveBeenCalled();
+  });
+
+  it('forbids editing a Laravel-backed job owned by another member', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ id: 202 });
+    api.getJob.mockResolvedValueOnce({
+      data: {
+        id: 501,
+        user_id: 101,
+        title: 'Volunteer Coordinator'
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/edit')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getJob).toHaveBeenCalledWith('test-token', 501);
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(response.status).toBe(403);
+    expect(response.text).not.toContain('action="/jobs/501/update"');
+  });
+
+  it('renders the Laravel-backed owner applicants page with analytics and stage controls', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getJob.mockResolvedValueOnce({
+      data: {
+        id: 501,
+        title: 'Volunteer Coordinator'
+      }
+    });
+    api.callJobApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 91,
+          applicant: { name: 'Alex Morgan', email: 'alex@example.org' },
+          status: 'screening',
+          created_at: '2099-07-02T10:00:00Z',
+          message: 'I can coordinate rotas and training.'
+        }
+      ]
+    }).mockResolvedValueOnce({
+      data: {
+        total_views: 120,
+        unique_viewers: 80,
+        total_applications: 3,
+        conversion_rate: 2.5
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/applications?status=status-updated')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getJob).toHaveBeenCalledWith('test-token', 501);
+    expect(api.callJobApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/501/applications');
+    expect(api.callJobApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/501/analytics');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Volunteer Coordinator');
+    expect(response.text).toContain('Applications');
+    expect(response.text).toContain('Review and progress the people who have applied.');
+    expect(response.text).toContain('The application stage has been updated.');
+    expect(response.text).toContain('Performance');
+    expect(response.text).toContain('Total views');
+    expect(response.text).toContain('120');
+    expect(response.text).toContain('Unique viewers');
+    expect(response.text).toContain('80');
+    expect(response.text).toContain('Conversion rate');
+    expect(response.text).toContain('2.5%');
+    expect(response.text).toContain('href="/jobs/501/applications/export.csv"');
+    expect(response.text).toContain('Download applications (CSV)');
+    expect(response.text).toContain('Alex Morgan');
+    expect(response.text).toContain('Screening');
+    expect(response.text).toContain('Applied on 2 July 2099');
+    expect(response.text).toContain('I can coordinate rotas and training.');
+    expect(response.text).toContain('action="/jobs/501/applications/91/status"');
+    expect(response.text).toContain('Move to stage');
+    expect(response.text).toContain('name="app_status"');
+    expect(response.text).toContain('value="shortlisted"');
+    expect(response.text).toContain('Notes for your records (optional)');
+    expect(response.text).toContain('Update');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from the owner applicants page before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.getJob.mockClear();
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/501/applications');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.getJob).not.toHaveBeenCalled();
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
   it('renders the Laravel-backed job alerts page with alert controls', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

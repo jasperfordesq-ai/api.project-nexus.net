@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { ApiError, callJobApi, getJobs, getJob } = require('../lib/api');
+const { ApiError, callJobApi, getJobs, getJob, getProfile } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -56,6 +56,7 @@ const JOB_APPLICATION_LABELS = {
   pending: 'Pending',
   screening: 'Screening',
   reviewed: 'Reviewed',
+  shortlisted: 'Shortlisted',
   interview: 'Interview',
   offer: 'Offer',
   accepted: 'Accepted',
@@ -110,6 +111,24 @@ const JOB_SALARY_PERIOD_LABELS = {
   hourly: 'hour',
   monthly: 'month',
   annual: 'year'
+};
+const JOB_APPLICANT_STAGE_OPTIONS = [
+  'applied',
+  'pending',
+  'screening',
+  'reviewed',
+  'shortlisted',
+  'interview',
+  'offer',
+  'accepted',
+  'rejected'
+];
+const JOB_APPLICANT_SUCCESS_MESSAGES = {
+  'status-updated': 'The application stage has been updated.'
+};
+const JOB_APPLICANT_ERROR_MESSAGES = {
+  'status-failed': 'We could not update the application. Please try again.',
+  'export-failed': 'We could not prepare the download. Please try again.'
 };
 
 router.use(requireAuth);
@@ -339,6 +358,13 @@ function formatDateOnlyLong(value) {
   return formatDateLong(text);
 }
 
+function dateInputValue(value) {
+  if (!value) return '';
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : text;
+}
+
 function formatDateTimeLong(value) {
   if (!value) return '';
   const text = trimmed(value);
@@ -566,6 +592,50 @@ function decorateOffer(offer) {
   };
 }
 
+function jobFormForEdit(job) {
+  return {
+    ...job,
+    deadline: dateInputValue(job.deadline),
+    is_remote: checked(job.is_remote || job.isRemote),
+    salary_negotiable: checked(job.salary_negotiable || job.salaryNegotiable)
+  };
+}
+
+function profileUserId(result) {
+  const data = dataFrom(result);
+  const profile = data && typeof data === 'object' && !Array.isArray(data) ? data : result;
+
+  return positiveInteger(profile?.id || profile?.user_id || profile?.userId);
+}
+
+function jobOwnerId(job) {
+  return positiveInteger(job.user_id || job.userId || job.creator?.id || job.owner?.id);
+}
+
+function analyticsFrom(result) {
+  const data = dataFrom(result);
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return data;
+  }
+
+  return null;
+}
+
+function decorateApplicant(application) {
+  const applicant = application.applicant || application.user || {};
+  const status = allowed(application.stage || application.status, JOB_APPLICANT_STAGE_OPTIONS, 'applied');
+
+  return {
+    ...application,
+    id: positiveInteger(application.id) || 0,
+    applicantName: personName(applicant) || 'Candidate',
+    status,
+    statusLabel: JOB_APPLICATION_LABELS[status] || status,
+    appliedOnLabel: formatDateOnlyLong(application.created_at || application.applied_at),
+    coverLetter: trimmed(application.message || application.cover_letter || application.notes, 5000)
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     applied: 'Your application has been submitted.',
@@ -604,6 +674,14 @@ function responseSuccessMessage(status) {
 
 function responseErrorMessage(status) {
   return JOB_RESPONSE_ERROR_MESSAGES[status] || '';
+}
+
+function applicantSuccessMessage(status) {
+  return JOB_APPLICANT_SUCCESS_MESSAGES[status] || '';
+}
+
+function applicantErrorMessage(status) {
+  return JOB_APPLICANT_ERROR_MESSAGES[status] || '';
 }
 
 function resultId(result) {
@@ -863,6 +941,113 @@ router.get('/responses', asyncRoute(async (req, res) => {
     status: req.query.status || '',
     successMessage: responseSuccessMessage(req.query.status),
     errorMessage: responseErrorMessage(req.query.status),
+    loadError,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  let result;
+  let profileResult;
+
+  try {
+    [result, profileResult] = await Promise.all([
+      getJob(token, id),
+      getProfile(token)
+    ]);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const job = dataFrom(result);
+  if (!job || typeof job !== 'object' || !job.id) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  if (jobOwnerId(job) !== profileUserId(profileResult)) {
+    return res.status(403).render('errors/403', { title: 'Forbidden' });
+  }
+
+  return res.render('jobs/form', {
+    title: 'Edit opportunity',
+    activeNav: 'explore',
+    formMode: 'edit',
+    formAction: `/jobs/${id}/update`,
+    jobForm: jobFormForEdit(job),
+    jobFormErrors: [],
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/:id(\\d+)/applications', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  let jobResult;
+  let applicationsResult = null;
+  let analyticsResult = null;
+  let loadError = false;
+
+  try {
+    jobResult = await getJob(token, id);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const job = dataFrom(jobResult);
+  if (!job || typeof job !== 'object' || !job.id) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  try {
+    applicationsResult = await callJob(token, 'GET', `/${id}/applications`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    loadError = true;
+  }
+
+  try {
+    analyticsResult = await callJob(token, 'GET', `/${id}/analytics`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  return res.render('jobs/applicants', {
+    title: 'Applications',
+    activeNav: 'explore',
+    job: decorateJob(job),
+    applications: collectionItems(applicationsResult).map(decorateApplicant),
+    analytics: analyticsFrom(analyticsResult),
+    status: req.query.status || '',
+    successMessage: applicantSuccessMessage(req.query.status),
+    errorMessage: applicantErrorMessage(req.query.status),
+    statusOptions: JOB_APPLICANT_STAGE_OPTIONS.map((status) => ({
+      value: status,
+      label: JOB_APPLICATION_LABELS[status] || status
+    })),
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
