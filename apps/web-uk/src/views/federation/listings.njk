@@ -1,0 +1,135 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a href="/federation" class="govuk-back-link">Back to federation</a>
+
+  <span class="govuk-caption-xl">This community</span>
+  <h1 class="govuk-heading-xl">Federated listings</h1>
+  <p class="govuk-body-l">Offers and requests shared by members across the community network.</p>
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/listings">Listings</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/events">Events</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/groups">Groups</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  {% if not allowed %}
+    <div class="govuk-inset-text"><p class="govuk-body">Browsing federated listings is not available for this community right now.</p></div>
+  {% else %}
+    <form method="get" action="/federation/listings" class="govuk-!-margin-bottom-6">
+      <fieldset class="govuk-fieldset">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter listings</legend>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="q">Search federated listings</label>
+          <div id="q-hint" class="govuk-hint">Search by title or description.</div>
+          <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="type">Type</label>
+          <select class="govuk-select" id="type" name="type">
+            <option value=""{% if not filters.type %} selected{% endif %}>All</option>
+            <option value="offer"{% if filters.type == "offer" %} selected{% endif %}>Offer</option>
+            <option value="request"{% if filters.type == "request" %} selected{% endif %}>Request</option>
+          </select>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="partner_id">Community</label>
+          <select class="govuk-select" id="partner_id" name="partner_id">
+            <option value=""{% if not filters.partnerId %} selected{% endif %}>All communities</option>
+            {% for partner in partnerOptions %}
+              <option value="{{ partner.id }}"{% if filters.partnerId == partner.id %} selected{% endif %}>{{ partner.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
+      </fieldset>
+    </form>
+
+    {% if loadError %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">We could not load federated listings.</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="/federation/listings">Try again</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% elif not listings.length %}
+      <div class="govuk-inset-text"><p class="govuk-body">No federated listings were found.</p></div>
+    {% else %}
+      <div class="nexus-alpha-card-list">
+        {% for listing in listings %}
+          <article class="nexus-alpha-card">
+            {% if listing.imageUrl %}
+              <img src="{{ listing.imageUrl }}" alt="{{ listing.title }}" loading="lazy" class="govuk-!-margin-bottom-2" width="160" style="max-width:160px;height:auto;">
+            {% endif %}
+
+            <div class="nexus-alpha-module-row">
+              <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+                {% if listing.href %}
+                  <a class="govuk-link" href="{{ listing.href }}">{{ listing.title }}</a>
+                {% else %}
+                  {{ listing.title }}
+                {% endif %}
+              </h2>
+              {% if listing.type == "request" %}
+                <strong class="govuk-tag govuk-tag--blue">Request</strong>
+              {% else %}
+                <strong class="govuk-tag govuk-tag--green">Offer</strong>
+              {% endif %}
+            </div>
+
+            {% if listing.categoryName %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Category: {{ listing.categoryName }}</p>
+            {% endif %}
+
+            {% if listing.estimatedHours %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ listing.estimatedHours }} hours</p>
+            {% endif %}
+
+            {% if listing.location %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Location: {{ listing.location }}</p>
+            {% endif %}
+
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Posted by {{ listing.authorName }}</p>
+
+            {% if listing.createdAt %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Posted {{ listing.createdAt | date }}</p>
+            {% endif %}
+
+            {% if listing.tenantName %}
+              <p class="govuk-body-s govuk-!-margin-bottom-0">
+                <strong class="govuk-tag govuk-tag--grey">{{ listing.tenantName }}</strong>
+              </p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+
+      {% if loadMoreHref %}
+        <p class="govuk-body govuk-!-margin-top-4">
+          <a class="govuk-link" href="{{ loadMoreHref }}">Load more listings</a>
+        </p>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endblock %}

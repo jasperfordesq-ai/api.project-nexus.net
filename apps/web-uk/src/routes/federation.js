@@ -223,6 +223,42 @@ function normalizeEvent(event, upcoming = true) {
   };
 }
 
+function listingHref(listing) {
+  const tenantId = trimmed(listing && listing.tenantId, 32);
+  const id = trimmed(listing && listing.id, 32);
+  return tenantId && id ? `/federation/listings/${encodeURIComponent(tenantId)}/${encodeURIComponent(id)}` : '';
+}
+
+function normalizeListing(listing) {
+  const author = asObject(listing && (listing.author || listing.owner));
+  const timebank = asObject(listing && listing.timebank);
+  const tenantId = listing && listing.tenant_id !== undefined ? listing.tenant_id : timebank.id;
+  const type = trimmed(listing && listing.type) === 'request' ? 'request' : 'offer';
+  const normalized = {
+    id: listing && listing.id,
+    title: trimmed(listing && listing.title) || 'Federated listing',
+    description: trimmed(listing && listing.description, 160),
+    type,
+    categoryName: trimmed((listing && listing.category_name) || (listing && listing.category)),
+    imageUrl: trimmed(listing && listing.image_url),
+    estimatedHours: numberOrNull(listing && (listing.estimated_hours || listing.rate || listing.price)),
+    location: trimmed(listing && listing.location),
+    authorId: listing && listing.user_id !== undefined ? listing.user_id : author.id,
+    authorName: trimmed(
+      (listing && listing.author_name)
+      || author.name
+      || `${trimmed(listing && listing.first_name)} ${trimmed(listing && listing.last_name)}`
+    ) || 'Anonymous',
+    tenantId,
+    tenantName: trimmed((listing && listing.tenant_name) || timebank.name),
+    createdAt: listing && listing.created_at ? listing.created_at : '',
+    isExternal: bool(listing && listing.is_external)
+  };
+
+  normalized.href = listingHref(normalized);
+  return normalized;
+}
+
 function participantName(participant) {
   return trimmed(participant && participant.name)
     || trimmed(`${trimmed(participant && participant.first_name)} ${trimmed(participant && participant.last_name)}`)
@@ -383,6 +419,30 @@ function eventsLoadMoreHref(filters, cursor) {
   if (cursor) params.set('cursor', cursor);
   const query = params.toString();
   return query ? `/federation/events?${query}` : '/federation/events';
+}
+
+function listingsFilters(req) {
+  const type = trimmed(req.query && req.query.type);
+  return {
+    q: trimmed(req.query && req.query.q),
+    type: type === 'offer' || type === 'request' ? type : '',
+    partnerId: trimmed(req.query && req.query.partner_id),
+    cursor: trimmed(req.query && req.query.cursor)
+  };
+}
+
+function listingsQuery(filters) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.type) params.set('type', filters.type);
+  if (filters.partnerId) params.set('partner_id', filters.partnerId);
+  if (filters.cursor) params.set('cursor', filters.cursor);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+function listingsLoadMoreHref(filters, cursor) {
+  return `/federation/listings${listingsQuery({ ...filters, cursor })}`;
 }
 
 function normalizeActivity(item) {
@@ -635,6 +695,54 @@ router.get('/groups', asyncRoute(async (req, res) => {
       partnerId: trimmed(req.query.partner_id)
     },
     loadMoreHref: nextCursor ? loadMoreHref('/federation/groups', req, nextCursor) : ''
+  });
+}));
+
+router.get('/listings', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const filters = listingsFilters(req);
+  let listingsResult;
+  let partnersResult;
+  try {
+    listingsResult = await callFederationApi(token, 'GET', `/listings${listingsQuery(filters)}`);
+    partnersResult = await callFederationApi(token, 'GET', '/partners');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      return res.render('federation/listings', {
+        title: 'Federated listings',
+        activeNav: 'explore',
+        federationActiveTab: 'listings',
+        allowed: false,
+        listings: [],
+        partnerOptions: [],
+        filters,
+        loadError: false,
+        loadMoreHref: ''
+      });
+    }
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const listings = asList(dataFrom(listingsResult)).map(normalizeListing);
+  const partnerOptions = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner);
+  const meta = metaFrom(listingsResult);
+  const nextCursor = trimmed(meta.cursor || meta.next_cursor);
+
+  return res.render('federation/listings', {
+    title: 'Federated listings',
+    activeNav: 'explore',
+    federationActiveTab: 'listings',
+    allowed: true,
+    listings,
+    partnerOptions,
+    filters,
+    loadError: false,
+    loadMoreHref: nextCursor ? listingsLoadMoreHref(filters, nextCursor) : ''
   });
 }));
 
