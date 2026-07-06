@@ -270,6 +270,22 @@ async function updateProfile(token, data) {
   });
 }
 
+async function uploadProfileAvatar(token, data) {
+  const form = new globalThis.FormData();
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('avatar', blob, data.file.filename || 'avatar');
+  }
+
+  return request('/api/v2/users/me/avatar', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function getOnboardingStatus(token) {
   return request('/api/v2/onboarding/status', {
     headers: { Authorization: `Bearer ${token}` }
@@ -2322,6 +2338,7 @@ module.exports = {
   // Users
   getProfile,
   updateProfile,
+  uploadProfileAvatar,
   getOnboardingStatus,
   getOnboardingConfig,
   getOnboardingCategories,

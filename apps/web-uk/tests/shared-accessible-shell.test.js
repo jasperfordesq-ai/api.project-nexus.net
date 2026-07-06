@@ -39,6 +39,7 @@ jest.mock('../src/lib/api', () => ({
   validateToken: jest.fn(),
   getProfile: jest.fn(),
   updateProfile: jest.fn().mockResolvedValue({}),
+  uploadProfileAvatar: jest.fn().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } }),
   getOnboardingStatus: jest.fn().mockResolvedValue({ data: { onboarding_completed: false } }),
   getOnboardingConfig: jest.fn().mockResolvedValue({ data: { config: {}, steps: [] } }),
   getOnboardingCategories: jest.fn().mockResolvedValue({ data: [] }),
@@ -199,6 +200,7 @@ describe('shared accessible frontend shell', () => {
     api.getTransactions.mockReset().mockResolvedValue({ data: [] });
     api.getProfile.mockReset().mockResolvedValue({ id: 101 });
     api.updateProfile.mockReset().mockResolvedValue({});
+    api.uploadProfileAvatar.mockReset().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } });
     api.saveOnboardingSafeguarding.mockReset().mockResolvedValue({});
     api.completeOnboarding.mockReset().mockResolvedValue({ data: { message: 'complete' } });
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
@@ -1898,8 +1900,9 @@ describe('shared accessible frontend shell', () => {
     ]);
   });
 
-  it('keeps the Laravel onboarding avatar route as a safe failure until multipart proxying exists', async () => {
+  it('submits the Laravel onboarding avatar route with multipart file data', async () => {
     const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
     const agent = request.agent(app);
 
@@ -1911,11 +1914,21 @@ describe('shared accessible frontend shell', () => {
     const response = await agent
       .post('/onboarding/avatar')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
-      .type('form')
-      .send({ _csrf: csrfMatch[1] });
+      .field('_csrf', csrfMatch[1])
+      .attach('avatar', Buffer.from('fake png bytes', 'utf8'), {
+        filename: 'profile.png',
+        contentType: 'image/png'
+      });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/onboarding/profile?status=avatar-failed');
+    expect(response.headers.location).toBe('/onboarding/profile?status=avatar-saved');
+    expect(api.uploadProfileAvatar).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      file: expect.objectContaining({
+        filename: 'profile.png',
+        contentType: 'image/png',
+        buffer: Buffer.from('fake png bytes', 'utf8')
+      })
+    }));
   });
 
   it('renders the Laravel-style contact form with report-problem prefill', async () => {

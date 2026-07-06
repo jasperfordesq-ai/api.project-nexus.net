@@ -4,9 +4,11 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const {
   getProfile,
   updateProfile,
+  uploadProfileAvatar,
   getOnboardingStatus,
   getOnboardingConfig,
   getOnboardingCategories,
@@ -45,6 +47,20 @@ function asArray(value) {
   if (Array.isArray(value)) return value;
   if (value === undefined || value === null || value === '') return [];
   return [value];
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
 }
 
 function normalizeSteps(rawSteps) {
@@ -252,11 +268,34 @@ router.get('/:step([a-z]+)', asyncRoute(async (req, res) => {
   }
 }));
 
-router.post('/avatar', (req, res) => {
+router.post('/avatar', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return res.redirect('/login?status=auth-required');
-  res.redirect('/onboarding/profile?status=avatar-failed');
-});
+
+  const file = uploadedFile(req, 'avatar');
+  if (!file) {
+    return res.redirect('/onboarding/profile?status=avatar-failed');
+  }
+
+  try {
+    const buffer = await fs.readFile(file.filepath);
+    await uploadProfileAvatar(token, {
+      file: {
+        buffer,
+        filename: String(file.originalFilename || '').trim() || 'avatar',
+        contentType: String(file.mimetype || '').trim() || 'application/octet-stream',
+        size: file.size
+      }
+    });
+  } catch (error) {
+    if (isAuthError(error)) return res.redirect('/login?status=auth-required');
+    return res.redirect('/onboarding/profile?status=avatar-failed');
+  } finally {
+    await removeUploadedFile(file);
+  }
+
+  return res.redirect('/onboarding/profile?status=avatar-saved');
+}));
 
 router.post('/:step([a-z]+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

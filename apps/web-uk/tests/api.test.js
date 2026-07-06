@@ -2858,6 +2858,34 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should upload the onboarding avatar through the Laravel v2 profile endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { avatar_url: '/avatars/member.jpg' } })
+      });
+
+      await api.uploadProfileAvatar('test-token', {
+        file: {
+          buffer: Buffer.from('fake png bytes', 'utf8'),
+          filename: 'profile.png',
+          contentType: 'image/png'
+        }
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users/me/avatar',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
   });
 
   describe('Laravel notification helpers', () => {
