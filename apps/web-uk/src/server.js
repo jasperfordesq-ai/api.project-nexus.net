@@ -1059,6 +1059,7 @@ app.use('/courses', doubleCsrfProtection, postOnly(formLimiter), coursesRoutes);
 app.use('/premium', doubleCsrfProtection, postOnly(formLimiter), premiumRoutes);
 app.use('/federation', federationRoutes);
 app.use('/blog', doubleCsrfProtection, postOnly(formLimiter), blogPostRoutes);
+app.use('/polls', doubleCsrfProtection, postOnly(formLimiter), pollActionRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
@@ -1135,7 +1136,6 @@ app.use('/search', doubleCsrfProtection, searchRoutes);
 app.use('/reviews', doubleCsrfProtection, postOnly(formLimiter), reviewsRoutes);
 app.use('/admin', doubleCsrfProtection, adminRoutes);
 app.use('/resources', doubleCsrfProtection, postOnly(formLimiter), resourcesRoutes);
-app.use('/polls', doubleCsrfProtection, postOnly(formLimiter), pollActionRoutes);
 app.use('/federation', doubleCsrfProtection, postOnly(formLimiter), federationActionRoutes);
 app.use(doubleCsrfProtection, postOnly(formLimiter), savedSocialRoutes);
 app.use(laravelPrepRoutes);

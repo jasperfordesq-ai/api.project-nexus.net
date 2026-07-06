@@ -1,125 +1,130 @@
-{# Copyright © 2024–2026 Jasper Ford #}
+{# Copyright (c) 2024-2026 Jasper Ford #}
 {# SPDX-License-Identifier: AGPL-3.0-or-later #}
 {# Author: Jasper Ford #}
 {# See NOTICE file for attribution and acknowledgements. #}
 
 {% extends "layouts/base.njk" %}
 
-{% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/tag/macro.njk" import govukTag %}
-{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% macro countText(count, singular, plural) %}
+  {% if count == 0 %}no {{ plural }}{% elif count == 1 %}1 {{ singular }}{% else %}{{ count }} {{ plural }}{% endif %}
+{% endmacro %}
 
-{% block beforeContent %}
-  {{ super() }}
-  {% set breadcrumbs = [
-    { text: "Polls", href: "/polls" },
-    { text: poll.title or poll.question }
-  ] %}
-  {% include "partials/breadcrumbs.njk" %}
-{% endblock %}
+{% macro renderComment(comment) %}
+  <li id="comment-{{ comment.id }}" class="nexus-alpha-module-row">
+    <p class="govuk-body govuk-!-margin-bottom-1">{{ comment.content }}</p>
+    <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">
+      {{ comment.user.name }}{% if comment.createdAt %} - Posted on {{ comment.createdAt | formatDate }}{% endif %}
+    </p>
+    {% if comment.replies.length %}
+      <ul class="govuk-list govuk-!-margin-left-4">
+        {% for reply in comment.replies %}
+          {{ renderComment(reply) }}
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </li>
+{% endmacro %}
 
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
+      <a class="govuk-back-link" href="/polls">Back to polls</a>
 
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
-      {% if errorMessage %}
-        {% set notificationMessage = errorMessage %}
-        {% set notificationType = null %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
-      <div class="app-page-header">
-        <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ poll.title or poll.question }}</h1>
-        {% if poll.is_active or poll.isActive %}
-          {{ govukTag({ text: "Active", classes: "govuk-tag--green" }) }}
-        {% else %}
-          {{ govukTag({ text: "Closed", classes: "govuk-tag--grey" }) }}
-        {% endif %}
+      <span class="govuk-caption-xl">Polls at this community</span>
+      <div class="nexus-alpha-module-row">
+        <h1 class="govuk-heading-xl govuk-!-margin-bottom-1">{{ poll.question }}</h1>
+        {% if poll.status == "open" %}<strong class="govuk-tag govuk-tag--green">Open</strong>{% else %}<strong class="govuk-tag govuk-tag--grey">Closed</strong>{% endif %}
+        {% if poll.pollType == "ranked" %}<strong class="govuk-tag govuk-tag--purple">Ranked</strong>{% endif %}
       </div>
 
-      {% if poll.description %}
-        <p class="govuk-body-l">{{ poll.description }}</p>
-      {% endif %}
-
-      <p class="govuk-body-s" style="color: #505a5f;">
-        {{ poll.total_votes or poll.totalVotes or 0 }} total vote{{ 's' if (poll.total_votes or poll.totalVotes or 0) != 1 else '' }}
-        - Created {{ (poll.created_at or poll.createdAt) | formatDate }}
+      <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-3">
+        Posted by {{ poll.creator.name }}{% if poll.expiresAt %} - {% if poll.status == "open" %}Closes{% else %}Closed{% endif %} {{ poll.expiresAt | formatDate }}{% endif %} - {{ countText(poll.totalVotes, "vote", "votes") }}
       </p>
 
-      {# Show voting form if poll is active and user has not voted #}
-      {% if (poll.is_active or poll.isActive) and not (poll.has_voted or poll.hasVoted) %}
-        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+      {% if statusBanner and statusBanner.type == "success" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert">
+          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">Success</h2></div>
+          <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p></div>
+        </div>
+      {% elif statusBanner and statusBanner.type == "error" %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert"><h2 class="govuk-error-summary__title">There is a problem</h2><div class="govuk-error-summary__body"><p class="govuk-body">{{ statusBanner.message }}</p></div></div>
+        </div>
+      {% endif %}
 
-        <h2 class="govuk-heading-m">Cast your vote</h2>
+      {% if poll.description %}<p class="govuk-body">{{ poll.description }}</p>{% endif %}
 
-        <form action="/polls/{{ poll.id }}/vote" method="post">
+      {% if poll.pollType == "ranked" %}
+        <a class="govuk-button" data-module="govuk-button" role="button" href="/polls/{{ poll.id }}/rank">{% if poll.hasVoted %}View ranked poll{% else %}Rank this poll{% endif %}</a>
+      {% elif poll.status == "open" and not poll.hasVoted and poll.options.length %}
+        <form method="post" action="/polls/{{ poll.id }}/vote">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-
-          {% set options = poll.options or [] %}
-          {% if options.length > 0 %}
-            {% set radioItems = [] %}
-            {% for option in options %}
-              {% set radioItems = (radioItems.push({
-                value: option.id | string,
-                text: option.text or option.title or option.label
-              }), radioItems) %}
-            {% endfor %}
-
-            {{ govukRadios({
-              name: "option_id",
-              fieldset: {
-                legend: {
-                  text: "Select an option",
-                  classes: "govuk-fieldset__legend--s"
-                }
-              },
-              items: radioItems
-            }) }}
-          {% endif %}
-
-          {{ govukButton({
-            text: "Submit vote"
-          }) }}
-        </form>
-
-      {# Show results if user has voted or poll is closed #}
-      {% elif poll.options and poll.options.length > 0 %}
-        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
-
-        <h2 class="govuk-heading-m">Results</h2>
-
-        {% set totalVotes = poll.total_votes or poll.totalVotes or 0 %}
-        {% for option in poll.options %}
-          {% set optionVotes = option.vote_count or option.voteCount or 0 %}
-          {% set percentage = (optionVotes / totalVotes * 100) | round(1) if totalVotes > 0 else 0 %}
-          <div class="govuk-!-margin-bottom-4">
-            <p class="govuk-body govuk-!-margin-bottom-1">
-              <strong>{{ option.text or option.title or option.label }}</strong>
-              <span class="govuk-body-s govuk-!-margin-left-2">{{ optionVotes }} vote{{ 's' if optionVotes != 1 else '' }} ({{ percentage }}%)</span>
-            </p>
-            <div style="background: #f3f2f1; height: 20px; border-radius: 4px; overflow: hidden;">
-              <div style="background: #1d70b8; height: 100%; width: {{ percentage }}%; min-width: {% if optionVotes > 0 %}2px{% else %}0{% endif %};"></div>
+          <fieldset class="govuk-fieldset" aria-describedby="poll-detail-{{ poll.id }}-hint">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Vote on this poll</legend>
+            <div id="poll-detail-{{ poll.id }}-hint" class="govuk-hint">Results will be shown once voting closes or once you have voted.</div>
+            <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+              {% for option in poll.options %}
+                <div class="govuk-radios__item">
+                  <input class="govuk-radios__input" id="poll-detail-{{ poll.id }}-opt-{{ option.id }}" name="option_id" type="radio" value="{{ option.id }}">
+                  <label class="govuk-label govuk-radios__label" for="poll-detail-{{ poll.id }}-opt-{{ option.id }}">{{ option.text }}</label>
+                </div>
+              {% endfor %}
             </div>
+          </fieldset>
+          <button class="govuk-button govuk-!-margin-top-2" data-module="govuk-button">Vote on this poll</button>
+        </form>
+      {% elif poll.resultsVisible %}
+        <h2 class="govuk-heading-l">Results</h2>
+        {% for option in poll.options %}
+          <div class="govuk-!-margin-bottom-3">
+            <p class="govuk-body govuk-!-margin-bottom-1">
+              {{ option.text }}
+              {% if poll.votedOptionId and poll.votedOptionId == option.id %}<strong class="govuk-tag govuk-tag--blue">Your choice</strong>{% endif %}
+            </p>
+            <progress max="100" value="{{ option.percentage }}" aria-label="{{ option.text }}: {{ option.percentage }}%">{{ option.percentage }}%</progress>
+            <span class="govuk-body-s">{{ option.percentage }}% - {{ countText(option.voteCount, "vote", "votes") }}</span>
           </div>
         {% endfor %}
-
-        {% if poll.has_voted or poll.hasVoted %}
-          <div class="govuk-inset-text">
-            You have already voted in this poll.
-          </div>
-        {% endif %}
+      {% else %}
+        <div class="govuk-inset-text">Results will be shown once voting closes or once you have voted.</div>
       {% endif %}
 
-      <p class="govuk-body govuk-!-margin-top-6">
-        <a href="/polls" class="govuk-link">Back to polls</a>
+      <hr class="govuk-section-break govuk-section-break--visible govuk-section-break--l">
+      <h2 class="govuk-heading-l" id="poll-social">Likes and comments</h2>
+
+      <p class="govuk-body-s nexus-alpha-meta">
+        {{ countText(poll.likeCount, "like", "likes") }} - {{ countText(commentsTotal, "comment", "comments") }}
       </p>
 
+      <div class="nexus-alpha-actions govuk-!-margin-bottom-4">
+        <form method="post" action="/polls/{{ poll.id }}/like">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-pressed="{% if poll.hasLiked %}true{% else %}false{% endif %}">
+            {% if poll.hasLiked %}Unlike{% else %}Like{% endif %}
+          </button>
+        </form>
+      </div>
+
+      <h3 class="govuk-heading-m" id="poll-comments">Comments</h3>
+      {% if comments.length %}
+        <ul class="govuk-list nexus-alpha-comments-list">
+          {% for comment in comments %}
+            {{ renderComment(comment) }}
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="govuk-body">No comments yet. Be the first to comment.</p>
+      {% endif %}
+
+      <form method="post" action="/polls/{{ poll.id }}/comment">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="poll-comment-{{ poll.id }}">Add a comment</label>
+          <div id="poll-comment-{{ poll.id }}-hint" class="govuk-hint">Be respectful and keep it on topic.</div>
+          <textarea class="govuk-textarea" id="poll-comment-{{ poll.id }}" name="content" rows="3" aria-describedby="poll-comment-{{ poll.id }}-hint" maxlength="10000"></textarea>
+        </div>
+        <button class="govuk-button" data-module="govuk-button">Post comment</button>
+      </form>
     </div>
   </div>
 {% endblock %}

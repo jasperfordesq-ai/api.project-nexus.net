@@ -77,6 +77,9 @@ jest.mock('../src/lib/api', () => ({
   applyForJob: jest.fn(),
   getPolls: jest.fn().mockResolvedValue({ data: [] }),
   getPoll: jest.fn().mockResolvedValue({ data: { id: 42, question: 'Which project?' } }),
+  getPollCategories: jest.fn().mockResolvedValue({ data: [] }),
+  getPollRankedResults: jest.fn().mockResolvedValue({ data: { poll: { id: 42, question: 'Which project?', options: [] }, ranked_results: { total_voters: 0, results: [] }, my_rankings: null } }),
+  getPollExport: jest.fn().mockResolvedValue({ status: 200, body: Buffer.from(''), headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="poll-42-export.csv"' } }),
   createPoll: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   deletePoll: jest.fn().mockResolvedValue({}),
   votePoll: jest.fn().mockResolvedValue({ data: { id: 42 } }),
@@ -226,6 +229,9 @@ describe('shared accessible frontend shell', () => {
     api.getReactors.mockReset().mockResolvedValue({ data: [], meta: { total: 0, has_more: false, page: 1 } });
     api.getPolls.mockReset().mockResolvedValue({ data: [] });
     api.getPoll.mockReset().mockResolvedValue({ data: { id: 42, question: 'Which project?' } });
+    api.getPollCategories.mockReset().mockResolvedValue({ data: [] });
+    api.getPollRankedResults.mockReset().mockResolvedValue({ data: { poll: { id: 42, question: 'Which project?', options: [] }, ranked_results: { total_voters: 0, results: [] }, my_rankings: null } });
+    api.getPollExport.mockReset().mockResolvedValue({ status: 200, body: Buffer.from(''), headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="poll-42-export.csv"' } });
     api.createPoll.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.deletePoll.mockReset().mockResolvedValue({});
     api.votePoll.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -4172,6 +4178,228 @@ describe('shared accessible frontend shell', () => {
     expect(actionResponse.headers.location).toBe('/feed?status=auth-required#feed-item-post-42');
     expect(api.createFeedPostV2).not.toHaveBeenCalled();
     expect(api.shareFeedItem).not.toHaveBeenCalled();
+  });
+
+  it('renders Laravel-backed poll list, detail, ranked, create, manage and export pages', async () => {
+    const api = require('../src/lib/api');
+
+    const openPoll = {
+      id: 42,
+      question: 'Which project should happen next?',
+      description: 'Choose the next community project.',
+      status: 'open',
+      poll_type: 'standard',
+      creator: { id: 77, name: 'Ada Lovelace' },
+      expires_at: '2026-08-01T00:00:00Z',
+      has_voted: false,
+      total_votes: 5,
+      results_visible: false,
+      is_creator: true,
+      like_count: 2,
+      has_liked: true,
+      options: [
+        { id: 7, text: 'Community garden', vote_count: 3, percentage: 60 },
+        { id: 8, text: 'Tool library', vote_count: 2, percentage: 40 }
+      ]
+    };
+    const rankedPoll = {
+      id: 43,
+      question: 'Rank the neighbourhood ideas',
+      description: 'Put the ideas in order.',
+      status: 'open',
+      poll_type: 'ranked',
+      creator: { id: 88, name: 'Grace Hopper' },
+      expires_at: '2026-08-15T00:00:00Z',
+      has_voted: false,
+      total_votes: 0,
+      results_visible: false,
+      is_creator: true,
+      options: [
+        { id: 11, text: 'Orchard' },
+        { id: 12, text: 'Repair cafe' }
+      ]
+    };
+    const closedPoll = {
+      id: 44,
+      question: 'Which workshop did people prefer?',
+      description: 'Closed result example.',
+      status: 'closed',
+      poll_type: 'standard',
+      creator: { id: 89, name: 'Alan Turing' },
+      expires_at: '2026-07-01T00:00:00Z',
+      has_voted: true,
+      voted_option_id: 13,
+      total_votes: 10,
+      results_visible: true,
+      options: [
+        { id: 13, text: 'Bike repair', vote_count: 7, percentage: 70 },
+        { id: 14, text: 'Bread making', vote_count: 3, percentage: 30 }
+      ]
+    };
+
+    api.getPolls.mockResolvedValue({ data: [openPoll, rankedPoll, closedPoll], meta: { has_more: false } });
+    api.getPollCategories.mockResolvedValue({ data: ['community', 'skills'] });
+    api.getPoll.mockResolvedValue({ data: openPoll });
+    api.getComments.mockResolvedValue({
+      data: {
+        comments: [
+          {
+            id: 91,
+            content: 'The garden would be brilliant.',
+            user: { id: 90, name: 'Katherine Johnson' },
+            created_at: '2026-07-03T10:00:00Z',
+            replies: []
+          }
+        ],
+        count: 1
+      }
+    });
+    api.getPollRankedResults.mockResolvedValue({
+      data: {
+        poll: rankedPoll,
+        ranked_results: {
+          total_voters: 2,
+          results: [
+            { option_id: 11, text: 'Orchard', votes: 2 },
+            { option_id: 12, text: 'Repair cafe', votes: 1 }
+          ]
+        },
+        my_rankings: [{ option_id: 11, rank: 1 }]
+      }
+    });
+    api.getPollExport.mockResolvedValue({
+      status: 200,
+      body: Buffer.from('option,votes\nCommunity garden,3\n'),
+      headers: {
+        'content-type': 'text/csv; charset=utf-8',
+        'content-disposition': 'attachment; filename="poll-42-export.csv"'
+      }
+    });
+
+    const unsigned = await request(app).get('/polls');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const list = await request(app)
+      .get('/polls?mine=1&category=community&status=voted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(list.status).toBe(200);
+    expect(api.getPolls).toHaveBeenCalledWith('test-token', {
+      mine: true,
+      category: 'community',
+      per_page: 30
+    });
+    expect(api.getPollCategories).toHaveBeenCalledWith('test-token');
+    expect(list.text).toContain('Polls');
+    expect(list.text).toContain('Have your say on questions put to the community.');
+    expect(list.text).toContain('Show only polls I created');
+    expect(list.text).toContain('Create a poll');
+    expect(list.text).toContain('Manage my polls');
+    expect(list.text).toContain('Which project should happen next?');
+    expect(list.text).toContain('Rank the neighbourhood ideas');
+    expect(list.text).toContain('Which workshop did people prefer?');
+    expect(list.text).toContain('Community garden');
+    expect(list.text).toContain('Rank this poll');
+    expect(list.text).toContain('View and discuss');
+    expect(list.text).not.toContain('Laravel Blade route');
+
+    const detail = await request(app)
+      .get('/polls/42?status=poll-comment-created')
+      .set('Cookie', signedCookieHeader());
+
+    expect(detail.status).toBe(200);
+    expect(api.getPoll).toHaveBeenCalledWith('test-token', 42);
+    expect(api.getComments).toHaveBeenCalledWith('test-token', {
+      target_type: 'poll',
+      target_id: 42
+    });
+    expect(detail.text).toContain('Back to polls');
+    expect(detail.text).toContain('Which project should happen next?');
+    expect(detail.text).toContain('Likes and comments');
+    expect(detail.text).toContain('2 likes');
+    expect(detail.text).toContain('1 comment');
+    expect(detail.text).toContain('The garden would be brilliant.');
+    expect(detail.text).toContain('Your comment has been posted.');
+    expect(detail.text).toContain('action="/polls/42/like"');
+    expect(detail.text).toContain('action="/polls/42/comment"');
+    expect(detail.text).not.toContain('Laravel Blade route');
+
+    const ranked = await request(app)
+      .get('/polls/43/rank?status=ranked')
+      .set('Cookie', signedCookieHeader());
+
+    expect(ranked.status).toBe(200);
+    expect(api.getPollRankedResults).toHaveBeenCalledWith('test-token', 43);
+    expect(ranked.text).toContain('Ranked');
+    expect(ranked.text).toContain('Rank the neighbourhood ideas');
+    expect(ranked.text).toContain('Your ranking has been recorded.');
+    expect(ranked.text).toContain('Results');
+    expect(ranked.text).toContain('2 voters');
+    expect(ranked.text).toContain('Orchard');
+
+    const create = await request(app)
+      .get('/polls/parity/create?status=poll-create-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(create.status).toBe(200);
+    expect(create.text).toContain('Create a poll');
+    expect(create.text).toContain('Ranked choice');
+    expect(create.text).toContain('We could not create your poll.');
+    expect(create.text).toContain('Community');
+
+    const manage = await request(app)
+      .get('/polls/parity/manage?status=poll-deleted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(manage.status).toBe(200);
+    expect(api.getPolls).toHaveBeenCalledWith('test-token', {
+      mine: true,
+      per_page: 30
+    });
+    expect(manage.text).toContain('Manage my polls');
+    expect(manage.text).toContain('The poll has been deleted.');
+    expect(manage.text).toContain('Export results');
+    expect(manage.text).toContain('Delete poll');
+
+    const exported = await request(app)
+      .get('/polls/42/export')
+      .set('Cookie', signedCookieHeader());
+
+    expect(exported.status).toBe(200);
+    expect(api.getPollExport).toHaveBeenCalledWith('test-token', 42);
+    expect(exported.headers['content-type']).toContain('text/csv');
+    expect(exported.text).toContain('Community garden,3');
+  });
+
+  it('preselects ranked poll options in their natural order before voting', async () => {
+    const api = require('../src/lib/api');
+
+    api.getPollRankedResults.mockResolvedValue({
+      data: {
+        poll: {
+          id: 43,
+          question: 'Rank the neighbourhood ideas',
+          status: 'open',
+          poll_type: 'ranked',
+          options: [
+            { id: 11, text: 'Orchard' },
+            { id: 12, text: 'Repair cafe' }
+          ]
+        },
+        ranked_results: { total_voters: 0, results: [] },
+        my_rankings: []
+      }
+    });
+
+    const ranked = await request(app)
+      .get('/polls/43/rank')
+      .set('Cookie', signedCookieHeader());
+
+    expect(ranked.status).toBe(200);
+    expect(ranked.text).toMatch(/id="rank-11"[\s\S]*?<option value="1" selected>Position 1<\/option>[\s\S]*?<option value="2">Position 2<\/option>/);
+    expect(ranked.text).toMatch(/id="rank-12"[\s\S]*?<option value="1">Position 1<\/option>[\s\S]*?<option value="2" selected>Position 2<\/option>/);
   });
 
   it('submits the Laravel poll store route through the v2 polls API helper', async () => {

@@ -5,6 +5,12 @@
 
 const express = require('express');
 const {
+  getPolls,
+  getPoll,
+  getPollCategories,
+  getPollRankedResults,
+  getPollExport,
+  getComments,
   createPoll,
   deletePoll,
   votePoll,
@@ -18,7 +24,7 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const router = express.Router();
 
 function tokenFrom(req) {
-  return req.signedCookies.token || '';
+  return (req.signedCookies && req.signedCookies.token) || '';
 }
 
 function trimmed(value, limit = null) {
@@ -58,6 +64,131 @@ function dataFrom(result) {
   return result && typeof result === 'object' && result.data !== undefined
     ? result.data
     : result;
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function asList(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeOption(option) {
+  const item = asObject(option);
+  return {
+    id: positiveInteger(item.id),
+    text: trimmed(item.text || item.label || item.title || item.option_text),
+    voteCount: positiveInteger(item.vote_count || item.voteCount) || 0,
+    percentage: Number.isFinite(Number(item.percentage)) ? Number(item.percentage) : 0
+  };
+}
+
+function normalizePoll(rawPoll) {
+  const poll = asObject(rawPoll);
+  const creator = asObject(poll.creator || poll.user);
+  const isOpen = poll.status
+    ? trimmed(poll.status) === 'open'
+    : Boolean(poll.is_active || poll.isActive);
+
+  return {
+    id: positiveInteger(poll.id),
+    question: trimmed(poll.question || poll.title),
+    description: trimmed(poll.description || poll.summary),
+    status: isOpen ? 'open' : 'closed',
+    pollType: trimmed(poll.poll_type || poll.pollType) || 'standard',
+    category: trimmed(poll.category),
+    creator: {
+      id: positiveInteger(creator.id || poll.user_id),
+      name: trimmed(creator.name || poll.creator_name || [creator.first_name, creator.last_name].filter(Boolean).join(' ')) || 'Community member'
+    },
+    createdAt: trimmed(poll.created_at || poll.createdAt),
+    expiresAt: trimmed(poll.expires_at || poll.end_date || poll.expiresAt),
+    hasVoted: Boolean(poll.has_voted || poll.hasVoted),
+    votedOptionId: positiveInteger(poll.voted_option_id || poll.user_vote_option_id || poll.votedOptionId),
+    totalVotes: positiveInteger(poll.total_votes || poll.totalVotes) || 0,
+    resultsVisible: Boolean(poll.results_visible || poll.resultsVisible),
+    isCreator: Boolean(poll.is_creator || poll.isCreator),
+    isAnonymous: Boolean(poll.is_anonymous || poll.isAnonymous),
+    likeCount: positiveInteger(poll.like_count || poll.likes_count || poll.likeCount) || 0,
+    hasLiked: Boolean(poll.has_liked || poll.hasLiked),
+    options: asList(poll.options).map(normalizeOption).filter((option) => option.id !== null && option.text)
+  };
+}
+
+function normalizeComment(comment) {
+  const item = asObject(comment);
+  const user = asObject(item.user || item.author);
+  return {
+    id: positiveInteger(item.id),
+    content: trimmed(item.content || item.body),
+    createdAt: trimmed(item.created_at || item.createdAt),
+    user: {
+      id: positiveInteger(user.id || item.user_id),
+      name: trimmed(user.name || item.user_name || [user.first_name, user.last_name].filter(Boolean).join(' ')) || 'Community member'
+    },
+    replies: asList(item.replies || item.children).map(normalizeComment)
+  };
+}
+
+function commentCount(comments) {
+  return comments.reduce((count, comment) => count + 1 + commentCount(comment.replies || []), 0);
+}
+
+function categoriesFrom(result) {
+  return asList(dataFrom(result))
+    .map((category) => trimmed(category))
+    .filter(Boolean);
+}
+
+function rankedResultRows(result) {
+  const payload = asObject(dataFrom(result));
+  const rankedResults = asObject(payload.ranked_results || payload.rankedResults);
+  return {
+    poll: normalizePoll(payload.poll),
+    rankedResults: {
+      totalVoters: positiveInteger(rankedResults.total_voters || rankedResults.totalVoters) || 0,
+      rows: asList(rankedResults.results).map((row) => {
+        const item = asObject(row);
+        return {
+          optionId: positiveInteger(item.option_id || item.optionId || item.id),
+          text: trimmed(item.text || item.label || item.title),
+          votes: positiveInteger(item.votes || item.vote_count || item.voteCount) || 0
+        };
+      }).filter((row) => row.text)
+    },
+    myRankings: asList(payload.my_rankings || payload.myRankings)
+  };
+}
+
+function requirePollAuth(req, res) {
+  const token = tokenFrom(req);
+  if (!token) {
+    res.redirect('/login?status=auth-required');
+    return '';
+  }
+  return token;
+}
+
+function pollStatusBanner(status) {
+  const banners = {
+    voted: { type: 'success', message: 'Thank you - your vote has been recorded.' },
+    'vote-failed': { type: 'error', message: 'We could not record your vote. You may have already voted, or the poll has closed.' },
+    'poll-created': { type: 'success', message: 'Your poll has been created.' },
+    'poll-create-failed': { type: 'error', message: 'We could not create your poll. Add a question and at least 2 options.' },
+    'poll-deleted': { type: 'success', message: 'The poll has been deleted.' },
+    'poll-delete-failed': { type: 'error', message: 'We could not delete that poll. It may not exist or may not be yours.' },
+    ranked: { type: 'success', message: 'Your ranking has been recorded.' },
+    'rank-failed': { type: 'error', message: 'We could not record your ranking. You may have already ranked this poll.' },
+    'poll-liked': { type: 'success', message: 'You liked this poll.' },
+    'poll-unliked': { type: 'success', message: 'You removed your like.' },
+    'poll-like-failed': { type: 'error', message: 'We could not record your like. Please try again.' },
+    'poll-comment-created': { type: 'success', message: 'Your comment has been posted.' },
+    'poll-comment-empty': { type: 'error', message: 'Enter a comment before posting.' },
+    'poll-comment-too-long': { type: 'error', message: 'Your comment is too long. Please shorten it.' },
+    'poll-comment-failed': { type: 'error', message: 'We could not post your comment. Please try again.' }
+  };
+  return banners[trimmed(status)] || null;
 }
 
 function pollRedirect(status, id = null) {
@@ -183,6 +314,116 @@ function likeStatusFrom(result) {
   const data = dataFrom(result);
   return data && data.action === 'unliked' ? 'poll-unliked' : 'poll-liked';
 }
+
+router.get('/parity/create', asyncRoute(async (req, res) => {
+  const token = requirePollAuth(req, res);
+  if (!token) return undefined;
+
+  const categories = categoriesFrom(await getPollCategories(token));
+  return res.render('polls/create', {
+    title: 'Create a poll',
+    activeNav: 'explore',
+    categories,
+    statusBanner: pollStatusBanner(req.query && req.query.status)
+  });
+}));
+
+router.get('/parity/manage', asyncRoute(async (req, res) => {
+  const token = requirePollAuth(req, res);
+  if (!token) return undefined;
+
+  const result = await getPolls(token, { mine: true, per_page: 30 });
+  const polls = asList(dataFrom(result)).map(normalizePoll);
+  return res.render('polls/manage', {
+    title: 'Manage my polls',
+    activeNav: 'explore',
+    polls,
+    statusBanner: pollStatusBanner(req.query && req.query.status)
+  });
+}));
+
+router.get('/:id(\\d+)/rank', asyncRoute(async (req, res) => {
+  const token = requirePollAuth(req, res);
+  if (!token) return undefined;
+
+  const id = Number(req.params.id);
+  const ranked = rankedResultRows(await getPollRankedResults(token, id));
+  return res.render('polls/rank', {
+    title: ranked.poll.question || 'Ranked-choice poll',
+    activeNav: 'explore',
+    poll: ranked.poll,
+    rankedResults: ranked.rankedResults,
+    myRankings: ranked.myRankings,
+    statusBanner: pollStatusBanner(req.query && req.query.status)
+  });
+}, { notFoundTitle: 'Poll not found' }));
+
+router.get('/:id(\\d+)/export', asyncRoute(async (req, res) => {
+  const token = requirePollAuth(req, res);
+  if (!token) return undefined;
+
+  const id = Number(req.params.id);
+  const result = await getPollExport(token, id);
+  const contentType = result.headers['content-type'] || 'text/csv; charset=utf-8';
+  const disposition = result.headers['content-disposition'] || `attachment; filename="poll-${id}-export.csv"`;
+  res.status(result.status || 200);
+  res.type(contentType);
+  res.set('Content-Disposition', disposition);
+  return res.send(result.body);
+}));
+
+router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
+  const token = requirePollAuth(req, res);
+  if (!token) return undefined;
+
+  const id = Number(req.params.id);
+  const poll = normalizePoll(dataFrom(await getPoll(token, id)));
+  let comments = [];
+  let commentsTotal = 0;
+  if (poll.id !== null) {
+    const commentsResult = await getComments(token, { target_type: 'poll', target_id: poll.id });
+    const commentsData = asObject(dataFrom(commentsResult));
+    comments = asList(commentsData.comments || dataFrom(commentsResult)).map(normalizeComment);
+    commentsTotal = positiveInteger(commentsData.count) || commentCount(comments);
+  }
+
+  return res.render('polls/detail', {
+    title: poll.question || 'Poll',
+    activeNav: 'explore',
+    poll,
+    comments,
+    commentsTotal,
+    statusBanner: pollStatusBanner(req.query && req.query.status)
+  });
+}, { notFoundTitle: 'Poll not found' }));
+
+router.get('/', asyncRoute(async (req, res) => {
+  const token = requirePollAuth(req, res);
+  if (!token) return undefined;
+
+  const mine = String((req.query && req.query.mine) || '') === '1';
+  const category = trimmed(req.query && req.query.category);
+  const params = { per_page: 30 };
+  if (mine) params.mine = true;
+  if (category) params.category = category;
+
+  const [pollsResult, categoriesResult] = await Promise.all([
+    getPolls(token, params),
+    getPollCategories(token)
+  ]);
+  const polls = asList(dataFrom(pollsResult)).map(normalizePoll);
+  const categories = categoriesFrom(categoriesResult);
+
+  return res.render('polls/index', {
+    title: 'Polls',
+    activeNav: 'explore',
+    polls,
+    categories,
+    pollsMine: mine,
+    pollsCategory: category,
+    statusBanner: pollStatusBanner(req.query && req.query.status)
+  });
+}));
 
 async function storePoll(req, res, { parity = false } = {}) {
   const token = tokenFrom(req);

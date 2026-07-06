@@ -950,6 +950,25 @@ async function getPoll(token, id) {
   });
 }
 
+async function getPollCategories(token) {
+  return request('/api/v2/polls/categories', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getPollRankedResults(token, id) {
+  return request(`/api/v2/polls/${encodeURIComponent(id)}/ranked-results`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getPollExport(token, id) {
+  return downloadRequest(`/api/v2/polls/${encodeURIComponent(id)}/export`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function createPoll(token, data) {
   return request('/api/v2/polls', {
     method: 'POST',
@@ -2301,6 +2320,9 @@ module.exports = {
   getReactors,
   getPolls,
   getPoll,
+  getPollCategories,
+  getPollRankedResults,
+  getPollExport,
   createPoll,
   deletePoll,
   votePoll,
