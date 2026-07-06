@@ -1,0 +1,55 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  {% if status %}
+    {% if status.type == "success" %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="podcast-studio-status-heading" data-module="govuk-notification-banner">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="podcast-studio-status-heading">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">{{ status.message }}</p>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li>{{ status.message }}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <span class="govuk-caption-l">Your podcasts at Project NEXUS Accessible</span>
+  <h1 class="govuk-heading-xl">Podcast studio</h1>
+  <p class="govuk-body-l">Create and manage your podcast shows and episodes.</p>
+
+  <a class="govuk-button" href="/podcasts/studio/new" data-module="govuk-button">Create a podcast</a>
+
+  {% if not shows.length %}
+    <p class="govuk-inset-text">You have not created any podcasts yet. Create your first show to start publishing episodes.</p>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for show in shows %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-module-row">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ show.title }}</h2>
+            <strong class="govuk-tag {{ show.statusTag }}">{{ show.statusLabel }}</strong>
+          </div>
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ show.episodeCountLabel }}</p>
+          <a class="govuk-link" href="/podcasts/studio/{{ show.id }}">Manage</a>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

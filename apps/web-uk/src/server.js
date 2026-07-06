@@ -55,6 +55,7 @@ const achievementsRoutes = require('./routes/achievements');
 const resourcesRoutes = require('./routes/resources');
 const blogPostRoutes = require('./routes/blog-posts');
 const pollActionRoutes = require('./routes/poll-actions');
+const podcastRoutes = require('./routes/podcasts');
 const podcastActionRoutes = require('./routes/podcast-actions');
 const federationActionRoutes = require('./routes/federation-actions');
 const laravelPrepRoutes = require('./routes/laravel-prep-pages');
@@ -1050,6 +1051,7 @@ app.get('/organisations/:id(\\d+)', (req, res) => {
 
 app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
 app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);
+app.use('/podcasts', doubleCsrfProtection, podcastRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {

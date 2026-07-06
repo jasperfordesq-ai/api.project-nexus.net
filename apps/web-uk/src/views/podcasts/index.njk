@@ -1,0 +1,75 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">Project NEXUS Accessible</span>
+  <h1 class="govuk-heading-xl">Podcasts</h1>
+  <p class="govuk-body-l">Listen to podcasts from your community.</p>
+
+  <p class="govuk-body">
+    <a class="govuk-link" href="/podcasts/studio">Podcast studio</a>
+  </p>
+
+  <form method="get" action="/podcasts" class="govuk-!-margin-bottom-6">
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-one-third">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="q">Find a podcast</label>
+          <div id="podcast-q-hint" class="govuk-hint">Search by title or description.</div>
+          <input class="govuk-input" id="q" name="q" type="search" value="{{ query }}" aria-describedby="podcast-q-hint">
+        </div>
+      </div>
+      <div class="govuk-grid-column-one-third">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="sort">Sort by</label>
+          <select class="govuk-select" id="sort" name="sort">
+            <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest first</option>
+            <option value="title" {% if sort == "title" %}selected{% endif %}>Title (A to Z)</option>
+            <option value="episodes" {% if sort == "episodes" %}selected{% endif %}>Most episodes</option>
+            <option value="followers" {% if sort == "followers" %}selected{% endif %}>Most followers</option>
+          </select>
+        </div>
+      </div>
+      {% if category %}
+        <div class="govuk-grid-column-one-third">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="category">Category</label>
+            <input class="govuk-input" id="category" name="category" type="text" value="{{ category }}">
+          </div>
+        </div>
+      {% endif %}
+    </div>
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
+  </form>
+
+  {% if not shows.length %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">There are no podcasts yet.</p>
+    </div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for show in shows %}
+        <article class="nexus-alpha-card">
+          {% if show.artworkUrl %}
+            <img class="nexus-alpha-avatar" src="{{ show.artworkUrl }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+          {% endif %}
+          <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+            <a class="govuk-link" href="/podcasts/{{ show.id }}">{{ show.title }}</a>
+          </h2>
+          {% if show.description %}
+            <p class="govuk-body govuk-!-margin-bottom-1">{{ show.description }}</p>
+          {% elseif show.summary %}
+            <p class="govuk-body govuk-!-margin-bottom-1">{{ show.summary }}</p>
+          {% endif %}
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
+            {% if show.byLabel %}{{ show.byLabel }} - {% endif %}{{ show.episodeCount }} episodes
+          </p>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T14:43:05.815Z",
+    "generatedAt": "2026-07-06T14:57:40.157Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -10464,8 +10464,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
+      "webUkView": "podcasts/index; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
     },
     {
       "method": "GET",
@@ -10483,8 +10483,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "podcasts/detail; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "GET",
@@ -10502,8 +10502,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/{param}/episodes/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "podcasts/episode; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "GET",
@@ -10521,8 +10521,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/studio",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "podcasts/studio; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "GET",
@@ -10540,8 +10540,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/studio/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "podcasts/manage; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "GET",
@@ -10559,8 +10559,8 @@
       "gates": "feature:podcasts",
       "apiNeeds": "",
       "webUkPath": "/podcasts/studio/new",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "podcasts/form; static-page",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\podcasts.js"
     },
     {
       "method": "POST",

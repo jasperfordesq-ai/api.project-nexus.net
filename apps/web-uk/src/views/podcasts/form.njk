@@ -1,0 +1,78 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/podcasts/studio">Back to podcast studio</a>
+
+  {% if status %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-list govuk-error-summary__list">
+            <li><a href="#title">{{ status.message }}</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <h1 class="govuk-heading-xl">Create a podcast</h1>
+
+  <form method="post" action="{{ action }}" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="title">Show title</label>
+      <div id="title-hint" class="govuk-hint">The name of your podcast.</div>
+      <input class="govuk-input" id="title" name="title" type="text" maxlength="200" value="{{ show.title }}" aria-describedby="title-hint">
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="summary">Short summary <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+      <div id="summary-hint" class="govuk-hint">A one-line summary shown in the podcast list.</div>
+      <input class="govuk-input" id="summary" name="summary" type="text" maxlength="600" value="{{ show.summary }}" aria-describedby="summary-hint">
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="description">Description <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+      <div id="description-hint" class="govuk-hint">Tell listeners what the show is about.</div>
+      <textarea class="govuk-textarea" id="description" name="description" rows="5" aria-describedby="description-hint">{{ show.description }}</textarea>
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="category">Category <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+      <div id="category-hint" class="govuk-hint">Optional. For example, Community or Education.</div>
+      <input class="govuk-input govuk-input--width-20" id="category" name="category" type="text" maxlength="120" value="{{ show.category }}" aria-describedby="category-hint">
+    </div>
+
+    <div class="govuk-form-group">
+      <fieldset class="govuk-fieldset">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Who can listen?</legend>
+        <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+          <div class="govuk-radios__item">
+            <input class="govuk-radios__input" id="visibility" name="visibility" type="radio" value="public" {% if show.visibility == "public" %}checked{% endif %}>
+            <label class="govuk-label govuk-radios__label" for="visibility">Anyone</label>
+          </div>
+          <div class="govuk-radios__item">
+            <input class="govuk-radios__input" id="visibility-members" name="visibility" type="radio" value="members" {% if show.visibility == "members" %}checked{% endif %}>
+            <label class="govuk-label govuk-radios__label" for="visibility-members">Members only</label>
+          </div>
+          <div class="govuk-radios__item">
+            <input class="govuk-radios__input" id="visibility-private" name="visibility" type="radio" value="private" {% if show.visibility == "private" %}checked{% endif %}>
+            <label class="govuk-label govuk-radios__label" for="visibility-private">Only me</label>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="govuk-button-group">
+      <button class="govuk-button" data-module="govuk-button">Create show</button>
+      <a class="govuk-link" href="/podcasts/studio">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

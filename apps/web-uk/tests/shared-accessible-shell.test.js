@@ -159,6 +159,12 @@ process.env.NODE_ENV = 'test';
 describe('shared accessible frontend shell', () => {
   let app;
 
+  function signedCookieHeader() {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    return `token=${encodeURIComponent(signedToken)}`;
+  }
+
   beforeAll(() => {
     app = require('../src/server');
   });
@@ -6096,6 +6102,212 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callMessageApi).not.toHaveBeenCalled();
     expect(api.callConversationApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed podcast index page', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 7,
+          title: 'Community voices',
+          description: 'Weekly audio updates from the community.',
+          owner: { name: 'Aisha Khan' },
+          approved_episode_count: 4,
+          artwork_url: '/uploads/podcast.png'
+        }
+      ],
+      meta: { total: 1, page: 1, per_page: 30 }
+    });
+
+    const response = await request(app)
+      .get('/podcasts?q=climate&sort=followers')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '?per_page=30&sort=followers&q=climate');
+    expect(response.text).toContain('Podcasts');
+    expect(response.text).toContain('Listen to podcasts from your community.');
+    expect(response.text).toContain('Find a podcast');
+    expect(response.text).toContain('Community voices');
+    expect(response.text).toContain('By Aisha Khan');
+    expect(response.text).toContain('4 episodes');
+    expect(response.text).toContain('href="/podcasts/7"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from podcasts before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockClear();
+
+    const response = await request(app).get('/podcasts');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.callPodcastApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed podcast detail page', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        title: 'Community voices',
+        description: 'Stories from local members.',
+        owner: { name: 'Aisha Khan' },
+        rss_enabled: true,
+        rss_url: 'https://example.test/feed.xml',
+        episodes: [
+          {
+            id: 99,
+            title: 'First update',
+            description: 'A short first episode.',
+            audio_url: 'https://media.example.test/first.mp3',
+            status: 'published'
+          }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/podcasts/7?status=subscribed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '/7');
+    expect(response.text).toContain('Back to podcasts');
+    expect(response.text).toContain('You have subscribed to this podcast.');
+    expect(response.text).toContain('By Aisha Khan');
+    expect(response.text).toContain('Community voices');
+    expect(response.text).toContain('Stories from local members.');
+    expect(response.text).toContain('RSS feed');
+    expect(response.text).toContain('Subscribe to this podcast');
+    expect(response.text).toContain('First update');
+    expect(response.text).toContain('href="/podcasts/7/episodes/99"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed podcast episode page', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockResolvedValueOnce({
+      data: {
+        id: 99,
+        title: 'First update',
+        description: 'Episode notes for listeners.',
+        audio_url: 'https://media.example.test/first.mp3',
+        transcript: 'Welcome to the first update.',
+        show: { id: 7, title: 'Community voices' }
+      }
+    });
+
+    const response = await request(app)
+      .get('/podcasts/7/episodes/99')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '/7/99');
+    expect(response.text).toContain('Back to podcast');
+    expect(response.text).toContain('Community voices');
+    expect(response.text).toContain('First update');
+    expect(response.text).toContain('Episode notes for listeners.');
+    expect(response.text).toContain('Listen to First update');
+    expect(response.text).toContain('Read transcript');
+    expect(response.text).toContain('Welcome to the first update.');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed podcast studio dashboard', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          title: 'Community voices',
+          status: 'draft',
+          episodes_count: 2
+        }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/podcasts/studio?status=show-deleted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '/mine');
+    expect(response.text).toContain('Podcast studio');
+    expect(response.text).toContain('Your show was deleted.');
+    expect(response.text).toContain('Create and manage your podcast shows and episodes.');
+    expect(response.text).toContain('Community voices');
+    expect(response.text).toContain('Draft');
+    expect(response.text).toContain('2 episodes');
+    expect(response.text).toContain('href="/podcasts/studio/42"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed podcast create form', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockClear();
+
+    const response = await request(app)
+      .get('/podcasts/studio/new')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callPodcastApi).not.toHaveBeenCalled();
+    expect(response.text).toContain('Back to podcast studio');
+    expect(response.text).toContain('Create a podcast');
+    expect(response.text).toContain('Show title');
+    expect(response.text).toContain('Who can listen?');
+    expect(response.text).toContain('Anyone');
+    expect(response.text).toContain('Members only');
+    expect(response.text).toContain('Only me');
+    expect(response.text).toContain('Create show');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed podcast manage page', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          title: 'Community voices',
+          summary: 'Weekly local audio',
+          description: 'Stories and updates.',
+          category: 'Community',
+          visibility: 'members',
+          status: 'draft',
+          moderation_status: 'approved',
+          episodes: [
+            {
+              id: 99,
+              title: 'First update',
+              status: 'draft',
+              episode_number: 3
+            }
+          ]
+        }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/podcasts/studio/42?status=episode-added')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '/mine');
+    expect(response.text).toContain('Edit your podcast');
+    expect(response.text).toContain('Your episode was added.');
+    expect(response.text).toContain('Publish your show');
+    expect(response.text).toContain('Community voices');
+    expect(response.text).toContain('Weekly local audio');
+    expect(response.text).toContain('Episode 3');
+    expect(response.text).toContain('First update');
+    expect(response.text).toContain('Add an episode');
+    expect(response.text).toContain('Audio link');
+    expect(response.text).toContain('Delete this show?');
+    expect(response.text).not.toContain('Laravel Blade route');
   });
 
   it('submits Laravel podcast action aliases and redirects signed-out visitors', async () => {
