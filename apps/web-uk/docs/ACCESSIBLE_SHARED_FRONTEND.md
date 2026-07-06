@@ -90,6 +90,9 @@ Laravel status redirects such as `collection-created`, `collection-updated`,
 Match-dismiss POST aliases are wired to Laravel `/api/v2/matches/{id}/dismiss`
 for both `/matches/{id}/dismiss` and `/matches/board/{listingId}/dismiss`,
 including the board `source` redirect and `#matches-top` fragment.
+Exchange action and rating POST aliases are wired to Laravel `/api/v2/exchanges`
+for accept/decline/start/complete/confirm/cancel actions and
+`/api/v2/exchanges/{id}/rate` for no-JS ratings.
 The member onboarding POST aliases now cover `/onboarding/{step}` and
 `/onboarding/avatar`: profile saves bio through the profile API, interests and
 skills are held in the Express session, safeguarding uses Laravel's Blade-style
@@ -164,8 +167,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 417 `apps/web-uk` route declarations, 335 exact
-method/path matches, 273 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 419 `apps/web-uk` route declarations, 337 exact
+method/path matches, 271 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

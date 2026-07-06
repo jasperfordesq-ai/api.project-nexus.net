@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T09:14:17.996Z
+Generated: 2026-07-06T09:18:38.610Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 417 |
-| Matched routes | 335 |
-| Missing routes | 273 |
+| web-uk routes | 419 |
+| Matched routes | 337 |
+| Missing routes | 271 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -33,7 +33,7 @@ Generated: 2026-07-06T09:14:17.996Z
 | courses | 10 | 16 | 0 |
 | dashboard | 1 | 0 | 0 |
 | events | 14 | 7 | 2 |
-| exchanges | 2 | 2 | 0 |
+| exchanges | 4 | 0 | 0 |
 | explore | 1 | 0 | 0 |
 | faq | 1 | 0 | 0 |
 | features | 1 | 0 | 0 |
@@ -131,8 +131,6 @@ Generated: 2026-07-06T09:14:17.996Z
 | POST | `/events/{param}/translate` | events | eventsRunTranslate | events-translate | auth-optional | feature:events |
 | POST | `/events/{param}/waitlist` | events | joinEventWaitlist |  | auth-optional | feature:events |
 | POST | `/events/{param}/waitlist/leave` | events | leaveEventWaitlist |  | auth-optional | feature:events |
-| POST | `/exchanges/{param}` | exchanges | storeExchangeAction |  | auth-optional | module:listings |
-| POST | `/exchanges/{param}/rate` | exchanges | storeExchangeRating |  | auth-optional | module:listings |
 | POST | `/federation/connections` | federation | storeFederationConnection |  | auth-optional | feature:federation |
 | POST | `/federation/connections/{param}/accept` | federation | acceptFederationConnection |  | public-or-unknown |  |
 | POST | `/federation/connections/{param}/reject` | federation | rejectFederationConnection |  | public-or-unknown |  |

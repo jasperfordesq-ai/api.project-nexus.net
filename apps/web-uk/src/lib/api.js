@@ -485,6 +485,27 @@ async function dismissMatch(token, id, reason) {
   });
 }
 
+async function performExchangeAction(token, id, action, data = {}) {
+  const encodedId = encodeURIComponent(id);
+  const endpoint = action === 'cancel'
+    ? `/api/v2/exchanges/${encodedId}`
+    : `/api/v2/exchanges/${encodedId}/${encodeURIComponent(action)}`;
+
+  return request(endpoint, {
+    method: action === 'cancel' ? 'DELETE' : 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function rateExchange(token, id, data) {
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/rate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 // Messages
 async function getConversations(token) {
   return request('/api/messages', {
@@ -1390,6 +1411,8 @@ module.exports = {
   deleteSavedCollection,
   deleteSavedItem,
   dismissMatch,
+  performExchangeAction,
+  rateExchange,
   // Messages
   getConversations,
   getConversation,

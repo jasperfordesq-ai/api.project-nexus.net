@@ -62,6 +62,8 @@ jest.mock('../src/lib/api', () => ({
   deleteSavedCollection: jest.fn().mockResolvedValue({}),
   deleteSavedItem: jest.fn().mockResolvedValue({}),
   dismissMatch: jest.fn().mockResolvedValue({ data: { dismissed: true } }),
+  performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
+  rateExchange: jest.fn().mockResolvedValue({ data: { ratings: [] } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -116,6 +118,8 @@ describe('shared accessible frontend shell', () => {
     api.deleteSavedCollection.mockReset().mockResolvedValue({});
     api.deleteSavedItem.mockReset().mockResolvedValue({});
     api.dismissMatch.mockReset().mockResolvedValue({ data: { dismissed: true } });
+    api.performExchangeAction.mockReset().mockResolvedValue({ data: { id: 88 } });
+    api.rateExchange.mockReset().mockResolvedValue({ data: { ratings: [] } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -948,6 +952,61 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/matches/board?source=listing&status=match-dismissed#matches-top');
     expect(api.dismissMatch).toHaveBeenCalledWith('test-token', 77, 'too_far');
+  });
+
+  it('submits the Laravel exchange action route through the exchanges API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/exchanges/88')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        action: 'confirm',
+        hours: '2.5'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/exchanges/88?status=exchange-updated');
+    expect(api.performExchangeAction).toHaveBeenCalledWith('test-token', 88, 'confirm', { hours: 2.5 });
+  });
+
+  it('submits the Laravel exchange rating route through the exchange rating API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/exchanges/88/rate')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        rating: '5',
+        comment: 'Great exchange'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/exchanges/88?status=rating-submitted');
+    expect(api.rateExchange).toHaveBeenCalledWith('test-token', 88, {
+      rating: 5,
+      comment: 'Great exchange'
+    });
   });
 
   it('submits the Laravel appreciation send route through the appreciations API helper', async () => {

@@ -46,6 +46,8 @@ are backed by `/api/v2/me/saved-items` and `/api/v2/appreciations`.
 Saved-collection aliases are backed by `/api/v2/me/collections` plus
 `/api/v2/me/saved-items/{id}` for item removal.
 Match-dismiss aliases are backed by `/api/v2/matches/{id}/dismiss`.
+Exchange action/rating aliases are backed by `/api/v2/exchanges/{id}` action
+endpoints and `/api/v2/exchanges/{id}/rate`.
 Onboarding step POSTs use `/api/users/me`, `/api/v2/onboarding/safeguarding`,
 and `/api/v2/onboarding/complete`; avatar upload is still a safe failure until
 multipart proxying is implemented. It is not a backend adapter and does not

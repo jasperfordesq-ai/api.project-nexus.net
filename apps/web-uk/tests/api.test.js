@@ -753,6 +753,77 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel exchange helpers', () => {
+    it('should perform an exchange action through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 88 } })
+      });
+
+      await api.performExchangeAction('test-token', 88, 'confirm', { hours: 2.5 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/exchanges/88/confirm',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ hours: 2.5 })
+        })
+      );
+    });
+
+    it('should cancel an exchange through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { message: 'cancelled' } })
+      });
+
+      await api.performExchangeAction('test-token', 88, 'cancel', { reason: 'No longer needed' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/exchanges/88',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ reason: 'No longer needed' })
+        })
+      );
+    });
+
+    it('should rate an exchange through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { ratings: [] } })
+      });
+
+      await api.rateExchange('test-token', 88, {
+        rating: 5,
+        comment: 'Great exchange'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/exchanges/88/rate',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            rating: 5,
+            comment: 'Great exchange'
+          })
+        })
+      );
+    });
+  });
+
   describe('Laravel onboarding helpers', () => {
     it('should save safeguarding preferences through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
