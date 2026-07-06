@@ -170,11 +170,12 @@ smoke tests, and ASP.NET backend compatibility are not certified.
 Marketplace GET pages remain preparation pages, but the Laravel accessible POST
 aliases under `/marketplace` are now local route declarations backed by Laravel
 v2 marketplace APIs. The aliases cover listing create/update/delete/renew,
-save/unsave, buy, offer, report, offer accept/decline/withdraw, order ship,
-confirm, cancel, pay intent creation, rate, seller profile onboarding, pickup
-slot create/update/delete/scan, and seller coupon create/update/delete. This
-remains partial: marketplace Blade rendering, seller dashboard data, hosted
-no-JS Stripe checkout redirects, address/onboarding depth, multipart media
+listing image upload from the Blade-style create/edit form, save/unsave, buy,
+offer, report, offer accept/decline/withdraw, order ship, confirm, cancel, pay
+intent creation, rate, seller profile onboarding, pickup slot
+create/update/delete/scan, and seller coupon create/update/delete. This remains
+partial: marketplace Blade rendering, seller dashboard data, hosted no-JS
+Stripe checkout redirects, address/onboarding depth, merchant profile image
 uploads, tenant/feature gates, localization, runtime smoke tests, and ASP.NET
 backend compatibility are not certified.
 

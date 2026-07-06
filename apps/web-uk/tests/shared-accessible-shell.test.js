@@ -88,6 +88,7 @@ jest.mock('../src/lib/api', () => ({
   getJobs: jest.fn(),
   getJob: jest.fn(),
   applyForJob: jest.fn(),
+  uploadMarketplaceListingImages: jest.fn().mockResolvedValue({ data: [{ id: 9 }] }),
   getPolls: jest.fn().mockResolvedValue({ data: [] }),
   getPoll: jest.fn().mockResolvedValue({ data: { id: 42, question: 'Which project?' } }),
   getPollCategories: jest.fn().mockResolvedValue({ data: [] }),
@@ -298,6 +299,7 @@ describe('shared accessible frontend shell', () => {
     api.createVolunteerOrganisation.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.uploadMarketplaceListingImages.mockReset().mockResolvedValue({ data: [{ id: 9 }] });
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callCourseApi.mockReset().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } });
     api.getMyCourses.mockReset().mockResolvedValue({ data: [] });
@@ -10877,6 +10879,56 @@ describe('shared accessible frontend shell', () => {
     expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/listings/42/report', {
       reason: 'unsafe',
       description: 'The item appears unsafe for community use.'
+    });
+  });
+
+  it('renders and submits Laravel marketplace listing images with multipart data', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({ data: [{ id: 9, name: 'Home' }] })
+      .mockResolvedValueOnce({ data: { id: 42 } });
+
+    const page = await agent
+      .get('/marketplace/create')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('action="/marketplace/create"');
+    expect(page.text).toContain('enctype="multipart/form-data"');
+    expect(page.text).toContain('name="image"');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/marketplace/create')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('title', ' Community lamp ')
+      .field('description', ' Warm table lamp ')
+      .field('price_type', 'fixed')
+      .field('price', '12')
+      .field('delivery_method', 'pickup')
+      .attach('image', Buffer.from('fake marketplace image', 'utf8'), {
+        filename: 'lamp.webp',
+        contentType: 'image/webp'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/marketplace/42?status=listing-created');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/listings', expect.objectContaining({
+      title: 'Community lamp',
+      description: 'Warm table lamp'
+    }));
+    expect(api.uploadMarketplaceListingImages).toHaveBeenCalledWith('test-token', 42, {
+      file: expect.objectContaining({
+        filename: 'lamp.webp',
+        contentType: 'image/webp',
+        buffer: Buffer.from('fake marketplace image', 'utf8')
+      })
     });
   });
 

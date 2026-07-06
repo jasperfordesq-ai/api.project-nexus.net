@@ -767,6 +767,34 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should upload marketplace listing images through Laravel multipart data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [{ id: 9 }] })
+      });
+
+      await api.uploadMarketplaceListingImages('test-token', 42, {
+        file: {
+          buffer: Buffer.from('fake marketplace image', 'utf8'),
+          filename: 'lamp.webp',
+          contentType: 'image/webp'
+        }
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/marketplace/listings/42/images',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
   });
 
   describe('callIdeationApi', () => {

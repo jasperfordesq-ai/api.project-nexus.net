@@ -558,6 +558,24 @@ async function callMarketplaceApi(token, method, path, data = undefined) {
   return request(`/api/v2/marketplace${normalizedPath}`, options);
 }
 
+async function uploadMarketplaceListingImages(token, listingId, data) {
+  const form = new globalThis.FormData();
+  const files = Array.isArray(data.files) ? data.files : [data.file || data.image].filter(Boolean);
+  for (const file of files) {
+    if (!file || !file.buffer) continue;
+    const blob = new globalThis.Blob([file.buffer], {
+      type: file.contentType || 'application/octet-stream'
+    });
+    form.append('image', blob, file.filename || 'marketplace-image');
+  }
+
+  return request(`/api/v2/marketplace/listings/${listingId}/images`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function callIdeationApi(token, method, path, data = undefined) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const options = {
@@ -2534,6 +2552,7 @@ module.exports = {
   callVolunteeringApi,
   uploadVolunteerCredential,
   callMarketplaceApi,
+  uploadMarketplaceListingImages,
   callCourseApi,
   getMyCourses,
   callGroupApi,

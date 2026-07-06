@@ -23,7 +23,7 @@
   <h1 class="govuk-heading-xl">{% if isEdit %}Edit your listing{% else %}Create a listing{% endif %}</h1>
   <p class="govuk-body-l">Add a clear title, an honest description and a price so buyers know what to expect.</p>
 
-  <form method="post" action="{{ action }}" novalidate>
+  <form method="post" action="{{ action }}" enctype="multipart/form-data" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <fieldset class="govuk-fieldset">
@@ -138,6 +138,16 @@
         <label class="govuk-label govuk-label--s" for="location">Location <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
         <div id="location-hint" class="govuk-hint">A town or area so local buyers can find your item.</div>
         <input class="govuk-input" id="location" name="location" type="text" maxlength="255" value="{{ listing.location }}" autocomplete="off" aria-describedby="location-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="image">Image</label>
+        {% if isEdit and listing.imageUrl %}
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Current image</p>
+          <img class="nexus-alpha-card-thumb govuk-!-margin-bottom-2" src="{{ listing.imageUrl }}" alt="{{ listing.title }}" width="120" height="90" loading="lazy" decoding="async">
+        {% endif %}
+        <div id="image-hint" class="govuk-hint">Upload an optional JPG, PNG, GIF or WebP image.</div>
+        <input class="govuk-file-upload" id="image" name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="image-hint">
       </div>
 
       <div class="govuk-form-group">

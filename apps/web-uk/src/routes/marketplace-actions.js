@@ -4,7 +4,8 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { ApiError, callMarketplaceApi } = require('../lib/api');
+const fs = require('fs/promises');
+const { ApiError, callMarketplaceApi, uploadMarketplaceListingImages } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -29,6 +30,32 @@ function trimmed(value, limit = null) {
 function positiveInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
+}
+
+async function uploadListingImage(token, listingId, image) {
+  if (!image || !listingId) return;
+  await uploadMarketplaceListingImages(token, listingId, {
+    file: {
+      buffer: await fs.readFile(image.filepath),
+      filename: trimmed(image.originalFilename) || 'marketplace-image',
+      contentType: trimmed(image.mimetype) || 'application/octet-stream',
+      size: image.size
+    }
+  });
 }
 
 function decimalNumber(value) {
@@ -221,40 +248,49 @@ function couponPayload(body) {
 }
 
 router.post('/create', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
   const payload = listingPayload(req.body);
+  const image = uploadedFile(req, 'image');
   if (payload.title === '' || payload.description === '') {
+    await removeUploadedFile(image);
     return res.redirect('/marketplace/create?status=listing-validation');
   }
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    '/listings',
-    payload,
-    (result) => listingRedirect(resultId(result) || 'mine', 'listing-created'),
-    '/marketplace/create?status=listing-create-failed'
-  );
+  try {
+    const result = await callApi(token, 'POST', '/listings', payload);
+    const id = resultId(result);
+    await uploadListingImage(token, id, image);
+    return res.redirect(listingRedirect(id || 'mine', 'listing-created'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect('/marketplace/create?status=listing-create-failed');
+  } finally {
+    await removeUploadedFile(image);
+  }
 }));
 
 router.post('/:id(\\d+)/update', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return res.redirect(loginRedirect());
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
   const id = Number(req.params.id);
   const payload = listingPayload(req.body);
+  const image = uploadedFile(req, 'image');
   if (payload.title === '' || payload.description === '') {
+    await removeUploadedFile(image);
     return res.redirect(`/marketplace/${id}/edit?status=listing-validation`);
   }
 
-  return runAction(
-    req,
-    res,
-    'PUT',
-    `/listings/${id}`,
-    payload,
-    listingRedirect(id, 'listing-saved'),
-    `/marketplace/${id}/edit?status=listing-save-failed`
-  );
+  try {
+    await callApi(token, 'PUT', `/listings/${id}`, payload);
+    await uploadListingImage(token, id, image);
+    return res.redirect(listingRedirect(id, 'listing-saved'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(`/marketplace/${id}/edit?status=listing-save-failed`);
+  } finally {
+    await removeUploadedFile(image);
+  }
 }));
 
 router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
