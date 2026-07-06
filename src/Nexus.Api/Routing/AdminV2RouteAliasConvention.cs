@@ -942,7 +942,28 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
     private static string? ToSimpleV2Alias(string? template)
     {
         var normalized = Normalize(template);
-        foreach (var prefix in new[] { "api/stories", "api/exchanges", "api/group-exchanges", "api/messages", "api/polls", "api/members", "api/kb", "api/me/collections", "api/me/saved-items", "api/resources/categories", "api/skills/categories", "api/search/saved", "api/auth/2fa", "api/auth/oauth" })
+        foreach (var prefix in new[]
+        {
+            "api/stories",
+            "api/exchanges",
+            "api/group-exchanges",
+            "api/messages",
+            "api/polls",
+            "api/members",
+            "api/kb",
+            "api/me/collections",
+            "api/me/saved-items",
+            "api/resources/categories",
+            "api/skills/categories",
+            "api/search/saved",
+            "api/auth/2fa",
+            "api/auth/oauth",
+            "api/admin/reports",
+            "api/admin/crm",
+            "api/admin/feed",
+            "api/admin/pages",
+            "api/admin/federation"
+        })
         {
             if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {

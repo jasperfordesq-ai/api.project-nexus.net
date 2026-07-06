@@ -240,6 +240,26 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/auth/oauth', '/api/v2/auth/oauth'
     }
 
+    if ($normalized -eq '/api/admin/reports' -or $normalized.StartsWith('/api/admin/reports/')) {
+        return $normalized -replace '^/api/admin/reports', '/api/v2/admin/reports'
+    }
+
+    if ($normalized -eq '/api/admin/crm' -or $normalized.StartsWith('/api/admin/crm/')) {
+        return $normalized -replace '^/api/admin/crm', '/api/v2/admin/crm'
+    }
+
+    if ($normalized -eq '/api/admin/feed' -or $normalized.StartsWith('/api/admin/feed/')) {
+        return $normalized -replace '^/api/admin/feed', '/api/v2/admin/feed'
+    }
+
+    if ($normalized -eq '/api/admin/pages' -or $normalized.StartsWith('/api/admin/pages/')) {
+        return $normalized -replace '^/api/admin/pages', '/api/v2/admin/pages'
+    }
+
+    if ($normalized -eq '/api/admin/federation' -or $normalized.StartsWith('/api/admin/federation/')) {
+        return $normalized -replace '^/api/admin/federation', '/api/v2/admin/federation'
+    }
+
     return ''
 }
 

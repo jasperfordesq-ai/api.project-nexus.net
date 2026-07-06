@@ -282,4 +282,23 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/admin/reports")]
+    [InlineData("/api/v2/admin/reports/stats")]
+    [InlineData("/api/v2/admin/crm/tasks")]
+    [InlineData("/api/v2/admin/pages")]
+    [InlineData("/api/v2/admin/feed/posts")]
+    [InlineData("/api/v2/admin/feed/stats")]
+    [InlineData("/api/v2/admin/federation/api-keys")]
+    [InlineData("/api/v2/admin/federation/partners")]
+    public async Task LaravelReactAdminUtilityV2ReadAliases_AsAdmin_AreRouted(string path)
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
