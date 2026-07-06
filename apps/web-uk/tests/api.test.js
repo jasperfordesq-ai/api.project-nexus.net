@@ -493,4 +493,37 @@ describe('API Request Functions', () => {
       );
     });
   });
+
+  describe('createVolunteerOrganisation', () => {
+    it('should call the Laravel volunteering organisation creation endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42 } })
+      });
+
+      await api.createVolunteerOrganisation('test-token', {
+        name: 'Community Helpers',
+        description: 'We coordinate local volunteering projects.',
+        contact_email: 'hello@example.org',
+        website: 'https://example.org'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/organisations',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            name: 'Community Helpers',
+            description: 'We coordinate local volunteering projects.',
+            contact_email: 'hello@example.org',
+            website: 'https://example.org'
+          })
+        })
+      );
+    });
+  });
 });

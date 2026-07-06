@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T08:22:17.744Z
+Generated: 2026-07-06T08:31:07.249Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 401 |
-| Matched routes | 319 |
-| Missing routes | 289 |
+| web-uk routes | 403 |
+| Matched routes | 321 |
+| Missing routes | 287 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -64,7 +64,7 @@ Generated: 2026-07-06T08:22:17.744Z
 | nexus-score | 2 | 0 | 0 |
 | notifications | 4 | 2 | 0 |
 | onboarding | 2 | 2 | 0 |
-| organisations | 7 | 2 | 0 |
+| organisations | 9 | 0 | 0 |
 | password | 2 | 0 | 0 |
 | podcasts | 6 | 8 | 0 |
 | polls | 6 | 7 | 0 |
@@ -298,8 +298,6 @@ Generated: 2026-07-06T08:22:17.744Z
 | POST | `/notifications/group/read` | notifications | markGroupNotificationsRead |  | auth-optional | module:notifications |
 | POST | `/onboarding/{param}` | onboarding | onboardingStepPost |  | auth-optional |  |
 | POST | `/onboarding/avatar` | onboarding | onboardingAvatar |  | auth-optional |  |
-| POST | `/organisations` | organisations | storeOrganisation |  | public-or-unknown | feature:volunteering |
-| POST | `/organisations/register` | organisations | organisationsRegister |  | auth-optional | feature:volunteering |
 | POST | `/podcasts/{param}/subscribe` | podcasts | podcastSubscribe |  | auth-optional | feature:podcasts |
 | POST | `/podcasts/studio/{param}/delete` | podcasts | commerceDeletePodcast |  | auth-optional | feature:podcasts |
 | POST | `/podcasts/studio/{param}/episodes` | podcasts | commerceStorePodcastEpisode |  | auth-optional | feature:podcasts |

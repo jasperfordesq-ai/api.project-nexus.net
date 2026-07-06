@@ -67,10 +67,12 @@ candidates based on the Laravel accessible organisations pages. The directory GE
 and keeps a warning state for API unavailability. The browse GET uses the same
 collection with `search`, `per_page`, and cursor-style load-more pagination. The
 register GET renders the standalone Blade-style form and validation status
-anchors, but POST persistence is not certified. The manage GET reads
-`/api/v2/volunteering/my-organisations` when a signed token is present and
-renders owner/admin and pending rows, but Laravel auth redirect behavior is not
-certified. Its detail GET reads
+anchors. `/organisations` POST and `/organisations/register` POST validate the
+same required fields/terms, require a signed token, submit to
+`/api/v2/volunteering/organisations`, and redirect with Laravel status keys. The
+manage GET reads `/api/v2/volunteering/my-organisations` when a signed token is
+present and renders owner/admin and pending rows, but Laravel auth redirect
+behavior is not certified. Its detail GET reads
 `/api/v2/volunteering/organisations/{id}?include=public_contract` and renders
 profile, contact, jobs-link, basic public stats, active opportunities from
 `/api/v2/volunteering/opportunities?organization_id={id}`, and volunteer
@@ -83,9 +85,8 @@ signed in. It is
 not a backend adapter and must not be treated as proof that Laravel or ASP.NET
 organisation workflows are ready in this app. The remaining work includes
 tenant-prefixed routing, auth redirects, volunteering feature gates,
-job-vacancy feature gates, registration persistence, POST validation behavior,
-redirects, organisation apply POST workflow, localization, and runtime smoke
-tests.
+job-vacancy feature gates, registration runtime persistence, organisation apply
+POST workflow, localization, and runtime smoke tests.
 
 ## Required Compatibility Areas
 

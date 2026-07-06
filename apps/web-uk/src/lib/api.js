@@ -335,6 +335,14 @@ async function getMyVolunteerOrganisations(token, params = {}) {
   });
 }
 
+async function createVolunteerOrganisation(token, data) {
+  return request('/api/v2/volunteering/organisations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function getOrganisationJobs(organisationId, token, params = {}) {
   const query = new URLSearchParams();
   query.set('organization_id', organisationId);
@@ -1254,6 +1262,7 @@ module.exports = {
   getOrganisationOpportunities,
   getOrganisationReviews,
   getMyVolunteerOrganisations,
+  createVolunteerOrganisation,
   getOrganisationJobs,
   // Wallet
   getBalance,

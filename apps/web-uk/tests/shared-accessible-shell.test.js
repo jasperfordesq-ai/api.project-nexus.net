@@ -57,6 +57,7 @@ jest.mock('../src/lib/api', () => ({
   getVolunteeringOpportunities: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteerOrganisation: jest.fn(),
   getMyVolunteerOrganisations: jest.fn(),
+  createVolunteerOrganisation: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getVolunteerOpportunity: jest.fn(),
   getOrganisationOpportunities: jest.fn(),
   getOrganisationReviews: jest.fn(),
@@ -85,6 +86,7 @@ describe('shared accessible frontend shell', () => {
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
+    api.createVolunteerOrganisation.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.verify2fa.mockReset();
   });
 
@@ -716,6 +718,116 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Your organisation will be reviewed by an administrator before it is listed.');
   });
 
+  it('redirects signed-out organisation registration POSTs to the Laravel auth-required status', async () => {
+    const agent = request.agent(app);
+    const first = await agent.get('/organisations/register');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/organisations/register')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Community Helpers',
+        description: 'We coordinate local volunteering projects.',
+        email: 'hello@example.org',
+        agreed_terms: '1'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+  });
+
+  it('validates the dedicated organisation register POST with Laravel field status keys', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/organisations/register')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/organisations/register')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Community Helpers',
+        description: 'Too short',
+        email: 'hello@example.org',
+        agreed_terms: '1'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/organisations/register?status=org-description-invalid');
+    expect(api.createVolunteerOrganisation).not.toHaveBeenCalled();
+  });
+
+  it('submits the dedicated organisation register POST to Laravel volunteering API', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/organisations/register')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/organisations/register')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: ' Community Helpers ',
+        description: ' We coordinate local volunteering projects. ',
+        email: ' Hello@Example.ORG ',
+        website: 'https://example.org',
+        agreed_terms: '1'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/organisations?status=org-submitted');
+    expect(api.createVolunteerOrganisation).toHaveBeenCalledWith('test-token', {
+      name: 'Community Helpers',
+      description: 'We coordinate local volunteering projects.',
+      contact_email: 'Hello@Example.ORG',
+      website: 'https://example.org'
+    });
+  });
+
+  it('submits the embedded organisations POST with Laravel coarse validation redirects', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/organisations')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const invalid = await agent
+      .post('/organisations')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Community Helpers',
+        description: 'We coordinate local volunteering projects.',
+        contact_email: 'not-an-email',
+        agreed_terms: '1'
+      });
+
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/organisations?status=org-invalid');
+    expect(api.createVolunteerOrganisation).not.toHaveBeenCalled();
+  });
+
   it('renders the Blade-style manage organisations page as a local preparation page', async () => {
     const api = require('../src/lib/api');
 
@@ -1099,7 +1211,9 @@ describe('shared accessible frontend shell', () => {
     const contract = fs.readFileSync(path.join(__dirname, '..', 'docs', 'BACKEND_SWITCHING_CONTRACT.md'), 'utf8');
 
     expect(matrix).toContain('Laravel `govuk-alpha*`');
-    expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/:id`, `/organisations/:id/jobs`, `/organisations/opportunities/:id/apply` | Partial Laravel-backed candidate: directory/search and browse render `/api/v2/volunteering/organisations`; register and manage GET render Blade-style forms/pages; manage calls `/api/v2/volunteering/my-organisations` when signed in; detail renders `/api/v2/volunteering/organisations/{id}?include=public_contract`, `/api/v2/volunteering/opportunities?organization_id={id}`, and `/api/v2/volunteering/reviews/organization/{id}`; jobs reads `/api/v2/jobs?organization_id={id}&status=open` when signed in; apply GET reads `/api/v2/volunteering/opportunities/{id}`; auth/tenant gates not certified. |');
+    expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` |');
+    expect(matrix).toContain('`/organisations` POST and `/organisations/register` POST validate required fields/terms');
+    expect(matrix).toContain('tenant/feature/runtime gates not certified');
     expect(matrix).toContain('It does not certify route parity');
     expect(contract).toContain('Its default backend contract is now Laravel-first');
     expect(contract).toContain('| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |');

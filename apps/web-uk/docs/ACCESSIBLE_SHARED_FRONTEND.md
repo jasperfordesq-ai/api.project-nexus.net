@@ -112,9 +112,11 @@ terms, and pending notice. Its directory list is backed by the Laravel
 parameters. Its `/organisations/browse` page is also backed by that collection,
 using `search`, `per_page`, and cursor-style load-more pagination. Its
 `/organisations/register` page renders the Blade-style standalone registration
-form and Laravel validation status anchors, but does not certify POST
-persistence. Its `/organisations/manage` page renders the Blade-style manage
-entry and, when a signed token is present, reads
+form and Laravel validation status anchors. `/organisations` POST and
+`/organisations/register` POST validate the same required fields/terms, require a
+signed token, submit to Laravel `/api/v2/volunteering/organisations`, and redirect
+with Laravel status keys. Its `/organisations/manage` page renders the Blade-style
+manage entry and, when a signed token is present, reads
 `/api/v2/volunteering/my-organisations` for owner/admin and pending rows. Its
 detail page is backed by
 `/api/v2/volunteering/organisations/{id}?include=public_contract` for profile,
@@ -127,9 +129,9 @@ openings view and, when a signed token is present, reads
 `/organisations/opportunities/{id}/apply` page renders the Blade-style apply
 confirmation page and reads `/api/v2/volunteering/opportunities/{id}`. This
 remains partial: auth enforcement, volunteering/job feature gates,
-tenant-prefixed routes, organisation registration persistence, apply POST
-workflow, localization, runtime smoke tests, and ASP.NET backend compatibility
-are not certified.
+tenant-prefixed routes, organisation registration runtime persistence, apply POST
+workflow, localization, runtime smoke tests, and ASP.NET backend compatibility are
+not certified.
 
 Additional preparation docs:
 
@@ -142,8 +144,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 401 `apps/web-uk` route declarations, 319 exact
-method/path matches, 289 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 403 `apps/web-uk` route declarations, 321 exact
+method/path matches, 287 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

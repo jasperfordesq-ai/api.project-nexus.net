@@ -719,6 +719,80 @@ app.get('/organisations/register', (req, res) => {
   });
 });
 
+function trimBodyValue(body, field) {
+  const value = body && typeof body[field] === 'string' ? body[field] : '';
+  return value.trim();
+}
+
+function buildOrganisationRegistrationPayload(body) {
+  return {
+    name: trimBodyValue(body, 'name'),
+    description: trimBodyValue(body, 'description'),
+    contact_email: trimBodyValue(body, 'contact_email') || trimBodyValue(body, 'email'),
+    website: trimBodyValue(body, 'website')
+  };
+}
+
+function acceptedOrganisationTerms(value) {
+  return ['1', 'on', 'true'].includes(String(value || '').toLowerCase());
+}
+
+function organisationRegistrationStatus(payload, agreedTerms) {
+  if (payload.name.length < 3) return 'org-name-invalid';
+  if (payload.description.length < 20) return 'org-description-invalid';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.contact_email)) return 'org-email-invalid';
+  if (payload.website && !/^https?:\/\//i.test(payload.website)) return 'org-website-invalid';
+  if (!agreedTerms) return 'org-terms-required';
+  return '';
+}
+
+async function handleOrganisationRegistrationPost(req, res, options = {}) {
+  const token = req.signedCookies.token;
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const payload = buildOrganisationRegistrationPayload(req.body);
+  const invalidStatus = organisationRegistrationStatus(
+    payload,
+    acceptedOrganisationTerms(req.body.agreed_terms)
+  );
+
+  if (invalidStatus) {
+    const invalidRedirect = options.coarseInvalid
+      ? '/organisations?status=org-invalid'
+      : `/organisations/register?status=${invalidStatus}`;
+    return res.redirect(invalidRedirect);
+  }
+
+  const { ApiOfflineError, createVolunteerOrganisation } = require('./lib/api');
+  try {
+    await createVolunteerOrganisation(token, {
+      name: payload.name,
+      description: payload.description,
+      contact_email: payload.contact_email,
+      website: payload.website || undefined
+    });
+  } catch (error) {
+    if (error instanceof ApiOfflineError) {
+      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+    }
+
+    const failedRedirect = options.coarseInvalid
+      ? '/organisations?status=org-failed'
+      : '/organisations/register?status=org-failed';
+    return res.redirect(failedRedirect);
+  }
+
+  return res.redirect('/organisations?status=org-submitted');
+}
+
+app.post('/organisations', formLimiter, doubleCsrfProtection, (req, res) => {
+  return handleOrganisationRegistrationPost(req, res, { coarseInvalid: true });
+});
+
+app.post('/organisations/register', formLimiter, doubleCsrfProtection, handleOrganisationRegistrationPost);
+
 app.get('/organisations/manage', (req, res) => {
   const token = req.signedCookies.token;
   const renderManage = ({ organisations = [], error = false, authRequired = false } = {}) => {
