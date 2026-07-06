@@ -163,4 +163,21 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/volunteering/opportunities")]
+    [InlineData("/api/v2/volunteering/organisations")]
+    [InlineData("/api/v2/volunteering/my-organisations")]
+    [InlineData("/api/v2/volunteering/hours/summary")]
+    [InlineData("/api/v2/volunteering/guardian-consents")]
+    [InlineData("/api/v2/volunteering/wellbeing")]
+    public async Task LaravelReactVolunteeringV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
