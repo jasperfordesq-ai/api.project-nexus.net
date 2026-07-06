@@ -41,9 +41,9 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 529 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
-| Exact method/path matches | 447 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
-| Missing Laravel routes | 161 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
+| ASP.NET `apps/web-uk` | 551 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| Exact method/path matches | 469 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
+| Missing Laravel routes | 139 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
 | Extra `apps/web-uk` routes | 83 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
@@ -97,7 +97,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Podcasts | `/podcasts` | `/podcasts` | Preparation skeleton. |
 | Coupons | `/coupons` | `/coupons` | Preparation skeleton. |
 | Premium | `/premium` | `/premium` | GET remains a preparation skeleton; POST `/premium/subscribe`, `/premium/portal`, and `/premium/cancel` now call Laravel `/api/v2/member-premium/*` endpoints and preserve Laravel success/failure redirects. Tier display, subscription state, Stripe runtime behavior, feature gates, and tenant-prefixed return URLs are not certified. |
-| Ideation | `/ideation` | `/ideation` | Preparation skeleton. |
+| Ideation | `/ideation` | `/ideation` | GET routes remain preparation pages; POST aliases now call Laravel v2 ideation APIs for challenge, idea, outcome, vote, media, conversion, and campaign actions. |
 | Federation | `/federation` | `/federation` | Preparation skeleton. |
 | Clubs | `/clubs` | `/clubs` | Preparation skeleton. |
 
@@ -132,7 +132,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Marketplace/commerce | 0 | none exact | Marketplace POST aliases now cover `/marketplace/create`, listing update/delete/renew/save/unsave/buy/offer/report, offer accept/decline/withdraw, order ship/confirm/cancel/pay/rate, seller onboarding, pickup slot create/update/delete/scan, and seller coupon create/update/delete through Laravel v2 marketplace APIs. GET routes still have preparation pages, hosted no-JS Stripe checkout is represented by v2 payment-intent creation rather than an external Checkout redirect, address/onboarding depth and media uploads are not implemented, and Blade rendering, tenant/feature gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. Courses and podcasts remain separate commerce-family gaps. |
 | Federation | 11 | connections, messages, transfers, opt-in/out, settings | GET routes have preparation pages; federation POST workflows are not certified. |
 | Jobs | 17 | alerts, applications, employer brand, onboarding, talent search, qualification, analytics | GET routes have preparation pages; job application/employer POST workflows are not certified. |
-| Ideation | 22 | campaigns, challenges, drafts, outcomes, tags, idea voting | GET routes have preparation pages; challenge/idea POST workflows are not certified. |
+| Ideation | 0 | none exact | POST aliases now cover challenge create/update/status/favorite/duplicate/delete/link campaign/outcome, idea submit/draft/comment/comment delete/vote/status/media/convert/delete, and campaign create/update/unlink/delete through Laravel v2 ideation APIs. GET routes still rely on generated preparation pages, and Blade rendering, admin authorization depth, media upload proxying, team conversion runtime behavior, tenant/feature gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
 | Settings | 8 | linked accounts, appearance, data rights, insurance, availability | Partial or missing POST workflow coverage. Saved item, appreciation, saved-search, and resource POST aliases are now present, but saved/appreciation/resources GET pages and most settings POST workflows remain generated preparation pages or missing. |
 
 ## Next Certification Work

@@ -577,6 +577,31 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callIdeationApi', () => {
+    it('should call Laravel v2 ideation action endpoints with auth, method, and payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { ok: true } })
+      });
+
+      await api.callIdeationApi('test-token', 'PUT', '/ideation-challenges/7/status', {
+        status: 'voting'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/ideation-challenges/7/status',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ status: 'voting' })
+        })
+      );
+    });
+  });
+
   describe('donateCredits', () => {
     it('should call the Laravel wallet donation endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

@@ -124,6 +124,7 @@ jest.mock('../src/lib/api', () => ({
   createVolunteerOrganisation: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callVolunteeringApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callMarketplaceApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getVolunteerOpportunity: jest.fn(),
   getOrganisationOpportunities: jest.fn(),
   getOrganisationReviews: jest.fn(),
@@ -210,6 +211,7 @@ describe('shared accessible frontend shell', () => {
     api.createVolunteerOrganisation.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.getNotifications.mockReset().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } });
     api.markNotificationRead.mockReset().mockResolvedValue({});
     api.markAllNotificationsRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
@@ -3635,6 +3637,240 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community Kitchen Helper');
     expect(response.text).toContain('Sign in to send a Laravel-backed volunteer application.');
     expect(response.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
+  });
+
+  it('submits Laravel ideation challenge action aliases', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const createResponse = await post('/ideation/new', {
+      title: ' Better parks ',
+      description: ' Gather ideas for local parks ',
+      category_id: '3',
+      status: 'open',
+      tags: 'parks, youth'
+    });
+    expect(createResponse.headers.location).toBe('/ideation/42?status=challenge-created');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-challenges', {
+      title: 'Better parks',
+      description: 'Gather ideas for local parks',
+      category_id: 3,
+      status: 'open',
+      tags: ['parks', 'youth']
+    });
+
+    const updateResponse = await post('/ideation/7/edit', {
+      title: ' Updated parks ',
+      description: ' Updated description ',
+      status: 'draft'
+    });
+    expect(updateResponse.headers.location).toBe('/ideation/7/manage?status=challenge-saved');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-challenges/7', {
+      title: 'Updated parks',
+      description: 'Updated description',
+      status: 'draft'
+    });
+
+    const statusResponse = await post('/ideation/7/status', { status: 'voting' });
+    expect(statusResponse.headers.location).toBe('/ideation/7/manage?status=status-updated');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-challenges/7/status', {
+      status: 'voting'
+    });
+
+    const favoriteResponse = await post('/ideation/7/favorite');
+    expect(favoriteResponse.headers.location).toBe('/ideation/7?status=favorite-updated');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-challenges/7/favorite');
+
+    const duplicateResponse = await post('/ideation/7/duplicate');
+    expect(duplicateResponse.headers.location).toBe('/ideation/42?status=challenge-duplicated');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-challenges/7/duplicate');
+
+    const linkCampaignResponse = await post('/ideation/7/link-campaign', {
+      campaign_id: '5',
+      sort_order: '2'
+    });
+    expect(linkCampaignResponse.headers.location).toBe('/ideation/7/manage?status=campaign-linked');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-campaigns/5/challenges', {
+      challenge_id: 7,
+      sort_order: 2
+    });
+
+    const outcomeResponse = await post('/ideation/7/outcome', {
+      outcome_title: ' Funded project ',
+      outcome_summary: ' The idea moved into delivery. ',
+      impact_metric: '42 households'
+    });
+    expect(outcomeResponse.headers.location).toBe('/ideation/7/outcome?status=outcome-saved');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-challenges/7/outcome', {
+      title: 'Funded project',
+      summary: 'The idea moved into delivery.',
+      impact_metric: '42 households'
+    });
+
+    const deleteResponse = await post('/ideation/7/delete');
+    expect(deleteResponse.headers.location).toBe('/ideation?status=challenge-deleted');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/ideation-challenges/7');
+  });
+
+  it('submits Laravel ideation idea action aliases', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const submitResponse = await post('/ideation/7/ideas', {
+      idea_title: ' More benches ',
+      idea_content: ' Add more benches near the park entrance. '
+    });
+    expect(submitResponse.headers.location).toBe('/ideation/7?status=idea-submitted#ideas');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-challenges/7/ideas', {
+      title: 'More benches',
+      description: 'Add more benches near the park entrance.'
+    });
+
+    const draftResponse = await post('/ideation/7/drafts/12', {
+      idea_title: ' Draft title ',
+      idea_content: ' Draft content ',
+      action: 'publish'
+    });
+    expect(draftResponse.headers.location).toBe('/ideation/7/drafts?status=draft-saved');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-ideas/12/draft', {
+      title: 'Draft title',
+      description: 'Draft content',
+      action: 'publish'
+    });
+
+    const commentResponse = await post('/ideation/7/ideas/12/comments', {
+      comment_body: ' Strong local support. '
+    });
+    expect(commentResponse.headers.location).toBe('/ideation/7/ideas/12?status=comment-added#comments');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-ideas/12/comments', {
+      body: 'Strong local support.'
+    });
+
+    const deleteCommentResponse = await post('/ideation/7/ideas/12/comments/33/delete');
+    expect(deleteCommentResponse.headers.location).toBe('/ideation/7/ideas/12?status=comment-deleted#comments');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/ideation-comments/33');
+
+    const toggleVoteResponse = await post('/ideation/7/ideas/12/toggle-vote');
+    expect(toggleVoteResponse.headers.location).toBe('/ideation/7/ideas/12?status=idea-voted');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-ideas/12/vote');
+
+    const voteResponse = await post('/ideation/7/ideas/12/vote');
+    expect(voteResponse.headers.location).toBe('/ideation/7?status=idea-voted#ideas');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-ideas/12/vote');
+
+    const statusResponse = await post('/ideation/7/ideas/12/status', { idea_status: 'shortlisted' });
+    expect(statusResponse.headers.location).toBe('/ideation/7/ideas/12?status=idea-status-updated');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-ideas/12/status', {
+      status: 'shortlisted'
+    });
+
+    const mediaResponse = await post('/ideation/7/ideas/12/media', {
+      media_type: 'link',
+      url: ' https://example.org/proposal ',
+      caption: ' Proposal '
+    });
+    expect(mediaResponse.headers.location).toBe('/ideation/7/ideas/12?status=media-added');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-ideas/12/media', {
+      media_type: 'link',
+      url: 'https://example.org/proposal',
+      caption: 'Proposal'
+    });
+
+    const convertResponse = await post('/ideation/7/ideas/12/convert', {
+      group_name: ' Parks delivery team ',
+      description: ' Coordinate delivery. '
+    });
+    expect(convertResponse.headers.location).toBe('/ideation/7/ideas/12?status=converted-to-group');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-ideas/12/convert-to-group', {
+      group_name: 'Parks delivery team',
+      description: 'Coordinate delivery.'
+    });
+
+    const deleteIdeaResponse = await post('/ideation/7/ideas/12/delete');
+    expect(deleteIdeaResponse.headers.location).toBe('/ideation/7?status=idea-deleted#ideas');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/ideation-ideas/12');
+  });
+
+  it('submits Laravel ideation campaign aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const createResponse = await post('/ideation/campaigns', {
+      title: ' Park renewal ',
+      description: ' Gather related park challenges ',
+      status: 'active'
+    });
+    expect(createResponse.headers.location).toBe('/ideation/campaigns?status=campaign-created');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-campaigns', {
+      title: 'Park renewal',
+      description: 'Gather related park challenges',
+      status: 'active'
+    });
+
+    const updateResponse = await post('/ideation/campaigns/5', {
+      title: ' Updated campaign ',
+      description: ' Updated summary ',
+      status: 'paused'
+    });
+    expect(updateResponse.headers.location).toBe('/ideation/campaigns/5?status=campaign-saved');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-campaigns/5', {
+      title: 'Updated campaign',
+      description: 'Updated summary',
+      status: 'paused'
+    });
+
+    const unlinkResponse = await post('/ideation/campaigns/5/challenges/7/unlink');
+    expect(unlinkResponse.headers.location).toBe('/ideation/campaigns/5?status=challenge-unlinked');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/ideation-campaigns/5/challenges/7');
+
+    const deleteResponse = await post('/ideation/campaigns/5/delete');
+    expect(deleteResponse.headers.location).toBe('/ideation/campaigns?status=campaign-deleted');
+    expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/ideation-campaigns/5');
+
+    api.callIdeationApi.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/ideation/7/ideas')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1], idea_title: 'Bench' });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {

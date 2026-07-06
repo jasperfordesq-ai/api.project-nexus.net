@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T11:00:45.314Z
+Generated: 2026-07-06T11:09:16.268Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 529 |
-| Matched routes | 447 |
-| Missing routes | 161 |
+| web-uk routes | 551 |
+| Matched routes | 469 |
+| Missing routes | 139 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -47,7 +47,7 @@ Generated: 2026-07-06T11:00:45.314Z
 | health | 0 | 0 | 1 |
 | help | 1 | 0 | 0 |
 | home | 2 | 0 | 0 |
-| ideation | 12 | 22 | 0 |
+| ideation | 34 | 0 | 0 |
 | jobs | 21 | 17 | 0 |
 | kb | 2 | 0 | 0 |
 | leaderboard | 5 | 0 | 0 |
@@ -167,28 +167,6 @@ Generated: 2026-07-06T11:00:45.314Z
 | POST | `/groups/{param}/members/{param}` | groups | updateGroupMember |  | public-or-unknown |  |
 | POST | `/groups/{param}/notifications` | groups | groupsUpdateNotificationPrefs |  | public-or-unknown |  |
 | POST | `/groups/{param}/requests/{param}` | groups | handleGroupRequest |  | public-or-unknown |  |
-| POST | `/ideation/{param}/delete` | ideation | ideationDeleteChallenge |  | public-or-unknown |  |
-| POST | `/ideation/{param}/drafts/{param}` | ideation | ideationUpdateDraftIdea |  | public-or-unknown |  |
-| POST | `/ideation/{param}/duplicate` | ideation | ideationDuplicateChallenge |  | public-or-unknown |  |
-| POST | `/ideation/{param}/edit` | ideation | ideationUpdateChallenge |  | public-or-unknown |  |
-| POST | `/ideation/{param}/favorite` | ideation | ideationToggleFavorite |  | public-or-unknown |  |
-| POST | `/ideation/{param}/ideas` | ideation | submitIdea |  | auth-optional | feature:ideation_challenges |
-| POST | `/ideation/{param}/ideas/{param}/comments` | ideation | ideationStoreComment |  | public-or-unknown |  |
-| POST | `/ideation/{param}/ideas/{param}/comments/{param}/delete` | ideation | ideationDeleteComment |  | public-or-unknown |  |
-| POST | `/ideation/{param}/ideas/{param}/convert` | ideation | ideationConvertToGroup |  | public-or-unknown |  |
-| POST | `/ideation/{param}/ideas/{param}/delete` | ideation | ideationDeleteIdea |  | public-or-unknown |  |
-| POST | `/ideation/{param}/ideas/{param}/media` | ideation | ideationAddMedia |  | public-or-unknown |  |
-| POST | `/ideation/{param}/ideas/{param}/status` | ideation | ideationIdeaStatus |  | public-or-unknown |  |
-| POST | `/ideation/{param}/ideas/{param}/toggle-vote` | ideation | ideationIdeaVote |  | public-or-unknown |  |
-| POST | `/ideation/{param}/ideas/{param}/vote` | ideation | voteIdea |  | auth-optional | feature:ideation_challenges |
-| POST | `/ideation/{param}/link-campaign` | ideation | ideationLinkCampaign |  | public-or-unknown |  |
-| POST | `/ideation/{param}/outcome` | ideation | ideationStoreOutcome |  | public-or-unknown |  |
-| POST | `/ideation/{param}/status` | ideation | ideationChallengeStatus |  | public-or-unknown |  |
-| POST | `/ideation/campaigns` | ideation | ideationStoreCampaign |  | public-or-unknown |  |
-| POST | `/ideation/campaigns/{param}` | ideation | ideationUpdateCampaign |  | public-or-unknown |  |
-| POST | `/ideation/campaigns/{param}/challenges/{param}/unlink` | ideation | ideationUnlinkCampaignChallenge |  | public-or-unknown |  |
-| POST | `/ideation/campaigns/{param}/delete` | ideation | ideationDeleteCampaign |  | public-or-unknown |  |
-| POST | `/ideation/new` | ideation | ideationStoreChallenge |  | public-or-unknown |  |
 | POST | `/jobs` | jobs | storeJob |  | auth-optional | feature:job_vacancies |
 | POST | `/jobs/{param}/applications/{param}/status` | jobs | setApplicationStatus |  | auth-optional | feature:job_vacancies |
 | POST | `/jobs/{param}/apply` | jobs | applyJob |  | auth-optional | feature:job_vacancies |

@@ -153,6 +153,16 @@ no-JS Stripe checkout redirects, address/onboarding depth, multipart media
 uploads, tenant/feature gates, localization, runtime smoke tests, and ASP.NET
 backend compatibility are not certified.
 
+Ideation GET pages remain preparation pages, but the Laravel accessible POST
+aliases under `/ideation` are now local route declarations backed by Laravel v2
+ideation APIs. The aliases cover challenge create/update/status/favorite,
+duplicate, delete, campaign linking, and outcome updates; idea submit, draft,
+comment, vote, status, media, convert-to-group, and delete actions; and campaign
+create/update/delete plus challenge unlinking. This remains partial: Blade
+rendering, admin authorization depth, multipart/media upload proxying, team
+conversion runtime behavior, tenant/feature gates, localization, runtime smoke
+tests, and ASP.NET backend compatibility are not certified.
+
 The `/volunteering` page is now a local Blade-style public landing candidate
 for the Laravel accessible volunteering page. It renders the caption, lead,
 organisation browse link, how-volunteering-works inset, sign-in notice, filter
@@ -213,8 +223,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 529 `apps/web-uk` route declarations, 447 exact
-method/path matches, 161 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 551 `apps/web-uk` route declarations, 469 exact
+method/path matches, 139 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 
