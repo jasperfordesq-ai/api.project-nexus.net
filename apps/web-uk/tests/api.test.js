@@ -653,6 +653,96 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getGoals', () => {
+    it('should call the Laravel v2 goals endpoint with auth and cursor-style params', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [{ id: 42, title: 'Walk daily' }] })
+      });
+
+      await api.getGoals('test-token', {
+        status: 'active',
+        visibility: 'public',
+        limit: 30,
+        cursor: 'next-cursor'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/goals?status=active&visibility=public&per_page=30&cursor=next-cursor',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
+  describe('getGoal', () => {
+    it('should call the Laravel v2 goal detail endpoint with auth', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42, title: 'Walk daily' } })
+      });
+
+      await api.getGoal('test-token', 42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/goals/42',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
+  describe('callGoalApi', () => {
+    it('should call Laravel v2 goal action endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { current_value: 4 } })
+      });
+
+      await api.callGoalApi('test-token', 'POST', '/42/progress', {
+        increment: 2
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/goals/42/progress',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ increment: 2 })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({})
+      });
+
+      await api.callGoalApi('test-token', 'DELETE', '/42');
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/goals/42',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
   describe('callUserSettingsApi', () => {
     it('should call Laravel v2 user settings endpoints with auth, method, and optional payload', async () => {
       mockFetch.mockResolvedValueOnce({

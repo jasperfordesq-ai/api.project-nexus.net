@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T12:11:02.847Z
+Generated: 2026-07-06T12:22:10.555Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 626 |
-| Matched routes | 544 |
-| Missing routes | 64 |
+| web-uk routes | 641 |
+| Matched routes | 559 |
+| Missing routes | 49 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -40,7 +40,7 @@ Generated: 2026-07-06T12:11:02.847Z
 | federation | 28 | 0 | 0 |
 | feed | 22 | 0 | 10 |
 | forgot-password | 0 | 0 | 2 |
-| goals | 12 | 15 | 0 |
+| goals | 27 | 0 | 0 |
 | group-exchanges | 9 | 0 | 0 |
 | groups | 20 | 16 | 6 |
 | guide | 1 | 0 | 0 |
@@ -112,21 +112,6 @@ Generated: 2026-07-06T12:11:02.847Z
 | POST | `/courses/instructor/{param}/unpublish` | courses | commerceUnpublishCourse |  | auth-optional | feature:courses |
 | POST | `/courses/instructor/{param}/update` | courses | commerceUpdateCourse |  | auth-optional | feature:courses |
 | POST | `/courses/instructor/new` | courses | commerceStoreCourse |  | auth-optional | feature:courses |
-| POST | `/goals` | goals | storeGoal |  | public-or-unknown | feature:goals |
-| POST | `/goals/{param}/buddy` | goals | becomeGoalBuddy |  | auth-optional | feature:goals |
-| POST | `/goals/{param}/buddy-actions` | goals | goalsStoreBuddyAction |  | auth-optional |  |
-| POST | `/goals/{param}/buddy-nudge` | goals | buddyNudge |  | auth-optional | feature:goals |
-| POST | `/goals/{param}/checkin` | goals | goalsStoreCheckin |  | auth-optional |  |
-| POST | `/goals/{param}/comments` | goals | goalsStoreComment |  | auth-optional |  |
-| POST | `/goals/{param}/comments/{param}/delete` | goals | goalsDeleteComment |  | auth-optional |  |
-| POST | `/goals/{param}/complete` | goals | completeGoal |  | public-or-unknown | feature:goals |
-| POST | `/goals/{param}/delete` | goals | deleteGoal |  | auth-optional | feature:goals |
-| POST | `/goals/{param}/edit` | goals | updateGoal |  | auth-optional | feature:goals |
-| POST | `/goals/{param}/like` | goals | goalsToggleLike |  | auth-optional |  |
-| POST | `/goals/{param}/progress` | goals | incrementGoal |  | public-or-unknown | feature:goals |
-| POST | `/goals/{param}/reminder` | goals | goalsSaveReminder |  | auth-optional |  |
-| POST | `/goals/{param}/reminder/delete` | goals | goalsDeleteReminder |  | auth-optional |  |
-| POST | `/goals/templates/{param}` | goals | storeGoalFromTemplate |  | auth-optional | feature:goals |
 | POST | `/groups/{param}/announcements` | groups | groupsCreateAnnouncement |  | public-or-unknown |  |
 | POST | `/groups/{param}/announcements/{param}/delete` | groups | groupsDeleteAnnouncement |  | public-or-unknown |  |
 | POST | `/groups/{param}/announcements/{param}/edit` | groups | groupsUpdateAnnouncement |  | public-or-unknown |  |

@@ -57,6 +57,7 @@ jest.mock('../src/lib/api', () => ({
   getBlogPost: jest.fn().mockResolvedValue({ data: { id: 42, slug: 'community-news', title: 'Community news' } }),
   getGoals: jest.fn(),
   getGoal: jest.fn(),
+  callGoalApi: jest.fn().mockResolvedValue({ data: { id: 42, action: 'liked' } }),
   getJobs: jest.fn(),
   getJob: jest.fn(),
   applyForJob: jest.fn(),
@@ -4886,6 +4887,175 @@ describe('shared accessible frontend shell', () => {
     expect(api.callUserSettingsApi).not.toHaveBeenCalled();
     expect(api.callProfileApi).not.toHaveBeenCalled();
     expect(api.callWebAuthnApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel goal action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.callGoalApi.mockReset().mockResolvedValue({ data: { id: 42, action: 'liked' } });
+    api.toggleFeedLike.mockReset().mockResolvedValue({ data: { action: 'liked' } });
+    api.createComment.mockReset().mockResolvedValue({ data: { id: 12 } });
+    api.deleteComment.mockReset().mockResolvedValue({ data: { deleted: true } });
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const createResponse = await post('/goals', {
+      title: ' Walk daily ',
+      description: ' Build the school run habit ',
+      target_value: '30',
+      deadline: '2026-12-31',
+      is_public: 'on'
+    });
+    expect(createResponse.status).toBe(302);
+    expect(createResponse.headers.location).toBe('/goals?status=goal-created');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'POST', '', {
+      title: 'Walk daily',
+      description: 'Build the school run habit',
+      target_value: 30,
+      deadline: '2026-12-31',
+      is_public: true
+    });
+
+    const templateResponse = await post('/goals/templates/7', {
+      title: ' Custom template goal ',
+      deadline: '2026-11-30',
+      is_public: 'on'
+    });
+    expect(templateResponse.headers.location).toBe('/goals/42?status=goal-created');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'POST', '/from-template/7', {
+      title: 'Custom template goal',
+      deadline: '2026-11-30',
+      is_public: true
+    });
+
+    const editResponse = await post('/goals/42/edit', {
+      title: ' Walk most days ',
+      description: ' Keep the rhythm ',
+      target_value: '40',
+      deadline: '2027-01-31',
+      checkin_frequency: 'weekly'
+    });
+    expect(editResponse.headers.location).toBe('/goals/42?status=goal-edited');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42', {
+      title: 'Walk most days',
+      description: 'Keep the rhythm',
+      target_value: 40,
+      deadline: '2027-01-31',
+      is_public: false,
+      checkin_frequency: 'weekly'
+    });
+
+    const deleteResponse = await post('/goals/42/delete');
+    expect(deleteResponse.headers.location).toBe('/goals?status=goal-deleted');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42');
+
+    const buddyResponse = await post('/goals/42/buddy');
+    expect(buddyResponse.headers.location).toBe('/goals/42?status=buddy-joined');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/buddy');
+
+    const buddyNudgeResponse = await post('/goals/42/buddy-nudge');
+    expect(buddyNudgeResponse.headers.location).toBe('/goals/buddying?status=buddy-nudge-sent');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/buddy/nudge', {
+      type: 'nudge'
+    });
+
+    const progressResponse = await post('/goals/42/progress', {
+      increment: '2.5'
+    });
+    expect(progressResponse.headers.location).toBe('/goals/42?status=goal-updated');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/progress', {
+      increment: 2.5
+    });
+
+    const completeResponse = await post('/goals/42/complete');
+    expect(completeResponse.headers.location).toBe('/goals/42?status=goal-completed');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/complete');
+
+    const checkinResponse = await post('/goals/42/checkin', {
+      progress_percent: '75',
+      mood: 'good',
+      note: ' Felt steady today '
+    });
+    expect(checkinResponse.headers.location).toBe('/goals/42/checkin?status=checkin-recorded');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/checkins', {
+      progress_percent: 75,
+      progress_value: 75,
+      mood: 'good',
+      note: 'Felt steady today'
+    });
+
+    const reminderResponse = await post('/goals/42/reminder', {
+      frequency: 'weekly',
+      enabled: 'on'
+    });
+    expect(reminderResponse.headers.location).toBe('/goals/42/reminder?status=reminder-saved');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/reminder', {
+      frequency: 'weekly',
+      enabled: true
+    });
+
+    const reminderDeleteResponse = await post('/goals/42/reminder/delete');
+    expect(reminderDeleteResponse.headers.location).toBe('/goals/42/reminder?status=reminder-removed');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/reminder');
+
+    const buddyActionResponse = await post('/goals/42/buddy-actions', {
+      type: 'offer_help',
+      message: ' I can check in on Friday '
+    });
+    expect(buddyActionResponse.headers.location).toBe('/goals/42/buddy-actions?status=buddy-action-sent');
+    expect(api.callGoalApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/buddy/nudge', {
+      type: 'offer_help',
+      message: 'I can check in on Friday'
+    });
+
+    const likeResponse = await post('/goals/42/like');
+    expect(likeResponse.headers.location).toBe('/goals/42/social?status=liked');
+    expect(api.toggleFeedLike).toHaveBeenLastCalledWith('test-token', {
+      target_type: 'goal',
+      target_id: 42
+    });
+
+    const commentResponse = await post('/goals/42/comments', {
+      body: ' Nice work '
+    });
+    expect(commentResponse.headers.location).toBe('/goals/42/social?status=comment-added#comments');
+    expect(api.createComment).toHaveBeenLastCalledWith('test-token', {
+      target_type: 'goal',
+      target_id: 42,
+      content: 'Nice work'
+    });
+
+    const commentDeleteResponse = await post('/goals/42/comments/12/delete');
+    expect(commentDeleteResponse.headers.location).toBe('/goals/42/social?status=comment-deleted#comments');
+    expect(api.deleteComment).toHaveBeenLastCalledWith('test-token', 12);
+
+    api.callGoalApi.mockClear();
+    api.toggleFeedLike.mockClear();
+    api.createComment.mockClear();
+    api.deleteComment.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/goals/42/progress')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1], increment: '1' });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callGoalApi).not.toHaveBeenCalled();
+    expect(api.toggleFeedLike).not.toHaveBeenCalled();
+    expect(api.createComment).not.toHaveBeenCalled();
+    expect(api.deleteComment).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {

@@ -443,6 +443,42 @@ async function callEventApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/events${normalizedPath}`, options);
 }
 
+async function getGoals(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.user_id) query.set('user_id', params.user_id);
+  if (params.status) query.set('status', params.status);
+  if (params.visibility) query.set('visibility', params.visibility);
+  if (params.per_page || params.limit) query.set('per_page', params.per_page || params.limit);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/goals${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getGoal(token, id) {
+  return request(`/api/v2/goals/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function callGoalApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/goals${normalizedPath}`, options);
+}
+
 async function callUgcTranslateApi(token, data) {
   return request('/api/v2/ugc-translate', {
     method: 'POST',
@@ -1994,6 +2030,9 @@ module.exports = {
   callIdeationApi,
   callGroupExchangeApi,
   callEventApi,
+  getGoals,
+  getGoal,
+  callGoalApi,
   callUgcTranslateApi,
   callUserSettingsApi,
   callProfileApi,
