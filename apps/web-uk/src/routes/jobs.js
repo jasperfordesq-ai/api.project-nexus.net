@@ -68,6 +68,49 @@ const JOB_POSTING_STATUS_LABELS = {
   closed: 'Closed',
   filled: 'Filled'
 };
+const JOB_ALERT_SUCCESS_MESSAGES = {
+  'alert-created': 'Your job alert has been created.',
+  'alert-paused': 'The alert has been paused.',
+  'alert-resumed': 'The alert has been resumed.',
+  'alert-deleted': 'The alert has been deleted.'
+};
+const JOB_ALERT_ERROR_MESSAGES = {
+  'alert-failed': 'We could not complete that action. Please try again.'
+};
+const JOB_RESPONSE_SUCCESS_MESSAGES = {
+  'interview-accepted': 'You accepted the interview. The employer has been notified.',
+  'interview-declined': 'You declined the interview. The employer has been notified.',
+  'offer-accepted': 'You accepted the offer. The employer has been notified.',
+  'offer-rejected': 'You declined the offer. The employer has been notified.'
+};
+const JOB_RESPONSE_ERROR_MESSAGES = {
+  'interview-failed': 'Sorry, we could not update that interview. It may have already been responded to.',
+  'offer-failed': 'Sorry, we could not update that offer. It may have expired or already been responded to.'
+};
+const JOB_INTERVIEW_STATUSES = ['proposed', 'accepted', 'declined'];
+const JOB_INTERVIEW_TYPE_LABELS = {
+  video: 'Video',
+  phone: 'Phone',
+  in_person: 'In person'
+};
+const JOB_INTERVIEW_STATUS_LABELS = {
+  proposed: 'Awaiting your response',
+  accepted: 'Accepted',
+  declined: 'Declined'
+};
+const JOB_OFFER_STATUSES = ['pending', 'accepted', 'rejected', 'withdrawn', 'expired'];
+const JOB_OFFER_STATUS_LABELS = {
+  pending: 'Awaiting your decision',
+  accepted: 'Accepted',
+  rejected: 'Declined',
+  withdrawn: 'Withdrawn',
+  expired: 'Expired'
+};
+const JOB_SALARY_PERIOD_LABELS = {
+  hourly: 'hour',
+  monthly: 'month',
+  annual: 'year'
+};
 
 router.use(requireAuth);
 
@@ -274,6 +317,49 @@ function formatDateLong(value) {
   });
 }
 
+function formatUtcDateParts(year, month, day) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
+}
+
+function formatDateOnlyLong(value) {
+  if (!value) return '';
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return formatUtcDateParts(Number(match[1]), Number(match[2]), Number(match[3])) || text;
+  }
+
+  return formatDateLong(text);
+}
+
+function formatDateTimeLong(value) {
+  if (!value) return '';
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+  if (match) {
+    const dateLabel = formatUtcDateParts(Number(match[1]), Number(match[2]), Number(match[3]));
+    return dateLabel ? `${dateLabel}, ${match[4]}:${match[5]}` : text;
+  }
+
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return date.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}
+
 function money(value, currency) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
@@ -296,6 +382,14 @@ function personName(value) {
   if (typeof value === 'string') return trimmed(value);
   if (typeof value === 'object') return trimmed(value.name || value.display_name || value.title || '');
   return '';
+}
+
+function listText(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => personName(item) || trimmed(item)).filter(Boolean).join(', ');
+  }
+
+  return trimmed(value, 1000);
 }
 
 function skillsFrom(job) {
@@ -372,6 +466,106 @@ function decorateApplication(application) {
   };
 }
 
+function decorateAlert(alert) {
+  const keywords = trimmed(alert.keywords, 255);
+  const categories = listText(alert.categories || alert.category);
+  const typeLabel = JOB_TYPE_LABELS[alert.type] || '';
+  const commitmentLabel = JOB_COMMITMENT_LABELS[alert.commitment] || '';
+  const location = trimmed(alert.location, 255);
+  const isRemoteOnly = checked(alert.is_remote_only || alert.isRemoteOnly);
+  const activeValue = alert.is_active !== undefined ? alert.is_active : alert.isActive;
+  const criteria = [];
+
+  if (keywords) criteria.push(`Keywords: ${keywords}`);
+  if (categories) criteria.push(`Categories: ${categories}`);
+  if (typeLabel) criteria.push(`Type: ${typeLabel}`);
+  if (commitmentLabel) criteria.push(`Commitment: ${commitmentLabel}`);
+  if (location) criteria.push(`Location: ${location}`);
+  if (isRemoteOnly) criteria.push('Remote opportunities only');
+  if (criteria.length === 0) criteria.push('Any opportunity');
+
+  return {
+    ...alert,
+    id: positiveInteger(alert.id) || 0,
+    criteria,
+    primaryCriteria: criteria[0],
+    secondaryCriteria: criteria.slice(1),
+    isActive: activeValue === undefined ? true : checked(activeValue)
+  };
+}
+
+function vacancyTitle(row) {
+  const vacancy = row.vacancy || row.job || row.job_vacancy || {};
+  return trimmed(row.vacancy_title || row.job_title || vacancy.title || row.title, 255) || 'Jobs';
+}
+
+function vacancyId(row) {
+  const vacancy = row.vacancy || row.job || row.job_vacancy || {};
+  return positiveInteger(row.vacancy_id)
+    || positiveInteger(row.job_id)
+    || positiveInteger(vacancy.id)
+    || 0;
+}
+
+function formatPlainNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? number.toLocaleString('en-IE', { maximumFractionDigits: 0 })
+    : trimmed(value);
+}
+
+function offerSalaryLine(offer) {
+  const amount = offer.salary_offered ?? offer.salary_amount ?? offer.salary;
+  if (amount === null || amount === undefined || amount === '') return 'No pay specified';
+
+  const currency = trimmed(offer.salary_currency || offer.currency || '', 10);
+  const period = JOB_SALARY_PERIOD_LABELS[offer.salary_type]
+    || JOB_SALARY_PERIOD_LABELS[offer.salary_period]
+    || trimmed(offer.salary_type || offer.salary_period || '');
+  const amountLabel = formatPlainNumber(amount);
+  const payLabel = trimmed(`${amountLabel} ${currency}`);
+
+  return period ? `${payLabel} per ${period}` : payLabel;
+}
+
+function decorateInterview(interview) {
+  const status = allowed(interview.status, JOB_INTERVIEW_STATUSES, 'proposed');
+  const type = trimmed(interview.interview_type || interview.type);
+  const duration = positiveInteger(interview.duration_mins || interview.duration_minutes || interview.duration);
+
+  return {
+    ...interview,
+    id: positiveInteger(interview.id) || 0,
+    vacancyId: vacancyId(interview),
+    title: vacancyTitle(interview),
+    typeLabel: JOB_INTERVIEW_TYPE_LABELS[type] || trimmed(type) || 'Interview',
+    status,
+    statusLabel: JOB_INTERVIEW_STATUS_LABELS[status] || JOB_INTERVIEW_STATUS_LABELS.proposed,
+    scheduledLabel: formatDateTimeLong(interview.scheduled_at || interview.scheduled_for),
+    durationLabel: duration ? `${duration} minutes` : '',
+    details: trimmed(interview.location_notes || interview.details || interview.notes || interview.message, 2000),
+    canRespond: status === 'proposed'
+  };
+}
+
+function decorateOffer(offer) {
+  const status = allowed(offer.status, JOB_OFFER_STATUSES, 'pending');
+
+  return {
+    ...offer,
+    id: positiveInteger(offer.id) || 0,
+    vacancyId: vacancyId(offer),
+    title: vacancyTitle(offer),
+    status,
+    statusLabel: JOB_OFFER_STATUS_LABELS[status] || JOB_OFFER_STATUS_LABELS.pending,
+    salaryLine: offerSalaryLine(offer),
+    startLabel: formatDateOnlyLong(offer.start_date || offer.starts_at),
+    expiresLabel: formatDateOnlyLong(offer.expires_at || offer.respond_by || offer.response_due_at),
+    messageText: trimmed(offer.message || offer.employer_message || offer.notes, 5000),
+    canRespond: status === 'pending'
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     applied: 'Your application has been submitted.',
@@ -394,6 +588,22 @@ function statusErrorMessage(status) {
   };
 
   return messages[status] || '';
+}
+
+function alertSuccessMessage(status) {
+  return JOB_ALERT_SUCCESS_MESSAGES[status] || '';
+}
+
+function alertErrorMessage(status) {
+  return JOB_ALERT_ERROR_MESSAGES[status] || '';
+}
+
+function responseSuccessMessage(status) {
+  return JOB_RESPONSE_SUCCESS_MESSAGES[status] || '';
+}
+
+function responseErrorMessage(status) {
+  return JOB_RESPONSE_ERROR_MESSAGES[status] || '';
 }
 
 function resultId(result) {
@@ -599,6 +809,63 @@ router.get('/create', (req, res) => res.render('jobs/form', {
   jobForm: {},
   jobFormErrors: [],
   csrfToken: req.csrfToken ? req.csrfToken() : ''
+}));
+
+router.get('/alerts', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  let result = null;
+  let loadError = false;
+
+  try {
+    result = await callJob(token, 'GET', '/alerts');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = true;
+  }
+
+  return res.render('jobs/alerts', {
+    title: 'Job alerts',
+    activeNav: 'explore',
+    alerts: collectionItems(result).map(decorateAlert),
+    status: req.query.status || '',
+    successMessage: alertSuccessMessage(req.query.status),
+    errorMessage: alertErrorMessage(req.query.status),
+    loadError,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/responses', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  let interviewsResult = null;
+  let offersResult = null;
+  let loadError = false;
+
+  try {
+    interviewsResult = await callJob(token, 'GET', '/my-interviews');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = true;
+  }
+
+  try {
+    offersResult = await callJob(token, 'GET', '/my-offers');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = true;
+  }
+
+  return res.render('jobs/responses', {
+    title: 'Interviews and offers',
+    activeNav: 'explore',
+    interviews: collectionItems(interviewsResult).map(decorateInterview),
+    offers: collectionItems(offersResult).map(decorateOffer),
+    status: req.query.status || '',
+    successMessage: responseSuccessMessage(req.query.status),
+    errorMessage: responseErrorMessage(req.query.status),
+    loadError,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
 }));
 
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {

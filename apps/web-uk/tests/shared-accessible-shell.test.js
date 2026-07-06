@@ -3895,6 +3895,139 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/login');
   });
 
+  it('renders the Laravel-backed job alerts page with alert controls', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 12,
+          keywords: 'coordinator',
+          type: 'volunteer',
+          commitment: 'part_time',
+          location: 'Cork',
+          is_remote_only: true,
+          is_active: true
+        }
+      ]
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/alerts?status=alert-paused')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/alerts');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Job alerts');
+    expect(response.text).toContain('Get notified when new opportunities match your interests.');
+    expect(response.text).toContain('The alert has been paused.');
+    expect(response.text).toContain('Create an alert');
+    expect(response.text).toContain('name="keywords"');
+    expect(response.text).toContain('For example, gardening or admin.');
+    expect(response.text).toContain('name="is_remote_only"');
+    expect(response.text).toContain('Your alerts');
+    expect(response.text).toContain('Keywords: coordinator');
+    expect(response.text).toContain('Type: Volunteer');
+    expect(response.text).toContain('Commitment: Part time');
+    expect(response.text).toContain('Location: Cork');
+    expect(response.text).toContain('Remote opportunities only');
+    expect(response.text).toContain('Active');
+    expect(response.text).toContain('action="/jobs/alerts/12/pause"');
+    expect(response.text).toContain('action="/jobs/alerts/12/delete"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from job alerts before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/alerts');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed jobs responses page with interview and offer actions', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 33,
+            vacancy_id: 501,
+            vacancy_title: 'Volunteer Coordinator',
+            interview_type: 'video',
+            scheduled_at: '2099-07-01T14:30:00Z',
+            duration_mins: 45,
+            location_notes: 'Video link sent by email',
+            status: 'proposed'
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 44,
+            vacancy_id: 501,
+            vacancy_title: 'Volunteer Coordinator',
+            salary_offered: 20000,
+            salary_currency: 'EUR',
+            salary_type: 'annual',
+            start_date: '2099-08-01',
+            expires_at: '2099-08-05',
+            message: 'Welcome aboard.',
+            status: 'pending'
+          }
+        ]
+      });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/responses?status=interview-accepted')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/my-interviews');
+    expect(api.callJobApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/my-offers');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Interviews and offers');
+    expect(response.text).toContain('Interviews and offers from employers appear here.');
+    expect(response.text).toContain('You accepted the interview. The employer has been notified.');
+    expect(response.text).toContain('Interview invitations');
+    expect(response.text).toContain('Video');
+    expect(response.text).toContain('Awaiting your response');
+    expect(response.text).toContain('For: Volunteer Coordinator');
+    expect(response.text).toContain('Scheduled for 1 July 2099, 14:30');
+    expect(response.text).toContain('Duration: 45 minutes');
+    expect(response.text).toContain('Video link sent by email');
+    expect(response.text).toContain('action="/jobs/interviews/33/accept"');
+    expect(response.text).toContain('Accept interview');
+    expect(response.text).toContain('action="/jobs/interviews/33/decline"');
+    expect(response.text).toContain('Offers');
+    expect(response.text).toContain('20,000 EUR per year');
+    expect(response.text).toContain('Start date: 1 August 2099');
+    expect(response.text).toContain('Respond by 5 August 2099');
+    expect(response.text).toContain('Message from the employer');
+    expect(response.text).toContain('Welcome aboard.');
+    expect(response.text).toContain('action="/jobs/offers/44/accept"');
+    expect(response.text).toContain('Accept offer');
+    expect(response.text).toContain('action="/jobs/offers/44/reject"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from job responses before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/responses');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
   it('renders the Blade-style volunteering opportunity detail page from the Laravel volunteering contract', async () => {
     const api = require('../src/lib/api');
     api.getVolunteerOpportunity.mockResolvedValueOnce({
