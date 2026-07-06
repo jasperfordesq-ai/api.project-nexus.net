@@ -1,0 +1,71 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% set opportunityTitle = opportunity.title or "Apply to volunteer" %}
+{% set organisationName = opportunity.organisationName or "" %}
+{% set organisationId = opportunity.organisationId or 0 %}
+
+{% block mainContent %}
+  {% if organisationId %}
+    <a class="govuk-back-link" href="/organisations/{{ organisationId }}">{{ organisationName or "Back to organisations" }}</a>
+  {% else %}
+    <a class="govuk-back-link" href="/volunteering/opportunities/{{ opportunityId }}">View the opportunity</a>
+  {% endif %}
+
+  <span class="govuk-caption-xl">Organisations in {{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Apply for this opportunity</h1>
+
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Opportunity</dt>
+      <dd class="govuk-summary-list__value">
+        <a class="govuk-link" href="/volunteering/opportunities/{{ opportunityId }}">{{ opportunityTitle }}</a>
+      </dd>
+    </div>
+    {% if organisationName %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Organisation</dt>
+        <dd class="govuk-summary-list__value">{{ organisationName }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+
+  {% if authRequired %}
+    <div class="govuk-notification-banner" role="region" aria-labelledby="organisations-apply-auth-title" data-module="govuk-notification-banner">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="organisations-apply-auth-title">Sign in required</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-body">Sign in to send a Laravel-backed volunteer application.</p>
+      </div>
+    </div>
+  {% elseif opportunity.hasApplied %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-m govuk-!-margin-bottom-2">You have already applied</h2>
+      <p class="govuk-body">You have an application for this opportunity. The organiser will be in touch.</p>
+      <a class="govuk-link" href="/volunteering/opportunities/{{ opportunityId }}">View the opportunity</a>
+    </div>
+  {% else %}
+    <form method="post" action="/volunteering/opportunities/{{ opportunityId }}/apply">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="message">Message to the organiser (optional)</label>
+        <div id="message-hint" class="govuk-hint">Tell the organiser why you would like to help. You can leave this blank.</div>
+        <textarea class="govuk-textarea" id="message" name="message" rows="5" maxlength="2000" aria-describedby="message-hint"></textarea>
+      </div>
+
+      <div class="govuk-inset-text">
+        <p class="govuk-body govuk-!-margin-bottom-0">The organiser will be notified of your application and will review it.</p>
+      </div>
+
+      <div class="govuk-button-group">
+        <button class="govuk-button" data-module="govuk-button">Send application</button>
+        <a class="govuk-link" href="/volunteering/opportunities/{{ opportunityId }}">Cancel</a>
+      </div>
+    </form>
+  {% endif %}
+{% endblock %}

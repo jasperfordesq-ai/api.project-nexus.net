@@ -204,8 +204,10 @@ Follow the Laravel Blade accessible frontend for:
   `/api/v2/volunteering/my-organisations` when signed in, and detail GET reads
   `/api/v2/volunteering/organisations/{id}?include=public_contract`. The
   organisation jobs GET reads `/api/v2/jobs?organization_id={id}&status=open`
-  when signed in; register POST, auth redirects, tenant, feature-gate,
-  apply-workflow, and depth behavior still need certification.
+  when signed in. The organisation opportunity apply GET reads
+  `/api/v2/volunteering/opportunities/{id}` and renders the Blade-style
+  confirmation page; register POST, apply POST, auth redirects, tenant,
+  feature-gate, and depth behavior still need certification.
 
 Reusable shell data lives in `src/lib/accessible-shell.js`. Keep shared nav,
 footer, locale, and Explore link contracts there rather than hardcoding new

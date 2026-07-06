@@ -271,6 +271,14 @@ async function getVolunteerOrganisation(id) {
   return request(`/api/v2/volunteering/organisations/${encodeURIComponent(id)}?include=public_contract`);
 }
 
+async function getVolunteerOpportunity(id, token = '') {
+  const options = token
+    ? { headers: { Authorization: `Bearer ${token}` } }
+    : {};
+
+  return request(`/api/v2/volunteering/opportunities/${encodeURIComponent(id)}`, options);
+}
+
 async function getMyVolunteerOrganisations(token, params = {}) {
   const query = new URLSearchParams();
   if (params.per_page) query.set('per_page', params.per_page);
@@ -1189,6 +1197,7 @@ module.exports = {
   // Laravel volunteering
   getVolunteerOrganisations,
   getVolunteerOrganisation,
+  getVolunteerOpportunity,
   getMyVolunteerOrganisations,
   getOrganisationJobs,
   // Wallet
