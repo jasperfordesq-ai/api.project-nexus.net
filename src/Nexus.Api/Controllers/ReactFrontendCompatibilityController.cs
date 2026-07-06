@@ -781,6 +781,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/config/registration-policy")]
+    [HttpGet("api/v2/admin/config/registration-policy")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminRegistrationPolicyAlias()
     {
@@ -791,6 +792,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpPut("api/admin/config/registration-policy")]
+    [HttpPut("api/v2/admin/config/registration-policy")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminUpdateRegistrationPolicyAlias(
         [FromBody] ReactRegistrationPolicyRequest request)
@@ -1746,6 +1748,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/identity/providers")]
+    [HttpGet("api/v2/admin/identity/providers")]
     [Authorize(Policy = "AdminOnly")]
     public IActionResult AdminIdentityProviders()
     {
@@ -2527,6 +2530,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/identity/provider-credentials")]
+    [HttpGet("api/v2/admin/identity/provider-credentials")]
     [Authorize(Policy = "AdminOnly")]
     public IActionResult AdminListProviderCredentials()
     {
@@ -2567,6 +2571,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpPut("api/admin/identity/provider-credentials/{slug}")]
+    [HttpPut("api/v2/admin/identity/provider-credentials/{slug}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminSaveProviderCredentials(
         string slug,
@@ -2626,6 +2631,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpDelete("api/admin/identity/provider-credentials/{slug}")]
+    [HttpDelete("api/v2/admin/identity/provider-credentials/{slug}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminDeleteProviderCredentials(string slug)
     {
