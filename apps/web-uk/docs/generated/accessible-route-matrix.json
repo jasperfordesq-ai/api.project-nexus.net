@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T08:16:46.822Z",
+    "generatedAt": "2026-07-06T08:22:17.744Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
-    "webUkRoutes": 400,
-    "matchedRoutes": 318,
-    "missingRoutes": 290,
+    "webUkRoutes": 401,
+    "matchedRoutes": 319,
+    "missingRoutes": 289,
     "extraWebUkRoutes": 83,
     "familyCounts": {
       "admin": {
@@ -280,8 +280,8 @@
         "extraWebUk": 0
       },
       "login": {
-        "matched": 6,
-        "missing": 1,
+        "matched": 7,
+        "missing": 0,
         "extraWebUk": 0
       },
       "marketplace": {
@@ -5429,6 +5429,25 @@
       "gates": "",
       "apiNeeds": "api:PasswordResetController::forgotPassword",
       "webUkPath": "/login/forgot-password",
+      "webUkView": "",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/login/resend-verification",
+      "family": "login",
+      "status": "matched",
+      "laravelRouteName": "login.resend",
+      "laravelHandler": "resendVerification",
+      "laravelView": "",
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
+      "laravelMiddleware": "'throttle:5,5'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "yes",
+      "gates": "",
+      "apiNeeds": "api:EmailVerificationController::resendVerificationByEmail",
+      "webUkPath": "/login/resend-verification",
       "webUkView": "",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
     },
@@ -10862,25 +10881,6 @@
       "tenantScoped": "yes",
       "gates": "module:listings",
       "apiNeeds": "service:AiChatService",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/login/resend-verification",
-      "family": "login",
-      "status": "missing",
-      "laravelRouteName": "login.resend",
-      "laravelHandler": "resendVerification",
-      "laravelView": "",
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
-      "laravelMiddleware": "'throttle:5,5'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "yes",
-      "gates": "",
-      "apiNeeds": "api:EmailVerificationController::resendVerificationByEmail",
       "webUkPath": "",
       "webUkView": "",
       "webUkFile": ""

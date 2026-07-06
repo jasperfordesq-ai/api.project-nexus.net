@@ -34,6 +34,7 @@ jest.mock('../src/lib/api', () => ({
   register: jest.fn(),
   forgotPassword: jest.fn().mockResolvedValue({}),
   resetPassword: jest.fn().mockResolvedValue({}),
+  resendVerification: jest.fn().mockResolvedValue({}),
   verify2fa: jest.fn(),
   validateToken: jest.fn(),
   getProfile: jest.fn(),
@@ -83,6 +84,7 @@ describe('shared accessible frontend shell', () => {
     });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
+    api.resendVerification.mockReset().mockResolvedValue({});
     api.verify2fa.mockReset();
   });
 
@@ -397,6 +399,25 @@ describe('shared accessible frontend shell', () => {
 
     expect(postResponse.status).toBe(302);
     expect(postResponse.headers.location).toBe('/login?status=two-factor-expired');
+  });
+
+  it('submits the Laravel resend-verification route through the email verification API helper', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/login');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/login/resend-verification')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        email: 'Ada@Example.ORG'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=verification-resent');
+    expect(api.resendVerification).toHaveBeenCalledWith('ada@example.org');
   });
 
   it('renders the Laravel-style cookie banner until a cookie choice has been made', async () => {

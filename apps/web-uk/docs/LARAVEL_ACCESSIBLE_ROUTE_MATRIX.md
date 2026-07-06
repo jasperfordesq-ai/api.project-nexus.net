@@ -41,9 +41,9 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 400 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
-| Exact method/path matches | 318 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
-| Missing Laravel routes | 290 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
+| ASP.NET `apps/web-uk` | 401 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| Exact method/path matches | 319 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
+| Missing Laravel routes | 289 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
 | Extra `apps/web-uk` routes | 83 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
@@ -64,7 +64,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Events | `/events` | `/events` | Implemented route; backend contract not certified. |
 | Volunteering | `/volunteering`, `/volunteering/opportunities/{id}` | `/volunteering`, `/volunteering/opportunities/:id` | Partial Laravel-backed candidate: public landing/search GET renders Blade-style intro, organisation link, how-it-works inset, auth notice, filters, opportunity cards, and cursor load-more from `/api/v2/volunteering/opportunities`; detail GET renders `/api/v2/volunteering/opportunities/{id}` with public metadata, shifts, and safe apply link; applications, hours, owner tools, tenant/auth gates, apply POST, shift signup/cancel, and other POST workflows not certified. |
 | Explore | `/explore` | `/explore` | Implemented skeleton. |
-| Sign in | `/login` | `/login` | Implemented local equivalent. Forgot-password, reset-password, and two-factor Laravel aliases now route to local handlers; `/login/resend-verification` remains missing. |
+| Sign in | `/login` | `/login` | Implemented local equivalent. Forgot-password, reset-password, two-factor, and resend-verification Laravel aliases now route to local handlers. |
 | Register | `/register` | `/register` | Implemented local equivalent. |
 | Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Partial Laravel-backed candidate. Signed-out visitors redirect to `/contact?problem_url=...`; signed-in visitors get a structured support report form that posts to Laravel `/api/v2/support/reports`. |
 | Cookies | `/cookies`, `/cookie-consent` POST | `/cookies`, `/cookie-consent` POST | Partial Blade-style candidate: banner renders before the skip link until `nexus_alpha_cookie_consent` is present; settings page renders the analytics yes/no form; POST stores local `all` or `essential` values. Laravel `cookie_consents` audit persistence, tenant scoping, localization, and runtime certification are not complete. |

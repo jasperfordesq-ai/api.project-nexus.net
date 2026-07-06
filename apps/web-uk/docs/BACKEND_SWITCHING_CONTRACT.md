@@ -124,10 +124,10 @@ routing, Turnstile production behavior, localization, notification side effects,
 and ASP.NET backend compatibility still need runtime certification.
 
 The auth router also exposes Laravel accessible aliases for
-`/login/forgot-password`, `/password/reset`, and `/login/two-factor`. These map
-to the existing local forgot-password, reset-password, and 2FA handlers, with
-the reset API helper using Laravel's `password`/`password_confirmation` payload.
-`/login/resend-verification` is still not implemented.
+`/login/forgot-password`, `/password/reset`, `/login/two-factor`, and
+`/login/resend-verification`. These map to the existing local forgot-password,
+reset-password, 2FA, and verification-resend handlers, with the reset API helper
+using Laravel's `password`/`password_confirmation` payload.
 
 ## Local Environment Shape
 

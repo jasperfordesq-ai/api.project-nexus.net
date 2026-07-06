@@ -960,6 +960,7 @@ app.get('/login', authRoutes);
 app.post('/login', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/login/two-factor', authRoutes);
 app.post('/login/two-factor', authLimiter, doubleCsrfProtection, authRoutes);
+app.post('/login/resend-verification', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/register', authRoutes);
 app.post('/register', authLimiter, doubleCsrfProtection, authRoutes);
 app.get('/logout', authRoutes);

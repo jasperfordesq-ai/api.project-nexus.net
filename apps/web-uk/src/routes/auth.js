@@ -4,7 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { login, register, logout, forgotPassword, resetPassword, verify2fa, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
+const { login, register, logout, forgotPassword, resetPassword, resendVerification, verify2fa, invalidateUserCache, ApiError, ApiOfflineError } = require('../lib/api');
 const { redirectIfAuthenticated, setAuthCookies, clearAuthCookies } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 
@@ -139,6 +139,18 @@ router.get('/login/two-factor', redirectIfAuthenticated, (req, res) => {
 
 router.post('/verify-2fa', asyncRoute(handleTwoFactorPost));
 router.post('/login/two-factor', asyncRoute(handleTwoFactorPost));
+
+router.post('/login/resend-verification', asyncRoute(async (req, res) => {
+  try {
+    await resendVerification((req.body.email || '').trim().toLowerCase());
+  } catch (error) {
+    if (error instanceof ApiOfflineError) {
+      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+    }
+  }
+
+  return res.redirect('/login?status=verification-resent');
+}));
 
 // Cloudflare Turnstile siteverify. Returns true when the env secret is
 // unset (dev mode) so local dev keeps working without Cloudflare.

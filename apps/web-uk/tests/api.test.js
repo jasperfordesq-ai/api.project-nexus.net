@@ -473,4 +473,24 @@ describe('API Request Functions', () => {
       );
     });
   });
+
+  describe('resendVerification', () => {
+    it('should call the Laravel resend-verification-by-email endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { message: 'sent' } })
+      });
+
+      await api.resendVerification('ada@example.org');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/auth/resend-verification-by-email',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ email: 'ada@example.org' })
+        })
+      );
+    });
+  });
 });

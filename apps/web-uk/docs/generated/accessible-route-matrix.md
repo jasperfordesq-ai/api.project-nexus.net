@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T08:16:46.822Z
+Generated: 2026-07-06T08:22:17.744Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 400 |
-| Matched routes | 318 |
-| Missing routes | 290 |
+| web-uk routes | 401 |
+| Matched routes | 319 |
+| Missing routes | 289 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -53,7 +53,7 @@ Generated: 2026-07-06T08:16:46.822Z
 | leaderboard | 5 | 0 | 0 |
 | legal | 6 | 0 | 0 |
 | listings | 11 | 8 | 1 |
-| login | 6 | 1 | 0 |
+| login | 7 | 0 | 0 |
 | logout | 1 | 0 | 1 |
 | marketplace | 23 | 25 | 0 |
 | matches | 2 | 2 | 0 |
@@ -246,7 +246,6 @@ Generated: 2026-07-06T08:16:46.822Z
 | POST | `/listings/{param}/save` | listings | saveListing |  | auth-optional | module:listings |
 | POST | `/listings/{param}/unsave` | listings | unsaveListing |  | auth-optional | module:listings |
 | POST | `/listings/generate-description` | listings | listingsGenerateDescription |  | auth-optional | module:listings |
-| POST | `/login/resend-verification` | login | resendVerification |  | public-or-unknown |  |
 | POST | `/marketplace/{param}/buy` | marketplace | commerceStoreBuy |  | auth-optional | feature:marketplace |
 | POST | `/marketplace/{param}/delete` | marketplace | commerceDeleteListing |  | auth-optional | feature:marketplace |
 | POST | `/marketplace/{param}/offer` | marketplace | commerceStoreOffer |  | auth-optional | feature:marketplace |

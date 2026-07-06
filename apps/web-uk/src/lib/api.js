@@ -161,6 +161,13 @@ async function resetPassword(token, password, passwordConfirmation = password) {
   });
 }
 
+async function resendVerification(email) {
+  return request('/api/auth/resend-verification-by-email', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  });
+}
+
 // TODO: The backend has no /api/auth/change-password endpoint.
 // A dedicated change-password endpoint needs to be added to AuthController or UsersController
 // (e.g. POST /api/users/me/password accepting { current_password, new_password }).
@@ -1224,6 +1231,7 @@ module.exports = {
   submitContact,
   forgotPassword,
   resetPassword,
+  resendVerification,
   changePassword,
   validateToken,
   verify2fa,
