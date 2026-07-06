@@ -447,6 +447,36 @@ async function reactToAppreciation(token, id, reactionType) {
   });
 }
 
+async function createSavedCollection(token, data) {
+  return request('/api/v2/me/collections', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function updateSavedCollection(token, id, data) {
+  return request(`/api/v2/me/collections/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function deleteSavedCollection(token, id) {
+  return request(`/api/v2/me/collections/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function deleteSavedItem(token, id) {
+  return request(`/api/v2/me/saved-items/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Messages
 async function getConversations(token) {
   return request('/api/messages', {
@@ -1347,6 +1377,10 @@ module.exports = {
   unsaveSavedItem,
   sendAppreciation,
   reactToAppreciation,
+  createSavedCollection,
+  updateSavedCollection,
+  deleteSavedCollection,
+  deleteSavedItem,
   // Messages
   getConversations,
   getConversation,

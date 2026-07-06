@@ -43,6 +43,8 @@ notifications module includes Laravel accessible aliases for
 module includes the Laravel accessible `/wallet/donate` POST, backed by
 `/api/v2/wallet/donate`. Saved-item removal and appreciation send/react aliases
 are backed by `/api/v2/me/saved-items` and `/api/v2/appreciations`.
+Saved-collection aliases are backed by `/api/v2/me/collections` plus
+`/api/v2/me/saved-items/{id}` for item removal.
 Onboarding step POSTs use `/api/users/me`, `/api/v2/onboarding/safeguarding`,
 and `/api/v2/onboarding/complete`; avatar upload is still a safe failure until
 multipart proxying is implemented. It is not a backend adapter and does not

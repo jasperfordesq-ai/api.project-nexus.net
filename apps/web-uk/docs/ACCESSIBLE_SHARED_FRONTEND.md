@@ -83,6 +83,10 @@ The protected wallet module exposes a no-JS `/wallet/donate` form and POST route
 against Laravel `/api/v2/wallet/donate` with the same donation status keys.
 Saved-item removal and appreciation send/react POST aliases are also wired to
 Laravel `/api/v2/me/saved-items` and `/api/v2/appreciations`.
+Saved-collection create/update/delete and item-remove POST aliases are wired to
+Laravel `/api/v2/me/collections` and `/api/v2/me/saved-items/{id}` while keeping
+Laravel status redirects such as `collection-created`, `collection-updated`,
+`collection-deleted`, and `item-removed`.
 The member onboarding POST aliases now cover `/onboarding/{step}` and
 `/onboarding/avatar`: profile saves bio through the profile API, interests and
 skills are held in the Express session, safeguarding uses Laravel's Blade-style
@@ -157,8 +161,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 411 `apps/web-uk` route declarations, 329 exact
-method/path matches, 279 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 415 `apps/web-uk` route declarations, 333 exact
+method/path matches, 275 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

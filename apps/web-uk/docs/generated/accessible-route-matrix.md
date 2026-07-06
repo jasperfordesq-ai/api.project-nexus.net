@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T09:04:27.103Z
+Generated: 2026-07-06T09:10:13.233Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 411 |
-| Matched routes | 329 |
-| Missing routes | 279 |
+| web-uk routes | 415 |
+| Matched routes | 333 |
+| Missing routes | 275 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -57,7 +57,7 @@ Generated: 2026-07-06T09:04:27.103Z
 | logout | 1 | 0 | 1 |
 | marketplace | 23 | 25 | 0 |
 | matches | 2 | 2 | 0 |
-| me | 2 | 4 | 0 |
+| me | 6 | 0 | 0 |
 | members | 5 | 6 | 1 |
 | messages | 7 | 11 | 2 |
 | newsletter | 1 | 0 | 0 |
@@ -272,10 +272,6 @@ Generated: 2026-07-06T09:04:27.103Z
 | POST | `/marketplace/slots/scan` | marketplace | commerceScanPickup |  | auth-optional | feature:marketplace |
 | POST | `/matches/{param}/dismiss` | matches | dismissMatch |  | auth-optional | module:listings |
 | POST | `/matches/board/{param}/dismiss` | matches | connectionsDismissMatch |  | auth-optional | module:listings |
-| POST | `/me/collections` | me | savedCreateCollection |  | auth-optional |  |
-| POST | `/me/collections/{param}/delete` | me | savedDeleteCollection |  | auth-optional |  |
-| POST | `/me/collections/{param}/items/{param}/remove` | me | savedRemoveItem |  | auth-optional |  |
-| POST | `/me/collections/{param}/update` | me | savedUpdateCollection |  | auth-optional |  |
 | POST | `/members/{param}/block` | members | blockMember |  | auth-optional | feature:connections |
 | POST | `/members/{param}/connection` | members | updateMemberConnection |  | auth-optional | feature:connections |
 | POST | `/members/{param}/endorse` | members | endorseMemberSkill |  | auth-optional | feature:connections |

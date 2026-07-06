@@ -57,6 +57,10 @@ jest.mock('../src/lib/api', () => ({
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
   sendAppreciation: jest.fn().mockResolvedValue({ data: { id: 55 } }),
   reactToAppreciation: jest.fn().mockResolvedValue({ data: { reaction_type: 'heart' } }),
+  createSavedCollection: jest.fn().mockResolvedValue({ data: { id: 12 } }),
+  updateSavedCollection: jest.fn().mockResolvedValue({ data: { id: 12 } }),
+  deleteSavedCollection: jest.fn().mockResolvedValue({}),
+  deleteSavedItem: jest.fn().mockResolvedValue({}),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -106,6 +110,10 @@ describe('shared accessible frontend shell', () => {
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
     api.sendAppreciation.mockReset().mockResolvedValue({ data: { id: 55 } });
     api.reactToAppreciation.mockReset().mockResolvedValue({ data: { reaction_type: 'heart' } });
+    api.createSavedCollection.mockReset().mockResolvedValue({ data: { id: 12 } });
+    api.updateSavedCollection.mockReset().mockResolvedValue({ data: { id: 12 } });
+    api.deleteSavedCollection.mockReset().mockResolvedValue({});
+    api.deleteSavedItem.mockReset().mockResolvedValue({});
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -782,6 +790,111 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/saved?status=bookmark-removed');
     expect(api.unsaveSavedItem).toHaveBeenCalledWith('test-token', 'listing', 42);
+  });
+
+  it('submits the Laravel saved collection create route through the collections API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/me/collections')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: ' Useful links ',
+        description: ' Things to revisit ',
+        is_public: '1'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/me/collections?status=collection-created');
+    expect(api.createSavedCollection).toHaveBeenCalledWith('test-token', {
+      name: 'Useful links',
+      description: 'Things to revisit',
+      is_public: true
+    });
+  });
+
+  it('submits the Laravel saved collection update route through the collections API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/me/collections/12/update')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Updated',
+        description: ''
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/me/collections/12?status=collection-updated');
+    expect(api.updateSavedCollection).toHaveBeenCalledWith('test-token', 12, {
+      name: 'Updated',
+      description: null,
+      is_public: false
+    });
+  });
+
+  it('submits the Laravel saved collection delete route through the collections API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/me/collections/12/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/me/collections?status=collection-deleted');
+    expect(api.deleteSavedCollection).toHaveBeenCalledWith('test-token', 12);
+  });
+
+  it('submits the Laravel saved collection item remove route through the saved-items API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/me/collections/12/items/99/remove')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/me/collections/12?status=item-removed');
+    expect(api.deleteSavedItem).toHaveBeenCalledWith('test-token', 99);
   });
 
   it('submits the Laravel appreciation send route through the appreciations API helper', async () => {

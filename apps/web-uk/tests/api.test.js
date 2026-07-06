@@ -630,6 +630,104 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should create a saved collection through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12 } })
+      });
+
+      await api.createSavedCollection('test-token', {
+        name: 'Useful links',
+        description: 'Things to revisit',
+        is_public: true
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/me/collections',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            name: 'Useful links',
+            description: 'Things to revisit',
+            is_public: true
+          })
+        })
+      );
+    });
+
+    it('should update a saved collection through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12 } })
+      });
+
+      await api.updateSavedCollection('test-token', 12, {
+        name: 'Updated',
+        description: null,
+        is_public: false
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/me/collections/12',
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            name: 'Updated',
+            description: null,
+            is_public: false
+          })
+        })
+      );
+    });
+
+    it('should delete a saved collection through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => '' },
+        text: async () => ''
+      });
+
+      await api.deleteSavedCollection('test-token', 12);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/me/collections/12',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should delete a saved item through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => '' },
+        text: async () => ''
+      });
+
+      await api.deleteSavedItem('test-token', 99);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/me/saved-items/99',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
   });
 
   describe('Laravel onboarding helpers', () => {
