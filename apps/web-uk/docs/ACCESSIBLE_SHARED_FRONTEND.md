@@ -362,6 +362,15 @@ tenant-prefixed routes, organisation registration runtime persistence, apply
 confirmation depth, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 
+The public support pages now replace the static Help centre and Trust and safety
+placeholders. `/help` is backed by Laravel `/api/v2/help/faqs`, preserving the
+Blade FAQ search query, grouped GOV.UK accordion structure, empty/no-result
+states, and contact CTA. `/trust-and-safety` ports the Laravel Blade safety
+warning, exchange flow, platform responsibility, vetting, insurance, dispute,
+member responsibility, rights, contact CTA, and community-guidelines link. This
+remains partial: tenant-domain routing, localization, live FAQ runtime smoke
+behavior, and ASP.NET backend compatibility are not certified.
+
 Additional preparation docs:
 
 - `LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md` maps Blade route families and shell links

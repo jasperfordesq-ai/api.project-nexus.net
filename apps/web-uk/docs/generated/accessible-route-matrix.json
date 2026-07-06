@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T23:14:32.936Z",
+    "generatedAt": "2026-07-06T23:19:09.682Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -6170,8 +6170,8 @@
       "gates": "",
       "apiNeeds": "service:HelpService",
       "webUkPath": "/help",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
+      "webUkView": "support/help",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\support.js"
     },
     {
       "method": "GET",
@@ -12345,8 +12345,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/trust-and-safety",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js; C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\static-pages.js"
+      "webUkView": "support/trust-safety",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\support.js"
     },
     {
       "method": "GET",

@@ -518,6 +518,15 @@ async function getKnowledgeBaseArticle(id) {
   return request(`/api/v2/kb/${encodeURIComponent(id)}`);
 }
 
+async function getHelpFaqs(params = {}) {
+  const query = new URLSearchParams();
+  if (params.q) query.set('q', params.q);
+  if (params.category_id) query.set('category_id', params.category_id);
+
+  const queryString = query.toString();
+  return request(`/api/v2/help/faqs${queryString ? `?${queryString}` : ''}`);
+}
+
 async function getMyVolunteerOrganisations(token, params = {}) {
   const query = new URLSearchParams();
   if (params.per_page) query.set('per_page', params.per_page);
@@ -2719,6 +2728,7 @@ module.exports = {
   getOrganisationReviews,
   getKnowledgeBaseArticles,
   getKnowledgeBaseArticle,
+  getHelpFaqs,
   getMyVolunteerOrganisations,
   createVolunteerOrganisation,
   callVolunteeringApi,

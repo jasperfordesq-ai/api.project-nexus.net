@@ -103,6 +103,7 @@ jest.mock('../src/lib/api', () => ({
   rankPoll: jest.fn().mockResolvedValue({ data: { ranked_results: [] } }),
   getKnowledgeBaseArticles: jest.fn().mockResolvedValue({ data: [], meta: { has_more: false, per_page: 12 } }),
   getKnowledgeBaseArticle: jest.fn(),
+  getHelpFaqs: jest.fn().mockResolvedValue({ data: [] }),
   getBalance: jest.fn(),
   donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
@@ -317,6 +318,7 @@ describe('shared accessible frontend shell', () => {
     api.rankPoll.mockReset().mockResolvedValue({ data: { ranked_results: [] } });
     api.getKnowledgeBaseArticles.mockReset().mockResolvedValue({ data: [], meta: { has_more: false, per_page: 12 } });
     api.getKnowledgeBaseArticle.mockReset();
+    api.getHelpFaqs.mockReset().mockResolvedValue({ data: [] });
     api.toggleFeedLike.mockReset().mockResolvedValue({ data: { action: 'liked' } });
     api.saveSavedSearch.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedSearch.mockReset().mockResolvedValue({ deleted: true });
@@ -556,6 +558,52 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Returning borrowed tools');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getKnowledgeBaseArticle).toHaveBeenCalledWith(42);
+  });
+
+  it('renders the Laravel-backed help centre and trust safety support pages', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.getHelpFaqs.mockResolvedValue({
+      data: [
+        {
+          category: 'Account help',
+          faqs: [
+            {
+              id: 12,
+              question: 'How do I reset my password?',
+              answer: '<p>Use the reset link on the sign in page.</p>'
+            }
+          ]
+        }
+      ]
+    });
+
+    const help = await request(app).get('/help?q=password');
+    const trust = await request(app).get('/trust-and-safety');
+
+    expect(staticPageRoutes.pages['/help']).toBeUndefined();
+    expect(staticPageRoutes.pages['/trust-and-safety']).toBeUndefined();
+    expect(help.status).toBe(200);
+    expect(help.text).toContain('Help centre');
+    expect(help.text).toContain('Find answers to common questions about Project NEXUS Accessible.');
+    expect(help.text).toContain('value="password"');
+    expect(help.text).toContain('Account help');
+    expect(help.text).toContain('class="govuk-accordion"');
+    expect(help.text).toContain('How do I reset my password?');
+    expect(help.text).toContain('<p>Use the reset link on the sign in page.</p>');
+    expect(help.text).toContain('Still need help?');
+    expect(help.text).toContain('href="/contact"');
+    expect(help.text).not.toContain('Help centre content will follow');
+    expect(api.getHelpFaqs).toHaveBeenCalledWith({ q: 'password' });
+
+    expect(trust.status).toBe(200);
+    expect(trust.text).toContain('Trust and safety');
+    expect(trust.text).toContain('Report a safeguarding concern');
+    expect(trust.text).toContain('How exchanges work');
+    expect(trust.text).toContain('What we do not do');
+    expect(trust.text).toContain('Background checks and vetting');
+    expect(trust.text).toContain('href="/legal/community-guidelines"');
+    expect(trust.text).not.toContain('Trust and safety content will follow');
   });
 
   it('renders the Laravel-backed Federation hub with stats, partners, and activity', async () => {

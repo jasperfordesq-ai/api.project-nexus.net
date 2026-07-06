@@ -8,14 +8,6 @@ const express = require('express');
 const router = express.Router();
 
 const pages = {
-  '/help': {
-    title: 'Help centre',
-    body: 'Help centre content will follow the Laravel accessible frontend route and workflow contract.'
-  },
-  '/trust-and-safety': {
-    title: 'Trust and safety',
-    body: 'Trust and safety content will follow the Laravel Blade accessible frontend structure.'
-  },
   '/guide': {
     title: 'Guide',
     body: 'Guide content will be ported from the Laravel accessible frontend.'
