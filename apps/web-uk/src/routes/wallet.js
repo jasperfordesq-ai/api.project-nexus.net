@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { getBalance, getTransactions, getTransaction, transferCredits, getUsers, getProfile, ApiError } = require('../lib/api');
+const { getBalance, getTransactions, getTransaction, transferCredits, donateCredits, getUsers, getProfile, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
@@ -31,6 +31,8 @@ router.get('/', asyncRoute(async (req, res) => {
     title: 'Wallet',
     balance: balanceData.balance || balanceData,
     transactions,
+    status: typeof req.query.status === 'string' ? req.query.status : '',
+    donateError: typeof req.query.donate_error === 'string' ? req.query.donate_error : '',
     successMessage: req.flash ? req.flash('success')[0] : null
   });
 }));
@@ -179,6 +181,61 @@ router.post('/transfer', audit.walletTransfer(), asyncRoute(async (req, res) => 
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
   }
+}));
+
+function walletDonateFailure(error) {
+  const encoded = encodeURIComponent(error || 'failed');
+  return `/wallet?status=donate-failed&donate_error=${encoded}#donate`;
+}
+
+function walletDonationPayload(body) {
+  const target = String(body.target || body.recipient_type || 'community_fund');
+  const recipientId = String(body.recipient_id || '').trim();
+  const amount = Number(body.amount);
+  return {
+    amount,
+    message: String(body.message || '').trim().slice(0, 255),
+    recipient_type: target === 'user' ? 'user' : 'community_fund',
+    recipient_id: recipientId
+  };
+}
+
+router.post('/donate', asyncRoute(async (req, res) => {
+  const payload = walletDonationPayload(req.body);
+
+  if (!Number.isFinite(payload.amount) || payload.amount <= 0) {
+    return res.redirect(walletDonateFailure('invalid'));
+  }
+  if (Math.round(payload.amount) !== payload.amount) {
+    return res.redirect(walletDonateFailure('decimals'));
+  }
+  if (payload.amount > 1000) {
+    return res.redirect(walletDonateFailure('too-large'));
+  }
+  if (payload.recipient_type === 'user' && (!payload.recipient_id || Number(payload.recipient_id) <= 0)) {
+    return res.redirect(walletDonateFailure('invalid'));
+  }
+
+  try {
+    await donateCredits(req.token, {
+      recipient_type: payload.recipient_type,
+      recipient_id: payload.recipient_type === 'user' ? Number(payload.recipient_id) : undefined,
+      amount: payload.amount,
+      message: payload.message
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    const message = String(error.message || '');
+    if (/insufficient/i.test(message)) {
+      return res.redirect(walletDonateFailure('insufficient'));
+    }
+    if (/not found|recipient/i.test(message)) {
+      return res.redirect(walletDonateFailure('not-found'));
+    }
+    return res.redirect(walletDonateFailure('failed'));
+  }
+
+  return res.redirect('/wallet?status=donate-sent#transactions');
 }));
 
 module.exports = router;

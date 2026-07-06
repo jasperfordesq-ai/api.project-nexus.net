@@ -41,9 +41,9 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 405 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
-| Exact method/path matches | 323 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
-| Missing Laravel routes | 285 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
+| ASP.NET `apps/web-uk` | 406 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| Exact method/path matches | 324 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
+| Missing Laravel routes | 284 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
 | Extra `apps/web-uk` routes | 83 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
@@ -55,7 +55,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Blade link | Laravel path | `apps/web-uk` path | Current ASP.NET status |
 | --- | --- | --- | --- |
 | Brand | `/` or `/{tenantSlug}/alpha` | `/` | Implemented local equivalent. |
-| My account | `/account` | `/account` | Partial Blade-style candidate: unsigned users redirect to `/login`; signed-in users see local wallet, messages, connections, notifications, profile, and settings cards plus CSRF sign-out. Notification group-read and delete-all POST aliases call Laravel v2 notification endpoints. Laravel feature gating, full account-link coverage, backend data, tenant routing, realtime behavior, and runtime certification are not complete. |
+| My account | `/account` | `/account` | Partial Blade-style candidate: unsigned users redirect to `/login`; signed-in users see local wallet, messages, connections, notifications, profile, and settings cards plus CSRF sign-out. Notification group-read/delete-all and wallet donate POST aliases call Laravel v2 endpoints. Laravel feature gating, full account-link coverage, backend data, tenant routing, realtime behavior, and runtime certification are not complete. |
 | Home | `/` | `/` | Implemented local equivalent. |
 | Dashboard | `/dashboard` | `/dashboard` | Implemented route; backend contract not certified. |
 | Feed | `/feed` | `/feed` | Implemented route; backend contract not certified. |

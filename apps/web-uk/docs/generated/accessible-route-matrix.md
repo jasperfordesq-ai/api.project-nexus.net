@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T08:36:53.554Z
+Generated: 2026-07-06T08:41:39.808Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 405 |
-| Matched routes | 323 |
-| Missing routes | 285 |
+| web-uk routes | 406 |
+| Matched routes | 324 |
+| Missing routes | 284 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -90,7 +90,7 @@ Generated: 2026-07-06T08:36:53.554Z
 | verify-2fa | 0 | 0 | 1 |
 | verify-email | 1 | 0 | 0 |
 | volunteering | 24 | 28 | 0 |
-| wallet | 5 | 1 | 3 |
+| wallet | 6 | 0 | 3 |
 
 ## Missing Laravel Routes
 
@@ -380,4 +380,3 @@ Generated: 2026-07-06T08:36:53.554Z
 | POST | `/volunteering/training` | volunteering | volunteeringSafeguardingLogTraining |  | auth-optional | feature:volunteering |
 | POST | `/volunteering/waitlist/{param}/leave` | volunteering | leaveVolunteerWaitlist |  | auth-optional | feature:volunteering |
 | POST | `/volunteering/wellbeing/checkin` | volunteering | volunteeringWellbeingCheckin |  | auth-optional | feature:volunteering |
-| POST | `/wallet/donate` | wallet | donateCredits |  | auth-optional | module:wallet |

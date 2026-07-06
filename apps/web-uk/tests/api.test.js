@@ -527,6 +527,37 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('donateCredits', () => {
+    it('should call the Laravel wallet donation endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { message: 'sent' } })
+      });
+
+      await api.donateCredits('test-token', {
+        recipient_type: 'community_fund',
+        amount: 2,
+        message: 'Thank you'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/wallet/donate',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            recipient_type: 'community_fund',
+            amount: 2,
+            message: 'Thank you'
+          })
+        })
+      );
+    });
+  });
+
   describe('Laravel notification helpers', () => {
     it('should mark all notifications read through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

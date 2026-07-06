@@ -396,6 +396,14 @@ async function transferCredits(token, receiverId, amount, description) {
   });
 }
 
+async function donateCredits(token, data) {
+  return request('/api/v2/wallet/donate', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 // Messages
 async function getConversations(token) {
   return request('/api/messages', {
@@ -1290,6 +1298,7 @@ module.exports = {
   getTransactions,
   getTransaction,
   transferCredits,
+  donateCredits,
   // Messages
   getConversations,
   getConversation,

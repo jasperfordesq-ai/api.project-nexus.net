@@ -25,6 +25,42 @@
         {% include "partials/notification-banner.njk" %}
       {% endif %}
 
+      {% if status == "donate-sent" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="wallet-donate-success-title" data-module="govuk-notification-banner">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="wallet-donate-success-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">Your time-credit donation was sent.</p>
+          </div>
+        </div>
+      {% elseif status == "donate-failed" %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <div class="govuk-error-summary__body">
+              <ul class="govuk-list govuk-error-summary__list">
+                <li>
+                  <a href="#donate-amount">
+                    {% if donateError == "decimals" %}
+                      Enter a whole number of credits.
+                    {% elseif donateError == "too-large" %}
+                      Enter 1,000 credits or fewer.
+                    {% elseif donateError == "insufficient" %}
+                      You do not have enough credits for this donation.
+                    {% elseif donateError == "not-found" %}
+                      The recipient could not be found.
+                    {% else %}
+                      Check the donation details and try again.
+                    {% endif %}
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
       <h1 class="govuk-heading-xl">Wallet</h1>
 
       <div class="govuk-!-margin-bottom-8">
@@ -46,6 +82,50 @@
           classes: "govuk-button--secondary"
         }) }}
       </div>
+
+      <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+      <h2 class="govuk-heading-m" id="donate">Donate time credits</h2>
+      <p class="govuk-body">Donate whole credits to the community fund or to another member.</p>
+
+      <form method="post" action="/wallet/donate" class="govuk-!-margin-bottom-8" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+        <div class="govuk-form-group">
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Donate to</legend>
+            <div class="govuk-radios" data-module="govuk-radios">
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="donate-target-community" name="target" type="radio" value="community_fund" checked>
+                <label class="govuk-label govuk-radios__label" for="donate-target-community">Community fund</label>
+              </div>
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="donate-target-user" name="target" type="radio" value="user">
+                <label class="govuk-label govuk-radios__label" for="donate-target-user">Another member</label>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="donate-recipient">Recipient member ID</label>
+          <div id="donate-recipient-hint" class="govuk-hint">Only required when donating to another member.</div>
+          <input class="govuk-input govuk-input--width-10" id="donate-recipient" name="recipient_id" type="number" inputmode="numeric" min="1" aria-describedby="donate-recipient-hint">
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="donate-amount">Amount</label>
+          <div id="donate-amount-hint" class="govuk-hint">Enter whole time credits. Your current balance is {{ balance }} credits.</div>
+          <input class="govuk-input govuk-input--width-10" id="donate-amount" name="amount" type="number" inputmode="numeric" min="1" max="1000" step="1" aria-describedby="donate-amount-hint" required>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="donate-message">Message (optional)</label>
+          <textarea class="govuk-textarea" id="donate-message" name="message" rows="3" maxlength="255"></textarea>
+        </div>
+
+        <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Donate credits</button>
+      </form>
 
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 

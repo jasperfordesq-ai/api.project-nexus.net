@@ -50,6 +50,7 @@ jest.mock('../src/lib/api', () => ({
   getPoll: jest.fn(),
   votePoll: jest.fn(),
   getBalance: jest.fn(),
+  donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -89,6 +90,10 @@ describe('shared accessible frontend shell', () => {
     api.submitSupportReport.mockReset().mockResolvedValue({
       data: { report: { reference: 'NXR-260706-ABC123' } }
     });
+    api.getBalance.mockReset().mockResolvedValue({ balance: 8 });
+    api.getTransactions.mockReset().mockResolvedValue({ data: [] });
+    api.getProfile.mockReset().mockResolvedValue({ id: 101 });
+    api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -538,6 +543,81 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('method="post" action="/logout"');
     expect(response.text).toContain('Sign out');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the Laravel-style wallet donate panel when signed in', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/wallet')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Wallet');
+    expect(response.text).toContain('Donate time credits');
+    expect(response.text).toContain('method="post" action="/wallet/donate"');
+    expect(response.text).toContain('name="target" type="radio" value="community_fund" checked');
+    expect(response.text).toContain('name="target" type="radio" value="user"');
+    expect(response.text).toContain('Recipient member ID');
+    expect(response.text).toContain('Your current balance is 8 credits.');
+  });
+
+  it('validates wallet donations before calling the Laravel v2 donate API', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/wallet')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/wallet/donate')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        target: 'community_fund',
+        amount: '1.5'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/wallet?status=donate-failed&donate_error=decimals#donate');
+    expect(api.donateCredits).not.toHaveBeenCalled();
+  });
+
+  it('submits wallet donations to the Laravel v2 donate API', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/wallet')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/wallet/donate')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        target: 'community_fund',
+        amount: '2',
+        message: ' Thank you '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/wallet?status=donate-sent#transactions');
+    expect(api.donateCredits).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      recipient_type: 'community_fund',
+      amount: 2,
+      message: 'Thank you'
+    }));
   });
 
   it('submits the Laravel grouped notification read route through the v2 API helper', async () => {
