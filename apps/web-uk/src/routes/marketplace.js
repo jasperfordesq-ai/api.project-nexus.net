@@ -13,6 +13,9 @@ const PRICE_TYPES = ['fixed', 'negotiable', 'free', 'contact'];
 const CONDITIONS = ['new', 'like_new', 'good', 'fair', 'poor'];
 const DELIVERY_METHODS = ['pickup', 'shipping', 'both', 'community_delivery'];
 const REPORT_REASONS = ['counterfeit', 'illegal', 'unsafe', 'misleading', 'discrimination', 'ip_violation', 'other'];
+const SELLER_TYPES = ['private', 'business'];
+const COUPON_DISCOUNT_TYPES = ['percent', 'fixed', 'bogo'];
+const COUPON_STATUSES = ['draft', 'active', 'paused', 'expired'];
 
 const PRICE_TYPE_LABELS = {
   fixed: 'Fixed price',
@@ -59,7 +62,15 @@ const MARKETPLACE_SUCCESS_MESSAGES = {
   shipped: 'The order was marked as shipped.',
   confirmed: 'Delivery confirmed. Thank you.',
   cancelled: 'The order was cancelled.',
-  rated: 'Thank you for your rating.'
+  rated: 'Thank you for your rating.',
+  'onboarding-complete': 'Your seller details were saved. You can now start selling.',
+  'slot-created': 'Pickup slot added.',
+  'slot-saved': 'Pickup slot updated.',
+  'slot-deleted': 'Pickup slot deleted.',
+  'pickup-confirmed': 'Collection confirmed. The order is marked as collected.',
+  'coupon-created': 'Your coupon was created.',
+  'coupon-saved': 'Your changes were saved.',
+  'coupon-deleted': 'Your coupon was deleted.'
 };
 const MARKETPLACE_ERROR_MESSAGES = {
   'listing-validation': 'Check the listing details and try again.',
@@ -83,7 +94,18 @@ const MARKETPLACE_ERROR_MESSAGES = {
   'confirm-failed': 'Sorry, delivery could not be confirmed.',
   'cancel-failed': 'Sorry, the order could not be cancelled.',
   'rate-failed': 'Sorry, your rating could not be saved.',
-  'rate-invalid': 'Choose a rating between 1 and 5 stars.'
+  'rate-invalid': 'Choose a rating between 1 and 5 stars.',
+  'business-name-required': 'Enter your business name',
+  'display-name-required': 'Enter a display name',
+  'onboarding-failed': 'Sorry, your details could not be saved. Please try again.',
+  'slot-create-failed': 'The pickup slot could not be added. Please try again.',
+  'slot-save-failed': 'The pickup slot could not be updated. Please try again.',
+  'slot-delete-failed': 'The pickup slot could not be deleted. Please try again.',
+  'pickup-scan-failed': 'That collection code could not be confirmed. Check the code and try again.',
+  'coupon-title-required': 'Enter a coupon title',
+  'coupon-create-failed': 'Sorry, your coupon could not be created. Please try again.',
+  'coupon-save-failed': 'Sorry, your changes could not be saved. Please try again.',
+  'coupon-delete-failed': 'Sorry, your coupon could not be deleted. Please try again.'
 };
 const LISTING_STATUS_TABS = ['active', 'draft', 'sold', 'expired'];
 const OFFER_TABS = ['received', 'sent'];
@@ -116,6 +138,27 @@ const PICKUP_STATUS_LABELS = {
   picked_up: 'Picked up',
   cancelled: 'Cancelled',
   no_show: 'No show'
+};
+const SELLER_TYPE_LABELS = {
+  private: 'Individual',
+  business: 'Business'
+};
+const COUPON_DISCOUNT_LABELS = {
+  percent: 'Percentage off',
+  fixed: 'Fixed amount off',
+  bogo: 'Buy one get one'
+};
+const COUPON_STATUS_LABELS = {
+  draft: 'Draft',
+  active: 'Active',
+  paused: 'Paused',
+  expired: 'Expired'
+};
+const COUPON_STATUS_TAGS = {
+  draft: 'govuk-tag--grey',
+  active: 'govuk-tag--green',
+  paused: 'govuk-tag--yellow',
+  expired: 'govuk-tag--red'
 };
 
 function tokenFrom(req) {
@@ -272,6 +315,53 @@ function formatCredits(amount) {
   const number = Number(amount);
   if (!Number.isFinite(number)) return '';
   return `${number.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')} time credits`;
+}
+
+function formatCompactNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '';
+  return number.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+}
+
+function dateTimeInput(value) {
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+  return match ? match[1] : '';
+}
+
+function dateInput(value) {
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : '';
+}
+
+function formatDateTimeLabel(value) {
+  const text = trimmed(value);
+  if (!text) return 'Not set';
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return 'Not set';
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC'
+  }).format(date);
+}
+
+function objectValue(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
 }
 
 function priceLabel(row) {
@@ -474,6 +564,115 @@ function decorateReservation(reservation) {
     qrCode: trimmed(row.qr_code),
     slotStart: trimmed(slot.slot_start || row.slot_start || row.reserved_at)
   };
+}
+
+function decoratePickupSlot(slot) {
+  const row = slot && typeof slot === 'object' ? slot : {};
+  const capacity = positiveInteger(row.capacity) || 0;
+  const booked = Number.isFinite(Number(row.booked_count)) ? Math.max(0, Number(row.booked_count)) : 0;
+  const remaining = Number.isFinite(Number(row.remaining))
+    ? Math.max(0, Number(row.remaining))
+    : Math.max(0, capacity - booked);
+  const isActive = row.is_active === undefined ? true : booleanValue(row.is_active);
+
+  return {
+    ...row,
+    id: positiveInteger(row.id),
+    slotStart: trimmed(row.slot_start),
+    slotEnd: trimmed(row.slot_end),
+    slotStartInput: dateTimeInput(row.slot_start),
+    slotEndInput: dateTimeInput(row.slot_end),
+    slotStartLabel: formatDateTimeLabel(row.slot_start),
+    slotEndLabel: formatDateTimeLabel(row.slot_end),
+    capacity,
+    booked,
+    remaining,
+    capacityLabel: `${booked} of ${capacity} booked`,
+    remainingLabel: `${remaining} remaining`,
+    isRecurring: booleanValue(row.is_recurring),
+    isActive
+  };
+}
+
+function discountLabel(coupon) {
+  const type = trimmed(coupon.discount_type) || 'percent';
+  const value = Number(coupon.discount_value);
+  if (type === 'percent') return `${formatCompactNumber(value)}%`;
+  if (type === 'bogo') return COUPON_DISCOUNT_LABELS.bogo;
+  return formatCompactNumber(value);
+}
+
+function decorateCoupon(coupon) {
+  const row = coupon && typeof coupon === 'object' ? coupon : {};
+  const status = allowed(row.status, COUPON_STATUSES, 'draft');
+  const discountType = allowed(row.discount_type, COUPON_DISCOUNT_TYPES, 'percent');
+
+  return {
+    ...row,
+    id: positiveInteger(row.id),
+    title: trimmed(row.title),
+    code: trimmed(row.code),
+    description: trimmed(row.description),
+    discountType,
+    discountTypeLabel: COUPON_DISCOUNT_LABELS[discountType] || discountType,
+    discountValue: row.discount_value ?? '',
+    discountLabel: discountLabel({ ...row, discount_type: discountType }),
+    minOrderCents: row.min_order_cents ?? '',
+    maxUses: row.max_uses ?? '',
+    usageCount: Number.isFinite(Number(row.usage_count)) ? Number(row.usage_count) : 0,
+    validUntil: dateInput(row.valid_until),
+    status,
+    statusLabel: COUPON_STATUS_LABELS[status] || status,
+    statusTagClass: COUPON_STATUS_TAGS[status] || 'govuk-tag--grey'
+  };
+}
+
+function onboardingProfile(statusResult) {
+  const data = objectFrom(statusResult) || {};
+  const profile = objectValue(data.profile);
+  const address = objectValue(profile.business_address);
+  return {
+    completed: Boolean(data.onboarding_completed),
+    profile: {
+      business_name: trimmed(profile.business_name),
+      display_name: trimmed(profile.display_name),
+      bio: trimmed(profile.bio),
+      seller_type: allowed(profile.seller_type, SELLER_TYPES, 'business'),
+      business_registration: trimmed(profile.business_registration)
+    },
+    address: {
+      street: trimmed(address.street),
+      city: trimmed(address.city),
+      postal_code: trimmed(address.postal_code),
+      country: trimmed(address.country)
+    }
+  };
+}
+
+async function loadPickupSlots(token) {
+  const result = await callMarketplace(token, 'GET', '/seller/pickup-slots');
+  return rowsFrom(result).map(decoratePickupSlot);
+}
+
+async function loadPickupSlot(token, id) {
+  const slotId = positiveInteger(id);
+  const slots = await loadPickupSlots(token);
+  const slot = slots.find((item) => item.id === slotId);
+  if (!slot) throw new ApiError('Pickup slot not found.', 404);
+  return slot;
+}
+
+async function loadSellerCoupons(token) {
+  const result = await callMarketplace(token, 'GET', '/seller/coupons');
+  return rowsFrom(result).map(decorateCoupon);
+}
+
+async function loadSellerCoupon(token, id) {
+  const couponId = positiveInteger(id);
+  const coupons = await loadSellerCoupons(token);
+  const coupon = coupons.find((item) => item.id === couponId);
+  if (!coupon) throw new ApiError('Coupon not found.', 404);
+  return coupon;
 }
 
 function listingTabs(activeTab, counts) {
@@ -934,6 +1133,137 @@ router.get('/pickups', asyncRoute(async (req, res) => {
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'My collections');
+  }
+}));
+
+router.get('/onboarding', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const result = await callMarketplace(token, 'GET', '/merchant-onboarding/status');
+    const onboarding = onboardingProfile(result);
+    return res.render('marketplace/onboarding', {
+      title: 'Become a seller',
+      activeNav: 'explore',
+      activeTab: 'sell',
+      sellerTypes: SELLER_TYPES.map((value) => ({
+        value,
+        label: SELLER_TYPE_LABELS[value],
+        checked: onboarding.profile.seller_type === value
+      })),
+      ...onboarding,
+      status: statusEntry(req.query.status)
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'Become a seller');
+  }
+}));
+
+router.get('/slots', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const slots = await loadPickupSlots(token);
+    return res.render('marketplace/slots', {
+      title: 'Pickup slots',
+      activeNav: 'explore',
+      activeTab: 'slots',
+      slots,
+      emptySlot: {
+        slotStartInput: '',
+        slotEndInput: '',
+        capacity: 5,
+        isRecurring: false,
+        isActive: true
+      },
+      status: statusEntry(req.query.status),
+      orderReference: positiveInteger(req.query.order_id)
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'Pickup slots');
+  }
+}));
+
+router.get('/slots/:id(\\d+)/edit', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const slot = await loadPickupSlot(token, req.params.id);
+    return res.render('marketplace/slot-form', {
+      title: 'Edit pickup slot',
+      activeNav: 'explore',
+      activeTab: 'slots',
+      slot,
+      action: `/marketplace/slots/${slot.id}/update`,
+      submitLabel: 'Save changes',
+      status: statusEntry(req.query.status)
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'Edit pickup slot');
+  }
+}));
+
+router.get('/coupons', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const coupons = await loadSellerCoupons(token);
+    return res.render('marketplace/coupons', {
+      title: 'My coupons',
+      activeNav: 'explore',
+      activeTab: 'coupons',
+      coupons,
+      status: statusEntry(req.query.status)
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'My coupons');
+  }
+}));
+
+router.get('/coupons/new', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  return res.render('marketplace/coupon-form', {
+    title: 'Create a coupon',
+    activeNav: 'explore',
+    activeTab: 'coupons',
+    mode: 'create',
+    isEdit: false,
+    coupon: decorateCoupon({ discount_type: 'percent', status: 'draft' }),
+    action: '/marketplace/coupons/new',
+    submitLabel: 'Create coupon',
+    discountTypes: COUPON_DISCOUNT_TYPES.map((value) => ({ value, label: COUPON_DISCOUNT_LABELS[value] })),
+    statuses: COUPON_STATUSES.map((value) => ({ value, label: COUPON_STATUS_LABELS[value] })),
+    status: statusEntry(req.query.status)
+  });
+}));
+
+router.get('/coupons/:id(\\d+)/edit', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+
+  try {
+    const coupon = await loadSellerCoupon(token, req.params.id);
+    return res.render('marketplace/coupon-form', {
+      title: 'Edit your coupon',
+      activeNav: 'explore',
+      activeTab: 'coupons',
+      mode: 'edit',
+      isEdit: true,
+      coupon,
+      action: `/marketplace/coupons/${coupon.id}/update`,
+      submitLabel: 'Save changes',
+      discountTypes: COUPON_DISCOUNT_TYPES.map((value) => ({ value, label: COUPON_DISCOUNT_LABELS[value] })),
+      statuses: COUPON_STATUSES.map((value) => ({ value, label: COUPON_STATUS_LABELS[value] })),
+      status: statusEntry(req.query.status)
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, 'Edit your coupon');
   }
 }));
 

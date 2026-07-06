@@ -1,0 +1,104 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/marketplace">Back to marketplace</a>
+  {% include "marketplace/_nav.njk" %}
+  {% include "marketplace/_status-banner.njk" %}
+
+  <span class="govuk-caption-xl">Set up selling at {{ tenantName or serviceName }}</span>
+  <h1 class="govuk-heading-xl">Become a seller</h1>
+  <p class="govuk-body-l">Tell us about your business so buyers know who they are dealing with. You can update these details later.</p>
+
+  {% if completed %}
+    <div class="govuk-notification-banner" role="region" aria-labelledby="seller-setup-complete" data-module="govuk-notification-banner">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="seller-setup-complete">Important</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">You have completed seller setup. You can update your details below at any time.</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/marketplace/onboarding" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <fieldset class="govuk-fieldset">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">About you or your business</h2>
+      </legend>
+
+      <div class="govuk-form-group">
+        <fieldset class="govuk-fieldset">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Are you selling as an individual or a business?</legend>
+          <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+            {% for sellerType in sellerTypes %}
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="seller_type_{{ sellerType.value }}" name="seller_type" type="radio" value="{{ sellerType.value }}" {% if sellerType.checked %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="seller_type_{{ sellerType.value }}">{{ sellerType.label }}</label>
+              </div>
+            {% endfor %}
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="display_name">Display name</label>
+        <div id="display_name-hint" class="govuk-hint">The name shown on your seller profile.</div>
+        <input class="govuk-input" id="display_name" name="display_name" type="text" maxlength="200" value="{{ profile.display_name }}" aria-describedby="display_name-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="business_name">Business name</label>
+        <div id="business_name-hint" class="govuk-hint">The name buyers will see. Required for business sellers.</div>
+        <input class="govuk-input" id="business_name" name="business_name" type="text" maxlength="200" value="{{ profile.business_name }}" aria-describedby="business_name-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="bio">About <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="bio-hint" class="govuk-hint">A short description of what you sell.</div>
+        <textarea class="govuk-textarea" id="bio" name="bio" rows="3" aria-describedby="bio-hint">{{ profile.bio }}</textarea>
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="business_registration">Business registration number <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="business_registration-hint" class="govuk-hint">Optional. Your company or VAT registration number, if you have one.</div>
+        <input class="govuk-input govuk-input--width-20" id="business_registration" name="business_registration" type="text" maxlength="120" value="{{ profile.business_registration }}" aria-describedby="business_registration-hint">
+      </div>
+    </fieldset>
+
+    <fieldset class="govuk-fieldset govuk-!-margin-top-4">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">Location</h2>
+      </legend>
+      <p class="govuk-body">Where buyers can collect items or where your business is based. Optional.</p>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="address_street">Street address</label>
+        <input class="govuk-input" id="address_street" name="address_street" type="text" maxlength="200" value="{{ address.street }}" autocomplete="street-address">
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="address_city">Town or city</label>
+        <input class="govuk-input govuk-input--width-20" id="address_city" name="address_city" type="text" maxlength="120" value="{{ address.city }}" autocomplete="address-level2">
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="address_postal_code">Postal or ZIP code</label>
+        <input class="govuk-input govuk-input--width-10" id="address_postal_code" name="address_postal_code" type="text" maxlength="40" value="{{ address.postal_code }}" autocomplete="postal-code">
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="address_country">Country</label>
+        <input class="govuk-input govuk-input--width-20" id="address_country" name="address_country" type="text" maxlength="120" value="{{ address.country }}" autocomplete="country-name">
+      </div>
+    </fieldset>
+
+    <div class="govuk-button-group govuk-!-margin-top-4">
+      <button class="govuk-button" data-module="govuk-button">Save and finish</button>
+      <a class="govuk-link" href="/marketplace">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

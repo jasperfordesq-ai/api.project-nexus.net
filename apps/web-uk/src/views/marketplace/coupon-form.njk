@@ -1,0 +1,115 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/marketplace/coupons">Back to my coupons</a>
+  {% include "marketplace/_nav.njk" %}
+  {% include "marketplace/_status-banner.njk" %}
+
+  <h1 class="govuk-heading-xl">{% if isEdit %}Edit your coupon{% else %}Create a coupon{% endif %}</h1>
+
+  <form method="post" action="{{ action }}" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <fieldset class="govuk-fieldset">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">Coupon details</h2>
+      </legend>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="coupon_title">Title</label>
+        <div id="coupon_title-hint" class="govuk-hint">A short name shown to buyers, for example Summer sale.</div>
+        <input class="govuk-input" id="coupon_title" name="title" type="text" maxlength="200" value="{{ coupon.title }}" aria-describedby="coupon_title-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="code">Coupon code <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="code-hint" class="govuk-hint">Leave blank to generate one automatically. Buyers enter this at checkout.</div>
+        <input class="govuk-input govuk-input--width-20" id="code" name="code" type="text" maxlength="64" value="{{ coupon.code }}" aria-describedby="code-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="description">Description <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="description-hint" class="govuk-hint">Optional. Explain what the coupon is for.</div>
+        <textarea class="govuk-textarea" id="description" name="description" rows="3" aria-describedby="description-hint">{{ coupon.description }}</textarea>
+      </div>
+    </fieldset>
+
+    <fieldset class="govuk-fieldset govuk-!-margin-top-4">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">Discount</h2>
+      </legend>
+
+      <div class="govuk-form-group">
+        <fieldset class="govuk-fieldset">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Type of discount</legend>
+          <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+            {% for option in discountTypes %}
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="discount_type_{{ option.value }}" name="discount_type" type="radio" value="{{ option.value }}" {% if coupon.discountType == option.value %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="discount_type_{{ option.value }}">{{ option.label }}</label>
+              </div>
+            {% endfor %}
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="discount_value">Discount value</label>
+        <div id="discount_value-hint" class="govuk-hint">For a percentage, enter a number from 1 to 100. For a fixed amount, enter the amount.</div>
+        <input class="govuk-input govuk-input--width-5" id="discount_value" name="discount_value" type="text" inputmode="decimal" value="{{ coupon.discountValue }}" aria-describedby="discount_value-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="min_order_cents">Minimum order (in cents) <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="min_order_cents-hint" class="govuk-hint">Optional. The smallest order value the coupon applies to, in cents.</div>
+        <input class="govuk-input govuk-input--width-10" id="min_order_cents" name="min_order_cents" type="text" inputmode="numeric" value="{{ coupon.minOrderCents }}" aria-describedby="min_order_cents-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="max_uses">Maximum total uses <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="max_uses-hint" class="govuk-hint">Optional. The total number of times this coupon can be used.</div>
+        <input class="govuk-input govuk-input--width-5" id="max_uses" name="max_uses" type="text" inputmode="numeric" value="{{ coupon.maxUses }}" aria-describedby="max_uses-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="valid_until">Valid until <span class="govuk-hint govuk-!-display-inline">(optional)</span></label>
+        <div id="valid_until-hint" class="govuk-hint">Optional. The last day the coupon can be used.</div>
+        <input class="govuk-input govuk-input--width-10" id="valid_until" name="valid_until" type="date" value="{{ coupon.validUntil }}" aria-describedby="valid_until-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="status">Status</label>
+        <select class="govuk-select" id="status" name="status">
+          {% for option in statuses %}
+            <option value="{{ option.value }}" {% if coupon.status == option.value %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </fieldset>
+
+    <div class="govuk-button-group govuk-!-margin-top-4">
+      <button class="govuk-button" data-module="govuk-button">{{ submitLabel }}</button>
+      <a class="govuk-link" href="/marketplace/coupons">Cancel</a>
+    </div>
+  </form>
+
+  {% if isEdit and coupon.id %}
+    <h2 class="govuk-heading-m govuk-!-margin-top-6">Delete this coupon?</h2>
+    <div class="govuk-warning-text">
+      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+      <strong class="govuk-warning-text__text">
+        <span class="govuk-visually-hidden">Important</span>
+        Deleting a coupon removes it permanently. Buyers will no longer be able to use it. This cannot be undone.
+      </strong>
+    </div>
+    <form method="post" action="/marketplace/coupons/{{ coupon.id }}/delete">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <button class="govuk-button govuk-button--warning" data-module="govuk-button">Delete</button>
+    </form>
+  {% endif %}
+{% endblock %}

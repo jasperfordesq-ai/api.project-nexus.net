@@ -7712,6 +7712,150 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed marketplace seller onboarding page', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: {
+        has_profile: true,
+        onboarding_completed: true,
+        profile: {
+          business_name: 'Ford Cycles',
+          display_name: 'Jasper Cycles',
+          bio: 'Repairs and refurbished bikes',
+          seller_type: 'business',
+          business_registration: 'FC-123',
+          business_address: {
+            street: '1 Market Street',
+            city: 'Belfast',
+            postal_code: 'BT1 1AA',
+            country: 'United Kingdom'
+          }
+        }
+      }
+    });
+
+    const response = await request(app)
+      .get('/marketplace/onboarding?status=onboarding-complete')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/merchant-onboarding/status');
+    expect(response.text).toContain('Become a seller');
+    expect(response.text).toContain('Your seller details were saved. You can now start selling.');
+    expect(response.text).toContain('You have completed seller setup.');
+    expect(response.text).toContain('value="Ford Cycles"');
+    expect(response.text).toContain('value="Jasper Cycles"');
+    expect(response.text).toContain('Repairs and refurbished bikes');
+    expect(response.text).toContain('value="1 Market Street"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace seller pickup slot pages', async () => {
+    const api = require('../src/lib/api');
+    const slots = {
+      data: [
+        {
+          id: 7,
+          slot_start: '2026-07-07T10:30:00Z',
+          slot_end: '2026-07-07T12:00:00Z',
+          capacity: 4,
+          booked_count: 1,
+          remaining: 3,
+          is_recurring: true,
+          is_active: false
+        }
+      ]
+    };
+    api.callMarketplaceApi
+      .mockResolvedValueOnce(slots)
+      .mockResolvedValueOnce(slots);
+
+    const index = await request(app)
+      .get('/marketplace/slots?status=pickup-confirmed&order_id=91')
+      .set('Cookie', signedCookieHeader());
+    const edit = await request(app)
+      .get('/marketplace/slots/7/edit?status=slot-saved')
+      .set('Cookie', signedCookieHeader());
+
+    expect(index.status).toBe(200);
+    expect(edit.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/seller/pickup-slots');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/seller/pickup-slots');
+    expect(index.text).toContain('Pickup slots');
+    expect(index.text).toContain('Collection confirmed. The order is marked as collected.');
+    expect(index.text).toContain('Order reference: 91');
+    expect(index.text).toContain('Confirm a collection');
+    expect(index.text).toContain('1 of 4 booked');
+    expect(index.text).toContain('3 remaining');
+    expect(index.text).toContain('Repeats weekly');
+    expect(index.text).toContain('Not active');
+    expect(index.text).toContain('href="/marketplace/slots/7/edit"');
+    expect(edit.text).toContain('Edit pickup slot');
+    expect(edit.text).toContain('Pickup slot updated.');
+    expect(edit.text).toContain('value="2026-07-07T10:30"');
+    expect(edit.text).toContain('action="/marketplace/slots/7/update"');
+    expect(edit.text).toContain('Delete this slot');
+    expect(edit.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed marketplace seller coupon pages', async () => {
+    const api = require('../src/lib/api');
+    const coupons = {
+      data: {
+        items: [
+          {
+            id: 5,
+            title: 'Summer sale',
+            code: 'SUMMER10',
+            description: 'Ten percent off',
+            discount_type: 'percent',
+            discount_value: 10,
+            min_order_cents: 500,
+            max_uses: 20,
+            valid_until: '2026-08-01T00:00:00Z',
+            status: 'active',
+            usage_count: 3
+          }
+        ]
+      }
+    };
+    api.callMarketplaceApi
+      .mockResolvedValueOnce(coupons)
+      .mockResolvedValueOnce(coupons);
+
+    const index = await request(app)
+      .get('/marketplace/coupons?status=coupon-created')
+      .set('Cookie', signedCookieHeader());
+    const edit = await request(app)
+      .get('/marketplace/coupons/5/edit?status=coupon-saved')
+      .set('Cookie', signedCookieHeader());
+    const create = await request(app)
+      .get('/marketplace/coupons/new?status=coupon-title-required')
+      .set('Cookie', signedCookieHeader());
+
+    expect(index.status).toBe(200);
+    expect(edit.status).toBe(200);
+    expect(create.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/seller/coupons');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/seller/coupons');
+    expect(index.text).toContain('My coupons');
+    expect(index.text).toContain('Your coupon was created.');
+    expect(index.text).toContain('Summer sale');
+    expect(index.text).toContain('SUMMER10');
+    expect(index.text).toContain('10%');
+    expect(index.text).toContain('Active');
+    expect(index.text).toContain('href="/marketplace/coupons/5/edit"');
+    expect(edit.text).toContain('Edit your coupon');
+    expect(edit.text).toContain('Your changes were saved.');
+    expect(edit.text).toContain('value="Summer sale"');
+    expect(edit.text).toContain('Ten percent off');
+    expect(edit.text).toContain('value="2026-08-01"');
+    expect(edit.text).toContain('Delete this coupon?');
+    expect(create.text).toContain('Create a coupon');
+    expect(create.text).toContain('Enter a coupon title');
+    expect(create.text).not.toContain('Laravel Blade route');
+  });
+
   it('submits Laravel marketplace listing and buyer action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
