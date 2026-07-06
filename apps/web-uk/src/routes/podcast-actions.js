@@ -4,7 +4,8 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { callPodcastApi, ApiError } = require('../lib/api');
+const fs = require('fs/promises');
+const { callPodcastApi, uploadPodcastEpisode, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -98,6 +99,20 @@ function episodePayload(body) {
   }
 
   return payload;
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
 }
 
 router.post('/:id(\\d+)/subscribe', asyncRoute(async (req, res) => {
@@ -204,19 +219,36 @@ router.post('/studio/:id(\\d+)/episodes', asyncRoute(async (req, res) => {
 
   const id = Number(req.params.id);
   const payload = episodePayload(req.body);
+  const file = uploadedFile(req, 'audio');
   if (payload.title === '') {
+    await removeUploadedFile(file);
     return res.redirect(studioRedirect(id, 'episode-title-missing'));
   }
-  if (!payload.audio_url) {
+  if (!payload.audio_url && !file) {
     return res.redirect(studioRedirect(id, 'episode-audio-missing'));
   }
 
   let status = 'episode-added';
   try {
-    await callPodcast(token, 'POST', `/${id}/episodes`, payload);
+    if (file) {
+      const buffer = await fs.readFile(file.filepath);
+      await uploadPodcastEpisode(token, id, {
+        ...payload,
+        file: {
+          buffer,
+          filename: trimmed(file.originalFilename) || 'podcast-audio',
+          contentType: trimmed(file.mimetype) || 'application/octet-stream',
+          size: file.size
+        }
+      });
+    } else {
+      await callPodcast(token, 'POST', `/${id}/episodes`, payload);
+    }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     status = error instanceof ApiError && error.status === 422 ? 'episode-invalid-audio' : 'episode-failed';
+  } finally {
+    await removeUploadedFile(file);
   }
 
   return res.redirect(studioRedirect(id, status));

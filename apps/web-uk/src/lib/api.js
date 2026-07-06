@@ -1296,6 +1296,33 @@ async function callPodcastApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/podcasts${normalizedPath}`, options);
 }
 
+async function uploadPodcastEpisode(token, showId, data) {
+  const form = new globalThis.FormData();
+  form.append('title', data.title || '');
+  form.append('summary', data.summary || '');
+  form.append('description', data.description || '');
+
+  if (data.audio_url) {
+    form.append('audio_url', data.audio_url);
+  }
+  if (data.episode_number !== undefined && data.episode_number !== null) {
+    form.append('episode_number', String(data.episode_number));
+  }
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('audio', blob, data.file.filename || 'podcast-audio');
+  }
+
+  return request(`/api/v2/podcasts/${encodeURIComponent(showId)}/episodes`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function callFederationApi(token, method, path = '', data = undefined) {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
   const options = {
@@ -2520,6 +2547,7 @@ module.exports = {
   uploadVoiceMessage,
   callConversationApi,
   callPodcastApi,
+  uploadPodcastEpisode,
   callFederationApi,
   getConversations,
   getConversation,

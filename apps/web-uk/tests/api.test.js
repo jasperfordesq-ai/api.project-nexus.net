@@ -1436,6 +1436,38 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should upload podcast episode audio to Laravel with multipart data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 99 } })
+      });
+
+      await api.uploadPodcastEpisode('test-token', 42, {
+        title: 'First update',
+        summary: 'Short summary',
+        description: 'Longer notes',
+        episode_number: 3,
+        file: {
+          buffer: Buffer.from('fake mp3 podcast bytes', 'utf8'),
+          filename: 'first-update.mp3',
+          contentType: 'audio/mpeg'
+        }
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/podcasts/42/episodes',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
   });
 
   describe('callFederationApi', () => {

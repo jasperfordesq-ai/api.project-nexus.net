@@ -181,10 +181,11 @@ backend compatibility are not certified.
 Podcast GET pages remain preparation pages, but the Laravel accessible POST
 aliases under `/podcasts` are now local route declarations backed by Laravel v2
 podcast APIs. The aliases cover show subscription, studio show
-create/update/publish/delete, and episode add/publish/delete. This remains
-partial: multipart audio upload is not proxied, RSS/media rendering, author
-configuration gates, moderation state, localization, runtime smoke tests, and
-ASP.NET backend compatibility are not certified.
+create/update/publish/delete, and episode add/publish/delete including
+multipart audio uploads to `/api/v2/podcasts/{showId}/episodes`. This remains
+partial: RSS/media rendering, author configuration gates, moderation state,
+localization, runtime smoke tests, and ASP.NET backend compatibility are not
+certified.
 
 Ideation GET pages remain preparation pages, but the Laravel accessible POST
 aliases under `/ideation` are now local route declarations backed by Laravel v2

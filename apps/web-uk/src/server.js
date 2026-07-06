@@ -1060,6 +1060,7 @@ app.use('/settings/insurance', parseMultipartForm({ maxFileSize: 10 * 1024 * 102
 app.use(/^\/messages\/\d+\/voice$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use(/^\/groups\/\d+\/image$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use(/^\/groups\/\d+\/files$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use(/^\/podcasts\/studio\/\d+\/episodes$/, parseMultipartForm({ maxFileSize: 100 * 1024 * 1024 }));
 
 app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
 app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);

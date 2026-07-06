@@ -152,6 +152,7 @@ jest.mock('../src/lib/api', () => ({
   uploadVoiceMessage: jest.fn().mockResolvedValue({ data: { id: 12, is_voice: true } }),
   callConversationApi: jest.fn().mockResolvedValue({ data: { id: 33 } }),
   callPodcastApi: jest.fn().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } }),
+  uploadPodcastEpisode: jest.fn().mockResolvedValue({ data: { id: 99 } }),
   callFederationApi: jest.fn().mockResolvedValue({ data: { id: 42, success: true } }),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteeringOpportunities: jest.fn().mockResolvedValue({ data: [] }),
@@ -315,6 +316,7 @@ describe('shared accessible frontend shell', () => {
     api.uploadVoiceMessage.mockReset().mockResolvedValue({ data: { id: 12, is_voice: true } });
     api.callConversationApi.mockReset().mockResolvedValue({ data: { id: 33 } });
     api.callPodcastApi.mockReset().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } });
+    api.uploadPodcastEpisode.mockReset().mockResolvedValue({ data: { id: 99 } });
     api.callFederationApi.mockReset().mockResolvedValue({ data: { id: 42, success: true } });
     api.verify2fa.mockReset();
     api.createFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -8858,6 +8860,44 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callPodcastApi).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel podcast episode route with multipart audio data', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/podcasts/studio/42/episodes')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('episode_title', ' First update ')
+      .field('episode_summary', ' Short summary ')
+      .field('episode_description', ' Longer notes ')
+      .field('episode_number', '3')
+      .attach('audio', Buffer.from('fake mp3 podcast bytes', 'utf8'), {
+        filename: 'first-update.mp3',
+        contentType: 'audio/mpeg'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/podcasts/studio/42?status=episode-added');
+    expect(api.uploadPodcastEpisode).toHaveBeenCalledWith('test-token', 42, expect.objectContaining({
+      title: 'First update',
+      summary: 'Short summary',
+      description: 'Longer notes',
+      episode_number: 3,
+      file: expect.objectContaining({
+        filename: 'first-update.mp3',
+        contentType: 'audio/mpeg',
+        buffer: Buffer.from('fake mp3 podcast bytes', 'utf8')
+      })
+    }));
   });
 
   it('submits Laravel federation action aliases and redirects signed-out visitors', async () => {
