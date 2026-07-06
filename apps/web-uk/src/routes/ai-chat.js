@@ -4,7 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
-const { sendAiChat, ApiError } = require('../lib/api');
+const { sendAiChat, getAiConversations, getAiConversation, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -29,6 +29,89 @@ function conversationIdFrom(result) {
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
 }
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined ? result.data : result;
+}
+
+function collectionFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.data)) return data.data;
+  if (data && Array.isArray(data.conversations)) return data.conversations;
+  return [];
+}
+
+function normalizeConversation(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const id = normaliseConversationId(raw.id);
+  return {
+    id,
+    title: String(raw.title || raw.first_message || 'AI conversation').trim() || 'AI conversation',
+    updated_at: raw.updated_at || raw.updatedAt || raw.created_at || raw.createdAt || ''
+  };
+}
+
+function normalizeMessage(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const role = raw.role === 'user' ? 'user' : 'assistant';
+  return {
+    id: raw.id || `${role}-${String(raw.content || '').slice(0, 12)}`,
+    role,
+    content: String(raw.content || ''),
+    created_at: raw.created_at || raw.createdAt || ''
+  };
+}
+
+function messagesFrom(result) {
+  const data = dataFrom(result);
+  if (data && Array.isArray(data.messages)) return data.messages.map(normalizeMessage);
+  if (data && data.conversation && Array.isArray(data.conversation.messages)) {
+    return data.conversation.messages.map(normalizeMessage);
+  }
+  return [];
+}
+
+router.get('/', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const selectedId = normaliseConversationId(req.query.c);
+  let conversations = [];
+  let messages = [];
+  let apiError = null;
+  let currentConversationId = selectedId;
+
+  try {
+    conversations = collectionFrom(await getAiConversations(token, { limit: 20 }))
+      .map(normalizeConversation)
+      .filter((conversation) => conversation.id !== null);
+
+    if (selectedId !== null) {
+      try {
+        messages = messagesFrom(await getAiConversation(token, selectedId));
+      } catch (error) {
+        if (isAuthError(error)) throw error;
+        currentConversationId = null;
+      }
+    }
+  } catch (error) {
+    if (isAuthError(error)) throw error;
+    apiError = 'The AI assistant is temporarily unavailable. You can still start a new message and try again.';
+  }
+
+  return res.render('ai-chat/index', {
+    title: 'AI assistant',
+    activeNav: 'explore',
+    conversations,
+    messages,
+    selectedId: currentConversationId,
+    status: String(req.query.status || ''),
+    apiError
+  });
+}));
 
 router.post('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

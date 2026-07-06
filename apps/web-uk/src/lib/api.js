@@ -1253,6 +1253,23 @@ async function sendAiChat(token, data) {
   });
 }
 
+async function getAiConversations(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset) query.set('offset', params.offset);
+  const queryString = query.toString();
+
+  return request(`/api/ai/conversations${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getAiConversation(token, id) {
+  return request(`/api/ai/conversations/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function getExplore(token) {
   return request('/api/v2/explore', {
     headers: { Authorization: `Bearer ${token}` }
@@ -2642,6 +2659,8 @@ module.exports = {
   createExchangeRequest,
   rateExchange,
   sendAiChat,
+  getAiConversations,
+  getAiConversation,
   getExplore,
   getMemberPremiumTiers,
   getMemberPremiumMe,

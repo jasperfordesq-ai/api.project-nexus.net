@@ -122,6 +122,8 @@ jest.mock('../src/lib/api', () => ({
   performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   rateExchange: jest.fn().mockResolvedValue({ data: { ratings: [] } }),
   sendAiChat: jest.fn().mockResolvedValue({ data: { conversation_id: 123 } }),
+  getAiConversations: jest.fn().mockResolvedValue({ data: [] }),
+  getAiConversation: jest.fn().mockResolvedValue({ data: { id: 77, messages: [] } }),
   getExplore: jest.fn().mockResolvedValue({ data: {} }),
   getMemberPremiumTiers: jest.fn().mockResolvedValue({ data: { tiers: [] } }),
   getMemberPremiumMe: jest.fn().mockResolvedValue({ data: { subscription: null, entitled_tier: null, unlocked_features: [] } }),
@@ -2663,6 +2665,44 @@ describe('shared accessible frontend shell', () => {
       rating: 5,
       comment: 'Great exchange'
     });
+  });
+
+  it('renders the Laravel AI chat GET page with conversations and the selected thread', async () => {
+    const api = require('../src/lib/api');
+    api.getAiConversations.mockResolvedValueOnce({
+      data: [
+        { id: 123, title: 'Gardening help', updated_at: '2026-07-05T09:30:00Z' },
+        { id: 99, title: 'Transport question', updated_at: '2026-07-04T12:00:00Z' }
+      ]
+    });
+    api.getAiConversation.mockResolvedValueOnce({
+      data: {
+        id: 123,
+        title: 'Gardening help',
+        messages: [
+          { id: 1, role: 'user', content: 'Can anyone help with seedlings?' },
+          { id: 2, role: 'assistant', content: 'Try the gardening listings and upcoming events.' }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/chat?c=123&status=sent')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('AI assistant');
+    expect(response.text).toContain('Conversations');
+    expect(response.text).toContain('Gardening help');
+    expect(response.text).toContain('Transport question');
+    expect(response.text).toContain('Can anyone help with seedlings?');
+    expect(response.text).toContain('Try the gardening listings and upcoming events.');
+    expect(response.text).toContain('name="conversation_id" value="123"');
+    expect(response.text).toContain('name="message"');
+    expect(response.text).toContain('maxlength="4000"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getAiConversations).toHaveBeenCalledWith('test-token', { limit: 20 });
+    expect(api.getAiConversation).toHaveBeenCalledWith('test-token', 123);
   });
 
   it('submits the Laravel AI chat route through the chat API helper', async () => {

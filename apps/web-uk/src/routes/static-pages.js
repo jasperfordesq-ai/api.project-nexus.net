@@ -64,10 +64,6 @@ const pages = {
     title: 'Exchanges',
     body: 'Exchange workflows are a core Laravel accessible frontend feature and need ASP.NET contract parity before use.'
   },
-  '/chat': {
-    title: 'AI assistant',
-    body: 'AI assistant pages will be wired after the backend contract and feature gates are compatible.'
-  },
   '/skills': {
     title: 'Skills',
     body: 'Skills pages will follow the Laravel accessible frontend contract.'

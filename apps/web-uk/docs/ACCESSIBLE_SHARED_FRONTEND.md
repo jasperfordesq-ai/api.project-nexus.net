@@ -167,6 +167,16 @@ generated description value repopulation, image and skill-tag form parity,
 owner/requester authorization depth, tenant/feature gates, localization, runtime
 smoke tests, and ASP.NET backend compatibility are not certified.
 
+The `/chat` page is now a partial Laravel-backed candidate for the Blade AI
+assistant. Signed-in GET requests call Laravel `/api/ai/conversations` and, when
+`?c=` is present, `/api/ai/conversations/{id}` to render the conversation list,
+selected thread, warning text, empty/error states, and no-JS message form. POST
+`/chat` sends trimmed messages to Laravel `/api/ai/chat` and preserves Laravel
+`empty`, `sent`, and `auth-required` redirect statuses. This remains partial:
+Laravel tenant `ai_chat` feature-gate proof, provider-enabled notice parity,
+fallback reply/tool-card display, localization, runtime smoke tests, and ASP.NET
+backend compatibility are not certified.
+
 Marketplace GET pages remain preparation pages, but the Laravel accessible POST
 aliases under `/marketplace` are now local route declarations backed by Laravel
 v2 marketplace APIs. The aliases cover listing create/update/delete/renew,
