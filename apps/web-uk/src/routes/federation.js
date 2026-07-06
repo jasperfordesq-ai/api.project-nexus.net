@@ -225,6 +225,15 @@ function transferStatusBanner(status) {
   return banners[trimmed(status)] || null;
 }
 
+function settingsStatusBanner(status) {
+  const banners = {
+    'settings-saved': { type: 'success', message: 'Federation settings saved' },
+    'settings-failed': { type: 'error', message: 'Federation settings could not be saved' }
+  };
+
+  return banners[trimmed(status)] || null;
+}
+
 function renderFederationError(error, res) {
   if (error instanceof ApiError && error.status === 401) {
     res.redirect('/login?status=auth-required');
@@ -377,6 +386,44 @@ router.get('/members', asyncRoute(async (req, res) => {
       partnerId: trimmed(req.query.partner_id),
       serviceReach: trimmed(req.query.service_reach)
     }
+  });
+}));
+
+router.get('/settings', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  let settingsResult;
+  try {
+    settingsResult = await callFederationApi(token, 'GET', '/settings');
+  } catch (error) {
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const settingsData = asObject(dataFrom(settingsResult));
+  const settings = asObject(settingsData.settings);
+
+  return res.render('federation/settings', {
+    title: 'Federation settings',
+    activeNav: 'explore',
+    federationActiveTab: 'settings',
+    optedIn: bool(settings.federation_optin) || bool(settingsData.enabled),
+    settings: {
+      profileVisibleFederated: bool(settings.profile_visible_federated),
+      appearInFederatedSearch: bool(settings.appear_in_federated_search),
+      showSkillsFederated: bool(settings.show_skills_federated),
+      showLocationFederated: bool(settings.show_location_federated),
+      showReviewsFederated: bool(settings.show_reviews_federated),
+      emailNotifications: bool(settings.email_notifications),
+      messagingEnabledFederated: bool(settings.messaging_enabled_federated),
+      transactionsEnabledFederated: bool(settings.transactions_enabled_federated),
+      serviceReach: trimmed(settings.service_reach) || 'local_only',
+      travelRadiusKm: numberOrZero(settings.travel_radius_km || 25)
+    },
+    statusBanner: settingsStatusBanner(req.query.status)
   });
 }));
 

@@ -779,6 +779,65 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation settings page', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/settings') {
+        return {
+          data: {
+            enabled: true,
+            settings: {
+              federation_optin: true,
+              profile_visible_federated: true,
+              appear_in_federated_search: true,
+              show_skills_federated: true,
+              show_location_federated: false,
+              show_reviews_federated: true,
+              email_notifications: true,
+              messaging_enabled_federated: true,
+              transactions_enabled_federated: false,
+              service_reach: 'travel_ok',
+              travel_radius_km: 35
+            }
+          }
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/federation/settings');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/settings?status=settings-saved')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Federation settings');
+    expect(response.text).toContain('Control what partner communities can see and do with your federation profile.');
+    expect(response.text).toContain('Federation settings saved');
+    expect(response.text).toContain('Federation active');
+    expect(response.text).toContain('action="/federation/settings"');
+    expect(response.text).toContain('id="profile_visible_federated" name="profile_visible_federated"');
+    expect(response.text).toContain('id="appear_in_federated_search" name="appear_in_federated_search"');
+    expect(response.text).toContain('id="show_skills_federated" name="show_skills_federated"');
+    expect(response.text).toContain('id="show_location_federated" name="show_location_federated"');
+    expect(response.text).toContain('id="show_reviews_federated" name="show_reviews_federated"');
+    expect(response.text).toContain('id="email_notifications" name="email_notifications"');
+    expect(response.text).toContain('id="messaging_enabled_federated" name="messaging_enabled_federated"');
+    expect(response.text).toContain('id="transactions_enabled_federated" name="transactions_enabled_federated"');
+    expect(response.text).toContain('<option value="travel_ok" selected>');
+    expect(response.text).toContain('id="travel_radius_km" name="travel_radius_km" type="number"');
+    expect(response.text).toContain('value="35"');
+    expect(response.text).toContain('href="/federation/opt-out"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 
