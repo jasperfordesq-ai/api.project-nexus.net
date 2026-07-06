@@ -4068,6 +4068,125 @@ describe('shared accessible frontend shell', () => {
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
+  it('streams the Laravel-backed owner applications CSV export', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce('ID,Name,Email,Status,Stage,Applied At,Updated At\n91,Alex Morgan,alex@example.org,screening,screening,2099-07-02 10:00:00,2099-07-03 11:00:00\n');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/applications/export.csv')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/501/applications/export-csv');
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/csv');
+    expect(response.headers['content-disposition']).toMatch(/attachment; filename="job_501_applications_\d{8}_\d{6}\.csv"/);
+    expect(response.text).toContain('ID,Name,Email,Status,Stage,Applied At,Updated At');
+    expect(response.text).toContain('91,Alex Morgan,alex@example.org,screening,screening');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from the applications CSV export before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/501/applications/export.csv');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('redirects failed application CSV exports back to the applicants page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockRejectedValueOnce(new api.ApiError('Forbidden', 403, {}));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/applications/export.csv')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/501/applications/export-csv');
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/jobs/501/applications?status=export-failed');
+  });
+
+  it('renders the Laravel-backed application timeline page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 11,
+          application_id: 91,
+          from_status: 'applied',
+          to_status: 'interview',
+          changed_at: '2099-07-02T10:30:00Z',
+          changed_by_name: 'Riley Casey',
+          notes: 'Strong rota experience.'
+        }
+      ]
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/applications/91/history')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/applications/91/history');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Back to my applications');
+    expect(response.text).toContain('Application timeline');
+    expect(response.text).toContain('Interview');
+    expect(response.text).toContain('from Applied');
+    expect(response.text).toContain('2 July 2099, 10:30am');
+    expect(response.text).toContain('by Riley Casey');
+    expect(response.text).toContain('Strong rota experience.');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the empty Laravel-backed application timeline state', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({ data: [] });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/applications/91/history')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/applications/91/history');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('There are no status updates for this application yet.');
+  });
+
+  it('redirects signed-out visitors away from application history before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/applications/91/history');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('returns not found when Laravel denies application history access', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockRejectedValueOnce(new api.ApiError('Forbidden', 403, {}));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/applications/91/history')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/applications/91/history');
+    expect(response.status).toBe(404);
+  });
+
   it('renders the Laravel-backed job alerts page with alert controls', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

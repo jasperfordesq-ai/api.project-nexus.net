@@ -386,6 +386,35 @@ function formatDateTimeLong(value) {
   });
 }
 
+function formatDateTimeMeridiem(value) {
+  if (!value) return '';
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+  if (!match) return formatDateTimeLong(text);
+
+  const dateLabel = formatUtcDateParts(Number(match[1]), Number(match[2]), Number(match[3]));
+  if (!dateLabel) return text;
+
+  const hour = Number(match[4]);
+  const displayHour = hour % 12 || 12;
+  const suffix = hour < 12 ? 'am' : 'pm';
+
+  return `${dateLabel}, ${displayHour}:${match[5]}${suffix}`;
+}
+
+function timestampForFilename(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    '_',
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds())
+  ].join('');
+}
+
 function money(value, currency) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
@@ -636,6 +665,33 @@ function decorateApplicant(application) {
   };
 }
 
+function statusTitle(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+
+  return text
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+    .join(' ');
+}
+
+function decorateApplicationHistory(entry) {
+  const toStatus = trimmed(entry.to_status || entry.toStatus);
+  const fromStatus = trimmed(entry.from_status || entry.fromStatus);
+  const changedByName = trimmed(entry.changed_by_name || entry.changedByName);
+
+  return {
+    ...entry,
+    id: positiveInteger(entry.id) || 0,
+    statusLabel: JOB_APPLICATION_LABELS[toStatus] || statusTitle(toStatus) || 'Updated',
+    fromLabel: fromStatus ? `from ${JOB_APPLICATION_LABELS[fromStatus] || statusTitle(fromStatus)}` : '',
+    changedAtLabel: formatDateTimeMeridiem(entry.changed_at || entry.changedAt),
+    changedByLabel: changedByName ? `by ${changedByName}` : '',
+    notesText: trimmed(entry.notes, 5000)
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     applied: 'Your application has been submitted.',
@@ -849,6 +905,30 @@ router.get('/applications', asyncRoute(async (req, res) => {
   });
 }));
 
+router.get('/applications/:appId(\\d+)/history', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const appId = Number(req.params.appId);
+  let result = null;
+
+  try {
+    result = await callJob(token, 'GET', `/applications/${appId}/history`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  return res.render('jobs/application-history', {
+    title: 'Application timeline',
+    activeNav: 'explore',
+    applicationId: appId,
+    history: collectionItems(result).map(decorateApplicationHistory)
+  });
+}));
+
 router.get('/mine', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const cursor = trimmed(req.query.cursor, 500);
@@ -944,6 +1024,30 @@ router.get('/responses', asyncRoute(async (req, res) => {
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
+}));
+
+router.get('/:id(\\d+)/applications/export.csv', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  let csv;
+
+  try {
+    csv = await callJob(token, 'GET', `/${id}/applications/export-csv`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(statusRedirect(`/jobs/${id}/applications`, 'export-failed'));
+  }
+
+  const filename = `job_${id}_applications_${timestampForFilename()}.csv`;
+
+  res.set({
+    'Content-Type': 'text/csv; charset=utf-8',
+    'Content-Disposition': `attachment; filename="${filename}"`,
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    Pragma: 'no-cache'
+  });
+
+  return res.send(typeof csv === 'string' ? csv : String(csv || ''));
 }));
 
 router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
