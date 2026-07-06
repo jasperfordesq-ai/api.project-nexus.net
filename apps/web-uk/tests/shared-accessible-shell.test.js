@@ -838,6 +838,117 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation opt-in page', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/settings') {
+        return {
+          data: {
+            enabled: true,
+            settings: {
+              federation_optin: false
+            }
+          }
+        };
+      }
+      if (pathValue === '/partners') {
+        return {
+          data: [
+            {
+              id: 12,
+              name: 'North Timebank',
+              location: 'Derry',
+              member_count: 14
+            },
+            {
+              id: 15,
+              name: 'West Timebank',
+              location: 'Galway',
+              member_count: 9
+            }
+          ]
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/federation/opt-in');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/opt-in?status=optin-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Opt in to federation');
+    expect(response.text).toContain('Opting in lets you take part in the wider community network.');
+    expect(response.text).toContain('We could not opt you in. Please try again.');
+    expect(response.text).toContain('What you can do');
+    expect(response.text).toContain('Discover');
+    expect(response.text).toContain('Connect');
+    expect(response.text).toContain('Exchange');
+    expect(response.text).toContain('action="/federation/opt-in"');
+    expect(response.text).toContain('name="preferences_submitted" value="1"');
+    expect(response.text).toContain('id="profile_visible_federated" name="profile_visible_federated"');
+    expect(response.text).toContain('id="show_location_federated" name="show_location_federated"');
+    expect(response.text).toContain('id="messaging_enabled_federated" name="messaging_enabled_federated"');
+    expect(response.text).toContain('id="transactions_enabled_federated" name="transactions_enabled_federated"');
+    expect(response.text).toContain('<option value="local_only" selected>');
+    expect(response.text).toContain('id="travel_radius_km" name="travel_radius_km" type="number"');
+    expect(response.text).toContain('Communities you could connect with');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).toContain('Location: Derry');
+    expect(response.text).toContain('Members: 14');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects opted-in members from the Federation opt-in page to settings', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockResolvedValue({
+      data: {
+        enabled: true,
+        settings: {
+          federation_optin: true
+        }
+      }
+    });
+
+    const response = await request(app)
+      .get('/federation/opt-in')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/federation/settings');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
+  });
+
+  it('renders the Laravel-backed Federation opt-out page', async () => {
+    const unsigned = await request(app).get('/federation/opt-out');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/opt-out')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/federation/settings"');
+    expect(response.text).toContain('Opt out of federation');
+    expect(response.text).toContain('You are about to opt out of federation');
+    expect(response.text).toContain('Your profile will be removed from partner communities and federated searches.');
+    expect(response.text).toContain('action="/federation/opt-out"');
+    expect(response.text).toContain('govuk-button--warning');
+    expect(response.text).toContain('Cancel');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('renders the Laravel-backed Federation connections page', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {

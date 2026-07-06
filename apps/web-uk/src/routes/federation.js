@@ -374,6 +374,15 @@ function settingsStatusBanner(status) {
   return banners[trimmed(status)] || null;
 }
 
+function optInStatusBanner(status) {
+  const banners = {
+    'optin-failed': { type: 'error', message: 'We could not opt you in. Please try again.' },
+    unavailable: { type: 'error', message: 'Federation is not currently available for this community.' }
+  };
+
+  return banners[trimmed(status)] || null;
+}
+
 function connectionStatusBanner(status) {
   const banners = {
     'connection-accepted': { type: 'success', message: 'Connection request accepted.' },
@@ -455,6 +464,52 @@ router.get('/', asyncRoute(async (req, res) => {
     partnerTotal,
     activity,
     statusBanner: statusBanner(req.query.status)
+  });
+}));
+
+router.get('/opt-in', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  let settingsResult;
+  let partnersResult;
+  try {
+    settingsResult = await callFederationApi(token, 'GET', '/settings');
+    const settingsData = asObject(dataFrom(settingsResult));
+    const settings = asObject(settingsData.settings);
+    if (bool(settings.federation_optin)) {
+      return res.redirect('/federation/settings');
+    }
+
+    partnersResult = await callFederationApi(token, 'GET', '/partners');
+  } catch (error) {
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const partners = asList(dataFrom(partnersResult)).map(normalizePartner).slice(0, 5);
+
+  return res.render('federation/opt-in', {
+    title: 'Opt in to federation',
+    activeNav: 'explore',
+    federationActiveTab: 'overview',
+    partners,
+    statusBanner: optInStatusBanner(req.query.status)
+  });
+}));
+
+router.get('/opt-out', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  return res.render('federation/opt-out', {
+    title: 'Opt out of federation',
+    activeNav: 'explore',
+    federationActiveTab: 'overview'
   });
 }));
 
