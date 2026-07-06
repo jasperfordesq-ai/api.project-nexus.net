@@ -401,6 +401,20 @@ async function callIdeationApi(token, method, path, data = undefined) {
   return request(`/api/v2${normalizedPath}`, options);
 }
 
+async function callGroupExchangeApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/group-exchanges${normalizedPath}`, options);
+}
+
 async function getOrganisationJobs(organisationId, token, params = {}) {
   const query = new URLSearchParams();
   query.set('organization_id', organisationId);
@@ -1835,6 +1849,7 @@ module.exports = {
   callVolunteeringApi,
   callMarketplaceApi,
   callIdeationApi,
+  callGroupExchangeApi,
   getOrganisationJobs,
   // Wallet
   getBalance,

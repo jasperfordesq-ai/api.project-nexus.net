@@ -602,6 +602,32 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callGroupExchangeApi', () => {
+    it('should call Laravel v2 group exchange action endpoints with auth, method, and payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { ok: true } })
+      });
+
+      await api.callGroupExchangeApi('test-token', 'POST', '/7/participants', {
+        user_id: 55,
+        role: 'provider'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/group-exchanges/7/participants',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ user_id: 55, role: 'provider' })
+        })
+      );
+    });
+  });
+
   describe('donateCredits', () => {
     it('should call the Laravel wallet donation endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

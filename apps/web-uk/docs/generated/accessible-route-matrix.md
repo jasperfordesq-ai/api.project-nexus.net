@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T11:09:16.268Z
+Generated: 2026-07-06T11:14:36.780Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 551 |
-| Matched routes | 469 |
-| Missing routes | 139 |
+| web-uk routes | 557 |
+| Matched routes | 475 |
+| Missing routes | 133 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -41,7 +41,7 @@ Generated: 2026-07-06T11:09:16.268Z
 | feed | 22 | 0 | 10 |
 | forgot-password | 0 | 0 | 2 |
 | goals | 12 | 15 | 0 |
-| group-exchanges | 3 | 6 | 0 |
+| group-exchanges | 9 | 0 | 0 |
 | groups | 20 | 16 | 6 |
 | guide | 1 | 0 | 0 |
 | health | 0 | 0 | 1 |
@@ -145,12 +145,6 @@ Generated: 2026-07-06T11:09:16.268Z
 | POST | `/goals/{param}/reminder` | goals | goalsSaveReminder |  | auth-optional |  |
 | POST | `/goals/{param}/reminder/delete` | goals | goalsDeleteReminder |  | auth-optional |  |
 | POST | `/goals/templates/{param}` | goals | storeGoalFromTemplate |  | auth-optional | feature:goals |
-| POST | `/group-exchanges/{param}/cancel` | group-exchanges | cancelGroupExchange |  | public-or-unknown |  |
-| POST | `/group-exchanges/{param}/complete` | group-exchanges | completeGroupExchange |  | public-or-unknown |  |
-| POST | `/group-exchanges/{param}/confirm` | group-exchanges | confirmGroupExchange |  | public-or-unknown |  |
-| POST | `/group-exchanges/{param}/participants` | group-exchanges | addGroupExchangeParticipant |  | public-or-unknown |  |
-| POST | `/group-exchanges/{param}/participants/{param}/remove` | group-exchanges | removeGroupExchangeParticipant |  | public-or-unknown |  |
-| POST | `/group-exchanges/new` | group-exchanges | storeGroupExchange |  | auth-optional | feature:group_exchanges |
 | POST | `/groups/{param}/announcements` | groups | groupsCreateAnnouncement |  | public-or-unknown |  |
 | POST | `/groups/{param}/announcements/{param}/delete` | groups | groupsDeleteAnnouncement |  | public-or-unknown |  |
 | POST | `/groups/{param}/announcements/{param}/edit` | groups | groupsUpdateAnnouncement |  | public-or-unknown |  |

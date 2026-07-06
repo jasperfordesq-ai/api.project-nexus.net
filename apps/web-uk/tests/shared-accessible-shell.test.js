@@ -125,6 +125,7 @@ jest.mock('../src/lib/api', () => ({
   callVolunteeringApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callMarketplaceApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getVolunteerOpportunity: jest.fn(),
   getOrganisationOpportunities: jest.fn(),
   getOrganisationReviews: jest.fn(),
@@ -212,6 +213,7 @@ describe('shared accessible frontend shell', () => {
     api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.getNotifications.mockReset().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } });
     api.markNotificationRead.mockReset().mockResolvedValue({});
     api.markAllNotificationsRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
@@ -3871,6 +3873,78 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel group exchange action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const createResponse = await post('/group-exchanges/new', {
+      title: ' Community garden build ',
+      description: ' Build raised beds on Saturday. ',
+      total_hours: '12.5',
+      split_type: 'custom'
+    });
+    expect(createResponse.headers.location).toBe('/group-exchanges/42?status=created');
+    expect(api.callGroupExchangeApi).toHaveBeenLastCalledWith('test-token', 'POST', '', {
+      title: 'Community garden build',
+      description: 'Build raised beds on Saturday.',
+      total_hours: 12.5,
+      split_type: 'custom',
+      status: 'draft'
+    });
+
+    const addResponse = await post('/group-exchanges/7/participants', {
+      participant_id: '55',
+      role: 'receiver',
+      hours: '3.5'
+    });
+    expect(addResponse.headers.location).toBe('/group-exchanges/7?status=participant-added#group-exchange-top');
+    expect(api.callGroupExchangeApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/participants', {
+      user_id: 55,
+      role: 'receiver',
+      hours: 3.5,
+      weight: 1
+    });
+
+    const removeResponse = await post('/group-exchanges/7/participants/55/remove');
+    expect(removeResponse.headers.location).toBe('/group-exchanges/7?status=participant-removed#group-exchange-top');
+    expect(api.callGroupExchangeApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/7/participants/55');
+
+    const confirmResponse = await post('/group-exchanges/7/confirm');
+    expect(confirmResponse.headers.location).toBe('/group-exchanges/7?status=confirmed#group-exchange-top');
+    expect(api.callGroupExchangeApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/confirm');
+
+    const completeResponse = await post('/group-exchanges/7/complete');
+    expect(completeResponse.headers.location).toBe('/group-exchanges/7?status=completed#group-exchange-top');
+    expect(api.callGroupExchangeApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/complete');
+
+    const cancelResponse = await post('/group-exchanges/7/cancel');
+    expect(cancelResponse.headers.location).toBe('/group-exchanges/7?status=cancelled#group-exchange-top');
+    expect(api.callGroupExchangeApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/7');
+
+    api.callGroupExchangeApi.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/group-exchanges/7/confirm')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1] });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callGroupExchangeApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {
