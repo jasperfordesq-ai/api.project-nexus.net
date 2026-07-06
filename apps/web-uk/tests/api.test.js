@@ -2856,4 +2856,25 @@ describe('API Request Functions', () => {
       );
     });
   });
+
+  describe('getExplore', () => {
+    it('should request the Laravel v2 Explore aggregate with auth', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { popular_listings: [] } })
+      });
+
+      await api.getExplore('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/explore',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
 });

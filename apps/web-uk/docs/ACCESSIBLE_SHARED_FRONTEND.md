@@ -67,10 +67,14 @@ The shell feeds:
 - GOV.UK service navigation
 - no-JS language selector
 - footer columns
-- Explore card list
+- Explore card list and Laravel-backed live discovery sections
 
-The `/explore` page is a skeleton copied from the Laravel accessible information
-architecture. It does not certify ASP.NET backend or workflow parity.
+The `/explore` page is a protected Laravel-backed candidate. It redirects
+unsigned visitors to `/login?status=auth-required`, calls Laravel
+`/api/v2/explore`, renders the Blade Explore card list, and shows live listing
+and event sections when the aggregate response includes them. Tenant feature
+gating, exact recent-listing source parity, clubs detection, localization, and
+runtime behavior are not certified.
 
 The `/account` page is now a local Blade-style protected account hub candidate.
 Unsigned requests redirect to `/login`, matching the Laravel accessible account

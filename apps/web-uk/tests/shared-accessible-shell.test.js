@@ -90,6 +90,7 @@ jest.mock('../src/lib/api', () => ({
   performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   rateExchange: jest.fn().mockResolvedValue({ data: { ratings: [] } }),
   sendAiChat: jest.fn().mockResolvedValue({ data: { conversation_id: 123 } }),
+  getExplore: jest.fn().mockResolvedValue({ data: {} }),
   getMemberPremiumTiers: jest.fn().mockResolvedValue({ data: { tiers: [] } }),
   getMemberPremiumMe: jest.fn().mockResolvedValue({ data: { subscription: null, entitled_tier: null, unlocked_features: [] } }),
   createMemberPremiumCheckout: jest.fn().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } }),
@@ -200,6 +201,7 @@ describe('shared accessible frontend shell', () => {
     api.performExchangeAction.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.rateExchange.mockReset().mockResolvedValue({ data: { ratings: [] } });
     api.sendAiChat.mockReset().mockResolvedValue({ data: { conversation_id: 123 } });
+    api.getExplore.mockReset().mockResolvedValue({ data: {} });
     api.getMemberPremiumTiers.mockReset().mockResolvedValue({ data: { tiers: [] } });
     api.getMemberPremiumMe.mockReset().mockResolvedValue({ data: { subscription: null, entitled_tier: null, unlocked_features: [] } });
     api.createMemberPremiumCheckout.mockReset().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } });
@@ -313,10 +315,31 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('https://github.com/jasperfordesq-ai/nexus-v1');
   });
 
-  it('renders the shared Explore skeleton from the Laravel accessible IA', async () => {
-    const response = await request(app).get('/explore');
+  it('renders the Laravel-backed Explore hub with live discovery sections', async () => {
+    const api = require('../src/lib/api');
+    api.getExplore.mockResolvedValue({
+      data: {
+        popular_listings: [
+          { id: 501, title: 'Borrow a repair kit', type: 'offer' },
+          { id: 502, title: 'Need a folding table', type: 'request' }
+        ],
+        upcoming_events: [
+          { id: 77, title: 'Community supper', start_date: '2026-08-15T18:00:00Z' }
+        ]
+      }
+    });
+
+    const unsigned = await request(app).get('/explore');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/explore')
+      .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
+    expect(api.getExplore).toHaveBeenCalledWith('test-token');
     expect(response.text).toContain('Explore');
     expect(response.text).toContain('class="nexus-alpha-card-list');
     expect(response.text).toContain('Exchanges');
@@ -325,8 +348,14 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Marketplace');
     expect(response.text).toContain('Federation');
     expect(response.text).toContain('Recent listings');
+    expect(response.text).toContain('Borrow a repair kit');
+    expect(response.text).toContain('Need a folding table');
+    expect(response.text).toContain('href="/listings/501"');
     expect(response.text).toContain('Upcoming events');
-    expect(response.text).toContain('This page is a shared-accessible-frontend preparation skeleton');
+    expect(response.text).toContain('Community supper');
+    expect(response.text).toContain('15 Aug 2026');
+    expect(response.text).toContain('href="/events/77"');
+    expect(response.text).not.toContain('This page is a shared-accessible-frontend preparation skeleton');
   });
 
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
