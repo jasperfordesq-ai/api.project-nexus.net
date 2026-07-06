@@ -200,6 +200,48 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/volunteering', '/api/v2/volunteering'
     }
 
+    $simpleV2Prefixes = @(
+        '/api/ads/active',
+        '/api/appreciations',
+        '/api/billing/plans',
+        '/api/blog',
+        '/api/categories',
+        '/api/clubs',
+        '/api/config',
+        '/api/group-collections',
+        '/api/group-tags',
+        '/api/group-templates',
+        '/api/group-chatroom-messages',
+        '/api/help/faqs',
+        '/api/identity',
+        '/api/matches',
+        '/api/member-premium',
+        '/api/mentions',
+        '/api/merchant-onboarding',
+        '/api/municipality',
+        '/api/newsletter/click',
+        '/api/newsletter/pixel',
+        '/api/onboarding',
+        '/api/pages',
+        '/api/platform/stats',
+        '/api/pusher/config',
+        '/api/realtime/config',
+        '/api/safeguarding/my-preferences',
+        '/api/search',
+        '/api/seo',
+        '/api/skills',
+        '/api/team-documents',
+        '/api/tenant/bootstrap',
+        '/api/ideation-comments',
+        '/api/ideation-media'
+    )
+
+    foreach ($simplePrefix in $simpleV2Prefixes) {
+        if ($normalized -eq $simplePrefix -or $normalized.StartsWith("$simplePrefix/")) {
+            return "/api/v2$($normalized.Substring('/api'.Length))"
+        }
+    }
+
     if ($normalized -eq '/api/connections' -or $normalized.StartsWith('/api/connections/')) {
         return $normalized -replace '^/api/connections', '/api/v2/connections'
     }

@@ -484,4 +484,98 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/ads/active")]
+    [InlineData("/api/v2/appreciations/most-appreciated")]
+    [InlineData("/api/v2/billing/plans")]
+    [InlineData("/api/v2/blog")]
+    [InlineData("/api/v2/blog/categories")]
+    [InlineData("/api/v2/categories")]
+    [InlineData("/api/v2/clubs")]
+    [InlineData("/api/v2/config/algorithms")]
+    [InlineData("/api/v2/config/google-maps")]
+    [InlineData("/api/v2/group-collections")]
+    [InlineData("/api/v2/group-tags")]
+    [InlineData("/api/v2/group-tags/popular")]
+    [InlineData("/api/v2/group-tags/suggest?q=care")]
+    [InlineData("/api/v2/group-templates")]
+    [InlineData("/api/v2/help/faqs")]
+    [InlineData("/api/v2/municipality/events-calendar")]
+    [InlineData("/api/v2/onboarding/config")]
+    [InlineData("/api/v2/onboarding/safeguarding-options")]
+    [InlineData("/api/v2/pages/menu")]
+    [InlineData("/api/v2/platform/stats")]
+    [InlineData("/api/v2/pusher/config")]
+    [InlineData("/api/v2/search?q=care")]
+    [InlineData("/api/v2/search/suggestions?q=care")]
+    [InlineData("/api/v2/search/trending")]
+    [InlineData("/api/v2/seo/redirects")]
+    [InlineData("/api/v2/skills/search?q=care")]
+    [InlineData("/api/v2/tenant/bootstrap")]
+    public async Task LaravelReactPublicContentDiscoveryV2ReadAliases_AreRouted(string path)
+    {
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/identity/status")]
+    [InlineData("/api/v2/matches/all")]
+    [InlineData("/api/v2/member-premium/me")]
+    [InlineData("/api/v2/member-premium/tiers")]
+    [InlineData("/api/v2/mentions/me")]
+    [InlineData("/api/v2/mentions/search?q=care")]
+    [InlineData("/api/v2/merchant-onboarding/status")]
+    [InlineData("/api/v2/onboarding/status")]
+    [InlineData("/api/v2/realtime/config")]
+    [InlineData("/api/v2/safeguarding/my-preferences")]
+    [InlineData("/api/v2/skills/members?skill=care")]
+    public async Task LaravelReactMemberContentDiscoveryV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/appreciations")]
+    [InlineData("/api/v2/identity/start")]
+    [InlineData("/api/v2/identity/save-dob")]
+    [InlineData("/api/v2/identity/create-payment")]
+    [InlineData("/api/v2/matches/1/dismiss")]
+    [InlineData("/api/v2/member-premium/billing-portal")]
+    [InlineData("/api/v2/member-premium/cancel")]
+    [InlineData("/api/v2/member-premium/checkout")]
+    [InlineData("/api/v2/merchant-onboarding/step-1")]
+    [InlineData("/api/v2/merchant-onboarding/step-2")]
+    [InlineData("/api/v2/merchant-onboarding/step-3")]
+    [InlineData("/api/v2/merchant-onboarding/complete")]
+    [InlineData("/api/v2/onboarding/safeguarding")]
+    public async Task LaravelReactMemberWorkflowV2PostAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.PostAsJsonAsync(path, new { });
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/group-chatroom-messages/1")]
+    public async Task LaravelReactIdeationDeleteV2Aliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.DeleteAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
