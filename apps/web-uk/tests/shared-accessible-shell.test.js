@@ -1022,6 +1022,93 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation events page', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/partners') {
+        return {
+          data: [
+            {
+              id: 12,
+              name: 'North Timebank',
+              is_external: false
+            },
+            {
+              id: 'ext-4',
+              name: 'External Circle',
+              is_external: true
+            }
+          ]
+        };
+      }
+      if (pathValue === '/events?q=repair&partner_id=12&upcoming=false&cursor=abc') {
+        return {
+          data: [
+            {
+              id: 71,
+              title: 'Tool repair meetup',
+              description: 'Bring a small item and learn repair skills with neighbours.',
+              start_date: '2026-08-15T10:30:00Z',
+              location: 'North Hall',
+              is_online: false,
+              attendees_count: 12,
+              max_attendees: 20,
+              organizer: {
+                id: 77,
+                name: 'Avery Stone',
+                avatar: null
+              },
+              timebank: {
+                id: 12,
+                name: 'North Timebank'
+              },
+              cover_image: '/uploads/events/tool.jpg'
+            }
+          ],
+          meta: {
+            cursor: 'next-page'
+          }
+        };
+      }
+
+      return { data: [] };
+    });
+
+    const unsigned = await request(app).get('/federation/events');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/events?q=repair&partner_id=12&upcoming=false&cursor=abc')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/events?q=repair&partner_id=12&upcoming=false&cursor=abc');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Federated events');
+    expect(response.text).toContain('Events shared by communities across the network.');
+    expect(response.text).toContain('Filter events');
+    expect(response.text).toContain('Search federated events');
+    expect(response.text).toContain('Search by title or description.');
+    expect(response.text).toContain('value="repair"');
+    expect(response.text).toContain('<option value="12" selected>');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).not.toContain('External Circle');
+    expect(response.text).toContain('name="upcoming" value="false"');
+    expect(response.text).toContain('Upcoming events only');
+    expect(response.text).toContain('Tool repair meetup');
+    expect(response.text).toContain('Bring a small item and learn repair skills with neighbours.');
+    expect(response.text).toContain('Organiser: Avery Stone');
+    expect(response.text).toContain('Location');
+    expect(response.text).toContain('North Hall');
+    expect(response.text).toContain('Going');
+    expect(response.text).toContain('12 going');
+    expect(response.text).toContain('href="/federation/events?q=repair&amp;partner_id=12&amp;upcoming=false&amp;cursor=next-page"');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('renders the Laravel-backed Federation connections page', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {

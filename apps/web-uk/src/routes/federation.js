@@ -194,6 +194,35 @@ function normalizeGroup(group) {
   };
 }
 
+function normalizeEvent(event, upcoming = true) {
+  const timebank = asObject(event && event.timebank);
+  const organizer = asObject(event && (event.organizer || event.organiser));
+  const tenantId = event && event.tenant_id !== undefined ? event.tenant_id : timebank.id;
+  const startDate = event && (event.start_date || event.startDate || event.created_at) ? (event.start_date || event.startDate || event.created_at) : '';
+  const timestamp = startDate ? Date.parse(startDate) : Number.NaN;
+
+  return {
+    id: event && event.id,
+    title: trimmed(event && event.title) || 'Federated event',
+    description: trimmed(event && event.description, 160),
+    startDate,
+    endDate: event && (event.end_date || event.endDate) ? (event.end_date || event.endDate) : '',
+    location: trimmed(event && event.location),
+    isOnline: bool(event && event.is_online),
+    coverImage: trimmed(event && event.cover_image),
+    attendeesCount: numberOrZero(event && event.attendees_count),
+    maxAttendees: numberOrNull(event && event.max_attendees),
+    organiserName: trimmed(
+      (event && event.organiser_name)
+      || organizer.name
+      || `${trimmed(event && event.first_name)} ${trimmed(event && event.last_name)}`
+    ),
+    tenantId,
+    tenantName: trimmed((event && event.tenant_name) || timebank.name),
+    isPast: !upcoming && Number.isFinite(timestamp) && timestamp < Date.now()
+  };
+}
+
 function participantName(participant) {
   return trimmed(participant && participant.name)
     || trimmed(`${trimmed(participant && participant.first_name)} ${trimmed(participant && participant.last_name)}`)
@@ -326,6 +355,34 @@ function loadMoreHref(basePath, req, cursor) {
   if (cursor) params.set('cursor', cursor);
   const query = params.toString();
   return query ? `${basePath}?${query}` : basePath;
+}
+
+function eventsFilters(req) {
+  return {
+    q: trimmed(req.query && req.query.q),
+    partnerId: trimmed(req.query && req.query.partner_id),
+    upcoming: trimmed(req.query && req.query.upcoming) !== 'false',
+    cursor: trimmed(req.query && req.query.cursor)
+  };
+}
+
+function eventsApiQuery(filters) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.partnerId) params.set('partner_id', filters.partnerId);
+  params.set('upcoming', filters.upcoming ? '1' : 'false');
+  if (filters.cursor) params.set('cursor', filters.cursor);
+  return `?${params.toString()}`;
+}
+
+function eventsLoadMoreHref(filters, cursor) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.partnerId) params.set('partner_id', filters.partnerId);
+  if (!filters.upcoming) params.set('upcoming', 'false');
+  if (cursor) params.set('cursor', cursor);
+  const query = params.toString();
+  return query ? `/federation/events?${query}` : '/federation/events';
 }
 
 function normalizeActivity(item) {
@@ -578,6 +635,54 @@ router.get('/groups', asyncRoute(async (req, res) => {
       partnerId: trimmed(req.query.partner_id)
     },
     loadMoreHref: nextCursor ? loadMoreHref('/federation/groups', req, nextCursor) : ''
+  });
+}));
+
+router.get('/events', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const filters = eventsFilters(req);
+  let eventsResult;
+  let partnersResult;
+  try {
+    eventsResult = await callFederationApi(token, 'GET', `/events${eventsApiQuery(filters)}`);
+    partnersResult = await callFederationApi(token, 'GET', '/partners');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      return res.render('federation/events', {
+        title: 'Federated events',
+        activeNav: 'explore',
+        federationActiveTab: 'events',
+        allowed: false,
+        events: [],
+        partnerOptions: [],
+        filters,
+        loadError: false,
+        loadMoreHref: ''
+      });
+    }
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const events = asList(dataFrom(eventsResult)).map((event) => normalizeEvent(event, filters.upcoming));
+  const partnerOptions = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner);
+  const meta = metaFrom(eventsResult);
+  const nextCursor = trimmed(meta.cursor || meta.next_cursor);
+
+  return res.render('federation/events', {
+    title: 'Federated events',
+    activeNav: 'explore',
+    federationActiveTab: 'events',
+    allowed: true,
+    events,
+    partnerOptions,
+    filters,
+    loadError: false,
+    loadMoreHref: nextCursor ? eventsLoadMoreHref(filters, nextCursor) : ''
   });
 }));
 
