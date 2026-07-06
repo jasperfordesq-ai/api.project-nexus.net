@@ -57,6 +57,9 @@ jest.mock('../src/lib/api', () => ({
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
   sendAppreciation: jest.fn().mockResolvedValue({ data: { id: 55 } }),
   reactToAppreciation: jest.fn().mockResolvedValue({ data: { reaction_type: 'heart' } }),
+  getResources: jest.fn().mockResolvedValue({ data: [{ id: 10, sort_order: 0 }, { id: 20, sort_order: 1 }] }),
+  deleteResource: jest.fn().mockResolvedValue({ data: { deleted: true } }),
+  reorderResources: jest.fn().mockResolvedValue({ data: { message: 'reordered' } }),
   createSavedCollection: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   updateSavedCollection: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   deleteSavedCollection: jest.fn().mockResolvedValue({}),
@@ -70,6 +73,7 @@ jest.mock('../src/lib/api', () => ({
   cancelMemberPremium: jest.fn().mockResolvedValue({ data: { cancelled: true } }),
   createReview: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   createComment: jest.fn().mockResolvedValue({ data: { id: 12 } }),
+  deleteComment: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   toggleReaction: jest.fn().mockResolvedValue({ data: { action: 'added' } }),
   saveSavedSearch: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   deleteSavedSearch: jest.fn().mockResolvedValue({ deleted: true }),
@@ -137,6 +141,9 @@ describe('shared accessible frontend shell', () => {
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
     api.sendAppreciation.mockReset().mockResolvedValue({ data: { id: 55 } });
     api.reactToAppreciation.mockReset().mockResolvedValue({ data: { reaction_type: 'heart' } });
+    api.getResources.mockReset().mockResolvedValue({ data: [{ id: 10, sort_order: 0 }, { id: 20, sort_order: 1 }] });
+    api.deleteResource.mockReset().mockResolvedValue({ data: { deleted: true } });
+    api.reorderResources.mockReset().mockResolvedValue({ data: { message: 'reordered' } });
     api.createSavedCollection.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.updateSavedCollection.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedCollection.mockReset().mockResolvedValue({});
@@ -150,6 +157,7 @@ describe('shared accessible frontend shell', () => {
     api.cancelMemberPremium.mockReset().mockResolvedValue({ data: { cancelled: true } });
     api.createReview.mockReset().mockResolvedValue({ data: { id: 91 } });
     api.createComment.mockReset().mockResolvedValue({ data: { id: 12 } });
+    api.deleteComment.mockReset().mockResolvedValue({ data: { deleted: true } });
     api.toggleReaction.mockReset().mockResolvedValue({ data: { action: 'added' } });
     api.saveSavedSearch.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedSearch.mockReset().mockResolvedValue({ deleted: true });
@@ -1763,6 +1771,196 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getMemberConnectionStatus).not.toHaveBeenCalled();
+  });
+
+  it('keeps the Laravel resource upload route as a safe failure until multipart proxying exists', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/resources/upload')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        title: 'Community handbook'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/resources/upload?status=resource-upload-failed');
+    expect(api.deleteResource).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel resource delete route through the resources API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/resources/42/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/resources/library?status=resource-deleted');
+    expect(api.deleteResource).toHaveBeenCalledWith('test-token', 42);
+  });
+
+  it('submits the Laravel resource reorder route through the reorder API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.getResources.mockResolvedValueOnce({
+      data: [
+        { id: 10, sort_order: 0 },
+        { id: 20, sort_order: 1 }
+      ]
+    });
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/resources/reorder')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        resource_id: '20',
+        direction: 'up',
+        q: ' handbook ',
+        category_id: '3',
+        reorder: '1'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/resources/library?q=handbook&category_id=3&reorder=1');
+    expect(api.getResources).toHaveBeenCalledWith('test-token', { per_page: 50 });
+    expect(api.reorderResources).toHaveBeenCalledWith('test-token', {
+      items: [
+        { id: 20, sort_order: 0 },
+        { id: 10, sort_order: 1 }
+      ]
+    });
+  });
+
+  it('submits the Laravel resource comment route through the comments API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/resources/42/comments/add')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        body: ' Useful guide ',
+        parent_id: '7'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/resources/42/comments?status=reply-added#comments');
+    expect(api.createComment).toHaveBeenCalledWith('test-token', {
+      target_type: 'resource',
+      target_id: 42,
+      content: 'Useful guide',
+      parent_id: 7
+    });
+  });
+
+  it('submits the Laravel resource reaction route through the reactions API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/resources/42/react')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        emoji: 'celebrate'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/resources/42/comments?status=reaction-added#resource-reactions');
+    expect(api.toggleReaction).toHaveBeenCalledWith('test-token', {
+      target_type: 'resource',
+      target_id: 42,
+      reaction_type: 'celebrate'
+    });
+  });
+
+  it('submits the Laravel resource comment delete route through the comments API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/resources/42/comments/12/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/resources/42/comments?status=comment-deleted#comments');
+    expect(api.deleteComment).toHaveBeenCalledWith('test-token', 12);
+  });
+
+  it('redirects signed-out Laravel resource action submissions to the auth-required status', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/resources/42/comments/add')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        body: 'Useful guide'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.createComment).not.toHaveBeenCalled();
   });
 
   it('submits the Laravel reviews store route through the v2 reviews API helper', async () => {

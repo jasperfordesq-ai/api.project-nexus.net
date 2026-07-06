@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T10:00:23.437Z
+Generated: 2026-07-06T10:10:53.470Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 439 |
-| Matched routes | 357 |
-| Missing routes | 251 |
+| web-uk routes | 445 |
+| Matched routes | 363 |
+| Missing routes | 245 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -76,7 +76,7 @@ Generated: 2026-07-06T10:00:23.437Z
 | report-a-problem | 2 | 0 | 0 |
 | reports | 0 | 0 | 3 |
 | reset-password | 0 | 0 | 2 |
-| resources | 6 | 6 | 0 |
+| resources | 12 | 0 | 0 |
 | reviews | 7 | 0 | 4 |
 | saved | 2 | 0 | 0 |
 | search | 6 | 0 | 1 |
@@ -305,12 +305,6 @@ Generated: 2026-07-06T10:00:23.437Z
 | POST | `/profile/skills/remove` | profile | removeProfileSkill |  | auth-optional |  |
 | POST | `/profile/two-factor/disable` | profile | disableTwoFactor |  | auth-optional |  |
 | POST | `/profile/two-factor/verify` | profile | verifyTwoFactorSetup | two-factor-setup | auth-optional |  |
-| POST | `/resources/{param}/comments/{param}/delete` | resources | resourcesDeleteComment |  | auth-optional | feature:resources |
-| POST | `/resources/{param}/comments/add` | resources | resourcesStoreComment |  | auth-optional | feature:resources |
-| POST | `/resources/{param}/delete` | resources | resourcesDelete |  | auth-optional | feature:resources |
-| POST | `/resources/{param}/react` | resources | resourcesReact |  | auth-optional | feature:resources |
-| POST | `/resources/reorder` | resources | resourcesReorder |  | auth-optional | feature:resources |
-| POST | `/resources/upload` | resources | resourcesUpload |  | auth-optional | feature:resources |
 | POST | `/settings/appearance` | settings | settingsUpdateAppearance |  | auth-optional |  |
 | POST | `/settings/availability` | settings | settingsUpdateAvailability |  | auth-optional |  |
 | POST | `/settings/data-rights` | settings | settingsRequestDataRights |  | auth-optional |  |

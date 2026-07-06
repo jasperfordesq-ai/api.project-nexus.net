@@ -455,6 +455,35 @@ async function reactToAppreciation(token, id, reactionType) {
   });
 }
 
+async function getResources(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.category_id) query.set('category_id', params.category_id);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.per_page) query.set('per_page', params.per_page);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/resources${queryString ? `?${queryString}` : ''}`;
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  return request(endpoint, { headers });
+}
+
+async function deleteResource(token, id) {
+  return request(`/api/v2/resources/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function reorderResources(token, data) {
+  return request('/api/v2/resources/reorder', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function createSavedCollection(token, data) {
   return request('/api/v2/me/collections', {
     method: 'POST',
@@ -1323,6 +1352,13 @@ async function createComment(token, data) {
   });
 }
 
+async function deleteComment(token, id) {
+  return request(`/api/v2/comments/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function toggleReaction(token, data) {
   return request('/api/v2/reactions', {
     method: 'POST',
@@ -1589,6 +1625,9 @@ module.exports = {
   unsaveSavedItem,
   sendAppreciation,
   reactToAppreciation,
+  getResources,
+  deleteResource,
+  reorderResources,
   createSavedCollection,
   updateSavedCollection,
   deleteSavedCollection,
@@ -1701,6 +1740,7 @@ module.exports = {
   deleteReview,
   createReview,
   createComment,
+  deleteComment,
   toggleReaction,
   // Admin
   adminGetDashboard,

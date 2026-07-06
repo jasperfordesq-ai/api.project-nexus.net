@@ -104,6 +104,11 @@ and `/achievements/showcase`.
 Member profile POST aliases are wired to Laravel v2 APIs for connection
 transitions, skill endorsements, block/unblock, profile reviews, and direct
 wallet transfers while preserving Laravel profile status redirects.
+Resource POST aliases are wired to Laravel v2 APIs for resource delete, admin
+reorder, resource comments, comment deletion, and resource reactions while
+preserving Laravel library/comment status redirects. Resource upload POST is
+registered but fails safely with `resource-upload-failed` until multipart
+proxying exists.
 The member onboarding POST aliases now cover `/onboarding/{step}` and
 `/onboarding/avatar`: profile saves bio through the profile API, interests and
 skills are held in the Express session, safeguarding uses Laravel's Blade-style
@@ -178,8 +183,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 439 `apps/web-uk` route declarations, 357 exact
-method/path matches, 251 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 445 `apps/web-uk` route declarations, 363 exact
+method/path matches, 245 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

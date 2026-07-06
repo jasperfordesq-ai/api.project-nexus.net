@@ -1289,6 +1289,83 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel resource helpers', () => {
+    it('should fetch resources through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [] })
+      });
+
+      await api.getResources('test-token', {
+        search: 'handbook',
+        category_id: 3,
+        cursor: 'abc',
+        per_page: 50
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/resources?search=handbook&category_id=3&cursor=abc&per_page=50',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should delete a resource through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { deleted: true } })
+      });
+
+      await api.deleteResource('test-token', 42);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/resources/42',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should reorder resources through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { message: 'reordered' } })
+      });
+
+      await api.reorderResources('test-token', {
+        items: [
+          { id: 20, sort_order: 0 },
+          { id: 10, sort_order: 1 }
+        ]
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/resources/reorder',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            items: [
+              { id: 20, sort_order: 0 },
+              { id: 10, sort_order: 1 }
+            ]
+          })
+        })
+      );
+    });
+  });
+
   describe('Laravel review social helpers', () => {
     it('should create an exchange review through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -1376,6 +1453,26 @@ describe('API Request Functions', () => {
             target_type: 'review',
             target_id: 91,
             reaction_type: 'love'
+          })
+        })
+      );
+    });
+
+    it('should delete a polymorphic comment through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { deleted: true } })
+      });
+
+      await api.deleteComment('test-token', 12);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/comments/12',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
           })
         })
       );
