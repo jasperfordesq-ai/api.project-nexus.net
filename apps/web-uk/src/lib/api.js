@@ -851,6 +851,16 @@ async function getResources(token, params = {}) {
   return request(endpoint, { headers });
 }
 
+async function getResourceCategories(token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request('/api/v2/resources/categories', { headers });
+}
+
+async function getResourceCategoryTree(token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request('/api/v2/resources/categories/tree', { headers });
+}
+
 async function deleteResource(token, id) {
   return request(`/api/v2/resources/${encodeURIComponent(id)}`, {
     method: 'DELETE',
@@ -2320,6 +2330,8 @@ module.exports = {
   sendAppreciation,
   reactToAppreciation,
   getResources,
+  getResourceCategories,
+  getResourceCategoryTree,
   deleteResource,
   reorderResources,
   createSavedCollection,

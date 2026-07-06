@@ -2602,6 +2602,42 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should fetch resource categories and category tree through Laravel v2 endpoints', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [{ id: 7, name: 'Guides' }] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [{ id: 7, name: 'Guides', children: [] }] })
+        });
+
+      await api.getResourceCategories('test-token');
+      await api.getResourceCategoryTree('test-token');
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/resources/categories',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/resources/categories/tree',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
   });
 
   describe('Laravel review social helpers', () => {

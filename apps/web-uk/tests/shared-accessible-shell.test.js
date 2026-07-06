@@ -91,6 +91,8 @@ jest.mock('../src/lib/api', () => ({
   sendAppreciation: jest.fn().mockResolvedValue({ data: { id: 55 } }),
   reactToAppreciation: jest.fn().mockResolvedValue({ data: { reaction_type: 'heart' } }),
   getResources: jest.fn().mockResolvedValue({ data: [{ id: 10, sort_order: 0 }, { id: 20, sort_order: 1 }] }),
+  getResourceCategories: jest.fn().mockResolvedValue({ data: [] }),
+  getResourceCategoryTree: jest.fn().mockResolvedValue({ data: [] }),
   deleteResource: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   reorderResources: jest.fn().mockResolvedValue({ data: { message: 'reordered' } }),
   createSavedCollection: jest.fn().mockResolvedValue({ data: { id: 12 } }),
@@ -202,6 +204,8 @@ describe('shared accessible frontend shell', () => {
     api.sendAppreciation.mockReset().mockResolvedValue({ data: { id: 55 } });
     api.reactToAppreciation.mockReset().mockResolvedValue({ data: { reaction_type: 'heart' } });
     api.getResources.mockReset().mockResolvedValue({ data: [{ id: 10, sort_order: 0 }, { id: 20, sort_order: 1 }] });
+    api.getResourceCategories.mockReset().mockResolvedValue({ data: [] });
+    api.getResourceCategoryTree.mockReset().mockResolvedValue({ data: [] });
     api.deleteResource.mockReset().mockResolvedValue({ data: { deleted: true } });
     api.reorderResources.mockReset().mockResolvedValue({ data: { message: 'reordered' } });
     api.createSavedCollection.mockReset().mockResolvedValue({ data: { id: 12 } });
@@ -3449,6 +3453,76 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Download');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(response.text).not.toContain('Resource library pages will follow the Laravel accessible frontend contract.');
+  });
+
+  it('renders the Laravel-backed full resource library for signed-in members', async () => {
+    const api = require('../src/lib/api');
+
+    api.getResources.mockResolvedValue({
+      data: [
+        {
+          id: 42,
+          title: 'Community handbook',
+          description: 'A practical guide for getting help and sharing support in the community.',
+          file_path: 'community-handbook.pdf',
+          file_type: 'application/pdf',
+          file_size: 1536,
+          downloads: 3,
+          category: { id: 7, name: 'Guides', color: 'green' },
+          category_name: 'Guides',
+          category_color: 'green',
+          uploader: { id: 101, name: 'Avery Stone' },
+          uploader_name: 'Avery Stone',
+          created_at: '2026-07-01T12:00:00Z'
+        }
+      ],
+      meta: { has_more: true, next_cursor: 'next-page' }
+    });
+    api.getResourceCategories.mockResolvedValue({
+      data: [{ id: 7, name: 'Guides', color: 'green', resource_count: 1 }]
+    });
+    api.getResourceCategoryTree.mockResolvedValue({
+      data: [{ id: 7, name: 'Guides', resource_count: 1, children: [] }]
+    });
+
+    const unsigned = await request(app).get('/resources/library');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/resources/library?q=handbook&category_id=7&cursor=abc&status=resource-uploaded')
+      .set('Cookie', signedCookieHeader());
+
+    expect(api.getResources).toHaveBeenCalledWith('test-token', {
+      search: 'handbook',
+      category_id: 7,
+      cursor: 'abc',
+      per_page: 20
+    });
+    expect(api.getResourceCategories).toHaveBeenCalledWith('test-token');
+    expect(api.getResourceCategoryTree).toHaveBeenCalledWith('test-token');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Resource library');
+    expect(response.text).toContain('Browse and download files, guides and templates shared by the community.');
+    expect(response.text).toContain('Your resource was uploaded.');
+    expect(response.text).toContain('Upload a resource');
+    expect(response.text).toContain('Switch to the simple list');
+    expect(response.text).toContain('Categories');
+    expect(response.text).toContain('All categories');
+    expect(response.text).toContain('Guides');
+    expect(response.text).toContain('Search resources');
+    expect(response.text).toContain('value="handbook"');
+    expect(response.text).toContain('1 resource');
+    expect(response.text).toContain('Community handbook');
+    expect(response.text).toContain('PDF');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('1.5 KB');
+    expect(response.text).toContain('Downloads');
+    expect(response.text).toContain('href="/resources/42/download"');
+    expect(response.text).toContain('href="/resources/42/comments"');
+    expect(response.text).toContain('Load more resources');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
   it('submits the Laravel resource delete route through the resources API helper', async () => {
