@@ -31,9 +31,12 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
         {
             AddAdminControllerAliases(controller, existingRoutes);
             AddUsersControllerAliases(controller, existingRoutes);
+            AddJobsControllerAliases(controller, existingRoutes);
             AddGroupsControllerActionAliases(controller, existingRoutes);
+            AddJobsControllerActionAliases(controller, existingRoutes);
             AddUsersMeActionAliases(controller, existingRoutes);
             AddGroupsActionAliases(controller, existingRoutes);
+            AddJobsActionAliases(controller, existingRoutes);
         }
     }
 
@@ -145,6 +148,41 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
         }
     }
 
+    private static void AddJobsActionAliases(ControllerModel controller, ISet<string> existingRoutes)
+    {
+        foreach (var action in controller.Actions)
+        {
+            var aliases = action.Selectors
+                .Where(selector => selector.AttributeRouteModel is not null)
+                .Select(selector => new
+                {
+                    Selector = selector,
+                    Alias = ToJobsV2Alias(selector.AttributeRouteModel!.Template)
+                })
+                .Where(item => item.Alias is not null)
+                .ToArray();
+
+            foreach (var item in aliases)
+            {
+                if (HasRoute(action.Selectors, item.Alias!) || HasExistingActionRoute(existingRoutes, item.Selector, item.Alias!))
+                {
+                    continue;
+                }
+
+                var aliasSelector = new SelectorModel(item.Selector)
+                {
+                    AttributeRouteModel = new AttributeRouteModel(item.Selector.AttributeRouteModel!)
+                    {
+                        Template = item.Alias
+                    }
+                };
+
+                action.Selectors.Add(aliasSelector);
+                AddRouteKeys(existingRoutes, aliasSelector);
+            }
+        }
+    }
+
     private static void AddGroupsControllerActionAliases(ControllerModel controller, ISet<string> existingRoutes)
     {
         var groupPrefixes = controller.Selectors
@@ -166,6 +204,52 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
                 {
                     Selector = selector,
                     Alias = ToGroupsV2Alias(CombineRoute("api/groups", selector.AttributeRouteModel!.Template))
+                })
+                .Where(item => item.Alias is not null)
+                .ToArray();
+
+            foreach (var item in aliases)
+            {
+                if (HasRoute(action.Selectors, item.Alias!) || HasExistingActionRoute(existingRoutes, item.Selector, item.Alias!))
+                {
+                    continue;
+                }
+
+                var aliasSelector = new SelectorModel(item.Selector)
+                {
+                    AttributeRouteModel = new AttributeRouteModel(item.Selector.AttributeRouteModel!)
+                    {
+                        Template = item.Alias
+                    }
+                };
+
+                action.Selectors.Add(aliasSelector);
+                AddRouteKeys(existingRoutes, aliasSelector);
+            }
+        }
+    }
+
+    private static void AddJobsControllerActionAliases(ControllerModel controller, ISet<string> existingRoutes)
+    {
+        var jobPrefixes = controller.Selectors
+            .Select(selector => Normalize(selector.AttributeRouteModel?.Template))
+            .Where(template => template.Equals("api/jobs", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (jobPrefixes.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var action in controller.Actions)
+        {
+            var aliases = action.Selectors
+                .Where(selector => selector.AttributeRouteModel is not null)
+                .Select(selector => new
+                {
+                    Selector = selector,
+                    Alias = ToJobsV2Alias(CombineRoute("api/jobs", selector.AttributeRouteModel!.Template))
                 })
                 .Where(item => item.Alias is not null)
                 .ToArray();
@@ -236,6 +320,35 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
         }
     }
 
+    private static void AddJobsControllerAliases(ControllerModel controller, ISet<string> existingRoutes)
+    {
+        var aliases = controller.Selectors
+            .Select(selector => selector.AttributeRouteModel?.Template)
+            .Where(template => template is not null)
+            .Select(template => Normalize(template))
+            .Where(template => template.Equals("api/jobs", StringComparison.OrdinalIgnoreCase))
+            .Select(template => "api/v2/jobs")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        foreach (var alias in aliases)
+        {
+            if (HasRoute(controller.Selectors, alias))
+            {
+                continue;
+            }
+
+            controller.Selectors.Add(new SelectorModel
+            {
+                AttributeRouteModel = new AttributeRouteModel
+                {
+                    Template = alias
+                }
+            });
+            existingRoutes.Add(Normalize(alias));
+        }
+    }
+
     private static bool IsAliasedAdminPrefix(string template) =>
         AliasedPrefixes.Any(prefix =>
             template.Equals(prefix, StringComparison.OrdinalIgnoreCase)
@@ -257,6 +370,14 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
         var normalized = Normalize(template);
         return normalized.StartsWith("api/groups", StringComparison.OrdinalIgnoreCase)
             ? "/api/v2/groups" + normalized["api/groups".Length..]
+            : null;
+    }
+
+    private static string? ToJobsV2Alias(string? template)
+    {
+        var normalized = Normalize(template);
+        return normalized.StartsWith("api/jobs", StringComparison.OrdinalIgnoreCase)
+            ? "/api/v2/jobs" + normalized["api/jobs".Length..]
             : null;
     }
 

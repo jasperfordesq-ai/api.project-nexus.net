@@ -109,7 +109,8 @@ function Get-AspNetV2AdminAlias {
         '/api/admin/caring-community',
         '/api/admin/safeguarding',
         '/api/users',
-        '/api/groups'
+        '/api/groups',
+        '/api/jobs'
     )
 
     foreach ($aliasedPrefix in $aliasedPrefixes) {
@@ -120,6 +121,10 @@ function Get-AspNetV2AdminAlias {
 
             if ($aliasedPrefix -eq '/api/groups') {
                 return $normalized -replace '^/api/groups', '/api/v2/groups'
+            }
+
+            if ($aliasedPrefix -eq '/api/jobs') {
+                return $normalized -replace '^/api/jobs', '/api/v2/jobs'
             }
 
             return $normalized -replace '^/api/admin/', '/api/v2/admin/'
@@ -139,6 +144,10 @@ function Get-AspNetV2RouteAlias {
 
     if ($normalized -eq '/api/groups' -or $normalized.StartsWith('/api/groups/')) {
         return $normalized -replace '^/api/groups', '/api/v2/groups'
+    }
+
+    if ($normalized -eq '/api/jobs' -or $normalized.StartsWith('/api/jobs/')) {
+        return $normalized -replace '^/api/jobs', '/api/v2/jobs'
     }
 
     return ''

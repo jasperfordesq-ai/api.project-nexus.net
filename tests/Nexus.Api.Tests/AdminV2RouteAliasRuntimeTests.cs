@@ -80,4 +80,24 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/jobs")]
+    [InlineData("/api/v2/jobs/saved")]
+    [InlineData("/api/v2/jobs/my-applications")]
+    [InlineData("/api/v2/jobs/my-interviews")]
+    [InlineData("/api/v2/jobs/my-offers")]
+    [InlineData("/api/v2/jobs/recommended")]
+    [InlineData("/api/v2/jobs/saved-profile")]
+    [InlineData("/api/v2/jobs/templates")]
+    [InlineData("/api/v2/jobs/alerts")]
+    public async Task LaravelReactJobsV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
