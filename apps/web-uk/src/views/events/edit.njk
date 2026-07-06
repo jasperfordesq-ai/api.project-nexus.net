@@ -64,6 +64,25 @@
           rows: 6
         }) }}
 
+        {% set selectedCategoryId = event.category_id or event.categoryId or "" %}
+        {% set categoryItems = [{value: "", text: "No category", selected: not selectedCategoryId}] %}
+        {% for category in categories or [] %}
+          {% set categoryItems = (categoryItems.push({
+            value: category.id | string,
+            text: category.name,
+            selected: selectedCategoryId and (category.id | string) == (selectedCategoryId | string)
+          }), categoryItems) %}
+        {% endfor %}
+        {{ govukSelect({
+          id: "category_id",
+          name: "category_id",
+          label: {
+            text: "Category",
+            classes: "govuk-label--m"
+          },
+          items: categoryItems
+        }) }}
+
         <div class="govuk-form-group">
           <label class="govuk-label govuk-label--m" for="image">
             Image

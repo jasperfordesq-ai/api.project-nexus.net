@@ -85,6 +85,7 @@ jest.mock('../src/lib/api', () => ({
   uploadJobApplication: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   callAdminJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callJobDownload: jest.fn(),
+  getEventCategories: jest.fn().mockResolvedValue({ data: [] }),
   uploadEventImage: jest.fn().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } }),
   getJobs: jest.fn(),
   getJob: jest.fn(),
@@ -326,6 +327,7 @@ describe('shared accessible frontend shell', () => {
     api.getOnboardingSafeguardingOptions.mockReset().mockResolvedValue({ data: [] });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.getEventCategories.mockReset().mockResolvedValue({ data: [] });
     api.uploadEventImage.mockReset().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } });
     api.getEvents.mockReset().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } });
     api.getEvent.mockReset().mockResolvedValue({ event: { id: 42, title: 'Community garden day', starts_at: '2026-08-01T10:00:00' } });
@@ -8391,6 +8393,102 @@ describe('shared accessible frontend shell', () => {
         buffer: Buffer.from('updated event image', 'utf8')
       })
     });
+  });
+
+  it('renders and submits Laravel event category choices on create', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+
+    api.getEventCategories.mockResolvedValueOnce({
+      data: [
+        { id: 7, name: 'Gardening' },
+        { id: 9, name: 'Skills swap' }
+      ]
+    });
+    api.getMyGroups.mockResolvedValueOnce({ data: [] });
+    api.createEvent.mockResolvedValueOnce({ id: 42 });
+
+    const page = await agent
+      .get('/events/new')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(api.getEventCategories).toHaveBeenCalledWith('test-token');
+    expect(page.text).toContain('name="category_id"');
+    expect(page.text).toContain('value="7"');
+    expect(page.text).toContain('Gardening');
+    expect(page.text).toContain('Skills swap');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/events/new')
+      .set('Cookie', signedCookieHeader())
+      .field('_csrf', csrfMatch[1])
+      .field('title', ' Seed swap ')
+      .field('description', ' Bring spare seeds ')
+      .field('location', ' Community garden ')
+      .field('starts_at_date', '2026-08-01')
+      .field('starts_at_time', '10:00')
+      .field('category_id', '7');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42');
+    expect(api.createEvent).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      category_id: 7
+    }));
+  });
+
+  it('renders and submits Laravel event category choices on edit', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+
+    api.getEvent.mockResolvedValueOnce({
+      event: {
+        id: 42,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        location: 'Village hall',
+        category_id: 7,
+        starts_at: '2026-08-01T10:00:00'
+      }
+    });
+    api.getEventCategories.mockResolvedValueOnce({
+      data: [
+        { id: 7, name: 'Gardening' },
+        { id: 9, name: 'Skills swap' }
+      ]
+    });
+    api.getMyGroups.mockResolvedValueOnce({ data: [] });
+
+    const page = await agent
+      .get('/events/42/edit')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(api.getEventCategories).toHaveBeenCalledWith('test-token');
+    expect(page.text).toContain('name="category_id"');
+    expect(page.text).toContain('<option value="7" selected>Gardening</option>');
+    expect(page.text).toContain('Skills swap');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/events/42/edit')
+      .set('Cookie', signedCookieHeader())
+      .field('_csrf', csrfMatch[1])
+      .field('title', ' Community garden day ')
+      .field('description', ' Planting and tea ')
+      .field('location', ' Village hall ')
+      .field('starts_at_date', '2026-08-01')
+      .field('starts_at_time', '10:00')
+      .field('category_id', '9');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42');
+    expect(api.updateEvent).toHaveBeenCalledWith('test-token', '42', expect.objectContaining({
+      category_id: 9
+    }));
   });
 
   it('renders and submits Laravel event online attendance fields on create', async () => {

@@ -635,6 +635,12 @@ async function callEventApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/events${normalizedPath}`, options);
 }
 
+async function getEventCategories(token) {
+  return request('/api/v2/categories?type=event', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function getGoals(token, params = {}) {
   const query = new URLSearchParams();
   if (params.user_id) query.set('user_id', params.user_id);
@@ -2578,6 +2584,7 @@ module.exports = {
   callIdeationApi,
   callGroupExchangeApi,
   callEventApi,
+  getEventCategories,
   uploadEventImage,
   getGoals,
   getGoal,

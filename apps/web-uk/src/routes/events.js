@@ -18,6 +18,7 @@ const {
   removeEventRsvp,
   votePoll,
   callEventApi,
+  getEventCategories,
   uploadEventImage,
   callUgcTranslateApi,
   getMyGroups,
@@ -327,12 +328,17 @@ router.get('/my', asyncRoute(async (req, res) => {
 router.get('/new', asyncRoute(async (req, res) => {
   const groupId = req.query.group_id || null;
 
-  const myGroupsResult = await getMyGroups(req.token);
+  const [myGroupsResult, categoriesResult] = await Promise.all([
+    getMyGroups(req.token),
+    getEventCategories(req.token)
+  ]);
   const myGroups = myGroupsResult.items || myGroupsResult.data || [];
+  const categories = categoriesResult.items || categoriesResult.data || [];
 
   res.render('events/new', {
     title: 'Create an event',
     myGroups,
+    categories,
     selectedGroupId: groupId,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -340,7 +346,7 @@ router.get('/new', asyncRoute(async (req, res) => {
 
 // Create event
 router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
-  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, is_online, online_link, allow_remote_attendance, video_url } = req.body;
+  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, category_id, is_online, online_link, allow_remote_attendance, video_url } = req.body;
   const image = uploadedFile(req, 'image');
 
   const errors = [];
@@ -371,18 +377,24 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
   const renderFormWithErrors = async (errorList) => {
     await removeUploadedFile(image);
     let myGroups = [];
+    let categories = [];
     try {
-      const myGroupsResult = await getMyGroups(req.token);
+      const [myGroupsResult, categoriesResult] = await Promise.all([
+        getMyGroups(req.token),
+        getEventCategories(req.token)
+      ]);
       myGroups = myGroupsResult.data || [];
+      categories = categoriesResult.data || [];
     } catch {
-      // Ignore - render with empty groups
+      // Ignore - render with empty form support data
     }
 
     return res.render('events/new', {
       title: 'Create an event',
       errors: errorList,
-      values: { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, is_online, online_link, allow_remote_attendance, video_url },
+      values: { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, category_id, is_online, online_link, allow_remote_attendance, video_url },
       myGroups,
+      categories,
       selectedGroupId: group_id,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
@@ -401,6 +413,7 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
       ends_at: endsAt,
       max_attendees: max_attendees ? parseInt(max_attendees, 10) : null,
       group_id: group_id ? parseInt(group_id, 10) : null,
+      category_id: positiveInteger(category_id),
       is_online: checked(is_online),
       online_link: trimmed(online_link) || null,
       allow_remote_attendance: checked(allow_remote_attendance),
@@ -472,13 +485,15 @@ router.get('/:id', asyncRoute(async (req, res) => {
 router.get('/:id/edit', asyncRoute(async (req, res) => {
   const { id } = req.params;
 
-  const [eventResult, myGroupsResult] = await Promise.all([
+  const [eventResult, myGroupsResult, categoriesResult] = await Promise.all([
     getEvent(req.token, id),
-    getMyGroups(req.token)
+    getMyGroups(req.token),
+    getEventCategories(req.token)
   ]);
 
   const event = eventResult.event || eventResult;
   const myGroups = myGroupsResult.items || myGroupsResult.data || [];
+  const categories = categoriesResult.items || categoriesResult.data || [];
 
   // Parse dates for form (backend returns camelCase: startsAt, endsAt)
   const startsAt = (event.startsAt || event.starts_at) ? new Date(event.startsAt || event.starts_at) : null;
@@ -488,6 +503,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
     title: `Edit ${event.title}`,
     event,
     myGroups,
+    categories,
     startsAtDate: startsAt ? startsAt.toISOString().split('T')[0] : '',
     startsAtTime: startsAt ? startsAt.toTimeString().slice(0, 5) : '',
     endsAtDate: endsAt ? endsAt.toISOString().split('T')[0] : '',
@@ -499,7 +515,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
 // Update event
 router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
   const { id } = req.params;
-  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, is_online, online_link, allow_remote_attendance, video_url } = req.body;
+  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, category_id, is_online, online_link, allow_remote_attendance, video_url } = req.body;
   const image = uploadedFile(req, 'image');
 
   const errors = [];
@@ -528,18 +544,24 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
   const renderFormWithErrors = async (errorList) => {
     await removeUploadedFile(image);
     let myGroups = [];
+    let categories = [];
     try {
-      const myGroupsResult = await getMyGroups(req.token);
+      const [myGroupsResult, categoriesResult] = await Promise.all([
+        getMyGroups(req.token),
+        getEventCategories(req.token)
+      ]);
       myGroups = myGroupsResult.data || [];
+      categories = categoriesResult.data || [];
     } catch {
-      // Ignore - render with empty groups
+      // Ignore - render with empty form support data
     }
 
     return res.render('events/edit', {
       title: 'Edit event',
-      event: { id, title, description, location, max_attendees, is_online, online_link, allow_remote_attendance, video_url },
+      event: { id, title, description, location, max_attendees, category_id, is_online, online_link, allow_remote_attendance, video_url },
       errors: errorList,
       myGroups,
+      categories,
       startsAtDate: starts_at_date,
       startsAtTime: starts_at_time,
       endsAtDate: ends_at_date,
@@ -560,6 +582,7 @@ router.post('/:id/edit', audit.eventUpdate(), asyncRoute(async (req, res) => {
       starts_at: startsAt,
       ends_at: endsAt,
       max_attendees: max_attendees ? parseInt(max_attendees, 10) : null,
+      category_id: positiveInteger(category_id),
       is_online: checked(is_online),
       online_link: trimmed(online_link) || null,
       allow_remote_attendance: checked(allow_remote_attendance),

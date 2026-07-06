@@ -872,6 +872,26 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should fetch Laravel event categories through the shared category endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [{ id: 7, name: 'Gardening' }] })
+      });
+
+      const result = await api.getEventCategories('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/categories?type=event',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(result.data[0].name).toBe('Gardening');
+    });
+
     it('should upload event cover images through Laravel multipart data', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
