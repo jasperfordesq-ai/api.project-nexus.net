@@ -109,6 +109,14 @@ reorder, resource comments, comment deletion, and resource reactions while
 preserving Laravel library/comment status redirects. Resource upload POST is
 registered but fails safely with `resource-upload-failed` until multipart
 proxying exists.
+Settings POST aliases are wired to Laravel v2 user settings and sub-account
+APIs for appearance/theme, weekly availability, GDPR data-right requests,
+linked-account request/approve/permission/revoke, and insurance upload safe
+failure while preserving Laravel status redirects and anchors. Settings GET
+pages remain generated preparation pages or local legacy settings pages, and
+multipart insurance proxying, linked-account data rendering, tenant feature
+gates, localization, runtime smoke tests, and ASP.NET backend compatibility are
+not certified.
 Blog POST aliases are wired to Laravel v2 blog/comment/reaction APIs for
 post comments, comment-thread replies, post likes/reactions, and comment
 update/delete/reactions while preserving Laravel post and comment-thread status
@@ -255,8 +263,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 572 `apps/web-uk` route declarations, 490 exact
-method/path matches, 118 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 580 `apps/web-uk` route declarations, 498 exact
+method/path matches, 110 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

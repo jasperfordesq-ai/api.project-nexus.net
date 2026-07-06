@@ -451,6 +451,20 @@ async function callUgcTranslateApi(token, data) {
   });
 }
 
+async function callUserSettingsApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/users/me${normalizedPath}`, options);
+}
+
 async function getOrganisationJobs(organisationId, token, params = {}) {
   const query = new URLSearchParams();
   query.set('organization_id', organisationId);
@@ -1897,6 +1911,7 @@ module.exports = {
   callGroupExchangeApi,
   callEventApi,
   callUgcTranslateApi,
+  callUserSettingsApi,
   getOrganisationJobs,
   // Wallet
   getBalance,

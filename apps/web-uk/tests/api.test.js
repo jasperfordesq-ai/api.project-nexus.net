@@ -653,6 +653,49 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callUserSettingsApi', () => {
+    it('should call Laravel v2 user settings endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { theme: 'dark' } })
+      });
+
+      await api.callUserSettingsApi('test-token', 'PUT', '/theme', {
+        theme: 'dark'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users/me/theme',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ theme: 'dark' })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { message: 'revoked' } })
+      });
+
+      await api.callUserSettingsApi('test-token', 'DELETE', '/sub-accounts/77');
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/users/me/sub-accounts/77',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
   describe('callListingApi', () => {
     it('should call Laravel v2 listing action endpoints with auth, method, and optional payload', async () => {
       mockFetch.mockResolvedValueOnce({

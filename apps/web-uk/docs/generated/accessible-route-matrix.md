@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T11:30:30.099Z
+Generated: 2026-07-06T11:38:07.318Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 572 |
-| Matched routes | 490 |
-| Missing routes | 118 |
+| web-uk routes | 580 |
+| Matched routes | 498 |
+| Missing routes | 110 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -82,7 +82,7 @@ Generated: 2026-07-06T11:30:30.099Z
 | search | 6 | 0 | 1 |
 | service-unavailable | 0 | 0 | 1 |
 | session | 0 | 0 | 1 |
-| settings | 5 | 8 | 7 |
+| settings | 13 | 0 | 7 |
 | skills | 1 | 0 | 0 |
 | terms | 0 | 0 | 1 |
 | trust-and-safety | 1 | 0 | 0 |
@@ -206,11 +206,3 @@ Generated: 2026-07-06T11:30:30.099Z
 | POST | `/profile/skills/remove` | profile | removeProfileSkill |  | auth-optional |  |
 | POST | `/profile/two-factor/disable` | profile | disableTwoFactor |  | auth-optional |  |
 | POST | `/profile/two-factor/verify` | profile | verifyTwoFactorSetup | two-factor-setup | auth-optional |  |
-| POST | `/settings/appearance` | settings | settingsUpdateAppearance |  | auth-optional |  |
-| POST | `/settings/availability` | settings | settingsUpdateAvailability |  | auth-optional |  |
-| POST | `/settings/data-rights` | settings | settingsRequestDataRights |  | auth-optional |  |
-| POST | `/settings/insurance` | settings | settingsUploadInsurance |  | auth-optional |  |
-| POST | `/settings/linked-accounts/approve` | settings | settingsApproveLinkedAccount |  | auth-optional |  |
-| POST | `/settings/linked-accounts/permissions` | settings | settingsUpdateLinkedPermissions |  | auth-optional |  |
-| POST | `/settings/linked-accounts/request` | settings | settingsRequestLinkedAccount |  | auth-optional |  |
-| POST | `/settings/linked-accounts/revoke` | settings | settingsRevokeLinkedAccount |  | auth-optional |  |

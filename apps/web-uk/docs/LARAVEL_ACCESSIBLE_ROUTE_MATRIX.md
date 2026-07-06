@@ -41,9 +41,9 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 572 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
-| Exact method/path matches | 490 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
-| Missing Laravel routes | 118 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
+| ASP.NET `apps/web-uk` | 580 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| Exact method/path matches | 498 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
+| Missing Laravel routes | 110 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
 | Extra `apps/web-uk` routes | 83 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
@@ -55,7 +55,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Blade link | Laravel path | `apps/web-uk` path | Current ASP.NET status |
 | --- | --- | --- | --- |
 | Brand | `/` or `/{tenantSlug}/alpha` | `/` | Implemented local equivalent. |
-| My account | `/account` | `/account` | Partial Blade-style candidate: unsigned users redirect to `/login`; signed-in users see local wallet, messages, connections, notifications, profile, and settings cards plus CSRF sign-out. Notification group-read/delete-all, wallet donate, saved-item removal, saved-collection CRUD/item-remove, match-dismiss, appreciation send/react, and onboarding step POST aliases call Laravel-compatible endpoints. Laravel feature gating, full account-link coverage, backend data, tenant routing, realtime behavior, and runtime certification are not complete. |
+| My account | `/account` | `/account` | Partial Blade-style candidate: unsigned users redirect to `/login`; signed-in users see local wallet, messages, connections, notifications, profile, and settings cards plus CSRF sign-out. Notification group-read/delete-all, wallet donate, saved-item removal, saved-collection CRUD/item-remove, match-dismiss, appreciation send/react, onboarding step, and settings POST aliases call Laravel-compatible endpoints. Laravel feature gating, full account-link coverage, backend data, tenant routing, realtime behavior, and runtime certification are not complete. |
 | Home | `/` | `/` | Implemented local equivalent. |
 | Dashboard | `/dashboard` | `/dashboard` | Implemented route; backend contract not certified. |
 | Feed | `/feed` | `/feed` | Implemented local route with Laravel-compatible POST aliases for post create/update/delete, typed engagement, poll votes, moderation/report/share/save, comment mutation/reactions, and mute; Blade feed rendering, filters, hashtag/detail pages, feature gates, tenant behavior, and runtime behavior are not certified. |
@@ -135,7 +135,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Federation | 11 | connections, messages, transfers, opt-in/out, settings | GET routes have preparation pages; federation POST workflows are not certified. |
 | Jobs | 17 | alerts, applications, employer brand, onboarding, talent search, qualification, analytics | GET routes have preparation pages; job application/employer POST workflows are not certified. |
 | Ideation | 0 | none exact | POST aliases now cover challenge create/update/status/favorite/duplicate/delete/link campaign/outcome, idea submit/draft/comment/comment delete/vote/status/media/convert/delete, and campaign create/update/unlink/delete through Laravel v2 ideation APIs. GET routes still rely on generated preparation pages, and Blade rendering, admin authorization depth, media upload proxying, team conversion runtime behavior, tenant/feature gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
-| Settings | 8 | linked accounts, appearance, data rights, insurance, availability | Partial or missing POST workflow coverage. Saved item, appreciation, saved-search, and resource POST aliases are now present, but saved/appreciation/resources GET pages and most settings POST workflows remain generated preparation pages or missing. |
+| Settings | 0 | none exact | POST aliases now cover appearance/theme, weekly availability, GDPR data-right requests, linked-account request/approve/permission/revoke, and insurance upload safe failure through Laravel v2 user settings/sub-account APIs while preserving Laravel status redirects. GET settings pages remain generated preparation pages or local legacy settings pages; multipart insurance proxying, linked-account data rendering, tenant feature gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
 
 ## Next Certification Work
 

@@ -127,6 +127,7 @@ jest.mock('../src/lib/api', () => ({
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callUserSettingsApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callListingApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   createExchangeRequest: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   callUgcTranslateApi: jest.fn().mockResolvedValue({ data: { translated_text: 'Dia duit' } }),
@@ -219,6 +220,7 @@ describe('shared accessible frontend shell', () => {
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callListingApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.createExchangeRequest.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.callUgcTranslateApi.mockReset().mockResolvedValue({ data: { translated_text: 'Dia duit' } });
@@ -4140,6 +4142,119 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callListingApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel settings action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const appearanceResponse = await post('/settings/appearance', {
+      theme: 'dark'
+    });
+    expect(appearanceResponse.headers.location).toBe('/settings/appearance?status=appearance-saved');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/theme', {
+      theme: 'dark'
+    });
+
+    const availabilityResponse = await post('/settings/availability', {
+      'slots[1][0][start]': '09:00',
+      'slots[1][0][end]': '11:00',
+      'slots[5][0][start]': '14:00',
+      'slots[5][0][end]': '16:00'
+    });
+    expect(availabilityResponse.headers.location).toBe('/settings/availability?status=availability-saved');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/availability', {
+      schedule: [
+        { day_of_week: 1, start_time: '09:00', end_time: '11:00' },
+        { day_of_week: 5, start_time: '14:00', end_time: '16:00' }
+      ]
+    });
+
+    const dataRightsResponse = await post('/settings/data-rights', {
+      request_type: 'portability',
+      notes: ' Send me portable account data '
+    });
+    expect(dataRightsResponse.headers.location).toBe('/settings/data-rights?status=gdpr-requested#your-requests');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'POST', '/gdpr-request', {
+      type: 'portability',
+      notes: 'Send me portable account data'
+    });
+
+    const requestResponse = await post('/settings/linked-accounts/request', {
+      email: ' child@example.org ',
+      relationship_type: 'guardian',
+      perm_can_view_activity: 'on',
+      perm_can_manage_listings: 'on'
+    });
+    expect(requestResponse.headers.location).toBe('/settings/linked-accounts?status=link-requested#children');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'POST', '/sub-accounts', {
+      email: 'child@example.org',
+      relationship_type: 'guardian',
+      permissions: {
+        can_view_activity: true,
+        can_manage_listings: true,
+        can_transact: false,
+        can_view_messages: false
+      }
+    });
+
+    const approveResponse = await post('/settings/linked-accounts/approve', {
+      relationship_id: '77'
+    });
+    expect(approveResponse.headers.location).toBe('/settings/linked-accounts?status=link-approved#parents');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/sub-accounts/77/approve');
+
+    const permissionsResponse = await post('/settings/linked-accounts/permissions', {
+      relationship_id: '77',
+      perm_can_view_activity: 'on',
+      perm_can_transact: 'on',
+      perm_can_view_messages: 'on'
+    });
+    expect(permissionsResponse.headers.location).toBe('/settings/linked-accounts?status=link-permissions-saved#children');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/sub-accounts/77/permissions', {
+      permissions: {
+        can_view_activity: true,
+        can_manage_listings: false,
+        can_transact: true,
+        can_view_messages: true
+      }
+    });
+
+    const revokeResponse = await post('/settings/linked-accounts/revoke', {
+      relationship_id: '77'
+    });
+    expect(revokeResponse.headers.location).toBe('/settings/linked-accounts?status=link-revoked#children');
+    expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/sub-accounts/77');
+
+    api.callUserSettingsApi.mockClear();
+    const insuranceResponse = await post('/settings/insurance', {
+      insurance_type: 'public_liability',
+      provider_name: 'Example Mutual'
+    });
+    expect(insuranceResponse.headers.location).toBe('/settings/insurance?status=insurance-file-required#upload');
+    expect(api.callUserSettingsApi).not.toHaveBeenCalled();
+
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/settings/appearance')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1], theme: 'dark' });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callUserSettingsApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {

@@ -13,11 +13,326 @@ const {
   updatePrivacyPreferences,
   getPreferences,
   changePassword,
+  callUserSettingsApi,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
+
+const SETTINGS_THEMES = ['light', 'dark', 'system'];
+const SETTINGS_LINK_TYPES = ['family', 'guardian', 'carer', 'organization'];
+const SETTINGS_LINK_PERMISSIONS = [
+  'can_view_activity',
+  'can_manage_listings',
+  'can_transact',
+  'can_view_messages'
+];
+const SETTINGS_GDPR_TYPES = ['portability', 'rectification', 'restriction', 'objection'];
+const SETTINGS_INSURANCE_TYPES = [
+  'public_liability',
+  'professional_indemnity',
+  'employers_liability',
+  'product_liability',
+  'personal_accident',
+  'other'
+];
+
+function tokenFrom(req) {
+  return (req.signedCookies && req.signedCookies.token) || req.token || '';
+}
+
+function loginRedirect() {
+  return '/login?status=auth-required';
+}
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function checked(value) {
+  return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
+}
+
+function allowedValue(value, allowed, fallback = null) {
+  const text = trimmed(value);
+  return allowed.includes(text) ? text : fallback;
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function apiErrorCode(error) {
+  const data = error && error.data && typeof error.data === 'object' ? error.data : {};
+  return String(data.code || data.error || '').toUpperCase();
+}
+
+function redirectOnAuthError(error, res) {
+  if (isAuthError(error)) {
+    res.redirect(loginRedirect());
+    return true;
+  }
+  return false;
+}
+
+async function callSettings(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callUserSettingsApi(token, method, path);
+  }
+
+  return callUserSettingsApi(token, method, path, data);
+}
+
+function permissionPayload(body) {
+  return SETTINGS_LINK_PERMISSIONS.reduce((permissions, key) => {
+    permissions[key] = checked(body[`perm_${key}`]);
+    return permissions;
+  }, {});
+}
+
+function settingsStatusRedirect(path, status, fragment = '') {
+  return `${path}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+function availabilitySlotsFromRawBody(rawBody) {
+  const hasAvailabilityKeys = rawBody && (rawBody.includes('slots%5B') || rawBody.includes('slots['));
+  if (!hasAvailabilityKeys) {
+    return null;
+  }
+
+  const slotsByDay = {};
+  for (const [key, value] of new URLSearchParams(rawBody).entries()) {
+    const match = key.match(/^slots\[([0-6])\]\[([^\]]+)\]\[(start|end)\]$/);
+    if (!match) continue;
+
+    const [, day, index, field] = match;
+    slotsByDay[day] = slotsByDay[day] || {};
+    slotsByDay[day][index] = slotsByDay[day][index] || {};
+    slotsByDay[day][index][field] = value;
+  }
+
+  return Object.keys(slotsByDay).length > 0 ? slotsByDay : null;
+}
+
+function flattenAvailabilitySlots(rawSlots, rawBody = '') {
+  const slotsByDay = availabilitySlotsFromRawBody(rawBody) || (rawSlots && typeof rawSlots === 'object' ? rawSlots : {});
+  const flat = [];
+  let hasInvalid = false;
+
+  for (const [dayKey, slots] of Object.entries(slotsByDay)) {
+    const day = Number(dayKey);
+    if (!Number.isInteger(day) || day < 0 || day > 6 || !slots || typeof slots !== 'object') {
+      continue;
+    }
+
+    for (const slot of Object.values(slots)) {
+      if (!slot || typeof slot !== 'object') continue;
+
+      const start = trimmed(slot.start);
+      const end = trimmed(slot.end);
+      if (start === '' && end === '') continue;
+      if (start === '' || end === '' || start >= end) {
+        hasInvalid = true;
+        continue;
+      }
+
+      flat.push({
+        day_of_week: day,
+        start_time: start,
+        end_time: end
+      });
+    }
+  }
+
+  return { flat, hasInvalid };
+}
+
+function linkedFailureStatus(error) {
+  if (error instanceof ApiError && error.status === 404) {
+    return 'link-user-not-found';
+  }
+
+  const code = apiErrorCode(error);
+  if (code.includes('SELF')) return 'link-self';
+  if (code.includes('EXIST')) return 'link-exists';
+  if (code.includes('MAX') || code.includes('LIMIT')) return 'link-max';
+  return 'link-failed';
+}
+
+router.post('/appearance', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const theme = allowedValue(req.body.theme, SETTINGS_THEMES, null);
+  if (theme === null) {
+    return res.redirect(settingsStatusRedirect('/settings/appearance', 'appearance-invalid'));
+  }
+
+  let status = 'appearance-saved';
+  try {
+    await callSettings(token, 'PUT', '/theme', { theme });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'appearance-failed';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/appearance', status));
+}));
+
+router.post('/availability', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const { flat, hasInvalid } = flattenAvailabilitySlots(req.body.slots, req.rawUrlencodedBody);
+  if (hasInvalid) {
+    return res.redirect(settingsStatusRedirect('/settings/availability', 'availability-invalid', '#availability'));
+  }
+
+  let status = 'availability-saved';
+  try {
+    await callSettings(token, 'PUT', '/availability', { schedule: flat });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'availability-failed';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/availability', status));
+}));
+
+router.post('/data-rights', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const type = allowedValue(req.body.request_type, SETTINGS_GDPR_TYPES, null);
+  if (type === null) {
+    return res.redirect(settingsStatusRedirect('/settings/data-rights', 'gdpr-invalid', '#request'));
+  }
+
+  const notes = trimmed(req.body.notes);
+  let status = 'gdpr-requested';
+  let fragment = '#your-requests';
+  try {
+    await callSettings(token, 'POST', '/gdpr-request', {
+      type,
+      notes: notes || null
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = error instanceof ApiError && error.status === 409 ? 'gdpr-duplicate' : 'gdpr-failed';
+    fragment = '#request';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/data-rights', status, fragment));
+}));
+
+router.post('/linked-accounts/request', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const email = trimmed(req.body.email);
+  if (email === '' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.redirect(settingsStatusRedirect('/settings/linked-accounts', 'link-email-invalid', '#request'));
+  }
+
+  const payload = {
+    email,
+    relationship_type: allowedValue(req.body.relationship_type, SETTINGS_LINK_TYPES, 'family'),
+    permissions: permissionPayload(req.body)
+  };
+
+  let status = 'link-requested';
+  let fragment = '#children';
+  try {
+    await callSettings(token, 'POST', '/sub-accounts', payload);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = linkedFailureStatus(error);
+    fragment = '#request';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, fragment));
+}));
+
+router.post('/linked-accounts/approve', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const relationshipId = positiveInteger(req.body.relationship_id);
+  let status = 'link-approved';
+  try {
+    if (relationshipId === null) {
+      status = 'link-failed';
+    } else {
+      await callSettings(token, 'PUT', `/sub-accounts/${relationshipId}/approve`);
+    }
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'link-failed';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, '#parents'));
+}));
+
+router.post('/linked-accounts/permissions', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const relationshipId = positiveInteger(req.body.relationship_id);
+  if (relationshipId === null) {
+    return res.redirect(settingsStatusRedirect('/settings/linked-accounts', 'link-failed', '#children'));
+  }
+
+  let status = 'link-permissions-saved';
+  try {
+    await callSettings(token, 'PUT', `/sub-accounts/${relationshipId}/permissions`, {
+      permissions: permissionPayload(req.body)
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'link-failed';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, '#children'));
+}));
+
+router.post('/linked-accounts/revoke', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const relationshipId = positiveInteger(req.body.relationship_id);
+  let status = 'link-revoked';
+  try {
+    if (relationshipId === null) {
+      status = 'link-failed';
+    } else {
+      await callSettings(token, 'DELETE', `/sub-accounts/${relationshipId}`);
+    }
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'link-failed';
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/linked-accounts', status, '#children'));
+}));
+
+router.post('/insurance', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const insuranceType = allowedValue(req.body.insurance_type, SETTINGS_INSURANCE_TYPES, null);
+  if (insuranceType === null) {
+    return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-type-invalid', '#upload'));
+  }
+
+  return res.redirect(settingsStatusRedirect('/settings/insurance', 'insurance-file-required', '#upload'));
+}));
 
 router.use(requireAuth);
 
