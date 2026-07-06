@@ -382,14 +382,17 @@ Laravel Blade views. This remains partial: tenant-domain routing, localization,
 legal acceptance prompts, version history/compare links, live runtime behavior,
 and ASP.NET backend compatibility are not certified.
 
-The public guide pages now replace the static Guide and Features placeholders.
-`/guide` renders the Blade-style timebanking explanation, equal-time principle,
-three-step ordered list, and signed-in or signed-out CTA group. `/features`
-renders the Blade-style community feature list and link back to `/guide`.
-`/faq` renders the Blade-style GOV.UK accordion with the five translated
-timebanking questions and answers. This remains partial: tenant-domain routing,
-module-gated CTA visibility, localization, runtime behavior, and ASP.NET
-backend compatibility are not certified.
+The public about and guide pages now replace the static About, Guide, Features,
+and FAQ placeholders. `/about` renders the Blade-style community intro,
+four-step how-it-works list, values, contributor credits, open-source links, and
+signed-in or signed-out CTA group. `/guide` renders the Blade-style timebanking
+explanation, equal-time principle, three-step ordered list, and signed-in or
+signed-out CTA group. `/features` renders the Blade-style community feature list
+and link back to `/guide`. `/faq` renders the Blade-style GOV.UK accordion with
+the five translated timebanking questions and answers. This remains partial:
+tenant-domain routing, module-gated CTA visibility, localization, runtime
+behavior, live platform stats, and ASP.NET backend compatibility are not
+certified.
 
 Additional preparation docs:
 

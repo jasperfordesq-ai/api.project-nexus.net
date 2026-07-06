@@ -72,7 +72,6 @@ const federationActionRoutes = require('./routes/federation-actions');
 const laravelPrepRoutes = require('./routes/laravel-prep-pages');
 const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
-const { getContributorGroups, getResearchFoundation } = require('./lib/contributors');
 const { buildShellLocals } = require('./lib/accessible-shell');
 const { parseMultipartForm } = require('./middleware/multipart');
 
@@ -373,21 +372,6 @@ app.get('/privacy', (req, res) => {
 
 app.get('/terms', (req, res) => {
   res.render('terms', { title: 'Terms and conditions' });
-});
-
-app.get('/about', (req, res) => {
-  const groups = getContributorGroups();
-  const researchFoundation = getResearchFoundation();
-  // Filter acknowledgements to exclude research foundation (shown separately)
-  const otherAcknowledgements = groups.acknowledgements.filter(
-    a => a.role !== 'Research Foundation'
-  );
-  res.render('about', {
-    title: 'About',
-    groups,
-    researchFoundation,
-    otherAcknowledgements
-  });
 });
 
 app.get('/cookies', (req, res) => {

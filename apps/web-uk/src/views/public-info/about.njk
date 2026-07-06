@@ -1,0 +1,106 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <span class="govuk-caption-l">{{ communityName }}</span>
+      <h1 class="govuk-heading-xl">About {{ communityName }}</h1>
+      <p class="govuk-body-l">{{ communityName }} is a modern time banking platform where every hour of service is valued equally. We help communities exchange skills, build trust, and create a fairer local economy - one hour at a time.</p>
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h2 class="govuk-heading-l">How it works</h2>
+      <p class="govuk-body">Getting started is simple. Four steps to join and begin exchanging skills in your community.</p>
+      <ol class="govuk-list govuk-list--number">
+        {% for step in steps %}
+          <li>
+            <span class="govuk-!-font-weight-bold">{{ step.title }}.</span>
+            {{ step.description }}
+          </li>
+        {% endfor %}
+      </ol>
+
+      <h2 class="govuk-heading-l">Our values</h2>
+      <p class="govuk-body">The principles that guide everything we do at {{ communityName }}.</p>
+      {% for value in values %}
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ value.title }}</h3>
+        <p class="govuk-body">{{ value.description }}</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h2 class="govuk-heading-l">Powered by Project NEXUS</h2>
+      <p class="govuk-body">Open-source community platform created by Jasper Ford. Licensed under AGPL v3.</p>
+
+      {% if contributorGroups.creator.length %}
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Creator</h3>
+        <ul class="govuk-list">
+          {% for person in contributorGroups.creator %}
+            <li>{{ person.name }}{% if person.role %} - {{ person.role }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if contributorGroups.founder.length %}
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Founders of hOUR Timebank CLG</h3>
+        <ul class="govuk-list">
+          {% for person in contributorGroups.founder %}
+            <li>{{ person.name }}{% if person.role %} - {{ person.role }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if contributorGroups.contributor.length %}
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Contributors</h3>
+        <ul class="govuk-list">
+          {% for person in contributorGroups.contributor %}
+            <li>{{ person.name }}{% if person.role %} - {{ person.role }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+        {% if hasResearchNote %}
+          <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Research foundation</h3>
+          <p class="govuk-body">Informed by a social impact study commissioned by the West Cork Development Partnership.</p>
+        {% endif %}
+      {% endif %}
+
+      {% if contributorGroups.acknowledgement.length %}
+        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Acknowledgements</h3>
+        <ul class="govuk-list">
+          {% for person in contributorGroups.acknowledgement %}
+            <li>{{ person.name }}{% if person.role %} - {{ person.role }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Open source</h3>
+      <p class="govuk-body">Licensed under the GNU Affero General Public License v3 (AGPL-3.0).</p>
+      <ul class="govuk-list">
+        <li>
+          <a class="govuk-link" href="https://github.com/jasperfordesq-ai/nexus-v1" rel="noopener noreferrer">Laravel Edition source code (PHP + React)</a>
+        </li>
+        <li>
+          <a class="govuk-link" href="https://github.com/jasperfordesq-ai/api.project-nexus.net" rel="noopener noreferrer">.NET Edition source code (ASP.NET Core)</a>
+        </li>
+      </ul>
+
+      <h2 class="govuk-heading-l">Ready to get involved?</h2>
+      <p class="govuk-body">Whether you want to share your skills or find help with something, our community is here for you.</p>
+      <div class="govuk-button-group">
+        {% if isAuthenticated %}
+          <a class="govuk-button" data-module="govuk-button" href="/dashboard">Go to your dashboard</a>
+        {% else %}
+          <a class="govuk-button" data-module="govuk-button" href="/register">Join for free</a>
+        {% endif %}
+        <a class="govuk-link" href="/contact">Contact us</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

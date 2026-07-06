@@ -705,6 +705,24 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style about page', async () => {
+    const response = await request(app).get('/about');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('About Project NEXUS Accessible');
+    expect(response.text).toContain('modern time banking platform where every hour of service is valued equally');
+    expect(response.text).toContain('How it works');
+    expect(response.text).toContain('Create your profile');
+    expect(response.text).toContain('Find what you need');
+    expect(response.text).toContain('Our values');
+    expect(response.text).toContain('Trust and safety');
+    expect(response.text).toContain('Powered by Project NEXUS');
+    expect(response.text).toContain('Laravel Edition source code');
+    expect(response.text).toContain('href="/register"');
+    expect(response.text).toContain('href="/contact"');
+    expect(response.text).not.toContain('A timebanking platform for community exchange.');
+  });
+
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
     const staticPageRoutes = require('../src/routes/static-pages');
 
