@@ -137,6 +137,7 @@ jest.mock('../src/lib/api', () => ({
   createMemberPremiumCheckout: jest.fn().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } }),
   createMemberPremiumPortal: jest.fn().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } }),
   cancelMemberPremium: jest.fn().mockResolvedValue({ data: { cancelled: true } }),
+  callCouponApi: jest.fn().mockResolvedValue({ data: { items: [] } }),
   createReview: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   createComment: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   updateComment: jest.fn().mockResolvedValue({ data: { id: 12, content: 'Updated' } }),
@@ -280,6 +281,7 @@ describe('shared accessible frontend shell', () => {
     api.createMemberPremiumCheckout.mockReset().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } });
     api.createMemberPremiumPortal.mockReset().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } });
     api.cancelMemberPremium.mockReset().mockResolvedValue({ data: { cancelled: true } });
+    api.callCouponApi.mockReset().mockResolvedValue({ data: { items: [] } });
     api.createReview.mockReset().mockResolvedValue({ data: { id: 91 } });
     api.createComment.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.updateComment.mockReset().mockResolvedValue({ data: { id: 12, content: 'Updated' } });
@@ -2852,6 +2854,80 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(response.text).not.toContain('Community Goals');
     expect(api.getGoals).toHaveBeenCalledWith('test-token', { per_page: 30 });
+  });
+
+  it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+
+    const index = await request(app).get('/coupons');
+    const detail = await request(app).get('/coupons/42');
+
+    expect(index.status).toBe(302);
+    expect(index.headers.location).toBe('/login?status=auth-required');
+    expect(detail.status).toBe(302);
+    expect(detail.headers.location).toBe('/login?status=auth-required');
+    expect(api.callCouponApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed public coupon index and detail pages', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.callCouponApi
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 42,
+              code: 'NEXUS10',
+              title: 'Community market discount',
+              description: 'Save money with a local seller.',
+              discount_type: 'percent',
+              discount_value: 10,
+              valid_until: '2026-09-30',
+              merchant_name: 'Harbour Co-op'
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 42,
+          code: 'NEXUS10',
+          title: 'Community market discount',
+          description: 'Save money with a local seller.',
+          discount_type: 'percent',
+          discount_value: 10,
+          valid_until: '2026-09-30',
+          merchant: { name: 'Harbour Co-op' }
+        }
+      });
+
+    const index = await request(app)
+      .get('/coupons')
+      .set('Cookie', signedCookieHeader());
+    const detail = await request(app)
+      .get('/coupons/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(index.status).toBe(200);
+    expect(staticPageRoutes.pages['/coupons']).toBeUndefined();
+    expect(index.text).toContain('Coupons');
+    expect(index.text).toContain('Community market discount');
+    expect(index.text).toContain('Save money with a local seller.');
+    expect(index.text).toContain('10% off');
+    expect(index.text).toContain('Code: <strong>NEXUS10</strong>');
+    expect(index.text).toContain('href="/coupons/42"');
+    expect(index.text).not.toContain('Coupon pages will follow the Laravel accessible frontend contract.');
+    expect(detail.status).toBe(200);
+    expect(detail.text).toContain('Back to coupons');
+    expect(detail.text).toContain('Community market discount');
+    expect(detail.text).toContain('Coupon code');
+    expect(detail.text).toContain('NEXUS10');
+    expect(detail.text).toContain('How to use this coupon');
+    expect(detail.text).toContain('Harbour Co-op');
+    expect(detail.text).toContain('30 September 2026');
+    expect(api.callCouponApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '');
+    expect(api.callCouponApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42');
   });
 
   it('submits the Laravel exchange action route through the exchanges API helper', async () => {

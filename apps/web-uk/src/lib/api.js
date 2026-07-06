@@ -558,6 +558,20 @@ async function callMarketplaceApi(token, method, path, data = undefined) {
   return request(`/api/v2/marketplace${normalizedPath}`, options);
 }
 
+async function callCouponApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path === '' ? '' : (path.startsWith('/') ? path : `/${path}`);
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/coupons${normalizedPath}`, options);
+}
+
 async function uploadMarketplaceListingImages(token, listingId, data) {
   const form = new globalThis.FormData();
   const files = Array.isArray(data.files) ? data.files : [data.file || data.image].filter(Boolean);
@@ -2642,6 +2656,7 @@ module.exports = {
   callVolunteeringApi,
   uploadVolunteerCredential,
   callMarketplaceApi,
+  callCouponApi,
   uploadMarketplaceListingImages,
   callCourseApi,
   getMyCourses,

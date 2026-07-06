@@ -210,6 +210,16 @@ comment, and like APIs. This remains partial: detail/depth GET pages, exact
 tenant captions, goals feature-gate behavior, localization, runtime persistence,
 and ASP.NET backend compatibility are not certified.
 
+The `/coupons` and `/coupons/{id}` pages are now partial Laravel-backed
+candidates for the Blade public merchant-coupon browsing flow. Unsigned
+visitors redirect to `/login?status=auth-required`; signed-in GET requests call
+Laravel `/api/v2/coupons` and `/api/v2/coupons/{id}` and render Blade-style
+coupon cards, discount tags, coupon codes, valid-until metadata, empty state,
+detail back link, coupon-code panel, redemption guidance, and merchant summary
+metadata. This remains partial: exact tenant captions, merchant-coupons feature
+gate behavior, QR redemption/validation POST workflows, localization, runtime
+persistence, and ASP.NET backend compatibility are not certified.
+
 Marketplace GET pages remain preparation pages, but the Laravel accessible POST
 aliases under `/marketplace` are now local route declarations backed by Laravel
 v2 marketplace APIs. The aliases cover listing create/update/delete/renew,

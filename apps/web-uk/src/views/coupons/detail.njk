@@ -1,0 +1,48 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a href="/coupons" class="govuk-back-link">Back to coupons</a>
+
+  <span class="govuk-caption-xl">{{ tenant.name or tenant.slug or "Community" }}</span>
+  <h1 class="govuk-heading-xl">{{ coupon.title }}</h1>
+
+  {% if coupon.discountLabel %}
+    <p><strong class="govuk-tag govuk-tag--green govuk-!-margin-bottom-4">{{ coupon.discountLabel }}</strong></p>
+  {% endif %}
+
+  {% if coupon.description %}
+    <p class="govuk-body govuk-!-margin-bottom-4">{{ coupon.description | striptags | nl2br | safe }}</p>
+  {% endif %}
+
+  {% if coupon.code %}
+    <div class="govuk-panel govuk-panel--confirmation govuk-!-margin-bottom-4">
+      <h2 class="govuk-panel__title">Coupon code</h2>
+      <div class="govuk-panel__body">
+        <strong>{{ coupon.code }}</strong>
+      </div>
+    </div>
+  {% endif %}
+
+  <h2 class="govuk-heading-m">How to use this coupon</h2>
+  <p class="govuk-body">Present this code at the point of purchase or enter it on the merchant website to receive your discount.</p>
+
+  <dl class="govuk-summary-list">
+    {% if coupon.merchantName %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Merchant</dt>
+        <dd class="govuk-summary-list__value">{{ coupon.merchantName }}</dd>
+      </div>
+    {% endif %}
+    {% if coupon.validUntilText %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Valid until</dt>
+        <dd class="govuk-summary-list__value">{{ coupon.validUntilText }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+{% endblock %}
