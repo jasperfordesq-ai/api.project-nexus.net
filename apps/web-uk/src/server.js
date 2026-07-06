@@ -1057,6 +1057,7 @@ app.use('/resources/upload', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 
 app.use('/volunteering/credentials', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use('/onboarding/avatar', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use('/settings/insurance', parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use(/^\/messages\/\d+$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024, multiples: true }));
 app.use(/^\/messages\/\d+\/voice$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use(/^\/groups\/\d+\/image$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
 app.use(/^\/groups\/\d+\/files$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));

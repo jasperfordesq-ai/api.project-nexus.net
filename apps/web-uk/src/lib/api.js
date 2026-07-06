@@ -1286,6 +1286,30 @@ async function uploadVoiceMessage(token, data) {
   });
 }
 
+async function uploadMessageAttachments(token, data) {
+  const form = new globalThis.FormData();
+  form.append('recipient_id', String(data.recipient_id || data.recipientId || ''));
+
+  if (data.body !== undefined && data.body !== null) {
+    form.append('body', String(data.body));
+  }
+
+  const files = Array.isArray(data.files) ? data.files : [data.file].filter(Boolean);
+  files.forEach((file) => {
+    if (!file || !file.buffer) return;
+    const blob = new globalThis.Blob([file.buffer], {
+      type: file.contentType || 'application/octet-stream'
+    });
+    form.append('attachments[]', blob, file.filename || 'attachment');
+  });
+
+  return request('/api/v2/messages', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function callConversationApi(token, method, path = '', data = undefined) {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
   const options = {
@@ -2564,6 +2588,7 @@ module.exports = {
   // Messages
   callMessageApi,
   uploadVoiceMessage,
+  uploadMessageAttachments,
   callConversationApi,
   callPodcastApi,
   uploadPodcastEpisode,

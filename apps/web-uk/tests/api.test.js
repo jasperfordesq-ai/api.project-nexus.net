@@ -1413,6 +1413,38 @@ describe('API Request Functions', () => {
       );
       expect(options.body).toBeInstanceOf(FormData);
     });
+
+    it('should upload message attachments to Laravel with multipart data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12 } })
+      });
+
+      await api.uploadMessageAttachments('test-token', {
+        recipient_id: 77,
+        body: 'Here is the handbook.',
+        files: [
+          {
+            buffer: Buffer.from('%PDF message attachment', 'utf8'),
+            filename: 'handbook.pdf',
+            contentType: 'application/pdf'
+          }
+        ]
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/messages',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
   });
 
   describe('callPodcastApi', () => {

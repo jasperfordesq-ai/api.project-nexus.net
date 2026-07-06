@@ -10,7 +10,6 @@ const {
   getConversations,
   getConversation,
   getUnreadCount,
-  sendMessage,
   replyToConversation,
   startConversation,
   getUser,
@@ -19,6 +18,7 @@ const {
   getProfile,
   callMessageApi,
   uploadVoiceMessage,
+  uploadMessageAttachments,
   callConversationApi,
   ApiError
 } = require('../lib/api');
@@ -54,6 +54,14 @@ function uploadedFile(req, fieldName) {
   return file && typeof file === 'object' ? file : null;
 }
 
+function uploadedFiles(req, fieldName) {
+  const files = req.files || {};
+  const value = files[fieldName] || files[`${fieldName}[]`];
+  if (!value) return [];
+  const list = Array.isArray(value) ? value : [value];
+  return list.filter(file => file && typeof file === 'object');
+}
+
 async function removeUploadedFile(file) {
   if (!file || !file.filepath) return;
   try {
@@ -61,6 +69,10 @@ async function removeUploadedFile(file) {
   } catch {
     // Temporary upload cleanup is best-effort only.
   }
+}
+
+async function removeUploadedFiles(files) {
+  await Promise.all(files.map(removeUploadedFile));
 }
 
 function dataFrom(result) {
@@ -509,18 +521,34 @@ router.get('/:id', asyncRoute(async (req, res) => {
 
 // Send message
 router.post('/:id', audit.messageSend(), asyncRoute(async (req, res) => {
-  const { content } = req.body;
+  const content = trimmed(req.body.body || req.body.content, 10000);
   const conversationId = req.params.id;
+  const recipientId = Number(conversationId);
+  const attachments = uploadedFiles(req, 'attachments');
 
-  if (!content || !content.trim()) {
+  if (!content && attachments.length === 0) {
     if (req.flash) {
-      req.flash('error', 'Enter a message');
+      req.flash('error', 'Enter a message or add an attachment');
     }
     return res.redirect(`/messages/${conversationId}`);
   }
 
   try {
-    await replyToConversation(req.token, conversationId, content.trim());
+    if (attachments.length > 0) {
+      const files = await Promise.all(attachments.map(async (file) => ({
+        buffer: await fs.readFile(file.filepath),
+        filename: trimmed(file.originalFilename) || 'attachment',
+        contentType: trimmed(file.mimetype) || 'application/octet-stream',
+        size: file.size
+      })));
+      await uploadMessageAttachments(tokenFrom(req), {
+        recipient_id: recipientId,
+        body: content,
+        files
+      });
+    } else {
+      await replyToConversation(req.token, conversationId, content);
+    }
 
     if (req.flash) {
       req.flash('success', 'Message sent');
@@ -534,6 +562,8 @@ router.post('/:id', audit.messageSend(), asyncRoute(async (req, res) => {
       return res.redirect(`/messages/${conversationId}`);
     }
     throw error; // Re-throw for asyncRoute to handle 401/503
+  } finally {
+    await removeUploadedFiles(attachments);
   }
 }));
 

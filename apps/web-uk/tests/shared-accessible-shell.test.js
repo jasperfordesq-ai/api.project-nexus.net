@@ -48,6 +48,12 @@ jest.mock('../src/lib/api', () => ({
   completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
   getUser: jest.fn(),
   getListings: jest.fn(),
+  getConversations: jest.fn().mockResolvedValue({ data: [] }),
+  getConversation: jest.fn().mockResolvedValue({ id: 77, messages: [] }),
+  markConversationRead: jest.fn().mockResolvedValue({}),
+  replyToConversation: jest.fn().mockResolvedValue({ data: { id: 12 } }),
+  sendMessage: jest.fn().mockResolvedValue({ data: { id: 12 } }),
+  startConversation: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   createFeedPostV2: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   updateFeedPostV2: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   deleteFeedPostV2: jest.fn().mockResolvedValue({ data: { deleted: true } }),
@@ -151,6 +157,7 @@ jest.mock('../src/lib/api', () => ({
   getTransactions: jest.fn(),
   callMessageApi: jest.fn().mockResolvedValue({ data: { id: 12, action: 'added' } }),
   uploadVoiceMessage: jest.fn().mockResolvedValue({ data: { id: 12, is_voice: true } }),
+  uploadMessageAttachments: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   callConversationApi: jest.fn().mockResolvedValue({ data: { id: 33 } }),
   callPodcastApi: jest.fn().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } }),
   uploadPodcastEpisode: jest.fn().mockResolvedValue({ data: { id: 99 } }),
@@ -207,6 +214,12 @@ describe('shared accessible frontend shell', () => {
     api.getProfile.mockReset().mockResolvedValue({ id: 101 });
     api.updateProfile.mockReset().mockResolvedValue({});
     api.uploadProfileAvatar.mockReset().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } });
+    api.getConversations.mockReset().mockResolvedValue({ data: [] });
+    api.getConversation.mockReset().mockResolvedValue({ id: 77, messages: [] });
+    api.markConversationRead.mockReset().mockResolvedValue({});
+    api.replyToConversation.mockReset().mockResolvedValue({ data: { id: 12 } });
+    api.sendMessage.mockReset().mockResolvedValue({ data: { id: 12 } });
+    api.startConversation.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.saveOnboardingSafeguarding.mockReset().mockResolvedValue({});
     api.completeOnboarding.mockReset().mockResolvedValue({ data: { message: 'complete' } });
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
@@ -315,6 +328,7 @@ describe('shared accessible frontend shell', () => {
     api.deleteNotification.mockReset().mockResolvedValue({});
     api.callMessageApi.mockReset().mockResolvedValue({ data: { id: 12, action: 'added' } });
     api.uploadVoiceMessage.mockReset().mockResolvedValue({ data: { id: 12, is_voice: true } });
+    api.uploadMessageAttachments.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.callConversationApi.mockReset().mockResolvedValue({ data: { id: 33 } });
     api.callPodcastApi.mockReset().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } });
     api.uploadPodcastEpisode.mockReset().mockResolvedValue({ data: { id: 99 } });
@@ -8559,6 +8573,52 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callMessageApi).not.toHaveBeenCalled();
     expect(api.callConversationApi).not.toHaveBeenCalled();
+  });
+
+  it('renders and submits Laravel-style message attachments with multipart file data', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getConversation.mockResolvedValueOnce({
+      id: 77,
+      other_user_name: 'Avery Stone',
+      messages: [{ id: 12, sender_id: 77, body: 'Can you send the guide?' }]
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const page = await agent
+      .get('/messages/77')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('enctype="multipart/form-data"');
+    expect(page.text).toContain('name="attachments[]"');
+    expect(page.text).toContain('Can you send the guide?');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/messages/77')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('content', ' Here is the handbook. ')
+      .attach('attachments', Buffer.from('%PDF message attachment', 'utf8'), {
+        filename: 'handbook.pdf',
+        contentType: 'application/pdf'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/messages/77');
+    expect(api.uploadMessageAttachments).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      recipient_id: 77,
+      body: 'Here is the handbook.',
+      files: [expect.objectContaining({
+        filename: 'handbook.pdf',
+        contentType: 'application/pdf',
+        buffer: Buffer.from('%PDF message attachment', 'utf8')
+      })]
+    }));
+    expect(api.replyToConversation).not.toHaveBeenCalled();
   });
 
   it('submits the Laravel voice message route with multipart audio data', async () => {

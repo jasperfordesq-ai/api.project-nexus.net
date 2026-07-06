@@ -20,9 +20,9 @@ function flattenFields(fields) {
   );
 }
 
-function flattenFiles(files) {
+function flattenFiles(files, keepArrays = false) {
   return Object.fromEntries(
-    Object.entries(files || {}).map(([key, value]) => [key, firstValue(value)])
+    Object.entries(files || {}).map(([key, value]) => [key, keepArrays ? value : firstValue(value)])
   );
 }
 
@@ -33,7 +33,7 @@ function parseMultipartForm(options = {}) {
     }
 
     const form = formidable({
-      multiples: false,
+      multiples: options.multiples === true,
       maxFileSize: options.maxFileSize || 10 * 1024 * 1024,
       allowEmptyFiles: false
     });
@@ -49,7 +49,7 @@ function parseMultipartForm(options = {}) {
       };
       req.files = {
         ...(req.files || {}),
-        ...flattenFiles(files)
+        ...flattenFiles(files, options.multiples === true)
       };
       if (req.body._csrf && !req.headers['x-csrf-token']) {
         req.headers['x-csrf-token'] = req.body._csrf;
