@@ -580,6 +580,20 @@ async function callJobApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/jobs${normalizedPath}`, options);
 }
 
+async function callAdminJobApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/admin/jobs${normalizedPath}`, options);
+}
+
 async function callJobDownload(token, path = '') {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
 
@@ -2179,6 +2193,7 @@ module.exports = {
   getJobs,
   getJob,
   callJobApi,
+  callAdminJobApi,
   callJobDownload,
   // Wallet
   getBalance,

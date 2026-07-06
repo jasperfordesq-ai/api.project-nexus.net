@@ -41,6 +41,7 @@ jest.mock('../src/lib/api', () => ({
   updateProfile: jest.fn().mockResolvedValue({}),
   saveOnboardingSafeguarding: jest.fn().mockResolvedValue({}),
   completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
+  getUser: jest.fn(),
   getListings: jest.fn(),
   createFeedPostV2: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   updateFeedPostV2: jest.fn().mockResolvedValue({ data: { id: 42 } }),
@@ -61,6 +62,7 @@ jest.mock('../src/lib/api', () => ({
   callCourseApi: jest.fn().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } }),
   callGroupApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callAdminJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callJobDownload: jest.fn(),
   getJobs: jest.fn(),
   getJob: jest.fn(),
@@ -173,6 +175,7 @@ describe('shared accessible frontend shell', () => {
     api.updateProfile.mockReset().mockResolvedValue({});
     api.saveOnboardingSafeguarding.mockReset().mockResolvedValue({});
     api.completeOnboarding.mockReset().mockResolvedValue({ data: { message: 'complete' } });
+    api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
     api.sendAppreciation.mockReset().mockResolvedValue({ data: { id: 55 } });
@@ -231,6 +234,7 @@ describe('shared accessible frontend shell', () => {
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callGroupApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callJobApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callAdminJobApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callJobDownload.mockReset();
     api.getJobs.mockReset().mockResolvedValue({
       items: [],
@@ -4407,6 +4411,201 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login');
     expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed employer onboarding page for returning posters', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: {
+        items: [{ id: 501, title: 'Community mentor' }],
+        total: 1
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/employer-onboarding')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/my-postings?per_page=1');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Get started as an employer');
+    expect(response.text).toContain('Post another opportunity');
+    expect(response.text).toContain('You already post opportunities here. Create another one whenever you are ready.');
+    expect(response.text).toContain('How it works');
+    expect(response.text).toContain('Describe the opportunity');
+    expect(response.text).toContain('Tips for more applicants');
+    expect(response.text).toContain('Post an opportunity');
+    expect(response.text).toContain('View my opportunities');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('redirects signed-out visitors away from employer onboarding before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/employer-onboarding');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed employer brand page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getUser.mockResolvedValueOnce({
+      data: {
+        id: 88,
+        first_name: 'Morgan',
+        last_name: 'Patel',
+        resume_headline: 'Community garden coordinator',
+        location: 'Belfast',
+        bio: 'Runs inclusive neighbourhood garden projects.',
+        created_at: '2099-06-01T09:00:00Z'
+      }
+    });
+    api.getJobs.mockResolvedValueOnce({
+      data: {
+        items: [{
+          id: 501,
+          title: 'Garden volunteer lead',
+          type: 'volunteer',
+          commitment: 'part_time',
+          location: 'Belfast',
+          deadline: '2099-08-05'
+        }],
+        total: 1
+      }
+    });
+    api.callJobApi.mockResolvedValueOnce({
+      data: {
+        reviews: [{
+          id: 9,
+          rating: 5,
+          comment: 'Clear communication and kind support.',
+          reviewer: { name: 'Avery Stone' },
+          created_at: '2099-07-03T10:00:00Z'
+        }],
+        stats: {
+          average_rating: 4.5,
+          total_reviews: 1,
+          dimensions: {
+            respect: 5,
+            communication: 4
+          }
+        }
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/employers/88')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.getUser).toHaveBeenCalledWith('test-token', 88);
+    expect(api.getJobs).toHaveBeenCalledWith('test-token', {
+      user_id: 88,
+      status: 'open',
+      limit: 50,
+      sort: 'newest'
+    });
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/employer-reviews/88');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Morgan Patel');
+    expect(response.text).toContain('Open opportunities and reviews for this employer.');
+    expect(response.text).toContain('Community garden coordinator');
+    expect(response.text).toContain('Runs inclusive neighbourhood garden projects.');
+    expect(response.text).toContain('Belfast');
+    expect(response.text).toContain('Member since June 2099');
+    expect(response.text).toContain('Open opportunities');
+    expect(response.text).toContain('1 open opportunity');
+    expect(response.text).toContain('Garden volunteer lead');
+    expect(response.text).toContain('Employer reviews');
+    expect(response.text).toContain('Average rating');
+    expect(response.text).toContain('4.5');
+    expect(response.text).toContain('Clear communication and kind support.');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the Laravel-backed jobs bias audit page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callAdminJobApi.mockResolvedValueOnce({
+      data: {
+        period: { from: '2099-07-01', to: '2099-07-31' },
+        total_applications: 24,
+        hiring_velocity_days: 6.5,
+        funnel: { applied: 24, screening: 18, interview: 8, offer: 3, accepted: 2 },
+        rejection_rates: {
+          applied: { rejected: 2, total: 24, rate: 8.3 },
+          screening: { rejected: 5, total: 18, rate: 27.8 }
+        },
+        avg_time_in_stage: { applied: 1.5, screening: 3.2, interview: 5.1 },
+        skills_match_correlation: {
+          accepted_avg: 0.6,
+          rejected_avg: 0.4,
+          accepted_count: 6,
+          rejected_count: 4
+        },
+        source_effectiveness: {
+          direct: { applications: 20, accepted: 5, rate: 25 },
+          referral: { applications: 4, accepted: 1, rate: 25 }
+        }
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/bias-audit?from=2099-07-01&to=2099-07-31&job_id=501')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callAdminJobApi).toHaveBeenCalledWith(
+      'test-token',
+      'GET',
+      '/bias-audit?job_id=501&date_from=2099-07-01&date_to=2099-07-31'
+    );
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Hiring bias audit');
+    expect(response.text).toContain('Review your hiring pipeline for patterns that may indicate bias');
+    expect(response.text).toContain('value="2099-07-01"');
+    expect(response.text).toContain('value="2099-07-31"');
+    expect(response.text).toContain('value="501"');
+    expect(response.text).toContain('Period: 1 July 2099 to 31 July 2099');
+    expect(response.text).toContain('Total applications');
+    expect(response.text).toContain('24');
+    expect(response.text).toContain('Average time to hire');
+    expect(response.text).toContain('6.5 days');
+    expect(response.text).toContain('Application funnel');
+    expect(response.text).toContain('Interview');
+    expect(response.text).toContain('Rejection rates by stage');
+    expect(response.text).toContain('27.8%');
+    expect(response.text).toContain('Average time in stage');
+    expect(response.text).toContain('Outcome breakdown');
+    expect(response.text).toContain('Accepted');
+    expect(response.text).toContain('6');
+    expect(response.text).toContain('Source effectiveness');
+    expect(response.text).toContain('Direct');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('returns forbidden when Laravel denies jobs bias audit access', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callAdminJobApi.mockRejectedValueOnce(new api.ApiError('Forbidden', 403, {}));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/bias-audit?from=2099-07-01')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callAdminJobApi).toHaveBeenCalledWith(
+      'test-token',
+      'GET',
+      '/bias-audit?date_from=2099-07-01'
+    );
+    expect(response.status).toBe(403);
   });
 
   it('streams the Laravel-backed owner applications CSV export', async () => {

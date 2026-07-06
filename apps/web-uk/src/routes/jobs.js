@@ -5,7 +5,16 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { ApiError, callJobApi, callJobDownload, getJobs, getJob, getProfile } = require('../lib/api');
+const {
+  ApiError,
+  callAdminJobApi,
+  callJobApi,
+  callJobDownload,
+  getJobs,
+  getJob,
+  getProfile,
+  getUser
+} = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -153,6 +162,16 @@ const JOB_QUALIFICATION_LABELS = {
   moderate: 'Moderate match',
   low: 'Developing match'
 };
+const JOB_REVIEW_DIMENSION_LABELS = {
+  respect: 'Respect',
+  communication: 'Communication',
+  flexibility: 'Flexibility',
+  impact: 'Impact'
+};
+const JOB_BIAS_SOURCE_LABELS = {
+  direct: 'Direct',
+  referral: 'Referral'
+};
 const DOWNLOAD_HEADER_NAMES = [
   'content-type',
   'content-disposition',
@@ -226,6 +245,14 @@ async function callJob(token, method, path, data = undefined) {
   }
 
   return callJobApi(token, method, path, data);
+}
+
+async function callAdminJob(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callAdminJobApi(token, method, path);
+  }
+
+  return callAdminJobApi(token, method, path, data);
 }
 
 function applyDownloadHeaders(res, headers = {}) {
@@ -974,6 +1001,228 @@ function talentSearchMeta(result, filters, itemCount) {
   };
 }
 
+function employerName(user) {
+  const first = trimmed(user.first_name || user.firstName, 120);
+  const last = trimmed(user.last_name || user.lastName, 120);
+  return trimmed(user.name || user.display_name || user.displayName || `${first} ${last}`, 255);
+}
+
+function decorateEmployer(result, employerId) {
+  const user = objectFrom(result);
+  if (!user) return null;
+
+  const name = employerName(user) || 'Employer profile';
+
+  return {
+    ...user,
+    id: positiveInteger(user.id) || employerId,
+    name,
+    initial: candidateInitial(name),
+    avatarUrl: trimmed(user.avatar_url || user.avatarUrl, 1000),
+    headline: trimmed(user.resume_headline || user.headline, 255),
+    bio: trimmed(user.bio, 5000),
+    location: trimmed(user.location, 255),
+    memberSinceLabel: formatMonthYear(user.member_since || user.memberSince || user.created_at)
+  };
+}
+
+function reviewRowsFrom(result) {
+  const data = objectFrom(result) || {};
+  const rows = Array.isArray(data.reviews) ? data.reviews : collectionItems(result);
+
+  return rows.map((review) => ({
+    ...review,
+    id: positiveInteger(review.id) || 0,
+    rating: finiteNumber(review.rating, 0),
+    comment: trimmed(review.comment, 5000),
+    reviewerName: personName(review.reviewer) || trimmed(review.reviewer_name || review.reviewerName, 255),
+    createdLabel: formatDateOnlyLong(review.created_at || review.createdAt),
+    dimensions: review.dimensions && typeof review.dimensions === 'object' ? review.dimensions : {}
+  }));
+}
+
+function dimensionAverages(reviews) {
+  const totals = {};
+  const counts = {};
+
+  reviews.forEach((review) => {
+    Object.entries(review.dimensions || {}).forEach(([key, value]) => {
+      const score = Number(value);
+      if (!Number.isFinite(score)) return;
+      totals[key] = (totals[key] || 0) + score;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+  });
+
+  return Object.fromEntries(Object.keys(totals).map((key) => [key, totals[key] / counts[key]]));
+}
+
+function decorateReviewStats(result, reviews) {
+  const data = objectFrom(result) || {};
+  const stats = data.stats && typeof data.stats === 'object' ? data.stats : {};
+  const total = finiteNumber(stats.total_reviews ?? stats.totalReviews, reviews.length);
+  const average = stats.average_rating ?? stats.averageRating;
+  const dimensions = stats.dimensions && typeof stats.dimensions === 'object'
+    ? stats.dimensions
+    : dimensionAverages(reviews);
+
+  return {
+    averageRating: average === null || average === undefined ? null : finiteNumber(average, 0),
+    totalReviews: total,
+    reviewsLabel: countLabel(total, 'review', 'reviews', 'No reviews yet'),
+    dimensionRows: Object.entries(dimensions).map(([key, value]) => ({
+      key,
+      label: JOB_REVIEW_DIMENSION_LABELS[key] || statusTitle(key),
+      score: finiteNumber(value, 0)
+    })).filter((row) => row.label)
+  };
+}
+
+function employerOpenJobsMeta(result, openJobs) {
+  const meta = collectionMeta(result, { offset: 0 });
+  const total = finiteNumber(meta.total, openJobs.length);
+
+  return {
+    total,
+    countLabel: countLabel(total, 'open opportunity', 'open opportunities', 'No open opportunities')
+  };
+}
+
+function onboardingHasPosted(result) {
+  const meta = collectionMeta(result, { offset: 0 });
+  return collectionItems(result).length > 0 || meta.total > 0;
+}
+
+function dateFilter(value) {
+  const text = trimmed(value, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
+}
+
+function biasAuditFilters(query) {
+  return {
+    from: dateFilter(query.from),
+    to: dateFilter(query.to),
+    jobId: positiveInteger(query.job_id)
+  };
+}
+
+function biasAuditPath(filters) {
+  return queryPath('/bias-audit', {
+    job_id: filters.jobId || null,
+    date_from: filters.from || null,
+    date_to: filters.to || null
+  });
+}
+
+function formatDecimal(value, maximumFractionDigits = 1) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return trimmed(value);
+
+  return number.toLocaleString('en-GB', {
+    maximumFractionDigits,
+    minimumFractionDigits: 0
+  });
+}
+
+function percentLabel(value) {
+  return `${formatDecimal(value, 1)}%`;
+}
+
+function dateRangeLabel(from, to) {
+  const fromLabel = formatDateOnlyLong(from);
+  const toLabel = formatDateOnlyLong(to);
+  if (fromLabel && toLabel) return `Period: ${fromLabel} to ${toLabel}`;
+  if (fromLabel) return `From ${fromLabel}`;
+  if (toLabel) return `To ${toLabel}`;
+  return '';
+}
+
+function orderedKeys(source, preferred) {
+  const keys = source && typeof source === 'object' ? Object.keys(source) : [];
+  return [
+    ...preferred.filter((key) => keys.includes(key)),
+    ...keys.filter((key) => !preferred.includes(key))
+  ];
+}
+
+function biasStageLabel(stage) {
+  return JOB_PIPELINE_LABELS[stage] || JOB_APPLICATION_LABELS[stage] || statusTitle(stage) || 'Other';
+}
+
+function decorateBiasReport(result) {
+  const report = objectFrom(result);
+  if (!report) return null;
+
+  const totalApplications = finiteNumber(report.total_applications ?? report.totalApplications, 0);
+  const period = report.period && typeof report.period === 'object' ? report.period : {};
+  const funnel = report.funnel && typeof report.funnel === 'object' ? report.funnel : {};
+  const rejectionRates = report.rejection_rates && typeof report.rejection_rates === 'object' ? report.rejection_rates : {};
+  const avgTime = report.avg_time_in_stage && typeof report.avg_time_in_stage === 'object' ? report.avg_time_in_stage : {};
+  const outcomes = report.skills_match_correlation && typeof report.skills_match_correlation === 'object'
+    ? report.skills_match_correlation
+    : {};
+  const sources = report.source_effectiveness && typeof report.source_effectiveness === 'object'
+    ? report.source_effectiveness
+    : {};
+  const stageOrder = [...APPLICATION_STATUSES, 'other'];
+
+  return {
+    totalApplications,
+    totalApplicationsLabel: formatPlainNumber(totalApplications),
+    hiringVelocityLabel: report.hiring_velocity_days === null || report.hiring_velocity_days === undefined
+      ? ''
+      : `${formatDecimal(report.hiring_velocity_days, 1)} days`,
+    periodLabel: dateRangeLabel(period.from, period.to),
+    funnelRows: orderedKeys(funnel, stageOrder).map((stage) => {
+      const count = finiteNumber(funnel[stage], 0);
+      return {
+        stage,
+        label: biasStageLabel(stage),
+        count,
+        countLabel: formatPlainNumber(count),
+        percentLabel: percentLabel(totalApplications > 0 ? (count / totalApplications) * 100 : 0)
+      };
+    }),
+    rejectionRows: orderedKeys(rejectionRates, stageOrder).map((stage) => {
+      const row = rejectionRates[stage] && typeof rejectionRates[stage] === 'object' ? rejectionRates[stage] : {};
+      return {
+        stage,
+        label: biasStageLabel(stage),
+        entered: finiteNumber(row.total, 0),
+        rejected: finiteNumber(row.rejected, 0),
+        rateLabel: percentLabel(finiteNumber(row.rate, 0))
+      };
+    }),
+    timeRows: orderedKeys(avgTime, stageOrder).map((stage) => ({
+      stage,
+      label: biasStageLabel(stage),
+      daysLabel: `${formatDecimal(avgTime[stage], 1)} days`
+    })),
+    outcomeRows: [
+      {
+        label: 'Accepted',
+        count: finiteNumber(outcomes.accepted_count ?? outcomes.acceptedCount, 0),
+        proportionLabel: percentLabel(finiteNumber(outcomes.accepted_avg ?? outcomes.acceptedAvg, 0) * 100)
+      },
+      {
+        label: 'Rejected',
+        count: finiteNumber(outcomes.rejected_count ?? outcomes.rejectedCount, 0),
+        proportionLabel: percentLabel(finiteNumber(outcomes.rejected_avg ?? outcomes.rejectedAvg, 0) * 100)
+      }
+    ],
+    sourceRows: orderedKeys(sources, ['direct', 'referral']).map((source) => {
+      const row = sources[source] && typeof sources[source] === 'object' ? sources[source] : {};
+      return {
+        source,
+        label: JOB_BIAS_SOURCE_LABELS[source] || statusTitle(source),
+        applications: finiteNumber(row.applications, 0),
+        accepted: finiteNumber(row.accepted, 0),
+        rateLabel: percentLabel(finiteNumber(row.rate, 0))
+      };
+    })
+  };
+}
+
 function statusTitle(value) {
   const text = trimmed(value);
   if (!text) return '';
@@ -1366,6 +1615,125 @@ router.get('/responses', asyncRoute(async (req, res) => {
     errorMessage: responseErrorMessage(req.query.status),
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/employer-onboarding', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  let postingsResult = null;
+  let loadError = false;
+
+  try {
+    postingsResult = await callJob(token, 'GET', '/my-postings?per_page=1');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+    loadError = true;
+  }
+
+  return res.render('jobs/onboarding', {
+    title: 'Post your first opportunity',
+    activeNav: 'explore',
+    hasPosted: onboardingHasPosted(postingsResult),
+    loadError
+  });
+}));
+
+router.get('/employers/:employerId(\\d+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const employerId = Number(req.params.employerId);
+  let employerResult;
+
+  try {
+    employerResult = await getUser(token, employerId);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const employer = decorateEmployer(employerResult, employerId);
+  if (!employer) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  const jobParams = {
+    user_id: employerId,
+    status: 'open',
+    limit: 50,
+    sort: 'newest'
+  };
+  let jobsResult = null;
+  let reviewsResult = null;
+  let loadError = false;
+
+  try {
+    jobsResult = await getJobs(token, jobParams);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = true;
+  }
+
+  try {
+    reviewsResult = await callJob(token, 'GET', `/employer-reviews/${employerId}`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = true;
+  }
+
+  const openJobs = collectionItems(jobsResult).map(decorateJob);
+  const employerReviews = reviewRowsFrom(reviewsResult);
+
+  return res.render('jobs/employer-brand', {
+    title: employer.name,
+    activeNav: 'explore',
+    employer,
+    openJobs,
+    openJobsMeta: employerOpenJobsMeta(jobsResult, openJobs),
+    employerReviews,
+    reviewStats: decorateReviewStats(reviewsResult, employerReviews),
+    loadError
+  });
+}));
+
+router.get('/bias-audit', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const filters = biasAuditFilters(req.query);
+  let result;
+
+  try {
+    result = await callAdminJob(token, 'GET', biasAuditPath(filters));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  return res.render('jobs/bias-audit', {
+    title: 'Hiring bias audit',
+    activeNav: 'admin',
+    filters,
+    report: decorateBiasReport(result)
   });
 }));
 

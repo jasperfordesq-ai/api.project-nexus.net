@@ -1,0 +1,188 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/admin">Back to admin</a>
+
+  <h1 class="govuk-heading-xl">Hiring bias audit</h1>
+  <p class="govuk-body-l">Review your hiring pipeline for patterns that may indicate bias. Data covers applications in the selected date range.</p>
+
+  <form method="get" action="/jobs/bias-audit" class="govuk-!-margin-bottom-6">
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="bias-from">From date</label>
+      <input class="govuk-input govuk-input--width-10" id="bias-from" name="from" type="date" value="{{ filters.from }}">
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="bias-to">To date</label>
+      <input class="govuk-input govuk-input--width-10" id="bias-to" name="to" type="date" value="{{ filters.to }}">
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="bias-job">Opportunity</label>
+      <div id="bias-job-hint" class="govuk-hint">Leave blank for all opportunities.</div>
+      <input class="govuk-input govuk-input--width-10" id="bias-job" name="job_id" type="number" inputmode="numeric" min="1" value="{{ filters.jobId }}" aria-describedby="bias-job-hint">
+    </div>
+
+    <button type="submit" class="govuk-button" data-module="govuk-button">Apply filters</button>
+  </form>
+
+  {% if not report %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">The report could not be loaded. Please try again.</p>
+    </div>
+  {% else %}
+    {% if report.periodLabel %}
+      <p class="govuk-body">{{ report.periodLabel }}</p>
+    {% endif %}
+
+    <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Total applications</dt>
+        <dd class="govuk-summary-list__value">{{ report.totalApplicationsLabel }}</dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Average time to hire</dt>
+        <dd class="govuk-summary-list__value">{% if report.hiringVelocityLabel %}{{ report.hiringVelocityLabel }}{% else %}Not available{% endif %}</dd>
+      </div>
+    </dl>
+
+    {% if report.totalApplications == 0 %}
+      <div class="govuk-inset-text">
+        <p class="govuk-body">No application data found for the selected period. Try broadening your date range.</p>
+      </div>
+    {% endif %}
+
+    <h2 class="govuk-heading-m">Application funnel</h2>
+    <p class="govuk-body-s nexus-alpha-meta">Number of candidates at each pipeline stage</p>
+    {% if report.funnelRows.length %}
+      <table class="govuk-table">
+        <caption class="govuk-table__caption govuk-visually-hidden">Application funnel</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Stage</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Count</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">% of total</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in report.funnelRows %}
+            <tr class="govuk-table__row">
+              <th scope="row" class="govuk-table__header">{{ row.label }}</th>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.countLabel }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.percentLabel }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">No funnel data available for this period.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-m">Rejection rates by stage</h2>
+    <p class="govuk-body-s nexus-alpha-meta">How many candidates are rejected at each stage</p>
+    {% if report.rejectionRows.length %}
+      <table class="govuk-table">
+        <caption class="govuk-table__caption govuk-visually-hidden">Rejection rates by stage</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Stage</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Entered stage</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Rejected</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Rejection rate</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in report.rejectionRows %}
+            <tr class="govuk-table__row">
+              <th scope="row" class="govuk-table__header">{{ row.label }}</th>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.entered }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.rejected }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.rateLabel }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">No rejection data available for this period.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-m">Average time in stage</h2>
+    <p class="govuk-body-s nexus-alpha-meta">Average number of days candidates spend in each pipeline stage</p>
+    {% if report.timeRows.length %}
+      <table class="govuk-table">
+        <caption class="govuk-table__caption govuk-visually-hidden">Average time in stage</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Stage</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Avg. days</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in report.timeRows %}
+            <tr class="govuk-table__row">
+              <th scope="row" class="govuk-table__header">{{ row.label }}</th>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.daysLabel }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">No time-in-stage data available for this period.</p>
+    {% endif %}
+
+    <h2 class="govuk-heading-m">Outcome breakdown</h2>
+    <p class="govuk-body-s nexus-alpha-meta">Proportion of applications resulting in acceptance versus rejection</p>
+    <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-visually-hidden">Outcome breakdown</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Outcome</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Count</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Proportion</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for row in report.outcomeRows %}
+          <tr class="govuk-table__row">
+            <th scope="row" class="govuk-table__header">{{ row.label }}</th>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.count }}</td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.proportionLabel }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2 class="govuk-heading-m">Source effectiveness</h2>
+    <p class="govuk-body-s nexus-alpha-meta">Acceptance rates by application source</p>
+    {% if report.sourceRows.length %}
+      <table class="govuk-table">
+        <caption class="govuk-table__caption govuk-visually-hidden">Source effectiveness</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Source</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Applications</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Accepted</th>
+            <th scope="col" class="govuk-table__header govuk-table__header--numeric">Acceptance rate</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in report.sourceRows %}
+            <tr class="govuk-table__row">
+              <th scope="row" class="govuk-table__header">{{ row.label }}</th>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.applications }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.accepted }}</td>
+              <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.rateLabel }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="govuk-body">No source data available for this period.</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}
