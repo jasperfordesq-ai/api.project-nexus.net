@@ -73,6 +73,19 @@ function Normalize-FrontendApiPath {
     return Normalize-RoutePath $normalized
 }
 
+function Normalize-V15FrontendApiPath {
+    param([string]$Path)
+
+    $normalized = $Path -replace '^/v2/', '/api/v2/'
+    $normalized = $normalized -replace '\$\{?buildQuery.*$', ''
+    $normalized = $normalized -replace '(?<!/)\$\{.*$', ''
+    $normalized = $normalized -replace '\$\{[^}/]+}', '{id}'
+    $normalized = $normalized -replace '\$\{[^/]+$', '{id}'
+    $normalized = $normalized -replace '\$\([^)]+\)', '{id}'
+    $normalized = $normalized -replace '\$\w+', '{id}'
+    return Normalize-RoutePath $normalized
+}
+
 function Get-FrontendMethodHint {
     param([string]$Line, [int]$MatchIndex)
 
@@ -670,7 +683,7 @@ function Export-FrontendApiStrings {
         'apps\web-uk\src'
     )
 
-    $pattern = '(?i)(?:/api|/v2)/[A-Za-z0-9_\-./:{}\[\]$?=&%]+'
+    $pattern = '(?i)(?:/api|/v2)/[A-Za-z0-9_\-./:{}\[\]$?=&%()]+'
     $rows = New-Object System.Collections.Generic.List[object]
 
     foreach ($relative in $appSrcs) {
@@ -681,6 +694,7 @@ function Export-FrontendApiStrings {
         Get-ChildItem -LiteralPath $src -Recurse -Include '*.ts','*.tsx','*.js','*.jsx' -File |
             Where-Object {
                 $_.FullName -notmatch '\\(node_modules|dist|build|\.next|coverage|\.claude|__tests__|__mocks__)\\' -and
+                $_.Name -notmatch '\.d\.ts$' -and
                 $_.Name -notmatch '\.(test|spec)\.(ts|tsx|js|jsx)$'
             } |
             ForEach-Object {
@@ -727,6 +741,70 @@ function Export-FrontendApiStrings {
     }
 
     $rows | Sort-Object app, normalized, file, line | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $rows
+}
+
+function Export-V15FrontendApiStrings {
+    param([string]$SourceRoot, [string]$Destination)
+
+    $src = Join-Path $SourceRoot 'react-frontend\src'
+    if (-not (Test-Path -LiteralPath $src)) {
+        Write-Warning "Laravel React frontend src not found: $src"
+        return @()
+    }
+
+    $pattern = '(?i)(?:/api/v2|/api|/v2)/[A-Za-z0-9_\-./:{}\[\]$?=&%()]+'
+    $rows = New-Object System.Collections.Generic.List[object]
+
+    Get-ChildItem -LiteralPath $src -Recurse -Include '*.ts','*.tsx','*.js','*.jsx' -File |
+        Where-Object {
+            $_.FullName -notmatch '\\(node_modules|dist|build|\.next|coverage|\.claude|__tests__|__mocks__)\\' -and
+            $_.Name -notmatch '\.d\.ts$' -and
+            $_.Name -notmatch '\.(test|spec)\.(ts|tsx|js|jsx)$'
+        } |
+        ForEach-Object {
+            $file = $_
+            $lineNo = 0
+            Get-Content -LiteralPath $file.FullName | ForEach-Object {
+                $lineNo++
+                $trimmed = $_.TrimStart()
+                if (-not ($trimmed.StartsWith('//') -or $trimmed.StartsWith('*') -or $trimmed.StartsWith('{/*'))) {
+                    $commentIndex = $_.IndexOf('//')
+                    foreach ($match in [regex]::Matches($_, $pattern)) {
+                        $skip = $false
+                        if ($commentIndex -ge 0 -and $match.Index -gt $commentIndex) {
+                            $skip = $true
+                        }
+                        if ($match.Index -gt 0) {
+                            $previous = $_[$match.Index - 1]
+                            if ($previous -match '[A-Za-z0-9_.@-]') {
+                                $skip = $true
+                            }
+                        }
+                        if (-not $skip) {
+                            $raw = $match.Value.TrimEnd("'", '"', '`', ',', '.', ')')
+                            $normalizedPath = Normalize-V15FrontendApiPath $raw
+                            $suffix = $_.Substring($match.Index + $match.Length)
+                            if ($normalizedPath.EndsWith('/') -or $raw.EndsWith('/')) {
+                                if ($suffix -match '^\s*[''"]?\s*\+\s*[A-Za-z_][A-Za-z0-9_]*') {
+                                    $normalizedPath = Normalize-RoutePath "$normalizedPath/{id}"
+                                }
+                            }
+                            $rows.Add([pscustomobject]@{
+                                app = 'react-frontend-v15'
+                                method_hint = Get-FrontendMethodHint $_ $match.Index
+                                raw = $raw
+                                normalized = $normalizedPath
+                                file = $file.FullName
+                                line = $lineNo
+                            })
+                        }
+                    }
+                }
+            }
+        }
+
+    $rows | Sort-Object normalized, file, line | Export-Csv -LiteralPath $Destination -NoTypeInformation
     return $rows
 }
 
@@ -934,8 +1012,10 @@ $laravelRoutes = Export-LaravelRoutes $SourceRoot (Join-Path $OutDir 'v15-larave
 $currentReactRoutes = Export-ReactRoutes (Join-Path $TargetRoot 'apps\react-frontend\src\App.tsx') (Join-Path $OutDir 'react-routes-current.csv') 'react-frontend-current'
 $v15ReactRoutes = Export-ReactRoutes (Join-Path $SourceRoot 'react-frontend\src\App.tsx') (Join-Path $OutDir 'react-routes-v15.csv') 'react-frontend-v15'
 $frontendApiStrings = Export-FrontendApiStrings $TargetRoot (Join-Path $OutDir 'frontend-api-strings.csv')
+$v15FrontendApiStrings = Export-V15FrontendApiStrings $SourceRoot (Join-Path $OutDir 'v15-frontend-api-strings.csv')
 $aspNetIndex = New-RouteIndex $aspNetRoutes
 $frontendApiMatrix = Export-FrontendApiMatrix $frontendApiStrings $aspNetIndex (Join-Path $OutDir 'frontend-api-to-aspnet-matrix.csv')
+$v15FrontendApiMatrix = Export-FrontendApiMatrix $v15FrontendApiStrings $aspNetIndex (Join-Path $OutDir 'v15-frontend-api-to-aspnet-matrix.csv')
 $laravelMatrix = Export-LaravelToAspNetMatrix $laravelRoutes $aspNetIndex (Join-Path $OutDir 'v15-laravel-to-aspnet-matrix.csv')
 $routeParityMatrix = Export-FrontendRouteParityMatrix $v15ReactRoutes $currentReactRoutes (Join-Path $OutDir 'frontend-route-parity-matrix.csv')
 
@@ -950,6 +1030,9 @@ $summary = [pscustomobject]@{
     frontend_api_strings = $frontendApiStrings.Count
     frontend_api_missing = @($frontendApiMatrix | Where-Object { $_.status -eq 'missing' }).Count
     frontend_api_dynamic_unresolved = @($frontendApiMatrix | Where-Object { $_.status -eq 'dynamic-unresolved' }).Count
+    v15_frontend_api_strings = $v15FrontendApiStrings.Count
+    v15_frontend_api_missing = @($v15FrontendApiMatrix | Where-Object { $_.status -eq 'missing' }).Count
+    v15_frontend_api_dynamic_unresolved = @($v15FrontendApiMatrix | Where-Object { $_.status -eq 'dynamic-unresolved' }).Count
     v15_laravel_missing = @($laravelMatrix | Where-Object { $_.status -eq 'missing' }).Count
     v15_routes_missing = @($routeParityMatrix | Where-Object { $_.status -eq 'missing' }).Count
 }
