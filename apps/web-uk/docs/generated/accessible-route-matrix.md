@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T12:34:14.704Z
+Generated: 2026-07-06T12:45:44.226Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 657 |
-| Matched routes | 575 |
-| Missing routes | 33 |
+| web-uk routes | 673 |
+| Matched routes | 591 |
+| Missing routes | 17 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -42,7 +42,7 @@ Generated: 2026-07-06T12:34:14.704Z
 | forgot-password | 0 | 0 | 2 |
 | goals | 27 | 0 | 0 |
 | group-exchanges | 9 | 0 | 0 |
-| groups | 20 | 16 | 6 |
+| groups | 36 | 0 | 6 |
 | guide | 1 | 0 | 0 |
 | health | 0 | 0 | 1 |
 | help | 1 | 0 | 0 |
@@ -96,22 +96,6 @@ Generated: 2026-07-06T12:34:14.704Z
 
 | Method | Path | Family | Handler | Blade view | Auth | Gates |
 | --- | --- | --- | --- | --- | --- | --- |
-| POST | `/groups/{param}/announcements` | groups | groupsCreateAnnouncement |  | public-or-unknown |  |
-| POST | `/groups/{param}/announcements/{param}/delete` | groups | groupsDeleteAnnouncement |  | public-or-unknown |  |
-| POST | `/groups/{param}/announcements/{param}/edit` | groups | groupsUpdateAnnouncement |  | public-or-unknown |  |
-| POST | `/groups/{param}/announcements/{param}/pin` | groups | groupsPinAnnouncement |  | public-or-unknown |  |
-| POST | `/groups/{param}/discussions/{param}/reply` | groups | replyGroupDiscussion |  | public-or-unknown |  |
-| POST | `/groups/{param}/discussions/new` | groups | storeGroupDiscussion |  | public-or-unknown |  |
-| POST | `/groups/{param}/feed` | groups | storeGroupFeedPost |  | public-or-unknown |  |
-| POST | `/groups/{param}/files` | groups | groupsUploadFile |  | public-or-unknown |  |
-| POST | `/groups/{param}/files/{param}/delete` | groups | groupsDeleteFile |  | public-or-unknown |  |
-| POST | `/groups/{param}/image` | groups | groupsUpdateImage |  | public-or-unknown |  |
-| POST | `/groups/{param}/invite/{param}/revoke` | groups | groupsRevokeInvite |  | public-or-unknown |  |
-| POST | `/groups/{param}/invite/email` | groups | groupsSendInvites |  | public-or-unknown |  |
-| POST | `/groups/{param}/invite/link` | groups | groupsCreateInviteLink |  | public-or-unknown |  |
-| POST | `/groups/{param}/members/{param}` | groups | updateGroupMember |  | public-or-unknown |  |
-| POST | `/groups/{param}/notifications` | groups | groupsUpdateNotificationPrefs |  | public-or-unknown |  |
-| POST | `/groups/{param}/requests/{param}` | groups | handleGroupRequest |  | public-or-unknown |  |
 | POST | `/jobs` | jobs | storeJob |  | auth-optional | feature:job_vacancies |
 | POST | `/jobs/{param}/applications/{param}/status` | jobs | setApplicationStatus |  | auth-optional | feature:job_vacancies |
 | POST | `/jobs/{param}/apply` | jobs | applyJob |  | auth-optional | feature:job_vacancies |

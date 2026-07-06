@@ -59,6 +59,7 @@ jest.mock('../src/lib/api', () => ({
   getGoal: jest.fn(),
   callGoalApi: jest.fn().mockResolvedValue({ data: { id: 42, action: 'liked' } }),
   callCourseApi: jest.fn().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } }),
+  callGroupApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getJobs: jest.fn(),
   getJob: jest.fn(),
   applyForJob: jest.fn(),
@@ -226,6 +227,7 @@ describe('shared accessible frontend shell', () => {
     api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callGroupApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -3969,6 +3971,161 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callGroupExchangeApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel group depth aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callGroupApi.mockImplementation(async (_token, _method, pathName) => {
+      if (pathName === '/42/discussions') {
+        return { data: { id: 33 } };
+      }
+      return { data: { id: 42 } };
+    });
+
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const inviteLinkResponse = await post('/groups/42/invite/link', { expiry_days: '30' });
+    expect(inviteLinkResponse.headers.location).toBe('/groups/42/invite?status=invite-link-created');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/invites/link', {
+      expiry_days: 30
+    });
+
+    const inviteEmailResponse = await post('/groups/42/invite/email', {
+      emails: ' one@example.com, two@example.com\nthree@example.com ',
+      message: ' Join us '
+    });
+    expect(inviteEmailResponse.headers.location).toBe('/groups/42/invite?status=invite-emails-sent');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/invites/email', {
+      emails: ['one@example.com', 'two@example.com', 'three@example.com'],
+      message: 'Join us'
+    });
+
+    const revokeInviteResponse = await post('/groups/42/invite/12/revoke');
+    expect(revokeInviteResponse.headers.location).toBe('/groups/42/invite?status=invite-revoked');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/invites/12');
+
+    const notificationsResponse = await post('/groups/42/notifications', {
+      frequency: 'digest',
+      email_enabled: 'on'
+    });
+    expect(notificationsResponse.headers.location).toBe('/groups/42/notifications?status=prefs-saved');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/notification-prefs', {
+      frequency: 'digest',
+      email_enabled: true,
+      push_enabled: false
+    });
+
+    const callCountBeforeImage = api.callGroupApi.mock.calls.length;
+    const imageResponse = await post('/groups/42/image', { type: 'cover' });
+    expect(imageResponse.headers.location).toBe('/groups/42/image?status=image-missing');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(callCountBeforeImage);
+
+    const fileResponse = await post('/groups/42/files', { folder: 'Policies' });
+    expect(fileResponse.headers.location).toBe('/groups/42/files?status=file-missing');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(callCountBeforeImage);
+
+    const fileDeleteResponse = await post('/groups/42/files/5/delete');
+    expect(fileDeleteResponse.headers.location).toBe('/groups/42/files?status=file-deleted');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/files/5');
+
+    const announcementResponse = await post('/groups/42/announcements', {
+      title: ' AGM ',
+      content: ' Bring reports ',
+      is_pinned: '1',
+      expires_at: '2026-09-01'
+    });
+    expect(announcementResponse.headers.location).toBe('/groups/42/announcements?status=ann-created');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/announcements', {
+      title: 'AGM',
+      content: 'Bring reports',
+      is_pinned: true,
+      expires_at: '2026-09-01'
+    });
+
+    const announcementEditResponse = await post('/groups/42/announcements/9/edit', {
+      title: ' Updated AGM ',
+      content: ' Bring updated reports '
+    });
+    expect(announcementEditResponse.headers.location).toBe('/groups/42/announcements?status=ann-updated');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/announcements/9', {
+      title: 'Updated AGM',
+      content: 'Bring updated reports',
+      is_pinned: false,
+      expires_at: null
+    });
+
+    const announcementDeleteResponse = await post('/groups/42/announcements/9/delete');
+    expect(announcementDeleteResponse.headers.location).toBe('/groups/42/announcements?status=ann-deleted');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/announcements/9');
+
+    const announcementPinResponse = await post('/groups/42/announcements/9/pin', { is_pinned: '1' });
+    expect(announcementPinResponse.headers.location).toBe('/groups/42/announcements?status=ann-pinned');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/announcements/9', {
+      is_pinned: true
+    });
+
+    const discussionResponse = await post('/groups/42/discussions/new', {
+      title: ' Monthly plan ',
+      content: ' Talk through the plan. '
+    });
+    expect(discussionResponse.headers.location).toBe('/groups/42/discussions/33?status=discussion-created');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/discussions', {
+      title: 'Monthly plan',
+      content: 'Talk through the plan.'
+    });
+
+    const discussionReplyResponse = await post('/groups/42/discussions/33/reply', {
+      content: ' Count me in. '
+    });
+    expect(discussionReplyResponse.headers.location).toBe('/groups/42/discussions/33?status=reply-posted#discussion-replies');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/discussions/33/messages', {
+      content: 'Count me in.'
+    });
+
+    const feedResponse = await post('/groups/42/feed', { content: ' Working bee on Friday. ' });
+    expect(feedResponse.headers.location).toBe('/groups/42?status=group-posted#group-feed');
+    expect(api.createFeedPostV2).toHaveBeenLastCalledWith('test-token', {
+      content: 'Working bee on Friday.',
+      visibility: 'public',
+      group_id: 42
+    });
+
+    const memberResponse = await post('/groups/42/members/55', { action: 'promote' });
+    expect(memberResponse.headers.location).toBe('/groups/42/manage?status=member-promoted');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/members/55', {
+      role: 'admin'
+    });
+
+    const requestResponse = await post('/groups/42/requests/77', { action: 'reject' });
+    expect(requestResponse.headers.location).toBe('/groups/42/manage?status=request-rejected');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/requests/77', {
+      action: 'reject'
+    });
+
+    api.callGroupApi.mockClear();
+    api.createFeedPostV2.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/groups/42/announcements')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1], title: 'AGM', content: 'Bring reports' });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login');
+    expect(api.callGroupApi).not.toHaveBeenCalled();
+    expect(api.createFeedPostV2).not.toHaveBeenCalled();
   });
 
   it('submits Laravel event action aliases and redirects signed-out visitors', async () => {

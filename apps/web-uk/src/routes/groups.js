@@ -18,6 +18,8 @@ const {
   removeGroupMember,
   updateGroupMemberRole,
   transferGroupOwnership,
+  callGroupApi,
+  createFeedPostV2,
   getEvents,
   getUsers,
   ApiError
@@ -29,6 +31,132 @@ const { audit } = require('../lib/auditLogger');
 const router = express.Router();
 
 router.use(requireAuth);
+
+const GROUP_NOTIFICATION_FREQUENCIES = ['instant', 'digest', 'muted'];
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function optionalText(value, limit = null) {
+  const text = trimmed(value, limit);
+  return text === '' ? null : text;
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function checked(value) {
+  return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
+}
+
+function allowed(value, choices, fallback) {
+  const text = trimmed(value);
+  return choices.includes(text) ? text : fallback;
+}
+
+function statusRedirect(path, status, fragment = '') {
+  return `${path}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+function groupRedirect(id, status, fragment = '') {
+  return statusRedirect(`/groups/${id}`, status, fragment);
+}
+
+function groupSubpageRedirect(id, segment, status, fragment = '') {
+  return statusRedirect(`/groups/${id}/${segment}`, status, fragment);
+}
+
+function announcementEditRedirect(id, annId, status) {
+  return statusRedirect(`/groups/${id}/announcements/${annId}/edit`, status);
+}
+
+function discussionRedirect(id, discussionId, status, fragment = '') {
+  return statusRedirect(`/groups/${id}/discussions/${discussionId}`, status, fragment);
+}
+
+function loginRedirect() {
+  return '/login?status=auth-required';
+}
+
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+async function callGroup(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callGroupApi(token, method, path);
+  }
+
+  return callGroupApi(token, method, path, data);
+}
+
+async function requireGroupAction(req, res, failureRedirect, action) {
+  if (!req.token) {
+    return res.redirect(loginRedirect());
+  }
+
+  try {
+    return await action(req.token);
+  } catch (error) {
+    if (isAuthError(error)) {
+      return res.redirect(loginRedirect());
+    }
+
+    return res.redirect(typeof failureRedirect === 'function' ? failureRedirect(error) : failureRedirect);
+  }
+}
+
+function resultId(result) {
+  return positiveInteger(result?.data?.id)
+    || positiveInteger(result?.discussion?.id)
+    || positiveInteger(result?.id);
+}
+
+function parseInviteEmails(value) {
+  return String(value || '')
+    .split(/[\n,]+/)
+    .map((email) => email.trim())
+    .filter(Boolean);
+}
+
+function announcementPayload(body) {
+  const title = trimmed(body.title, 255);
+  const content = trimmed(body.content, 20000);
+
+  if (title === '') {
+    return { error: 'ann-title-required' };
+  }
+
+  if (content === '') {
+    return { error: 'ann-content-required' };
+  }
+
+  return {
+    title,
+    content,
+    is_pinned: checked(body.is_pinned),
+    expires_at: optionalText(body.expires_at)
+  };
+}
+
+function discussionPayload(body) {
+  const title = trimmed(body.title, 255);
+  const content = trimmed(body.content, 20000);
+
+  if (title === '' || content === '') {
+    return null;
+  }
+
+  return { title, content };
+}
+
+function hasUploadedValue(req, fieldName) {
+  return !!req.file || !!(req.files && req.files[fieldName]) || trimmed(req.body[fieldName]) !== '';
+}
 
 // List all groups
 router.get('/', asyncRoute(async (req, res) => {
@@ -291,6 +419,243 @@ router.post('/:id/leave', audit.groupLeave(), asyncRoute(async (req, res) => {
   }
 
   res.redirect(`/groups/${id}`);
+}));
+
+router.post('/:id(\\d+)/invite/link', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const expiryDays = positiveInteger(req.body.expiry_days);
+  const payload = {
+    expiry_days: expiryDays !== null && expiryDays <= 90 ? expiryDays : null
+  };
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'invite', 'invite-link-failed'), async (token) => {
+    await callGroup(token, 'POST', `/${id}/invites/link`, payload);
+    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-link-created'));
+  });
+}));
+
+router.post('/:id(\\d+)/invite/email', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const emails = parseInviteEmails(req.body.emails);
+
+  if (emails.length === 0) {
+    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-emails-required'));
+  }
+
+  if (emails.length > 50) {
+    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-emails-too-many'));
+  }
+
+  const payload = {
+    emails,
+    message: optionalText(req.body.message, 5000)
+  };
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'invite', 'invite-email-failed'), async (token) => {
+    await callGroup(token, 'POST', `/${id}/invites/email`, payload);
+    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-emails-sent'));
+  });
+}));
+
+router.post('/:id(\\d+)/invite/:inviteId(\\d+)/revoke', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const inviteId = Number(req.params.inviteId);
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'invite', 'invite-revoke-failed'), async (token) => {
+    await callGroup(token, 'DELETE', `/${id}/invites/${inviteId}`);
+    return res.redirect(groupSubpageRedirect(id, 'invite', 'invite-revoked'));
+  });
+}));
+
+router.post('/:id(\\d+)/notifications', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const payload = {
+    frequency: allowed(req.body.frequency, GROUP_NOTIFICATION_FREQUENCIES, 'instant'),
+    email_enabled: checked(req.body.email_enabled),
+    push_enabled: checked(req.body.push_enabled)
+  };
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'notifications', 'prefs-failed'), async (token) => {
+    await callGroup(token, 'PUT', `/${id}/notification-prefs`, payload);
+    return res.redirect(groupSubpageRedirect(id, 'notifications', 'prefs-saved'));
+  });
+}));
+
+router.post('/:id(\\d+)/image', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const type = allowed(req.body.type, ['avatar', 'cover'], 'avatar');
+
+  if (!hasUploadedValue(req, 'image')) {
+    return res.redirect(groupSubpageRedirect(id, 'image', 'image-missing'));
+  }
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'image', 'image-failed'), async (token) => {
+    await callGroup(token, 'POST', `/${id}/image?type=${encodeURIComponent(type)}`, {
+      type,
+      image: req.body.image
+    });
+    return res.redirect(groupSubpageRedirect(id, 'image', type === 'cover' ? 'cover-updated' : 'avatar-updated'));
+  });
+}));
+
+router.post('/:id(\\d+)/files', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!hasUploadedValue(req, 'file')) {
+    return res.redirect(groupSubpageRedirect(id, 'files', 'file-missing'));
+  }
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'files', 'file-upload-failed'), async (token) => {
+    await callGroup(token, 'POST', `/${id}/files`, {
+      file: req.body.file,
+      folder: optionalText(req.body.folder, 255),
+      description: optionalText(req.body.description, 2000)
+    });
+    return res.redirect(groupSubpageRedirect(id, 'files', 'file-uploaded'));
+  });
+}));
+
+router.post('/:id(\\d+)/files/:fileId(\\d+)/delete', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const fileId = Number(req.params.fileId);
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'files', 'file-delete-failed'), async (token) => {
+    await callGroup(token, 'DELETE', `/${id}/files/${fileId}`);
+    return res.redirect(groupSubpageRedirect(id, 'files', 'file-deleted'));
+  });
+}));
+
+router.post('/:id(\\d+)/announcements', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const payload = announcementPayload(req.body);
+
+  if (payload.error) {
+    return res.redirect(groupSubpageRedirect(id, 'announcements', payload.error));
+  }
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'announcements', 'ann-create-failed'), async (token) => {
+    await callGroup(token, 'POST', `/${id}/announcements`, payload);
+    return res.redirect(groupSubpageRedirect(id, 'announcements', 'ann-created'));
+  });
+}));
+
+router.post('/:id(\\d+)/announcements/:annId(\\d+)/edit', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const annId = Number(req.params.annId);
+  const payload = announcementPayload(req.body);
+
+  if (payload.error) {
+    return res.redirect(announcementEditRedirect(id, annId, payload.error));
+  }
+
+  return requireGroupAction(req, res, announcementEditRedirect(id, annId, 'ann-update-failed'), async (token) => {
+    await callGroup(token, 'PUT', `/${id}/announcements/${annId}`, payload);
+    return res.redirect(groupSubpageRedirect(id, 'announcements', 'ann-updated'));
+  });
+}));
+
+router.post('/:id(\\d+)/announcements/:annId(\\d+)/delete', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const annId = Number(req.params.annId);
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'announcements', 'ann-delete-failed'), async (token) => {
+    await callGroup(token, 'DELETE', `/${id}/announcements/${annId}`);
+    return res.redirect(groupSubpageRedirect(id, 'announcements', 'ann-deleted'));
+  });
+}));
+
+router.post('/:id(\\d+)/announcements/:annId(\\d+)/pin', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const annId = Number(req.params.annId);
+  const isPinned = checked(req.body.is_pinned);
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'announcements', 'ann-pin-failed'), async (token) => {
+    await callGroup(token, 'PUT', `/${id}/announcements/${annId}`, { is_pinned: isPinned });
+    return res.redirect(groupSubpageRedirect(id, 'announcements', isPinned ? 'ann-pinned' : 'ann-unpinned'));
+  });
+}));
+
+router.post('/:id(\\d+)/discussions/new', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const payload = discussionPayload(req.body);
+
+  if (payload === null) {
+    return res.redirect(`/groups/${id}/discussions/new`);
+  }
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'discussions/new', 'discussion-failed'), async (token) => {
+    const result = await callGroup(token, 'POST', `/${id}/discussions`, payload);
+    const discussionId = resultId(result);
+    const target = discussionId
+      ? discussionRedirect(id, discussionId, 'discussion-created')
+      : groupSubpageRedirect(id, 'discussions', 'discussion-created');
+    return res.redirect(target);
+  });
+}));
+
+router.post('/:id(\\d+)/discussions/:discussionId(\\d+)/reply', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const discussionId = Number(req.params.discussionId);
+  const content = trimmed(req.body.content, 20000);
+
+  if (content === '') {
+    return res.redirect(`/groups/${id}/discussions/${discussionId}`);
+  }
+
+  return requireGroupAction(req, res, discussionRedirect(id, discussionId, 'reply-failed', '#discussion-replies'), async (token) => {
+    await callGroup(token, 'POST', `/${id}/discussions/${discussionId}/messages`, { content });
+    return res.redirect(discussionRedirect(id, discussionId, 'reply-posted', '#discussion-replies'));
+  });
+}));
+
+router.post('/:id(\\d+)/feed', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const content = trimmed(req.body.content, 20000);
+
+  if (content === '') {
+    return res.redirect(groupRedirect(id, 'group-post-empty', '#group-feed'));
+  }
+
+  return requireGroupAction(req, res, groupRedirect(id, 'group-post-failed', '#group-feed'), async (token) => {
+    await createFeedPostV2(token, {
+      content,
+      visibility: 'public',
+      group_id: id
+    });
+    return res.redirect(groupRedirect(id, 'group-posted', '#group-feed'));
+  });
+}));
+
+router.post('/:id(\\d+)/members/:memberId(\\d+)', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const memberId = Number(req.params.memberId);
+  const action = trimmed(req.body.action);
+
+  if (!['promote', 'demote', 'remove'].includes(action)) {
+    return res.redirect(groupSubpageRedirect(id, 'manage', 'member-failed'));
+  }
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'manage', 'member-failed'), async (token) => {
+    if (action === 'remove') {
+      await callGroup(token, 'DELETE', `/${id}/members/${memberId}`);
+      return res.redirect(groupSubpageRedirect(id, 'manage', 'member-removed'));
+    }
+
+    const role = action === 'promote' ? 'admin' : 'member';
+    await callGroup(token, 'PUT', `/${id}/members/${memberId}`, { role });
+    return res.redirect(groupSubpageRedirect(id, 'manage', action === 'promote' ? 'member-promoted' : 'member-demoted'));
+  });
+}));
+
+router.post('/:id(\\d+)/requests/:requesterId(\\d+)', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const requesterId = Number(req.params.requesterId);
+  const action = trimmed(req.body.action) === 'reject' ? 'reject' : 'accept';
+
+  return requireGroupAction(req, res, groupSubpageRedirect(id, 'manage', 'request-failed'), async (token) => {
+    await callGroup(token, 'POST', `/${id}/requests/${requesterId}`, { action });
+    return res.redirect(groupSubpageRedirect(id, 'manage', action === 'reject' ? 'request-rejected' : 'request-approved'));
+  });
 }));
 
 // Members management page

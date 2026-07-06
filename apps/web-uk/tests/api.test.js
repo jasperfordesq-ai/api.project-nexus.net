@@ -786,6 +786,49 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callGroupApi', () => {
+    it('should call Laravel v2 group depth endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { frequency: 'digest' } })
+      });
+
+      await api.callGroupApi('test-token', 'PUT', '/42/notification-prefs', {
+        frequency: 'digest'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/groups/42/notification-prefs',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ frequency: 'digest' })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { deleted: true } })
+      });
+
+      await api.callGroupApi('test-token', 'DELETE', '/42/files/5');
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/groups/42/files/5',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
   describe('callUserSettingsApi', () => {
     it('should call Laravel v2 user settings endpoints with auth, method, and optional payload', async () => {
       mockFetch.mockResolvedValueOnce({
