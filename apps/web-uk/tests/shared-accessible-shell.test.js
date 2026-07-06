@@ -949,6 +949,90 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation onboarding wizard', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/settings') {
+        return {
+          data: {
+            enabled: true,
+            settings: {
+              federation_optin: false,
+              profile_visible_federated: true,
+              appear_in_federated_search: true,
+              show_skills_federated: true,
+              show_location_federated: false,
+              show_reviews_federated: true,
+              messaging_enabled_federated: true,
+              transactions_enabled_federated: true,
+              email_notifications: true,
+              service_reach: 'travel_ok',
+              travel_radius_km: 40
+            }
+          }
+        };
+      }
+      if (pathValue === '/partners') {
+        return {
+          data: [
+            {
+              id: 12,
+              name: 'North Timebank',
+              location: 'Derry',
+              member_count: 14,
+              is_external: false
+            },
+            {
+              id: 'ext-4',
+              name: 'External Circle',
+              location: 'Remote',
+              member_count: 4,
+              is_external: true
+            }
+          ]
+        };
+      }
+
+      return { data: [] };
+    });
+
+    const unsigned = await request(app).get('/federation/onboarding');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/onboarding?step=confirm&status=optin-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Welcome to the community network');
+    expect(response.text).toContain('A few quick choices to connect with neighbouring communities.');
+    expect(response.text).toContain('We could not enable federation. Please try again.');
+    expect(response.text).toContain('Step 4 of 4');
+    expect(response.text).toContain('Review your settings');
+    expect(response.text).toContain('Profile visibility');
+    expect(response.text).toContain('Profile visible');
+    expect(response.text).toContain('Location shared');
+    expect(response.text).toContain('Off');
+    expect(response.text).toContain('Communication');
+    expect(response.text).toContain('Time exchanges');
+    expect(response.text).toContain('Happy to travel up to 40 km');
+    expect(response.text).toContain('Partner communities');
+    expect(response.text).toContain('North Timebank');
+    expect(response.text).toContain('Location: Derry');
+    expect(response.text).toContain('Members: 14');
+    expect(response.text).not.toContain('External Circle');
+    expect(response.text).toContain('Enabling federation shares the profile details you selected above with partner communities.');
+    expect(response.text).toContain('action="/federation/onboarding"');
+    expect(response.text).toContain('name="step" value="confirm"');
+    expect(response.text).toContain('Enable federation');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('renders the Laravel-backed Federation groups page', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {

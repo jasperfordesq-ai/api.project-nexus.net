@@ -555,6 +555,67 @@ function optInStatusBanner(status) {
   return banners[trimmed(status)] || null;
 }
 
+const FEDERATION_ONBOARDING_STEPS = ['welcome', 'privacy', 'communication', 'confirm'];
+
+const FEDERATION_ONBOARDING_DEFAULTS = {
+  profile_visible_federated: true,
+  appear_in_federated_search: true,
+  show_skills_federated: true,
+  show_location_federated: false,
+  show_reviews_federated: true,
+  messaging_enabled_federated: true,
+  transactions_enabled_federated: true,
+  email_notifications: true,
+  service_reach: 'local_only',
+  travel_radius_km: 25
+};
+
+function onboardingStep(value) {
+  const step = trimmed(value);
+  return FEDERATION_ONBOARDING_STEPS.includes(step) ? step : 'welcome';
+}
+
+function onboardingBool(settings, key) {
+  return Object.prototype.hasOwnProperty.call(settings, key)
+    ? bool(settings[key])
+    : Boolean(FEDERATION_ONBOARDING_DEFAULTS[key]);
+}
+
+function normalizeOnboardingSettings(rawSettings) {
+  const settings = asObject(rawSettings);
+  const reach = trimmed(settings.service_reach);
+  const travelRadius = numberOrZero(settings.travel_radius_km);
+  const normalized = {
+    profile_visible_federated: onboardingBool(settings, 'profile_visible_federated'),
+    appear_in_federated_search: onboardingBool(settings, 'appear_in_federated_search'),
+    show_skills_federated: onboardingBool(settings, 'show_skills_federated'),
+    show_location_federated: onboardingBool(settings, 'show_location_federated'),
+    show_reviews_federated: onboardingBool(settings, 'show_reviews_federated'),
+    messaging_enabled_federated: onboardingBool(settings, 'messaging_enabled_federated'),
+    transactions_enabled_federated: onboardingBool(settings, 'transactions_enabled_federated'),
+    email_notifications: onboardingBool(settings, 'email_notifications'),
+    service_reach: ['local_only', 'remote_ok', 'travel_ok'].includes(reach) ? reach : FEDERATION_ONBOARDING_DEFAULTS.service_reach,
+    travel_radius_km: Math.min(500, Math.max(0, travelRadius || FEDERATION_ONBOARDING_DEFAULTS.travel_radius_km))
+  };
+
+  normalized.reachSummary = normalized.service_reach === 'travel_ok'
+    ? `Happy to travel up to ${normalized.travel_radius_km} km`
+    : normalized.service_reach === 'remote_ok'
+      ? 'Remote is fine'
+      : 'Local only';
+  return normalized;
+}
+
+function onboardingStatusBanner(status) {
+  const banners = {
+    unavailable: 'Federation is not available for your community right now. Please try again later.',
+    'optin-failed': 'We could not enable federation. Please try again.'
+  };
+
+  const message = banners[trimmed(status)];
+  return message ? { type: 'error', message } : null;
+}
+
 function connectionStatusBanner(status) {
   const banners = {
     'connection-accepted': { type: 'success', message: 'Connection request accepted.' },
@@ -682,6 +743,50 @@ router.get('/opt-out', asyncRoute(async (req, res) => {
     title: 'Opt out of federation',
     activeNav: 'explore',
     federationActiveTab: 'overview'
+  });
+}));
+
+router.get('/onboarding', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const step = onboardingStep(req.query && req.query.step);
+  let settingsResult;
+  let partnersResult = { data: [] };
+  try {
+    settingsResult = await callFederationApi(token, 'GET', '/settings');
+    const settingsData = asObject(dataFrom(settingsResult));
+    const settings = asObject(settingsData.settings);
+    if (bool(settings.federation_optin) || bool(settingsData.federation_optin)) {
+      return res.redirect('/federation');
+    }
+
+    if (step === 'confirm') {
+      partnersResult = await callFederationApi(token, 'GET', '/partners');
+    }
+  } catch (error) {
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const settingsData = asObject(dataFrom(settingsResult));
+  const settings = normalizeOnboardingSettings(settingsData.settings);
+  const stepNumber = FEDERATION_ONBOARDING_STEPS.indexOf(step) + 1;
+  const partners = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner).slice(0, 5);
+
+  return res.render('federation/onboarding', {
+    title: 'Set up federation',
+    activeNav: 'explore',
+    federationActiveTab: 'overview',
+    step,
+    stepNumber,
+    totalSteps: FEDERATION_ONBOARDING_STEPS.length,
+    progressValue: Math.round((stepNumber / FEDERATION_ONBOARDING_STEPS.length) * 100),
+    settings,
+    partners,
+    statusBanner: onboardingStatusBanner(req.query && req.query.status)
   });
 }));
 
