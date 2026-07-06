@@ -1,0 +1,127 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% set tabs = [
+  { id: "accepted", label: "Connections", empty: "You have no federated connections yet." },
+  { id: "received", label: "Requests received", empty: "You have no incoming connection requests." },
+  { id: "sent", label: "Requests sent", empty: "You have no outgoing connection requests." }
+] %}
+
+{% block mainContent %}
+  <a href="/federation" class="govuk-back-link">Back to federation</a>
+
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Federated connections</h1>
+  <p class="govuk-body-l">People you are connected with across the community network.</p>
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  {% if statusBanner %}
+    {% if statusBanner.type == "error" %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="#connections-list">{{ statusBanner.message }}</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="fed-connections-status">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="fed-connections-status">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <div class="govuk-tabs" data-module="govuk-tabs">
+    <h2 class="govuk-tabs__title">Connection status filter</h2>
+    <ul class="govuk-tabs__list">
+      {% for tab in tabs %}
+        <li class="govuk-tabs__list-item{% if activeTab == tab.id %} govuk-tabs__list-item--selected{% endif %}">
+          <a class="govuk-tabs__tab" href="/federation/connections?tab={{ tab.id }}" id="tab-{{ tab.id }}"{% if activeTab == tab.id %} aria-current="page"{% endif %}>{{ tab.label }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+
+    {% for tab in tabs %}
+      <div class="govuk-tabs__panel{% if activeTab != tab.id %} govuk-tabs__panel--hidden{% endif %}" id="panel-{{ tab.id }}">
+        {% if activeTab == tab.id %}
+          {% if connections.length == 0 %}
+            <div class="govuk-inset-text"><p class="govuk-body">{{ tab.empty }}</p></div>
+            {% if tab.id == "accepted" %}
+              <a href="/federation/members" role="button" draggable="false" class="govuk-button" data-module="govuk-button">Browse members</a>
+            {% endif %}
+          {% else %}
+            <div class="nexus-alpha-card-list" id="connections-list">
+              {% for connection in connections %}
+                <article class="nexus-alpha-card">
+                  <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ connection.href }}">{{ connection.name }}</a></h2>
+                  <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+                    <strong class="govuk-tag govuk-tag--grey">Community: {{ connection.tenantName }}</strong>
+                  </p>
+
+                  {% if connection.createdAt %}
+                    <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Requested: {{ connection.createdAt | date }}</p>
+                  {% endif %}
+
+                  {% if connection.isSent %}
+                    <p class="govuk-body-s govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--yellow">Pending</strong></p>
+                  {% endif %}
+
+                  {% if connection.isReceived and connection.message %}
+                    <div class="govuk-inset-text govuk-!-margin-top-2 govuk-!-margin-bottom-2">
+                      <p class="govuk-body govuk-!-margin-bottom-0">
+                        <span class="govuk-visually-hidden">Their message: </span>{{ connection.message }}
+                      </p>
+                    </div>
+                  {% endif %}
+
+                  {% if connection.isReceived %}
+                    <div class="govuk-button-group">
+                      <form method="post" action="/federation/connections/{{ connection.id }}/accept">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        <button type="submit" class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Accept</button>
+                      </form>
+                      <form method="post" action="/federation/connections/{{ connection.id }}/reject">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Decline</button>
+                      </form>
+                    </div>
+                  {% elif connection.isAccepted %}
+                    <div class="govuk-button-group">
+                      <a class="govuk-link" href="{{ connection.href }}">Send a message</a>
+                      <form method="post" action="/federation/connections/{{ connection.id }}/remove">
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Remove connection</button>
+                      </form>
+                    </div>
+                  {% endif %}
+                </article>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

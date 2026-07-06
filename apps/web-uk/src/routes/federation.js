@@ -150,6 +150,33 @@ function normalizeReview(review) {
   };
 }
 
+function connectionHref(connection) {
+  const id = trimmed(connection && connection.userId, 32);
+  const tenantId = trimmed(connection && connection.tenantId, 32);
+  const query = tenantId ? `?tenant_id=${encodeURIComponent(tenantId)}` : '';
+  return id ? `/federation/members/${encodeURIComponent(id)}${query}` : '/federation/members';
+}
+
+function normalizeConnection(connection) {
+  const normalized = {
+    id: connection && connection.id,
+    userId: connection && (connection.user_id || connection.userId),
+    name: trimmed(connection && connection.name) || 'Unknown member',
+    tenantId: connection && (connection.tenant_id || connection.tenantId),
+    tenantName: trimmed(connection && (connection.tenant_name || connection.tenantName)),
+    status: trimmed(connection && connection.status),
+    direction: trimmed(connection && connection.direction),
+    message: trimmed(connection && connection.message, 500),
+    createdAt: connection && connection.created_at ? connection.created_at : ''
+  };
+
+  normalized.href = connectionHref(normalized);
+  normalized.isReceived = normalized.status === 'pending' && normalized.direction === 'incoming';
+  normalized.isSent = normalized.status === 'pending' && normalized.direction === 'outgoing';
+  normalized.isAccepted = normalized.status === 'accepted';
+  return normalized;
+}
+
 function federationQuery(req, keys) {
   const params = new URLSearchParams();
   keys.forEach((key) => {
@@ -229,6 +256,17 @@ function settingsStatusBanner(status) {
   const banners = {
     'settings-saved': { type: 'success', message: 'Federation settings saved' },
     'settings-failed': { type: 'error', message: 'Federation settings could not be saved' }
+  };
+
+  return banners[trimmed(status)] || null;
+}
+
+function connectionStatusBanner(status) {
+  const banners = {
+    'connection-accepted': { type: 'success', message: 'Connection request accepted.' },
+    'connection-rejected': { type: 'success', message: 'Connection request declined.' },
+    'connection-removed': { type: 'success', message: 'Connection removed.' },
+    'connection-action-failed': { type: 'error', message: 'We could not complete that action. Please try again.' }
   };
 
   return banners[trimmed(status)] || null;
@@ -424,6 +462,43 @@ router.get('/settings', asyncRoute(async (req, res) => {
       travelRadiusKm: numberOrZero(settings.travel_radius_km || 25)
     },
     statusBanner: settingsStatusBanner(req.query.status)
+  });
+}));
+
+router.get('/connections', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  let activeTab = trimmed(req.query.tab) || 'accepted';
+  if (!['accepted', 'received', 'sent'].includes(activeTab)) {
+    activeTab = 'accepted';
+  }
+
+  const statusFilter = {
+    accepted: 'accepted',
+    received: 'pending_received',
+    sent: 'pending_sent'
+  }[activeTab];
+
+  let connectionsResult;
+  try {
+    connectionsResult = await callFederationApi(token, 'GET', `/connections?status=${statusFilter}&limit=100&offset=0`);
+  } catch (error) {
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const connections = asList(dataFrom(connectionsResult)).map(normalizeConnection);
+
+  return res.render('federation/connections', {
+    title: 'Federated connections',
+    activeNav: 'explore',
+    federationActiveTab: 'connections',
+    activeTab,
+    connections,
+    statusBanner: connectionStatusBanner(req.query.status)
   });
 }));
 

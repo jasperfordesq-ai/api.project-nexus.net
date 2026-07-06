@@ -838,6 +838,64 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation connections page', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/connections?status=pending_received&limit=100&offset=0') {
+        return {
+          data: [
+            {
+              id: 91,
+              user_id: 77,
+              name: 'Avery Stone',
+              tenant_id: 12,
+              tenant_name: 'North Timebank',
+              status: 'pending',
+              direction: 'incoming',
+              message: 'Could we connect before the workshop?',
+              created_at: '2026-07-01T10:00:00Z'
+            }
+          ]
+        };
+      }
+
+      return { data: [] };
+    });
+
+    const unsigned = await request(app).get('/federation/connections');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/connections?tab=received&status=connection-accepted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/connections?status=pending_received&limit=100&offset=0');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Federated connections');
+    expect(response.text).toContain('People you are connected with across the community network.');
+    expect(response.text).toContain('Connection request accepted.');
+    expect(response.text).toContain('Connection status filter');
+    expect(response.text).toContain('Connections');
+    expect(response.text).toContain('Requests received');
+    expect(response.text).toContain('Requests sent');
+    expect(response.text).toContain('href="/federation/connections?tab=accepted"');
+    expect(response.text).toContain('href="/federation/connections?tab=received"');
+    expect(response.text).toContain('href="/federation/connections?tab=sent"');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('Community: North Timebank');
+    expect(response.text).toContain('Requested');
+    expect(response.text).toContain('Could we connect before the workshop?');
+    expect(response.text).toContain('href="/federation/members/77?tenant_id=12"');
+    expect(response.text).toContain('action="/federation/connections/91/accept"');
+    expect(response.text).toContain('action="/federation/connections/91/reject"');
+    expect(response.text).toContain('Accept');
+    expect(response.text).toContain('Decline');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 
