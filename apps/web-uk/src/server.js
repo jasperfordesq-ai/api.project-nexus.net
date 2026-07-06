@@ -1054,6 +1054,7 @@ app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
 app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);
 app.use('/podcasts', doubleCsrfProtection, podcastRoutes);
 app.use('/marketplace', doubleCsrfProtection, marketplaceRoutes);
+app.use('/courses', doubleCsrfProtection, postOnly(formLimiter), coursesRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
@@ -1111,7 +1112,6 @@ app.use('/notifications', doubleCsrfProtection, notificationsRoutes);
 app.use('/settings', doubleCsrfProtection, settingsRoutes);
 app.use('/groups', doubleCsrfProtection, postOnly(formLimiter), groupsRoutes);
 app.use('/goals', doubleCsrfProtection, postOnly(formLimiter), goalsRoutes);
-app.use('/courses', doubleCsrfProtection, postOnly(formLimiter), coursesRoutes);
 app.use('/events', doubleCsrfProtection, postOnly(formLimiter), eventsRoutes);
 app.use('/ideation', doubleCsrfProtection, postOnly(formLimiter), ideationActionRoutes);
 app.use('/group-exchanges', doubleCsrfProtection, postOnly(formLimiter), groupExchangeActionRoutes);

@@ -889,6 +889,43 @@ describe('API Request Functions', () => {
           })
         })
       );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [] })
+      });
+
+      await api.callCourseApi('test-token', 'GET', '?per_page=30&q=care');
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/courses?per_page=30&q=care',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should call Laravel v2 member course enrolments with auth', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [] })
+      });
+
+      await api.getMyCourses('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/me/courses',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
     });
   });
 

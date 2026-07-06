@@ -539,7 +539,9 @@ async function callGoalApi(token, method, path = '', data = undefined) {
 }
 
 async function callCourseApi(token, method, path = '', data = undefined) {
-  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const normalizedPath = path
+    ? (path.startsWith('/') || path.startsWith('?') ? path : `/${path}`)
+    : '';
   const options = {
     method,
     headers: { Authorization: `Bearer ${token}` }
@@ -550,6 +552,12 @@ async function callCourseApi(token, method, path = '', data = undefined) {
   }
 
   return request(`/api/v2/courses${normalizedPath}`, options);
+}
+
+async function getMyCourses(token) {
+  return request('/api/v2/me/courses', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
 }
 
 async function callGroupApi(token, method, path = '', data = undefined) {
@@ -2178,6 +2186,7 @@ module.exports = {
   callVolunteeringApi,
   callMarketplaceApi,
   callCourseApi,
+  getMyCourses,
   callGroupApi,
   callIdeationApi,
   callGroupExchangeApi,

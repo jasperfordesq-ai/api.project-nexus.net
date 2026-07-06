@@ -60,6 +60,7 @@ jest.mock('../src/lib/api', () => ({
   getGoal: jest.fn(),
   callGoalApi: jest.fn().mockResolvedValue({ data: { id: 42, action: 'liked' } }),
   callCourseApi: jest.fn().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } }),
+  getMyCourses: jest.fn().mockResolvedValue({ data: [] }),
   callGroupApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callAdminJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
@@ -238,6 +239,8 @@ describe('shared accessible frontend shell', () => {
     api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callCourseApi.mockReset().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } });
+    api.getMyCourses.mockReset().mockResolvedValue({ data: [] });
     api.callGroupApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callJobApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callAdminJobApi.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -7194,6 +7197,280 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callCourseApi).not.toHaveBeenCalled();
+  });
+
+  it('renders Laravel-backed course browse, learner, and instructor GET pages', async () => {
+    const api = require('../src/lib/api');
+    api.getMyCourses.mockResolvedValue({
+      data: [
+        {
+          course: {
+            id: 42,
+            title: 'Advanced community care',
+            cover_image: '/uploads/care.jpg'
+          },
+          progress_percent: 55,
+          status: 'active'
+        }
+      ]
+    });
+    api.callCourseApi.mockImplementation(async (_token, method, pathName) => {
+      if (method !== 'GET') return { data: { id: 42 } };
+      if (pathName === '?per_page=30&q=care&category_id=3&level=advanced') {
+        return {
+          data: [
+            {
+              id: 42,
+              title: 'Advanced community care',
+              description: 'Build practical skills for supporting neighbours safely.',
+              level: 'advanced',
+              credit_cost: 2
+            }
+          ],
+          meta: { total: 1, per_page: 30 }
+        };
+      }
+      if (pathName === '/categories') {
+        return { data: [{ id: 3, name: 'Care' }] };
+      }
+      if (pathName === '/42') {
+        return {
+          data: {
+            id: 42,
+            title: 'Advanced community care',
+            summary: 'Practical neighbour support',
+            description: 'Build practical skills for supporting neighbours safely.',
+            level: 'advanced',
+            visibility: 'members',
+            enrollment_type: 'self_paced',
+            credit_cost: 2,
+            category_id: 3,
+            status: 'draft',
+            moderation_status: 'pending',
+            author: { name: 'North Team' },
+            is_enrolled: true,
+            rating_avg: 4.5,
+            rating_count: 2,
+            sections: [
+              {
+                id: 5,
+                title: 'Safety basics',
+                lessons: [
+                  {
+                    id: 11,
+                    title: 'Risk check',
+                    content_type: 'text',
+                    body: 'Use a simple checklist before each visit.'
+                  },
+                  {
+                    id: 12,
+                    title: 'Safeguarding quiz',
+                    content_type: 'quiz',
+                    quiz_id: 51
+                  }
+                ]
+              }
+            ]
+          }
+        };
+      }
+      if (pathName === '/42/prerequisites') {
+        return { data: [{ id: 7, title: 'Intro to community support', completed: true }] };
+      }
+      if (pathName === '/42/reviews') {
+        return {
+          data: [
+            {
+              rating: 5,
+              body: 'Useful and clear.',
+              created_at: '2026-01-02T10:00:00Z',
+              user: { name: 'Ada Learner' }
+            }
+          ]
+        };
+      }
+      if (pathName === '/42/progress') {
+        return {
+          data: {
+            enrollment: { status: 'completed', progress_percent: 100 },
+            lessons: [{ lesson_id: 11, status: 'completed' }],
+            availability: [
+              { lesson_id: 11, available: true },
+              { lesson_id: 12, available: true }
+            ]
+          }
+        };
+      }
+      if (pathName === '/quizzes/51') {
+        return {
+          data: {
+            id: 51,
+            title: 'Safeguarding quiz',
+            description: 'Check your understanding.',
+            pass_mark_percent: 80,
+            attempts_remaining: 2,
+            questions: [
+              {
+                id: 101,
+                prompt: 'What should you do first?',
+                type: 'mcq',
+                options: [{ id: 'ask', label: 'Ask for consent' }]
+              }
+            ]
+          }
+        };
+      }
+      if (pathName === '/mine') {
+        return {
+          data: [
+            {
+              id: 42,
+              title: 'Advanced community care',
+              status: 'published',
+              moderation_status: 'pending',
+              enrollment_count: 4,
+              completion_count: 1
+            }
+          ]
+        };
+      }
+      if (pathName === '/42/analytics') {
+        return {
+          data: {
+            course: { id: 42, title: 'Advanced community care' },
+            enrollments: { total: 4, active: 3, completed: 1, dropped: 0 },
+            completion_rate: 25,
+            avg_progress: 61.5,
+            avg_quiz_score: 88,
+            quiz_attempts: 3,
+            per_lesson: [{ lesson_id: 11, title: 'Risk check', completed: 3 }]
+          }
+        };
+      }
+      if (pathName === '/42/grading') {
+        return {
+          data: [
+            {
+              id: 99,
+              user_id: 77,
+              user: { name: 'Manual Review Learner' },
+              quiz: {
+                title: 'Safeguarding quiz',
+                questions: [{ id: 101, prompt: 'What should you do first?' }]
+              },
+              answers: { 101: 'Ask for consent' },
+              score_percent: 0,
+              passed: false,
+              submitted_at: '2026-02-03T11:00:00Z'
+            }
+          ]
+        };
+      }
+      if (pathName === '/42/certificate') {
+        return { data: { html: '<!doctype html><html><body><h1>Course certificate</h1></body></html>' } };
+      }
+      throw new Error(`Unexpected course API call: ${method} ${pathName}`);
+    });
+
+    const browse = await request(app)
+      .get('/courses?q=care&category=3&level=advanced')
+      .set('Cookie', signedCookieHeader());
+    expect(browse.status).toBe(200);
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '?per_page=30&q=care&category_id=3&level=advanced');
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/categories');
+    expect(browse.text).toContain('Find a course');
+    expect(browse.text).toContain('Advanced community care');
+    expect(browse.text).toContain('2 time credits');
+    expect(browse.text).not.toContain('Laravel Blade route');
+
+    const detail = await request(app)
+      .get('/courses/42?status=enrolled')
+      .set('Cookie', signedCookieHeader());
+    expect(detail.status).toBe(200);
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/42');
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/42/prerequisites');
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/42/reviews');
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/42/progress');
+    expect(detail.text).toContain('Advanced community care');
+    expect(detail.text).toContain('Intro to community support');
+    expect(detail.text).toContain('Download your certificate');
+    expect(detail.text).toContain('Leave a review');
+
+    const enrolRequired = await request(app)
+      .get('/courses/42?status=enrol-required')
+      .set('Cookie', signedCookieHeader());
+    expect(enrolRequired.status).toBe(200);
+    expect(enrolRequired.text).toContain('Enrol on this course before opening the learning area.');
+
+    const learn = await request(app)
+      .get('/courses/42/learn?lesson=12&status=quiz-passed')
+      .set('Cookie', signedCookieHeader());
+    expect(learn.status).toBe(200);
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/quizzes/51');
+    expect(learn.text).toContain('Safeguarding quiz');
+    expect(learn.text).toContain('Ask for consent');
+    expect(learn.text).toContain('Mark lesson as complete');
+
+    const certificate = await request(app)
+      .get('/courses/42/certificate')
+      .set('Cookie', signedCookieHeader());
+    expect(certificate.status).toBe(200);
+    expect(certificate.text).toContain('Course certificate');
+
+    const mine = await request(app)
+      .get('/courses/mine')
+      .set('Cookie', signedCookieHeader());
+    expect(mine.status).toBe(200);
+    expect(api.getMyCourses).toHaveBeenCalledWith('test-token');
+    expect(mine.text).toContain('My learning');
+    expect(mine.text).toContain('55% complete');
+    expect(mine.text).toContain('Resume');
+
+    const instructor = await request(app)
+      .get('/courses/instructor?status=deleted')
+      .set('Cookie', signedCookieHeader());
+    expect(instructor.status).toBe(200);
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/mine');
+    expect(instructor.text).toContain('Courses you teach');
+    expect(instructor.text).toContain('Awaiting review');
+    expect(instructor.text).toContain('View analytics');
+
+    const createForm = await request(app)
+      .get('/courses/instructor/new?status=create-failed')
+      .set('Cookie', signedCookieHeader());
+    expect(createForm.status).toBe(200);
+    expect(createForm.text).toContain('Create a course');
+    expect(createForm.text).toContain('Enter a course title before creating the course.');
+    expect(createForm.text).toContain('Course title');
+    expect(createForm.text).toContain('Care');
+
+    const editForm = await request(app)
+      .get('/courses/instructor/42/edit?status=created')
+      .set('Cookie', signedCookieHeader());
+    expect(editForm.status).toBe(200);
+    expect(editForm.text).toContain('Edit your course');
+    expect(editForm.text).toContain('Safety basics');
+    expect(editForm.text).toContain('Add a lesson');
+    expect(editForm.text).toContain('Delete this course');
+
+    const analytics = await request(app)
+      .get('/courses/instructor/42/analytics')
+      .set('Cookie', signedCookieHeader());
+    expect(analytics.status).toBe(200);
+    expect(analytics.text).toContain('Course analytics');
+    expect(analytics.text).toContain('Total enrolments');
+    expect(analytics.text).toContain('61.5%');
+    expect(analytics.text).toContain('Risk check');
+
+    const grading = await request(app)
+      .get('/courses/instructor/42/grading?status=graded')
+      .set('Cookie', signedCookieHeader());
+    expect(grading.status).toBe(200);
+    expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/42/grading');
+    expect(grading.text).toContain('Grading queue');
+    expect(grading.text).toContain('Manual Review Learner');
+    expect(grading.text).toContain('Ask for consent');
+    expect(grading.text).toContain('Save grade');
   });
 
   it('renders the Laravel-backed marketplace browse page', async () => {

@@ -88,10 +88,6 @@ const pages = {
     title: 'Marketplace',
     body: 'Marketplace pages will follow the Laravel accessible frontend contract.'
   },
-  '/courses': {
-    title: 'Courses',
-    body: 'Course pages will follow the Laravel accessible frontend contract.'
-  },
   '/podcasts': {
     title: 'Podcasts',
     body: 'Podcast pages will follow the Laravel accessible frontend contract.'
