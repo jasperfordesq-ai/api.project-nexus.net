@@ -259,6 +259,11 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/federation/topics/mine" => await GetFederationTopicSubscriptions(),
             "/api/v2/admin/federation/webhooks" => await GetFederationWebhooks(),
             "/api/v2/admin/help/faqs" => await GetFaqs(),
+            "/api/v2/admin/jobs/interviews" => await GetJobInterviews(),
+            "/api/v2/admin/jobs/moderation-queue" => await GetJobModerationQueue(),
+            "/api/v2/admin/jobs/moderation-stats" => await GetJobModerationStats(),
+            "/api/v2/admin/jobs/offers" => await GetJobOffers(),
+            "/api/v2/admin/jobs/spam-stats" => await GetJobSpamStats(),
             "/api/v2/admin/jobs/templates" => await GetJobTemplates(),
             "/api/v2/admin/listings/moderation-queue" => await GetListingsModerationQueue(),
             "/api/v2/admin/listings/moderation-stats" => await GetListingsModerationStats(),
@@ -1524,12 +1529,164 @@ public class AdminExplicitParityController : ControllerBase
 
     private async Task<IActionResult> GetJobTemplates()
     {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
         var rows = await _db.JobTemplates.AsNoTracking()
+            .Where(t => t.TenantId == tenantId)
             .OrderBy(t => t.Title)
             .Select(t => new { t.Id, t.Title, t.Description, t.Category, t.JobType, t.RequiredSkills, t.IsPublic, t.CreatedAt, t.UpdatedAt })
             .ToListAsync();
 
         return Ok(new { data = rows, meta = new { total = rows.Count } });
+    }
+
+    private async Task<IActionResult> GetJobModerationQueue()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var page = QueryInt("page", 1, 1, int.MaxValue);
+        var limit = QueryInt("limit", QueryInt("per_page", 50, 1, 200), 1, 200);
+        var statuses = new[] { "draft", "pending", "flagged", "rejected" };
+        var query = _db.JobVacancies
+            .AsNoTracking()
+            .Where(j => j.TenantId == tenantId && statuses.Contains(j.Status.ToLower()));
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(j => j.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(j => new
+            {
+                j.Id,
+                j.Title,
+                j.Description,
+                j.Category,
+                job_type = j.JobType,
+                j.Status,
+                is_featured = j.IsFeatured,
+                application_count = j.ApplicationCount,
+                created_at = j.CreatedAt,
+                updated_at = j.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = new { items, total, page, limit }, meta = new { total, page, limit } });
+    }
+
+    private async Task<IActionResult> GetJobModerationStats()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var jobs = _db.JobVacancies.AsNoTracking().Where(j => j.TenantId == tenantId);
+        var pendingJobs = await jobs.CountAsync(j => j.Status == "draft" || j.Status == "pending" || j.Status == "flagged");
+        var flaggedJobs = await jobs.CountAsync(j => j.Status == "flagged");
+        var rejectedJobs = await jobs.CountAsync(j => j.Status == "rejected" || j.Status == "cancelled");
+
+        return Ok(new
+        {
+            data = new
+            {
+                pending_jobs = pendingJobs,
+                flagged_jobs = flaggedJobs,
+                rejected_jobs = rejectedJobs,
+                total_jobs = await jobs.CountAsync()
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetJobSpamStats()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var jobs = _db.JobVacancies.AsNoTracking().Where(j => j.TenantId == tenantId);
+        var flaggedJobs = await jobs.CountAsync(j => j.Status == "flagged" || j.Status == "draft");
+
+        return Ok(new
+        {
+            data = new
+            {
+                suspected_spam = flaggedJobs,
+                flagged_jobs = flaggedJobs,
+                total_checked = await jobs.CountAsync(),
+                generated_at = DateTime.UtcNow
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetJobInterviews()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var page = QueryInt("page", 1, 1, int.MaxValue);
+        var limit = QueryInt("limit", QueryInt("per_page", 50, 1, 200), 1, 200);
+        var status = Request.Query["status"].FirstOrDefault();
+        var query = _db.JobInterviews.AsNoTracking().Where(i => i.TenantId == tenantId);
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(i => i.Status == status);
+        }
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(i => i.StartsAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(i => new
+            {
+                i.Id,
+                job_id = i.JobId,
+                application_id = i.ApplicationId,
+                candidate_user_id = i.CandidateUserId,
+                created_by_user_id = i.CreatedByUserId,
+                starts_at = i.StartsAt,
+                ends_at = i.EndsAt,
+                i.Location,
+                i.Status,
+                i.Notes,
+                created_at = i.CreatedAt,
+                updated_at = i.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = items, meta = new { total, page, limit } });
+    }
+
+    private async Task<IActionResult> GetJobOffers()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var page = QueryInt("page", 1, 1, int.MaxValue);
+        var limit = QueryInt("limit", QueryInt("per_page", 50, 1, 200), 1, 200);
+        var status = Request.Query["status"].FirstOrDefault();
+        var query = _db.JobOffers.AsNoTracking().Where(o => o.TenantId == tenantId);
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(o => o.Status == status);
+        }
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(o => o.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(o => new
+            {
+                o.Id,
+                job_id = o.JobId,
+                application_id = o.ApplicationId,
+                candidate_user_id = o.CandidateUserId,
+                created_by_user_id = o.CreatedByUserId,
+                o.Title,
+                o.Message,
+                time_credits_per_hour = o.TimeCreditsPerHour,
+                o.Status,
+                created_at = o.CreatedAt,
+                updated_at = o.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = items, meta = new { total, page, limit } });
     }
 
     private async Task<IActionResult> GetEvent(int id)

@@ -192,6 +192,48 @@ public class JobsAdminControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task V2JobsReadSideEndpoints_ReturnSeededBackendData()
+    {
+        var seeded = await SeedJobsReadSideDataAsync();
+        await AuthenticateAsAdminAsync();
+
+        var moderationQueue = await Client.GetAsync("/api/v2/admin/jobs/moderation-queue");
+        moderationQueue.StatusCode.Should().Be(HttpStatusCode.OK);
+        var moderationJson = await moderationQueue.Content.ReadFromJsonAsync<JsonElement>();
+        moderationJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        moderationJson.GetProperty("data").GetProperty("items").EnumerateArray()
+            .Should().Contain(item => item.GetProperty("id").GetInt32() == seeded.JobId);
+
+        var moderationStats = await Client.GetAsync("/api/v2/admin/jobs/moderation-stats");
+        moderationStats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var moderationStatsJson = await moderationStats.Content.ReadFromJsonAsync<JsonElement>();
+        moderationStatsJson.GetProperty("data").GetProperty("pending_jobs").GetInt32().Should().BeGreaterThan(0);
+
+        var spamStats = await Client.GetAsync("/api/v2/admin/jobs/spam-stats");
+        spamStats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var spamStatsJson = await spamStats.Content.ReadFromJsonAsync<JsonElement>();
+        spamStatsJson.GetProperty("data").GetProperty("flagged_jobs").GetInt32().Should().BeGreaterThan(0);
+
+        var interviews = await Client.GetAsync("/api/v2/admin/jobs/interviews");
+        interviews.StatusCode.Should().Be(HttpStatusCode.OK);
+        var interviewsJson = await interviews.Content.ReadFromJsonAsync<JsonElement>();
+        interviewsJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(item => item.GetProperty("id").GetInt32() == seeded.InterviewId);
+
+        var offers = await Client.GetAsync("/api/v2/admin/jobs/offers");
+        offers.StatusCode.Should().Be(HttpStatusCode.OK);
+        var offersJson = await offers.Content.ReadFromJsonAsync<JsonElement>();
+        offersJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(item => item.GetProperty("id").GetInt32() == seeded.OfferId);
+
+        var templates = await Client.GetAsync("/api/v2/admin/jobs/templates");
+        templates.StatusCode.Should().Be(HttpStatusCode.OK);
+        var templatesJson = await templates.Content.ReadFromJsonAsync<JsonElement>();
+        templatesJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(item => item.GetProperty("id").GetInt32() == seeded.TemplateId);
+    }
+
+    [Fact]
     public async Task UpdateStatus_NonExistent_ReturnsNotFoundOrBadRequest()
     {
         await AuthenticateAsAdminAsync();
@@ -254,5 +296,80 @@ public class JobsAdminControllerTests : IntegrationTestBase
         db.JobApplications.Add(application);
         await db.SaveChangesAsync();
         return (job.Id, application.Id);
+    }
+
+    private async Task<(int JobId, int ApplicationId, int InterviewId, int OfferId, int TemplateId)> SeedJobsReadSideDataAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var job = new JobVacancy
+        {
+            TenantId = TestData.Tenant1.Id,
+            PostedByUserId = TestData.AdminUser.Id,
+            Title = "Laravel React moderation queue alias",
+            Description = "Seeded for jobs read-side compatibility.",
+            Category = "operations",
+            JobType = "volunteer",
+            Status = "draft",
+            ContactEmail = TestData.AdminUser.Email,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.JobVacancies.Add(job);
+        await db.SaveChangesAsync();
+
+        var application = new JobApplication
+        {
+            TenantId = TestData.Tenant1.Id,
+            JobId = job.Id,
+            ApplicantUserId = TestData.MemberUser.Id,
+            CoverLetter = "I can interview.",
+            Status = "pending",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.JobApplications.Add(application);
+        await db.SaveChangesAsync();
+
+        var interview = new JobInterview
+        {
+            TenantId = TestData.Tenant1.Id,
+            JobId = job.Id,
+            ApplicationId = application.Id,
+            CandidateUserId = TestData.MemberUser.Id,
+            CreatedByUserId = TestData.AdminUser.Id,
+            StartsAt = DateTime.UtcNow.AddDays(2),
+            EndsAt = DateTime.UtcNow.AddDays(2).AddHours(1),
+            Location = "video",
+            Status = "proposed",
+            Notes = "Compatibility interview"
+        };
+        var offer = new JobOffer
+        {
+            TenantId = TestData.Tenant1.Id,
+            JobId = job.Id,
+            ApplicationId = application.Id,
+            CandidateUserId = TestData.MemberUser.Id,
+            CreatedByUserId = TestData.AdminUser.Id,
+            Title = "Compatibility offer",
+            Message = "Welcome aboard",
+            Status = "pending"
+        };
+        var template = new JobTemplate
+        {
+            TenantId = TestData.Tenant1.Id,
+            CreatedByUserId = TestData.AdminUser.Id,
+            Title = "Compatibility job template",
+            Description = "Template visible to Laravel React",
+            Category = "operations",
+            JobType = "volunteer",
+            RequiredSkills = "coordination",
+            IsPublic = true
+        };
+
+        db.JobInterviews.Add(interview);
+        db.JobOffers.Add(offer);
+        db.JobTemplates.Add(template);
+        await db.SaveChangesAsync();
+
+        return (job.Id, application.Id, interview.Id, offer.Id, template.Id);
     }
 }
