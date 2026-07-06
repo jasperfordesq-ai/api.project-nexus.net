@@ -20,10 +20,6 @@ const pages = {
     title: 'Trust and safety',
     body: 'Trust and safety content will follow the Laravel Blade accessible frontend structure.'
   },
-  '/goals': {
-    title: 'Goals',
-    body: 'Goal pages will follow the Laravel accessible frontend contract after compatible backend endpoints are available.'
-  },
   '/guide': {
     title: 'Guide',
     body: 'Guide content will be ported from the Laravel accessible frontend.'

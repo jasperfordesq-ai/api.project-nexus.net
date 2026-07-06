@@ -200,6 +200,16 @@ remains partial: exact tenant captions, localization, auth edge cases beyond the
 page guard, runtime smoke behavior, and ASP.NET backend compatibility are not
 certified.
 
+The `/goals` page is now a partial Laravel-backed candidate for the Blade goals
+index. Unsigned visitors redirect to `/login?status=auth-required`; signed-in
+GET requests call Laravel `/api/v2/goals?per_page=30` and render Blade-style
+status banners, goal navigation links, goal cards with active/completed and
+public/private tags, streak and progress display, empty state, and the no-JS
+create-goal form. Existing goal POST aliases continue to call Laravel v2 goals,
+comment, and like APIs. This remains partial: detail/depth GET pages, exact
+tenant captions, goals feature-gate behavior, localization, runtime persistence,
+and ASP.NET backend compatibility are not certified.
+
 Marketplace GET pages remain preparation pages, but the Laravel accessible POST
 aliases under `/marketplace` are now local route declarations backed by Laravel
 v2 marketplace APIs. The aliases cover listing create/update/delete/renew,

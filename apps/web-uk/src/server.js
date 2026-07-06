@@ -1084,6 +1084,7 @@ app.use('/resources', doubleCsrfProtection, postOnly(formLimiter), resourcesRout
 app.use('/chat', doubleCsrfProtection, postOnly(formLimiter), aiChatRoutes);
 app.use('/skills', doubleCsrfProtection, postOnly(formLimiter), skillsRoutes);
 app.use('/exchanges', doubleCsrfProtection, postOnly(formLimiter), exchangeRoutes);
+app.use('/goals', doubleCsrfProtection, postOnly(formLimiter), goalsRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {
@@ -1140,7 +1141,6 @@ app.use('/members', doubleCsrfProtection, membersRoutes);
 app.use('/notifications', doubleCsrfProtection, notificationsRoutes);
 app.use('/settings', doubleCsrfProtection, settingsRoutes);
 app.use('/groups', doubleCsrfProtection, postOnly(formLimiter), groupsRoutes);
-app.use('/goals', doubleCsrfProtection, postOnly(formLimiter), goalsRoutes);
 app.use('/events', doubleCsrfProtection, postOnly(formLimiter), eventsRoutes);
 app.use('/ideation', doubleCsrfProtection, postOnly(formLimiter), ideationActionRoutes);
 app.use('/group-exchanges', doubleCsrfProtection, postOnly(formLimiter), groupExchangeActionRoutes);

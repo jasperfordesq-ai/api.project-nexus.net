@@ -120,6 +120,92 @@ function goalIdFromResult(result) {
   return result?.data?.id || result?.goal?.id || result?.id || null;
 }
 
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined ? result.data : result;
+}
+
+function collectionFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.data)) return data.data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (Array.isArray(result?.items)) return result.items;
+  return [];
+}
+
+function metaFrom(result) {
+  const data = dataFrom(result);
+  const meta = (result && result.meta) || (data && data.meta) || {};
+  return {
+    hasMore: Boolean(meta.has_more || meta.hasMore || result?.has_more || data?.has_more),
+    cursor: meta.cursor || meta.next_cursor || meta.nextCursor || result?.cursor || data?.cursor || ''
+  };
+}
+
+function statusLabel(status) {
+  const value = trimmed(status || 'active').toLowerCase();
+  if (['completed', 'achieved'].includes(value)) return 'Completed';
+  return 'Active';
+}
+
+function statusClass(status) {
+  return statusLabel(status) === 'Completed' ? 'govuk-tag--green' : 'govuk-tag--blue';
+}
+
+function formatNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0';
+  return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function progressPercent(goal) {
+  const target = Number(goal.target_value ?? goal.targetValue ?? 0);
+  const current = Number(goal.current_value ?? goal.currentValue ?? 0);
+  if (!Number.isFinite(target) || target <= 0 || !Number.isFinite(current)) return 0;
+  return Math.min(100, Math.max(0, Math.round((current / target) * 100)));
+}
+
+function normalizeGoal(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const current = raw.current_value ?? raw.currentValue ?? 0;
+  const target = raw.target_value ?? raw.targetValue ?? 0;
+  const status = raw.status || 'active';
+  const streakCount = Number(raw.streak_count ?? raw.streakCount ?? 0) || 0;
+
+  return {
+    ...raw,
+    id: positiveInteger(raw.id),
+    title: trimmed(raw.title) || 'Goal',
+    description: trimmed(raw.description || raw.summary || ''),
+    currentText: formatNumber(current),
+    targetText: formatNumber(target),
+    progressPercent: progressPercent(raw),
+    statusLabel: statusLabel(status),
+    statusClass: statusClass(status),
+    visibilityLabel: checked(raw.is_public) ? 'Public' : 'Private',
+    visibilityClass: checked(raw.is_public) ? 'govuk-tag--blue' : 'govuk-tag--grey',
+    streakCount,
+    deadline: trimmed(raw.deadline || raw.target_date || raw.targetDate)
+  };
+}
+
+function statusMessage(status) {
+  const messages = {
+    'goal-created': 'Goal created',
+    'goal-completed': 'Goal completed',
+    'goal-deleted': 'Goal deleted'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function errorMessage(status) {
+  const messages = {
+    'goal-failed': 'We could not update the goal. Try again.',
+    'goal-invalid': 'Enter a title and target value.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
 router.post('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return res.redirect(loginRedirect());
@@ -399,23 +485,26 @@ router.post('/:id(\\d+)/comments/:commentId(\\d+)/delete', asyncRoute(async (req
   }
 }));
 
-router.use(requireAuth);
-
-// List goals
 router.get('/', asyncRoute(async (req, res) => {
-  const page = parseInt(req.query.page, 10) || 1;
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
 
-  const result = await getGoals(req.token, { page, limit: 20 });
+  const result = await getGoals(token, { per_page: 30 });
+  const goals = collectionFrom(result).map(normalizeGoal).filter((goal) => goal.id !== null);
+  const status = trimmed(req.query.status);
 
-  const goals = (result.items || result.data || []).map(normalizeResponse);
-
-  res.render('goals/index', {
+  return res.render('goals/index', {
     title: 'Goals',
+    activeNav: 'explore',
     goals,
-    pagination: result.pagination || { page, totalPages: 1 },
-    successMessage: req.flash ? req.flash('success')[0] : null
+    meta: metaFrom(result),
+    status,
+    successMessage: statusMessage(status),
+    errorMessage: errorMessage(status)
   });
-}));
+}, { redirectOn401: loginRedirect() }));
+
+router.use(requireAuth);
 
 // View goal with milestones
 router.get('/:id', asyncRoute(async (req, res) => {

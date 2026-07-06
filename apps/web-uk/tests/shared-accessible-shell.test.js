@@ -73,7 +73,7 @@ jest.mock('../src/lib/api', () => ({
   getReactionSummary: jest.fn().mockResolvedValue({ data: { counts: {}, total: 0, user_reaction: null } }),
   getReactors: jest.fn().mockResolvedValue({ data: [], meta: { total: 0, has_more: false, page: 1 } }),
   getClubs: jest.fn().mockResolvedValue({ data: [] }),
-  getGoals: jest.fn(),
+  getGoals: jest.fn().mockResolvedValue({ data: [] }),
   getGoal: jest.fn(),
   callGoalApi: jest.fn().mockResolvedValue({ data: { id: 42, action: 'liked' } }),
   callCourseApi: jest.fn().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } }),
@@ -291,6 +291,7 @@ describe('shared accessible frontend shell', () => {
     api.getReactionSummary.mockReset().mockResolvedValue({ data: { counts: {}, total: 0, user_reaction: null } });
     api.getReactors.mockReset().mockResolvedValue({ data: [], meta: { total: 0, has_more: false, page: 1 } });
     api.getClubs.mockReset().mockResolvedValue({ data: [] });
+    api.getGoals.mockReset().mockResolvedValue({ data: [] });
     api.getPolls.mockReset().mockResolvedValue({ data: [] });
     api.getPoll.mockReset().mockResolvedValue({ data: { id: 42, question: 'Which project?' } });
     api.getPollCategories.mockReset().mockResolvedValue({ data: [] });
@@ -2783,6 +2784,74 @@ describe('shared accessible frontend shell', () => {
     expect(api.getSkillCategories).toHaveBeenCalledWith('test-token');
     expect(api.getSkillCategory).toHaveBeenCalledWith('test-token', 7);
     expect(api.getSkillMembers).toHaveBeenCalledWith('test-token', 'gardening', { limit: 40 });
+  });
+
+  it('redirects signed-out visitors away from the Laravel goals index before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+
+    const response = await request(app).get('/goals');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.getGoals).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed goals index with progress cards and create form', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.getGoals.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          title: 'Learn bicycle repair',
+          description: 'Complete the local bike maintenance course.',
+          current_value: 3,
+          target_value: 6,
+          status: 'active',
+          is_public: true,
+          streak_count: 4,
+          deadline: '2026-08-01'
+        },
+        {
+          id: 43,
+          title: 'Start a reading circle',
+          current_value: 5,
+          target_value: 5,
+          status: 'completed',
+          is_public: false
+        }
+      ],
+      meta: { has_more: true, cursor: 'next-cursor' }
+    });
+
+    const response = await request(app)
+      .get('/goals?status=goal-created')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(staticPageRoutes.pages['/goals']).toBeUndefined();
+    expect(response.text).toContain('Goals');
+    expect(response.text).toContain('Goal created');
+    expect(response.text).toContain('/goals/templates');
+    expect(response.text).toContain('/goals/buddying');
+    expect(response.text).toContain('/goals/discover');
+    expect(response.text).toContain('Learn bicycle repair');
+    expect(response.text).toContain('Complete the local bike maintenance course.');
+    expect(response.text).toContain('Active');
+    expect(response.text).toContain('Public');
+    expect(response.text).toContain('4 day streak');
+    expect(response.text).toContain('3 of 6');
+    expect(response.text).toContain('50%');
+    expect(response.text).toContain('Start a reading circle');
+    expect(response.text).toContain('Completed');
+    expect(response.text).toContain('Private');
+    expect(response.text).toContain('method="post" action="/goals"');
+    expect(response.text).toContain('name="title"');
+    expect(response.text).toContain('name="target_value"');
+    expect(response.text).toContain('name="is_public"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(response.text).not.toContain('Community Goals');
+    expect(api.getGoals).toHaveBeenCalledWith('test-token', { per_page: 30 });
   });
 
   it('submits the Laravel exchange action route through the exchanges API helper', async () => {
