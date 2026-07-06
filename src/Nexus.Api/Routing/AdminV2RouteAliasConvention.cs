@@ -1023,16 +1023,32 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/admin/federation",
             "api/admin/sso",
             "api/admin/gamification",
+            "api/admin/audit-log",
+            "api/admin/groups",
             "api/admin/identity",
             "api/admin/enterprise",
+            "api/admin/matching",
             "api/admin/moderation",
+            "api/admin/subscriptions",
             "api/admin/tools",
             "api/admin/polls",
             "api/admin/resources",
             "api/admin/goals",
             "api/admin/ideation",
             "api/admin/events",
-            "api/admin/members"
+            "api/admin/members",
+            "api/admin/vetting",
+            "api/community/stats",
+            "api/csrf-token",
+            "api/donations",
+            "api/ideation-outcomes",
+            "api/me/appreciations",
+            "api/me/stats",
+            "api/contact",
+            "api/pilot-inquiry",
+            "api/safeguarding/revoke",
+            "api/ugc-translate",
+            "api/webhooks"
         })
         {
             if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))

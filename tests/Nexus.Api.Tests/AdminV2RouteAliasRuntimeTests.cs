@@ -578,4 +578,72 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/admin/audit-log/export.csv")]
+    [InlineData("/api/v2/admin/groups")]
+    [InlineData("/api/v2/admin/matching/stats")]
+    [InlineData("/api/v2/admin/subscriptions")]
+    [InlineData("/api/v2/admin/vetting/stats")]
+    public async Task LaravelReactFinalAdminV2ReadAliases_AsAdmin_AreRouted(string path)
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/community/stats")]
+    [InlineData("/api/v2/csrf-token")]
+    public async Task LaravelReactFinalPublicV2ReadAliases_AreRouted(string path)
+    {
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/ideation-outcomes/dashboard")]
+    [InlineData("/api/v2/me/appreciations")]
+    [InlineData("/api/v2/me/stats")]
+    public async Task LaravelReactFinalMemberV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/contact")]
+    [InlineData("/api/v2/donations/payment-intent")]
+    [InlineData("/api/v2/pilot-inquiry")]
+    [InlineData("/api/v2/ugc-translate")]
+    [InlineData("/api/v2/webhooks/identity/test-provider")]
+    [InlineData("/api/v2/webhooks/stripe")]
+    public async Task LaravelReactFinalPublicV2PostAliases_AreRouted(string path)
+    {
+        var response = await Client.PostAsJsonAsync(path, new { });
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/safeguarding/revoke")]
+    public async Task LaravelReactFinalMemberV2PostAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.PostAsJsonAsync(path, new { });
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
