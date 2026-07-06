@@ -234,6 +234,62 @@ function normalizeMessageThreads(messages, query = '') {
     });
 }
 
+function normalizeConversation(messages, partnerId, partnerTenantId) {
+  const partnerIdText = trimmed(partnerId);
+  const partnerTenantIdText = trimmed(partnerTenantId);
+  const conversationMessages = [];
+  const unreadIds = [];
+  let partnerName = '';
+  let partnerTenantName = '';
+
+  asList(messages).forEach((message) => {
+    const sender = asObject(message && message.sender);
+    const receiver = asObject(message && message.receiver);
+    const outbound = trimmed(message && message.direction) === 'outbound';
+    const partner = outbound ? receiver : sender;
+    const userMatches = trimmed(partner.id) === partnerIdText;
+    const tenantMatches = trimmed(partner.tenant_id !== undefined ? partner.tenant_id : partner.tenantId) === partnerTenantIdText;
+    if (!userMatches || !tenantMatches) return;
+
+    if (!partnerName) {
+      partnerName = participantName(partner);
+      partnerTenantName = trimmed(partner.tenant_name || partner.tenantName);
+    }
+
+    const read = trimmed(message && message.status) === 'read' || Boolean(message && message.read_at);
+    const id = message && message.id;
+    if (!outbound && !read && id !== undefined) {
+      unreadIds.push(Number(id));
+    }
+
+    conversationMessages.push({
+      id,
+      subject: trimmed(message && message.subject),
+      body: trimmed(message && message.body, 10000),
+      outbound,
+      read,
+      createdAt: message && message.created_at ? message.created_at : ''
+    });
+  });
+
+  conversationMessages.sort((a, b) => {
+    const aTime = new Date(a.createdAt).getTime() || 0;
+    const bTime = new Date(b.createdAt).getTime() || 0;
+    if (aTime !== bTime) return aTime - bTime;
+    return numberOrZero(a.id) - numberOrZero(b.id);
+  });
+
+  return {
+    partnerId: partnerIdText,
+    partnerTenantId: partnerTenantIdText,
+    partnerName: partnerName || 'A member',
+    partnerTenantName,
+    messages: conversationMessages,
+    unreadIds: unreadIds.filter((id) => Number.isFinite(id) && id > 0).slice(0, 100),
+    referenceMessageId: conversationMessages.length ? conversationMessages[conversationMessages.length - 1].id : ''
+  };
+}
+
 function federationQuery(req, keys) {
   const params = new URLSearchParams();
   keys.forEach((key) => {
@@ -604,6 +660,58 @@ router.get('/messages', asyncRoute(async (req, res) => {
     query,
     threads,
     viewerCanMessage: optedIn && bool(settings.messaging_enabled_federated),
+    statusBanner: messagesStatusBanner(req.query.status)
+  });
+}));
+
+router.get('/messages/conversation/:partnerId', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const partnerId = trimmed(req.params.partnerId, 32);
+  const partnerTenantId = trimmed(req.query.tenant_id, 32);
+  if (!/^\d+$/.test(partnerId) || !/^\d+$/.test(partnerTenantId)) {
+    return res.redirect('/federation/messages');
+  }
+
+  let settingsResult;
+  let messagesResult;
+  try {
+    settingsResult = await callFederationApi(token, 'GET', '/settings');
+    messagesResult = await callFederationApi(token, 'GET', '/messages');
+  } catch (error) {
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const conversation = normalizeConversation(dataFrom(messagesResult), partnerId, partnerTenantId);
+  if (conversation.messages.length === 0) {
+    return res.redirect('/federation/messages');
+  }
+
+  if (conversation.unreadIds.length > 0) {
+    try {
+      await callFederationApi(token, 'POST', '/messages/mark-read-batch', { ids: conversation.unreadIds });
+    } catch (error) {
+      if (!(error instanceof ApiError || error instanceof ApiOfflineError)) {
+        throw error;
+      }
+    }
+  }
+
+  const settingsData = asObject(dataFrom(settingsResult));
+  const settings = asObject(settingsData.settings);
+  const optedIn = bool(settings.federation_optin) || bool(settingsData.enabled);
+
+  return res.render('federation/conversation', {
+    title: conversation.partnerName,
+    activeNav: 'explore',
+    federationActiveTab: 'messages',
+    conversation,
+    canReply: optedIn && bool(settings.messaging_enabled_federated),
+    translateEnabled: true,
     statusBanner: messagesStatusBanner(req.query.status)
   });
 }));

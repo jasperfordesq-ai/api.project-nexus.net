@@ -990,6 +990,103 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation conversation page', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue, data) => {
+      if (pathValue === '/settings') {
+        return {
+          data: {
+            enabled: true,
+            settings: {
+              federation_optin: true,
+              messaging_enabled_federated: true
+            }
+          }
+        };
+      }
+      if (pathValue === '/messages') {
+        return {
+          data: [
+            {
+              id: 32,
+              subject: 'Workshop plans',
+              body: 'Yes, I can bring the repair kit.',
+              direction: 'outbound',
+              status: 'read',
+              read_at: '2026-07-01T15:00:00Z',
+              created_at: '2026-07-01T14:00:00Z',
+              sender: { id: 5, name: 'Jasper Ford', tenant_id: 1, tenant_name: 'Local Timebank' },
+              receiver: { id: 77, name: 'Avery Stone', tenant_id: 12, tenant_name: 'North Timebank' }
+            },
+            {
+              id: 33,
+              subject: 'Workshop plans',
+              body: 'Can we confirm tools for Saturday?',
+              direction: 'inbound',
+              status: 'delivered',
+              read_at: null,
+              created_at: '2026-07-02T12:00:00Z',
+              sender: { id: 77, name: 'Avery Stone', tenant_id: 12, tenant_name: 'North Timebank' },
+              receiver: { id: 5, name: 'Jasper Ford', tenant_id: 1, tenant_name: 'Local Timebank' }
+            },
+            {
+              id: 40,
+              subject: 'Different partner',
+              body: 'This should not appear.',
+              direction: 'inbound',
+              status: 'delivered',
+              created_at: '2026-07-03T12:00:00Z',
+              sender: { id: 88, name: 'Mira Cole', tenant_id: 13, tenant_name: 'East Timebank' },
+              receiver: { id: 5, name: 'Jasper Ford', tenant_id: 1, tenant_name: 'Local Timebank' }
+            }
+          ]
+        };
+      }
+      if (pathValue === '/messages/mark-read-batch' && method === 'POST' && data.ids[0] === 33) {
+        return { data: { updated: 1 } };
+      }
+
+      return { data: [] };
+    });
+
+    const unsigned = await request(app).get('/federation/messages/conversation/77?tenant_id=12');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/messages/conversation/77?tenant_id=12&status=message-sent')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/messages');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'POST', '/messages/mark-read-batch', { ids: [33] });
+    expect(response.text).toContain('href="/federation/messages"');
+    expect(response.text).toContain('Conversation with Avery Stone');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('Community: North Timebank');
+    expect(response.text).toContain('Your message has been sent.');
+    expect(response.text).toContain('Sent');
+    expect(response.text).toContain('Received');
+    expect(response.text).toContain('Workshop plans');
+    expect(response.text).toContain('Yes, I can bring the repair kit.');
+    expect(response.text).toContain('Can we confirm tools for Saturday?');
+    expect(response.text).not.toContain('This should not appear.');
+    expect(response.text).toContain('Read');
+    expect(response.text).toContain('action="/federation/messages/translate/33"');
+    expect(response.text).toContain('name="partner_id" value="77"');
+    expect(response.text).toContain('name="partner_tenant_id" value="12"');
+    expect(response.text).toContain('action="/federation/messages"');
+    expect(response.text).toContain('name="receiver_id" value="77"');
+    expect(response.text).toContain('name="receiver_tenant_id" value="12"');
+    expect(response.text).toContain('name="context" value="conversation"');
+    expect(response.text).toContain('name="reference_message_id" value="33"');
+    expect(response.text).toContain('Your reply');
+    expect(response.text).toContain('Send reply');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 
