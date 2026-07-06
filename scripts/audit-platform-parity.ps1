@@ -176,6 +176,10 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/ideation-ideas', '/api/v2/ideation-ideas'
     }
 
+    if ($normalized -eq '/api/caring-community' -or $normalized.StartsWith('/api/caring-community/')) {
+        return $normalized -replace '^/api/caring-community', '/api/v2/caring-community'
+    }
+
     return ''
 }
 

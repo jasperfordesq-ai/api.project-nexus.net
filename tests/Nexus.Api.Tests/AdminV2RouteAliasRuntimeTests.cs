@@ -147,4 +147,20 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/caring-community/providers")]
+    [InlineData("/api/v2/caring-community/sub-regions")]
+    [InlineData("/api/v2/caring-community/hour-gifts/inbox")]
+    [InlineData("/api/v2/caring-community/hour-transfer/my-history")]
+    [InlineData("/api/v2/caring-community/federation-directory")]
+    public async Task LaravelReactCaringCommunityV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
