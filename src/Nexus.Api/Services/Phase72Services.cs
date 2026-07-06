@@ -354,6 +354,26 @@ public class BookmarkService
     public Task<List<BookmarkCollection>> ListCollectionsForUserAsync(int userId) =>
         _db.BookmarkCollections.Where(c => c.UserId == userId).OrderBy(c => c.Name).ToListAsync();
 
+    public async Task<BookmarkCollection?> UpdateCollectionAsync(int userId, int collectionId, string? name, string? description, bool? isPublic)
+    {
+        var entity = await _db.BookmarkCollections.FirstOrDefaultAsync(c => c.Id == collectionId && c.UserId == userId);
+        if (entity is null) return null;
+
+        if (name is not null)
+        {
+            name = name.Trim();
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("name_required", nameof(name));
+            if (name.Length > 100) throw new ArgumentException("name_too_long", nameof(name));
+            entity.Name = name;
+        }
+
+        if (description is not null) entity.Description = description;
+        if (isPublic.HasValue) entity.IsPublic = isPublic.Value;
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return entity;
+    }
+
     public async Task<List<BookmarkCollectionListItem>> ListCollectionItemsForUserAsync(int userId)
     {
         var collections = await _db.BookmarkCollections

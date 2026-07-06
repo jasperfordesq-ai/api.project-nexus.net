@@ -345,6 +345,32 @@ public class BookmarksController : ControllerBase
         return Created($"/api/bookmark-collections/{entity.Id}", new { data = MapLaravelCollection(entity, 0) });
     }
 
+    [HttpPatch("/api/bookmark-collections/{id:int}")]
+    [HttpPatch("/api/v2/bookmark-collections/{id:int}")]
+    public async Task<IActionResult> UpdateLaravelCollection(int id, [FromBody] CreateCollectionRequest? req)
+    {
+        var userId = User.GetUserId() ?? 0;
+        if (userId == 0) return Unauthorized();
+
+        if (req?.Name is { } name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest(LaravelError("VALIDATION_ERROR", "Collection name is required.", "name"));
+            }
+
+            if (name.Trim().Length > 100)
+            {
+                return BadRequest(LaravelError("VALIDATION_ERROR", "Collection name must be 100 characters or less.", "name"));
+            }
+        }
+
+        var entity = await _service.UpdateCollectionAsync(userId, id, req?.Name, req?.Description, req?.IsPublic);
+        if (entity is null) return NotFound(LaravelError("NOT_FOUND", "Collection not found."));
+
+        return Ok(new { success = true, data = MapLaravelCollection(entity, 0) });
+    }
+
     [HttpDelete("/api/bookmark-collections/{id:int}")]
     public async Task<IActionResult> DeleteLaravelCollection(int id)
     {

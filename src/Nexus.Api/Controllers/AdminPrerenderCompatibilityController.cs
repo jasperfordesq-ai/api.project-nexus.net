@@ -537,6 +537,52 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
         });
     }
 
+    [HttpGet("/api/admin/prerender/tenant-safety")]
+    [HttpGet("/api/v2/admin/prerender/tenant-safety")]
+    public async Task<IActionResult> TenantSafety([FromQuery] string? tenant)
+    {
+        if (string.IsNullOrWhiteSpace(tenant) || !IsValidRequiredSlug(tenant))
+        {
+            return Error("Valid tenant slug required", StatusCodes.Status400BadRequest, "VALIDATION_INVALID");
+        }
+
+        var row = await ActiveTenants().FirstOrDefaultAsync(t => t.Slug == tenant);
+        if (row == null)
+        {
+            return Error("Tenant not found", StatusCodes.Status404NotFound, "NOT_FOUND");
+        }
+
+        return Data(new
+        {
+            tenant = new
+            {
+                tenant_id = row.Id,
+                slug = row.Slug,
+                host = HostForTenant(row),
+                prefix = string.Empty
+            },
+            counts = new
+            {
+                expected = ExpectedRoutes.Length,
+                @static = ExpectedRoutes.Length,
+                sitemap = 0,
+                snapshots = 0,
+                missing = ExpectedRoutes.Length,
+                stale = 0,
+                asset_invalid = 0,
+                unexpected = 0
+            },
+            static_routes = ExpectedRoutes,
+            sitemap_routes = Array.Empty<string>(),
+            expected_routes = ExpectedRoutes,
+            missing_routes = ExpectedRoutes,
+            stale_routes = Array.Empty<string>(),
+            asset_invalid_routes = Array.Empty<string>(),
+            unexpected_routes = Array.Empty<string>(),
+            snapshots = Array.Empty<object>()
+        });
+    }
+
     [HttpGet("/api/admin/prerender/sitemap-explorer")]
     [HttpGet("/api/v2/admin/prerender/sitemap-explorer")]
     public async Task<IActionResult> SitemapExplorer([FromQuery] string? tenant)

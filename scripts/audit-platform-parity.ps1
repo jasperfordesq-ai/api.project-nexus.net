@@ -60,6 +60,14 @@ function Convert-ToRouteShape {
     return (Normalize-RoutePath $Path) -replace '\{[^/]+\}', '{}'
 }
 
+function Convert-RouteTemplateToRegex {
+    param([string]$Path)
+
+    $token = '___ROUTE_PARAM___'
+    $template = (Normalize-RoutePath $Path) -replace '\{[^/}]+\}', $token
+    return '^' + ([regex]::Escape($template).Replace($token, '[^/]+')) + '$'
+}
+
 function Normalize-FrontendApiPath {
     param([string]$Path)
 
@@ -90,9 +98,12 @@ function Get-FrontendMethodHint {
     param([string]$Line, [int]$MatchIndex)
 
     $prefix = if ($MatchIndex -gt 0) { $Line.Substring(0, $MatchIndex) } else { '' }
-    $methodMatches = [regex]::Matches($prefix, '(?i)(?:\.|\b)(get|post|put|patch|delete)\s*(?:<[^>]+>)?\s*\(\s*[''"]?`?$')
+    $methodMatches = [regex]::Matches($prefix, '(?i)(?:\.|\b)(get|post|put|patch|delete|upload|download)\s*(?:<.*>)?\s*\(\s*[''"]?`?$')
     if ($methodMatches.Count -gt 0) {
-        return $methodMatches[$methodMatches.Count - 1].Groups[1].Value.ToUpperInvariant()
+        $method = $methodMatches[$methodMatches.Count - 1].Groups[1].Value.ToUpperInvariant()
+        if ($method -eq 'UPLOAD') { return 'POST' }
+        if ($method -eq 'DOWNLOAD') { return 'GET' }
+        return $method
     }
 
     $methodMatches = [regex]::Matches($prefix, '(?i)(?:method\s*:\s*[''"]|method\s*=\s*[''"])(get|post|put|patch|delete)')
@@ -100,7 +111,113 @@ function Get-FrontendMethodHint {
         return $methodMatches[$methodMatches.Count - 1].Groups[1].Value.ToUpperInvariant()
     }
 
+    if ($prefix -match '(?i)(?:\buseApi\s*(?:<[^)]*>)?\s*\(\s*|window[.]open\s*\(\s*)$') {
+        return 'GET'
+    }
+
     return ''
+}
+
+function Get-FrontendCallContextMethod {
+    param([string]$Line)
+
+    if ($Line -match '(?i)\buseApi\s*(?:<[^)]*>)?\s*\(\s*$') {
+        return 'GET'
+    }
+
+    $matches = [regex]::Matches($Line, '(?i)(?:api[.])?(get|post|put|patch|delete|upload|download)\s*(?:<.*>)?\s*\(\s*$')
+    if ($matches.Count -eq 0) {
+        $matches = [regex]::Matches($Line, '(?i)\bapi[.](get|post|put|patch|delete|upload|download)\s*<')
+    }
+    if ($matches.Count -eq 0) {
+        return ''
+    }
+
+    $method = $matches[$matches.Count - 1].Groups[1].Value.ToUpperInvariant()
+    if ($method -eq 'UPLOAD') { return 'POST' }
+    if ($method -eq 'DOWNLOAD') { return 'GET' }
+    return $method
+}
+
+function Add-FrontendApiStringRow {
+    param(
+        [System.Collections.Generic.List[object]]$Rows,
+        [string]$App,
+        [string]$MethodHint,
+        [string]$Raw,
+        [string]$Normalized,
+        [string]$File,
+        [int]$Line
+    )
+
+    $Rows.Add([pscustomobject]@{
+        app = $App
+        method_hint = $MethodHint
+        raw = $Raw
+        normalized = Normalize-RoutePath $Normalized
+        file = $File
+        line = $Line
+    })
+}
+
+function Add-V15FrontendApiExpansion {
+    param(
+        [System.Collections.Generic.List[object]]$Rows,
+        [string]$Raw,
+        [string]$File,
+        [int]$Line,
+        [string]$MethodHint
+    )
+
+    $fileName = Split-Path -Leaf $File
+    if ($fileName -eq 'PartnerDashboardPage.tsx' -and $Raw.StartsWith('/api/partner-analytics')) {
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' '/api/partner-analytics/me/dashboard' '/api/partner-analytics/me/dashboard' $File $Line
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' '/api/partner-analytics/me/reports' '/api/partner-analytics/me/reports' $File $Line
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' '/api/partner-analytics/me/reports/{id}/download' '/api/partner-analytics/me/reports/{id}/download' $File $Line
+        return $true
+    }
+
+    if ($fileName -eq 'GroupList.tsx' -and $Raw -match '/v2/admin/groups/.+\$\{action\}') {
+        $method = if ($MethodHint) { $MethodHint } else { 'POST' }
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' $method '/v2/admin/groups/{id}/archive' '/api/v2/admin/groups/{id}/archive' $File $Line
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' $method '/v2/admin/groups/{id}/unarchive' '/api/v2/admin/groups/{id}/unarchive' $File $Line
+        return $true
+    }
+
+    if ($fileName -eq 'JobModerationQueue.tsx' -and $Raw -match '/v2/admin/jobs/.+\$\{action\}') {
+        $method = if ($MethodHint) { $MethodHint } else { 'POST' }
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' $method '/v2/admin/jobs/{id}/approve' '/api/v2/admin/jobs/{id}/approve' $File $Line
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' $method '/v2/admin/jobs/{id}/reject' '/api/v2/admin/jobs/{id}/reject' $File $Line
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' $method '/v2/admin/jobs/{id}/flag' '/api/v2/admin/jobs/{id}/flag' $File $Line
+        return $true
+    }
+
+    if ($fileName -eq 'PrerenderAdmin.tsx' -and $Raw -match '/api/v2/admin/prerender/export/[^/]+[.]csv') {
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' $Raw '/api/v2/admin/prerender/export/{kind}.csv' $File $Line
+        return $true
+    }
+
+    if ($fileName -eq 'adminApi.ts' -and $Raw -eq '/v2/admin/federation/data/export') {
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'POST' $Raw '/api/v2/admin/federation/data/export' $File $Line
+        return $true
+    }
+
+    $knownGetVariablePaths = @(
+        '/v2/admin/caring-community/sub-regions',
+        '/v2/admin/caring-community/surveys?status=${statusFilter}',
+        '/v2/admin/caring-community/surveys',
+        '/v2/admin/users/import/template',
+        '/v2/admin/enterprise/monitoring/log-files/${file.name}?download=1',
+        '/v2/connections?status=${status}&per_page=20',
+        '/v2/goals?${params}&status=all',
+        '/v2/group-exchanges?limit=${ITEMS_PER_PAGE}&offset=${offset}${statusFilter}'
+    )
+    if ($knownGetVariablePaths -contains $Raw) {
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' $Raw (Normalize-V15FrontendApiPath $Raw) $File $Line
+        return $true
+    }
+
+    return $false
 }
 
 function Join-RoutePath {
@@ -683,7 +800,7 @@ function Export-FrontendApiStrings {
         'apps\web-uk\src'
     )
 
-    $pattern = '(?i)(?:/api|/v2)/[A-Za-z0-9_\-./:{}\[\]$?=&%()]+'
+    $pattern = '(?i)(?:/api|/v2)/[A-Za-z0-9_\-./:{}\[\]$?=&%()!]+'
     $rows = New-Object System.Collections.Generic.List[object]
 
     foreach ($relative in $appSrcs) {
@@ -700,10 +817,18 @@ function Export-FrontendApiStrings {
             ForEach-Object {
                 $file = $_
                 $lineNo = 0
+                $pendingMethodHint = ''
+                $pendingMethodLines = 0
                 Get-Content -LiteralPath $file.FullName | ForEach-Object {
                     $lineNo++
                     $trimmed = $_.TrimStart()
                     if (-not ($trimmed.StartsWith('//') -or $trimmed.StartsWith('*') -or $trimmed.StartsWith('{/*'))) {
+                        $lineMethodContext = $pendingMethodHint
+                        if ($pendingMethodLines -gt 0) {
+                            $pendingMethodLines--
+                        } else {
+                            $pendingMethodHint = ''
+                        }
                         $commentIndex = $_.IndexOf('//')
                         foreach ($match in [regex]::Matches($_, $pattern)) {
                             $skip = $false
@@ -719,6 +844,8 @@ function Export-FrontendApiStrings {
                             if (-not $skip) {
                                 $raw = $match.Value.TrimEnd("'", '"', '`', ',', '.', ')')
                                 $normalizedPath = Normalize-FrontendApiPath $raw
+                                $methodHint = Get-FrontendMethodHint $_ $match.Index
+                                if (-not $methodHint) { $methodHint = $lineMethodContext }
                                 $suffix = $_.Substring($match.Index + $match.Length)
                                 if ($normalizedPath.EndsWith('/') -or $raw.EndsWith('/')) {
                                     if ($suffix -match '^\s*[''"]?\s*\+\s*[A-Za-z_][A-Za-z0-9_]*') {
@@ -727,13 +854,18 @@ function Export-FrontendApiStrings {
                                 }
                                 $rows.Add([pscustomobject]@{
                                     app = $app
-                                    method_hint = Get-FrontendMethodHint $_ $match.Index
+                                    method_hint = $methodHint
                                     raw = $raw
                                     normalized = $normalizedPath
                                     file = $file.FullName
                                     line = $lineNo
                                 })
                             }
+                        }
+                        $newMethodContext = Get-FrontendCallContextMethod $_
+                        if ($newMethodContext) {
+                            $pendingMethodHint = $newMethodContext
+                            $pendingMethodLines = 4
                         }
                     }
                 }
@@ -753,22 +885,31 @@ function Export-V15FrontendApiStrings {
         return @()
     }
 
-    $pattern = '(?i)(?:/api/v2|/api|/v2)/[A-Za-z0-9_\-./:{}\[\]$?=&%()]+'
+    $pattern = '(?i)(?:/api/v2|/api|/v2)/[A-Za-z0-9_\-./:{}\[\]$?=&%()!]+'
     $rows = New-Object System.Collections.Generic.List[object]
 
     Get-ChildItem -LiteralPath $src -Recurse -Include '*.ts','*.tsx','*.js','*.jsx' -File |
         Where-Object {
             $_.FullName -notmatch '\\(node_modules|dist|build|\.next|coverage|\.claude|__tests__|__mocks__)\\' -and
             $_.Name -notmatch '\.d\.ts$' -and
+            $_.Name -ne 'ApiDocumentation.tsx' -and
             $_.Name -notmatch '\.(test|spec)\.(ts|tsx|js|jsx)$'
         } |
         ForEach-Object {
             $file = $_
             $lineNo = 0
+            $pendingMethodHint = ''
+            $pendingMethodLines = 0
             Get-Content -LiteralPath $file.FullName | ForEach-Object {
                 $lineNo++
                 $trimmed = $_.TrimStart()
                 if (-not ($trimmed.StartsWith('//') -or $trimmed.StartsWith('*') -or $trimmed.StartsWith('{/*'))) {
+                    $lineMethodContext = $pendingMethodHint
+                    if ($pendingMethodLines -gt 0) {
+                        $pendingMethodLines--
+                    } else {
+                        $pendingMethodHint = ''
+                    }
                     $commentIndex = $_.IndexOf('//')
                     foreach ($match in [regex]::Matches($_, $pattern)) {
                         $skip = $false
@@ -783,22 +924,33 @@ function Export-V15FrontendApiStrings {
                         }
                         if (-not $skip) {
                             $raw = $match.Value.TrimEnd("'", '"', '`', ',', '.', ')')
-                            $normalizedPath = Normalize-V15FrontendApiPath $raw
-                            $suffix = $_.Substring($match.Index + $match.Length)
-                            if ($normalizedPath.EndsWith('/') -or $raw.EndsWith('/')) {
-                                if ($suffix -match '^\s*[''"]?\s*\+\s*[A-Za-z_][A-Za-z0-9_]*') {
-                                    $normalizedPath = Normalize-RoutePath "$normalizedPath/{id}"
+                            if ($file.Name -eq 'ExternalPartners.tsx' -and $_ -match '^\s*(nexus|timeoverflow|komunitin):\s*[''"]') {
+                                $skip = $true
+                            }
+                            if ($file.Name -eq 'RegionalAnalyticsPage.tsx' -and $_ -match '^\s*const\s+BASE\s*=') {
+                                $skip = $true
+                            }
+                            if (-not $skip) {
+                                $methodHint = Get-FrontendMethodHint $_ $match.Index
+                                if (-not $methodHint) { $methodHint = $lineMethodContext }
+                                $expanded = Add-V15FrontendApiExpansion $rows $raw $file.FullName $lineNo $methodHint
+                                if (-not $expanded) {
+                                    $normalizedPath = Normalize-V15FrontendApiPath $raw
+                                    $suffix = $_.Substring($match.Index + $match.Length)
+                                    if ($normalizedPath.EndsWith('/') -or $raw.EndsWith('/')) {
+                                        if ($suffix -match '^\s*[''"]?\s*\+\s*[A-Za-z_][A-Za-z0-9_]*') {
+                                            $normalizedPath = Normalize-RoutePath "$normalizedPath/{id}"
+                                        }
+                                    }
+                                    Add-FrontendApiStringRow $rows 'react-frontend-v15' $methodHint $raw $normalizedPath $file.FullName $lineNo
                                 }
                             }
-                            $rows.Add([pscustomobject]@{
-                                app = 'react-frontend-v15'
-                                method_hint = Get-FrontendMethodHint $_ $match.Index
-                                raw = $raw
-                                normalized = $normalizedPath
-                                file = $file.FullName
-                                line = $lineNo
-                            })
                         }
+                    }
+                    $newMethodContext = Get-FrontendCallContextMethod $_
+                    if ($newMethodContext) {
+                        $pendingMethodHint = $newMethodContext
+                        $pendingMethodLines = 4
                     }
                 }
             }
@@ -815,11 +967,15 @@ function New-RouteIndex {
     $byMethodPath = @{}
     $byShape = @{}
     $byMethodShape = @{}
+    $templateRoutes = New-Object System.Collections.Generic.List[object]
 
     foreach ($route in $Routes) {
         $path = Normalize-RoutePath $route.path
         $shape = Convert-ToRouteShape $path
         $method = ([string]$route.method).ToUpperInvariant()
+        if ($path -match '\{[^/}]+\}[^/]*[.]' -or $path -match '[.][^/]*\{[^/}]+\}') {
+            $templateRoutes.Add($route)
+        }
         if (-not $byPath.ContainsKey($path)) {
             $byPath[$path] = New-Object System.Collections.Generic.List[object]
         }
@@ -848,6 +1004,7 @@ function New-RouteIndex {
         ByShape = $byShape
         ByMethodPath = $byMethodPath
         ByMethodShape = $byMethodShape
+        TemplateRoutes = $templateRoutes.ToArray()
     }
 }
 
@@ -867,6 +1024,25 @@ function Get-RouteIndexMatches {
     foreach ($item in $Index[$Bucket][$Key]) {
         $items.Add($item)
     }
+    return $items.ToArray()
+}
+
+function Get-RouteTemplateMatches {
+    param([hashtable]$Index, [string]$Path, [string]$MethodHint)
+
+    $items = New-Object System.Collections.Generic.List[object]
+    foreach ($route in $Index.TemplateRoutes) {
+        $routeMethod = ([string]$route.method).ToUpperInvariant()
+        if ($MethodHint -and $routeMethod -ne $MethodHint) {
+            continue
+        }
+
+        $regex = Convert-RouteTemplateToRegex $route.path
+        if ((Normalize-RoutePath $Path) -match $regex) {
+            $items.Add($route)
+        }
+    }
+
     return $items.ToArray()
 }
 
@@ -907,7 +1083,8 @@ function Export-FrontendApiMatrix {
             if ($controllers -match 'Compatibility') {
                 $status = 'exists-compatibility'
             } else {
-                $status = if ($methodHint) { 'method-mismatch' } else { 'exists-any-method' }
+                $methods = @($matches | ForEach-Object { $_.method } | Sort-Object -Unique)
+                $status = if ($methodHint) { 'method-mismatch' } elseif ($methods.Count -eq 1) { 'exists-unambiguous-method' } else { 'exists-any-method' }
             }
         } elseif ($AspNetIndex.ByShape.ContainsKey((Convert-ToRouteShape $path))) {
             $matches = Get-RouteIndexMatches $AspNetIndex 'ByShape' (Convert-ToRouteShape $path)
@@ -915,7 +1092,19 @@ function Export-FrontendApiMatrix {
             if ($controllers -match 'Compatibility') {
                 $status = 'exists-compatibility'
             } else {
-                $status = if ($methodHint) { 'method-mismatch' } else { 'exists-any-method' }
+                $methods = @($matches | ForEach-Object { $_.method } | Sort-Object -Unique)
+                $status = if ($methodHint) { 'method-mismatch' } elseif ($methods.Count -eq 1) { 'exists-unambiguous-method' } else { 'exists-any-method' }
+            }
+        } else {
+            $matches = Get-RouteTemplateMatches $AspNetIndex $path $methodHint
+            if ($matches.Count -gt 0) {
+                $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+                if ($controllers -match 'Compatibility') {
+                    $status = 'exists-compatibility'
+                } else {
+                    $methods = @($matches | ForEach-Object { $_.method } | Sort-Object -Unique)
+                    $status = if ($methodHint) { 'exists' } elseif ($methods.Count -eq 1) { 'exists-unambiguous-method' } else { 'exists-any-method' }
+                }
             }
         }
 

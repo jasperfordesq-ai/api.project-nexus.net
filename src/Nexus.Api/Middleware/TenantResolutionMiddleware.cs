@@ -64,6 +64,8 @@ public class TenantResolutionMiddleware
         "/api/v2/public-page-content",         // Laravel-compatible public page content
         "/api/public-static-route-content",     // Public React locale-backed route content
         "/api/v2/public-static-route-content",  // Laravel-compatible static route content
+        "/api/sw-reset",                        // Browser stale-service-worker recovery document
+        "/api/partner-analytics",               // Token-authenticated partner analytics resolves tenant from subscription
         "/api/notifications/unsubscribe",       // Public one-click unsubscribe
         "/api/v2/notifications/unsubscribe",    // Laravel-compatible one-click unsubscribe
         "/api/webhooks/postmark",               // Shared-secret webhook; handles auth itself
