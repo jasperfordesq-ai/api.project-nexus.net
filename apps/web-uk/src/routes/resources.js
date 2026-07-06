@@ -293,6 +293,15 @@ function commentsStatusMessage(status) {
   }
 }
 
+function uploadStatusMessage(status) {
+  switch (status) {
+    case 'resource-upload-failed':
+      return { type: 'error', title: 'There is a problem', message: 'We could not upload the resource. Please try again.' };
+    default:
+      return null;
+  }
+}
+
 function libraryQuery(params) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -381,6 +390,30 @@ router.get('/library', asyncRoute(async (req, res) => {
     })}` : ''
   });
 }, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Resource library' }));
+
+router.get('/upload', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  let flatCategories = [];
+  try {
+    const categoriesResult = await getResourceCategories(token);
+    flatCategories = listFrom(categoriesResult).map(normalizeCategory).filter((category) => category.id && category.name);
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+  }
+
+  return res.render('resources/upload', {
+    title: 'Upload a resource',
+    activeNav: 'explore',
+    flatCategories,
+    maxSizeLabel: '10MB',
+    allowedLabel: 'PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, JPG, PNG, GIF, WEBP',
+    status: uploadStatusMessage(trimmed(req.query && req.query.status))
+  });
+}, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Upload a resource' }));
 
 router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

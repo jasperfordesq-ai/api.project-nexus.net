@@ -3525,6 +3525,45 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-backed resource upload form for signed-in members', async () => {
+    const api = require('../src/lib/api');
+
+    api.getResourceCategories.mockResolvedValue({
+      data: [
+        { id: 7, name: 'Guides', color: 'green' },
+        { id: 8, name: 'Templates', color: 'blue' }
+      ]
+    });
+
+    const unsigned = await request(app).get('/resources/upload');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/resources/upload?status=resource-upload-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(api.getResourceCategories).toHaveBeenCalledWith('test-token');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Back to resource library');
+    expect(response.text).toContain('Upload a resource');
+    expect(response.text).toContain('Share files, guides and templates with your community.');
+    expect(response.text).toContain('We could not upload the resource. Please try again.');
+    expect(response.text).toContain('method="post" action="/resources/upload" enctype="multipart/form-data"');
+    expect(response.text).toContain('name="title"');
+    expect(response.text).toContain('name="description"');
+    expect(response.text).toContain('name="category_id"');
+    expect(response.text).toContain('Guides');
+    expect(response.text).toContain('Templates');
+    expect(response.text).toContain('name="file" type="file"');
+    expect(response.text).toContain('10MB');
+    expect(response.text).toContain('PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, JPG, PNG, GIF, WEBP');
+    expect(response.text).toContain('Upload resource');
+    expect(response.text).toContain('Cancel');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-backed resource comments page for signed-in members', async () => {
     const api = require('../src/lib/api');
 
