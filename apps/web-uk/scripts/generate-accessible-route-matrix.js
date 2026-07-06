@@ -390,7 +390,7 @@ function parseRouterFile(routeFile, prefix) {
       method: match[1].toUpperCase(),
       path: joinRoutePath(prefix, match[2]),
       webUkFile: routeFile,
-      webUkView: firstRenderView(snippet)
+      webUkView: firstRenderView(snippet) || (match[2].includes('/download') ? 'resources/download' : '')
     });
   }
 

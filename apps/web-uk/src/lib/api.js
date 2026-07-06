@@ -861,6 +861,13 @@ async function getResourceCategoryTree(token) {
   return request('/api/v2/resources/categories/tree', { headers });
 }
 
+async function downloadResource(token, id) {
+  return downloadRequest(`/api/v2/resources/${encodeURIComponent(id)}/download`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function deleteResource(token, id) {
   return request(`/api/v2/resources/${encodeURIComponent(id)}`, {
     method: 'DELETE',
@@ -2332,6 +2339,7 @@ module.exports = {
   getResources,
   getResourceCategories,
   getResourceCategoryTree,
+  downloadResource,
   deleteResource,
   reorderResources,
   createSavedCollection,

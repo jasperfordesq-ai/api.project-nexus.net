@@ -93,6 +93,7 @@ jest.mock('../src/lib/api', () => ({
   getResources: jest.fn().mockResolvedValue({ data: [{ id: 10, sort_order: 0 }, { id: 20, sort_order: 1 }] }),
   getResourceCategories: jest.fn().mockResolvedValue({ data: [] }),
   getResourceCategoryTree: jest.fn().mockResolvedValue({ data: [] }),
+  downloadResource: jest.fn(),
   deleteResource: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   reorderResources: jest.fn().mockResolvedValue({ data: { message: 'reordered' } }),
   createSavedCollection: jest.fn().mockResolvedValue({ data: { id: 12 } }),
@@ -3675,6 +3676,40 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Delete resource');
     expect(response.text).toContain('Cancel');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('streams the Laravel-backed resource download for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    const body = Buffer.from('community handbook pdf', 'utf8');
+
+    api.downloadResource.mockResolvedValueOnce({
+      status: 200,
+      body,
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': 'attachment; filename="Community_handbook.pdf"',
+        'content-length': String(body.length),
+        'cache-control': 'no-cache, must-revalidate'
+      }
+    });
+
+    const unsigned = await request(app).get('/resources/42/download');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(api.downloadResource).not.toHaveBeenCalled();
+
+    const response = await request(app)
+      .get('/resources/42/download')
+      .set('Cookie', signedCookieHeader());
+
+    expect(api.downloadResource).toHaveBeenCalledWith('test-token', 42);
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('application/pdf');
+    expect(response.headers['content-disposition']).toBe('attachment; filename="Community_handbook.pdf"');
+    expect(response.headers['content-length']).toBe(String(body.length));
+    expect(response.headers['cache-control']).toBe('no-cache, must-revalidate');
+    expect(response.body.equals(body)).toBe(true);
   });
 
   it('submits the Laravel resource delete route through the resources API helper', async () => {

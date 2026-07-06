@@ -11,6 +11,7 @@ const {
   getProfile,
   getComments,
   getReactionSummary,
+  downloadResource,
   deleteResource,
   reorderResources,
   createComment,
@@ -22,6 +23,16 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 const RESOURCE_REACTIONS = new Set(['like', 'love', 'laugh', 'wow', 'sad', 'celebrate']);
+const DOWNLOAD_HEADER_NAMES = [
+  'content-type',
+  'content-disposition',
+  'content-length',
+  'cache-control',
+  'pragma',
+  'expires',
+  'etag',
+  'last-modified'
+];
 const RESOURCE_REACTION_LABELS = {
   like: 'Like',
   love: 'Love',
@@ -63,6 +74,14 @@ function redirectAuthIfNeeded(error, res) {
     return true;
   }
   return false;
+}
+
+function applyDownloadHeaders(res, headers = {}) {
+  DOWNLOAD_HEADER_NAMES.forEach((header) => {
+    if (headers[header]) {
+      res.set(header, headers[header]);
+    }
+  });
 }
 
 function commentsRedirect(resourceId, status, fragment = 'comments') {
@@ -450,6 +469,37 @@ router.get('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     resourceTitle: trimmed(resource.title) || 'File'
   });
 }, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Delete resource' }));
+
+router.get('/:id(\\d+)/download', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const resourceId = Number(req.params.id);
+  let download;
+
+  try {
+    download = await downloadResource(token, resourceId);
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  res.status(download.status || 200);
+  applyDownloadHeaders(res, download.headers);
+  return res.send(Buffer.isBuffer(download.body) ? download.body : Buffer.from(download.body || ''));
+}, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Resource download' }));
 
 router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
