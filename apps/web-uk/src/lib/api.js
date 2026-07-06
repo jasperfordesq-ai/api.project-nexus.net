@@ -1018,6 +1018,26 @@ async function getResourceCategoryTree(token) {
   return request('/api/v2/resources/categories/tree', { headers });
 }
 
+async function getSkillCategories(token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request('/api/v2/skills/categories', { headers });
+}
+
+async function getSkillCategory(token, id) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/skills/categories/${encodeURIComponent(id)}`, { headers });
+}
+
+async function getSkillMembers(token, skill, params = {}) {
+  const query = new URLSearchParams();
+  query.set('skill', skill);
+  if (params.limit) query.set('limit', params.limit);
+
+  return request(`/api/v2/skills/members?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function downloadResource(token, id) {
   return downloadRequest(`/api/v2/resources/${encodeURIComponent(id)}/download`, {
     method: 'GET',
@@ -2662,6 +2682,9 @@ module.exports = {
   getResources,
   getResourceCategories,
   getResourceCategoryTree,
+  getSkillCategories,
+  getSkillCategory,
+  getSkillMembers,
   uploadResource,
   downloadResource,
   deleteResource,

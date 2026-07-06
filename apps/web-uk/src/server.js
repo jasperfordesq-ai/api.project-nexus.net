@@ -51,6 +51,7 @@ const onboardingPostRoutes = require('./routes/onboarding-posts');
 const savedCollectionRoutes = require('./routes/saved-collections');
 const savedSocialRoutes = require('./routes/saved-social');
 const aiChatRoutes = require('./routes/ai-chat');
+const skillsRoutes = require('./routes/skills');
 const premiumRoutes = require('./routes/premium');
 const achievementsRoutes = require('./routes/achievements');
 const resourcesRoutes = require('./routes/resources');
@@ -1081,6 +1082,7 @@ app.use('/polls', doubleCsrfProtection, postOnly(formLimiter), pollActionRoutes)
 app.use('/clubs', doubleCsrfProtection, postOnly(formLimiter), clubsRoutes);
 app.use('/resources', doubleCsrfProtection, postOnly(formLimiter), resourcesRoutes);
 app.use('/chat', doubleCsrfProtection, postOnly(formLimiter), aiChatRoutes);
+app.use('/skills', doubleCsrfProtection, postOnly(formLimiter), skillsRoutes);
 app.use('/exchanges', doubleCsrfProtection, postOnly(formLimiter), exchangeRoutes);
 app.use(staticPageRoutes);
 

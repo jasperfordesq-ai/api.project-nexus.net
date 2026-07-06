@@ -60,10 +60,6 @@ const pages = {
     title: 'Cookie policy',
     body: 'Cookie policy content will be supplied from the shared legal document contract.'
   },
-  '/skills': {
-    title: 'Skills',
-    body: 'Skills pages will follow the Laravel accessible frontend contract.'
-  },
   '/marketplace': {
     title: 'Marketplace',
     body: 'Marketplace pages will follow the Laravel accessible frontend contract.'

@@ -189,6 +189,17 @@ Laravel tenant `ai_chat` feature-gate proof, provider-enabled notice parity,
 fallback reply/tool-card display, localization, runtime smoke tests, and ASP.NET
 backend compatibility are not certified.
 
+The `/skills` page is now a partial Laravel-backed candidate for the Blade
+skills directory. Unsigned visitors redirect to `/login?status=auth-required`;
+signed-in GET requests call Laravel `/api/v2/skills/categories`, optional
+`/api/v2/skills/categories/{id}`, and optional
+`/api/v2/skills/members?skill=...&limit=40`, then render the Blade-style skill
+search form, member result list with proficiency/offers/wants tags, category
+skill count table, back-to-categories link, and nested category browser. This
+remains partial: exact tenant captions, localization, auth edge cases beyond the
+page guard, runtime smoke behavior, and ASP.NET backend compatibility are not
+certified.
+
 Marketplace GET pages remain preparation pages, but the Laravel accessible POST
 aliases under `/marketplace` are now local route declarations backed by Laravel
 v2 marketplace APIs. The aliases cover listing create/update/delete/renew,

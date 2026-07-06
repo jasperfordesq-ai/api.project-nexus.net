@@ -125,6 +125,9 @@ jest.mock('../src/lib/api', () => ({
   getExchangeRatings: jest.fn().mockResolvedValue({ data: { ratings: [], has_rated: false } }),
   performExchangeAction: jest.fn().mockResolvedValue({ data: { id: 88 } }),
   rateExchange: jest.fn().mockResolvedValue({ data: { ratings: [] } }),
+  getSkillCategories: jest.fn().mockResolvedValue({ data: [] }),
+  getSkillCategory: jest.fn().mockResolvedValue({ data: { id: 7, name: 'Practical help', skills: [] } }),
+  getSkillMembers: jest.fn().mockResolvedValue({ data: [] }),
   sendAiChat: jest.fn().mockResolvedValue({ data: { conversation_id: 123 } }),
   getAiConversations: jest.fn().mockResolvedValue({ data: [] }),
   getAiConversation: jest.fn().mockResolvedValue({ data: { id: 77, messages: [] } }),
@@ -265,6 +268,9 @@ describe('shared accessible frontend shell', () => {
     api.getExchangeRatings.mockReset().mockResolvedValue({ data: { ratings: [], has_rated: false } });
     api.performExchangeAction.mockReset().mockResolvedValue({ data: { id: 88 } });
     api.rateExchange.mockReset().mockResolvedValue({ data: { ratings: [] } });
+    api.getSkillCategories.mockReset().mockResolvedValue({ data: [] });
+    api.getSkillCategory.mockReset().mockResolvedValue({ data: { id: 7, name: 'Practical help', skills: [] } });
+    api.getSkillMembers.mockReset().mockResolvedValue({ data: [] });
     api.sendAiChat.mockReset().mockResolvedValue({ data: { conversation_id: 123 } });
     api.getAiConversations.mockReset().mockResolvedValue({ data: [] });
     api.getAiConversation.mockReset().mockResolvedValue({ data: { id: 77, messages: [] } });
@@ -2714,6 +2720,69 @@ describe('shared accessible frontend shell', () => {
     expect(api.getProfile).toHaveBeenCalledWith('test-token');
     expect(api.getExchange).toHaveBeenCalledWith('test-token', 88);
     expect(api.getExchangeRatings).toHaveBeenCalledWith('test-token', 88);
+  });
+
+  it('redirects signed-out visitors away from the Laravel skills directory before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+
+    const response = await request(app).get('/skills');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.getSkillCategories).not.toHaveBeenCalled();
+    expect(api.getSkillCategory).not.toHaveBeenCalled();
+    expect(api.getSkillMembers).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed skills directory with category drill-in and member search', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.getSkillCategories.mockResolvedValueOnce({
+      data: [
+        { id: 7, name: 'Practical help', children: [{ id: 8, name: 'Home repairs' }] }
+      ]
+    });
+    api.getSkillCategory.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        name: 'Practical help',
+        skills: [
+          { skill_name: 'Gardening', user_count: 4, offering_count: 3, requesting_count: 1 },
+          { name: 'Bicycle repair', user_count: 2, offering_count: 1, requesting_count: 1 }
+        ]
+      }
+    });
+    api.getSkillMembers.mockResolvedValueOnce({
+      data: [
+        { id: 101, name: 'Avery Morgan', proficiency_level: 'advanced', is_offering: true, is_requesting: false },
+        { user_id: 202, first_name: 'Sam', last_name: 'Taylor', proficiency: 'beginner', is_offering: false, is_requesting: true }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/skills?category=7&skill=gardening')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(staticPageRoutes.pages['/skills']).toBeUndefined();
+    expect(response.text).toContain('Skills');
+    expect(response.text).toContain('Browse by category');
+    expect(response.text).toContain('Practical help');
+    expect(response.text).toContain('Home repairs');
+    expect(response.text).toContain('Gardening');
+    expect(response.text).toContain('Bicycle repair');
+    expect(response.text).toContain('Avery Morgan');
+    expect(response.text).toContain('Sam Taylor');
+    expect(response.text).toContain('Advanced');
+    expect(response.text).toContain('Beginner');
+    expect(response.text).toContain('Offers');
+    expect(response.text).toContain('Wants');
+    expect(response.text).toContain('name="skill"');
+    expect(response.text).toContain('value="gardening"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getSkillCategories).toHaveBeenCalledWith('test-token');
+    expect(api.getSkillCategory).toHaveBeenCalledWith('test-token', 7);
+    expect(api.getSkillMembers).toHaveBeenCalledWith('test-token', 'gardening', { limit: 40 });
   });
 
   it('submits the Laravel exchange action route through the exchanges API helper', async () => {
