@@ -51,6 +51,11 @@ function numberOrZero(value) {
   return Number.isFinite(number) ? Math.max(0, Math.trunc(number)) : 0;
 }
 
+function numberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function bool(value) {
   return value === true || value === 1 || value === '1' || value === 'true';
 }
@@ -99,25 +104,48 @@ function memberHref(member) {
   return id ? `/federation/members/${encodeURIComponent(id)}${query}` : '/federation/members';
 }
 
-function normalizeMember(member) {
+function normalizeMember(member, options = {}) {
   const timebank = asObject(member && member.timebank);
   const tenantId = member && member.tenant_id !== undefined ? member.tenant_id : timebank.id;
   const name = trimmed(member && member.name) || trimmed(`${trimmed(member && member.first_name)} ${trimmed(member && member.last_name)}`) || 'Federation member';
+  const bioLimit = Object.prototype.hasOwnProperty.call(options, 'bioLimit') ? options.bioLimit : 220;
   const skills = Array.isArray(member && member.skills)
     ? member.skills.map((skill) => trimmed(skill)).filter(Boolean)
     : [];
+  const connectionStatus = asObject(member && member.connection_status);
 
   return {
     id: member && member.id !== undefined ? member.id : '',
     name,
     href: memberHref({ id: member && member.id, tenantId }),
-    bio: trimmed(member && member.bio, 220),
+    avatar: trimmed(member && member.avatar),
+    bio: trimmed(member && member.bio, bioLimit),
     location: trimmed(member && member.location),
     serviceReach: trimmed(member && member.service_reach),
     skills,
     tenantId,
     tenantName: trimmed((member && member.tenant_name) || timebank.name),
-    messagingEnabled: bool(member && member.messaging_enabled)
+    messagingEnabled: bool(member && member.messaging_enabled),
+    transactionsEnabled: bool(member && member.transactions_enabled),
+    reputationScore: numberOrNull(member && (member.reputation_score || member.trust_score)),
+    reputationCount: numberOrZero(member && member.reputation_count),
+    connectionStatus: trimmed(connectionStatus.status || 'none'),
+    connectionId: connectionStatus.connection_id || null
+  };
+}
+
+function normalizeReview(review) {
+  const reviewer = asObject(review && review.reviewer);
+  const partner = asObject(review && review.partner);
+
+  return {
+    id: review && review.id,
+    rating: numberOrZero(review && review.rating),
+    comment: trimmed(review && review.comment),
+    createdAt: review && review.created_at ? review.created_at : '',
+    reviewerName: trimmed((review && review.reviewer_name) || reviewer.name) || 'Anonymous',
+    partnerName: trimmed((review && review.partner_name) || partner.name),
+    verified: bool(review && review.verified)
   };
 }
 
@@ -159,6 +187,22 @@ function statusBanner(status) {
     'opted-out': { type: 'success', message: 'You have left the federation network.' },
     'optin-failed': { type: 'error', message: 'We could not turn on federation. Please try again.' },
     'optout-failed': { type: 'error', message: 'We could not turn off federation. Please try again.' }
+  };
+
+  return banners[trimmed(status)] || null;
+}
+
+function memberStatusBanner(status) {
+  const banners = {
+    'connect-sent': { type: 'success', message: 'Connection request sent' },
+    'connect-failed': { type: 'error', message: 'Connection request failed' },
+    'message-sent': { type: 'success', message: 'Message sent' },
+    'message-empty': { type: 'error', message: 'Enter a message before sending' },
+    'message-too-long': { type: 'error', message: 'Message is too long' },
+    'message-failed': { type: 'error', message: 'Message could not be sent' },
+    'message-not-enabled': { type: 'error', message: 'Messaging is not enabled' },
+    'message-recipient-unavailable': { type: 'error', message: 'This member cannot receive federation messages' },
+    'transfer-sent': { type: 'success', message: 'Transfer sent' }
   };
 
   return banners[trimmed(status)] || null;
@@ -316,6 +360,64 @@ router.get('/members', asyncRoute(async (req, res) => {
       partnerId: trimmed(req.query.partner_id),
       serviceReach: trimmed(req.query.service_reach)
     }
+  });
+}));
+
+router.get('/members/:id', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const id = trimmed(req.params.id, 32);
+  if (!/^\d+$/.test(id)) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  const tenantId = trimmed(req.query.tenant_id, 32);
+  const tenantQuery = tenantId ? `?tenant_id=${encodeURIComponent(tenantId)}` : '';
+
+  let memberResult;
+  let settingsResult;
+  try {
+    memberResult = await callFederationApi(token, 'GET', `/members/${id}${tenantQuery}`);
+    settingsResult = await callFederationApi(token, 'GET', '/settings');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const member = normalizeMember(asObject(dataFrom(memberResult)), { bioLimit: null });
+  const settingsData = asObject(dataFrom(settingsResult));
+  const settings = asObject(settingsData.settings);
+  let reviews = [];
+
+  if (member.reputationCount > 0) {
+    try {
+      const reviewsResult = await callFederationApi(token, 'GET', `/members/${id}/reviews${tenantQuery}`);
+      reviews = asList(dataFrom(reviewsResult)).map(normalizeReview);
+    } catch (error) {
+      if (!(error instanceof ApiError && [403, 404].includes(error.status))) {
+        throw error;
+      }
+    }
+  }
+
+  return res.render('federation/member', {
+    title: member.name,
+    activeNav: 'explore',
+    federationActiveTab: 'members',
+    member,
+    reviews,
+    viewer: {
+      optedIn: bool(settings.federation_optin) || bool(settingsData.enabled),
+      messagingEnabled: bool(settings.messaging_enabled_federated),
+      transactionsEnabled: bool(settings.transactions_enabled_federated)
+    },
+    statusBanner: memberStatusBanner(req.query.status)
   });
 }));
 

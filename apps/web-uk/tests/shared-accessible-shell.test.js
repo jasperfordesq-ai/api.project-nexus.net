@@ -621,6 +621,101 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-backed Federation member detail', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/members/77?tenant_id=12') {
+        return {
+          data: {
+            id: 77,
+            name: 'Avery Stone',
+            avatar: '/uploads/avery.jpg',
+            bio: 'Can repair household textiles and small appliances.',
+            location: 'Derry',
+            service_reach: 'travel_ok',
+            skills: ['sewing', 'repairs'],
+            tenant_id: 12,
+            tenant_name: 'North Timebank',
+            messaging_enabled: true,
+            transactions_enabled: true,
+            reputation_score: 4.7,
+            reputation_count: 3,
+            connection_status: { status: 'none', connection_id: null }
+          }
+        };
+      }
+      if (pathValue === '/settings') {
+        return {
+          data: {
+            enabled: true,
+            settings: {
+              federation_optin: true,
+              messaging_enabled_federated: true,
+              transactions_enabled_federated: true
+            }
+          }
+        };
+      }
+      if (pathValue === '/members/77/reviews?tenant_id=12') {
+        return {
+          data: [
+            {
+              id: 501,
+              rating: 5,
+              comment: 'Avery was careful and generous with time.',
+              created_at: '2026-06-15T09:00:00Z',
+              reviewer: { name: 'Mira Cole' },
+              partner: { name: 'North Timebank' },
+              verified: true
+            }
+          ]
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/federation/members/77?tenant_id=12');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/federation/members/77?tenant_id=12&status=message-sent')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/members/77?tenant_id=12');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
+    expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/members/77/reviews?tenant_id=12');
+    expect(response.text).toContain('href="/federation/members"');
+    expect(response.text).toContain('Federation member');
+    expect(response.text).toContain('Message sent');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('src="/uploads/avery.jpg"');
+    expect(response.text).toContain('Reputation: 4.7');
+    expect(response.text).toContain('3 reviews');
+    expect(response.text).toContain('Community: North Timebank');
+    expect(response.text).toContain('Can repair household textiles and small appliances.');
+    expect(response.text).toContain('Location');
+    expect(response.text).toContain('Derry');
+    expect(response.text).toContain('Reach');
+    expect(response.text).toContain('Can travel');
+    expect(response.text).toContain('sewing');
+    expect(response.text).toContain('repairs');
+    expect(response.text).toContain('action="/federation/connections"');
+    expect(response.text).toContain('name="receiver_id" value="77"');
+    expect(response.text).toContain('name="receiver_tenant_id" value="12"');
+    expect(response.text).toContain('action="/federation/messages"');
+    expect(response.text).toContain('href="/federation/members/77/transfer?tenant_id=12"');
+    expect(response.text).toContain('Mira Cole');
+    expect(response.text).toContain('Rating: 5');
+    expect(response.text).toContain('Avery was careful and generous with time.');
+    expect(response.text).toContain('From North Timebank');
+    expect(response.text).toContain('Verified');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
   it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 

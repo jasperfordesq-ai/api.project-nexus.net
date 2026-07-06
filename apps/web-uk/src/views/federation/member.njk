@@ -1,0 +1,190 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% set reachLabels = {
+  local_only: "Local help only",
+  remote_ok: "Remote help possible",
+  travel_ok: "Can travel"
+} %}
+
+{% block mainContent %}
+  <a href="/federation/members" class="govuk-back-link">Back to Federation members</a>
+
+  {% if statusBanner %}
+    {% if statusBanner.type == "error" %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="#fed-actions">{{ statusBanner.message }}</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="federation-member-status-title">
+        <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="federation-member-status-title">Success</h2></div>
+        <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ statusBanner.message }}</p></div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <span class="govuk-caption-xl">Federation member</span>
+  <div class="nexus-alpha-module-row">
+    {% if member.avatar %}
+      <img class="nexus-alpha-card-thumb" src="{{ member.avatar }}" alt="{{ member.name }}" width="80" height="80" loading="lazy" decoding="async">
+    {% endif %}
+    <div>
+      <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ member.name }}</h1>
+      {% if member.reputationCount > 0 %}
+        <p class="govuk-body-s govuk-!-margin-bottom-1">
+          <strong class="govuk-tag govuk-tag--green">Reputation: {{ member.reputationScore }}</strong>
+          <span class="nexus-alpha-meta">{{ member.reputationCount }} reviews</span>
+        </p>
+      {% endif %}
+      {% if member.tenantName %}
+        <p class="govuk-body-l govuk-!-margin-bottom-0">Community: {{ member.tenantName }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <nav class="govuk-service-navigation govuk-!-margin-bottom-6" aria-label="Federation">
+    <ul class="govuk-service-navigation__list">
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation">Overview</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/partners">Partners</a></li>
+      <li class="govuk-service-navigation__item govuk-service-navigation__item--active"><a class="govuk-service-navigation__link" href="/federation/members">Members</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/connections">Connections</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/messages">Messages</a></li>
+      <li class="govuk-service-navigation__item"><a class="govuk-service-navigation__link" href="/federation/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  {% if member.bio %}
+    <h2 class="govuk-heading-l">About this member</h2>
+    <p class="govuk-body">{{ member.bio }}</p>
+  {% endif %}
+
+  <dl class="govuk-summary-list">
+    {% if member.tenantName %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Community</dt>
+        <dd class="govuk-summary-list__value">{{ member.tenantName }}</dd>
+      </div>
+    {% endif %}
+    {% if member.location %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Location</dt>
+        <dd class="govuk-summary-list__value">{{ member.location }}</dd>
+      </div>
+    {% endif %}
+    {% if reachLabels[member.serviceReach] %}
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Reach</dt>
+        <dd class="govuk-summary-list__value">{{ reachLabels[member.serviceReach] }}</dd>
+      </div>
+    {% endif %}
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Skills</dt>
+      <dd class="govuk-summary-list__value">
+        {% if member.skills.length %}
+          {% for skill in member.skills %}
+            <strong class="govuk-tag govuk-tag--grey govuk-!-margin-right-1">{{ skill }}</strong>
+          {% endfor %}
+        {% else %}
+          No skills listed
+        {% endif %}
+      </dd>
+    </div>
+  </dl>
+
+  <section id="fed-actions" class="govuk-!-margin-top-7">
+    <h2 class="govuk-heading-l">Contact and exchange</h2>
+
+    {% if not viewer.optedIn %}
+      <div class="govuk-inset-text">
+        <p class="govuk-body">Turn on federation before contacting members in partner communities.</p>
+        <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-button" data-module="govuk-button" href="/federation/opt-in">Turn on federation</a></p>
+      </div>
+    {% else %}
+      {% if member.connectionStatus == "accepted" %}
+        <p class="govuk-body"><strong class="govuk-tag govuk-tag--green">Connected</strong></p>
+      {% elif member.connectionStatus == "pending" or member.connectionStatus == "requested" %}
+        <p class="govuk-body"><strong class="govuk-tag govuk-tag--yellow">Connection pending</strong></p>
+      {% else %}
+        <form method="post" action="/federation/connections" class="govuk-!-margin-bottom-6">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="receiver_id" value="{{ member.id }}">
+          <input type="hidden" name="receiver_tenant_id" value="{{ member.tenantId }}">
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="connection-message">Connection message</label>
+            <textarea class="govuk-textarea" id="connection-message" name="message" rows="3"></textarea>
+          </div>
+
+          <button type="submit" class="govuk-button" data-module="govuk-button">Send connection request</button>
+        </form>
+      {% endif %}
+
+      {% if member.messagingEnabled and viewer.messagingEnabled %}
+        <form method="post" action="/federation/messages" class="govuk-!-margin-bottom-6">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <input type="hidden" name="receiver_id" value="{{ member.id }}">
+          <input type="hidden" name="receiver_tenant_id" value="{{ member.tenantId }}">
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="message-subject">Subject</label>
+            <input class="govuk-input govuk-!-width-two-thirds" id="message-subject" name="subject" type="text">
+          </div>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="message-body">Message</label>
+            <textarea class="govuk-textarea" id="message-body" name="body" rows="5"></textarea>
+          </div>
+
+          <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Send message</button>
+        </form>
+      {% else %}
+        <p class="govuk-body-s nexus-alpha-meta">Messaging is not enabled for this member.</p>
+      {% endif %}
+
+      {% if member.transactionsEnabled and viewer.transactionsEnabled %}
+        <p class="govuk-body"><a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/federation/members/{{ member.id }}/transfer?tenant_id={{ member.tenantId }}">Transfer time credits</a></p>
+      {% else %}
+        <p class="govuk-body-s nexus-alpha-meta">Transactions are not enabled for this member.</p>
+      {% endif %}
+    {% endif %}
+  </section>
+
+  {% if member.reputationCount > 0 or reviews.length %}
+    <h2 class="govuk-heading-l govuk-!-margin-top-7">Reviews</h2>
+    {% if reviews.length %}
+      <div class="nexus-alpha-card-list">
+        {% for review in reviews %}
+          <article class="nexus-alpha-card">
+            <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ review.reviewerName }}</h3>
+            <p class="govuk-body-s govuk-!-margin-bottom-1">Rating: {{ review.rating }}</p>
+            {% if review.createdAt %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ review.createdAt | date }}</p>
+            {% endif %}
+            {% if review.partnerName %}
+              <p class="govuk-body-s govuk-!-margin-bottom-1"><strong class="govuk-tag govuk-tag--grey">From {{ review.partnerName }}</strong></p>
+            {% endif %}
+            {% if review.verified %}
+              <p class="govuk-body-s govuk-!-margin-bottom-1"><strong class="govuk-tag govuk-tag--green">Verified</strong></p>
+            {% endif %}
+            {% if review.comment %}
+              <p class="govuk-body govuk-!-margin-bottom-0">{{ review.comment }}</p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="govuk-inset-text"><p class="govuk-body govuk-!-margin-bottom-0">No federation reviews yet.</p></div>
+    {% endif %}
+  {% endif %}
+{% endblock %}
