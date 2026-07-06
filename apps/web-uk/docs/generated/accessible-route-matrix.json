@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T22:57:10.642Z",
+    "generatedAt": "2026-07-06T23:03:56.781Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -12364,8 +12364,8 @@
       "gates": "",
       "apiNeeds": "service:Social\\AppreciationService",
       "webUkPath": "/users/{param}/appreciations",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "saved-social/appreciations",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\saved-social.js"
     },
     {
       "method": "GET",
@@ -12383,8 +12383,8 @@
       "gates": "",
       "apiNeeds": "service:Social\\SavedCollectionService",
       "webUkPath": "/users/{param}/collections",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "saved-social/public-collections",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\saved-social.js"
     },
     {
       "method": "POST",

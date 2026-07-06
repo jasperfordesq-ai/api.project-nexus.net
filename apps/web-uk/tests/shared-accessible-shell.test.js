@@ -104,6 +104,8 @@ jest.mock('../src/lib/api', () => ({
   getBalance: jest.fn(),
   donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
+  getUserPublicCollections: jest.fn().mockResolvedValue({ data: [] }),
+  getUserAppreciations: jest.fn().mockResolvedValue({ data: [], meta: { current_page: 1, last_page: 1, total: 0, per_page: 20 } }),
   sendAppreciation: jest.fn().mockResolvedValue({ data: { id: 55 } }),
   reactToAppreciation: jest.fn().mockResolvedValue({ data: { reaction_type: 'heart' } }),
   getResources: jest.fn().mockResolvedValue({ data: [{ id: 10, sort_order: 0 }, { id: 20, sort_order: 1 }] }),
@@ -251,6 +253,8 @@ describe('shared accessible frontend shell', () => {
     api.searchUsers.mockReset().mockResolvedValue({ data: { items: [] } });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
+    api.getUserPublicCollections.mockReset().mockResolvedValue({ data: [] });
+    api.getUserAppreciations.mockReset().mockResolvedValue({ data: [], meta: { current_page: 1, last_page: 1, total: 0, per_page: 20 } });
     api.sendAppreciation.mockReset().mockResolvedValue({ data: { id: 55 } });
     api.reactToAppreciation.mockReset().mockResolvedValue({ data: { reaction_type: 'heart' } });
     api.getResources.mockReset().mockResolvedValue({ data: [{ id: 10, sort_order: 0 }, { id: 20, sort_order: 1 }] });
@@ -2591,6 +2595,90 @@ describe('shared accessible frontend shell', () => {
 
     expect(api.getSavedCollections).toHaveBeenCalledWith('test-token');
     expect(api.getSavedCollectionItems).toHaveBeenCalledWith('test-token', 12, { page: 1, per_page: 20 });
+  });
+
+  it('redirects signed-out saved social public pages before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+
+    const collections = await request(app).get('/users/77/collections');
+    const appreciations = await request(app).get('/users/77/appreciations');
+
+    expect(collections.status).toBe(302);
+    expect(collections.headers.location).toBe('/login?status=auth-required');
+    expect(appreciations.status).toBe(302);
+    expect(appreciations.headers.location).toBe('/login?status=auth-required');
+    expect(api.getUser).not.toHaveBeenCalled();
+    expect(api.getUserPublicCollections).not.toHaveBeenCalled();
+    expect(api.getUserAppreciations).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel-backed saved social public pages', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Avery Stone' } });
+    api.getUser.mockResolvedValue({ data: { id: 77, name: 'Morgan Lee' } });
+    api.getUserPublicCollections.mockResolvedValue({
+      data: [
+        {
+          id: 12,
+          name: 'Community repair ideas',
+          description: 'Saved resources to share.',
+          color: '#0b7285',
+          items_count: 3,
+          is_public: true
+        }
+      ]
+    });
+    api.getUserAppreciations.mockResolvedValue({
+      data: [
+        {
+          id: 55,
+          sender_id: 101,
+          receiver_id: 77,
+          message: 'Thanks for running the tool library.',
+          is_public: true,
+          reactions_count: 2,
+          created_at: '2026-07-05T10:30:00Z',
+          sender: { id: 101, name: 'Avery Stone' },
+          my_reaction: 'heart'
+        }
+      ],
+      meta: { current_page: 1, last_page: 2, total: 2, per_page: 1 }
+    });
+
+    const collections = await request(app)
+      .get('/users/77/collections')
+      .set('Cookie', signedCookieHeader());
+    const appreciations = await request(app)
+      .get('/users/77/appreciations?status=appreciation-sent&page=1')
+      .set('Cookie', signedCookieHeader());
+
+    expect(collections.status).toBe(200);
+    expect(collections.text).toContain('Public collections of Morgan Lee');
+    expect(collections.text).toContain('Collections this member has chosen to share publicly.');
+    expect(collections.text).toContain('Community repair ideas');
+    expect(collections.text).toContain('Saved resources to share.');
+    expect(collections.text).toContain('3 items');
+    expect(collections.text).toContain('href="/members/77"');
+    expect(collections.text).not.toContain('shared accessible frontend preparation page');
+
+    expect(appreciations.status).toBe(200);
+    expect(appreciations.text).toContain('Appreciation for Morgan Lee');
+    expect(appreciations.text).toContain('Your thank-you has been sent.');
+    expect(appreciations.text).toContain('method="post" action="/users/77/appreciations"');
+    expect(appreciations.text).toContain('Thanks for running the tool library.');
+    expect(appreciations.text).toContain('Avery Stone');
+    expect(appreciations.text).toContain('method="post" action="/appreciations/55/react"');
+    expect(appreciations.text).toContain('name="owner_id" value="77"');
+    expect(appreciations.text).toContain('Heart');
+    expect(appreciations.text).toContain('Clap');
+    expect(appreciations.text).toContain('Star');
+    expect(appreciations.text).toContain('2 reactions');
+    expect(appreciations.text).toContain('href="/users/77/appreciations?page=2"');
+    expect(appreciations.text).not.toContain('shared accessible frontend preparation page');
+
+    expect(api.getUser).toHaveBeenCalledWith('test-token', 77);
+    expect(api.getUserPublicCollections).toHaveBeenCalledWith('test-token', 77);
+    expect(api.getUserAppreciations).toHaveBeenCalledWith('test-token', 77, { page: 1, per_page: 20 });
   });
 
   it('submits the Laravel saved collection create route through the collections API helper', async () => {

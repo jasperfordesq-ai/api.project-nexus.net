@@ -1,0 +1,39 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/members/{{ owner.id }}">Back to profile</a>
+
+  <span class="govuk-caption-xl">Collections shared by {{ owner.name }}</span>
+  <h1 class="govuk-heading-xl">Public collections of {{ owner.name }}</h1>
+  <p class="govuk-body-l">Collections this member has chosen to share publicly.</p>
+
+  {% if collections and collections.length %}
+    <ul class="govuk-list nexus-alpha-card-list">
+      {% for collection in collections %}
+        <li class="nexus-alpha-card">
+          <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
+            <span class="nexus-alpha-avatar" style="background-color: {{ collection.color }}; width: 1rem; height: 1rem; display: inline-block; border-radius: 50%; vertical-align: middle;" aria-hidden="true"></span>
+            <a class="govuk-link" href="/me/collections/{{ collection.id }}">{{ collection.name }}</a>
+          </h2>
+          <p class="govuk-body-s nexus-alpha-meta">{{ collection.countLabel }}</p>
+          {% if collection.description %}
+            <p class="govuk-body">{{ collection.description }}</p>
+          {% endif %}
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            <a class="govuk-link" href="/me/collections/{{ collection.id }}">View collection</a>
+          </p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-m">No public collections</h2>
+      <p class="govuk-body">This member has not shared any collections publicly.</p>
+    </div>
+  {% endif %}
+{% endblock %}

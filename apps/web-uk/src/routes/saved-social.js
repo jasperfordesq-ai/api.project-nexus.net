@@ -6,6 +6,10 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
+  getProfile,
+  getUser,
+  getUserPublicCollections,
+  getUserAppreciations,
   unsaveSavedItem,
   sendAppreciation,
   reactToAppreciation,
@@ -15,6 +19,133 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 const APPRECIATION_REACTIONS = new Set(['heart', 'clap', 'star']);
+const APPRECIATION_REACTION_TYPES = [
+  { value: 'heart', label: 'Heart' },
+  { value: 'clap', label: 'Clap' },
+  { value: 'star', label: 'Star' }
+];
+
+function tokenFrom(req) {
+  return (req.signedCookies && req.signedCookies.token) || req.token || '';
+}
+
+function loginRedirect() {
+  return '/login?status=auth-required';
+}
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined ? result.data : result;
+}
+
+function rowsFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function metaFrom(result) {
+  if (result && typeof result === 'object' && result.meta && typeof result.meta === 'object') return result.meta;
+  const data = dataFrom(result);
+  if (data && data.meta && typeof data.meta === 'object') return data.meta;
+  return {};
+}
+
+function safeColor(value) {
+  const color = trimmed(value);
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#1d70b8';
+}
+
+function plural(count, singular, pluralText) {
+  if (count === 0) return `No ${pluralText}`;
+  if (count === 1) return `1 ${singular}`;
+  return `${count} ${pluralText}`;
+}
+
+function normalizeOwner(result, fallbackId) {
+  const data = dataFrom(result) || {};
+  const row = data.user || data.member || data.profile || data;
+  const firstLast = `${trimmed(row.first_name ?? row.firstName)} ${trimmed(row.last_name ?? row.lastName)}`.trim();
+  return {
+    id: positiveInteger(row.id) || fallbackId,
+    name: trimmed(row.name) || firstLast || 'A member'
+  };
+}
+
+function normalizeCollection(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const count = Number.isFinite(Number(row.items_count ?? row.itemsCount))
+    ? Number(row.items_count ?? row.itemsCount)
+    : 0;
+  return {
+    id: positiveInteger(row.id),
+    name: trimmed(row.name) || 'Collection',
+    description: trimmed(row.description),
+    color: safeColor(row.color),
+    itemsCount: count,
+    countLabel: plural(count, 'item', 'items')
+  };
+}
+
+function formatDate(value) {
+  const raw = trimmed(value);
+  if (!raw) return '';
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+}
+
+function normalizeAppreciation(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const sender = row.sender && typeof row.sender === 'object' ? row.sender : {};
+  const senderId = positiveInteger(sender.id ?? row.sender_id ?? row.senderId);
+  const reactionCount = Number.isFinite(Number(row.reactions_count ?? row.reactionsCount))
+    ? Number(row.reactions_count ?? row.reactionsCount)
+    : 0;
+  return {
+    id: positiveInteger(row.id),
+    sender: {
+      id: senderId,
+      name: trimmed(sender.name ?? row.sender_name ?? row.senderName) || 'Someone'
+    },
+    message: trimmed(row.message),
+    receivedOn: formatDate(row.created_at ?? row.createdAt),
+    reactionCount,
+    reactionLabel: plural(reactionCount, 'reaction', 'reactions'),
+    myReaction: trimmed(row.my_reaction ?? row.myReaction)
+  };
+}
+
+function successMessage(status) {
+  const messages = {
+    'appreciation-sent': 'Your thank-you has been sent.',
+    'reaction-updated': 'Reaction updated.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function errorMessage(status) {
+  const messages = {
+    'appreciation-message-required': 'Enter a thank-you message.',
+    'appreciation-self': 'You cannot send yourself appreciation.',
+    'appreciation-too-long': 'Keep the thank-you message to 1,000 characters or fewer.',
+    'appreciation-rate-limited': 'Please wait before sending another thank-you.',
+    'appreciation-failed': 'Sorry, that thank-you could not be sent. Please try again.',
+    'reaction-failed': 'Sorry, that reaction could not be saved. Please try again.'
+  };
+  return messages[trimmed(status)] || '';
+}
 
 function appreciationStatus(error) {
   const message = String(error?.message || '');
@@ -23,6 +154,64 @@ function appreciationStatus(error) {
   if (/rate_limit/i.test(message)) return 'appreciation-rate-limited';
   return 'appreciation-failed';
 }
+
+router.get('/users/:userId(\\d+)/collections', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const userId = Number(req.params.userId);
+  const [ownerResult, collectionsResult] = await Promise.all([
+    getUser(token, userId),
+    getUserPublicCollections(token, userId)
+  ]);
+  const owner = normalizeOwner(ownerResult, userId);
+  const collections = rowsFrom(collectionsResult)
+    .map(normalizeCollection)
+    .filter((collection) => collection.id !== null);
+
+  return res.render('saved-social/public-collections', {
+    title: 'Public collections',
+    activeNav: 'members',
+    owner,
+    collections
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Member not found' }));
+
+router.get('/users/:userId(\\d+)/appreciations', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const userId = Number(req.params.userId);
+  const page = Math.max(1, Number(req.query.page || 1));
+  const status = trimmed(req.query.status);
+  const [viewerResult, ownerResult, appreciationsResult] = await Promise.all([
+    getProfile(token),
+    getUser(token, userId),
+    getUserAppreciations(token, userId, { page, per_page: 20 })
+  ]);
+  const viewer = normalizeOwner(viewerResult, 0);
+  const owner = normalizeOwner(ownerResult, userId);
+  const meta = metaFrom(appreciationsResult);
+  const currentPage = Number(meta.current_page || page || 1);
+  const lastPage = Number(meta.last_page || 1);
+  const appreciations = rowsFrom(appreciationsResult)
+    .map(normalizeAppreciation)
+    .filter((appreciation) => appreciation.id !== null);
+
+  return res.render('saved-social/appreciations', {
+    title: 'Appreciation wall',
+    activeNav: 'members',
+    owner,
+    isSelf: viewer.id === owner.id,
+    appreciations,
+    reactionTypes: APPRECIATION_REACTION_TYPES,
+    currentPage,
+    lastPage,
+    status,
+    successMessage: successMessage(status),
+    errorMessage: errorMessage(status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Member not found' }));
 
 router.post('/saved/destroy', requireAuth, asyncRoute(async (req, res) => {
   const type = String(req.body.type || '').trim();

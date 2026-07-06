@@ -1,0 +1,122 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  {% set messageError = status == "appreciation-message-required" %}
+
+  <a class="govuk-back-link" href="/members/{{ owner.id }}">Back to profile</a>
+
+  {% if errorMessage %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          {% if messageError %}
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="#appreciation-message">{{ errorMessage }}</a></li>
+            </ul>
+          {% else %}
+            <p class="govuk-body">{{ errorMessage }}</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <span class="govuk-caption-xl">Thank-you notes received by {{ owner.name }}</span>
+  <h1 class="govuk-heading-xl">Appreciation for {{ owner.name }}</h1>
+
+  {% if successMessage %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="saved-appreciation-status-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="saved-appreciation-status-title">Success</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ successMessage }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <p class="govuk-body-l">Public thank-you notes other members have sent to this person.</p>
+
+  {% if not isSelf %}
+    <form method="post" action="/users/{{ owner.id }}/appreciations" class="govuk-!-margin-bottom-7">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <div class="govuk-form-group{% if messageError %} govuk-form-group--error{% endif %}">
+        <label class="govuk-label govuk-label--m" for="appreciation-message">Send a thank-you</label>
+        <div id="appreciation-message-hint" class="govuk-hint">Share a short public note of appreciation.</div>
+        {% if messageError %}
+          <p id="appreciation-message-error" class="govuk-error-message"><span class="govuk-visually-hidden">There is a problem:</span> {{ errorMessage }}</p>
+        {% endif %}
+        <textarea class="govuk-textarea" id="appreciation-message" name="message" rows="4" maxlength="1000" aria-describedby="appreciation-message-hint{% if messageError %} appreciation-message-error{% endif %}"></textarea>
+      </div>
+      <div class="govuk-checkboxes govuk-checkboxes--small govuk-!-margin-bottom-4" data-module="govuk-checkboxes">
+        <div class="govuk-checkboxes__item">
+          <input class="govuk-checkboxes__input" id="appreciation-public" name="is_public" type="checkbox" value="1" checked>
+          <label class="govuk-label govuk-checkboxes__label" for="appreciation-public">Show this thank-you publicly</label>
+        </div>
+      </div>
+      <button type="submit" class="govuk-button" data-module="govuk-button">Send thank-you</button>
+    </form>
+  {% endif %}
+
+  {% if appreciations and appreciations.length %}
+    <ul class="govuk-list nexus-alpha-card-list">
+      {% for appreciation in appreciations %}
+        <li class="nexus-alpha-card" id="appreciation-{{ appreciation.id }}">
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+            From
+            {% if appreciation.sender.id %}
+              <a class="govuk-link" href="/members/{{ appreciation.sender.id }}">{{ appreciation.sender.name }}</a>
+            {% else %}
+              {{ appreciation.sender.name }}
+            {% endif %}
+            {% if appreciation.receivedOn %} on {{ appreciation.receivedOn }}{% endif %}
+          </p>
+          <p class="govuk-body">{{ appreciation.message }}</p>
+          <p class="govuk-body-s nexus-alpha-meta">{{ appreciation.reactionLabel }}</p>
+          <div class="govuk-button-group">
+            {% for reaction in reactionTypes %}
+              <form method="post" action="/appreciations/{{ appreciation.id }}/react" class="govuk-!-margin-bottom-0">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <input type="hidden" name="owner_id" value="{{ owner.id }}">
+                <input type="hidden" name="reaction_type" value="{{ reaction.value }}">
+                <button type="submit" class="govuk-button {% if appreciation.myReaction == reaction.value %}govuk-button--secondary{% else %}govuk-button--secondary{% endif %} govuk-!-margin-bottom-0" data-module="govuk-button">
+                  {{ reaction.label }}
+                </button>
+              </form>
+            {% endfor %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-m">No appreciation yet</h2>
+      <p class="govuk-body">Public thank-you notes for this member will appear here.</p>
+    </div>
+  {% endif %}
+
+  {% if lastPage > 1 %}
+    <nav class="govuk-pagination" role="navigation" aria-label="Page {{ currentPage }} of {{ lastPage }}">
+      {% if currentPage > 1 %}
+        <div class="govuk-pagination__prev">
+          <a class="govuk-link govuk-pagination__link" href="/users/{{ owner.id }}/appreciations?page={{ currentPage - 1 }}" rel="prev">
+            <span class="govuk-pagination__link-title">Previous</span>
+          </a>
+        </div>
+      {% endif %}
+      {% if currentPage < lastPage %}
+        <div class="govuk-pagination__next">
+          <a class="govuk-link govuk-pagination__link" href="/users/{{ owner.id }}/appreciations?page={{ currentPage + 1 }}" rel="next">
+            <span class="govuk-pagination__link-title">Next</span>
+          </a>
+        </div>
+      {% endif %}
+    </nav>
+  {% endif %}
+{% endblock %}

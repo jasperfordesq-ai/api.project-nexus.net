@@ -1019,6 +1019,23 @@ async function getSavedCollectionItems(token, id, params = {}) {
   });
 }
 
+async function getUserPublicCollections(token, userId) {
+  return request(`/api/v2/users/${encodeURIComponent(userId)}/public-collections`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getUserAppreciations(token, userId, params = {}) {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', params.page);
+  if (params.per_page) query.set('per_page', params.per_page);
+  const queryString = query.toString();
+
+  return request(`/api/v2/users/${encodeURIComponent(userId)}/appreciations${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function sendAppreciation(token, data) {
   return request('/api/v2/appreciations', {
     method: 'POST',
@@ -2722,6 +2739,8 @@ module.exports = {
   unsaveSavedItem,
   getSavedCollections,
   getSavedCollectionItems,
+  getUserPublicCollections,
+  getUserAppreciations,
   sendAppreciation,
   reactToAppreciation,
   getResources,
