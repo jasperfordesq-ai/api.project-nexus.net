@@ -1,0 +1,43 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      {% if state == "success" %}
+        <div class="govuk-panel govuk-panel--confirmation">
+          <h1 class="govuk-panel__title">You have been unsubscribed</h1>
+          <div class="govuk-panel__body">You will no longer receive newsletter emails from this community.</div>
+        </div>
+        <p class="govuk-body govuk-!-margin-top-6">You may still receive essential account and security emails.</p>
+        <p class="govuk-body">
+          <a class="govuk-link" href="/">Return to the home page</a>
+        </p>
+      {% else %}
+        <h1 class="govuk-heading-xl">Unsubscribe from emails</h1>
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <div class="govuk-error-summary__body">
+              <ul class="govuk-list govuk-error-summary__list">
+                <li>
+                  {% if state == "missing" %}
+                    No unsubscribe link was provided. Use the link in the email you received.
+                  {% else %}
+                    This unsubscribe link is invalid or has expired.
+                  {% endif %}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <p class="govuk-body">
+          <a class="govuk-link" href="/">Return to the home page</a>
+        </p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

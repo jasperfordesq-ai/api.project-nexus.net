@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-06T23:45:30.264Z",
+    "generatedAt": "2026-07-06T23:49:09.784Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -10008,8 +10008,8 @@
       "gates": "",
       "apiNeeds": "api:NewsletterController::unsubscribe",
       "webUkPath": "/newsletter/unsubscribe",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "public-info/newsletter-unsubscribe",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\public-info.js"
     },
     {
       "method": "GET",

@@ -5,6 +5,7 @@
 
 const express = require('express');
 const { getContributors } = require('../lib/contributors');
+const { callNewsletterApi } = require('../lib/api');
 
 const router = express.Router();
 
@@ -140,6 +141,27 @@ router.get('/faq', (req, res) => {
     activeNav: 'faq',
     communityName: communityName(res),
     faqs: FAQS
+  });
+});
+
+router.get('/newsletter/unsubscribe', async (req, res) => {
+  const token = typeof req.query.token === 'string' ? req.query.token.trim() : '';
+  let state = 'missing';
+
+  if (token) {
+    const query = new URLSearchParams({ token });
+    try {
+      await callNewsletterApi('GET', `?${query.toString()}`);
+      state = 'success';
+    } catch {
+      state = 'invalid';
+    }
+  }
+
+  res.render('public-info/newsletter-unsubscribe', {
+    title: 'Unsubscribe from emails',
+    activeNav: '',
+    state
   });
 });
 

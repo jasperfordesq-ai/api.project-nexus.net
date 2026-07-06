@@ -84,6 +84,14 @@ sanitized article body, and related-article links. Feedback, attachments, admin
 editing, tenant routing, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 
+The public auth and email aliases include Laravel-style forgot-password,
+reset-password, two-factor, and newsletter unsubscribe pages. The
+`/newsletter/unsubscribe` page renders the Blade missing, invalid, and
+confirmation states; when a token is present it calls Laravel
+`/api/v2/newsletter/unsubscribe` before rendering the confirmation or invalid
+state. Tenant-domain routing, localization, and live email-token runtime
+behavior are not certified.
+
 The `/account` page is now a local Blade-style protected account hub candidate.
 Unsigned requests redirect to `/login`, matching the Laravel accessible account
 route. Signed-in requests render the Blade-style account card list for wallet,

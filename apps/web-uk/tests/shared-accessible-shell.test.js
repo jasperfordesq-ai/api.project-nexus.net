@@ -38,6 +38,7 @@ jest.mock('../src/lib/api', () => ({
   verify2fa: jest.fn(),
   validateToken: jest.fn(),
   getProfile: jest.fn(),
+  callNewsletterApi: jest.fn().mockResolvedValue({ data: { success: true } }),
   getFeedPosts: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } }),
   getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
   updateProfile: jest.fn().mockResolvedValue({}),
@@ -721,6 +722,33 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/register"');
     expect(response.text).toContain('href="/contact"');
     expect(response.text).not.toContain('A timebanking platform for community exchange.');
+  });
+
+  it('renders the Laravel-style newsletter unsubscribe states', async () => {
+    const api = require('../src/lib/api');
+    api.callNewsletterApi.mockResolvedValueOnce({ data: { success: true } });
+    api.callNewsletterApi.mockRejectedValueOnce(new api.ApiError('Invalid token', 422, {}));
+
+    const missing = await request(app).get('/newsletter/unsubscribe');
+    const success = await request(app).get('/newsletter/unsubscribe?token=valid-token');
+    const invalid = await request(app).get('/newsletter/unsubscribe?token=expired-token');
+
+    expect(missing.status).toBe(200);
+    expect(missing.text).toContain('Unsubscribe from emails');
+    expect(missing.text).toContain('No unsubscribe link was provided. Use the link in the email you received.');
+    expect(missing.text).toContain('Return to the home page');
+
+    expect(success.status).toBe(200);
+    expect(success.text).toContain('govuk-panel--confirmation');
+    expect(success.text).toContain('You have been unsubscribed');
+    expect(success.text).toContain('You will no longer receive newsletter emails from this community.');
+    expect(success.text).toContain('You may still receive essential account and security emails.');
+    expect(api.callNewsletterApi).toHaveBeenNthCalledWith(1, 'GET', '?token=valid-token');
+
+    expect(invalid.status).toBe(200);
+    expect(invalid.text).toContain('This unsubscribe link is invalid or has expired.');
+    expect(api.callNewsletterApi).toHaveBeenNthCalledWith(2, 'GET', '?token=expired-token');
+    expect(invalid.text).not.toContain('shared accessible frontend preparation page');
   });
 
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {

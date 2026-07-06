@@ -531,6 +531,17 @@ async function getLegalDocument(type) {
   return request(`/api/v2/legal/${encodeURIComponent(type)}`);
 }
 
+async function callNewsletterApi(method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') || path.startsWith('?') ? path : `/${path}`) : '';
+  const options = { method };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/newsletter/unsubscribe${normalizedPath}`, options);
+}
+
 async function getMyVolunteerOrganisations(token, params = {}) {
   const query = new URLSearchParams();
   if (params.per_page) query.set('per_page', params.per_page);
@@ -2734,6 +2745,7 @@ module.exports = {
   getKnowledgeBaseArticle,
   getHelpFaqs,
   getLegalDocument,
+  callNewsletterApi,
   getMyVolunteerOrganisations,
   createVolunteerOrganisation,
   callVolunteeringApi,
