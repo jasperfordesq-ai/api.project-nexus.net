@@ -68,6 +68,9 @@ jest.mock('../src/lib/api', () => ({
   createMemberPremiumCheckout: jest.fn().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } }),
   createMemberPremiumPortal: jest.fn().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } }),
   cancelMemberPremium: jest.fn().mockResolvedValue({ data: { cancelled: true } }),
+  createReview: jest.fn().mockResolvedValue({ data: { id: 91 } }),
+  createComment: jest.fn().mockResolvedValue({ data: { id: 12 } }),
+  toggleReaction: jest.fn().mockResolvedValue({ data: { action: 'added' } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -128,6 +131,9 @@ describe('shared accessible frontend shell', () => {
     api.createMemberPremiumCheckout.mockReset().mockResolvedValue({ data: { checkout_url: 'https://checkout.stripe.test/session' } });
     api.createMemberPremiumPortal.mockReset().mockResolvedValue({ data: { portal_url: 'https://billing.stripe.test/session' } });
     api.cancelMemberPremium.mockReset().mockResolvedValue({ data: { cancelled: true } });
+    api.createReview.mockReset().mockResolvedValue({ data: { id: 91 } });
+    api.createComment.mockReset().mockResolvedValue({ data: { id: 12 } });
+    api.toggleReaction.mockReset().mockResolvedValue({ data: { action: 'added' } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -1175,6 +1181,169 @@ describe('shared accessible frontend shell', () => {
       .send({
         _csrf: csrfMatch[1],
         tier_id: '7'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+  });
+
+  it('submits the Laravel reviews store route through the v2 reviews API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/reviews')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        receiver_id: '77',
+        rating: '5',
+        comment: ' Great exchange ',
+        transaction_id: '22'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/reviews?status=review-submitted');
+    expect(api.createReview).toHaveBeenCalledWith('test-token', {
+      receiver_id: 77,
+      rating: 5,
+      comment: 'Great exchange',
+      transaction_id: 22
+    });
+  });
+
+  it('maps duplicate Laravel review submissions to the review duplicate status', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.createReview.mockRejectedValueOnce(new api.ApiError('already reviewed', 409));
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/reviews')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        receiver_id: '77',
+        rating: '5'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/reviews?status=review-duplicate');
+  });
+
+  it('submits the Laravel review comment route through the comments API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/reviews/91/comments')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        body: ' Helpful context ',
+        parent_id: '4'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/reviews/91/comments?status=reply-added');
+    expect(api.createComment).toHaveBeenCalledWith('test-token', {
+      target_type: 'review',
+      target_id: 91,
+      content: 'Helpful context',
+      parent_id: 4
+    });
+  });
+
+  it('redirects empty Laravel review comments with the invalid status', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/reviews/91/comments')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        body: '  '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/reviews/91/comments?status=comment-invalid');
+    expect(api.createComment).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel review reaction route through the reactions API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/reviews/91/react')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        emoji: 'love'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/reviews/91/comments?status=reaction-added#review-reactions');
+    expect(api.toggleReaction).toHaveBeenCalledWith('test-token', {
+      target_type: 'review',
+      target_id: 91,
+      reaction_type: 'love'
+    });
+  });
+
+  it('redirects signed-out Laravel review submissions to the auth-required status', async () => {
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/reviews')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        receiver_id: '77',
+        rating: '5'
       });
 
     expect(response.status).toBe(302);

@@ -929,6 +929,99 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel review social helpers', () => {
+    it('should create an exchange review through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 91 } })
+      });
+
+      await api.createReview('test-token', {
+        receiver_id: 77,
+        rating: 5,
+        comment: 'Great exchange',
+        transaction_id: 22
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/reviews',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            receiver_id: 77,
+            rating: 5,
+            comment: 'Great exchange',
+            transaction_id: 22
+          })
+        })
+      );
+    });
+
+    it('should create a polymorphic comment through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12 } })
+      });
+
+      await api.createComment('test-token', {
+        target_type: 'review',
+        target_id: 91,
+        content: 'Helpful context',
+        parent_id: 4
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/comments',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            target_type: 'review',
+            target_id: 91,
+            content: 'Helpful context',
+            parent_id: 4
+          })
+        })
+      );
+    });
+
+    it('should toggle a polymorphic reaction through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { action: 'added' } })
+      });
+
+      await api.toggleReaction('test-token', {
+        target_type: 'review',
+        target_id: 91,
+        reaction_type: 'love'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/reactions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            target_type: 'review',
+            target_id: 91,
+            reaction_type: 'love'
+          })
+        })
+      );
+    });
+  });
+
   describe('Laravel onboarding helpers', () => {
     it('should save safeguarding preferences through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

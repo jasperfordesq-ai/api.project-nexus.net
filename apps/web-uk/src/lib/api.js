@@ -1180,6 +1180,30 @@ async function deleteReview(token, reviewId) {
   });
 }
 
+async function createReview(token, data) {
+  return request('/api/v2/reviews', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function createComment(token, data) {
+  return request('/api/v2/comments', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function toggleReaction(token, data) {
+  return request('/api/v2/reactions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 // Helper to invalidate all cached data for a user (e.g., on logout)
 function invalidateUserCache(token) {
   const prefix = token.substring(0, 40);
@@ -1531,6 +1555,9 @@ module.exports = {
   getReview,
   updateReview,
   deleteReview,
+  createReview,
+  createComment,
+  toggleReaction,
   // Admin
   adminGetDashboard,
   adminGetUsers,

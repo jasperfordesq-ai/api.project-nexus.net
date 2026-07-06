@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T09:30:52.568Z
+Generated: 2026-07-06T09:38:50.218Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 423 |
-| Matched routes | 341 |
-| Missing routes | 267 |
+| web-uk routes | 426 |
+| Matched routes | 344 |
+| Missing routes | 264 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -77,7 +77,7 @@ Generated: 2026-07-06T09:30:52.568Z
 | reports | 0 | 0 | 3 |
 | reset-password | 0 | 0 | 2 |
 | resources | 6 | 6 | 0 |
-| reviews | 4 | 3 | 4 |
+| reviews | 7 | 0 | 4 |
 | saved | 2 | 0 | 0 |
 | search | 3 | 3 | 1 |
 | service-unavailable | 0 | 0 | 1 |
@@ -321,9 +321,6 @@ Generated: 2026-07-06T09:30:52.568Z
 | POST | `/resources/{param}/react` | resources | resourcesReact |  | auth-optional | feature:resources |
 | POST | `/resources/reorder` | resources | resourcesReorder |  | auth-optional | feature:resources |
 | POST | `/resources/upload` | resources | resourcesUpload |  | auth-optional | feature:resources |
-| POST | `/reviews` | reviews | storeReview |  | auth-optional | feature:reviews |
-| POST | `/reviews/{param}/comments` | reviews | blogReviewsStoreReviewComment |  | auth-optional | feature:reviews |
-| POST | `/reviews/{param}/react` | reviews | blogReviewsReviewReaction |  | auth-optional | feature:reviews |
 | POST | `/search/saved` | search | searchSaveSearch |  | auth-optional | feature:search |
 | POST | `/search/saved/{param}/delete` | search | searchDeleteSaved |  | auth-optional | feature:search |
 | POST | `/search/saved/{param}/run` | search | searchRunSaved |  | auth-optional | feature:search |

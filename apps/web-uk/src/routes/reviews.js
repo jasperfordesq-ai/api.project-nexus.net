@@ -10,6 +10,9 @@ const {
   getReview,
   updateReview,
   deleteReview,
+  createReview,
+  createComment,
+  toggleReaction,
   ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
@@ -18,6 +21,134 @@ const { validateReturnUrl } = require('../lib/urlValidator');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
+
+const LARAVEL_REVIEW_REACTIONS = new Set(['like', 'love', 'laugh', 'wow', 'sad', 'celebrate']);
+
+function tokenFrom(req) {
+  return req.signedCookies.token || '';
+}
+
+function positiveInteger(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function integerOrZero(value) {
+  const id = Number(value);
+  return Number.isInteger(id) ? id : 0;
+}
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function commentsRedirect(id, status, fragment = '') {
+  return `/reviews/${id}/comments?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+function redirectAuthIfNeeded(error, res) {
+  if (error instanceof ApiError && error.status === 401) {
+    res.redirect('/login?status=auth-required');
+    return true;
+  }
+  return false;
+}
+
+function shouldRenderNotFound(error) {
+  return error instanceof ApiError && error.status === 404;
+}
+
+router.post('/', audit.reviewCreate(), asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const transactionId = positiveInteger(req.body.transaction_id);
+  const comment = trimmed(req.body.comment);
+  const payload = {
+    receiver_id: integerOrZero(req.body.receiver_id),
+    rating: integerOrZero(req.body.rating),
+    comment: comment !== '' ? comment : null,
+    transaction_id: transactionId
+  };
+
+  let status = 'review-submitted';
+  try {
+    await createReview(token, payload);
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return;
+    if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
+      status = 'review-invalid';
+    } else if (error instanceof ApiError && error.status === 409) {
+      status = 'review-duplicate';
+    } else {
+      status = 'review-failed';
+    }
+  }
+
+  return res.redirect(`/reviews?status=${status}`);
+}));
+
+router.post('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const id = Number(req.params.id);
+  const body = trimmed(req.body.body, 5000);
+  const parentId = positiveInteger(req.body.parent_id);
+
+  if (body === '') {
+    return res.redirect(commentsRedirect(id, 'comment-invalid'));
+  }
+
+  let status = parentId !== null ? 'reply-added' : 'comment-added';
+  try {
+    await createComment(token, {
+      target_type: 'review',
+      target_id: id,
+      content: body,
+      parent_id: parentId
+    });
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return;
+    if (shouldRenderNotFound(error)) throw error;
+    status = 'comment-failed';
+  }
+
+  return res.redirect(commentsRedirect(id, status));
+}));
+
+router.post('/:id(\\d+)/react', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const id = Number(req.params.id);
+  const emoji = trimmed(req.body.emoji);
+  let status = 'reaction-failed';
+
+  if (LARAVEL_REVIEW_REACTIONS.has(emoji)) {
+    try {
+      const result = await toggleReaction(token, {
+        target_type: 'review',
+        target_id: id,
+        reaction_type: emoji
+      });
+      const action = result && result.data && result.data.action;
+      status = action === 'removed' ? 'reaction-removed' : 'reaction-added';
+    } catch (error) {
+      if (redirectAuthIfNeeded(error, res)) return;
+      if (shouldRenderNotFound(error)) throw error;
+    }
+  }
+
+  return res.redirect(commentsRedirect(id, status, '#review-reactions'));
+}));
 
 router.use(requireAuth);
 
