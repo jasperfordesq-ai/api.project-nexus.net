@@ -59,6 +59,96 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task PartnerApiV1_UsesLaravelClientCredentialsAndScopedResponseShapes()
+    {
+        var (clientId, clientSecret) = await RegisterApiPartnerAsync("users.read listings.read wallet.read wallet.write aggregates.read webhooks.manage");
+        ClearAuthToken();
+
+        var unsupportedGrant = await Client.PostAsJsonAsync("/api/partner/v1/oauth/token", new
+        {
+            grant_type = "password",
+            client_id = clientId,
+            client_secret = clientSecret
+        });
+
+        unsupportedGrant.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var unsupportedJson = await unsupportedGrant.Content.ReadFromJsonAsync<JsonElement>();
+        unsupportedJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("unsupported_grant_type");
+
+        var tokenResponse = await Client.PostAsJsonAsync("/api/partner/v1/oauth/token", new
+        {
+            grant_type = "client_credentials",
+            client_id = clientId,
+            client_secret = clientSecret,
+            scope = "listings.read wallet.read wallet.write aggregates.read webhooks.manage"
+        });
+
+        tokenResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        tokenResponse.Headers.GetValues("API-Version").Single().Should().Be("2.0");
+        var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var accessToken = tokenJson.GetProperty("access_token").GetString();
+        accessToken.Should().NotBeNullOrWhiteSpace();
+        tokenJson.GetProperty("token_type").GetString().Should().Be("bearer");
+        tokenJson.GetProperty("expires_in").GetInt32().Should().Be(3600);
+        tokenJson.GetProperty("scope").GetString().Should().Be("listings.read wallet.read wallet.write aggregates.read webhooks.manage");
+
+        Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var listings = await Client.GetAsync("/api/partner/v1/listings?page=1&per_page=2");
+        listings.StatusCode.Should().Be(HttpStatusCode.OK);
+        listings.Headers.GetValues("API-Version").Single().Should().Be("2.0");
+        var listingsJson = await listings.Content.ReadFromJsonAsync<JsonElement>();
+        listingsJson.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
+        listingsJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        listingsJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(2);
+
+        var aggregate = await Client.GetAsync("/api/partner/v1/aggregates/community");
+        aggregate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var aggregateData = (await aggregate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        aggregateData.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        aggregateData.GetProperty("active_members_bucket").GetInt32().Should().Be(0);
+        aggregateData.GetProperty("active_listings_bucket").GetInt32().Should().Be(0);
+        aggregateData.GetProperty("generated_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var credit = await Client.PostAsJsonAsync("/api/partner/v1/wallet/credit", new
+        {
+            user_id = TestData.MemberUser.Id,
+            hours = 1.25m,
+            reference = "settlement-001",
+            note = "Bank settlement"
+        });
+
+        credit.StatusCode.Should().Be(HttpStatusCode.Created);
+        var creditData = (await credit.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        creditData.GetProperty("transaction_id").GetInt32().Should().BeGreaterThan(0);
+        creditData.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        creditData.GetProperty("hours").GetDecimal().Should().Be(1.25m);
+        creditData.GetProperty("reference").GetString().Should().Be("settlement-001");
+        creditData.GetProperty("replayed").GetBoolean().Should().BeFalse();
+
+        var balance = await Client.GetAsync($"/api/partner/v1/wallet/balance/{TestData.MemberUser.Id}");
+
+        balance.StatusCode.Should().Be(HttpStatusCode.OK);
+        var balanceData = (await balance.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        balanceData.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        balanceData.GetProperty("balance_hours").GetDecimal().Should().BeGreaterThan(0m);
+        balanceData.GetProperty("currency").GetString().Should().Be("time_credits");
+
+        var webhook = await Client.PostAsJsonAsync("/api/partner/v1/webhooks/subscriptions", new
+        {
+            event_types = new[] { "wallet.credited" },
+            target_url = "https://partner.example.test/hooks/nexus"
+        });
+
+        webhook.StatusCode.Should().Be(HttpStatusCode.Created);
+        var webhookData = (await webhook.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data").GetProperty("subscription");
+        webhookData.GetProperty("event_types").EnumerateArray().Select(x => x.GetString())
+            .Should().BeEquivalentTo(["wallet.credited"]);
+        webhookData.GetProperty("target_url").GetString().Should().Be("https://partner.example.test/hooks/nexus");
+        webhookData.GetProperty("secret").GetString().Should().StartWith("whsec_");
+    }
+
+    [Fact]
     public async Task MarketplaceSellerShippingOptions_BySellerId_ReturnsActiveOptions()
     {
         await AuthenticateAsMemberAsync();
@@ -686,6 +776,26 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             FileUrl = "/storage/regional-analytics/report.pdf"
         });
         await db.SaveChangesAsync();
+    }
+
+    private async Task<(string ClientId, string ClientSecret)> RegisterApiPartnerAsync(string scopes)
+    {
+        await AuthenticateAsAdminAsync();
+        var response = await Client.PostAsJsonAsync("/api/admin/api-partners", new
+        {
+            name = $"Laravel React Partner {Guid.NewGuid():N}",
+            contact_email = "partner-contract@example.test",
+            description = "Laravel React frontend contract test partner",
+            scopes,
+            rate_limit_per_minute = 120
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var id = json.GetProperty("id").GetGuid().ToString();
+        var secret = json.GetProperty("api_key").GetString();
+        secret.Should().NotBeNullOrWhiteSpace();
+        return (id, secret!);
     }
 
     private static bool HasLaravelBackgroundJobShape(JsonElement job)

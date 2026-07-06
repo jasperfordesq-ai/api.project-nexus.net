@@ -3,14 +3,18 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
-using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
@@ -22,15 +26,19 @@ namespace Nexus.Api.Controllers;
 [Authorize]
 public class V15MemberParityController : ControllerBase
 {
+    private const int PartnerTokenTtlSeconds = 3600;
+    private const string ApiVersionHeader = "API-Version";
+    private const string ApiVersion = "2.0";
+
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
-    private readonly TokenService _tokenService;
+    private readonly IConfiguration _config;
 
-    public V15MemberParityController(NexusDbContext db, TenantContext tenantContext, TokenService tokenService)
+    public V15MemberParityController(NexusDbContext db, TenantContext tenantContext, IConfiguration config)
     {
         _db = db;
         _tenantContext = tenantContext;
-        _tokenService = tokenService;
+        _config = config;
     }
 
     [HttpGet("api/v2/events")]
@@ -212,7 +220,6 @@ public class V15MemberParityController : ControllerBase
     [HttpGet("api/v2/listings/nearby")]
     [HttpGet("api/v2/users/{id:int}/listings")]
     [HttpGet("api/v2/users/me/listings")]
-    [HttpGet("api/partner/v1/listings")]
     [HttpGet("api/v2/federation/listings")]
     public async Task<IActionResult> V2Listings([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? type = null)
     {
@@ -381,16 +388,31 @@ public class V15MemberParityController : ControllerBase
     }
 
     [HttpGet("api/partner/v1/wallet/balance/{userId:int}")]
+    [AllowAnonymous]
     public async Task<IActionResult> PartnerWalletBalance(int userId)
     {
         // Partner federation endpoint: must be invoked through the federation
         // auth middleware (which sets FederationTenantId on HttpContext.Items).
         // Without that context, treat as unauthorized — never let an ordinary
         // authenticated user pass an arbitrary userId here.
-        if (!HttpContext.Items.ContainsKey("FederationTenantId"))
-            return Unauthorized(new { error = "Federation authentication required" });
+        if (!TryRequirePartnerScope("wallet.read", out var partnerResult, out _))
+        {
+            return partnerResult!;
+        }
 
-        return await BuildWalletBalanceAsync(userId);
+        if (!await _db.Users.AnyAsync(u => u.Id == userId && u.TenantId == TenantId()))
+        {
+            return PartnerError("USER_NOT_FOUND", "User not found.", 404);
+        }
+
+        var received = await _db.Transactions.Where(t => t.ReceiverId == userId && t.Status == TransactionStatus.Completed).SumAsync(t => t.Amount);
+        var sent = await _db.Transactions.Where(t => t.SenderId == userId && t.Status == TransactionStatus.Completed).SumAsync(t => t.Amount);
+        return PartnerData(new
+        {
+            user_id = userId,
+            balance_hours = Math.Round(received - sent, 4),
+            currency = "time_credits"
+        });
     }
 
     private async Task<IActionResult> BuildWalletBalanceAsync(int targetUserId)
@@ -438,7 +460,6 @@ public class V15MemberParityController : ControllerBase
     }
 
     [HttpPost("api/v2/wallet/transfer")]
-    [HttpPost("api/partner/v1/wallet/credit")]
     public async Task<IActionResult> V2WalletTransfer([FromBody] JsonElement body)
     {
         var senderId = CurrentUserId();
@@ -458,6 +479,67 @@ public class V15MemberParityController : ControllerBase
         _db.Transactions.Add(tx);
         await _db.SaveChangesAsync();
         return Ok(new { success = true, data = new { tx.Id, tx.Amount, tx.ReceiverId } });
+    }
+
+    [HttpPost("api/partner/v1/wallet/credit")]
+    [AllowAnonymous]
+    public async Task<IActionResult> PartnerWalletCredit([FromBody] JsonElement body)
+    {
+        if (!TryRequirePartnerScope("wallet.write", out var partnerResult, out var partner))
+        {
+            return partnerResult!;
+        }
+
+        var userId = GetInt(body, "user_id") ?? 0;
+        var hours = GetDecimal(body, "hours") ?? 0m;
+        var reference = GetString(body, "reference")?.Trim() ?? string.Empty;
+        var note = GetString(body, "note")?.Trim();
+        if (userId <= 0 || hours <= 0 || string.IsNullOrWhiteSpace(reference))
+        {
+            return PartnerError("invalid_request", "user_id, hours and reference are required.", 422);
+        }
+
+        if (!await _db.Users.AnyAsync(u => u.Id == userId && u.TenantId == TenantId()))
+        {
+            return PartnerError("USER_NOT_FOUND", "User not found.", 404);
+        }
+
+        var senderId = await _db.Users
+            .Where(u => u.TenantId == TenantId() && u.Id != userId && u.IsActive)
+            .OrderByDescending(u => u.Role == "admin")
+            .Select(u => u.Id)
+            .FirstOrDefaultAsync();
+        if (senderId == 0)
+        {
+            return PartnerError("invalid_partner", "No tenant ledger source user is available.", 403);
+        }
+
+        var description = $"Partner wallet credit from {partner?.Name ?? "partner"} ({reference})";
+        if (!string.IsNullOrWhiteSpace(note))
+        {
+            description += $": {note}";
+        }
+
+        var tx = new Transaction
+        {
+            TenantId = TenantId(),
+            SenderId = senderId,
+            ReceiverId = userId,
+            Amount = Math.Round(hours, 2),
+            Description = description,
+            Status = TransactionStatus.Completed
+        };
+        _db.Transactions.Add(tx);
+        await _db.SaveChangesAsync();
+
+        return PartnerData(new
+        {
+            transaction_id = tx.Id,
+            user_id = userId,
+            hours = tx.Amount,
+            reference,
+            replayed = false
+        }, 201);
     }
 
     [HttpGet("api/v2/wallet/categories")]
@@ -667,35 +749,225 @@ public class V15MemberParityController : ControllerBase
     public IActionResult V2SmallClusterLightweight(int id) => Ok(new { success = true, data = Array.Empty<object>(), id });
 
     [HttpGet("api/partner/v1/aggregates/community")]
-    public async Task<IActionResult> PartnerCommunityAggregate() => Ok(new { users = await _db.Users.CountAsync(), listings = await _db.Listings.CountAsync(), events = await _db.Events.CountAsync() });
+    [AllowAnonymous]
+    public async Task<IActionResult> PartnerCommunityAggregate()
+    {
+        if (!TryRequirePartnerScope("aggregates.read", out var partnerResult, out _))
+        {
+            return partnerResult!;
+        }
+
+        var tenantId = TenantId();
+        var activeMembers = await _db.Users.CountAsync(u => u.TenantId == tenantId && u.IsActive);
+        var activeListings = await _db.Listings.CountAsync(l => l.TenantId == tenantId && l.Status == ListingStatus.Active && l.DeletedAt == null);
+        return PartnerData(new
+        {
+            tenant_id = tenantId,
+            active_members_bucket = BucketCount(activeMembers),
+            active_listings_bucket = BucketCount(activeListings),
+            generated_at = DateTime.UtcNow
+        });
+    }
+
+    [HttpGet("api/partner/v1/listings")]
+    [AllowAnonymous]
+    public async Task<IActionResult> PartnerListings([FromQuery] int page = 1, [FromQuery(Name = "per_page")] int perPage = 25)
+    {
+        if (!TryRequirePartnerScope("listings.read", out var partnerResult, out _))
+        {
+            return partnerResult!;
+        }
+
+        page = Math.Max(page, 1);
+        perPage = Math.Clamp(perPage, 1, 100);
+        var tenantId = TenantId();
+        var query = _db.Listings.AsNoTracking()
+            .Where(l => l.TenantId == tenantId && l.Status == ListingStatus.Active && l.DeletedAt == null);
+        var total = await query.CountAsync();
+        var data = await query
+            .OrderByDescending(l => l.Id)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
+            .Select(l => new
+            {
+                id = l.Id,
+                user_id = l.UserId,
+                title = l.Title,
+                type = l.Type.ToString().ToLowerInvariant(),
+                created_at = l.CreatedAt
+            })
+            .ToListAsync();
+
+        return PartnerPaginated(data, total, page, perPage);
+    }
 
     [HttpGet("api/partner/v1/users")]
-    public async Task<IActionResult> PartnerUsers() => Ok(new { data = await _db.Users.AsNoTracking().Take(100).Select(u => new { id = u.Id, email = u.Email, first_name = u.FirstName, last_name = u.LastName }).ToListAsync() });
+    [AllowAnonymous]
+    public async Task<IActionResult> PartnerUsers([FromQuery] int page = 1, [FromQuery(Name = "per_page")] int perPage = 25)
+    {
+        if (!TryRequirePartnerScope("users.read", out var partnerResult, out _))
+        {
+            return partnerResult!;
+        }
+
+        page = Math.Max(page, 1);
+        perPage = Math.Clamp(perPage, 1, 100);
+        var tenantId = TenantId();
+        var includePii = PartnerScopes().Contains("users.pii", StringComparer.OrdinalIgnoreCase);
+        var query = _db.Users.AsNoTracking().Where(u => u.TenantId == tenantId && u.IsActive);
+        var total = await query.CountAsync();
+        var data = await query
+            .OrderBy(u => u.Id)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
+            .Select(u => new
+            {
+                id = u.Id,
+                name = (u.FirstName + " " + u.LastName).Trim(),
+                username = u.Email,
+                created_at = u.CreatedAt,
+                status = u.IsActive ? "active" : "inactive",
+                email = includePii ? u.Email : null
+            })
+            .ToListAsync();
+
+        return PartnerPaginated(data, total, page, perPage);
+    }
 
     [HttpGet("api/partner/v1/users/{id:int}")]
+    [AllowAnonymous]
     public async Task<IActionResult> PartnerUser(int id)
     {
-        var user = await _db.Users.AsNoTracking().Where(u => u.Id == id).Select(u => new { id = u.Id, email = u.Email, first_name = u.FirstName, last_name = u.LastName }).FirstOrDefaultAsync();
-        return user == null ? NotFound(new { error = "User not found" }) : Ok(new { data = user });
+        if (!TryRequirePartnerScope("users.read", out var partnerResult, out _))
+        {
+            return partnerResult!;
+        }
+
+        var includePii = PartnerScopes().Contains("users.pii", StringComparer.OrdinalIgnoreCase);
+        var user = await _db.Users.AsNoTracking()
+            .Where(u => u.TenantId == TenantId() && u.Id == id)
+            .Select(u => new
+            {
+                user = new
+                {
+                    id = u.Id,
+                    name = (u.FirstName + " " + u.LastName).Trim(),
+                    username = u.Email,
+                    created_at = u.CreatedAt,
+                    status = u.IsActive ? "active" : "inactive",
+                    email = includePii ? u.Email : null
+                }
+            })
+            .FirstOrDefaultAsync();
+
+        return user == null ? PartnerError("USER_NOT_FOUND", "User not found.", 404) : PartnerData(user);
     }
 
     [HttpPost("api/partner/v1/oauth/token")]
     [AllowAnonymous]
     public async Task<IActionResult> PartnerToken([FromBody] JsonElement body)
     {
-        var email = GetString(body, "email") ?? GetString(body, "username");
-        var user = email == null ? null : await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
-        if (user == null) return Unauthorized(new { error = "Invalid partner credentials" });
-        return Ok(new { access_token = _tokenService.GenerateJwt(user), token_type = "Bearer", expires_in = _tokenService.AccessTokenExpirySeconds });
+        var grantType = GetString(body, "grant_type") ?? string.Empty;
+        if (!string.Equals(grantType, "client_credentials", StringComparison.Ordinal))
+        {
+            return PartnerError("unsupported_grant_type", "Only client_credentials is supported.", 400);
+        }
+
+        var clientId = GetString(body, "client_id") ?? BasicAuthClientId();
+        var clientSecret = GetString(body, "client_secret") ?? BasicAuthClientSecret();
+        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+        {
+            return PartnerError("invalid_client", "client_id and client_secret are required.", 400);
+        }
+
+        var partner = await FindPartnerClientAsync(clientId, clientSecret);
+        if (partner == null)
+        {
+            return PartnerError("invalid_client", "Client authentication failed.", 401);
+        }
+
+        var requestedScopes = (GetString(body, "scope") ?? string.Empty)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var allowedScopes = SplitScopes(partner.Scopes);
+        var grantedScopes = requestedScopes.Length == 0
+            ? allowedScopes
+            : requestedScopes.Where(scope => allowedScopes.Contains(scope, StringComparer.OrdinalIgnoreCase)).ToArray();
+
+        return PartnerJson(new
+        {
+            access_token = GeneratePartnerAccessToken(partner, grantedScopes),
+            token_type = "bearer",
+            expires_in = PartnerTokenTtlSeconds,
+            scope = string.Join(' ', grantedScopes)
+        });
     }
 
     [HttpPost("api/partner/v1/oauth/revoke")]
     [AllowAnonymous]
-    public IActionResult PartnerRevoke() => Ok(new { success = true });
+    public async Task<IActionResult> PartnerRevoke([FromBody] JsonElement body)
+    {
+        var clientId = GetString(body, "client_id") ?? BasicAuthClientId();
+        var clientSecret = GetString(body, "client_secret") ?? BasicAuthClientSecret();
+        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+        {
+            return PartnerError("invalid_client", "client_id and client_secret are required.", 401);
+        }
+
+        var partner = await FindPartnerClientAsync(clientId, clientSecret);
+        if (partner == null)
+        {
+            return PartnerError("invalid_client", "Client authentication failed.", 401);
+        }
+
+        return PartnerJson(new { revoked = true });
+    }
 
     [HttpGet("api/partner/v1/webhooks/subscriptions")]
+    [AllowAnonymous]
+    public IActionResult PartnerWebhookSubscriptions()
+    {
+        if (!TryRequirePartnerScope("webhooks.manage", out var partnerResult, out _))
+        {
+            return partnerResult!;
+        }
+
+        return PartnerData(new { subscriptions = Array.Empty<object>() });
+    }
+
     [HttpPost("api/partner/v1/webhooks/subscriptions")]
-    public IActionResult PartnerWebhookSubscriptions() => Ok(new { success = true, data = Array.Empty<object>() });
+    [AllowAnonymous]
+    public IActionResult PartnerWebhookSubscriptionCreate([FromBody] JsonElement body)
+    {
+        if (!TryRequirePartnerScope("webhooks.manage", out var partnerResult, out var partner))
+        {
+            return partnerResult!;
+        }
+
+        var events = ReadStringArray(body, "event_types");
+        var targetUrl = GetString(body, "target_url")?.Trim() ?? string.Empty;
+        if (events.Length == 0 || string.IsNullOrWhiteSpace(targetUrl))
+        {
+            return PartnerError("invalid_request", "event_types (array) and target_url are required.", 422);
+        }
+
+        if (!Uri.TryCreate(targetUrl, UriKind.Absolute, out var uri) || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return PartnerError("invalid_url", "target_url must be a valid https:// URL.", 422);
+        }
+
+        return PartnerData(new
+        {
+            subscription = new
+            {
+                id = Guid.NewGuid().ToString("N"),
+                partner_id = partner?.Id,
+                event_types = events,
+                target_url = targetUrl,
+                secret = "whsec_" + Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
+                created_at = DateTime.UtcNow
+            }
+        }, 201);
+    }
 
     [HttpGet("api/v2/federation/events")]
     [HttpGet("api/v2/federation/partners")]
@@ -762,6 +1034,181 @@ public class V15MemberParityController : ControllerBase
     [HttpPost("api/webhooks/sendgrid/events")]
     [AllowAnonymous]
     public IActionResult SendgridEvents() => Accepted(new { success = true });
+
+    private IActionResult PartnerJson(object payload, int status = 200)
+    {
+        Response.Headers[ApiVersionHeader] = ApiVersion;
+        return StatusCode(status, payload);
+    }
+
+    private IActionResult PartnerData(object data, int status = 200)
+    {
+        return PartnerJson(new
+        {
+            data,
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        }, status);
+    }
+
+    private IActionResult PartnerPaginated<T>(IReadOnlyCollection<T> data, int total, int page, int perPage)
+    {
+        var totalPages = total > 0 ? (int)Math.Ceiling(total / (double)perPage) : 0;
+        return PartnerJson(new
+        {
+            data,
+            meta = new
+            {
+                base_url = $"{Request.Scheme}://{Request.Host}",
+                current_page = page,
+                per_page = perPage,
+                total,
+                total_pages = totalPages,
+                has_more = page < totalPages
+            }
+        });
+    }
+
+    private IActionResult PartnerError(string code, string message, int status)
+    {
+        return PartnerJson(new
+        {
+            errors = new[]
+            {
+                new { code, message }
+            }
+        }, status);
+    }
+
+    private bool TryRequirePartnerScope(string requiredScope, out IActionResult? result, out ApiPartner? partner)
+    {
+        result = null;
+        partner = null;
+
+        if (User.Identity?.IsAuthenticated != true || User.FindFirst("partner_id")?.Value is not { Length: > 0 } partnerIdRaw)
+        {
+            result = PartnerError("AUTH_REQUIRED", "Partner bearer token required.", 401);
+            return false;
+        }
+
+        if (!Guid.TryParse(partnerIdRaw, out var partnerId))
+        {
+            result = PartnerError("AUTH_REQUIRED", "Partner bearer token required.", 401);
+            return false;
+        }
+
+        var scopes = PartnerScopes();
+        if (!scopes.Contains(requiredScope, StringComparer.OrdinalIgnoreCase))
+        {
+            result = PartnerError("FORBIDDEN", "Required partner scope is missing.", 403);
+            return false;
+        }
+
+        partner = _db.ApiPartners.IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefault(p => p.Id == partnerId && p.Status == ApiPartnerStatus.Active);
+        if (partner == null)
+        {
+            result = PartnerError("AUTH_REQUIRED", "Partner bearer token required.", 401);
+            return false;
+        }
+
+        return true;
+    }
+
+    private string[] PartnerScopes()
+    {
+        var scopeText = User.FindFirst("partner_scopes")?.Value ?? User.FindFirst("scope")?.Value ?? string.Empty;
+        return scopeText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private async Task<ApiPartner?> FindPartnerClientAsync(string clientId, string clientSecret)
+    {
+        if (!Guid.TryParse(clientId, out var partnerId))
+        {
+            return null;
+        }
+
+        var hash = Sha256Hex(clientSecret);
+        return await _db.ApiPartners
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.Id == partnerId && p.ApiKeyHash == hash && p.Status == ApiPartnerStatus.Active);
+    }
+
+    private string GeneratePartnerAccessToken(ApiPartner partner, IEnumerable<string> scopes)
+    {
+        var secret = _config["Jwt:Secret"]
+            ?? throw new InvalidOperationException("JWT secret not configured");
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var scopeText = string.Join(' ', scopes);
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, "0"),
+            new Claim("tenant_id", partner.TenantId.ToString()),
+            new Claim("role", "partner"),
+            new Claim("partner_id", partner.Id.ToString()),
+            new Claim("partner_scopes", scopeText),
+            new Claim("scope", scopeText),
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: _config["Jwt:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddSeconds(PartnerTokenTtlSeconds),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private string? BasicAuthClientId() => BasicAuthParts()?.ClientId;
+
+    private string? BasicAuthClientSecret() => BasicAuthParts()?.ClientSecret;
+
+    private (string ClientId, string ClientSecret)? BasicAuthParts()
+    {
+        var auth = Request.Headers.Authorization.ToString();
+        if (!auth.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(auth["Basic ".Length..].Trim()));
+            var separator = decoded.IndexOf(':', StringComparison.Ordinal);
+            return separator <= 0
+                ? null
+                : (decoded[..separator], decoded[(separator + 1)..]);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    private static string[] SplitScopes(string? scopes)
+    {
+        return string.IsNullOrWhiteSpace(scopes)
+            ? Array.Empty<string>()
+            : scopes.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static string Sha256Hex(string value)
+    {
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+    }
+
+    private static int BucketCount(int count)
+    {
+        if (count < 10)
+        {
+            return 0;
+        }
+
+        return count < 100 ? count / 10 * 10 : count / 100 * 100;
+    }
 
     private int? CurrentUserId() => User.GetUserId();
 

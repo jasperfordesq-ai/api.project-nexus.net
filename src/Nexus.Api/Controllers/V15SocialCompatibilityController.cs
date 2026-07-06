@@ -1080,15 +1080,6 @@ public class V15SocialCompatibilityController : ControllerBase
         return Ok(new { success = true, data = redemption });
     }
 
-    [HttpGet("/api/partner/v1/webhooks/subscriptions")]
-    public IActionResult PartnerWebhookSubscriptions() => Ok(new { data = Array.Empty<object>() });
-
-    [HttpPost("/api/partner/v1/webhooks/subscriptions")]
-    public IActionResult CreatePartnerWebhookSubscription([FromBody] JsonElement body)
-    {
-        return Created("/api/partner/v1/webhooks/subscriptions", new { data = JsonSerializer.Deserialize<object>(body.GetRawText(), JsonOptions), active = true });
-    }
-
     [HttpGet("/api/cookie-consent")]
     [AllowAnonymous]
     public async Task<IActionResult> CookieConsent([FromQuery] string? session_id = null)
