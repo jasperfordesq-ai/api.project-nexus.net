@@ -277,6 +277,7 @@ public class MessagesController : ControllerBase
     /// Creates a new conversation if one doesn't exist.
     /// </summary>
     [HttpPost]
+    [HttpPost("/api/v2/messages")]
     public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
     {
         var userId = GetCurrentUserId();
@@ -285,13 +286,15 @@ public class MessagesController : ControllerBase
             return Unauthorized(new { error = "Invalid token" });
         }
 
+        var messageContent = request.ResolvedContent;
+
         // Validate content
-        if (string.IsNullOrWhiteSpace(request.Content))
+        if (string.IsNullOrWhiteSpace(messageContent))
         {
             return BadRequest(new { error = "Message content is required" });
         }
 
-        if (request.Content.Length > 5000)
+        if (messageContent.Length > 5000)
         {
             return BadRequest(new { error = "Message content must be 5000 characters or less" });
         }
@@ -337,7 +340,7 @@ public class MessagesController : ControllerBase
         {
             ConversationId = conversation.Id,
             SenderId = userId.Value,
-            Content = request.Content.Trim(),
+            Content = messageContent.Trim(),
             IsRead = false,
             CreatedAt = DateTime.UtcNow
         };
@@ -518,4 +521,9 @@ public class SendMessageRequest
 
     [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
+
+    [JsonPropertyName("body")]
+    public string? Body { get; set; }
+
+    public string ResolvedContent => string.IsNullOrWhiteSpace(Content) ? Body ?? string.Empty : Content;
 }

@@ -49,6 +49,28 @@ public class MessagesControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task V2SendMessage_WithLaravelBodyField_ReturnsCreated()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/messages", new
+        {
+            recipient_id = TestData.AdminUser.Id,
+            body = "Hello from Laravel React v2 body!"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        content.GetProperty("conversation_id").GetInt32().Should().BeGreaterThan(0);
+        content.GetProperty("content").GetString().Should().Be("Hello from Laravel React v2 body!");
+        content.GetProperty("sender").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        content.GetProperty("recipient").GetProperty("id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        content.GetProperty("is_read").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
     public async Task SendMessage_ToSelf_ReturnsBadRequest()
     {
         // Arrange
