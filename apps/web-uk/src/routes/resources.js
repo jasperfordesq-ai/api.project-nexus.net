@@ -8,6 +8,9 @@ const {
   getResources,
   getResourceCategories,
   getResourceCategoryTree,
+  getProfile,
+  getComments,
+  getReactionSummary,
   deleteResource,
   reorderResources,
   createComment,
@@ -19,6 +22,14 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 const RESOURCE_REACTIONS = new Set(['like', 'love', 'laugh', 'wow', 'sad', 'celebrate']);
+const RESOURCE_REACTION_LABELS = {
+  like: 'Like',
+  love: 'Love',
+  laugh: 'Haha',
+  wow: 'Wow',
+  sad: 'Sad',
+  celebrate: 'Celebrate'
+};
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
@@ -78,6 +89,10 @@ function dataFrom(result) {
   return result && typeof result === 'object' && result.data !== undefined
     ? result.data
     : result;
+}
+
+function objectFrom(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
 function resourceItemsFrom(result) {
@@ -212,6 +227,32 @@ function normalizeCategory(category) {
   };
 }
 
+function normalizeComment(comment) {
+  const item = objectFrom(comment);
+  const author = objectFrom(item.author || item.user);
+  return {
+    id: positiveInteger(item.id),
+    content: trimmed(item.content || item.body),
+    createdAt: trimmed(item.created_at || item.createdAt),
+    userId: positiveInteger(item.user_id || author.id),
+    authorName: trimmed(item.author_name || item.user_name || author.name || [author.first_name, author.last_name].filter(Boolean).join(' ')) || 'Community member',
+    replies: (Array.isArray(item.replies) ? item.replies : Array.isArray(item.children) ? item.children : []).map(normalizeComment)
+  };
+}
+
+function commentCount(comments) {
+  return comments.reduce((total, comment) => total + 1 + commentCount(comment.replies || []), 0);
+}
+
+function reactionSummaryFrom(result) {
+  const data = objectFrom(dataFrom(result));
+  return {
+    counts: objectFrom(data.counts),
+    total: positiveInteger(data.total) || 0,
+    userReaction: trimmed(data.user_reaction || data.userReaction)
+  };
+}
+
 function statusMessage(status) {
   switch (status) {
     case 'resource-uploaded':
@@ -222,6 +263,31 @@ function statusMessage(status) {
       return { type: 'error', title: 'There is a problem', message: 'We could not delete the resource. Please try again.' };
     case 'resource-reorder-failed':
       return { type: 'error', title: 'There is a problem', message: 'We could not save the new order. Please try again.' };
+    default:
+      return null;
+  }
+}
+
+function commentsStatusMessage(status) {
+  switch (status) {
+    case 'comment-added':
+      return { type: 'success', title: 'Success', message: 'Your comment was posted.' };
+    case 'reply-added':
+      return { type: 'success', title: 'Success', message: 'Your reply was posted.' };
+    case 'reaction-added':
+      return { type: 'success', title: 'Success', message: 'Your reaction was saved.' };
+    case 'reaction-removed':
+      return { type: 'success', title: 'Success', message: 'Your reaction was removed.' };
+    case 'comment-deleted':
+      return { type: 'success', title: 'Success', message: 'The comment was deleted.' };
+    case 'comment-invalid':
+      return { type: 'error', title: 'There is a problem', message: 'Enter a comment before submitting.', anchor: 'body' };
+    case 'comment-failed':
+      return { type: 'error', title: 'There is a problem', message: 'We could not post your comment. Please try again.', anchor: 'body' };
+    case 'comment-delete-failed':
+      return { type: 'error', title: 'There is a problem', message: 'We could not delete the comment. Please try again.' };
+    case 'reaction-failed':
+      return { type: 'error', title: 'There is a problem', message: 'We could not save your reaction. Please try again.' };
     default:
       return null;
   }
@@ -315,6 +381,45 @@ router.get('/library', asyncRoute(async (req, res) => {
     })}` : ''
   });
 }, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Resource library' }));
+
+router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const resourceId = Number(req.params.id);
+  const [profileResult, resourcesResult, commentsResult, reactionsResult] = await Promise.all([
+    getProfile(token).catch(() => null),
+    getResources(token, { per_page: 50 }),
+    getComments(token, { target_type: 'resource', target_id: resourceId }),
+    getReactionSummary(token, 'resource', resourceId)
+  ]);
+
+  const resource = resourceItemsFrom(resourcesResult).find((item) => positiveInteger(item && item.id) === resourceId);
+  if (!resource) {
+    throw new ApiError('Resource not found', 404);
+  }
+
+  const commentsData = objectFrom(dataFrom(commentsResult));
+  const comments = (Array.isArray(commentsData.comments) ? commentsData.comments : resourceItemsFrom(commentsResult)).map(normalizeComment);
+  const reactions = reactionSummaryFrom(reactionsResult);
+  const profile = objectFrom(dataFrom(profileResult));
+  const currentUserId = positiveInteger(profile.id || profile.user_id);
+
+  return res.render('resources/comments', {
+    title: `Comments on ${trimmed(resource.title) || 'resource'}`,
+    activeNav: 'explore',
+    resourceId,
+    resourceTitle: trimmed(resource.title) || 'Resource',
+    comments,
+    commentsTotal: positiveInteger(commentsData.count) || commentCount(comments),
+    currentUserId,
+    reactions,
+    reactionLabels: RESOURCE_REACTION_LABELS,
+    status: commentsStatusMessage(trimmed(req.query && req.query.status))
+  });
+}, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Resource comments' }));
 
 function normalizeOrderItems(items) {
   if (!Array.isArray(items)) return [];

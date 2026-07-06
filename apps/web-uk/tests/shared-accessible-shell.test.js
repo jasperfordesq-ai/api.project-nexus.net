@@ -3525,6 +3525,84 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-backed resource comments page for signed-in members', async () => {
+    const api = require('../src/lib/api');
+
+    api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Avery Stone' } });
+    api.getResources.mockResolvedValue({
+      data: [
+        {
+          id: 42,
+          title: 'Community handbook',
+          description: 'A practical guide for getting help and sharing support in the community.',
+          file_path: 'community-handbook.pdf'
+        }
+      ],
+      meta: { has_more: false }
+    });
+    api.getComments.mockResolvedValue({
+      data: {
+        comments: [
+          {
+            id: 12,
+            content: 'This helped our welcome desk.',
+            user_id: 101,
+            author_name: 'Avery Stone',
+            created_at: '2026-07-01T12:00:00Z',
+            replies: [
+              {
+                id: 13,
+                content: 'We printed a copy for volunteers.',
+                user_id: 202,
+                author_name: 'Morgan Lee',
+                created_at: '2026-07-02T12:00:00Z'
+              }
+            ]
+          }
+        ],
+        count: 2
+      }
+    });
+    api.getReactionSummary.mockResolvedValue({
+      data: {
+        counts: { like: 2, love: 1 },
+        total: 3,
+        user_reaction: 'love'
+      }
+    });
+
+    const unsigned = await request(app).get('/resources/42/comments');
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    const response = await request(app)
+      .get('/resources/42/comments?status=reply-added')
+      .set('Cookie', signedCookieHeader());
+
+    expect(api.getResources).toHaveBeenCalledWith('test-token', { per_page: 50 });
+    expect(api.getComments).toHaveBeenCalledWith('test-token', { target_type: 'resource', target_id: 42 });
+    expect(api.getReactionSummary).toHaveBeenCalledWith('test-token', 'resource', 42);
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Back to resource library');
+    expect(response.text).toContain('Discussion');
+    expect(response.text).toContain('Community handbook');
+    expect(response.text).toContain('Your reply was posted.');
+    expect(response.text).toContain('Reactions');
+    expect(response.text).toContain('3 reactions');
+    expect(response.text).toContain('Like (2)');
+    expect(response.text).toContain('Love (1)');
+    expect(response.text).toContain('aria-pressed="true"');
+    expect(response.text).toContain('Comments');
+    expect(response.text).toContain('(2)');
+    expect(response.text).toContain('This helped our welcome desk.');
+    expect(response.text).toContain('We printed a copy for volunteers.');
+    expect(response.text).toContain('action="/resources/42/comments/12/delete"');
+    expect(response.text).toContain('action="/resources/42/comments/add"');
+    expect(response.text).toContain('Post comment');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits the Laravel resource delete route through the resources API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
