@@ -63,6 +63,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpDelete("/api/v2/admin/feed/revoke-announcer/{id}")]
     [HttpDelete("/api/v2/admin/group-auto-assign-rules/{id}")]
     [HttpDelete("/api/v2/admin/group-collections/{id}")]
+    [HttpDelete("/api/v2/admin/groups/{id}")]
     [HttpDelete("/api/v2/admin/group-tags/{tagid}")]
     [HttpDelete("/api/v2/admin/help/faqs/{id}")]
     [HttpDelete("/api/v2/admin/invite-codes/{id}")]
@@ -82,6 +83,7 @@ public class AdminExplicitParityController : ControllerBase
         {
             _ when TryGetLastInt(path, "/api/v2/admin/events/", out var eventId) => await DeleteEvent(eventId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await DeleteFederationWebhook(webhookId),
+            _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await DeleteGroup(groupId),
             _ when TryGetLastInt(path, "/api/v2/admin/invite-codes/", out var inviteCodeId) => await DeactivateInviteCode(inviteCodeId),
             _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await DeleteListing(listingId),
             _ => await PersistCompatibilityWrite("delete")
@@ -536,6 +538,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPut("/api/v2/admin/gamification/badge-config/{badgekey}")]
     [HttpPut("/api/v2/admin/group-collections/{id}")]
     [HttpPut("/api/v2/admin/group-collections/{id}/groups")]
+    [HttpPut("/api/v2/admin/groups/{id}")]
     [HttpPut("/api/v2/admin/help/faqs/{id}")]
     [HttpPut("/api/v2/admin/ki-agents/config")]
     [HttpPut("/api/v2/admin/member-premium/settings")]
@@ -571,6 +574,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/moderation/settings" => await PutModerationSettings(),
             _ when TryGetLastInt(path, "/api/v2/admin/support-reports/", out var supportReportId) => await UpdateSupportReport(supportReportId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpdateFederationWebhook(webhookId),
+            _ when TryGetLastInt(path, "/api/v2/admin/groups/", out var groupId) => await UpdateGroup(groupId),
             _ => await PersistCompatibilityWrite("put")
         };
     }
@@ -2251,6 +2255,117 @@ public class AdminExplicitParityController : ControllerBase
     {
         var item = await _db.Groups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id);
         return item == null ? NotFound(new { error = "Group not found" }) : Ok(new { data = item });
+    }
+
+    private async Task<IActionResult> UpdateGroup(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var group = await _db.Groups
+            .FirstOrDefaultAsync(g => g.TenantId == tenantId && g.Id == id);
+
+        if (group == null)
+        {
+            return NotFound(new
+            {
+                error = "NOT_FOUND",
+                message = "Group not found."
+            });
+        }
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var changed = false;
+
+        if (payload.ContainsKey("name"))
+        {
+            var name = JsonString(payload, "name")?.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return UnprocessableEntity(new
+                {
+                    error = "VALIDATION_ERROR",
+                    message = "name is required."
+                });
+            }
+
+            group.Name = name;
+            changed = true;
+        }
+
+        if (payload.ContainsKey("description"))
+        {
+            group.Description = JsonString(payload, "description");
+            changed = true;
+        }
+
+        if (payload.ContainsKey("visibility"))
+        {
+            var visibility = JsonString(payload, "visibility")?.Trim().ToLowerInvariant();
+            group.IsPrivate = visibility == "private";
+            changed = true;
+        }
+
+        if (payload.ContainsKey("cover_image_url"))
+        {
+            group.ImageUrl = JsonString(payload, "cover_image_url");
+            changed = true;
+        }
+
+        if (!changed)
+        {
+            return UnprocessableEntity(new
+            {
+                error = "VALIDATION_ERROR",
+                message = "No fields to update."
+            });
+        }
+
+        group.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                id,
+                updated = true
+            }
+        });
+    }
+
+    private async Task<IActionResult> DeleteGroup(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var group = await _db.Groups
+            .FirstOrDefaultAsync(g => g.TenantId == tenantId && g.Id == id);
+
+        if (group == null)
+        {
+            return NotFound(new
+            {
+                error = "NOT_FOUND",
+                message = "Group not found."
+            });
+        }
+
+        var members = await _db.GroupMembers
+            .Where(m => m.TenantId == tenantId && m.GroupId == id)
+            .ToListAsync();
+        _db.GroupMembers.RemoveRange(members);
+        _db.Groups.Remove(group);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                deleted = true,
+                id
+            }
+        });
     }
 
     private IActionResult GetReportExportTypes()

@@ -149,6 +149,98 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminGroupsUpdateV2_UpdatesTenantGroupWithLaravelReactContract()
+    {
+        int groupId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var group = new Group
+            {
+                TenantId = TestData.Tenant1.Id,
+                CreatedById = TestData.AdminUser.Id,
+                Name = "Parity group before update",
+                Description = "Before update",
+                IsPrivate = false,
+                ImageUrl = "https://groups.example.test/before.png",
+                CreatedAt = DateTime.UtcNow.AddDays(-4),
+                UpdatedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            db.Groups.Add(group);
+            await db.SaveChangesAsync();
+            groupId = group.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PutAsJsonAsync($"/api/v2/admin/groups/{groupId}", new
+        {
+            name = "Parity group after update",
+            description = "After update",
+            visibility = "private",
+            cover_image_url = "https://groups.example.test/after.png"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var data = json.GetProperty("data");
+        data.GetProperty("id").GetInt32().Should().Be(groupId);
+        data.GetProperty("updated").GetBoolean().Should().BeTrue();
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var updated = await verifyDb.Groups
+            .IgnoreQueryFilters()
+            .SingleAsync(g => g.TenantId == TestData.Tenant1.Id && g.Id == groupId);
+        updated.Name.Should().Be("Parity group after update");
+        updated.Description.Should().Be("After update");
+        updated.IsPrivate.Should().BeTrue();
+        updated.ImageUrl.Should().Be("https://groups.example.test/after.png");
+        updated.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AdminGroupsDeleteV2_RemovesTenantGroupWithLaravelReactContract()
+    {
+        int groupId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var group = new Group
+            {
+                TenantId = TestData.Tenant1.Id,
+                CreatedById = TestData.AdminUser.Id,
+                Name = "Parity group to delete",
+                Description = "Group seeded for Laravel React admin delete parity.",
+                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            };
+            db.Groups.Add(group);
+            await db.SaveChangesAsync();
+            groupId = group.Id;
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.DeleteAsync($"/api/v2/admin/groups/{groupId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var data = json.GetProperty("data");
+        data.GetProperty("deleted").GetBoolean().Should().BeTrue();
+        data.GetProperty("id").GetInt32().Should().Be(groupId);
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var groupExists = await verifyDb.Groups
+            .IgnoreQueryFilters()
+            .AnyAsync(g => g.TenantId == TestData.Tenant1.Id && g.Id == groupId);
+        groupExists.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task InviteCodesV2_GenerateListAndDeactivateUseLaravelReactContract()
     {
         await AuthenticateAsAdminAsync();
