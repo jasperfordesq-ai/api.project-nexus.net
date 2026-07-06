@@ -107,13 +107,29 @@ function Get-AspNetV2AdminAlias {
     $normalized = Normalize-RoutePath $Prefix
     $aliasedPrefixes = @(
         '/api/admin/caring-community',
-        '/api/admin/safeguarding'
+        '/api/admin/safeguarding',
+        '/api/users'
     )
 
     foreach ($aliasedPrefix in $aliasedPrefixes) {
         if ($normalized -eq $aliasedPrefix -or $normalized.StartsWith("$aliasedPrefix/")) {
+            if ($aliasedPrefix -eq '/api/users') {
+                return $normalized -replace '^/api/users', '/api/v2/users'
+            }
+
             return $normalized -replace '^/api/admin/', '/api/v2/admin/'
         }
+    }
+
+    return ''
+}
+
+function Get-AspNetV2RouteAlias {
+    param([string]$Path)
+
+    $normalized = Normalize-RoutePath $Path
+    if ($normalized -eq '/api/users/me' -or $normalized.StartsWith('/api/users/me/')) {
+        return $normalized -replace '^/api/users/me', '/api/v2/users/me'
     }
 
     return ''
@@ -198,14 +214,27 @@ function Export-AspNetRoutes {
                     if ($nearby -match '\[AllowAnonymous') { $authNotes += 'allow-anonymous' }
 
                     foreach ($prefix in $prefixes) {
+                        $path = Join-RoutePath $prefix $child
                         $rows.Add([pscustomobject]@{
                             method = $verb
-                            path = (Join-RoutePath $prefix $child)
+                            path = $path
                             controller = $controllerName
                             action = $action
                             file = $file.FullName
                             auth_notes = ($authNotes -join ';')
                         })
+
+                        $aliasPath = Get-AspNetV2RouteAlias $path
+                        if (-not [string]::IsNullOrWhiteSpace($aliasPath)) {
+                            $rows.Add([pscustomobject]@{
+                                method = $verb
+                                path = $aliasPath
+                                controller = $controllerName
+                                action = $action
+                                file = $file.FullName
+                                auth_notes = ($authNotes -join ';')
+                            })
+                        }
                     }
                 }
             }

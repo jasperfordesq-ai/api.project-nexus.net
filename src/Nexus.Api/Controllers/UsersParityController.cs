@@ -93,8 +93,8 @@ public class UsersParityController : ControllerBase
         return Ok(new { data = exception });
     }
 
-    [HttpPut("me/availability/{availabilityId:int}")]
-    public async Task<IActionResult> UpdateAvailability(int availabilityId, [FromBody] JsonElement body)
+    [HttpPut("me/availability/{id:int}")]
+    public async Task<IActionResult> UpdateAvailability([FromRoute(Name = "id")] int availabilityId, [FromBody] JsonElement body)
     {
         var slot = await _db.MemberAvailabilities.FirstOrDefaultAsync(a => a.TenantId == TenantId() && a.UserId == UserId() && a.Id == availabilityId);
         if (slot == null) return NotFound(new { error = "Availability not found" });
@@ -107,8 +107,47 @@ public class UsersParityController : ControllerBase
         return Ok(new { data = slot });
     }
 
-    [HttpDelete("me/availability/{availabilityId:int}")]
-    public async Task<IActionResult> DeleteAvailability(int availabilityId)
+    [HttpPut("me/availability/{day}")]
+    public async Task<IActionResult> UpdateAvailabilityByDay(string day, [FromBody] JsonElement body)
+    {
+        var dayNumber = ParseDayOfWeek(day);
+        if (dayNumber is null) return BadRequest(new { error = "Invalid day" });
+
+        var tenantId = TenantId();
+        var userId = UserId();
+        var slot = await _db.MemberAvailabilities.FirstOrDefaultAsync(a =>
+            a.TenantId == tenantId && a.UserId == userId && a.DayOfWeek == dayNumber.Value);
+        if (slot == null)
+        {
+            slot = new MemberAvailability
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                DayOfWeek = dayNumber.Value,
+                StartTime = Str(body, "start_time") ?? "09:00",
+                EndTime = Str(body, "end_time") ?? "17:00",
+                IsActive = Bool(body, "is_active") ?? true,
+                Note = Str(body, "note"),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _db.MemberAvailabilities.Add(slot);
+        }
+        else
+        {
+            slot.StartTime = Str(body, "start_time") ?? slot.StartTime;
+            slot.EndTime = Str(body, "end_time") ?? slot.EndTime;
+            slot.IsActive = Bool(body, "is_active") ?? slot.IsActive;
+            slot.Note = Str(body, "note") ?? slot.Note;
+            slot.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { data = slot });
+    }
+
+    [HttpDelete("me/availability/{id:int}")]
+    public async Task<IActionResult> DeleteAvailability([FromRoute(Name = "id")] int availabilityId)
     {
         var slot = await _db.MemberAvailabilities.FirstOrDefaultAsync(a => a.TenantId == TenantId() && a.UserId == UserId() && a.Id == availabilityId);
         if (slot != null) _db.MemberAvailabilities.Remove(slot);
@@ -149,8 +188,8 @@ public class UsersParityController : ControllerBase
         return Ok(new { data = profile });
     }
 
-    [HttpPut("me/skills/{skillId:int}")]
-    public async Task<IActionResult> UpdateSkill(int skillId, [FromBody] JsonElement body)
+    [HttpPut("me/skills/{id:int}")]
+    public async Task<IActionResult> UpdateSkill([FromRoute(Name = "id")] int skillId, [FromBody] JsonElement body)
     {
         var skill = await _db.UserSkills.FirstOrDefaultAsync(s => s.TenantId == TenantId() && s.UserId == UserId() && s.SkillId == skillId);
         if (skill == null) return NotFound(new { error = "Skill not found" });
@@ -165,12 +204,27 @@ public class UsersParityController : ControllerBase
     [HttpGet("me/sub-accounts")]
     public IActionResult SubAccounts() => Ok(new { data = Array.Empty<object>() });
 
-    [HttpGet("me/sub-accounts/{subAccountId:int}/activity")]
-    public IActionResult SubAccountActivity(int subAccountId) => Ok(new { data = Array.Empty<object>(), sub_account_id = subAccountId });
+    [HttpGet("me/sub-accounts/{childId:int}/activity")]
+    public IActionResult SubAccountActivity([FromRoute(Name = "childId")] int subAccountId) => Ok(new { data = Array.Empty<object>(), sub_account_id = subAccountId });
 
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
     private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
     private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
     private static DateTime? Date(JsonElement e, string name) => DateTime.TryParse(Str(e, name), out var value) ? value : null;
+    private static int? ParseDayOfWeek(string day)
+    {
+        if (int.TryParse(day, out var number) && number is >= 0 and <= 6) return number;
+        return day.Trim().ToLowerInvariant() switch
+        {
+            "sunday" or "sun" => 0,
+            "monday" or "mon" => 1,
+            "tuesday" or "tue" or "tues" => 2,
+            "wednesday" or "wed" => 3,
+            "thursday" or "thu" or "thurs" => 4,
+            "friday" or "fri" => 5,
+            "saturday" or "sat" => 6,
+            _ => null
+        };
+    }
 }
