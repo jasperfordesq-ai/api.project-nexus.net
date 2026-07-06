@@ -111,7 +111,8 @@ function Get-AspNetV2AdminAlias {
         '/api/users',
         '/api/groups',
         '/api/jobs',
-        '/api/federation'
+        '/api/federation',
+        '/api/goals'
     )
 
     foreach ($aliasedPrefix in $aliasedPrefixes) {
@@ -130,6 +131,10 @@ function Get-AspNetV2AdminAlias {
 
             if ($aliasedPrefix -eq '/api/federation') {
                 return $normalized -replace '^/api/federation', '/api/v2/federation'
+            }
+
+            if ($aliasedPrefix -eq '/api/goals') {
+                return $normalized -replace '^/api/goals', '/api/v2/goals'
             }
 
             return $normalized -replace '^/api/admin/', '/api/v2/admin/'
@@ -157,6 +162,10 @@ function Get-AspNetV2RouteAlias {
 
     if ($normalized -eq '/api/federation' -or $normalized.StartsWith('/api/federation/')) {
         return $normalized -replace '^/api/federation', '/api/v2/federation'
+    }
+
+    if ($normalized -eq '/api/goals' -or $normalized.StartsWith('/api/goals/')) {
+        return $normalized -replace '^/api/goals', '/api/v2/goals'
     }
 
     return ''

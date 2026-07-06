@@ -118,4 +118,20 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/goals")]
+    [InlineData("/api/v2/goals/discover")]
+    [InlineData("/api/v2/goals/mentoring")]
+    [InlineData("/api/v2/goals/templates")]
+    [InlineData("/api/v2/goals/templates/categories")]
+    public async Task LaravelReactGoalsV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
