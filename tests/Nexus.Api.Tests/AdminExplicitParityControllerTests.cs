@@ -317,6 +317,60 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task FederationCreditAgreementsV2_CreateListAndActionUseLaravelReactContract()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/federation/credit-agreements");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        initialJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        initialJson.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/federation/credit-agreements", new
+        {
+            partner_tenant_id = TestData.Tenant2.Id,
+            exchange_rate = 1.25m,
+            monthly_limit = 250
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var created = createJson.GetProperty("data");
+        created.GetProperty("from_tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        created.GetProperty("to_tenant_id").GetInt32().Should().Be(TestData.Tenant2.Id);
+        created.GetProperty("exchange_rate").GetDecimal().Should().Be(1.25m);
+        created.GetProperty("max_monthly_credits").GetDecimal().Should().Be(250m);
+        created.GetProperty("monthly_limit").GetDecimal().Should().Be(250m);
+        created.GetProperty("status").GetString().Should().Be("pending");
+        var agreementId = created.GetProperty("id").GetInt32();
+
+        var list = await Client.GetAsync("/api/v2/admin/federation/credit-agreements");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == agreementId);
+        listed.GetProperty("from_tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("to_tenant_name").GetString().Should().Be(TestData.Tenant2.Name);
+        listed.GetProperty("to_tenant_slug").GetString().Should().Be(TestData.Tenant2.Slug);
+
+        var approve = await Client.PostAsJsonAsync($"/api/v2/admin/federation/credit-agreements/{agreementId}/approve", new { });
+
+        approve.StatusCode.Should().Be(HttpStatusCode.OK);
+        var approveJson = await approve.Content.ReadFromJsonAsync<JsonElement>();
+        approveJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var afterApprove = await Client.GetAsync("/api/v2/admin/federation/credit-agreements");
+        var afterApproveJson = await afterApprove.Content.ReadFromJsonAsync<JsonElement>();
+        afterApproveJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == agreementId)
+            .GetProperty("status").GetString().Should().Be("active");
+    }
+
+    [Fact]
     public async Task FederationWebhooks_PersistCrudAndTestLogs()
     {
         await AuthenticateAsAdminAsync();

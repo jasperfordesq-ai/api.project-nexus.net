@@ -26,6 +26,7 @@ public class AdminExplicitParityController : ControllerBase
     private const string FederationTopicsKey = "admin_explicit.federation.topics";
     private const string FederationTopicSubscriptionsKey = "admin_explicit.federation.topic_subscriptions";
     private const string FederationWebhooksKey = "admin_explicit.federation.webhooks";
+    private const string FederationCreditAgreementsKey = "admin_explicit.federation.credit_agreements";
     private const string CompatibilityWritesKey = "admin_explicit.compatibility_writes";
     private const string MemberPremiumConnectAccountKey = "donations.stripe_connect_account_id";
     private const string MemberPremiumDisputesKey = "donations.disputes";
@@ -132,6 +133,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/federation/aggregate-consent/preview")]
     [HttpGet("/api/v2/admin/federation/analytics/overview")]
     [HttpGet("/api/v2/admin/federation/cc-config")]
+    [HttpGet("/api/v2/admin/federation/credit-agreements")]
     [HttpGet("/api/v2/admin/federation/credit-agreements/{id}/transactions")]
     [HttpGet("/api/v2/admin/federation/credit-balances")]
     [HttpGet("/api/v2/admin/federation/export/{type}")]
@@ -268,6 +270,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/fadp/processing-register.csv" => await GetProcessingRegisterCsv(),
             "/api/v2/admin/federation/activity" => await GetFederationActivity(),
             "/api/v2/admin/federation/analytics/overview" => await GetFederationAnalyticsOverview(),
+            "/api/v2/admin/federation/credit-agreements" => await GetFederationCreditAgreements(),
             "/api/v2/admin/federation/credit-balances" => await GetFederationCreditBalances(),
             "/api/v2/admin/federation/topics" => await GetFederationTopics(),
             "/api/v2/admin/federation/topics/mine" => await GetFederationTopicSubscriptions(),
@@ -385,7 +388,6 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPost("/api/v2/admin/federation/aggregate-consent/rotate-secret")]
     [HttpPost("/api/v2/admin/federation/api-keys/{id}/revoke")]
     [HttpPost("/api/v2/admin/federation/credit-agreements")]
-    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
     [HttpPost("/api/v2/admin/federation/data/export")]
     [HttpPost("/api/v2/admin/federation/data/import")]
     [HttpPost("/api/v2/admin/federation/data/purge")]
@@ -464,13 +466,45 @@ public class AdminExplicitParityController : ControllerBase
         return path switch
         {
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
+            "/api/v2/admin/federation/credit-agreements" => await CreateFederationCreditAgreement(),
             "/api/v2/admin/invite-codes" => await GenerateInviteCodes(),
             "/api/v2/admin/member-premium/connect/onboarding" => await CreateMemberPremiumConnectOnboarding(),
+            _ when TryGetFederationCreditAgreementAction(path, out var creditAgreementId, out var creditAgreementAction) => await UpdateFederationCreditAgreementStatus(creditAgreementId, creditAgreementAction),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/test", out var webhookId) => await TestFederationWebhook(webhookId),
             _ when TryGetJobModerationAction(path, out var jobId, out var action) => await ModerateJob(jobId, action),
             _ => await PersistCompatibilityWrite("post")
         };
     }
+
+    [ActionName("approve")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    public Task<IActionResult> ApproveFederationCreditAgreement(int id) =>
+        UpdateFederationCreditAgreementStatus(id, "approve");
+
+    [ActionName("reject")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    public Task<IActionResult> RejectFederationCreditAgreement(int id) =>
+        UpdateFederationCreditAgreementStatus(id, "reject");
+
+    [ActionName("suspend")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    public Task<IActionResult> SuspendFederationCreditAgreement(int id) =>
+        UpdateFederationCreditAgreementStatus(id, "suspend");
+
+    [ActionName("activate")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    public Task<IActionResult> ActivateFederationCreditAgreement(int id) =>
+        UpdateFederationCreditAgreementStatus(id, "activate");
+
+    [ActionName("reactivate")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    public Task<IActionResult> ReactivateFederationCreditAgreement(int id) =>
+        UpdateFederationCreditAgreementStatus(id, "reactivate");
+
+    [ActionName("terminate")]
+    [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
+    public Task<IActionResult> TerminateFederationCreditAgreement(int id) =>
+        UpdateFederationCreditAgreementStatus(id, "terminate");
 
     [HttpPut("/api/v2/admin/api-partners/{id}")]
     [HttpPut("/api/v2/admin/config/groups")]
@@ -1337,6 +1371,139 @@ public class AdminExplicitParityController : ControllerBase
         var deleted = await _webhookService.DeleteAsync(tenantId, id);
         if (!deleted) return NotFound(new { error = "webhook_not_found", id });
         return Ok(new { success = true, id });
+    }
+
+    private async Task<IActionResult> GetFederationCreditAgreements()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var records = await LoadFederationCreditAgreements();
+        var tenantIds = records
+            .Where(r => r.FromTenantId == tenantId || r.ToTenantId == tenantId)
+            .SelectMany(r => new[] { r.FromTenantId, r.ToTenantId })
+            .Append(tenantId)
+            .Distinct()
+            .ToArray();
+        var tenants = await LoadTenantLookup(tenantIds);
+
+        var data = records
+            .Where(r => r.FromTenantId == tenantId || r.ToTenantId == tenantId)
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => FormatFederationCreditAgreement(r, tenants))
+            .ToList();
+
+        return Ok(new { success = true, data });
+    }
+
+    private async Task<IActionResult> CreateFederationCreditAgreement()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var partnerTenantId = JsonInt(payload, "partner_tenant_id", fallback: 0, min: 0, max: int.MaxValue);
+        var exchangeRate = JsonDecimal(payload, "exchange_rate", fallback: 0m);
+        var monthlyLimit = JsonDecimal(payload, "monthly_limit", fallback: 0m);
+        if (monthlyLimit <= 0m)
+        {
+            monthlyLimit = JsonDecimal(payload, "max_monthly_credits", fallback: 0m);
+        }
+
+        if (partnerTenantId <= 0)
+        {
+            return BadRequest(new { error = "VALIDATION_ERROR", field = "partner_tenant_id" });
+        }
+
+        if (partnerTenantId == tenantId)
+        {
+            return BadRequest(new { error = "VALIDATION_ERROR", field = "partner_tenant_id", message = "Cannot create agreement with the current tenant." });
+        }
+
+        if (exchangeRate <= 0m)
+        {
+            return BadRequest(new { error = "VALIDATION_ERROR", field = "exchange_rate" });
+        }
+
+        if (monthlyLimit <= 0m)
+        {
+            return BadRequest(new { error = "VALIDATION_ERROR", field = "monthly_limit" });
+        }
+
+        var partnerExists = await _db.Tenants
+            .AsNoTracking()
+            .AnyAsync(t => t.Id == partnerTenantId && t.IsActive);
+        if (!partnerExists)
+        {
+            return NotFound(new { error = "PARTNER_TENANT_NOT_FOUND", field = "partner_tenant_id" });
+        }
+
+        var records = await LoadFederationCreditAgreements();
+        var duplicate = records.Any(r =>
+            r.Status is "pending" or "active" &&
+            ((r.FromTenantId == tenantId && r.ToTenantId == partnerTenantId) ||
+             (r.FromTenantId == partnerTenantId && r.ToTenantId == tenantId)));
+        if (duplicate)
+        {
+            return Conflict(new { error = "CREATE_FAILED", message = "Agreement already exists between these tenants." });
+        }
+
+        var now = DateTime.UtcNow;
+        var record = new FederationCreditAgreementRecord
+        {
+            Id = records.Count == 0 ? 1 : records.Max(r => r.Id) + 1,
+            FromTenantId = tenantId,
+            ToTenantId = partnerTenantId,
+            ExchangeRate = exchangeRate,
+            MaxMonthlyCredits = monthlyLimit,
+            Status = "pending",
+            ApprovedByFrom = GetCurrentAdminUserId(),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        records.Add(record);
+        await SaveFederationCreditAgreements(records);
+
+        var tenants = await LoadTenantLookup(new[] { record.FromTenantId, record.ToTenantId });
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            success = true,
+            data = FormatFederationCreditAgreement(record, tenants)
+        });
+    }
+
+    private async Task<IActionResult> UpdateFederationCreditAgreementStatus(int id, string action)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var status = action switch
+        {
+            "approve" or "activate" or "reactivate" => "active",
+            "suspend" => "suspended",
+            "reject" or "terminate" => "terminated",
+            _ => null
+        };
+        if (status == null)
+        {
+            return BadRequest(new { error = "VALIDATION_ERROR", field = "action" });
+        }
+
+        var records = await LoadFederationCreditAgreements();
+        var record = records.FirstOrDefault(r => r.Id == id && (r.FromTenantId == tenantId || r.ToTenantId == tenantId));
+        if (record == null)
+        {
+            return NotFound(new { error = "NOT_FOUND", message = "Credit agreement not found." });
+        }
+
+        record.Status = status;
+        record.UpdatedAt = DateTime.UtcNow;
+        var adminId = GetCurrentAdminUserId();
+        if (action == "approve")
+        {
+            if (record.FromTenantId == tenantId) record.ApprovedByFrom = adminId;
+            if (record.ToTenantId == tenantId) record.ApprovedByTo = adminId;
+        }
+
+        await SaveFederationCreditAgreements(records);
+        return Ok(new { success = true, data = new { success = true } });
     }
 
     private static FederationWebhookSubscription ParseWebhookInput(string payloadJson)
@@ -2882,6 +3049,41 @@ public class AdminExplicitParityController : ControllerBase
         await _db.SaveChangesAsync();
     }
 
+    private async Task<List<FederationCreditAgreementRecord>> LoadFederationCreditAgreements()
+    {
+        var raw = await GetTenantConfigValueAsync(FederationCreditAgreementsKey);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new List<FederationCreditAgreementRecord>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<FederationCreditAgreementRecord>>(raw, StoreJsonOptions)
+                ?? new List<FederationCreditAgreementRecord>();
+        }
+        catch (JsonException)
+        {
+            return new List<FederationCreditAgreementRecord>();
+        }
+    }
+
+    private async Task SaveFederationCreditAgreements(List<FederationCreditAgreementRecord> records)
+    {
+        var json = JsonSerializer.Serialize(records.OrderBy(r => r.Id).ToList(), StoreJsonOptions);
+        await UpsertTenantConfigValueAsync(FederationCreditAgreementsKey, json);
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task<Dictionary<int, Tenant>> LoadTenantLookup(IEnumerable<int> tenantIds)
+    {
+        var ids = tenantIds.Distinct().ToArray();
+        return await _db.Tenants
+            .AsNoTracking()
+            .Where(t => ids.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id);
+    }
+
     private StoredParityRecord BuildStoredRecord(int id, string kind, string action, string payloadJson, DateTime now)
     {
         return new StoredParityRecord
@@ -3024,6 +3226,44 @@ public class AdminExplicitParityController : ControllerBase
             ["created_at"] = record.CreatedAt,
             ["updated_at"] = record.UpdatedAt,
             ["deleted_at"] = record.DeletedAt
+        };
+    }
+
+    private static object FormatFederationCreditAgreement(
+        FederationCreditAgreementRecord record,
+        IReadOnlyDictionary<int, Tenant> tenants)
+    {
+        tenants.TryGetValue(record.FromTenantId, out var fromTenant);
+        tenants.TryGetValue(record.ToTenantId, out var toTenant);
+
+        return new Dictionary<string, object?>
+        {
+            ["id"] = record.Id,
+            ["from_tenant_id"] = record.FromTenantId,
+            ["from_tenant_name"] = fromTenant?.Name ?? string.Empty,
+            ["from_tenant_slug"] = fromTenant?.Slug ?? string.Empty,
+            ["to_tenant_id"] = record.ToTenantId,
+            ["to_tenant_name"] = toTenant?.Name ?? string.Empty,
+            ["to_tenant_slug"] = toTenant?.Slug ?? string.Empty,
+            ["partner_tenant"] = toTenant == null
+                ? null
+                : new
+                {
+                    id = toTenant.Id,
+                    name = toTenant.Name,
+                    slug = toTenant.Slug
+                },
+            ["exchange_rate"] = record.ExchangeRate,
+            ["max_monthly_credits"] = record.MaxMonthlyCredits,
+            ["monthly_limit"] = record.MaxMonthlyCredits,
+            ["current_balance"] = 0m,
+            ["credits_sent"] = 0m,
+            ["credits_received"] = 0m,
+            ["status"] = record.Status,
+            ["approved_by_from"] = record.ApprovedByFrom,
+            ["approved_by_to"] = record.ApprovedByTo,
+            ["created_at"] = record.CreatedAt,
+            ["updated_at"] = record.UpdatedAt
         };
     }
 
@@ -3322,6 +3562,26 @@ public class AdminExplicitParityController : ControllerBase
         return fallback;
     }
 
+    private static decimal JsonDecimal(Dictionary<string, JsonElement> payload, string key, decimal fallback)
+    {
+        foreach (var item in payload)
+        {
+            if (!string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return item.Value.ValueKind switch
+            {
+                JsonValueKind.Number when item.Value.TryGetDecimal(out var number) => number,
+                JsonValueKind.String when decimal.TryParse(item.Value.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var number) => number,
+                _ => fallback
+            };
+        }
+
+        return fallback;
+    }
+
     private static string? Truncate(string? value, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -3446,6 +3706,27 @@ public class AdminExplicitParityController : ControllerBase
         return action is "approve" or "reject" or "flag";
     }
 
+    private static bool TryGetFederationCreditAgreementAction(string path, out int id, out string action)
+    {
+        id = 0;
+        action = string.Empty;
+
+        const string prefix = "/api/v2/admin/federation/credit-agreements/";
+        if (!path.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var parts = path[prefix.Length..].Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2 || !int.TryParse(parts[0], out id))
+        {
+            return false;
+        }
+
+        action = parts[1];
+        return action is "approve" or "reject" or "suspend" or "activate" or "reactivate" or "terminate";
+    }
+
     private static bool TryGetSlugBeforeSuffix(string path, string prefix, string suffix, out string slug)
     {
         slug = string.Empty;
@@ -3475,6 +3756,20 @@ public class AdminExplicitParityController : ControllerBase
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? DeletedAt { get; set; }
+    }
+
+    private sealed class FederationCreditAgreementRecord
+    {
+        public int Id { get; set; }
+        public int FromTenantId { get; set; }
+        public int ToTenantId { get; set; }
+        public decimal ExchangeRate { get; set; }
+        public decimal? MaxMonthlyCredits { get; set; }
+        public string Status { get; set; } = "pending";
+        public int? ApprovedByFrom { get; set; }
+        public int? ApprovedByTo { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
     private sealed class SupportReportRecord
