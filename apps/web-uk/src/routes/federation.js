@@ -60,9 +60,10 @@ function partnerHref(id) {
   return text ? `/federation/partners/${encodeURIComponent(text)}` : '/federation/partners';
 }
 
-function normalizePartner(partner) {
+function normalizePartner(partner, options = {}) {
   const name = trimmed(partner && partner.name) || 'Federated community';
   const id = partner && partner.id !== undefined ? partner.id : '';
+  const taglineLimit = Object.prototype.hasOwnProperty.call(options, 'taglineLimit') ? options.taglineLimit : 220;
   const permissions = Array.isArray(partner && partner.permissions)
     ? partner.permissions.map((permission) => trimmed(permission)).filter(Boolean)
     : [];
@@ -71,8 +72,9 @@ function normalizePartner(partner) {
     id,
     name,
     href: partnerHref(id),
-    tagline: trimmed(partner && partner.tagline, 220),
+    tagline: trimmed(partner && partner.tagline, taglineLimit),
     location: trimmed(partner && partner.location),
+    country: trimmed(partner && partner.country),
     memberCount: numberOrZero(partner && partner.member_count),
     listingCount: numberOrZero(partner && partner.listing_count),
     levelName: trimmed(partner && (partner.federation_level_name || partner.level_name || partner.level)),
@@ -80,6 +82,14 @@ function normalizePartner(partner) {
     isExternal: bool(partner && partner.is_external),
     permissions
   };
+}
+
+function validPartnerId(id) {
+  return /^\d+$/.test(id) || /^ext-\d+$/.test(id);
+}
+
+function isInternalPartner(partner) {
+  return partner && !partner.isExternal && /^\d+$/.test(String(partner.id || ''));
 }
 
 function normalizeActivity(item) {
@@ -182,6 +192,41 @@ router.get('/partners', asyncRoute(async (req, res) => {
     activeNav: 'explore',
     federationActiveTab: 'partners',
     partners
+  });
+}));
+
+router.get('/partners/:id', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const id = trimmed(req.params.id, 32);
+  if (!validPartnerId(id)) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  let partnerResult;
+  try {
+    partnerResult = await callFederationApi(token, 'GET', `/partners/${id}`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (renderFederationError(error, res)) return undefined;
+    throw error;
+  }
+
+  const partner = normalizePartner(asObject(dataFrom(partnerResult)), { taglineLimit: null });
+  partner.id = id;
+  partner.href = partnerHref(id);
+  partner.isInternal = isInternalPartner(partner);
+
+  return res.render('federation/partner', {
+    title: partner.name,
+    activeNav: 'explore',
+    federationActiveTab: 'partners',
+    partner
   });
 }));
 
