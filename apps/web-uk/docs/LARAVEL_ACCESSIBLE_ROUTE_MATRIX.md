@@ -5,8 +5,10 @@ Last reviewed: 2026-07-06
 ## Purpose
 
 This matrix tracks how `apps/web-uk` lines up with the Laravel Blade accessible
-frontend. It is preparation evidence only. It does not certify route parity,
-workflow parity, backend compatibility, or production readiness.
+frontend. It is preparation evidence only. The exact method/path declaration
+gaps are closed, but this does not certify workflow parity, backend
+compatibility, visual parity, or production readiness.
+It does not certify route parity beyond static method/path declarations.
 
 ## Sources
 
@@ -41,14 +43,15 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 599 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
-| Exact method/path matches | 517 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
-| Missing Laravel routes | 91 | Laravel accessible declarations without an exact local method/path equivalent. These are now primarily POST/state-changing workflows. |
+| ASP.NET `apps/web-uk` | 690 | Express app/router/static-page declarations scanned from local source after shell prep; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
+| Exact method/path matches | 608 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
+| Missing Laravel routes | 0 | Every Laravel accessible method/path declaration currently has a local exact declaration match. |
 | Extra `apps/web-uk` routes | 83 | Local-only routes, legacy routes, admin routes, helpers, or paths with shapes that do not yet match Laravel. |
 
 These are declaration counts, not a parity score. Laravel registers the route
-set in slug and custom-domain modes, and many route families include POST
-workflow handlers that `apps/web-uk` does not have yet.
+set in slug and custom-domain modes, and many route families still need visual,
+workflow, auth, tenant, localization, runtime, and backend-switching
+certification.
 
 ## Header And Footer Contract
 
@@ -92,7 +95,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Blog | `/blog` | `/blog` | GET remains a preparation skeleton; POST aliases now cover post comments, comment-thread replies, post likes/reactions, and comment update/delete/reactions through Laravel v2 blog/comment/reaction APIs. Blog listing/detail rendering, rich comment thread display, likers page behavior, feature gates, and runtime behavior are not certified. |
 | Resources | `/resources` | `/resources` | GET remains a preparation skeleton; POST aliases now cover upload safe-failure, reorder, delete, reactions, comment add, and comment delete with Laravel-compatible status redirects. Multipart upload, library rendering, admin state, and runtime behavior are not certified. |
 | Marketplace | `/marketplace` | `/marketplace` | GET pages remain preparation pages; POST aliases now cover listing create/update/delete/renew, save/unsave, buy, offer, report, offer decisions, order actions, seller onboarding, pickup slots, and seller coupons through Laravel v2 marketplace APIs. Blade rendering, seller dashboards, hosted no-JS checkout redirects, media uploads, tenant/feature gates, and runtime behavior are not certified. |
-| Jobs | `/jobs` | `/jobs` | Preparation skeleton. |
+| Jobs | `/jobs` plus depth POST workflows | `/jobs` plus matching depth POST aliases | Exact Laravel accessible job route declarations are now present locally. GET pages remain preparation pages; POST aliases cover create/update/delete/renew, apply, save/unsave, application status/withdrawal, alerts, interview responses, and offer responses through Laravel v2 jobs APIs. Multipart CV proxying, Blade rendering, employer/talent dashboard depth, tenant/feature gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
 | Courses | `/courses` | `/courses` | Preparation skeleton. |
 | Podcasts | `/podcasts` | `/podcasts` | GET routes remain preparation pages; POST aliases now cover show subscribe, studio show create/update/publish/delete, and episode add/publish/delete through Laravel v2 podcast APIs. |
 | Coupons | `/coupons` | `/coupons` | Preparation skeleton. |
@@ -101,12 +104,13 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Federation | `/federation` | `/federation` | Preparation skeleton. |
 | Clubs | `/clubs` | `/clubs` | Preparation skeleton. |
 
-## Major Missing Route Families
+## Remaining Certification Families
 
-These Laravel route families still need detailed page-by-page mapping and
-runtime tests before `apps/web-uk` can be shared:
+These Laravel route families still need detailed page-by-page workflow, visual,
+auth, tenant, localization, and runtime certification before `apps/web-uk` can
+be shared:
 
-| Family | Missing route count | Examples | Current status |
+| Family | Exact route gaps | Examples | Current status |
 | --- | ---: | --- | --- |
 | Tenant routing | structural | shared-domain `/{tenantSlug}/alpha`, custom accessible domains | Not implemented in `apps/web-uk`. |
 | Cookie/report POST workflows | 0 | none exact | Cookie choice POST is a partial local candidate. Contact POST and report-problem POST are Laravel-backed candidates using `/api/v2/contact` and `/api/v2/support/reports`, with status-key redirects and mocked contract tests. Cookie audit persistence, tenant scoping, production Turnstile, localization, notification side effects, and ASP.NET backend compatibility are not certified. |
@@ -135,8 +139,8 @@ runtime tests before `apps/web-uk` can be shared:
 | Marketplace/commerce | 0 | none exact | Marketplace POST aliases now cover `/marketplace/create`, listing update/delete/renew/save/unsave/buy/offer/report, offer accept/decline/withdraw, order ship/confirm/cancel/pay/rate, seller onboarding, pickup slot create/update/delete/scan, and seller coupon create/update/delete through Laravel v2 marketplace APIs. GET routes still have preparation pages, hosted no-JS Stripe checkout is represented by v2 payment-intent creation rather than an external Checkout redirect, address/onboarding depth and media uploads are not implemented, and Blade rendering, tenant/feature gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. Courses remain a separate commerce-family gap. |
 | Podcasts | 0 | none exact | POST aliases now cover `/podcasts/{id}/subscribe`, `/podcasts/studio/new`, show update/publish/delete, and episode add/publish/delete through Laravel v2 podcast APIs. GET podcast/studio pages remain preparation pages; multipart audio upload is not proxied, RSS/media rendering, author configuration gates, moderation state, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
 | Events | 0 | none exact | POST aliases now cover `/events/{id}/waitlist`, `/events/{id}/waitlist/leave`, `/events/{id}/attendees/{attendeeId}/check-in`, `/events/{id}/polls`, `/events/{id}/polls/{pollId}/vote`, `/events/{id}/recurring-edit`, and `/events/{id}/translate` through Laravel v2 event, poll, and UGC translation APIs. GET pages remain existing local/protected routes or generated preparation pages; rendered translation results, Blade list/detail parity, owner/participant authorization depth, notification/XP/waitlist promotion side effects, tenant gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
-| Federation | 11 | connections, messages, transfers, opt-in/out, settings | GET routes have preparation pages; federation POST workflows are not certified. |
-| Jobs | 17 | alerts, applications, employer brand, onboarding, talent search, qualification, analytics | GET routes have preparation pages; job application/employer POST workflows are not certified. |
+| Federation | 0 | none exact | POST aliases now cover connection request/accept/reject/remove, cross-tenant messages and translation, member transfer, onboarding, opt-in/out, and settings through Laravel v2 federation APIs. GET routes remain preparation pages; cross-tenant discovery, remote member profiles, moderation, tenant federation policy, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
+| Jobs | 0 exact route gaps | none exact | POST aliases now cover `/jobs`, job update/delete/renew, apply, save/unsave, application status and withdrawal, alert create/pause/resume/delete, interview accept/decline, and offer accept/reject through Laravel v2 jobs APIs with Laravel status redirects. GET routes still rely on preparation pages, multipart CV upload proxying is not implemented, and Blade listing/detail/employer/talent depth, tenant/feature gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
 | Ideation | 0 | none exact | POST aliases now cover challenge create/update/status/favorite/duplicate/delete/link campaign/outcome, idea submit/draft/comment/comment delete/vote/status/media/convert/delete, and campaign create/update/unlink/delete through Laravel v2 ideation APIs. GET routes still rely on generated preparation pages, and Blade rendering, admin authorization depth, media upload proxying, team conversion runtime behavior, tenant/feature gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
 | Settings | 0 | none exact | POST aliases now cover appearance/theme, weekly availability, GDPR data-right requests, linked-account request/approve/permission/revoke, and insurance upload safe failure through Laravel v2 user settings/sub-account APIs while preserving Laravel status redirects. GET settings pages remain generated preparation pages or local legacy settings pages; multipart insurance proxying, linked-account data rendering, tenant feature gates, localization, runtime behavior, and ASP.NET backend compatibility are not certified. |
 

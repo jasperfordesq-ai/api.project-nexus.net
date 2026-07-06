@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T12:45:44.226Z
+Generated: 2026-07-06T13:00:21.120Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 673 |
-| Matched routes | 591 |
-| Missing routes | 17 |
+| web-uk routes | 690 |
+| Matched routes | 608 |
+| Missing routes | 0 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -48,7 +48,7 @@ Generated: 2026-07-06T12:45:44.226Z
 | help | 1 | 0 | 0 |
 | home | 2 | 0 | 0 |
 | ideation | 34 | 0 | 0 |
-| jobs | 21 | 17 | 0 |
+| jobs | 38 | 0 | 0 |
 | kb | 2 | 0 | 0 |
 | leaderboard | 5 | 0 | 0 |
 | legal | 6 | 0 | 0 |
@@ -96,20 +96,4 @@ Generated: 2026-07-06T12:45:44.226Z
 
 | Method | Path | Family | Handler | Blade view | Auth | Gates |
 | --- | --- | --- | --- | --- | --- | --- |
-| POST | `/jobs` | jobs | storeJob |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/{param}/applications/{param}/status` | jobs | setApplicationStatus |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/{param}/apply` | jobs | applyJob |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/{param}/delete` | jobs | deleteJob |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/{param}/renew` | jobs | renewJobPosting |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/{param}/save` | jobs | saveJobBookmark |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/{param}/unsave` | jobs | unsaveJobBookmark |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/{param}/update` | jobs | updateJob |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/alerts` | jobs | subscribeJobAlert |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/alerts/{param}/delete` | jobs | deleteJobAlert |  | public-or-unknown |  |
-| POST | `/jobs/alerts/{param}/pause` | jobs | pauseJobAlert |  | public-or-unknown |  |
-| POST | `/jobs/alerts/{param}/resume` | jobs | resumeJobAlert |  | public-or-unknown |  |
-| POST | `/jobs/applications/{param}/withdraw` | jobs | withdrawJobApplication |  | auth-optional | feature:job_vacancies |
-| POST | `/jobs/interviews/{param}/accept` | jobs | jobsAcceptInterview |  | public-or-unknown |  |
-| POST | `/jobs/interviews/{param}/decline` | jobs | jobsDeclineInterview |  | public-or-unknown |  |
-| POST | `/jobs/offers/{param}/accept` | jobs | jobsAcceptOffer |  | public-or-unknown |  |
-| POST | `/jobs/offers/{param}/reject` | jobs | jobsRejectOffer |  | public-or-unknown |  |
+| - | - | - | - | - | - | - |

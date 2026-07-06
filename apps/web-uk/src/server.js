@@ -26,6 +26,7 @@ const connectionsRoutes = require('./routes/connections');
 const membersRoutes = require('./routes/members');
 const notificationsRoutes = require('./routes/notifications');
 const groupsRoutes = require('./routes/groups');
+const jobsRoutes = require('./routes/jobs');
 const goalsRoutes = require('./routes/goals');
 const coursesRoutes = require('./routes/courses');
 const eventsRoutes = require('./routes/events');
@@ -1131,6 +1132,7 @@ app.use('/polls', doubleCsrfProtection, postOnly(formLimiter), pollActionRoutes)
 app.use('/federation', doubleCsrfProtection, postOnly(formLimiter), federationActionRoutes);
 app.use(doubleCsrfProtection, postOnly(formLimiter), savedSocialRoutes);
 app.use(laravelPrepRoutes);
+app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);
 
 // CSRF error handler (must be before 404 handler since 404 is a catch-all)
 app.use((err, req, res, next) => {

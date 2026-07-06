@@ -286,6 +286,50 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callJobApi', () => {
+    it('should call Laravel v2 job action endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: { message: 'updated' } })
+      });
+
+      await api.callJobApi('test-token', 'PUT', '/applications/91', {
+        status: 'shortlisted',
+        notes: 'Strong fit'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/jobs/applications/91',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ status: 'shortlisted', notes: 'Strong fit' })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({})
+      });
+
+      await api.callJobApi('test-token', 'DELETE', '/alerts/12');
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/jobs/alerts/12',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
   describe('getVolunteerOpportunity', () => {
     it('should call the Laravel volunteering opportunity detail endpoint with auth when present', async () => {
       mockFetch.mockResolvedValueOnce({

@@ -507,6 +507,20 @@ async function callGroupApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/groups${normalizedPath}`, options);
 }
 
+async function callJobApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/jobs${normalizedPath}`, options);
+}
+
 async function callUgcTranslateApi(token, data) {
   return request('/api/v2/ugc-translate', {
     method: 'POST',
@@ -2068,6 +2082,7 @@ module.exports = {
   callProfileApi,
   callWebAuthnApi,
   getOrganisationJobs,
+  callJobApi,
   // Wallet
   getBalance,
   getTransactions,

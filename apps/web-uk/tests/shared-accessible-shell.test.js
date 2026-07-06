@@ -60,6 +60,7 @@ jest.mock('../src/lib/api', () => ({
   callGoalApi: jest.fn().mockResolvedValue({ data: { id: 42, action: 'liked' } }),
   callCourseApi: jest.fn().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } }),
   callGroupApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getJobs: jest.fn(),
   getJob: jest.fn(),
   applyForJob: jest.fn(),
@@ -228,6 +229,7 @@ describe('shared accessible frontend shell', () => {
     api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callGroupApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callJobApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -4126,6 +4128,180 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.headers.location).toBe('/login');
     expect(api.callGroupApi).not.toHaveBeenCalled();
     expect(api.createFeedPostV2).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel jobs action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockImplementation(async (_token, _method, pathName) => {
+      if (pathName === '') {
+        return { data: { id: 42 } };
+      }
+      return { data: { id: 42 } };
+    });
+
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const jobFormBody = {
+      title: ' Volunteer Coordinator ',
+      description: ' Coordinate volunteer shifts. ',
+      type: 'paid',
+      commitment: 'part_time',
+      category: 'Community',
+      location: 'Cork',
+      is_remote: '1',
+      skills_required: 'Scheduling',
+      hours_per_week: '12',
+      time_credits: '4',
+      deadline: '2026-10-01',
+      salary_min: '20000',
+      salary_max: '30000',
+      salary_currency: 'EUR',
+      salary_type: 'annual',
+      salary_negotiable: '1',
+      contact_email: 'jobs@example.com',
+      status: 'draft'
+    };
+    const expectedJobPayload = {
+      title: 'Volunteer Coordinator',
+      description: 'Coordinate volunteer shifts.',
+      type: 'paid',
+      commitment: 'part_time',
+      category: 'Community',
+      location: 'Cork',
+      is_remote: true,
+      skills_required: 'Scheduling',
+      hours_per_week: '12',
+      time_credits: '4',
+      deadline: '2026-10-01',
+      salary_min: '20000',
+      salary_max: '30000',
+      salary_currency: 'EUR',
+      salary_type: 'annual',
+      salary_negotiable: true,
+      contact_email: 'jobs@example.com',
+      status: 'draft'
+    };
+
+    const createResponse = await post('/jobs', jobFormBody);
+    expect(createResponse.headers.location).toBe('/jobs/42?status=created');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'POST', '', expectedJobPayload);
+
+    const updateResponse = await post('/jobs/42/update', jobFormBody);
+    expect(updateResponse.headers.location).toBe('/jobs/42?status=updated');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42', expectedJobPayload);
+
+    const deleteResponse = await post('/jobs/42/delete');
+    expect(deleteResponse.headers.location).toBe('/jobs/mine?status=deleted');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42');
+
+    const renewResponse = await post('/jobs/42/renew');
+    expect(renewResponse.headers.location).toBe('/jobs/42?status=renewed');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/renew', {
+      days: 30
+    });
+
+    const applyResponse = await post('/jobs/42/apply', { cover_letter: ' I can help. ' });
+    expect(applyResponse.headers.location).toBe('/jobs/42?status=applied');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/apply', {
+      message: 'I can help.'
+    });
+
+    const saveResponse = await post('/jobs/42/save');
+    expect(saveResponse.headers.location).toBe('/jobs/42?status=saved');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/save');
+
+    const unsaveResponse = await post('/jobs/42/unsave', { from: 'saved' });
+    expect(unsaveResponse.headers.location).toBe('/jobs/saved?status=unsaved');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/save');
+
+    const statusResponse = await post('/jobs/42/applications/91/status', {
+      app_status: 'shortlisted',
+      notes: ' Strong fit. '
+    });
+    expect(statusResponse.headers.location).toBe('/jobs/42/applications?status=status-updated');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/applications/91', {
+      status: 'shortlisted',
+      notes: 'Strong fit.'
+    });
+
+    const withdrawResponse = await post('/jobs/applications/91/withdraw');
+    expect(withdrawResponse.headers.location).toBe('/jobs/applications?status=withdrawn');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/applications/91', {
+      status: 'withdrawn'
+    });
+
+    const alertResponse = await post('/jobs/alerts', {
+      keywords: ' coordinator ',
+      categories: ' community ',
+      type: 'volunteer',
+      commitment: 'flexible',
+      location: ' Remote ',
+      is_remote_only: '1'
+    });
+    expect(alertResponse.headers.location).toBe('/jobs/alerts?status=alert-created');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'POST', '/alerts', {
+      keywords: 'coordinator',
+      categories: 'community',
+      type: 'volunteer',
+      commitment: 'flexible',
+      location: 'Remote',
+      is_remote_only: true
+    });
+
+    const pauseAlertResponse = await post('/jobs/alerts/12/pause');
+    expect(pauseAlertResponse.headers.location).toBe('/jobs/alerts?status=alert-paused');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/alerts/12/unsubscribe');
+
+    const resumeAlertResponse = await post('/jobs/alerts/12/resume');
+    expect(resumeAlertResponse.headers.location).toBe('/jobs/alerts?status=alert-resumed');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/alerts/12/resubscribe');
+
+    const deleteAlertResponse = await post('/jobs/alerts/12/delete');
+    expect(deleteAlertResponse.headers.location).toBe('/jobs/alerts?status=alert-deleted');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/alerts/12');
+
+    const acceptInterviewResponse = await post('/jobs/interviews/33/accept', { note: ' See you then. ' });
+    expect(acceptInterviewResponse.headers.location).toBe('/jobs/responses?status=interview-accepted');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/interviews/33/accept', {
+      notes: 'See you then.'
+    });
+
+    const declineInterviewResponse = await post('/jobs/interviews/33/decline', { note: ' Not available. ' });
+    expect(declineInterviewResponse.headers.location).toBe('/jobs/responses?status=interview-declined');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/interviews/33/decline', {
+      notes: 'Not available.'
+    });
+
+    const acceptOfferResponse = await post('/jobs/offers/44/accept');
+    expect(acceptOfferResponse.headers.location).toBe('/jobs/responses?status=offer-accepted');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/offers/44/accept');
+
+    const rejectOfferResponse = await post('/jobs/offers/44/reject');
+    expect(rejectOfferResponse.headers.location).toBe('/jobs/responses?status=offer-rejected');
+    expect(api.callJobApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/offers/44/reject');
+
+    api.callJobApi.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/jobs/42/apply')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1], cover_letter: 'Hello' });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel event action aliases and redirects signed-out visitors', async () => {
