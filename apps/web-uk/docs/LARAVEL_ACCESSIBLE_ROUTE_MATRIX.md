@@ -77,7 +77,7 @@ certification.
 | Column | Blade links | `apps/web-uk` current status |
 | --- | --- | --- |
 | Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering is a partial Laravel-backed landing/search/detail candidate with Laravel-backed POST aliases; Blog is a partial Laravel-backed listing/detail/discussion/likers candidate with Laravel-backed POST aliases. |
-| Support | Help centre, Knowledge base, Trust and safety, Contact, About | Contact/About implemented; Help/Knowledge base/Trust and safety skeletons exist. |
+| Support | Help centre, Knowledge base, Trust and safety, Contact, About | Contact/About implemented. Knowledge base `/kb` and `/kb/{id}` are Laravel-backed candidates through `/api/v2/kb`, `/api/v2/kb/search`, and `/api/v2/kb/{id}` with Blade-style search, article cards, cursor load-more, article body, and related links. Help and Trust and safety skeletons remain. |
 | Legal | Legal, Terms of service, Privacy policy, Community guidelines, Acceptable use, Cookie policy, Accessibility statement | Local skeletons exist for the Laravel footer destinations; old `/terms` and `/privacy` still exist as legacy local routes. |
 
 ## Explore Contract

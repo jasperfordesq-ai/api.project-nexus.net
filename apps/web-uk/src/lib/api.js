@@ -497,6 +497,27 @@ async function getOrganisationReviews(organisationId) {
   return request(`/api/v2/volunteering/reviews/organization/${encodeURIComponent(organisationId)}`);
 }
 
+async function getKnowledgeBaseArticles(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.q) {
+    query.set('q', params.q);
+    if (params.limit) query.set('limit', params.limit);
+    return request(`/api/v2/kb/search?${query.toString()}`);
+  }
+
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.cursor) query.set('cursor', params.cursor);
+  if (params.category_id) query.set('category_id', params.category_id);
+
+  const queryString = query.toString();
+  return request(`/api/v2/kb${queryString ? `?${queryString}` : ''}`);
+}
+
+async function getKnowledgeBaseArticle(id) {
+  return request(`/api/v2/kb/${encodeURIComponent(id)}`);
+}
+
 async function getMyVolunteerOrganisations(token, params = {}) {
   const query = new URLSearchParams();
   if (params.per_page) query.set('per_page', params.per_page);
@@ -2696,6 +2717,8 @@ module.exports = {
   getVolunteerOpportunity,
   getOrganisationOpportunities,
   getOrganisationReviews,
+  getKnowledgeBaseArticles,
+  getKnowledgeBaseArticle,
   getMyVolunteerOrganisations,
   createVolunteerOrganisation,
   callVolunteeringApi,

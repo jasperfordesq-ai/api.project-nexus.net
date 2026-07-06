@@ -101,6 +101,8 @@ jest.mock('../src/lib/api', () => ({
   deletePoll: jest.fn().mockResolvedValue({}),
   votePoll: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   rankPoll: jest.fn().mockResolvedValue({ data: { ranked_results: [] } }),
+  getKnowledgeBaseArticles: jest.fn().mockResolvedValue({ data: [], meta: { has_more: false, per_page: 12 } }),
+  getKnowledgeBaseArticle: jest.fn(),
   getBalance: jest.fn(),
   donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
@@ -313,6 +315,8 @@ describe('shared accessible frontend shell', () => {
     api.deletePoll.mockReset().mockResolvedValue({});
     api.votePoll.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.rankPoll.mockReset().mockResolvedValue({ data: { ranked_results: [] } });
+    api.getKnowledgeBaseArticles.mockReset().mockResolvedValue({ data: [], meta: { has_more: false, per_page: 12 } });
+    api.getKnowledgeBaseArticle.mockReset();
     api.toggleFeedLike.mockReset().mockResolvedValue({ data: { action: 'liked' } });
     api.saveSavedSearch.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedSearch.mockReset().mockResolvedValue({ deleted: true });
@@ -466,6 +470,92 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('15 Aug 2026');
     expect(response.text).toContain('href="/events/77"');
     expect(response.text).not.toContain('This page is a shared-accessible-frontend preparation skeleton');
+  });
+
+  it('renders the Laravel-backed public knowledge base index and search pages', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.getKnowledgeBaseArticles
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 42,
+            title: 'Using the repair library',
+            content_preview: 'Find shared tools and book them safely.',
+            category_name: 'Getting started',
+            views_count: 3
+          }
+        ],
+        meta: { has_more: true, cursor: 'next-cursor', per_page: 12 }
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 77,
+            title: 'Repair cafe checklist',
+            content_preview: 'Bring notes, photos and spare parts.',
+            category_name: 'Events',
+            views_count: 0
+          }
+        ],
+        meta: { has_more: false, per_page: 20 }
+      });
+
+    const index = await request(app).get('/kb?cursor=abc');
+    const search = await request(app).get('/kb?q=repair');
+
+    expect(staticPageRoutes.pages['/kb']).toBeUndefined();
+    expect(index.status).toBe(200);
+    expect(index.text).toContain('Knowledge base');
+    expect(index.text).toContain('Guides and articles to help you get the most out of Project NEXUS Accessible.');
+    expect(index.text).toContain('Search the knowledge base');
+    expect(index.text).toContain('Using the repair library');
+    expect(index.text).toContain('Find shared tools and book them safely.');
+    expect(index.text).toContain('Getting started');
+    expect(index.text).toContain('3 views');
+    expect(index.text).toContain('href="/kb/42"');
+    expect(index.text).toContain('href="/kb?cursor=next-cursor"');
+    expect(index.text).not.toContain('Knowledge base articles will be wired');
+    expect(index.text).not.toContain('shared accessible frontend preparation page');
+
+    expect(search.status).toBe(200);
+    expect(search.text).toContain('value="repair"');
+    expect(search.text).toContain('Repair cafe checklist');
+    expect(search.text).toContain('No views');
+    expect(search.text).not.toContain('href="/kb?cursor=');
+    expect(api.getKnowledgeBaseArticles).toHaveBeenNthCalledWith(1, { per_page: 12, cursor: 'abc' });
+    expect(api.getKnowledgeBaseArticles).toHaveBeenNthCalledWith(2, { q: 'repair', limit: 20 });
+  });
+
+  it('renders the Laravel-backed public knowledge base article page', async () => {
+    const api = require('../src/lib/api');
+    api.getKnowledgeBaseArticle.mockResolvedValue({
+      data: {
+        id: 42,
+        title: 'Using the repair library',
+        content: '<p>Keep your tools labelled.</p>',
+        updated_at: '2026-07-06T12:30:00Z',
+        author: { id: 5, name: 'Morgan Lee' },
+        children: [
+          { id: 43, title: 'Returning borrowed tools' }
+        ]
+      }
+    });
+
+    const response = await request(app).get('/kb/42');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/kb"');
+    expect(response.text).toContain('Back to the knowledge base');
+    expect(response.text).toContain('Using the repair library');
+    expect(response.text).toContain('Written by Morgan Lee');
+    expect(response.text).toContain('Last updated: 2026-07-06');
+    expect(response.text).toContain('<p>Keep your tools labelled.</p>');
+    expect(response.text).toContain('Related articles');
+    expect(response.text).toContain('href="/kb/43"');
+    expect(response.text).toContain('Returning borrowed tools');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getKnowledgeBaseArticle).toHaveBeenCalledWith(42);
   });
 
   it('renders the Laravel-backed Federation hub with stats, partners, and activity', async () => {

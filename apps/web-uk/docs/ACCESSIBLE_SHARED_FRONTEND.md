@@ -76,6 +76,14 @@ and event sections when the aggregate response includes them. Tenant feature
 gating, exact recent-listing source parity, clubs detection, localization, and
 runtime behavior are not certified.
 
+The public `/kb` and `/kb/{id}` pages are Laravel-backed knowledge-base
+candidates. They read Laravel `/api/v2/kb`, `/api/v2/kb/search`, and
+`/api/v2/kb/{id}` to render the Blade-style article search, cards, view-count
+metadata, cursor load-more link, article back link, author/update metadata,
+sanitized article body, and related-article links. Feedback, attachments, admin
+editing, tenant routing, localization, runtime smoke tests, and ASP.NET backend
+compatibility are not certified.
+
 The `/account` page is now a local Blade-style protected account hub candidate.
 Unsigned requests redirect to `/login`, matching the Laravel accessible account
 route. Signed-in requests render the Blade-style account card list for wallet,

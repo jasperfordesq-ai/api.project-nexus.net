@@ -12,10 +12,6 @@ const pages = {
     title: 'Help centre',
     body: 'Help centre content will follow the Laravel accessible frontend route and workflow contract.'
   },
-  '/kb': {
-    title: 'Knowledge base',
-    body: 'Knowledge base articles will be wired after the ASP.NET backend exposes the Laravel-compatible accessible contracts.'
-  },
   '/trust-and-safety': {
     title: 'Trust and safety',
     body: 'Trust and safety content will follow the Laravel Blade accessible frontend structure.'
