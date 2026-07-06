@@ -108,13 +108,18 @@ function Get-AspNetV2AdminAlias {
     $aliasedPrefixes = @(
         '/api/admin/caring-community',
         '/api/admin/safeguarding',
-        '/api/users'
+        '/api/users',
+        '/api/groups'
     )
 
     foreach ($aliasedPrefix in $aliasedPrefixes) {
         if ($normalized -eq $aliasedPrefix -or $normalized.StartsWith("$aliasedPrefix/")) {
             if ($aliasedPrefix -eq '/api/users') {
                 return $normalized -replace '^/api/users', '/api/v2/users'
+            }
+
+            if ($aliasedPrefix -eq '/api/groups') {
+                return $normalized -replace '^/api/groups', '/api/v2/groups'
             }
 
             return $normalized -replace '^/api/admin/', '/api/v2/admin/'
@@ -130,6 +135,10 @@ function Get-AspNetV2RouteAlias {
     $normalized = Normalize-RoutePath $Path
     if ($normalized -eq '/api/users/me' -or $normalized.StartsWith('/api/users/me/')) {
         return $normalized -replace '^/api/users/me', '/api/v2/users/me'
+    }
+
+    if ($normalized -eq '/api/groups' -or $normalized.StartsWith('/api/groups/')) {
+        return $normalized -replace '^/api/groups', '/api/v2/groups'
     }
 
     return ''
@@ -515,11 +524,16 @@ function Export-LaravelToAspNetMatrix {
         $path = Normalize-RoutePath $route.path
         $method = ([string]$route.method).ToUpperInvariant()
         $methodKey = "$method $path"
+        $methodShapeKey = "$method $(Convert-ToRouteShape $path)"
         $matches = @()
         $status = 'missing'
 
         if ($AspNetIndex.ByMethodPath.ContainsKey($methodKey)) {
             $matches = Get-RouteIndexMatches $AspNetIndex 'ByMethodPath' $methodKey
+            $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
+            $status = if ($controllers -match 'Compatibility') { 'method-path-compatibility' } else { 'method-path-exact' }
+        } elseif ($AspNetIndex.ByMethodShape.ContainsKey($methodShapeKey)) {
+            $matches = Get-RouteIndexMatches $AspNetIndex 'ByMethodShape' $methodShapeKey
             $controllers = ($matches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';'
             $status = if ($controllers -match 'Compatibility') { 'method-path-compatibility' } else { 'method-path-exact' }
         } elseif ($AspNetIndex.ByPath.ContainsKey($path)) {

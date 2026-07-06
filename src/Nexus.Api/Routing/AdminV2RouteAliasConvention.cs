@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.Mvc.ActionConstraints;
 
 namespace Nexus.Api.Routing;
 
@@ -20,15 +21,23 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
 
     public void Apply(ApplicationModel application)
     {
+        var existingRoutes = application.Controllers
+            .SelectMany(controller => controller.Selectors
+                .Concat(controller.Actions.SelectMany(action => action.Selectors)))
+            .SelectMany(RouteKeys)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         foreach (var controller in application.Controllers)
         {
-            AddAdminControllerAliases(controller);
-            AddUsersControllerAliases(controller);
-            AddUsersMeActionAliases(controller);
+            AddAdminControllerAliases(controller, existingRoutes);
+            AddUsersControllerAliases(controller, existingRoutes);
+            AddGroupsControllerActionAliases(controller, existingRoutes);
+            AddUsersMeActionAliases(controller, existingRoutes);
+            AddGroupsActionAliases(controller, existingRoutes);
         }
     }
 
-    private static void AddAdminControllerAliases(ControllerModel controller)
+    private static void AddAdminControllerAliases(ControllerModel controller, ISet<string> existingRoutes)
     {
         if (controller.Actions
             .SelectMany(action => action.Selectors)
@@ -62,10 +71,11 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
                     Template = alias
                 }
             });
+            existingRoutes.Add(Normalize(alias));
         }
     }
 
-    private static void AddUsersMeActionAliases(ControllerModel controller)
+    private static void AddUsersMeActionAliases(ControllerModel controller, ISet<string> existingRoutes)
     {
         foreach (var action in controller.Actions)
         {
@@ -81,7 +91,7 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
 
             foreach (var item in aliases)
             {
-                if (HasRoute(action.Selectors, item.Alias!))
+                if (HasRoute(action.Selectors, item.Alias!) || HasExistingActionRoute(existingRoutes, item.Selector, item.Alias!))
                 {
                     continue;
                 }
@@ -95,11 +105,109 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
                 };
 
                 action.Selectors.Add(aliasSelector);
+                AddRouteKeys(existingRoutes, aliasSelector);
             }
         }
     }
 
-    private static void AddUsersControllerAliases(ControllerModel controller)
+    private static void AddGroupsActionAliases(ControllerModel controller, ISet<string> existingRoutes)
+    {
+        foreach (var action in controller.Actions)
+        {
+            var aliases = action.Selectors
+                .Where(selector => selector.AttributeRouteModel is not null)
+                .Select(selector => new
+                {
+                    Selector = selector,
+                    Alias = ToGroupsV2Alias(selector.AttributeRouteModel!.Template)
+                })
+                .Where(item => item.Alias is not null)
+                .ToArray();
+
+            foreach (var item in aliases)
+            {
+                if (HasRoute(action.Selectors, item.Alias!) || HasExistingActionRoute(existingRoutes, item.Selector, item.Alias!))
+                {
+                    continue;
+                }
+
+                var aliasSelector = new SelectorModel(item.Selector)
+                {
+                    AttributeRouteModel = new AttributeRouteModel(item.Selector.AttributeRouteModel!)
+                    {
+                        Template = item.Alias
+                    }
+                };
+
+                action.Selectors.Add(aliasSelector);
+                AddRouteKeys(existingRoutes, aliasSelector);
+            }
+        }
+    }
+
+    private static void AddGroupsControllerActionAliases(ControllerModel controller, ISet<string> existingRoutes)
+    {
+        var groupPrefixes = controller.Selectors
+            .Select(selector => Normalize(selector.AttributeRouteModel?.Template))
+            .Where(template => template.Equals("api/groups", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (groupPrefixes.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var action in controller.Actions)
+        {
+            var aliases = action.Selectors
+                .Where(selector => selector.AttributeRouteModel is not null)
+                .Select(selector => new
+                {
+                    Selector = selector,
+                    Alias = ToGroupsV2Alias(CombineRoute("api/groups", selector.AttributeRouteModel!.Template))
+                })
+                .Where(item => item.Alias is not null)
+                .ToArray();
+
+            foreach (var item in aliases)
+            {
+                if (HasRoute(action.Selectors, item.Alias!) || HasExistingActionRoute(existingRoutes, item.Selector, item.Alias!))
+                {
+                    continue;
+                }
+
+                var aliasSelector = new SelectorModel(item.Selector)
+                {
+                    AttributeRouteModel = new AttributeRouteModel(item.Selector.AttributeRouteModel!)
+                    {
+                        Template = item.Alias
+                    }
+                };
+
+                action.Selectors.Add(aliasSelector);
+                AddRouteKeys(existingRoutes, aliasSelector);
+            }
+        }
+    }
+
+    private static string CombineRoute(string prefix, string? child)
+    {
+        var normalizedChild = Normalize(child);
+        if (normalizedChild.Length == 0)
+        {
+            return Normalize(prefix);
+        }
+
+        if (normalizedChild.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
+        {
+            return normalizedChild;
+        }
+
+        return Normalize(prefix) + "/" + normalizedChild;
+    }
+
+    private static void AddUsersControllerAliases(ControllerModel controller, ISet<string> existingRoutes)
     {
         var aliases = controller.Selectors
             .Select(selector => selector.AttributeRouteModel?.Template)
@@ -124,6 +232,7 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
                     Template = alias
                 }
             });
+            existingRoutes.Add(Normalize(alias));
         }
     }
 
@@ -139,7 +248,15 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
     {
         var normalized = Normalize(template);
         return normalized.StartsWith("api/users/me", StringComparison.OrdinalIgnoreCase)
-            ? "api/v2/users/me" + normalized["api/users/me".Length..]
+            ? "/api/v2/users/me" + normalized["api/users/me".Length..]
+            : null;
+    }
+
+    private static string? ToGroupsV2Alias(string? template)
+    {
+        var normalized = Normalize(template);
+        return normalized.StartsWith("api/groups", StringComparison.OrdinalIgnoreCase)
+            ? "/api/v2/groups" + normalized["api/groups".Length..]
             : null;
     }
 
@@ -152,4 +269,48 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
 
     private static string Normalize(string? template) =>
         (template ?? string.Empty).Trim().TrimStart('/');
+
+    private static bool HasExistingActionRoute(ISet<string> existingRoutes, SelectorModel sourceSelector, string alias) =>
+        RouteKeys(sourceSelector, alias).Any(existingRoutes.Contains)
+        || existingRoutes.Contains(RouteKey("*", alias));
+
+    private static IEnumerable<string> RouteKeys(SelectorModel selector) =>
+        RouteKeys(selector, selector.AttributeRouteModel?.Template);
+
+    private static IEnumerable<string> RouteKeys(SelectorModel selector, string? template)
+    {
+        var normalized = Normalize(template);
+        if (normalized.Length == 0)
+        {
+            yield break;
+        }
+
+        var methods = selector.ActionConstraints
+            .OfType<HttpMethodActionConstraint>()
+            .SelectMany(constraint => constraint.HttpMethods)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (methods.Length == 0)
+        {
+            yield return RouteKey("*", normalized);
+            yield break;
+        }
+
+        foreach (var method in methods)
+        {
+            yield return RouteKey(method, normalized);
+        }
+    }
+
+    private static void AddRouteKeys(ISet<string> existingRoutes, SelectorModel selector)
+    {
+        foreach (var key in RouteKeys(selector))
+        {
+            existingRoutes.Add(key);
+        }
+    }
+
+    private static string RouteKey(string method, string? template) =>
+        $"{method.ToUpperInvariant()} {Normalize(template)}";
 }

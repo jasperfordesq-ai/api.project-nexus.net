@@ -39,6 +39,7 @@ public class GroupsController : ControllerBase
     /// GET /api/groups - List all groups (paginated).
     /// </summary>
     [HttpGet]
+    [HttpGet("/api/v2/groups")]
     public async Task<IActionResult> GetGroups(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20,
@@ -189,6 +190,7 @@ public class GroupsController : ControllerBase
     /// POST /api/groups - Create a new group.
     /// </summary>
     [HttpPost]
+    [HttpPost("/api/v2/groups")]
     public async Task<IActionResult> CreateGroup([FromBody] CreateGroupRequest request)
     {
         var userId = GetCurrentUserId();
