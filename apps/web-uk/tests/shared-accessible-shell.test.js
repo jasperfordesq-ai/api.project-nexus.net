@@ -50,6 +50,7 @@ jest.mock('../src/lib/api', () => ({
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getTransactions: jest.fn(),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
+  getVolunteeringOpportunities: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteerOrganisation: jest.fn(),
   getMyVolunteerOrganisations: jest.fn(),
   getVolunteerOpportunity: jest.fn(),
@@ -172,6 +173,73 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Organisations');
     expect(response.text).toContain('Organisation listings are temporarily unavailable.');
     expect(response.text).toContain('There are no organisations listed yet.');
+  });
+
+  it('renders the Blade-style volunteering landing page from Laravel opportunities', async () => {
+    const staticPageRoutes = require('../src/routes/static-pages');
+    const api = require('../src/lib/api');
+    api.getVolunteeringOpportunities.mockResolvedValueOnce({
+      data: [
+        {
+          id: 77,
+          title: 'Community Kitchen Helper',
+          description: 'Help prepare meals and welcome visitors at a weekly community kitchen.',
+          is_remote: true,
+          location: 'Derry',
+          organization: { name: 'Community Club' },
+          category: { name: 'Food support' }
+        }
+      ],
+      meta: { cursor: 'next-cursor', per_page: 20, has_more: true }
+    });
+
+    const response = await request(app).get('/volunteering?q=kitchen&category_id=3&is_remote=1');
+
+    expect(staticPageRoutes.pages['/volunteering']).toBeUndefined();
+    expect(api.getVolunteeringOpportunities).toHaveBeenCalledWith({
+      search: 'kitchen',
+      category_id: '3',
+      is_remote: true,
+      per_page: 20
+    });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Project NEXUS Accessible');
+    expect(response.text).toContain('Volunteering');
+    expect(response.text).toContain('Find volunteering opportunities, track applications and log volunteering hours.');
+    expect(response.text).toContain('href="/organisations"');
+    expect(response.text).toContain('Browse organisations');
+    expect(response.text).toContain('How volunteering works');
+    expect(response.text).toContain('Find an opportunity that suits you.');
+    expect(response.text).toContain('Sign in to apply for opportunities and track your volunteering.');
+    expect(response.text).toContain('action="/volunteering"');
+    expect(response.text).toContain('Search opportunities');
+    expect(response.text).toContain('value="kitchen"');
+    expect(response.text).toContain('name="is_remote"');
+    expect(response.text).toContain('checked');
+    expect(response.text).toContain('1 opportunity shown');
+    expect(response.text).toContain('href="/volunteering/opportunities/77"');
+    expect(response.text).toContain('Community Kitchen Helper');
+    expect(response.text).toContain('Remote');
+    expect(response.text).toContain('Community Club');
+    expect(response.text).toContain('Derry');
+    expect(response.text).toContain('Food support');
+    expect(response.text).toContain('Help prepare meals and welcome visitors');
+    expect(response.text).toContain('href="/organisations/opportunities/77/apply"');
+    expect(response.text).toContain('Apply to volunteer');
+    expect(response.text).toContain('href="/volunteering?q=kitchen&amp;category_id=3&amp;is_remote=1&amp;cursor=next-cursor"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('keeps the volunteering page usable when the Laravel opportunities API is unavailable', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteeringOpportunities.mockRejectedValueOnce(new api.ApiOfflineError());
+
+    const response = await request(app).get('/volunteering');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Volunteering');
+    expect(response.text).toContain('Volunteering opportunities could not be loaded. Try again.');
+    expect(response.text).toContain('No volunteering opportunities match your filters.');
   });
 
   it('renders the Blade-style paginated organisations browse page from Laravel data', async () => {

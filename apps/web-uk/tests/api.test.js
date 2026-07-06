@@ -166,6 +166,38 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('getVolunteeringOpportunities', () => {
+    it('should call the Laravel volunteering opportunities endpoint with search, category, remote and per_page params', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({
+          data: [
+            { id: 77, title: 'Community Kitchen Helper', is_remote: true }
+          ],
+          meta: { per_page: 20, has_more: false }
+        })
+      });
+
+      const result = await api.getVolunteeringOpportunities({
+        search: 'kitchen',
+        category_id: 3,
+        is_remote: true,
+        per_page: 20
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/opportunities?search=kitchen&category_id=3&is_remote=true&per_page=20',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      expect(result.data[0].title).toBe('Community Kitchen Helper');
+    });
+  });
+
   describe('getVolunteerOrganisation', () => {
     it('should call the Laravel public volunteering organisation detail endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

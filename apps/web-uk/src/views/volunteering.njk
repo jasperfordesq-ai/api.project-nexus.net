@@ -1,0 +1,166 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <h1 class="govuk-heading-xl">Volunteering</h1>
+  <p class="govuk-body-l">Find volunteering opportunities, track applications and log volunteering hours.</p>
+
+  <p class="govuk-body govuk-!-margin-bottom-6">
+    <a class="govuk-link govuk-link--no-visited-state" href="/organisations">Browse organisations</a>
+  </p>
+
+  <div class="govuk-inset-text" role="note" aria-labelledby="how-it-works-heading">
+    <h2 class="govuk-heading-s govuk-!-margin-bottom-2" id="how-it-works-heading">How volunteering works</h2>
+    <ol class="govuk-list govuk-list--number govuk-!-margin-bottom-0">
+      <li>Find an opportunity that suits you.</li>
+      <li>Apply, and tell the organiser about yourself.</li>
+      <li>Once you are accepted, log the hours you give.</li>
+      <li>The organisation reviews and approves your hours.</li>
+      <li>You receive 1 time credit for every hour - added straight to your wallet.</li>
+    </ol>
+  </div>
+
+  {% if authRequired %}
+    <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="volunteering-auth-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="volunteering-auth-title">Sign in required</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-body">Sign in to apply for opportunities and track your volunteering.</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="get" action="/volunteering" class="govuk-!-margin-bottom-7">
+    <fieldset class="govuk-fieldset" aria-describedby="volunteering-filter-hint">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">Search and filter opportunities</h2>
+      </legend>
+      <div id="volunteering-filter-hint" class="govuk-hint">Search by keyword, category or remote opportunities.</div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="q">Search opportunities</label>
+        <div id="q-hint" class="govuk-hint">Search by title, description or skills.</div>
+        <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ volunteeringQuery }}" aria-describedby="q-hint">
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="category_id">Category</label>
+        <input class="govuk-input govuk-input--width-10" id="category_id" name="category_id" inputmode="numeric" value="{{ categoryId }}">
+      </div>
+
+      <div class="govuk-form-group">
+        <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+          <div class="govuk-checkboxes__item">
+            <input class="govuk-checkboxes__input" id="is_remote" name="is_remote" type="checkbox" value="1" {% if isRemote %}checked{% endif %}>
+            <label class="govuk-label govuk-checkboxes__label" for="is_remote">Show remote opportunities only</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="govuk-button-group">
+        <button class="govuk-button" data-module="govuk-button" type="submit">Search</button>
+        {% if volunteeringQuery or categoryId or isRemote %}
+          <a class="govuk-link" href="/volunteering">Clear filters</a>
+        {% endif %}
+      </div>
+    </fieldset>
+  </form>
+
+  <h2 class="govuk-heading-l">Opportunities</h2>
+  <p class="govuk-body nexus-alpha-result-count" aria-live="polite">
+    {% if opportunities.length == 0 %}
+      No opportunities shown
+    {% elseif opportunities.length == 1 %}
+      1 opportunity shown
+    {% else %}
+      {{ opportunities.length }} opportunities shown
+    {% endif %}
+  </p>
+
+  {% if error %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p>Volunteering opportunities could not be loaded. Try again.</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if opportunities and opportunities.length %}
+    <div class="nexus-alpha-card-list">
+      {% for opportunity in opportunities %}
+        <article class="nexus-alpha-card">
+          <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
+            <a class="govuk-link" href="/volunteering/opportunities/{{ opportunity.id }}">{{ opportunity.title or "Volunteering opportunity" }}</a>
+          </h3>
+
+          {% if opportunity.is_remote %}
+            <strong class="govuk-tag govuk-tag--turquoise">Remote</strong>
+          {% endif %}
+
+          <dl class="nexus-alpha-inline-list govuk-!-margin-top-2">
+            {% if opportunity.organizationName %}
+              <div>
+                <dt>Organisation</dt>
+                <dd>{{ opportunity.organizationName }}</dd>
+              </div>
+            {% endif %}
+            {% if opportunity.location %}
+              <div>
+                <dt>Location</dt>
+                <dd>{{ opportunity.location }}</dd>
+              </div>
+            {% endif %}
+            {% if opportunity.categoryName %}
+              <div>
+                <dt>Category</dt>
+                <dd>{{ opportunity.categoryName }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+
+          {% if opportunity.summary %}
+            <p class="govuk-body govuk-!-margin-top-3">{{ opportunity.summary }}</p>
+          {% endif %}
+
+          <ul class="govuk-list govuk-list--inline govuk-!-margin-bottom-0">
+            <li><a class="govuk-link govuk-link--no-visited-state" href="/volunteering/opportunities/{{ opportunity.id }}">View details</a></li>
+            <li><a class="govuk-link govuk-link--no-visited-state" href="/organisations/opportunities/{{ opportunity.id }}/apply">Apply to volunteer</a></li>
+          </ul>
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if hasMore and loadMoreHref %}
+      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="Volunteering pages">
+        <div class="govuk-pagination__next">
+          <a class="govuk-link govuk-pagination__link" href="{{ loadMoreHref }}" rel="next">
+            <span class="govuk-pagination__link-title">Load more</span>
+            <span class="govuk-visually-hidden">:</span>
+            <span class="govuk-pagination__link-label">More opportunities</span>
+          </a>
+        </div>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-m">No opportunities found</h2>
+      <p class="govuk-body">No volunteering opportunities match your filters.</p>
+      <p class="govuk-body govuk-!-margin-bottom-0">
+        {% if volunteeringQuery or categoryId or isRemote %}
+          No opportunities match your filters. Try widening your search or <a class="govuk-link" href="/volunteering">clear filters</a>.
+        {% else %}
+          There are no opportunities listed right now. Check back soon, or follow the community feed for new openings.
+        {% endif %}
+      </p>
+    </div>
+  {% endif %}
+{% endblock %}

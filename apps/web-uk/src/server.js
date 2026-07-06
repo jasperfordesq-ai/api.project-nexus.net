@@ -343,6 +343,98 @@ app.get('/about', (req, res) => {
 
 app.use('/explore', exploreRoutes);
 
+app.get('/volunteering', (req, res) => {
+  const { getVolunteeringOpportunities } = require('./lib/api');
+  const volunteeringQuery = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  const categoryId = typeof req.query.category_id === 'string' ? req.query.category_id.trim() : '';
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor.trim() : '';
+  const remoteValue = typeof req.query.is_remote === 'string'
+    ? req.query.is_remote
+    : (typeof req.query.remote === 'string' ? req.query.remote : '');
+  const isRemote = ['1', 'true', 'on', 'yes'].includes(String(remoteValue).toLowerCase());
+  const filters = { per_page: 20 };
+
+  if (volunteeringQuery) {
+    filters.search = volunteeringQuery;
+  }
+
+  if (categoryId) {
+    filters.category_id = categoryId;
+  }
+
+  if (isRemote) {
+    filters.is_remote = true;
+  }
+
+  if (cursor) {
+    filters.cursor = cursor;
+  }
+
+  const normalizeOpportunity = (opportunity) => {
+    const organization = opportunity.organization && typeof opportunity.organization === 'object'
+      ? opportunity.organization
+      : {};
+    const category = opportunity.category && typeof opportunity.category === 'object'
+      ? opportunity.category
+      : {};
+    const description = opportunity.description || opportunity.summary || '';
+
+    return {
+      ...opportunity,
+      organizationName: opportunity.org_name || opportunity.organisation_name || organization.name || '',
+      categoryName: category.name || (typeof opportunity.category === 'string' ? opportunity.category : ''),
+      summary: description.length > 220 ? `${description.slice(0, 217)}...` : description
+    };
+  };
+
+  const buildLoadMoreHref = (nextCursor) => {
+    const loadMoreParams = new URLSearchParams();
+    if (volunteeringQuery) loadMoreParams.set('q', volunteeringQuery);
+    if (categoryId) loadMoreParams.set('category_id', categoryId);
+    if (isRemote) loadMoreParams.set('is_remote', '1');
+    if (nextCursor) loadMoreParams.set('cursor', nextCursor);
+    const queryString = loadMoreParams.toString();
+
+    return queryString ? `/volunteering?${queryString}` : '';
+  };
+
+  getVolunteeringOpportunities(filters)
+    .then((result) => {
+      const opportunities = Array.isArray(result?.data)
+        ? result.data
+        : (Array.isArray(result?.items) ? result.items : []);
+      const meta = result?.meta && typeof result.meta === 'object' ? result.meta : {};
+      const nextCursor = typeof meta.cursor === 'string' ? meta.cursor : '';
+
+      res.render('volunteering', {
+        title: 'Volunteering',
+        activeNav: 'volunteering',
+        opportunities: opportunities.map(normalizeOpportunity),
+        volunteeringQuery,
+        categoryId,
+        isRemote,
+        error: false,
+        hasMore: !!meta.has_more && !!nextCursor,
+        loadMoreHref: buildLoadMoreHref(nextCursor),
+        authRequired: !req.signedCookies.token
+      });
+    })
+    .catch(() => {
+      res.render('volunteering', {
+        title: 'Volunteering',
+        activeNav: 'volunteering',
+        opportunities: [],
+        volunteeringQuery,
+        categoryId,
+        isRemote,
+        error: true,
+        hasMore: false,
+        loadMoreHref: '',
+        authRequired: !req.signedCookies.token
+      });
+    });
+});
+
 app.get('/organisations', (req, res) => {
   const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
   const status = typeof req.query.status === 'string' ? req.query.status : '';

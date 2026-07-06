@@ -197,6 +197,13 @@ Follow the Laravel Blade accessible frontend for:
 - `nexus-alpha-card-list` and `nexus-alpha-card`;
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.
+- Volunteering as a Blade-style public landing/search candidate. The GET route
+  reads `/api/v2/volunteering/opportunities` with search, category, remote, and
+  cursor parameters, and renders the Blade public structure: organisation link,
+  how-it-works guidance, auth-required notice, filter form, opportunity cards,
+  and load-more link. Applications, recommended shifts, hours, organisation
+  owner tools, feature gates, tenant routing, and POST workflows still need
+  certification.
 - Organisations as a Blade-style directory/search/registration candidate. The
   directory and browse GETs now read the Laravel
   `/api/v2/volunteering/organisations` collection, register GET renders the

@@ -27,7 +27,7 @@ ASP.NET candidate:
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files. |
-| ASP.NET `apps/web-uk` | 168 | Express app/router declarations scanned from local source after shell prep; this includes route modules that may not be mounted as certified workflows yet. |
+| ASP.NET `apps/web-uk` | 169 | Express app/router declarations scanned from local source after shell prep; this includes route modules that may not be mounted as certified workflows yet. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families include POST
@@ -45,7 +45,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Listings | `/listings` | `/listings` | Implemented route; backend contract not certified. |
 | Members | `/members` | `/members` | Implemented route; backend contract not certified. |
 | Events | `/events` | `/events` | Implemented route; backend contract not certified. |
-| Volunteering | `/volunteering` | `/volunteering` | Preparation skeleton. |
+| Volunteering | `/volunteering` | `/volunteering` | Partial Laravel-backed candidate: public landing/search GET renders Blade-style intro, organisation link, how-it-works inset, auth notice, filters, opportunity cards, and cursor load-more from `/api/v2/volunteering/opportunities`; applications, hours, owner tools, tenant/auth gates, and POST workflows not certified. |
 | Explore | `/explore` | `/explore` | Implemented skeleton. |
 | Sign in | `/login` | `/login` | Implemented local equivalent. |
 | Register | `/register` | `/register` | Implemented local equivalent. |
@@ -56,7 +56,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 
 | Column | Blade links | `apps/web-uk` current status |
 | --- | --- | --- |
-| Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering and Blog are preparation skeletons. |
+| Platform | Listings, Members, Events, Volunteering, Blog | Listings/Members/Events implemented; Volunteering is a partial Laravel-backed landing/search candidate; Blog is a preparation skeleton. |
 | Support | Help centre, Knowledge base, Trust and safety, Contact, About | Contact/About implemented; Help/Knowledge base/Trust and safety skeletons exist. |
 | Legal | Legal, Terms of service, Privacy policy, Community guidelines, Acceptable use, Cookie policy, Accessibility statement | Local skeletons exist for the Laravel footer destinations; old `/terms` and `/privacy` still exist as legacy local routes. |
 
@@ -95,7 +95,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Cookie/report POST workflows | `/cookie-consent`, `/report-a-problem` POST | Skeleton GET pages only. |
 | Legal document sourcing | `/legal/*` tenant documents | Skeleton GET pages only. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
-| Volunteering | opportunities, hours, organisations, expenses, wellbeing | Skeleton landing only. |
+| Volunteering | opportunities, hours, organisations, expenses, wellbeing | Partial Laravel-backed candidate for `/volunteering` GET only. The page reads `/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`, `per_page`, and `cursor`; it renders public Blade-style landing/search/card content with mocked contract tests. Opportunity detail, applications, recommended shifts, hours, organisations owner tools, expenses, wellbeing, tenant-prefixed routes, auth redirects, feature gates, POST workflows, localization, and runtime certification are not complete. |
 | Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | Partial Laravel-backed candidate for `/organisations`, `/organisations/browse`, `/organisations/register` GET, `/organisations/manage` GET, `/organisations/{id}` GET, `/organisations/{id}/jobs` GET, and `/organisations/opportunities/{id}/apply` GET only. Directory/search and browse use `/api/v2/volunteering/organisations`; register GET renders the Blade-style form and validation status anchors without POST persistence; manage GET reads `/api/v2/volunteering/my-organisations` when signed in; detail uses `/api/v2/volunteering/organisations/{id}?include=public_contract`, `/api/v2/volunteering/opportunities?organization_id={id}`, and `/api/v2/volunteering/reviews/organization/{id}`; organisation jobs reads `/api/v2/jobs?organization_id={id}&status=open` when signed in; apply GET reads `/api/v2/volunteering/opportunities/{id}`, all with mocked contract tests. Auth enforcement, volunteering/job feature gates, tenant-prefixed routes, registration persistence, apply POST workflow, localization, and runtime certification are not complete. |
 | Exchanges | requests, accept/decline, ready/confirm/cancel | Skeleton landing only. |
 | Feed typed engagement | likes, comments, reactions, share, save, hide, report | Partial route equivalents only. |

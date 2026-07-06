@@ -72,6 +72,17 @@ The shell feeds:
 The `/explore` page is a skeleton copied from the Laravel accessible information
 architecture. It does not certify ASP.NET backend or workflow parity.
 
+The `/volunteering` page is now a local Blade-style public landing candidate
+for the Laravel accessible volunteering page. It renders the caption, lead,
+organisation browse link, how-volunteering-works inset, sign-in notice, filter
+form, opportunity cards, empty/error states, and cursor load-more link. Its
+opportunity list is backed by Laravel `/api/v2/volunteering/opportunities`
+using `search`, `category_id`, `is_remote`, `per_page`, and `cursor`
+parameters. This remains partial: applications, recommended shifts, hours,
+organisation owner tools, feature gates, tenant-prefixed routes, POST
+workflows, localization, runtime smoke tests, and ASP.NET backend compatibility
+are not certified.
+
 The `/organisations` page is now a local Blade-style candidate for the Laravel
 accessible organisations directory. It includes the caption, subnavigation,
 search form, empty state, status banners, registration copy, registration form,

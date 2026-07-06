@@ -34,6 +34,14 @@ src/lib/backend-contract.js
 
 ## Current Page Candidates
 
+`/volunteering` GET is a local Blade-style public landing/search candidate
+based on the Laravel accessible volunteering page. It reads
+`/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`,
+`per_page`, and `cursor` query params, and keeps empty/error states for API
+unavailability. It is not a backend adapter and does not certify applications,
+recommended shifts, hours, organisation owner tools, feature gates, tenant
+routing, or POST workflows.
+
 `/organisations`, `/organisations/browse`, `/organisations/register`,
 `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, and
 `/organisations/opportunities/{id}/apply` GET are local Blade-style visual/data

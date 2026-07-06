@@ -267,6 +267,20 @@ async function getVolunteerOrganisations(params = {}) {
   return request(endpoint);
 }
 
+async function getVolunteeringOpportunities(params = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.category_id) query.set('category_id', params.category_id);
+  if (params.is_remote) query.set('is_remote', params.is_remote);
+  if (params.per_page) query.set('per_page', params.per_page);
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const queryString = query.toString();
+  const endpoint = `/api/v2/volunteering/opportunities${queryString ? `?${queryString}` : ''}`;
+
+  return request(endpoint);
+}
+
 async function getVolunteerOrganisation(id) {
   return request(`/api/v2/volunteering/organisations/${encodeURIComponent(id)}?include=public_contract`);
 }
@@ -1209,6 +1223,7 @@ module.exports = {
   deleteListing,
   // Laravel volunteering
   getVolunteerOrganisations,
+  getVolunteeringOpportunities,
   getVolunteerOrganisation,
   getVolunteerOpportunity,
   getOrganisationOpportunities,
