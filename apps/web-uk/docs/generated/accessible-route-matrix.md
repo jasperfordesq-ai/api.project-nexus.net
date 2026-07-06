@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T11:50:04.682Z
+Generated: 2026-07-06T11:59:27.650Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 599 |
-| Matched routes | 517 |
-| Missing routes | 91 |
+| web-uk routes | 610 |
+| Matched routes | 528 |
+| Missing routes | 80 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -37,7 +37,7 @@ Generated: 2026-07-06T11:50:04.682Z
 | explore | 1 | 0 | 0 |
 | faq | 1 | 0 | 0 |
 | features | 1 | 0 | 0 |
-| federation | 17 | 11 | 0 |
+| federation | 28 | 0 | 0 |
 | feed | 22 | 0 | 10 |
 | forgot-password | 0 | 0 | 2 |
 | goals | 12 | 15 | 0 |
@@ -112,17 +112,6 @@ Generated: 2026-07-06T11:50:04.682Z
 | POST | `/courses/instructor/{param}/unpublish` | courses | commerceUnpublishCourse |  | auth-optional | feature:courses |
 | POST | `/courses/instructor/{param}/update` | courses | commerceUpdateCourse |  | auth-optional | feature:courses |
 | POST | `/courses/instructor/new` | courses | commerceStoreCourse |  | auth-optional | feature:courses |
-| POST | `/federation/connections` | federation | storeFederationConnection |  | auth-optional | feature:federation |
-| POST | `/federation/connections/{param}/accept` | federation | acceptFederationConnection |  | public-or-unknown |  |
-| POST | `/federation/connections/{param}/reject` | federation | rejectFederationConnection |  | public-or-unknown |  |
-| POST | `/federation/connections/{param}/remove` | federation | removeFederationConnection |  | public-or-unknown |  |
-| POST | `/federation/members/{param}/transfer` | federation | storeFederationTransfer |  | auth-optional | feature:federation |
-| POST | `/federation/messages` | federation | storeFederationMessage |  | auth-optional | feature:federation |
-| POST | `/federation/messages/translate/{param}` | federation | translateFederationMessage |  | auth-optional | feature:federation; feature:message_translation |
-| POST | `/federation/onboarding` | federation | federationOnboardingStore |  | auth-optional | feature:federation |
-| POST | `/federation/opt-in` | federation | storeFederationOptIn |  | auth-optional | feature:federation |
-| POST | `/federation/opt-out` | federation | storeFederationOptOut |  | auth-optional | feature:federation |
-| POST | `/federation/settings` | federation | updateFederationSettings |  | auth-optional | feature:federation |
 | POST | `/goals` | goals | storeGoal |  | public-or-unknown | feature:goals |
 | POST | `/goals/{param}/buddy` | goals | becomeGoalBuddy |  | auth-optional | feature:goals |
 | POST | `/goals/{param}/buddy-actions` | goals | goalsStoreBuddyAction |  | auth-optional |  |

@@ -120,6 +120,7 @@ jest.mock('../src/lib/api', () => ({
   callMessageApi: jest.fn().mockResolvedValue({ data: { id: 12, action: 'added' } }),
   callConversationApi: jest.fn().mockResolvedValue({ data: { id: 33 } }),
   callPodcastApi: jest.fn().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } }),
+  callFederationApi: jest.fn().mockResolvedValue({ data: { id: 42, success: true } }),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteeringOpportunities: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteerOrganisation: jest.fn(),
@@ -236,6 +237,7 @@ describe('shared accessible frontend shell', () => {
     api.callMessageApi.mockReset().mockResolvedValue({ data: { id: 12, action: 'added' } });
     api.callConversationApi.mockReset().mockResolvedValue({ data: { id: 33 } });
     api.callPodcastApi.mockReset().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } });
+    api.callFederationApi.mockReset().mockResolvedValue({ data: { id: 42, success: true } });
     api.verify2fa.mockReset();
     api.createFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.updateFeedPostV2.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -4468,6 +4470,189 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callPodcastApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel federation action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const connectResponse = await post('/federation/connections', {
+      receiver_id: '77',
+      receiver_tenant_id: '12',
+      message: ' Hello from our community '
+    });
+    expect(connectResponse.headers.location).toBe('/federation/members/77?tenant_id=12&status=connect-sent');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/connections', {
+      receiver_id: 77,
+      receiver_tenant_id: 12,
+      message: 'Hello from our community'
+    });
+
+    const acceptResponse = await post('/federation/connections/91/accept');
+    expect(acceptResponse.headers.location).toBe('/federation/connections?tab=received&status=connection-accepted');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/connections/91/accept');
+
+    const rejectResponse = await post('/federation/connections/91/reject');
+    expect(rejectResponse.headers.location).toBe('/federation/connections?tab=received&status=connection-rejected');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/connections/91/reject');
+
+    const removeResponse = await post('/federation/connections/91/remove');
+    expect(removeResponse.headers.location).toBe('/federation/connections?tab=accepted&status=connection-removed');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/connections/91');
+
+    const messageResponse = await post('/federation/messages', {
+      receiver_id: '77',
+      receiver_tenant_id: '12',
+      subject: ' Neighbourhood support ',
+      body: ' Could you help with the repair cafe? ',
+      reference_message_id: '33'
+    });
+    expect(messageResponse.headers.location).toBe('/federation/members/77?tenant_id=12&status=message-sent');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/messages', {
+      receiver_id: 77,
+      receiver_tenant_id: 12,
+      subject: 'Neighbourhood support',
+      body: 'Could you help with the repair cafe?',
+      reference_message_id: 33
+    });
+
+    const translateResponse = await post('/federation/messages/translate/33', {
+      partner_id: '77',
+      partner_tenant_id: '12',
+      target_language: 'ga'
+    });
+    expect(translateResponse.headers.location).toBe('/federation/messages/conversation/77?tenant_id=12&status=translate-done#message-33');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/messages/33/translate', {
+      target_language: 'ga'
+    });
+
+    const transferResponse = await post('/federation/members/77/transfer', {
+      receiver_tenant_id: '12',
+      amount: '3',
+      description: ' Thanks for the workshop '
+    });
+    expect(transferResponse.headers.location).toBe('/federation/members/77?tenant_id=12&status=transfer-sent');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/transactions', {
+      receiver_id: 77,
+      receiver_tenant_id: 12,
+      amount: 3,
+      description: 'Thanks for the workshop'
+    });
+
+    const onboardingResponse = await post('/federation/onboarding', {
+      step: 'confirm',
+      profile_visible_federated: 'on',
+      appear_in_federated_search: 'on',
+      show_skills_federated: 'on',
+      show_reviews_federated: 'on',
+      messaging_enabled_federated: 'on',
+      transactions_enabled_federated: 'on',
+      email_notifications: 'on',
+      service_reach: 'travel_ok',
+      travel_radius_km: '30'
+    });
+    expect(onboardingResponse.headers.location).toBe('/federation?status=opted-in');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/setup', {
+      federation_optin: true,
+      profile_visible_federated: true,
+      appear_in_federated_search: true,
+      show_skills_federated: true,
+      show_location_federated: false,
+      show_reviews_federated: true,
+      messaging_enabled_federated: true,
+      transactions_enabled_federated: true,
+      email_notifications: true,
+      service_reach: 'travel_ok',
+      travel_radius_km: 30
+    });
+
+    const optInResponse = await post('/federation/opt-in', {
+      preferences_submitted: '1',
+      profile_visible_federated: 'on',
+      appear_in_federated_search: 'on',
+      show_skills_federated: 'on',
+      messaging_enabled_federated: 'on',
+      transactions_enabled_federated: 'on',
+      email_notifications: 'on',
+      service_reach: 'remote_ok',
+      travel_radius_km: '15'
+    });
+    expect(optInResponse.headers.location).toBe('/federation?status=opted-in');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/setup', {
+      federation_optin: true,
+      profile_visible_federated: true,
+      appear_in_federated_search: true,
+      show_skills_federated: true,
+      show_location_federated: false,
+      show_reviews_federated: false,
+      messaging_enabled_federated: true,
+      transactions_enabled_federated: true,
+      email_notifications: true,
+      service_reach: 'remote_ok',
+      travel_radius_km: 15
+    });
+
+    const optOutResponse = await post('/federation/opt-out');
+    expect(optOutResponse.headers.location).toBe('/federation?status=opted-out');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/opt-out');
+
+    const settingsResponse = await post('/federation/settings', {
+      profile_visible_federated: 'on',
+      appear_in_federated_search: 'on',
+      show_skills_federated: 'on',
+      show_location_federated: 'on',
+      show_reviews_federated: 'on',
+      messaging_enabled_federated: 'on',
+      transactions_enabled_federated: 'on',
+      email_notifications: 'on',
+      service_reach: 'travel_ok',
+      travel_radius_km: '45'
+    });
+    expect(settingsResponse.headers.location).toBe('/federation/settings?status=settings-saved');
+    expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/settings', {
+      federation_optin: true,
+      profile_visible_federated: true,
+      appear_in_federated_search: true,
+      show_skills_federated: true,
+      show_location_federated: true,
+      show_reviews_federated: true,
+      messaging_enabled_federated: true,
+      transactions_enabled_federated: true,
+      email_notifications: true,
+      service_reach: 'travel_ok',
+      travel_radius_km: 45
+    });
+
+    api.callFederationApi.mockClear();
+    const emptyMessageResponse = await post('/federation/messages', {
+      receiver_id: '77',
+      receiver_tenant_id: '12',
+      body: ' '
+    });
+    expect(emptyMessageResponse.headers.location).toBe('/federation/members/77?tenant_id=12&status=message-empty');
+    expect(api.callFederationApi).not.toHaveBeenCalled();
+
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/federation/connections')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1], receiver_id: '77', receiver_tenant_id: '12' });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callFederationApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {

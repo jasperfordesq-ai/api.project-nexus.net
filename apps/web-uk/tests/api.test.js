@@ -894,6 +894,55 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callFederationApi', () => {
+    it('should call Laravel v2 federation endpoints with auth, method, and optional payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12 } })
+      });
+
+      await api.callFederationApi('test-token', 'POST', '/messages', {
+        receiver_id: 77,
+        receiver_tenant_id: 12,
+        body: 'Hello federation'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/federation/messages',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            receiver_id: 77,
+            receiver_tenant_id: 12,
+            body: 'Hello federation'
+          })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { removed: true } })
+      });
+
+      await api.callFederationApi('test-token', 'DELETE', '/connections/91');
+
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        'http://localhost:5000/api/v2/federation/connections/91',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+  });
+
   describe('donateCredits', () => {
     it('should call the Laravel wallet donation endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
