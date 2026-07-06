@@ -54,6 +54,7 @@ public class AdminExplicitParityController : ControllerBase
         _webhookService = webhookService;
     }
 
+    [HttpDelete("/api/v2/admin/events/{id}")]
     [HttpDelete("/api/v2/admin/enterprise/config/secrets/{key}")]
     [HttpDelete("/api/v2/admin/enterprise/gdpr/consent-types/{id}")]
     [HttpDelete("/api/v2/admin/enterprise/monitoring/log-files/{filename}")]
@@ -79,6 +80,7 @@ public class AdminExplicitParityController : ControllerBase
 
         return path switch
         {
+            _ when TryGetLastInt(path, "/api/v2/admin/events/", out var eventId) => await DeleteEvent(eventId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await DeleteFederationWebhook(webhookId),
             _ when TryGetLastInt(path, "/api/v2/admin/invite-codes/", out var inviteCodeId) => await DeactivateInviteCode(inviteCodeId),
             _ when TryGetLastInt(path, "/api/v2/admin/listings/", out var listingId) => await DeleteListing(listingId),
@@ -2209,6 +2211,40 @@ public class AdminExplicitParityController : ControllerBase
     {
         var item = await _db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
         return item == null ? NotFound(new { error = "Event not found" }) : Ok(new { data = item });
+    }
+
+    private async Task<IActionResult> DeleteEvent(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var evt = await _db.Events
+            .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == id);
+
+        if (evt == null)
+        {
+            return NotFound(new
+            {
+                error = "NOT_FOUND",
+                message = "Event not found."
+            });
+        }
+
+        var rsvps = await _db.EventRsvps
+            .Where(r => r.TenantId == tenantId && r.EventId == id)
+            .ToListAsync();
+        _db.EventRsvps.RemoveRange(rsvps);
+        _db.Events.Remove(evt);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                id,
+                deleted = true
+            }
+        });
     }
 
     private async Task<IActionResult> GetGroup(int id)

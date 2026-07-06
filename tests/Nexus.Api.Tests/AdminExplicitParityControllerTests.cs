@@ -92,6 +92,63 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminEventsDeleteV2_RemovesTenantEventWithLaravelReactContract()
+    {
+        int eventId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var evt = new Event
+            {
+                TenantId = TestData.Tenant1.Id,
+                CreatedById = TestData.MemberUser.Id,
+                Title = "Parity event to delete",
+                Description = "Event seeded for Laravel React admin delete parity.",
+                Location = "Community Hall",
+                StartsAt = DateTime.UtcNow.AddDays(5),
+                EndsAt = DateTime.UtcNow.AddDays(5).AddHours(2),
+                CreatedAt = DateTime.UtcNow.AddDays(-2),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            };
+            db.Events.Add(evt);
+            await db.SaveChangesAsync();
+            eventId = evt.Id;
+
+            db.EventRsvps.Add(new EventRsvp
+            {
+                TenantId = TestData.Tenant1.Id,
+                EventId = eventId,
+                UserId = TestData.MemberUser.Id,
+                Status = Event.RsvpStatus.Going,
+                RespondedAt = DateTime.UtcNow.AddDays(-1)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.DeleteAsync($"/api/v2/admin/events/{eventId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var data = json.GetProperty("data");
+        data.GetProperty("deleted").GetBoolean().Should().BeTrue();
+        data.GetProperty("id").GetInt32().Should().Be(eventId);
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var eventExists = await verifyDb.Events
+            .IgnoreQueryFilters()
+            .AnyAsync(e => e.TenantId == TestData.Tenant1.Id && e.Id == eventId);
+        var rsvpExists = await verifyDb.EventRsvps
+            .IgnoreQueryFilters()
+            .AnyAsync(r => r.TenantId == TestData.Tenant1.Id && r.EventId == eventId);
+        eventExists.Should().BeFalse();
+        rsvpExists.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task InviteCodesV2_GenerateListAndDeactivateUseLaravelReactContract()
     {
         await AuthenticateAsAdminAsync();
