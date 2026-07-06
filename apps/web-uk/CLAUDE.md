@@ -197,6 +197,11 @@ Follow the Laravel Blade accessible frontend for:
 - `nexus-alpha-card-list` and `nexus-alpha-card`;
 - footer columns and AGPL/source metadata;
 - Explore as the gateway to discovery modules.
+- My account as a Blade-style protected hub. `/account` redirects unsigned
+  users to `/login`, then renders local wallet, messages, connections,
+  notifications, profile, and settings cards when signed in. Laravel tenant
+  feature gating, full account-link coverage, and backend data certification
+  still need module-by-module proof.
 - Volunteering as a Blade-style public landing/search candidate. The GET route
   reads `/api/v2/volunteering/opportunities` with search, category, remote, and
   cursor parameters, and renders the Blade public structure: organisation link,

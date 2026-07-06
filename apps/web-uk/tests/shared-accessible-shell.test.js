@@ -122,6 +122,42 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('does not certify ASP.NET route or workflow');
   });
 
+  it('redirects the account hub to sign in when unsigned, matching Laravel auth behaviour', async () => {
+    const staticPageRoutes = require('../src/routes/static-pages');
+
+    const response = await request(app).get('/account');
+
+    expect(staticPageRoutes.pages['/account']).toBeUndefined();
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+  });
+
+  it('renders the Blade-style account hub when signed in', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/account')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('My account');
+    expect(response.text).toContain('Manage your wallet, messages, connections and personal settings in one place.');
+    expect(response.text).toContain('class="nexus-alpha-card-list');
+    expect(response.text).toContain('href="/wallet"');
+    expect(response.text).toContain('View your time-credit balance and history, and send credits to other members.');
+    expect(response.text).toContain('href="/messages"');
+    expect(response.text).toContain('Read and send direct messages with members of this community.');
+    expect(response.text).toContain('href="/connections"');
+    expect(response.text).toContain('Accept or decline connection requests and manage your network.');
+    expect(response.text).toContain('href="/notifications"');
+    expect(response.text).toContain('href="/profile"');
+    expect(response.text).toContain('href="/settings"');
+    expect(response.text).toContain('method="post" action="/logout"');
+    expect(response.text).toContain('Sign out');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Blade-style organisations directory and registration form as a local candidate', async () => {
     const staticPageRoutes = require('../src/routes/static-pages');
     const api = require('../src/lib/api');

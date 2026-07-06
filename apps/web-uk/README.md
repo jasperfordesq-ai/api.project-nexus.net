@@ -119,6 +119,7 @@ The application will be available at **http://localhost:5180**
 | `POST /forgot-password` | Request password reset |
 | `GET /reset-password` | Reset password page (with token) |
 | `POST /reset-password` | Process password reset |
+| `GET /account` | Blade-style My account hub candidate; redirects unsigned users to `/login` and renders local wallet/messages/connections/profile/settings cards when signed in, with tenant feature gating/backend data certification still incomplete |
 | `GET /privacy` | Privacy policy |
 | `GET /terms` | Terms and conditions |
 | `GET /contact` | Contact page |

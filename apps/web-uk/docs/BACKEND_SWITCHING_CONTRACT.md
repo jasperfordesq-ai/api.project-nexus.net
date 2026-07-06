@@ -34,6 +34,13 @@ src/lib/backend-contract.js
 
 ## Current Page Candidates
 
+`/account` GET is a local Blade-style protected account hub candidate. Unsigned
+requests redirect to `/login`, and signed-in requests render local account cards
+for wallet, messages, connections, notifications, profile, and settings. It is
+not a backend adapter and does not certify Laravel tenant feature gates, full
+account-link coverage, route availability checks, per-module response contracts,
+or ASP.NET backend readiness.
+
 `/volunteering` GET is a local Blade-style public landing/search candidate
 based on the Laravel accessible volunteering page. It reads
 `/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`,

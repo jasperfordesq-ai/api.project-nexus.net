@@ -72,6 +72,15 @@ The shell feeds:
 The `/explore` page is a skeleton copied from the Laravel accessible information
 architecture. It does not certify ASP.NET backend or workflow parity.
 
+The `/account` page is now a local Blade-style protected account hub candidate.
+Unsigned requests redirect to `/login`, matching the Laravel accessible account
+route. Signed-in requests render the Blade-style account card list for wallet,
+messages, connections, notifications, profile, and settings, plus a
+CSRF-protected sign-out form. This remains partial: Laravel tenant feature
+gating, full account-link coverage, per-module backend data, route availability
+checks, localization, runtime smoke tests, and ASP.NET backend compatibility are
+not certified.
+
 The `/volunteering` page is now a local Blade-style public landing candidate
 for the Laravel accessible volunteering page. It renders the caption, lead,
 organisation browse link, how-volunteering-works inset, sign-in notice, filter

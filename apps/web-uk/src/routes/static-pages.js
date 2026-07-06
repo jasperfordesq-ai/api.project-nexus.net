@@ -8,10 +8,6 @@ const express = require('express');
 const router = express.Router();
 
 const pages = {
-  '/account': {
-    title: 'My account',
-    body: 'The Laravel Blade accessible frontend gathers wallet, messages, connections, profile, settings, and gamification into this account hub.'
-  },
   '/help': {
     title: 'Help centre',
     body: 'Help centre content will follow the Laravel accessible frontend route and workflow contract.'

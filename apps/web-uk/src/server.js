@@ -341,6 +341,52 @@ app.get('/about', (req, res) => {
   });
 });
 
+app.get('/account', (req, res) => {
+  const token = req.signedCookies.token;
+
+  if (!token) {
+    return res.redirect('/login');
+  }
+
+  res.render('account', {
+    title: 'My account',
+    activeNav: 'account',
+    accountLinks: [
+      {
+        title: 'Wallet',
+        description: 'View your time-credit balance and history, and send credits to other members.',
+        href: '/wallet'
+      },
+      {
+        title: 'Messages',
+        description: 'Read and send direct messages with members of this community.',
+        href: '/messages',
+        badge: res.locals.unreadMessageCount || 0
+      },
+      {
+        title: 'Connections',
+        description: 'Accept or decline connection requests and manage your network.',
+        href: '/connections'
+      },
+      {
+        title: 'Notifications',
+        description: 'Read service notifications and community updates.',
+        href: '/notifications'
+      },
+      {
+        title: 'My profile',
+        description: 'View and edit how you appear to other members.',
+        href: '/profile'
+      },
+      {
+        title: 'Account settings',
+        description: 'Email, password, two-factor sign in, language, notifications and privacy.',
+        href: '/settings'
+      }
+    ]
+  });
+});
+
 app.use('/explore', exploreRoutes);
 
 app.get('/volunteering', (req, res) => {

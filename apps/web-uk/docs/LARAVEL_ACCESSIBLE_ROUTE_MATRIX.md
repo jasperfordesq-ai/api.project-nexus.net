@@ -27,7 +27,7 @@ ASP.NET candidate:
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files. |
-| ASP.NET `apps/web-uk` | 170 | Express app/router declarations scanned from local source after shell prep; this includes route modules that may not be mounted as certified workflows yet. |
+| ASP.NET `apps/web-uk` | 171 | Express app/router declarations scanned from local source after shell prep; this includes route modules that may not be mounted as certified workflows yet. |
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families include POST
@@ -38,7 +38,7 @@ workflow handlers that `apps/web-uk` does not have yet.
 | Blade link | Laravel path | `apps/web-uk` path | Current ASP.NET status |
 | --- | --- | --- | --- |
 | Brand | `/` or `/{tenantSlug}/alpha` | `/` | Implemented local equivalent. |
-| My account | `/account` | `/account` | Preparation skeleton. |
+| My account | `/account` | `/account` | Partial Blade-style candidate: unsigned users redirect to `/login`; signed-in users see local wallet, messages, connections, notifications, profile, and settings cards plus CSRF sign-out. Laravel feature gating, full account-link coverage, backend data, tenant routing, and runtime certification are not complete. |
 | Home | `/` | `/` | Implemented local equivalent. |
 | Dashboard | `/dashboard` | `/dashboard` | Implemented route; backend contract not certified. |
 | Feed | `/feed` | `/feed` | Implemented route; backend contract not certified. |
@@ -95,6 +95,7 @@ runtime tests before `apps/web-uk` can be shared:
 | Cookie/report POST workflows | `/cookie-consent`, `/report-a-problem` POST | Skeleton GET pages only. |
 | Legal document sourcing | `/legal/*` tenant documents | Skeleton GET pages only. |
 | Onboarding | `/onboarding`, `/onboarding/{step}` | Missing. |
+| Account hub depth | matches, group exchanges, gamification, linked accounts, saved items, reviews, activity, jobs, appearance | Partial `/account` candidate only. Feature-gated account links, per-module data, route availability checks, tenant behavior, and ASP.NET backend compatibility are not certified. |
 | Volunteering | opportunities, hours, organisations, expenses, wellbeing | Partial Laravel-backed candidate for `/volunteering` GET and `/volunteering/opportunities/{id}` GET only. Landing reads `/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`, `per_page`, and `cursor`; detail reads `/api/v2/volunteering/opportunities/{id}`. Both render public Blade-style content with mocked contract tests. Applications, recommended shifts, hours, organisations owner tools, expenses, wellbeing, tenant-prefixed routes, auth redirects, feature gates, apply POST, shift signup/cancel, other POST workflows, localization, and runtime certification are not complete. |
 | Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` | Partial Laravel-backed candidate for `/organisations`, `/organisations/browse`, `/organisations/register` GET, `/organisations/manage` GET, `/organisations/{id}` GET, `/organisations/{id}/jobs` GET, and `/organisations/opportunities/{id}/apply` GET only. Directory/search and browse use `/api/v2/volunteering/organisations`; register GET renders the Blade-style form and validation status anchors without POST persistence; manage GET reads `/api/v2/volunteering/my-organisations` when signed in; detail uses `/api/v2/volunteering/organisations/{id}?include=public_contract`, `/api/v2/volunteering/opportunities?organization_id={id}`, and `/api/v2/volunteering/reviews/organization/{id}`; organisation jobs reads `/api/v2/jobs?organization_id={id}&status=open` when signed in; apply GET reads `/api/v2/volunteering/opportunities/{id}`, all with mocked contract tests. Auth enforcement, volunteering/job feature gates, tenant-prefixed routes, registration persistence, apply POST workflow, localization, and runtime certification are not complete. |
 | Exchanges | requests, accept/decline, ready/confirm/cancel | Skeleton landing only. |
