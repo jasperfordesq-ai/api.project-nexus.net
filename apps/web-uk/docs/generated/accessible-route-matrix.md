@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T10:51:55.994Z
+Generated: 2026-07-06T11:00:45.314Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 504 |
-| Matched routes | 422 |
-| Missing routes | 186 |
+| web-uk routes | 529 |
+| Matched routes | 447 |
+| Missing routes | 161 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -55,7 +55,7 @@ Generated: 2026-07-06T10:51:55.994Z
 | listings | 11 | 8 | 1 |
 | login | 7 | 0 | 0 |
 | logout | 1 | 0 | 1 |
-| marketplace | 23 | 25 | 0 |
+| marketplace | 48 | 0 | 0 |
 | matches | 4 | 0 | 0 |
 | me | 6 | 0 | 0 |
 | members | 11 | 0 | 1 |
@@ -214,31 +214,6 @@ Generated: 2026-07-06T10:51:55.994Z
 | POST | `/listings/{param}/save` | listings | saveListing |  | auth-optional | module:listings |
 | POST | `/listings/{param}/unsave` | listings | unsaveListing |  | auth-optional | module:listings |
 | POST | `/listings/generate-description` | listings | listingsGenerateDescription |  | auth-optional | module:listings |
-| POST | `/marketplace/{param}/buy` | marketplace | commerceStoreBuy |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/{param}/delete` | marketplace | commerceDeleteListing |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/{param}/offer` | marketplace | commerceStoreOffer |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/{param}/renew` | marketplace | commerceRenewListing |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/{param}/report` | marketplace | commerceStoreReport |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/{param}/save` | marketplace | commerceSaveListing |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/{param}/unsave` | marketplace | commerceUnsaveListing |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/{param}/update` | marketplace | commerceUpdateListing |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/coupons/{param}/delete` | marketplace | commerceDeleteCoupon |  | auth-optional |  |
-| POST | `/marketplace/coupons/{param}/update` | marketplace | commerceUpdateCoupon |  | auth-optional |  |
-| POST | `/marketplace/coupons/new` | marketplace | commerceStoreCoupon |  | auth-optional |  |
-| POST | `/marketplace/create` | marketplace | commerceStoreListing |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/offers/{param}/accept` | marketplace | commerceAcceptOffer |  | public-or-unknown |  |
-| POST | `/marketplace/offers/{param}/decline` | marketplace | commerceDeclineOffer |  | public-or-unknown |  |
-| POST | `/marketplace/offers/{param}/withdraw` | marketplace | commerceWithdrawOffer |  | public-or-unknown |  |
-| POST | `/marketplace/onboarding` | marketplace | commerceStoreMerchantOnboarding |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/orders/{param}/cancel` | marketplace | commerceCancelOrder |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/orders/{param}/confirm` | marketplace | commerceConfirmOrder |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/orders/{param}/pay` | marketplace | commerceCheckoutCardPay |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/orders/{param}/rate` | marketplace | commerceRateOrder |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/orders/{param}/ship` | marketplace | commerceShipOrder |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/slots` | marketplace | commerceStorePickupSlot |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/slots/{param}/delete` | marketplace | commerceDeletePickupSlot |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/slots/{param}/update` | marketplace | commerceUpdatePickupSlot |  | auth-optional | feature:marketplace |
-| POST | `/marketplace/slots/scan` | marketplace | commerceScanPickup |  | auth-optional | feature:marketplace |
 | POST | `/messages/{param}/archive` | messages | archiveConversation |  | auth-optional | module:messages |
 | POST | `/messages/{param}/m/{param}/delete` | messages | deleteMessage |  | auth-optional | module:messages |
 | POST | `/messages/{param}/m/{param}/edit` | messages | updateMessage |  | auth-optional | module:messages |

@@ -552,6 +552,31 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callMarketplaceApi', () => {
+    it('should call Laravel v2 marketplace action endpoints with auth, method, and payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { ok: true } })
+      });
+
+      await api.callMarketplaceApi('test-token', 'PUT', '/listings/42', {
+        title: 'Community bike'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/marketplace/listings/42',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ title: 'Community bike' })
+        })
+      );
+    });
+  });
+
   describe('donateCredits', () => {
     it('should call the Laravel wallet donation endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

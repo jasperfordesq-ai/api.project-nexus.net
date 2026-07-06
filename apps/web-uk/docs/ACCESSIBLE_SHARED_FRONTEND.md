@@ -142,6 +142,17 @@ partial: Laravel `cookie_consents` audit persistence, tenant scoping, route-name
 generation, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 
+Marketplace GET pages remain preparation pages, but the Laravel accessible POST
+aliases under `/marketplace` are now local route declarations backed by Laravel
+v2 marketplace APIs. The aliases cover listing create/update/delete/renew,
+save/unsave, buy, offer, report, offer accept/decline/withdraw, order ship,
+confirm, cancel, pay intent creation, rate, seller profile onboarding, pickup
+slot create/update/delete/scan, and seller coupon create/update/delete. This
+remains partial: marketplace Blade rendering, seller dashboard data, hosted
+no-JS Stripe checkout redirects, address/onboarding depth, multipart media
+uploads, tenant/feature gates, localization, runtime smoke tests, and ASP.NET
+backend compatibility are not certified.
+
 The `/volunteering` page is now a local Blade-style public landing candidate
 for the Laravel accessible volunteering page. It renders the caption, lead,
 organisation browse link, how-volunteering-works inset, sign-in notice, filter
@@ -202,8 +213,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 504 `apps/web-uk` route declarations, 422 exact
-method/path matches, 186 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 529 `apps/web-uk` route declarations, 447 exact
+method/path matches, 161 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

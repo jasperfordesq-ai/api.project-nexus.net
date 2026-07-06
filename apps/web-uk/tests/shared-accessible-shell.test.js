@@ -123,6 +123,7 @@ jest.mock('../src/lib/api', () => ({
   getMyVolunteerOrganisations: jest.fn(),
   createVolunteerOrganisation: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callVolunteeringApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callMarketplaceApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   getVolunteerOpportunity: jest.fn(),
   getOrganisationOpportunities: jest.fn(),
   getOrganisationReviews: jest.fn(),
@@ -208,6 +209,7 @@ describe('shared accessible frontend shell', () => {
     api.resendVerification.mockReset().mockResolvedValue({});
     api.createVolunteerOrganisation.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.getNotifications.mockReset().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } });
     api.markNotificationRead.mockReset().mockResolvedValue({});
     api.markAllNotificationsRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
@@ -3633,6 +3635,321 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community Kitchen Helper');
     expect(response.text).toContain('Sign in to send a Laravel-backed volunteer application.');
     expect(response.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
+  });
+
+  it('submits Laravel marketplace listing and buyer action aliases', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const createResponse = await post('/marketplace/create', {
+      title: ' Community bike ',
+      description: ' A road-ready bicycle ',
+      tagline: ' Freshly serviced ',
+      price_type: 'fixed',
+      price: '15.50',
+      price_currency: ' gbp ',
+      condition: 'good',
+      delivery_method: 'both',
+      category_id: '9',
+      location: ' Belfast ',
+      quantity: '2'
+    });
+    expect(createResponse.headers.location).toBe('/marketplace/42?status=listing-created');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/listings', {
+      title: 'Community bike',
+      description: 'A road-ready bicycle',
+      price_type: 'fixed',
+      status: 'active',
+      tagline: 'Freshly serviced',
+      price: 15.5,
+      price_currency: 'GBP',
+      condition: 'good',
+      delivery_method: 'both',
+      category_id: 9,
+      location: 'Belfast',
+      quantity: 2
+    });
+
+    const updateResponse = await post('/marketplace/42/update', {
+      title: ' Updated bike ',
+      description: ' Updated description ',
+      price_type: 'free',
+      delivery_method: 'pickup'
+    });
+    expect(updateResponse.headers.location).toBe('/marketplace/42?status=listing-saved');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/listings/42', {
+      title: 'Updated bike',
+      description: 'Updated description',
+      price_type: 'free',
+      status: 'active',
+      price: null,
+      time_credit_price: null,
+      delivery_method: 'pickup'
+    });
+
+    const deleteResponse = await post('/marketplace/42/delete');
+    expect(deleteResponse.headers.location).toBe('/marketplace/mine?status=deleted');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/listings/42');
+
+    const renewResponse = await post('/marketplace/42/renew', { duration_days: '45' });
+    expect(renewResponse.headers.location).toBe('/marketplace/mine?status=renewed');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/listings/42/renew', {
+      duration_days: 45
+    });
+
+    const saveResponse = await post('/marketplace/42/save');
+    expect(saveResponse.headers.location).toBe('/marketplace/42?status=saved');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/listings/42/save');
+
+    const unsaveResponse = await post('/marketplace/42/unsave', { redirect_to: 'saved' });
+    expect(unsaveResponse.headers.location).toBe('/marketplace/saved?status=unsaved');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/listings/42/save');
+
+    const buyResponse = await post('/marketplace/42/buy', {
+      quantity: '2',
+      delivery_notes: ' Leave at the front desk ',
+      shipping_method: 'pickup',
+      coupon_code: ' NEXUS10 '
+    });
+    expect(buyResponse.headers.location).toBe('/marketplace/orders?status=ordered');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/orders', {
+      listing_id: 42,
+      quantity: 2,
+      shipping_method: 'pickup',
+      delivery_notes: 'Leave at the front desk',
+      coupon_code: 'NEXUS10'
+    });
+
+    const offerResponse = await post('/marketplace/42/offer', {
+      amount: '12.25',
+      message: ' Would collect today '
+    });
+    expect(offerResponse.headers.location).toBe('/marketplace/offers?status=offer-sent');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/listings/42/offers', {
+      amount: 12.25,
+      message: 'Would collect today'
+    });
+
+    const reportResponse = await post('/marketplace/42/report', {
+      reason: 'unsafe',
+      description: ' The item appears unsafe for community use. '
+    });
+    expect(reportResponse.headers.location).toBe('/marketplace/42?status=reported');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/listings/42/report', {
+      reason: 'unsafe',
+      description: 'The item appears unsafe for community use.'
+    });
+  });
+
+  it('submits Laravel marketplace offer and order action aliases', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const acceptResponse = await post('/marketplace/offers/12/accept');
+    expect(acceptResponse.headers.location).toBe('/marketplace/offers?tab=received&status=accepted');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/offers/12/accept');
+
+    const declineResponse = await post('/marketplace/offers/12/decline');
+    expect(declineResponse.headers.location).toBe('/marketplace/offers?tab=received&status=declined');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/offers/12/decline');
+
+    const withdrawResponse = await post('/marketplace/offers/12/withdraw');
+    expect(withdrawResponse.headers.location).toBe('/marketplace/offers?tab=sent&status=withdrawn');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/offers/12');
+
+    const shipResponse = await post('/marketplace/orders/42/ship', {
+      tracking_number: ' TRACK123 ',
+      shipping_method: 'courier'
+    });
+    expect(shipResponse.headers.location).toBe('/marketplace/sales?status=shipped');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/orders/42/ship', {
+      tracking_number: 'TRACK123',
+      shipping_method: 'courier'
+    });
+
+    const confirmResponse = await post('/marketplace/orders/42/confirm');
+    expect(confirmResponse.headers.location).toBe('/marketplace/orders?status=confirmed');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/orders/42/confirm-delivery');
+
+    const cancelResponse = await post('/marketplace/orders/42/cancel', {
+      reason: ' Buyer changed plans ',
+      redirect_to: 'sales'
+    });
+    expect(cancelResponse.headers.location).toBe('/marketplace/sales?status=cancelled');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/orders/42/cancel', {
+      reason: 'Buyer changed plans'
+    });
+
+    const payResponse = await post('/marketplace/orders/42/pay');
+    expect(payResponse.headers.location).toBe('/marketplace/orders?status=payment-started');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/payments/create-intent', {
+      order_id: 42
+    });
+
+    const rateResponse = await post('/marketplace/orders/42/rate', {
+      rating: '5',
+      comment: ' Great handover ',
+      redirect_to: 'sales'
+    });
+    expect(rateResponse.headers.location).toBe('/marketplace/sales?status=rated');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/orders/42/rate', {
+      rating: 5,
+      comment: 'Great handover',
+      is_anonymous: false
+    });
+  });
+
+  it('submits Laravel marketplace seller onboarding, pickup slot, and coupon aliases', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const onboardingResponse = await post('/marketplace/onboarding', {
+      seller_type: 'business',
+      business_name: ' Community Supplies ',
+      display_name: ' Community Store ',
+      bio: ' Circular economy seller '
+    });
+    expect(onboardingResponse.headers.location).toBe('/marketplace/onboarding?status=onboarding-complete');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/seller/profile', {
+      seller_type: 'business',
+      business_name: 'Community Supplies',
+      display_name: 'Community Store',
+      bio: 'Circular economy seller'
+    });
+
+    const slotCreateResponse = await post('/marketplace/slots', {
+      slot_start: '2026-08-01T10:00',
+      slot_end: '2026-08-01T12:00',
+      capacity: '8',
+      is_recurring: 'on',
+      is_active: 'on'
+    });
+    expect(slotCreateResponse.headers.location).toBe('/marketplace/slots?status=slot-created');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/seller/pickup-slots', {
+      slot_start: '2026-08-01T10:00',
+      slot_end: '2026-08-01T12:00',
+      capacity: 8,
+      is_recurring: true,
+      is_active: true
+    });
+
+    const slotUpdateResponse = await post('/marketplace/slots/7/update', {
+      slot_start: '2026-08-02T10:00',
+      slot_end: '2026-08-02T12:00',
+      capacity: '5'
+    });
+    expect(slotUpdateResponse.headers.location).toBe('/marketplace/slots/7/edit?status=slot-saved');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/seller/pickup-slots/7', {
+      slot_start: '2026-08-02T10:00',
+      slot_end: '2026-08-02T12:00',
+      capacity: 5,
+      is_recurring: false,
+      is_active: true
+    });
+
+    const slotDeleteResponse = await post('/marketplace/slots/7/delete');
+    expect(slotDeleteResponse.headers.location).toBe('/marketplace/slots?status=slot-deleted');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/seller/pickup-slots/7');
+
+    const scanResponse = await post('/marketplace/slots/scan', { qr_code: ' PICKUP-123 ' });
+    expect(scanResponse.headers.location).toBe('/marketplace/slots?status=pickup-confirmed');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/seller/pickup-scan', {
+      qr_code: 'PICKUP-123'
+    });
+
+    const couponCreateResponse = await post('/marketplace/coupons/new', {
+      title: ' Summer offer ',
+      description: ' For local members ',
+      discount_type: 'percent',
+      discount_value: '10',
+      status: 'active',
+      code: ' SUMMER10 ',
+      min_order_cents: '500',
+      max_uses: '20',
+      valid_until: '2026-09-01'
+    });
+    expect(couponCreateResponse.headers.location).toBe('/marketplace/coupons?status=coupon-created');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/seller/coupons', {
+      title: 'Summer offer',
+      description: 'For local members',
+      discount_type: 'percent',
+      discount_value: 10,
+      status: 'active',
+      applies_to: 'all_listings',
+      code: 'SUMMER10',
+      min_order_cents: 500,
+      max_uses: 20,
+      valid_until: '2026-09-01'
+    });
+
+    const couponUpdateResponse = await post('/marketplace/coupons/5/update', {
+      title: ' Updated offer ',
+      discount_type: 'fixed',
+      discount_value: '3',
+      status: 'paused'
+    });
+    expect(couponUpdateResponse.headers.location).toBe('/marketplace/coupons/5/edit?status=coupon-saved');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/seller/coupons/5', {
+      title: 'Updated offer',
+      description: '',
+      discount_type: 'fixed',
+      discount_value: 3,
+      status: 'paused',
+      applies_to: 'all_listings'
+    });
+
+    const couponDeleteResponse = await post('/marketplace/coupons/5/delete');
+    expect(couponDeleteResponse.headers.location).toBe('/marketplace/coupons?status=coupon-deleted');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/seller/coupons/5');
+  });
+
+  it('redirects signed-out Laravel marketplace POST aliases to login status without calling Laravel APIs', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/marketplace/42/buy')
+      .type('form')
+      .send({ _csrf: csrfMatch[1], quantity: '1' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalled();
   });
 
   it('submits core Laravel volunteering member action aliases', async () => {

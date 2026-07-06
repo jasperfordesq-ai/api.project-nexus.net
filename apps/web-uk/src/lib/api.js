@@ -373,6 +373,20 @@ async function callVolunteeringApi(token, method, path, data = undefined) {
   return request(`/api/v2/volunteering${normalizedPath}`, options);
 }
 
+async function callMarketplaceApi(token, method, path, data = undefined) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/marketplace${normalizedPath}`, options);
+}
+
 async function getOrganisationJobs(organisationId, token, params = {}) {
   const query = new URLSearchParams();
   query.set('organization_id', organisationId);
@@ -1805,6 +1819,7 @@ module.exports = {
   getMyVolunteerOrganisations,
   createVolunteerOrganisation,
   callVolunteeringApi,
+  callMarketplaceApi,
   getOrganisationJobs,
   // Wallet
   getBalance,
