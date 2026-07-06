@@ -108,6 +108,8 @@ function Get-AspNetV2AdminAlias {
     $aliasedPrefixes = @(
         '/api/admin/caring-community',
         '/api/admin/safeguarding',
+        '/api/admin/sso',
+        '/api/admin/gamification',
         '/api/users',
         '/api/groups',
         '/api/jobs',
@@ -228,6 +230,22 @@ function Get-AspNetV2RouteAlias {
         return $normalized -replace '^/api/me/ad-campaigns', '/api/v2/me/ad-campaigns'
     }
 
+    if ($normalized -eq '/api/comments' -or $normalized.StartsWith('/api/comments/')) {
+        return $normalized -replace '^/api/comments', '/api/v2/comments'
+    }
+
+    if ($normalized -eq '/api/resources' -or $normalized.StartsWith('/api/resources/')) {
+        return $normalized -replace '^/api/resources', '/api/v2/resources'
+    }
+
+    if ($normalized -eq '/api/group-chatrooms' -or $normalized.StartsWith('/api/group-chatrooms/')) {
+        return $normalized -replace '^/api/group-chatrooms', '/api/v2/group-chatrooms'
+    }
+
+    if ($normalized -eq '/api/team-tasks' -or $normalized.StartsWith('/api/team-tasks/')) {
+        return $normalized -replace '^/api/team-tasks', '/api/v2/team-tasks'
+    }
+
     if ($normalized -eq '/api/resources/categories' -or $normalized.StartsWith('/api/resources/categories/')) {
         return $normalized -replace '^/api/resources/categories', '/api/v2/resources/categories'
     }
@@ -274,6 +292,14 @@ function Get-AspNetV2RouteAlias {
 
     if ($normalized -eq '/api/admin/federation' -or $normalized.StartsWith('/api/admin/federation/')) {
         return $normalized -replace '^/api/admin/federation', '/api/v2/admin/federation'
+    }
+
+    if ($normalized -eq '/api/admin/sso' -or $normalized.StartsWith('/api/admin/sso/')) {
+        return $normalized -replace '^/api/admin/sso', '/api/v2/admin/sso'
+    }
+
+    if ($normalized -eq '/api/admin/gamification' -or $normalized.StartsWith('/api/admin/gamification/')) {
+        return $normalized -replace '^/api/admin/gamification', '/api/v2/admin/gamification'
     }
 
     return ''

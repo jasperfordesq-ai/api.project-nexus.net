@@ -955,6 +955,10 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/me/saved-items",
             "api/me/push-campaigns",
             "api/me/ad-campaigns",
+            "api/comments",
+            "api/resources",
+            "api/group-chatrooms",
+            "api/team-tasks",
             "api/resources/categories",
             "api/skills/categories",
             "api/search/saved",
@@ -966,7 +970,9 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/admin/crm",
             "api/admin/feed",
             "api/admin/pages",
-            "api/admin/federation"
+            "api/admin/federation",
+            "api/admin/sso",
+            "api/admin/gamification"
         })
         {
             if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))

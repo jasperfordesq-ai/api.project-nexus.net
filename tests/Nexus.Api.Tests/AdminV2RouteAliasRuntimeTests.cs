@@ -316,4 +316,35 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/admin/sso/providers")]
+    [InlineData("/api/v2/admin/gamification/stats")]
+    [InlineData("/api/v2/admin/gamification/badges")]
+    public async Task LaravelReactAdminSsoAndGamificationV2ReadAliases_AsAdmin_AreRouted(string path)
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("/api/v2/comments?target_type=post&target_id=42")]
+    [InlineData("/api/v2/comments/1/reactions")]
+    [InlineData("/api/v2/resources")]
+    [InlineData("/api/v2/resources/1/download")]
+    [InlineData("/api/v2/group-chatrooms/1/messages")]
+    [InlineData("/api/v2/team-tasks/1")]
+    public async Task LaravelReactCommunityResourceTaskV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
