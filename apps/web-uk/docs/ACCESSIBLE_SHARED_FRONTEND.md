@@ -101,6 +101,9 @@ Achievement POST aliases are wired to Laravel `/api/v2/gamification`: daily
 reward, challenge claim, shop purchase, and showcase update preserve the
 Laravel accessible status redirects for `/achievements`, `/achievements/shop`,
 and `/achievements/showcase`.
+Member profile POST aliases are wired to Laravel v2 APIs for connection
+transitions, skill endorsements, block/unblock, profile reviews, and direct
+wallet transfers while preserving Laravel profile status redirects.
 The member onboarding POST aliases now cover `/onboarding/{step}` and
 `/onboarding/avatar`: profile saves bio through the profile API, interests and
 skills are held in the Express session, safeguarding uses Laravel's Blade-style
@@ -175,8 +178,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 433 `apps/web-uk` route declarations, 351 exact
-method/path matches, 257 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 439 `apps/web-uk` route declarations, 357 exact
+method/path matches, 251 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

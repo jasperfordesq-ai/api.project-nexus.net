@@ -78,6 +78,16 @@ jest.mock('../src/lib/api', () => ({
   claimGamificationChallenge: jest.fn().mockResolvedValue({ data: { claimed: true } }),
   purchaseGamificationShopItem: jest.fn().mockResolvedValue({ data: { success: true } }),
   updateGamificationShowcase: jest.fn().mockResolvedValue({ data: { message: 'updated' } }),
+  getMemberConnectionStatus: jest.fn().mockResolvedValue({ data: { status: 'none' } }),
+  sendMemberConnectionRequest: jest.fn().mockResolvedValue({ data: { id: 22 } }),
+  acceptMemberConnection: jest.fn().mockResolvedValue({ data: { status: 'connected' } }),
+  declineMemberConnection: jest.fn().mockResolvedValue({}),
+  removeMemberConnection: jest.fn().mockResolvedValue({}),
+  blockMember: jest.fn().mockResolvedValue({ data: { success: true } }),
+  unblockMember: jest.fn().mockResolvedValue({ data: { success: true } }),
+  endorseMemberSkill: jest.fn().mockResolvedValue({ data: { endorsement_id: 33 } }),
+  removeMemberEndorsement: jest.fn().mockResolvedValue({ data: { message: 'removed' } }),
+  transferWalletCredits: jest.fn().mockResolvedValue({ data: { transaction_id: 99 } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -148,6 +158,16 @@ describe('shared accessible frontend shell', () => {
     api.claimGamificationChallenge.mockReset().mockResolvedValue({ data: { claimed: true } });
     api.purchaseGamificationShopItem.mockReset().mockResolvedValue({ data: { success: true } });
     api.updateGamificationShowcase.mockReset().mockResolvedValue({ data: { message: 'updated' } });
+    api.getMemberConnectionStatus.mockReset().mockResolvedValue({ data: { status: 'none' } });
+    api.sendMemberConnectionRequest.mockReset().mockResolvedValue({ data: { id: 22 } });
+    api.acceptMemberConnection.mockReset().mockResolvedValue({ data: { status: 'connected' } });
+    api.declineMemberConnection.mockReset().mockResolvedValue({});
+    api.removeMemberConnection.mockReset().mockResolvedValue({});
+    api.blockMember.mockReset().mockResolvedValue({ data: { success: true } });
+    api.unblockMember.mockReset().mockResolvedValue({ data: { success: true } });
+    api.endorseMemberSkill.mockReset().mockResolvedValue({ data: { endorsement_id: 33 } });
+    api.removeMemberEndorsement.mockReset().mockResolvedValue({ data: { message: 'removed' } });
+    api.transferWalletCredits.mockReset().mockResolvedValue({ data: { transaction_id: 99 } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -1529,6 +1549,220 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.claimDailyReward).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel member connection request route through the connections API helpers', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/members/77/connection')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        action: 'connect'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/members/77?status=connection-sent');
+    expect(api.getMemberConnectionStatus).toHaveBeenCalledWith('test-token', 77);
+    expect(api.sendMemberConnectionRequest).toHaveBeenCalledWith('test-token', 77);
+  });
+
+  it('submits the Laravel member connection accept route through the connections API helpers', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.getMemberConnectionStatus.mockResolvedValueOnce({
+      data: { status: 'pending_received', connection_id: 44 }
+    });
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/members/77/connection')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        action: 'accept'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/members/77?status=connection-accepted');
+    expect(api.acceptMemberConnection).toHaveBeenCalledWith('test-token', 44);
+  });
+
+  it('submits the Laravel member endorsement route through the endorsement API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/members/77/endorse')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        action: 'endorse',
+        skill_name: ' Gardening '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/members/77?status=endorsement-added');
+    expect(api.endorseMemberSkill).toHaveBeenCalledWith('test-token', 77, {
+      skill_name: 'Gardening'
+    });
+  });
+
+  it('submits the Laravel member block route through the block API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/members/77/block')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        reason: ' Spam '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/members/77?status=member-blocked');
+    expect(api.blockMember).toHaveBeenCalledWith('test-token', 77, 'Spam');
+  });
+
+  it('submits the Laravel member unblock route through the block API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/members/77/unblock')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        from: 'list'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/profile/blocked?status=member-unblocked');
+    expect(api.unblockMember).toHaveBeenCalledWith('test-token', 77);
+  });
+
+  it('submits the Laravel member profile review route through the v2 reviews API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/members/77/review')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        rating: '5',
+        comment: ' Great mentor '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/members/77?status=review-submitted');
+    expect(api.createReview).toHaveBeenCalledWith('test-token', {
+      receiver_id: 77,
+      rating: 5,
+      comment: 'Great mentor'
+    });
+  });
+
+  it('submits the Laravel member profile transfer route through the wallet API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/members/77/transfer')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        amount: '5',
+        note: ' Thank you ',
+        idempotency_key: 'member-transfer-1'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/members/77?status=transfer-sent');
+    expect(api.transferWalletCredits).toHaveBeenCalledWith('test-token', {
+      recipient: 77,
+      amount: 5,
+      description: 'Thank you',
+      idempotency_key: 'member-transfer-1'
+    });
+  });
+
+  it('redirects signed-out Laravel member action submissions to the auth-required status', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/members/77/connection')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        action: 'connect'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.getMemberConnectionStatus).not.toHaveBeenCalled();
   });
 
   it('submits the Laravel reviews store route through the v2 reviews API helper', async () => {

@@ -412,6 +412,14 @@ async function transferCredits(token, receiverId, amount, description) {
   });
 }
 
+async function transferWalletCredits(token, data) {
+  return request('/api/v2/wallet/transfer', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function donateCredits(token, data) {
   return request('/api/v2/wallet/donate', {
     method: 'POST',
@@ -616,6 +624,72 @@ async function sendConnectionRequest(token, userId) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ user_id: parseInt(userId, 10) })
+  });
+}
+
+async function getMemberConnectionStatus(token, userId) {
+  return request(`/api/v2/connections/status/${encodeURIComponent(userId)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function sendMemberConnectionRequest(token, userId) {
+  return request('/api/v2/connections/request', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ user_id: parseInt(userId, 10) })
+  });
+}
+
+async function acceptMemberConnection(token, connectionId) {
+  return request(`/api/v2/connections/${encodeURIComponent(connectionId)}/accept`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function declineMemberConnection(token, connectionId) {
+  return request(`/api/v2/connections/${encodeURIComponent(connectionId)}/decline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function removeMemberConnection(token, connectionId) {
+  return request(`/api/v2/connections/${encodeURIComponent(connectionId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function blockMember(token, userId, reason = '') {
+  return request(`/api/v2/users/${encodeURIComponent(userId)}/block`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ reason })
+  });
+}
+
+async function unblockMember(token, userId) {
+  return request(`/api/v2/users/${encodeURIComponent(userId)}/block`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function endorseMemberSkill(token, userId, data) {
+  return request(`/api/v2/members/${encodeURIComponent(userId)}/endorse`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function removeMemberEndorsement(token, userId, skillName) {
+  return request(`/api/v2/members/${encodeURIComponent(userId)}/endorse`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ skill_name: skillName })
   });
 }
 
@@ -1510,6 +1584,7 @@ module.exports = {
   getTransactions,
   getTransaction,
   transferCredits,
+  transferWalletCredits,
   donateCredits,
   unsaveSavedItem,
   sendAppreciation,
@@ -1537,6 +1612,15 @@ module.exports = {
   getConnections,
   getPendingConnections,
   sendConnectionRequest,
+  getMemberConnectionStatus,
+  sendMemberConnectionRequest,
+  acceptMemberConnection,
+  declineMemberConnection,
+  removeMemberConnection,
+  blockMember,
+  unblockMember,
+  endorseMemberSkill,
+  removeMemberEndorsement,
   acceptConnection,
   declineConnection,
   removeConnection,

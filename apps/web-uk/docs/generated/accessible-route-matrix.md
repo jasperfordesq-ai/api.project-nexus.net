@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T09:53:49.008Z
+Generated: 2026-07-06T10:00:23.437Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 433 |
-| Matched routes | 351 |
-| Missing routes | 257 |
+| web-uk routes | 439 |
+| Matched routes | 357 |
+| Missing routes | 251 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -58,7 +58,7 @@ Generated: 2026-07-06T09:53:49.008Z
 | marketplace | 23 | 25 | 0 |
 | matches | 4 | 0 | 0 |
 | me | 6 | 0 | 0 |
-| members | 5 | 6 | 1 |
+| members | 11 | 0 | 1 |
 | messages | 7 | 11 | 2 |
 | newsletter | 1 | 0 | 0 |
 | nexus-score | 2 | 0 | 0 |
@@ -263,12 +263,6 @@ Generated: 2026-07-06T09:53:49.008Z
 | POST | `/marketplace/slots/{param}/delete` | marketplace | commerceDeletePickupSlot |  | auth-optional | feature:marketplace |
 | POST | `/marketplace/slots/{param}/update` | marketplace | commerceUpdatePickupSlot |  | auth-optional | feature:marketplace |
 | POST | `/marketplace/slots/scan` | marketplace | commerceScanPickup |  | auth-optional | feature:marketplace |
-| POST | `/members/{param}/block` | members | blockMember |  | auth-optional | feature:connections |
-| POST | `/members/{param}/connection` | members | updateMemberConnection |  | auth-optional | feature:connections |
-| POST | `/members/{param}/endorse` | members | endorseMemberSkill |  | auth-optional | feature:connections |
-| POST | `/members/{param}/review` | members | storeProfileReview |  | auth-optional | feature:reviews |
-| POST | `/members/{param}/transfer` | members | profileTransferCredits |  | auth-optional | module:wallet |
-| POST | `/members/{param}/unblock` | members | unblockMember |  | auth-optional | feature:connections |
 | POST | `/messages/{param}/archive` | messages | archiveConversation |  | auth-optional | module:messages |
 | POST | `/messages/{param}/m/{param}/delete` | messages | deleteMessage |  | auth-optional | module:messages |
 | POST | `/messages/{param}/m/{param}/edit` | messages | updateMessage |  | auth-optional | module:messages |

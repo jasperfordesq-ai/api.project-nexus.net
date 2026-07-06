@@ -9,6 +9,17 @@ const {
   getUser,
   getConnections,
   sendConnectionRequest,
+  getMemberConnectionStatus,
+  sendMemberConnectionRequest,
+  acceptMemberConnection,
+  declineMemberConnection,
+  removeMemberConnection,
+  blockMember,
+  unblockMember,
+  endorseMemberSkill,
+  removeMemberEndorsement,
+  transferWalletCredits,
+  createReview,
   getGamificationProfileByUserId,
   getUserReviews,
   getProfile,
@@ -18,6 +29,237 @@ const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
+
+const MEMBER_CONNECTION_ACTIONS = new Set(['connect', 'accept', 'decline', 'cancel', 'remove']);
+const MEMBER_ENDORSEMENT_ACTIONS = new Set(['endorse', 'remove']);
+
+function tokenFrom(req) {
+  return req.signedCookies.token || '';
+}
+
+function memberUrl(id, status) {
+  return `/members/${id}?status=${encodeURIComponent(status)}`;
+}
+
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function isNotFound(error) {
+  return error instanceof ApiError && error.status === 404;
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data && typeof result.data === 'object'
+    ? result.data
+    : result;
+}
+
+function positiveInteger(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function connectionIdFrom(current) {
+  return positiveInteger(current.connection_id || current.connectionId || current.id);
+}
+
+function redirectAuthIfNeeded(error, res) {
+  if (isAuthError(error)) {
+    res.redirect('/login?status=auth-required');
+    return true;
+  }
+  return false;
+}
+
+function transferFailureStatus(error) {
+  const message = error instanceof Error ? error.message : '';
+  const code = error instanceof ApiError && error.data && typeof error.data === 'object'
+    ? String(error.data.error || error.data.code || '')
+    : '';
+
+  if (code === 'INSUFFICIENT_FUNDS' || message.includes('Insufficient')) {
+    return 'transfer-insufficient';
+  }
+  if (message.includes('yourself')) {
+    return 'transfer-self';
+  }
+  return 'transfer-failed';
+}
+
+router.post('/:id(\\d+)/connection', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const action = String(req.body.action || '').trim();
+  let status = 'connection-failed';
+
+  if (MEMBER_CONNECTION_ACTIONS.has(action)) {
+    try {
+      const current = dataFrom(await getMemberConnectionStatus(token, id)) || {};
+      const currentStatus = String(current.status || 'none');
+      const connectionId = connectionIdFrom(current);
+
+      if (action === 'connect' && currentStatus === 'none') {
+        await sendMemberConnectionRequest(token, id);
+        status = 'connection-sent';
+      } else if (action === 'accept' && currentStatus === 'pending_received' && connectionId !== null) {
+        await acceptMemberConnection(token, connectionId);
+        status = 'connection-accepted';
+      } else if (action === 'decline' && currentStatus === 'pending_received' && connectionId !== null) {
+        await declineMemberConnection(token, connectionId);
+        status = 'connection-declined';
+      } else if (action === 'cancel' && currentStatus === 'pending_sent' && connectionId !== null) {
+        await removeMemberConnection(token, connectionId);
+        status = 'connection-cancelled';
+      } else if (action === 'remove' && currentStatus === 'connected' && connectionId !== null) {
+        await removeMemberConnection(token, connectionId);
+        status = 'connection-removed';
+      }
+    } catch (error) {
+      if (redirectAuthIfNeeded(error, res)) return undefined;
+      if (isNotFound(error)) throw error;
+      status = 'connection-failed';
+    }
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
+
+router.post('/:id(\\d+)/endorse', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const skillName = String(req.body.skill_name || '').trim();
+  const action = String(req.body.action || '').trim();
+  let status = 'endorsement-failed';
+
+  if (skillName !== '' && MEMBER_ENDORSEMENT_ACTIONS.has(action)) {
+    try {
+      if (action === 'endorse') {
+        await endorseMemberSkill(token, id, { skill_name: skillName });
+        status = 'endorsement-added';
+      } else {
+        await removeMemberEndorsement(token, id, skillName);
+        status = 'endorsement-removed';
+      }
+    } catch (error) {
+      if (redirectAuthIfNeeded(error, res)) return undefined;
+      if (isNotFound(error)) throw error;
+      status = 'endorsement-failed';
+    }
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
+
+router.post('/:id(\\d+)/block', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  let status = 'member-blocked';
+  try {
+    await blockMember(token, id, String(req.body.reason || '').trim());
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isNotFound(error)) throw error;
+    status = error instanceof ApiError && error.status === 400 ? 'block-self' : 'block-failed';
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
+
+router.post('/:id(\\d+)/unblock', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  try {
+    await unblockMember(token, id);
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isNotFound(error)) throw error;
+  }
+
+  if (String(req.body.from || '').trim() === 'list') {
+    return res.redirect('/profile/blocked?status=member-unblocked');
+  }
+  return res.redirect(memberUrl(id, 'member-unblocked'));
+}));
+
+router.post('/:id(\\d+)/review', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const rating = Number(req.body.rating);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return res.redirect(memberUrl(id, 'review-invalid'));
+  }
+
+  let status = 'review-submitted';
+  try {
+    await createReview(token, {
+      receiver_id: id,
+      rating,
+      comment: String(req.body.comment || '').trim() || null
+    });
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isNotFound(error)) throw error;
+    if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
+      status = 'review-invalid';
+    } else if (error instanceof ApiError && error.status === 409) {
+      status = 'review-duplicate';
+    } else {
+      status = 'review-failed';
+    }
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
+
+router.post('/:id(\\d+)/transfer', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const id = Number(req.params.id);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const amount = Number(req.body.amount);
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return res.redirect(memberUrl(id, 'transfer-failed'));
+  }
+
+  let status = 'transfer-sent';
+  try {
+    await transferWalletCredits(token, {
+      recipient: id,
+      amount,
+      description: String(req.body.note || '').trim().slice(0, 255),
+      idempotency_key: String(req.body.idempotency_key || '').trim()
+    });
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    if (isNotFound(error)) throw error;
+    status = transferFailureStatus(error);
+  }
+
+  return res.redirect(memberUrl(id, status));
+}));
 
 router.use(requireAuth);
 
