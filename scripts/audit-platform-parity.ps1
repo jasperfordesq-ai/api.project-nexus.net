@@ -110,7 +110,8 @@ function Get-AspNetV2AdminAlias {
         '/api/admin/safeguarding',
         '/api/users',
         '/api/groups',
-        '/api/jobs'
+        '/api/jobs',
+        '/api/federation'
     )
 
     foreach ($aliasedPrefix in $aliasedPrefixes) {
@@ -125,6 +126,10 @@ function Get-AspNetV2AdminAlias {
 
             if ($aliasedPrefix -eq '/api/jobs') {
                 return $normalized -replace '^/api/jobs', '/api/v2/jobs'
+            }
+
+            if ($aliasedPrefix -eq '/api/federation') {
+                return $normalized -replace '^/api/federation', '/api/v2/federation'
             }
 
             return $normalized -replace '^/api/admin/', '/api/v2/admin/'
@@ -148,6 +153,10 @@ function Get-AspNetV2RouteAlias {
 
     if ($normalized -eq '/api/jobs' -or $normalized.StartsWith('/api/jobs/')) {
         return $normalized -replace '^/api/jobs', '/api/v2/jobs'
+    }
+
+    if ($normalized -eq '/api/federation' -or $normalized.StartsWith('/api/federation/')) {
+        return $normalized -replace '^/api/federation', '/api/v2/federation'
     }
 
     return ''
@@ -258,8 +267,9 @@ function Export-AspNetRoutes {
             }
         }
 
-    $rows | Sort-Object method, path, controller, action | Export-Csv -LiteralPath $Destination -NoTypeInformation
-    return $rows
+    $uniqueRows = $rows | Sort-Object method, path, controller, action -Unique
+    $uniqueRows | Export-Csv -LiteralPath $Destination -NoTypeInformation
+    return $uniqueRows
 }
 
 function Export-LaravelRoutes {

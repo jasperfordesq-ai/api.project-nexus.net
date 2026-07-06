@@ -100,4 +100,22 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
     }
+
+    [Theory]
+    [InlineData("/api/v2/federation/status")]
+    [InlineData("/api/v2/federation/settings")]
+    [InlineData("/api/v2/federation/activity")]
+    [InlineData("/api/v2/federation/members")]
+    [InlineData("/api/v2/federation/messages")]
+    [InlineData("/api/v2/federation/connections")]
+    [InlineData("/api/v2/federation/groups")]
+    public async Task LaravelReactFederationV2ReadAliases_AsMember_AreRouted(string path)
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync(path);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
 }
