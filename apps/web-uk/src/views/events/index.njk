@@ -81,6 +81,12 @@
         <div class="app-card-grid">
           {% for event in events %}
             <div class="app-card app-card--event">
+              {% set coverImage = event.cover_image or event.coverImage %}
+              {% if coverImage %}
+                <div class="nexus-alpha-listing-row__media govuk-!-margin-bottom-3">
+                  <img class="nexus-alpha-card-thumb" src="{{ coverImage }}" alt="Photo for {{ event.title }}" width="120" height="90" loading="lazy" decoding="async">
+                </div>
+              {% endif %}
               <div class="app-card__header">
                 <h2 class="govuk-heading-m govuk-!-margin-bottom-1">
                   <a href="/events/{{ event.id }}" class="govuk-link govuk-link--no-visited-state">

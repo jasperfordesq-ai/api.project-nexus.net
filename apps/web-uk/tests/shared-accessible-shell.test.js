@@ -176,7 +176,9 @@ jest.mock('../src/lib/api', () => ({
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  getEvents: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } }),
   getEvent: jest.fn().mockResolvedValue({ event: { id: 42, title: 'Community garden day', starts_at: '2026-08-01T10:00:00' } }),
+  getEventRsvps: jest.fn().mockResolvedValue({ data: [] }),
   createEvent: jest.fn().mockResolvedValue({ id: 42 }),
   updateEvent: jest.fn().mockResolvedValue({ id: 42 }),
   callUserSettingsApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
@@ -325,7 +327,9 @@ describe('shared accessible frontend shell', () => {
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.uploadEventImage.mockReset().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } });
+    api.getEvents.mockReset().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } });
     api.getEvent.mockReset().mockResolvedValue({ event: { id: 42, title: 'Community garden day', starts_at: '2026-08-01T10:00:00' } });
+    api.getEventRsvps.mockReset().mockResolvedValue({ data: [] });
     api.createEvent.mockReset().mockResolvedValue({ id: 42 });
     api.updateEvent.mockReset().mockResolvedValue({ id: 42 });
     api.callUserSettingsApi.mockReset().mockResolvedValue({ data: { id: 42 } });
@@ -8417,6 +8421,60 @@ describe('shared accessible frontend shell', () => {
     expect(page.text).toContain('/uploads/events/garden.webp');
     expect(page.text).toContain('Current image for Community garden day');
     expect(csrfMatch).not.toBeNull();
+  });
+
+  it('renders Laravel event cover images on the events list', async () => {
+    const api = require('../src/lib/api');
+
+    api.getEvents.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          title: 'Community garden day',
+          description: 'Planting and tea',
+          location: 'Village hall',
+          cover_image: '/uploads/events/garden.webp',
+          attendee_count: 3,
+          max_attendees: 20,
+          starts_at: '2026-08-01T10:00:00'
+        }
+      ],
+      pagination: { page: 1, totalPages: 1 }
+    });
+
+    const response = await request(app)
+      .get('/events')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('/uploads/events/garden.webp');
+    expect(response.text).toContain('Photo for Community garden day');
+  });
+
+  it('renders the Laravel event cover image on the event detail page', async () => {
+    const api = require('../src/lib/api');
+
+    api.getEvent.mockResolvedValueOnce({
+      event: {
+        id: 42,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        location: 'Village hall',
+        cover_image: '/uploads/events/garden.webp',
+        attendee_count: 3,
+        max_attendees: 20,
+        starts_at: '2026-08-01T10:00:00'
+      }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/events/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('/uploads/events/garden.webp');
+    expect(response.text).toContain('Photo for Community garden day');
   });
 
   it('submits Laravel listing action aliases and redirects signed-out visitors', async () => {
