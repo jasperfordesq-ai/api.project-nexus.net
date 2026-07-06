@@ -107,6 +107,63 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task ModerationSettingsV2_GetPutAndReloadUseLaravelReactContract()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var initial = await Client.GetAsync("/api/v2/admin/moderation/settings");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        initialJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var initialData = initialJson.GetProperty("data");
+        initialData.GetProperty("enabled").ValueKind.Should().Be(JsonValueKind.False);
+        initialData.GetProperty("require_post").ValueKind.Should().Be(JsonValueKind.False);
+        initialData.GetProperty("require_listing").ValueKind.Should().Be(JsonValueKind.False);
+        initialData.GetProperty("require_event").ValueKind.Should().Be(JsonValueKind.False);
+        initialData.GetProperty("require_comment").ValueKind.Should().Be(JsonValueKind.False);
+        initialData.GetProperty("auto_filter").ValueKind.Should().Be(JsonValueKind.False);
+
+        var update = await Client.PutAsJsonAsync("/api/v2/admin/moderation/settings", new
+        {
+            enabled = true,
+            require_post = true,
+            require_listing = false,
+            require_event = true,
+            require_comment = false,
+            auto_filter = true,
+            ignored_key = true
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var updateData = updateJson.GetProperty("data");
+        updateData.GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+        var updatedSettings = updateData.GetProperty("settings");
+        updatedSettings.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        updatedSettings.GetProperty("require_post").GetBoolean().Should().BeTrue();
+        updatedSettings.GetProperty("require_listing").GetBoolean().Should().BeFalse();
+        updatedSettings.GetProperty("require_event").GetBoolean().Should().BeTrue();
+        updatedSettings.GetProperty("require_comment").GetBoolean().Should().BeFalse();
+        updatedSettings.GetProperty("auto_filter").GetBoolean().Should().BeTrue();
+        updatedSettings.TryGetProperty("ignored_key", out _).Should().BeFalse();
+
+        var reloaded = await Client.GetAsync("/api/v2/admin/moderation/settings");
+
+        reloaded.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reloadedJson = await reloaded.Content.ReadFromJsonAsync<JsonElement>();
+        var reloadedData = reloadedJson.GetProperty("data");
+        reloadedData.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("require_post").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("require_listing").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("require_event").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("require_comment").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("auto_filter").GetBoolean().Should().BeTrue();
+        reloadedData.TryGetProperty("ignored_key", out _).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task BillingSnapshot_UsesSubscriptionPlanStorage()
     {
         using (var scope = Factory.Services.CreateScope())

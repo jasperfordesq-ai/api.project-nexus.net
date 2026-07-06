@@ -30,6 +30,16 @@ public class AdminExplicitParityController : ControllerBase
     private const string MemberPremiumConnectAccountKey = "donations.stripe_connect_account_id";
     private const string MemberPremiumDisputesKey = "donations.disputes";
     private const string SupportReportsKey = "admin_explicit.support_reports";
+    private const string ModerationSettingPrefix = "moderation.";
+    private static readonly string[] ModerationSettingKeys =
+    [
+        "enabled",
+        "require_post",
+        "require_listing",
+        "require_event",
+        "require_comment",
+        "auto_filter"
+    ];
 
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -163,6 +173,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/member-premium/subscribers")]
     [HttpGet("/api/v2/admin/member-premium/tiers")]
     [HttpGet("/api/v2/admin/member-premium/tiers/{id}")]
+    [HttpGet("/api/v2/admin/moderation/settings")]
     [HttpGet("/api/v2/admin/national/kiss/comparative")]
     [HttpGet("/api/v2/admin/national/kiss/cooperatives")]
     [HttpGet("/api/v2/admin/national/kiss/summary")]
@@ -277,6 +288,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/member-premium/finance/gift-aid-export" => await GetMemberPremiumGiftAidCsv(),
             "/api/v2/admin/member-premium/finance/overview" => await GetMemberPremiumFinanceOverview(),
             "/api/v2/admin/member-premium/settings" => await GetMemberPremiumSettings(),
+            "/api/v2/admin/moderation/settings" => await GetModerationSettings(),
             "/api/v2/admin/reports/export-types" => GetReportExportTypes(),
             _ when IsAdminReportExportPath(path) => GetAdminReportExportCsv(path),
             "/api/v2/admin/support-reports" => await GetSupportReports(),
@@ -516,6 +528,7 @@ public class AdminExplicitParityController : ControllerBase
         {
             "/api/v2/admin/federation/topics/mine" => await PutFederationTopicSubscriptions(),
             "/api/v2/admin/member-premium/settings" => await PutMemberPremiumSettings(),
+            "/api/v2/admin/moderation/settings" => await PutModerationSettings(),
             _ when TryGetLastInt(path, "/api/v2/admin/support-reports/", out var supportReportId) => await UpdateSupportReport(supportReportId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await UpdateFederationWebhook(webhookId),
             _ => await PersistCompatibilityWrite("put")
@@ -2133,6 +2146,39 @@ public class AdminExplicitParityController : ControllerBase
         });
     }
 
+    private async Task<IActionResult> GetModerationSettings()
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        return Ok(new { data = await BuildModerationSettings() });
+    }
+
+    private async Task<IActionResult> PutModerationSettings()
+    {
+        if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        foreach (var key in ModerationSettingKeys)
+        {
+            if (!payload.TryGetValue(key, out var value) || !TryReadBoolean(value, out var enabled))
+            {
+                continue;
+            }
+
+            await UpsertTenantConfigValueAsync(ModerationSettingPrefix + key, enabled ? "1" : "0");
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            data = new
+            {
+                message = "Moderation settings updated",
+                settings = await BuildModerationSettings()
+            }
+        });
+    }
+
     private async Task<IActionResult> CreateMemberPremiumConnectOnboarding()
     {
         if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
@@ -2339,6 +2385,18 @@ public class AdminExplicitParityController : ControllerBase
             account_status = accountStatus,
             fallback_reason = accountId == string.Empty ? null : "stripe_connect_not_ready"
         };
+    }
+
+    private async Task<Dictionary<string, bool>> BuildModerationSettings()
+    {
+        var settings = ModerationSettingKeys.ToDictionary(key => key, _ => false, StringComparer.OrdinalIgnoreCase);
+        foreach (var key in ModerationSettingKeys)
+        {
+            var value = await GetTenantConfigValueAsync(ModerationSettingPrefix + key);
+            settings[key] = IsStoredEnabled(value);
+        }
+
+        return settings;
     }
 
     private IQueryable<MoneyDonation> CompletedMemberPremiumDonations(int tenantId)
@@ -3002,6 +3060,56 @@ public class AdminExplicitParityController : ControllerBase
             JsonValueKind.Null => null,
             _ => value.GetRawText()
         };
+    }
+
+    private static bool TryReadBoolean(JsonElement value, out bool result)
+    {
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.True:
+                result = true;
+                return true;
+            case JsonValueKind.False:
+                result = false;
+                return true;
+            case JsonValueKind.Number when value.TryGetInt32(out var intValue):
+                result = intValue != 0;
+                return true;
+            case JsonValueKind.String:
+                return TryReadBooleanString(value.GetString(), out result);
+            default:
+                result = false;
+                return false;
+        }
+    }
+
+    private static bool IsStoredEnabled(string? value)
+    {
+        return TryReadBooleanString(value, out var result) && result;
+    }
+
+    private static bool TryReadBooleanString(string? value, out bool result)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrEmpty(normalized))
+        {
+            result = false;
+            return false;
+        }
+
+        if (normalized is "1")
+        {
+            result = true;
+            return true;
+        }
+
+        if (normalized is "0")
+        {
+            result = false;
+            return true;
+        }
+
+        return bool.TryParse(normalized, out result);
     }
 
     private static int CountPayloadItems(object? payload)
