@@ -219,13 +219,16 @@ current Laravel cover image when the event payload includes one. The create and
 edit forms now also load Laravel event categories from `/api/v2/categories` and
 carry the category plus Laravel's online/remote attendance fields (`is_online`,
 `online_link`, `allow_remote_attendance`, and `video_url`) into event
-create/update payloads. Redirects preserve Laravel status keys and `#poll-*`
-fragments. This remains partial: cover image removal is still blocked by the
-absence of a Laravel v2 clear/delete event-image API contract, and recurrence
-form depth, full Blade list/detail rendering, owner/participant authorization
-depth, rendered translation result display, event notification/XP/waitlist
-promotion side effects, tenant/feature gates, localization, runtime smoke
-tests, and ASP.NET backend compatibility are not certified.
+create/update payloads. The create form now renders Laravel recurrence controls
+and sends recurring creates through `/api/v2/events/recurring`, following the
+Laravel template response shape for redirects. Redirects preserve Laravel status
+keys and `#poll-*` fragments. This remains partial: cover image removal is still
+blocked by the absence of a Laravel v2 clear/delete event-image API contract,
+and recurring series edit/display depth, full Blade list/detail rendering,
+owner/participant authorization depth, rendered translation result display,
+event notification/XP/waitlist promotion side effects, tenant/feature gates,
+localization, runtime smoke tests, and ASP.NET backend compatibility are not
+certified.
 
 The `/volunteering` page is now a local Blade-style public landing candidate
 for the Laravel accessible volunteering page. It renders the caption, lead,

@@ -44,6 +44,11 @@ function positiveInteger(value) {
   return Number.isInteger(number) && number > 0 ? number : null;
 }
 
+function boundedPositiveInteger(value, fallback, max = null) {
+  const number = positiveInteger(value) || fallback;
+  return max === null ? number : Math.min(number, max);
+}
+
 function checked(value) {
   return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
 }
@@ -63,7 +68,7 @@ async function removeUploadedFile(file) {
 }
 
 function resultEventId(result) {
-  return result?.event?.id || result?.data?.id || result?.id;
+  return result?.event?.id || result?.data?.id || result?.data?.template?.id || result?.id;
 }
 
 async function uploadEventCoverImage(token, eventId, image) {
@@ -138,6 +143,21 @@ function eventScopedPayload(body) {
     online_link: trimmed(body.online_link) || null,
     allow_remote_attendance: checked(body.allow_remote_attendance),
     video_url: trimmed(body.video_url) || null
+  };
+}
+
+function recurrencePayload(body) {
+  const frequency = ['daily', 'weekly', 'monthly'].includes(trimmed(body.recurrence_frequency))
+    ? trimmed(body.recurrence_frequency)
+    : 'weekly';
+  const endsType = trimmed(body.recurrence_ends_type) === 'on_date' ? 'on_date' : 'after_count';
+
+  return {
+    recurrence_frequency: frequency,
+    recurrence_interval: boundedPositiveInteger(body.recurrence_interval, 1),
+    recurrence_ends_type: endsType,
+    recurrence_ends_after_count: boundedPositiveInteger(body.recurrence_ends_after_count, 10, 52),
+    recurrence_ends_on_date: trimmed(body.recurrence_ends_on_date) || null
   };
 }
 
@@ -346,7 +366,7 @@ router.get('/new', asyncRoute(async (req, res) => {
 
 // Create event
 router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
-  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, category_id, is_online, online_link, allow_remote_attendance, video_url } = req.body;
+  const { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, category_id, is_online, online_link, allow_remote_attendance, video_url, is_recurring, recurrence_frequency, recurrence_interval, recurrence_ends_type, recurrence_ends_after_count, recurrence_ends_on_date } = req.body;
   const image = uploadedFile(req, 'image');
 
   const errors = [];
@@ -392,7 +412,7 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
     return res.render('events/new', {
       title: 'Create an event',
       errors: errorList,
-      values: { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, category_id, is_online, online_link, allow_remote_attendance, video_url },
+      values: { title, description, location, starts_at_date, starts_at_time, ends_at_date, ends_at_time, max_attendees, group_id, category_id, is_online, online_link, allow_remote_attendance, video_url, is_recurring, recurrence_frequency, recurrence_interval, recurrence_ends_type, recurrence_ends_after_count, recurrence_ends_on_date },
       myGroups,
       categories,
       selectedGroupId: group_id,
@@ -420,7 +440,22 @@ router.post('/new', audit.eventCreate(), asyncRoute(async (req, res) => {
       video_url: trimmed(video_url) || null
     };
 
-    const result = await createEvent(req.token, eventData);
+    const result = checked(is_recurring)
+      ? await callApi(req.token, 'POST', '/recurring', {
+        title: eventData.title,
+        description: eventData.description,
+        start_time: startsAt,
+        end_time: endsAt,
+        location: eventData.location,
+        category_id: eventData.category_id,
+        max_attendees: eventData.max_attendees,
+        is_online: eventData.is_online,
+        online_link: eventData.online_link,
+        allow_remote_attendance: eventData.allow_remote_attendance,
+        video_url: eventData.video_url,
+        ...recurrencePayload({ recurrence_frequency, recurrence_interval, recurrence_ends_type, recurrence_ends_after_count, recurrence_ends_on_date })
+      })
+      : await createEvent(req.token, eventData);
     const eventId = resultEventId(result);
 
     try {

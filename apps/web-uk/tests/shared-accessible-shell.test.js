@@ -8491,6 +8491,72 @@ describe('shared accessible frontend shell', () => {
     }));
   });
 
+  it('renders and submits Laravel recurring event fields on create', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+
+    api.getMyGroups.mockResolvedValueOnce({ data: [] });
+    api.getEventCategories.mockResolvedValueOnce({ data: [{ id: 7, name: 'Gardening' }] });
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        template: { id: 42 },
+        occurrences_created: 10
+      }
+    });
+
+    const page = await agent
+      .get('/events/new')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('name="is_recurring"');
+    expect(page.text).toContain('name="recurrence_frequency"');
+    expect(page.text).toContain('value="daily"');
+    expect(page.text).toContain('Every two weeks');
+    expect(page.text).toContain('data-recurrence-interval="2"');
+    expect(page.text).toContain('name="recurrence_interval"');
+    expect(page.text).toContain('name="recurrence_ends_type"');
+    expect(page.text).toContain('name="recurrence_ends_after_count"');
+    expect(page.text).toContain('name="recurrence_ends_on_date"');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/events/new')
+      .set('Cookie', signedCookieHeader())
+      .field('_csrf', csrfMatch[1])
+      .field('title', ' Weekly seed swap ')
+      .field('description', ' Bring spare seeds ')
+      .field('location', ' Community garden ')
+      .field('starts_at_date', '2026-08-01')
+      .field('starts_at_time', '10:00')
+      .field('ends_at_date', '2026-08-01')
+      .field('ends_at_time', '11:30')
+      .field('category_id', '7')
+      .field('is_recurring', '1')
+      .field('recurrence_frequency', 'weekly')
+      .field('recurrence_interval', '2')
+      .field('recurrence_ends_type', 'after_count')
+      .field('recurrence_ends_after_count', '10');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42');
+    expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'POST', '/recurring', expect.objectContaining({
+      title: 'Weekly seed swap',
+      description: 'Bring spare seeds',
+      start_time: '2026-08-01T10:00:00',
+      end_time: '2026-08-01T11:30:00',
+      location: 'Community garden',
+      category_id: 7,
+      recurrence_frequency: 'weekly',
+      recurrence_interval: 2,
+      recurrence_ends_type: 'after_count',
+      recurrence_ends_after_count: 10,
+      recurrence_ends_on_date: null
+    }));
+    expect(api.createEvent).not.toHaveBeenCalled();
+  });
+
   it('renders and submits Laravel event online attendance fields on create', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);
