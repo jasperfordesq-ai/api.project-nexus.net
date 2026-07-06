@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const fs = require('fs/promises');
 const {
   createFeedPostV2,
   updateFeedPostV2,
@@ -36,6 +37,20 @@ function tokenFrom(req) {
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
+}
+
+function uploadedFile(req, fieldName) {
+  const file = req.files && req.files[fieldName];
+  return file && typeof file === 'object' ? file : null;
+}
+
+async function removeUploadedFile(file) {
+  if (!file || !file.filepath) return;
+  try {
+    await fs.unlink(file.filepath);
+  } catch {
+    // Temporary upload cleanup is best-effort only.
+  }
 }
 
 function positiveInteger(value) {
@@ -115,19 +130,36 @@ router.post('/posts', asyncRoute(async (req, res) => {
   }
 
   const content = trimmed(req.body.content, 5000);
+  const imageAlt = trimmed(req.body.image_alt, 500);
+  const image = uploadedFile(req, 'image');
   if (content === '') {
+    await removeUploadedFile(image);
     return res.redirect(feedStatusRedirect('post-empty'));
   }
 
   let status = 'post-created';
   try {
-    await createFeedPostV2(token, {
+    const payload = {
       content,
       visibility: 'public'
-    });
+    };
+    if (imageAlt !== '') {
+      payload.image_alt = imageAlt;
+    }
+    if (image) {
+      payload.file = {
+        buffer: await fs.readFile(image.filepath),
+        filename: trimmed(image.originalFilename) || 'feed-image',
+        contentType: trimmed(image.mimetype) || 'application/octet-stream',
+        size: image.size
+      };
+    }
+    await createFeedPostV2(token, payload);
   } catch (error) {
     if (redirectAuthIfNeeded(error, res, req)) return undefined;
     status = 'post-failed';
+  } finally {
+    await removeUploadedFile(image);
   }
 
   return res.redirect(feedStatusRedirect(status));

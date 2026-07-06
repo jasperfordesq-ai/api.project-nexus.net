@@ -2643,6 +2643,35 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should create feed posts with uploaded images through Laravel multipart data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42 } })
+      });
+
+      await api.createFeedPostV2('test-token', {
+        content: 'Garden day update',
+        visibility: 'public',
+        image_alt: 'Volunteers planting herbs',
+        file: {
+          buffer: Buffer.from('fake image bytes', 'utf8'),
+          filename: 'garden.webp',
+          contentType: 'image/webp'
+        }
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/feed/posts',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+    });
+
     it('should call Laravel v2 feed moderation helpers', async () => {
       mockFetch
         .mockResolvedValueOnce({

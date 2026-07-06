@@ -1853,6 +1853,25 @@ async function createFeedPost(token, data) {
 }
 
 async function createFeedPostV2(token, data) {
+  const file = data.file || data.image;
+  if (file && file.buffer) {
+    const form = new globalThis.FormData();
+    for (const [key, value] of Object.entries(data)) {
+      if (['file', 'image'].includes(key) || value === undefined || value === null) continue;
+      form.append(key, String(value));
+    }
+    const blob = new globalThis.Blob([file.buffer], {
+      type: file.contentType || 'application/octet-stream'
+    });
+    form.append('image', blob, file.filename || 'feed-image');
+
+    return request('/api/v2/feed/posts', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form
+    });
+  }
+
   return request('/api/v2/feed/posts', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },

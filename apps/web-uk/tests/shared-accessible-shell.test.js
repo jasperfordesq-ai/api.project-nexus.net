@@ -38,6 +38,8 @@ jest.mock('../src/lib/api', () => ({
   verify2fa: jest.fn(),
   validateToken: jest.fn(),
   getProfile: jest.fn(),
+  getFeedPosts: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } }),
+  getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
   updateProfile: jest.fn().mockResolvedValue({}),
   uploadProfileAvatar: jest.fn().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } }),
   getOnboardingStatus: jest.fn().mockResolvedValue({ data: { onboarding_completed: false } }),
@@ -212,6 +214,8 @@ describe('shared accessible frontend shell', () => {
     api.getBalance.mockReset().mockResolvedValue({ balance: 8 });
     api.getTransactions.mockReset().mockResolvedValue({ data: [] });
     api.getProfile.mockReset().mockResolvedValue({ id: 101 });
+    api.getFeedPosts.mockReset().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } });
+    api.getMyGroups.mockReset().mockResolvedValue({ data: [] });
     api.updateProfile.mockReset().mockResolvedValue({});
     api.uploadProfileAvatar.mockReset().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } });
     api.getConversations.mockReset().mockResolvedValue({ data: [] });
@@ -4376,6 +4380,49 @@ describe('shared accessible frontend shell', () => {
       content: 'Community update',
       visibility: 'public'
     });
+  });
+
+  it('renders and submits Laravel feed post images with multipart file data', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const page = await agent
+      .get('/feed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('action="/feed/posts"');
+    expect(page.text).toContain('enctype="multipart/form-data"');
+    expect(page.text).toContain('name="image"');
+    expect(page.text).toContain('name="image_alt"');
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/feed/posts')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('content', ' Garden day update ')
+      .field('image_alt', ' Volunteers planting herbs ')
+      .attach('image', Buffer.from('fake image bytes', 'utf8'), {
+        filename: 'garden.webp',
+        contentType: 'image/webp'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/feed?status=post-created');
+    expect(api.createFeedPostV2).toHaveBeenCalledWith('test-token', expect.objectContaining({
+      content: 'Garden day update',
+      visibility: 'public',
+      image_alt: 'Volunteers planting herbs',
+      file: expect.objectContaining({
+        filename: 'garden.webp',
+        contentType: 'image/webp',
+        buffer: Buffer.from('fake image bytes', 'utf8')
+      })
+    }));
   });
 
   it('submits Laravel feed typed like and comment aliases through v2 social helpers', async () => {

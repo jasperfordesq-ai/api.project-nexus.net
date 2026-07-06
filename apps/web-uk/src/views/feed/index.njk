@@ -32,6 +32,28 @@
         </div>
       </div>
 
+      <form method="post" action="/feed/posts" enctype="multipart/form-data" class="govuk-!-margin-bottom-7" novalidate>
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="content">Share an update</label>
+          <div id="content-hint" class="govuk-hint">Post a community update, question, or thought.</div>
+          <textarea class="govuk-textarea" id="content" name="content" rows="4" aria-describedby="content-hint"></textarea>
+        </div>
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="image">Image</label>
+          <div id="image-hint" class="govuk-hint">Upload an optional JPG, PNG, GIF or WebP image.</div>
+          <input class="govuk-file-upload" id="image" name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="image-hint">
+        </div>
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="image_alt">Image description</label>
+          <div id="image-alt-hint" class="govuk-hint">Describe the image for people who cannot see it.</div>
+          <input class="govuk-input" id="image_alt" name="image_alt" type="text" maxlength="500" aria-describedby="image-alt-hint">
+        </div>
+        {{ govukButton({
+          text: "Post"
+        }) }}
+      </form>
+
       {# Group filter #}
       {% if myGroups.length > 0 %}
         {% set groupItems = [{value: "", text: "All posts", selected: not groupId}] %}

@@ -47,6 +47,7 @@ router.get('/', asyncRoute(async (req, res) => {
     myGroups,
     groupId,
     pagination: feedResult.pagination || { page, total_pages: 1 },
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
   });
