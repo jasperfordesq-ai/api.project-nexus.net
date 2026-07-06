@@ -853,6 +853,84 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel saved search helpers', () => {
+    it('should save a search through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12 } })
+      });
+
+      await api.saveSavedSearch('test-token', {
+        name: 'Gardeners',
+        query_params: {
+          q: 'gardening',
+          type: 'listings'
+        },
+        notify_on_new: false
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/search/saved',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            name: 'Gardeners',
+            query_params: {
+              q: 'gardening',
+              type: 'listings'
+            },
+            notify_on_new: false
+          })
+        })
+      );
+    });
+
+    it('should delete a saved search through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ deleted: true })
+      });
+
+      await api.deleteSavedSearch('test-token', 12);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/search/saved/12',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should run a saved search through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 12, query_params: { q: 'gardening' } } })
+      });
+
+      await api.runSavedSearch('test-token', 12);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/search/saved/12/run',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({})
+        })
+      );
+    });
+  });
+
   describe('Laravel member premium helpers', () => {
     it('should create a member premium checkout session through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

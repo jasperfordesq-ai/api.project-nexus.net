@@ -71,6 +71,9 @@ jest.mock('../src/lib/api', () => ({
   createReview: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   createComment: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   toggleReaction: jest.fn().mockResolvedValue({ data: { action: 'added' } }),
+  saveSavedSearch: jest.fn().mockResolvedValue({ data: { id: 12 } }),
+  deleteSavedSearch: jest.fn().mockResolvedValue({ deleted: true }),
+  runSavedSearch: jest.fn().mockResolvedValue({ data: { query_params: { q: 'gardening' } } }),
   getUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
   getNotifications: jest.fn().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } }),
   getNotificationUnreadCount: jest.fn().mockResolvedValue({ unreadCount: 0 }),
@@ -134,6 +137,9 @@ describe('shared accessible frontend shell', () => {
     api.createReview.mockReset().mockResolvedValue({ data: { id: 91 } });
     api.createComment.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.toggleReaction.mockReset().mockResolvedValue({ data: { action: 'added' } });
+    api.saveSavedSearch.mockReset().mockResolvedValue({ data: { id: 12 } });
+    api.deleteSavedSearch.mockReset().mockResolvedValue({ deleted: true });
+    api.runSavedSearch.mockReset().mockResolvedValue({ data: { query_params: { q: 'gardening' } } });
     api.forgotPassword.mockReset().mockResolvedValue({});
     api.resetPassword.mockReset().mockResolvedValue({});
     api.resendVerification.mockReset().mockResolvedValue({});
@@ -1185,6 +1191,153 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
+  });
+
+  it('submits the Laravel saved search route through the search API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/search/saved')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: ' Garden helpers ',
+        q: ' gardening ',
+        type: 'listings',
+        sort: 'newest',
+        category_id: '3',
+        skills: ' Repair, teaching, repair ',
+        date_from: '2026-07-01',
+        date_to: 'not-a-date',
+        location: ' Town '
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/search/advanced?q=gardening&type=listings&sort=newest&category_id=3&skills=repair%2Cteaching&date_from=2026-07-01&location=Town&status=search-saved');
+    expect(api.saveSavedSearch).toHaveBeenCalledWith('test-token', {
+      name: 'Garden helpers',
+      query_params: {
+        q: 'gardening',
+        type: 'listings',
+        sort: 'newest',
+        category_id: '3',
+        skills: 'repair,teaching',
+        date_from: '2026-07-01',
+        location: 'Town'
+      },
+      notify_on_new: false
+    });
+  });
+
+  it('redirects invalid Laravel saved search submissions with the failed status', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/search/saved')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: '  ',
+        q: 'gardening',
+        type: 'groups'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/search/advanced?q=gardening&type=groups&status=search-save-failed');
+    expect(api.saveSavedSearch).not.toHaveBeenCalled();
+  });
+
+  it('submits the Laravel saved search delete route through the search API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/search/saved/12/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/search/advanced?status=search-deleted');
+    expect(api.deleteSavedSearch).toHaveBeenCalledWith('test-token', 12);
+  });
+
+  it('submits the Laravel saved search run route through the search API helper', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.runSavedSearch.mockResolvedValueOnce({
+      data: {
+        query_params: {
+          q: 'gardening',
+          type: 'users',
+          sort: 'oldest',
+          skills: 'repair,teaching'
+        }
+      }
+    });
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/search/saved/12/run')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/search/advanced?q=gardening&type=users&sort=oldest&skills=repair%2Cteaching');
+    expect(api.runSavedSearch).toHaveBeenCalledWith('test-token', 12);
+  });
+
+  it('redirects signed-out Laravel saved search submissions to the auth-required status', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent.get('/contact');
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/search/saved')
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Garden helpers',
+        q: 'gardening'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.saveSavedSearch).not.toHaveBeenCalled();
   });
 
   it('submits the Laravel reviews store route through the v2 reviews API helper', async () => {

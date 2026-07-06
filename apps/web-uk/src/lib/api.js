@@ -1108,6 +1108,29 @@ async function searchSuggestions(token, query, limit = 5) {
   });
 }
 
+async function saveSavedSearch(token, data) {
+  return request('/api/v2/search/saved', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
+async function deleteSavedSearch(token, id) {
+  return request(`/api/v2/search/saved/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function runSavedSearch(token, id, data = {}) {
+  return request(`/api/v2/search/saved/${encodeURIComponent(id)}/run`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function getMembers(token, query = '', page = 1, limit = 20) {
   const params = new URLSearchParams();
   if (query) params.set('q', query);
@@ -1546,6 +1569,9 @@ module.exports = {
   // Search
   search,
   searchSuggestions,
+  saveSavedSearch,
+  deleteSavedSearch,
+  runSavedSearch,
   getMembers,
   // Reviews
   getUserReviews,
