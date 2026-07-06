@@ -4278,6 +4278,137 @@ describe('shared accessible frontend shell', () => {
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel-backed talent search page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 77,
+            name: 'Riley Quinn',
+            headline: 'Community mentor',
+            location: 'Derry',
+            skills: ['Gardening', 'Mentoring', 'First aid', 'Safeguarding', 'Events', 'Driving', 'Extra skill'],
+            last_active: '2099-07-02T10:00:00Z'
+          }
+        ],
+        total: 41
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/talent-search?keywords=mentor&skills=gardening,mentoring&location=Derry&offset=20')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith(
+      'test-token',
+      'GET',
+      '/talent-search?per_page=20&offset=20&keywords=mentor&skills=gardening%2Cmentoring&location=Derry'
+    );
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Find candidates');
+    expect(response.text).toContain('Search community members who have made their profile available to employers');
+    expect(response.text).toContain('Keywords');
+    expect(response.text).toContain('value="mentor"');
+    expect(response.text).toContain('value="gardening,mentoring"');
+    expect(response.text).toContain('value="Derry"');
+    expect(response.text).toContain('41 candidates found');
+    expect(response.text).toContain('href="/jobs/talent-search/77"');
+    expect(response.text).toContain('Riley Quinn');
+    expect(response.text).toContain('Community mentor');
+    expect(response.text).toContain('Gardening');
+    expect(response.text).toContain('Mentoring');
+    expect(response.text).toContain('Derry');
+    expect(response.text).toContain('Last active 2 July 2099');
+    expect(response.text).toContain('Show more candidates');
+    expect(response.text).toContain('offset=40');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('returns forbidden when Laravel denies talent search access', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockRejectedValueOnce(new api.ApiError('Forbidden', 403, {}));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/talent-search?keywords=mentor')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith(
+      'test-token',
+      'GET',
+      '/talent-search?per_page=20&offset=0&keywords=mentor'
+    );
+    expect(response.status).toBe(403);
+  });
+
+  it('renders the Laravel-backed talent profile page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: {
+        id: 77,
+        name: 'Riley Quinn',
+        headline: 'Community mentor',
+        location: 'Derry',
+        skills: ['Gardening', 'Mentoring'],
+        summary: 'Experienced with community gardens.',
+        bio: 'Enjoys helping local groups plan inclusive activities.',
+        last_active: '2099-07-02T10:00:00Z',
+        member_since: '2099-07-01T09:00:00Z'
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/talent-search/77')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/talent-search/77');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/jobs/talent-search"');
+    expect(response.text).toContain('Riley Quinn');
+    expect(response.text).toContain('Community mentor');
+    expect(response.text).toContain('Derry');
+    expect(response.text).toContain('Last active 2 July 2099');
+    expect(response.text).toContain('Member since July 2099');
+    expect(response.text).toContain('Skills');
+    expect(response.text).toContain('Gardening');
+    expect(response.text).toContain('Summary');
+    expect(response.text).toContain('Experienced with community gardens.');
+    expect(response.text).toContain('About');
+    expect(response.text).toContain('Enjoys helping local groups plan inclusive activities.');
+    expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('returns not found when Laravel cannot find a talent profile', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/talent-search/77')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/talent-search/77');
+    expect(response.status).toBe(404);
+  });
+
+  it('redirects signed-out visitors away from talent search before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+
+    const response = await request(app).get('/jobs/talent-search?keywords=mentor');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
   it('streams the Laravel-backed owner applications CSV export', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

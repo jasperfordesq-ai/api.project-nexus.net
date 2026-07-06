@@ -1,0 +1,88 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/jobs/mine">Back to my opportunities</a>
+
+  <h1 class="govuk-heading-xl">Find candidates</h1>
+  <p class="govuk-body-l">Search community members who have made their profile available to employers. Members choose whether to appear here.</p>
+
+  <form method="get" action="/jobs/talent-search" class="govuk-!-margin-bottom-6">
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="talent-keywords">Keywords</label>
+      <div id="talent-keywords-hint" class="govuk-hint">Search names, headlines, skills and bios.</div>
+      <input class="govuk-input govuk-!-width-two-thirds" id="talent-keywords" name="keywords" type="text" maxlength="120" value="{{ filters.keywords }}" aria-describedby="talent-keywords-hint">
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="talent-skills">Skills</label>
+      <div id="talent-skills-hint" class="govuk-hint">Separate skills with commas, for example: gardening, mentoring.</div>
+      <input class="govuk-input govuk-!-width-two-thirds" id="talent-skills" name="skills" type="text" maxlength="200" value="{{ filters.skills }}" aria-describedby="talent-skills-hint">
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="talent-location">Location</label>
+      <input class="govuk-input govuk-!-width-two-thirds" id="talent-location" name="location" type="text" maxlength="120" value="{{ filters.location }}">
+    </div>
+
+    <button type="submit" class="govuk-button" data-module="govuk-button">Search candidates</button>
+    {% if hasSearched %}
+      <a class="govuk-link govuk-!-margin-left-3" href="/jobs/talent-search">Clear search</a>
+    {% endif %}
+  </form>
+
+  {% if not hasSearched %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">Enter keywords, skills or a location to find candidates.</p>
+    </div>
+  {% elif candidates.length == 0 %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">No candidates match your search. Try broadening your filters.</p>
+    </div>
+  {% else %}
+    <p class="govuk-body">{{ meta.resultsLabel }}</p>
+
+    <div class="nexus-alpha-card-list">
+      {% for candidate in candidates %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-module-row">
+            {% if candidate.avatarUrl %}
+              <img class="nexus-alpha-avatar" src="{{ candidate.avatarUrl }}" alt="" aria-hidden="true" loading="lazy" decoding="async" width="48" height="48">
+            {% else %}
+              <span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">{{ candidate.initial }}</span>
+            {% endif %}
+            <div>
+              <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+                <a class="govuk-link" href="/jobs/talent-search/{{ candidate.id }}">{{ candidate.name }}</a>
+              </h2>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ candidate.headline }}</p>
+            </div>
+          </div>
+
+          {% if candidate.skillsPreview.length %}
+            <ul class="govuk-list nexus-alpha-tag-list govuk-!-margin-top-1 govuk-!-margin-bottom-1">
+              {% for skill in candidate.skillsPreview %}
+                <li><strong class="govuk-tag govuk-tag--grey">{{ skill }}</strong></li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
+            {% if candidate.location %}{{ candidate.location }}{% endif %}
+            {% if candidate.lastActiveLabel %}{% if candidate.location %} - {% endif %}Last active {{ candidate.lastActiveLabel }}{% endif %}
+          </p>
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if meta.nextHref %}
+      <p class="govuk-!-margin-top-4">
+        <a class="govuk-link" href="{{ meta.nextHref }}">Show more candidates</a>
+      </p>
+    {% endif %}
+  {% endif %}
+{% endblock %}

@@ -16,6 +16,7 @@ const JOB_SALARY_TYPES = ['hourly', 'monthly', 'annual'];
 const JOB_STATUSES = ['open', 'draft'];
 const JOB_SORTS = ['newest', 'deadline', 'salary_desc'];
 const JOBS_PER_PAGE = 12;
+const TALENT_PER_PAGE = 20;
 const JOB_TYPE_LABELS = {
   paid: 'Paid',
   volunteer: 'Volunteer',
@@ -365,6 +366,38 @@ function myPostingsHref(cursor) {
   return queryPath('/jobs/mine', { cursor: cursor || null });
 }
 
+function talentSearchFilters(query) {
+  return {
+    keywords: trimmed(query.keywords, 120),
+    skills: trimmed(query.skills, 200),
+    location: trimmed(query.location, 120),
+    offset: nonNegativeInteger(query.offset)
+  };
+}
+
+function talentSearchPath(filters) {
+  return queryPath('/talent-search', {
+    per_page: TALENT_PER_PAGE,
+    offset: filters.offset,
+    keywords: filters.keywords || null,
+    skills: filters.skills || null,
+    location: filters.location || null
+  });
+}
+
+function talentSearchHref(filters, offset = null) {
+  return queryPath('/jobs/talent-search', {
+    keywords: filters.keywords || null,
+    skills: filters.skills || null,
+    location: filters.location || null,
+    offset: offset !== null && offset > 0 ? offset : null
+  });
+}
+
+function talentHasSearched(filters) {
+  return filters.keywords !== '' || filters.skills !== '' || filters.location !== '';
+}
+
 function formatDateLong(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -401,6 +434,22 @@ function formatDateOnlyLong(value) {
 function formatDateOnlyShort(value) {
   const label = formatDateOnlyLong(value);
   return label.replace(/\s+\d{4}$/, '');
+}
+
+function formatMonthYear(value) {
+  if (!value) return '';
+  const text = trimmed(value);
+  const match = text.match(/^(\d{4})-(\d{2})-\d{2}/);
+  const date = match
+    ? new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1))
+    : new Date(text);
+
+  if (Number.isNaN(date.getTime())) return text;
+  return date.toLocaleDateString('en-GB', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
 }
 
 function dateInputValue(value) {
@@ -870,6 +919,61 @@ function decorateQualification(result) {
   };
 }
 
+function candidateSkills(value) {
+  if (Array.isArray(value)) {
+    return value.map((skill) => personName(skill) || trimmed(skill)).filter(Boolean);
+  }
+
+  return trimmed(value, 2000)
+    .split(',')
+    .map((skill) => trimmed(skill))
+    .filter(Boolean);
+}
+
+function candidateInitial(name) {
+  return (trimmed(name).charAt(0) || 'A').toUpperCase();
+}
+
+function decorateCandidate(candidate) {
+  const name = trimmed(candidate.name || candidate.display_name || candidate.full_name, 255) || 'Anonymous candidate';
+  const skills = candidateSkills(candidate.skills);
+
+  return {
+    ...candidate,
+    id: positiveInteger(candidate.id) || 0,
+    name,
+    initial: candidateInitial(name),
+    headline: trimmed(candidate.headline || candidate.resume_headline, 255) || 'No headline provided',
+    location: trimmed(candidate.location, 255),
+    avatarUrl: trimmed(candidate.avatar_url || candidate.avatarUrl, 1000),
+    skills,
+    skillsPreview: skills.slice(0, 6),
+    lastActiveLabel: formatDateOnlyLong(candidate.last_active || candidate.lastActive),
+    memberSinceLabel: formatMonthYear(candidate.member_since || candidate.memberSince || candidate.created_at),
+    summary: trimmed(candidate.summary, 5000),
+    bio: trimmed(candidate.bio, 5000)
+  };
+}
+
+function talentSearchMeta(result, filters, itemCount) {
+  const data = dataFrom(result);
+  const source = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  const meta = source.meta && typeof source.meta === 'object' ? source.meta : {};
+  const total = finiteNumber(meta.total ?? source.total, itemCount);
+  const perPage = finiteNumber(meta.per_page ?? meta.limit ?? source.per_page ?? source.limit, TALENT_PER_PAGE);
+  const offset = finiteNumber(meta.offset ?? source.offset, filters.offset);
+  const hasMore = Boolean(meta.has_more ?? source.has_more ?? ((offset + perPage) < total));
+
+  return {
+    total,
+    perPage,
+    offset,
+    hasMore,
+    resultsLabel: countLabel(total, 'candidate found', 'candidates found', 'No candidates found'),
+    nextHref: hasMore ? talentSearchHref(filters, offset + perPage) : ''
+  };
+}
+
 function statusTitle(value) {
   const text = trimmed(value);
   if (!text) return '';
@@ -1262,6 +1366,76 @@ router.get('/responses', asyncRoute(async (req, res) => {
     errorMessage: responseErrorMessage(req.query.status),
     loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/talent-search', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const filters = talentSearchFilters(req.query);
+  let result;
+
+  try {
+    result = await callJob(token, 'GET', talentSearchPath(filters));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const candidates = collectionItems(result).map(decorateCandidate);
+  const meta = talentSearchMeta(result, filters, candidates.length);
+
+  return res.render('jobs/talent-search', {
+    title: 'Find candidates',
+    activeNav: 'explore',
+    filters,
+    candidates,
+    meta,
+    hasSearched: talentHasSearched(filters)
+  });
+}));
+
+router.get('/talent-search/:candidateId(\\d+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  const candidateId = Number(req.params.candidateId);
+  let result;
+
+  try {
+    result = await callJob(token, 'GET', `/talent-search/${candidateId}`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) {
+      return res.status(403).render('errors/403', { title: 'Forbidden' });
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  const candidate = objectFrom(result);
+  if (!candidate) {
+    return res.status(404).render('errors/404', { title: 'Page not found' });
+  }
+
+  const decorated = decorateCandidate(candidate);
+  return res.render('jobs/talent-profile', {
+    title: decorated.name,
+    activeNav: 'explore',
+    candidate: decorated
   });
 }));
 
