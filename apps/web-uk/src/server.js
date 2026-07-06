@@ -50,6 +50,7 @@ const exploreRoutes = require('./routes/explore');
 const staticPageRoutes = require('./routes/static-pages');
 const kbRoutes = require('./routes/kb');
 const supportRoutes = require('./routes/support');
+const legalRoutes = require('./routes/legal');
 const contactSupportRoutes = require('./routes/contact-support');
 const onboardingPostRoutes = require('./routes/onboarding-posts');
 const savedCollectionRoutes = require('./routes/saved-collections');
@@ -1095,6 +1096,7 @@ app.use('/ideation', doubleCsrfProtection, postOnly(formLimiter), ideationRoutes
 app.use('/group-exchanges', doubleCsrfProtection, postOnly(formLimiter), groupExchangeRoutes, groupExchangeActionRoutes);
 app.use('/kb', kbRoutes);
 app.use(supportRoutes);
+app.use(legalRoutes);
 app.use(staticPageRoutes);
 
 app.get('/service-unavailable', (req, res) => {

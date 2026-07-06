@@ -104,6 +104,7 @@ jest.mock('../src/lib/api', () => ({
   getKnowledgeBaseArticles: jest.fn().mockResolvedValue({ data: [], meta: { has_more: false, per_page: 12 } }),
   getKnowledgeBaseArticle: jest.fn(),
   getHelpFaqs: jest.fn().mockResolvedValue({ data: [] }),
+  getLegalDocument: jest.fn().mockResolvedValue({ data: null }),
   getBalance: jest.fn(),
   donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
@@ -319,6 +320,7 @@ describe('shared accessible frontend shell', () => {
     api.getKnowledgeBaseArticles.mockReset().mockResolvedValue({ data: [], meta: { has_more: false, per_page: 12 } });
     api.getKnowledgeBaseArticle.mockReset();
     api.getHelpFaqs.mockReset().mockResolvedValue({ data: [] });
+    api.getLegalDocument.mockReset().mockResolvedValue({ data: null });
     api.toggleFeedLike.mockReset().mockResolvedValue({ data: { action: 'liked' } });
     api.saveSavedSearch.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedSearch.mockReset().mockResolvedValue({ deleted: true });
@@ -604,6 +606,60 @@ describe('shared accessible frontend shell', () => {
     expect(trust.text).toContain('Background checks and vetting');
     expect(trust.text).toContain('href="/legal/community-guidelines"');
     expect(trust.text).not.toContain('Trust and safety content will follow');
+  });
+
+  it('renders Laravel-style legal and accessibility pages', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.getLegalDocument
+      .mockResolvedValueOnce({
+        data: {
+          id: 12,
+          type: 'terms',
+          title: 'Community Terms',
+          content: '<p>Use time credits fairly.</p>',
+          version_number: '2.1',
+          effective_date: '2026-07-01T00:00:00Z'
+        }
+      })
+      .mockResolvedValueOnce({ data: null });
+
+    const hub = await request(app).get('/legal');
+    const accessibility = await request(app).get('/accessibility');
+    const terms = await request(app).get('/legal/terms');
+    const privacy = await request(app).get('/legal/privacy');
+
+    expect(staticPageRoutes.pages['/legal']).toBeUndefined();
+    expect(staticPageRoutes.pages['/accessibility']).toBeUndefined();
+    expect(staticPageRoutes.pages['/legal/terms']).toBeUndefined();
+    expect(hub.status).toBe(200);
+    expect(hub.text).toContain('The policies and terms that apply when you use Project NEXUS Accessible.');
+    expect(hub.text).toContain('class="nexus-alpha-card-list"');
+    expect(hub.text).toContain('href="/legal/terms"');
+    expect(hub.text).toContain('Terms of service');
+    expect(hub.text).toContain('Accessibility statement');
+    expect(hub.text).not.toContain('The legal hub will follow');
+
+    expect(accessibility.status).toBe(200);
+    expect(accessibility.text).toContain('Back to legal');
+    expect(accessibility.text).toContain('WCAG 2.2 Level AA');
+    expect(accessibility.text).toContain('Keyboard navigation');
+    expect(accessibility.text).toContain('Report an accessibility problem');
+    expect(accessibility.text).not.toContain('must match the production Laravel');
+
+    expect(terms.status).toBe(200);
+    expect(terms.text).toContain('Community Terms');
+    expect(terms.text).toContain('Last updated: 2026-07-01');
+    expect(terms.text).toContain('Version 2.1');
+    expect(terms.text).toContain('<p>Use time credits fairly.</p>');
+    expect(api.getLegalDocument).toHaveBeenNthCalledWith(1, 'terms');
+
+    expect(privacy.status).toBe(200);
+    expect(privacy.text).toContain('Privacy policy');
+    expect(privacy.text).toContain('A tailored version of this document has not been published for Project NEXUS Accessible yet.');
+    expect(privacy.text).toContain('What we collect: the details you give us');
+    expect(privacy.text).toContain('href="/contact"');
+    expect(api.getLegalDocument).toHaveBeenNthCalledWith(2, 'privacy');
   });
 
   it('renders the Laravel-backed Federation hub with stats, partners, and activity', async () => {
@@ -1862,13 +1918,15 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
-  it('serves preparation skeletons for Blade footer destinations that are not certified yet', async () => {
+  it('renders the Laravel-style community guidelines fallback document', async () => {
     const response = await request(app).get('/legal/community-guidelines');
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Community guidelines');
-    expect(response.text).toContain('shared accessible frontend preparation page');
-    expect(response.text).toContain('does not certify ASP.NET route or workflow');
+    expect(response.text).toContain('A tailored version of this document has not been published for Project NEXUS Accessible yet.');
+    expect(response.text).toContain('Respectful communication');
+    expect(response.text).toContain('Fair exchange');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
   it('renders the Laravel-backed member onboarding wizard', async () => {

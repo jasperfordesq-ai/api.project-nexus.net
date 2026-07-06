@@ -371,6 +371,17 @@ member responsibility, rights, contact CTA, and community-guidelines link. This
 remains partial: tenant-domain routing, localization, live FAQ runtime smoke
 behavior, and ASP.NET backend compatibility are not certified.
 
+The public legal footer destinations now replace the static legal and
+accessibility placeholders. `/legal` renders the Blade-style legal document card
+hub, `/accessibility` renders the Blade accessibility statement, and
+`/legal/terms`, `/legal/privacy`, `/legal/cookies`,
+`/legal/community-guidelines`, and `/legal/acceptable-use` read tenant-managed
+documents from Laravel `/api/v2/legal/{type}`. When Laravel has no published
+document, the pages render the same GOV.UK-structured fallback copy as the
+Laravel Blade views. This remains partial: tenant-domain routing, localization,
+legal acceptance prompts, version history/compare links, live runtime behavior,
+and ASP.NET backend compatibility are not certified.
+
 Additional preparation docs:
 
 - `LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md` maps Blade route families and shell links
@@ -381,9 +392,9 @@ Additional preparation docs:
   switching requirements without implementing a real adapter yet.
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
-with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 599 `apps/web-uk` route declarations, 517 exact
-method/path matches, 91 missing Laravel routes, and 83 local-only routes. These
+with `npm run route:matrix`. The current generated baseline is 608 Laravel
+accessible route declarations, 690 `apps/web-uk` route declarations, 608 exact
+method/path matches, 0 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 

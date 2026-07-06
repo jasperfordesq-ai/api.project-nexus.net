@@ -527,6 +527,10 @@ async function getHelpFaqs(params = {}) {
   return request(`/api/v2/help/faqs${queryString ? `?${queryString}` : ''}`);
 }
 
+async function getLegalDocument(type) {
+  return request(`/api/v2/legal/${encodeURIComponent(type)}`);
+}
+
 async function getMyVolunteerOrganisations(token, params = {}) {
   const query = new URLSearchParams();
   if (params.per_page) query.set('per_page', params.per_page);
@@ -2729,6 +2733,7 @@ module.exports = {
   getKnowledgeBaseArticles,
   getKnowledgeBaseArticle,
   getHelpFaqs,
+  getLegalDocument,
   getMyVolunteerOrganisations,
   createVolunteerOrganisation,
   callVolunteeringApi,

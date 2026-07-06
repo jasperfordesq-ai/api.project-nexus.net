@@ -16,34 +16,6 @@ const pages = {
     title: 'Features',
     body: 'Feature guidance will be ported from the Laravel accessible frontend.'
   },
-  '/accessibility': {
-    title: 'Accessibility statement',
-    body: 'The accessibility statement must match the production Laravel accessible frontend before shared use.'
-  },
-  '/legal': {
-    title: 'Legal',
-    body: 'The legal hub will follow the Laravel tenant-scoped legal document behavior.'
-  },
-  '/legal/terms': {
-    title: 'Terms of service',
-    body: 'Terms of service content will be supplied from the shared legal document contract.'
-  },
-  '/legal/privacy': {
-    title: 'Privacy policy',
-    body: 'Privacy policy content will be supplied from the shared legal document contract.'
-  },
-  '/legal/community-guidelines': {
-    title: 'Community guidelines',
-    body: 'Community guideline content will be supplied from the shared legal document contract.'
-  },
-  '/legal/acceptable-use': {
-    title: 'Acceptable use',
-    body: 'Acceptable use content will be supplied from the shared legal document contract.'
-  },
-  '/legal/cookies': {
-    title: 'Cookie policy',
-    body: 'Cookie policy content will be supplied from the shared legal document contract.'
-  },
   '/marketplace': {
     title: 'Marketplace',
     body: 'Marketplace pages will follow the Laravel accessible frontend contract.'
