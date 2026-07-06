@@ -415,6 +415,28 @@ async function callGroupExchangeApi(token, method, path = '', data = undefined) 
   return request(`/api/v2/group-exchanges${normalizedPath}`, options);
 }
 
+async function callEventApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/events${normalizedPath}`, options);
+}
+
+async function callUgcTranslateApi(token, data) {
+  return request('/api/v2/ugc-translate', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function getOrganisationJobs(organisationId, token, params = {}) {
   const query = new URLSearchParams();
   query.set('organization_id', organisationId);
@@ -1850,6 +1872,8 @@ module.exports = {
   callMarketplaceApi,
   callIdeationApi,
   callGroupExchangeApi,
+  callEventApi,
+  callUgcTranslateApi,
   getOrganisationJobs,
   // Wallet
   getBalance,

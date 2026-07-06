@@ -126,6 +126,8 @@ jest.mock('../src/lib/api', () => ({
   callMarketplaceApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callUgcTranslateApi: jest.fn().mockResolvedValue({ data: { translated_text: 'Dia duit' } }),
   getVolunteerOpportunity: jest.fn(),
   getOrganisationOpportunities: jest.fn(),
   getOrganisationReviews: jest.fn(),
@@ -214,6 +216,8 @@ describe('shared accessible frontend shell', () => {
     api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callUgcTranslateApi.mockReset().mockResolvedValue({ data: { translated_text: 'Dia duit' } });
     api.getNotifications.mockReset().mockResolvedValue({ data: [], unreadCount: 0, pagination: { page: 1, totalPages: 1 } });
     api.markNotificationRead.mockReset().mockResolvedValue({});
     api.markAllNotificationsRead.mockReset().mockResolvedValue({ data: { marked_read: 2 } });
@@ -3945,6 +3949,96 @@ describe('shared accessible frontend shell', () => {
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.callGroupExchangeApi).not.toHaveBeenCalled();
+  });
+
+  it('submits Laravel event action aliases and redirects signed-out visitors', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (pathName, body = {}) => agent
+      .post(pathName)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const waitlistResponse = await post('/events/7/waitlist');
+    expect(waitlistResponse.headers.location).toBe('/events/7?status=waitlist-joined');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/waitlist');
+
+    const leaveResponse = await post('/events/7/waitlist/leave');
+    expect(leaveResponse.headers.location).toBe('/events/7?status=waitlist-left');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/7/waitlist');
+
+    const checkinResponse = await post('/events/7/attendees/55/check-in');
+    expect(checkinResponse.headers.location).toBe('/events/7?status=checkin-success');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/attendees/55/check-in');
+
+    const voteResponse = await post('/events/7/polls/12/vote', { option_id: '3' });
+    expect(voteResponse.headers.location).toBe('/events/7?status=poll-voted#poll-12');
+    expect(api.votePoll).toHaveBeenLastCalledWith('test-token', 12, { option_id: 3 });
+
+    const pollsResponse = await post('/events/7/polls', { poll_ids: ['1', '2', '2'] });
+    expect(pollsResponse.headers.location).toBe('/events/7/polls?status=polls-updated');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/7', {
+      poll_ids: [1, 2]
+    });
+
+    const recurringResponse = await post('/events/7/recurring-edit', {
+      scope: 'all',
+      title: ' Updated event ',
+      description: ' Updated description ',
+      start_time: '2026-08-01T10:00',
+      max_attendees: '20',
+      is_online: 'on',
+      online_link: ' https://example.org/meet ',
+      allow_remote_attendance: 'on'
+    });
+    expect(recurringResponse.headers.location).toBe('/events/7?status=event-updated');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/7/recurring', {
+      title: 'Updated event',
+      description: 'Updated description',
+      start_time: '2026-08-01T10:00',
+      end_time: null,
+      location: null,
+      category_id: null,
+      max_attendees: 20,
+      is_online: true,
+      online_link: 'https://example.org/meet',
+      allow_remote_attendance: true,
+      video_url: null,
+      scope: 'all'
+    });
+
+    const translateResponse = await post('/events/7/translate', {
+      source_text: ' Hello neighbours ',
+      source_locale: 'en',
+      target_locale: 'ga'
+    });
+    expect(translateResponse.headers.location).toBe('/events/7/translate?status=translate-done');
+    expect(api.callUgcTranslateApi).toHaveBeenLastCalledWith('test-token', {
+      content_type: 'event',
+      content_id: 7,
+      source_text: 'Hello neighbours',
+      source_locale: 'en',
+      target_locale: 'ga'
+    });
+
+    api.callEventApi.mockClear();
+    const unsigned = request.agent(app);
+    const unsignedFirst = await unsigned.get('/contact');
+    const unsignedCsrf = unsignedFirst.text.match(/name="_csrf" value="([^"]+)"/);
+    const unsignedResponse = await unsigned
+      .post('/events/7/waitlist')
+      .type('form')
+      .send({ _csrf: unsignedCsrf[1] });
+    expect(unsignedResponse.status).toBe(302);
+    expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callEventApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {

@@ -628,6 +628,64 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callEventApi', () => {
+    it('should call Laravel v2 event action endpoints with auth, method, and payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { ok: true } })
+      });
+
+      await api.callEventApi('test-token', 'PUT', '/7/recurring', {
+        scope: 'all'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/events/7/recurring',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ scope: 'all' })
+        })
+      );
+    });
+  });
+
+  describe('callUgcTranslateApi', () => {
+    it('should call the Laravel v2 UGC translation endpoint with auth and payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { translated_text: 'Dia duit' } })
+      });
+
+      await api.callUgcTranslateApi('test-token', {
+        content_type: 'event',
+        content_id: 7,
+        source_text: 'Hello',
+        target_locale: 'ga'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/ugc-translate',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            content_type: 'event',
+            content_id: 7,
+            source_text: 'Hello',
+            target_locale: 'ga'
+          })
+        })
+      );
+    });
+  });
+
   describe('donateCredits', () => {
     it('should call the Laravel wallet donation endpoint', async () => {
       mockFetch.mockResolvedValueOnce({

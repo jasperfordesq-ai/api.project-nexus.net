@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-06T11:14:36.780Z
+Generated: 2026-07-06T11:22:54.247Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 608 |
-| web-uk routes | 557 |
-| Matched routes | 475 |
-| Missing routes | 133 |
+| web-uk routes | 564 |
+| Matched routes | 482 |
+| Missing routes | 126 |
 | Extra web-uk routes | 83 |
 
 ## Family Counts
@@ -32,7 +32,7 @@ Generated: 2026-07-06T11:14:36.780Z
 | coupons | 2 | 0 | 0 |
 | courses | 10 | 16 | 0 |
 | dashboard | 1 | 0 | 0 |
-| events | 14 | 7 | 2 |
+| events | 21 | 0 | 2 |
 | exchanges | 4 | 0 | 0 |
 | explore | 1 | 0 | 0 |
 | faq | 1 | 0 | 0 |
@@ -112,13 +112,6 @@ Generated: 2026-07-06T11:14:36.780Z
 | POST | `/courses/instructor/{param}/unpublish` | courses | commerceUnpublishCourse |  | auth-optional | feature:courses |
 | POST | `/courses/instructor/{param}/update` | courses | commerceUpdateCourse |  | auth-optional | feature:courses |
 | POST | `/courses/instructor/new` | courses | commerceStoreCourse |  | auth-optional | feature:courses |
-| POST | `/events/{param}/attendees/{param}/check-in` | events | storeEventCheckin |  | public-or-unknown |  |
-| POST | `/events/{param}/polls` | events | eventsUpdatePolls |  | public-or-unknown |  |
-| POST | `/events/{param}/polls/{param}/vote` | events | storeEventPollVote |  | auth-optional | feature:events |
-| POST | `/events/{param}/recurring-edit` | events | eventsUpdateRecurring |  | public-or-unknown |  |
-| POST | `/events/{param}/translate` | events | eventsRunTranslate | events-translate | auth-optional | feature:events |
-| POST | `/events/{param}/waitlist` | events | joinEventWaitlist |  | auth-optional | feature:events |
-| POST | `/events/{param}/waitlist/leave` | events | leaveEventWaitlist |  | auth-optional | feature:events |
 | POST | `/federation/connections` | federation | storeFederationConnection |  | auth-optional | feature:federation |
 | POST | `/federation/connections/{param}/accept` | federation | acceptFederationConnection |  | public-or-unknown |  |
 | POST | `/federation/connections/{param}/reject` | federation | rejectFederationConnection |  | public-or-unknown |  |

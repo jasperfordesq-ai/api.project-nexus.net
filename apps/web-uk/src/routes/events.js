@@ -15,6 +15,9 @@ const {
   getEventRsvps,
   rsvpToEvent,
   removeEventRsvp,
+  votePoll,
+  callEventApi,
+  callUgcTranslateApi,
   getMyGroups,
   ApiError
 } = require('../lib/api');
@@ -23,6 +26,216 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
+
+function tokenFrom(req) {
+  return req.signedCookies.token || '';
+}
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function checked(value) {
+  return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
+}
+
+function loginRedirect() {
+  return '/login?status=auth-required';
+}
+
+function isAuthError(error) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function redirectOnAuthError(error, res) {
+  if (isAuthError(error)) {
+    res.redirect(loginRedirect());
+    return true;
+  }
+  return false;
+}
+
+async function callApi(token, method, path, data = undefined) {
+  if (data === undefined) {
+    return callEventApi(token, method, path);
+  }
+
+  return callEventApi(token, method, path, data);
+}
+
+async function runEventAction(req, res, method, path, data, successRedirect, failureRedirect) {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  try {
+    await callApi(token, method, path, data);
+    return res.redirect(successRedirect);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(failureRedirect);
+  }
+}
+
+function eventRedirect(id, status, fragment = '') {
+  return `/events/${id}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+function eventScopedPayload(body) {
+  const categoryId = positiveInteger(body.category_id);
+  const maxAttendees = positiveInteger(body.max_attendees);
+  return {
+    title: trimmed(body.title),
+    description: trimmed(body.description),
+    start_time: trimmed(body.start_time) || null,
+    end_time: trimmed(body.end_time) || null,
+    location: trimmed(body.location) || null,
+    category_id: categoryId,
+    max_attendees: maxAttendees === null ? null : Math.max(1, maxAttendees),
+    is_online: checked(body.is_online),
+    online_link: trimmed(body.online_link) || null,
+    allow_remote_attendance: checked(body.allow_remote_attendance),
+    video_url: trimmed(body.video_url) || null
+  };
+}
+
+function pollIdsFrom(value) {
+  const values = Array.isArray(value) ? value : String(value || '').split(',');
+  const unique = new Set();
+  values.forEach((item) => {
+    const id = positiveInteger(item);
+    if (id !== null) {
+      unique.add(id);
+    }
+  });
+  return Array.from(unique);
+}
+
+router.post('/:id(\\d+)/waitlist', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runEventAction(
+    req,
+    res,
+    'POST',
+    `/${id}/waitlist`,
+    undefined,
+    eventRedirect(id, 'waitlist-joined'),
+    eventRedirect(id, 'waitlist-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/waitlist/leave', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runEventAction(
+    req,
+    res,
+    'DELETE',
+    `/${id}/waitlist`,
+    undefined,
+    eventRedirect(id, 'waitlist-left'),
+    eventRedirect(id, 'waitlist-leave-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/attendees/:attendeeId(\\d+)/check-in', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const attendeeId = Number(req.params.attendeeId);
+  return runEventAction(
+    req,
+    res,
+    'POST',
+    `/${id}/attendees/${attendeeId}/check-in`,
+    undefined,
+    eventRedirect(id, 'checkin-success'),
+    eventRedirect(id, 'checkin-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/polls/:pollId(\\d+)/vote', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+  const id = Number(req.params.id);
+  const pollId = Number(req.params.pollId);
+  const optionId = positiveInteger(req.body.option_id);
+  if (optionId === null) {
+    return res.redirect(eventRedirect(id, 'poll-vote-failed', `#poll-${pollId}`));
+  }
+
+  try {
+    await votePoll(token, pollId, { option_id: optionId });
+    return res.redirect(eventRedirect(id, 'poll-voted', `#poll-${pollId}`));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(eventRedirect(id, 'poll-vote-failed', `#poll-${pollId}`));
+  }
+}));
+
+router.post('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  return runEventAction(
+    req,
+    res,
+    'PUT',
+    `/${id}`,
+    { poll_ids: pollIdsFrom(req.body.poll_ids) },
+    `/events/${id}/polls?status=polls-updated`,
+    `/events/${id}/polls?status=polls-failed`
+  );
+}));
+
+router.post('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const scope = trimmed(req.body.scope) === 'all' ? 'all' : 'single';
+  return runEventAction(
+    req,
+    res,
+    'PUT',
+    `/${id}/recurring`,
+    {
+      ...eventScopedPayload(req.body),
+      scope
+    },
+    eventRedirect(id, 'event-updated'),
+    eventRedirect(id, 'event-update-failed')
+  );
+}));
+
+router.post('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+  const id = Number(req.params.id);
+  const sourceText = trimmed(req.body.source_text || req.body.description, 8000);
+  if (sourceText === '') {
+    return res.redirect(`/events/${id}/translate?status=translate-empty`);
+  }
+
+  const payload = {
+    content_type: 'event',
+    content_id: id,
+    source_text: sourceText,
+    target_locale: trimmed(req.body.target_locale) || 'en'
+  };
+
+  const sourceLocale = trimmed(req.body.source_locale);
+  if (sourceLocale !== '') {
+    payload.source_locale = sourceLocale;
+  }
+
+  try {
+    await callUgcTranslateApi(token, payload);
+    return res.redirect(`/events/${id}/translate?status=translate-done`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return res.redirect(`/events/${id}/translate?status=translate-failed`);
+  }
+}));
 
 router.use(requireAuth);
 

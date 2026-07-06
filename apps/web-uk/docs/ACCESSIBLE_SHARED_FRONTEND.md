@@ -173,6 +173,17 @@ organiser/participant authorization depth, same-tenant member search, time-credi
 settlement runtime behavior, feature gates, localization, runtime smoke tests,
 and ASP.NET backend compatibility are not certified.
 
+Event GET pages remain existing local/protected pages or preparation pages, but
+the Laravel accessible POST aliases under `/events` are now local route
+declarations backed by Laravel v2 event, poll, and UGC translation APIs. The
+aliases cover waitlist join/leave, attendee check-in, poll attach/update, poll
+vote, recurring event update, and translation request redirects while preserving
+Laravel status keys and `#poll-*` fragments. This remains partial: Blade
+list/detail rendering, owner/participant authorization depth, rendered
+translation result display, event notification/XP/waitlist promotion side
+effects, tenant/feature gates, localization, runtime smoke tests, and ASP.NET
+backend compatibility are not certified.
+
 The `/volunteering` page is now a local Blade-style public landing candidate
 for the Laravel accessible volunteering page. It renders the caption, lead,
 organisation browse link, how-volunteering-works inset, sign-in notice, filter
@@ -233,8 +244,8 @@ Additional preparation docs:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. The 2026-07-06 generated baseline is 608 Laravel
-accessible route declarations, 557 `apps/web-uk` route declarations, 475 exact
-method/path matches, 133 missing Laravel routes, and 83 local-only routes. These
+accessible route declarations, 564 `apps/web-uk` route declarations, 482 exact
+method/path matches, 126 missing Laravel routes, and 83 local-only routes. These
 counts include generated Laravel GET preparation pages and are backlog evidence
 only; they do not certify workflow parity.
 
