@@ -38,9 +38,12 @@ src/lib/backend-contract.js
 based on the Laravel accessible volunteering page. It reads
 `/api/v2/volunteering/opportunities` with `search`, `category_id`, `is_remote`,
 `per_page`, and `cursor` query params, and keeps empty/error states for API
-unavailability. It is not a backend adapter and does not certify applications,
-recommended shifts, hours, organisation owner tools, feature gates, tenant
-routing, or POST workflows.
+unavailability. `/volunteering/opportunities/{id}` GET reads
+`/api/v2/volunteering/opportunities/{id}` and renders the public Blade-style
+detail, metadata, shifts, and a safe apply link. It is not a backend adapter and
+does not certify applications, recommended shifts, hours, organisation owner
+tools, apply POST, shift signup/cancel, feature gates, tenant routing, auth
+redirects, or POST workflows.
 
 `/organisations`, `/organisations/browse`, `/organisations/register`,
 `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, and

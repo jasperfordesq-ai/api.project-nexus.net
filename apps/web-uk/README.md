@@ -124,6 +124,7 @@ The application will be available at **http://localhost:5180**
 | `GET /contact` | Contact page |
 | `GET /explore` | Shared accessible frontend Explore skeleton |
 | `GET /volunteering` | Blade-style volunteering landing candidate; reads Laravel `/api/v2/volunteering/opportunities` with search/category/remote filters, with applications/hours/auth/tenant workflow still not certified |
+| `GET /volunteering/opportunities/:id` | Blade-style volunteering opportunity detail candidate; reads Laravel `/api/v2/volunteering/opportunities/:id`, with apply POST/shift signup/auth/tenant workflow still not certified |
 | `GET /organisations` | Blade-style accessible organisations candidate; reads Laravel `/api/v2/volunteering/organisations`, with auth/form workflow still not certified |
 | `GET /organisations/browse` | Blade-style paginated organisations browse candidate; reads Laravel `/api/v2/volunteering/organisations` with `search`, `per_page`, and `cursor`, with auth/tenant workflow still not certified |
 | `GET /organisations/register` | Blade-style organisation registration form candidate; POST persistence/auth/tenant workflow still not certified |

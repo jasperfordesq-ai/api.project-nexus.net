@@ -201,9 +201,11 @@ Follow the Laravel Blade accessible frontend for:
   reads `/api/v2/volunteering/opportunities` with search, category, remote, and
   cursor parameters, and renders the Blade public structure: organisation link,
   how-it-works guidance, auth-required notice, filter form, opportunity cards,
-  and load-more link. Applications, recommended shifts, hours, organisation
-  owner tools, feature gates, tenant routing, and POST workflows still need
-  certification.
+  and load-more link. The opportunity detail GET reads
+  `/api/v2/volunteering/opportunities/{id}` and renders the Blade-style public
+  detail, summary fields, available shifts, and safe apply link. Applications,
+  recommended shifts, hours, organisation owner tools, apply POST, shift signup,
+  feature gates, tenant routing, and auth redirects still need certification.
 - Organisations as a Blade-style directory/search/registration candidate. The
   directory and browse GETs now read the Laravel
   `/api/v2/volunteering/organisations` collection, register GET renders the

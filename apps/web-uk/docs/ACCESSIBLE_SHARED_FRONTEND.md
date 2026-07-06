@@ -78,10 +78,13 @@ organisation browse link, how-volunteering-works inset, sign-in notice, filter
 form, opportunity cards, empty/error states, and cursor load-more link. Its
 opportunity list is backed by Laravel `/api/v2/volunteering/opportunities`
 using `search`, `category_id`, `is_remote`, `per_page`, and `cursor`
-parameters. This remains partial: applications, recommended shifts, hours,
-organisation owner tools, feature gates, tenant-prefixed routes, POST
-workflows, localization, runtime smoke tests, and ASP.NET backend compatibility
-are not certified.
+parameters. Its `/volunteering/opportunities/{id}` page is backed by
+`/api/v2/volunteering/opportunities/{id}` and renders the Blade-style public
+detail, organisation summary, opportunity metadata, available shifts, and safe
+apply link. This remains partial: applications, recommended shifts, hours,
+organisation owner tools, apply POST, shift signup/cancel, feature gates,
+tenant-prefixed routes, localization, runtime smoke tests, and ASP.NET backend
+compatibility are not certified.
 
 The `/organisations` page is now a local Blade-style candidate for the Laravel
 accessible organisations directory. It includes the caption, subnavigation,

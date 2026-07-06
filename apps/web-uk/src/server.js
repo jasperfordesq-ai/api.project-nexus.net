@@ -435,6 +435,53 @@ app.get('/volunteering', (req, res) => {
     });
 });
 
+app.get('/volunteering/opportunities/:id(\\d+)', (req, res) => {
+  const token = req.signedCookies.token || '';
+  const { ApiError, getVolunteerOpportunity } = require('./lib/api');
+
+  const normalizeOpportunity = (result) => {
+    const opportunity = result?.data && typeof result.data === 'object' ? result.data : {};
+    const organization = opportunity.organization && typeof opportunity.organization === 'object'
+      ? opportunity.organization
+      : {};
+    const category = opportunity.category && typeof opportunity.category === 'object'
+      ? opportunity.category
+      : {};
+    const organisationId = opportunity.organization_id || opportunity.organisation_id || organization.id || 0;
+    const organisationName = opportunity.org_name || opportunity.organisation_name || organization.name || '';
+    const shifts = Array.isArray(opportunity.shifts) ? opportunity.shifts : [];
+
+    return {
+      ...opportunity,
+      organisationId,
+      organisationName,
+      categoryName: category.name || (typeof opportunity.category === 'string' ? opportunity.category : ''),
+      shifts,
+      hasApplied: !!opportunity.has_applied
+    };
+  };
+
+  return getVolunteerOpportunity(req.params.id, token)
+    .then((result) => {
+      const opportunity = normalizeOpportunity(result);
+
+      res.render('volunteer-opportunity', {
+        title: opportunity.title || 'Volunteering opportunity',
+        activeNav: 'volunteering',
+        opportunity,
+        opportunityId: req.params.id,
+        authRequired: !token
+      });
+    })
+    .catch((error) => {
+      if (error instanceof ApiError && error.status === 404) {
+        return res.status(404).render('errors/404', { title: 'Page not found' });
+      }
+
+      return res.status(503).render('errors/503', { title: 'Service unavailable' });
+    });
+});
+
 app.get('/organisations', (req, res) => {
   const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
   const status = typeof req.query.status === 'string' ? req.query.status : '';

@@ -537,6 +537,78 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Sign in to load Laravel-backed job openings.');
   });
 
+  it('renders the Blade-style volunteering opportunity detail page from the Laravel volunteering contract', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteerOpportunity.mockResolvedValueOnce({
+      data: {
+        id: 77,
+        title: 'Community Kitchen Helper',
+        description: 'Help prepare meals and welcome visitors at a weekly community kitchen.',
+        organization_id: 42,
+        organization: {
+          id: 42,
+          name: 'Community Club',
+          logo_url: '/storage/community-club.png'
+        },
+        category: { name: 'Food support' },
+        location: 'Derry',
+        is_remote: true,
+        skills_needed: 'Food preparation, welcome desk',
+        start_date: '2026-08-01',
+        end_date: '2026-09-01',
+        shifts: [
+          {
+            id: 501,
+            start_time: '2026-08-03T09:00:00Z',
+            end_time: '2026-08-03T12:00:00Z',
+            capacity: 10,
+            spots_available: 3
+          }
+        ],
+        has_applied: false
+      }
+    });
+
+    const response = await request(app).get('/volunteering/opportunities/77');
+
+    expect(api.getVolunteerOpportunity).toHaveBeenCalledWith('77', '');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('Volunteering opportunity');
+    expect(response.text).toContain('Community Kitchen Helper');
+    expect(response.text).toContain('Remote');
+    expect(response.text).toContain('Help prepare meals and welcome visitors');
+    expect(response.text).toContain('Community Club');
+    expect(response.text).toContain('href="/organisations/42"');
+    expect(response.text).toContain('About this opportunity');
+    expect(response.text).toContain('Organisation');
+    expect(response.text).toContain('Location');
+    expect(response.text).toContain('Derry');
+    expect(response.text).toContain('Category');
+    expect(response.text).toContain('Food support');
+    expect(response.text).toContain('Skills needed');
+    expect(response.text).toContain('Food preparation, welcome desk');
+    expect(response.text).toContain('Available shifts');
+    expect(response.text).toContain('10 places');
+    expect(response.text).toContain('3 places left');
+    expect(response.text).toContain('Sign in to apply for opportunities and track your volunteering.');
+    expect(response.text).toContain('href="/organisations/opportunities/77/apply"');
+    expect(response.text).toContain('Apply for this opportunity');
+    expect(response.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
+  });
+
+  it('returns the shared 404 page when a Laravel volunteering opportunity is missing', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteerOpportunity.mockRejectedValueOnce(new api.ApiError('Not found', 404));
+
+    const response = await request(app).get('/volunteering/opportunities/999');
+
+    expect(api.getVolunteerOpportunity).toHaveBeenCalledWith('999', '');
+    expect(response.status).toBe(404);
+    expect(response.text).toContain('Page not found');
+  });
+
   it('renders the Blade-style organisation opportunity apply page from the Laravel volunteering contract', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
