@@ -5,7 +5,7 @@
 
 const http = require('http');
 
-const { runLaravelRuntimeSmoke } = require('../scripts/laravel-runtime-smoke');
+const { resolveOptions, runLaravelRuntimeSmoke } = require('../scripts/laravel-runtime-smoke');
 
 function listen(server) {
   return new Promise((resolve, reject) => {
@@ -283,6 +283,23 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       return;
     }
 
+    const signedGatedPages = new Set([
+      '/jobs/bias-audit',
+      '/jobs/talent-search',
+      '/marketplace/coupons'
+    ]);
+    if (req.method === 'GET' && signedGatedPages.has(req.url)) {
+      if ((req.headers.cookie || '').includes('token=signed-token')) {
+        res.writeHead(403, { 'content-type': 'text/html' });
+        res.end('<h1>Forbidden</h1>');
+        return;
+      }
+
+      res.writeHead(302, { location: '/login?status=auth-required' });
+      res.end();
+      return;
+    }
+
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('missing');
   });
@@ -295,6 +312,10 @@ describe('Laravel runtime smoke harness', () => {
     await Promise.all(servers.splice(0).map((server) => new Promise((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
     })));
+  });
+
+  it('uses a 60 second default request timeout for slower Laravel-backed pages', () => {
+    expect(resolveOptions({}, {}).timeoutMs).toBe(60000);
   });
 
   it('proves the Laravel-backed login path with CSRF, cookies, redirects, and a signed account page', async () => {
@@ -404,6 +425,7 @@ describe('Laravel runtime smoke harness', () => {
 
     const result = await runLaravelRuntimeSmoke({ laravelBaseUrl, webBaseUrl });
     const checks = Object.fromEntries(result.checks.map((check) => [check.name, check.ok]));
+    const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
 
     expect(checks).toEqual(expect.objectContaining({
       'module-page-explore-renders': true,
@@ -526,6 +548,8 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-jobs-mine-renders': true,
       'module-page-jobs-responses-renders': true,
       'module-page-jobs-saved-renders': true,
+      'gated-page-jobs-bias-audit-returns-403': true,
+      'gated-page-jobs-talent-search-returns-403': true,
       'module-page-legal-renders': true,
       'module-page-legal-acceptable-use-renders': true,
       'module-page-legal-community-guidelines-renders': true,
@@ -535,6 +559,7 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-listings-new-renders': true,
       'module-page-marketplace-create-renders': true,
       'module-page-marketplace-search-renders': true,
+      'gated-page-marketplace-coupons-returns-403': true,
       'module-page-me-collections-renders': true,
       'module-page-members-nearby-renders': true,
       'module-page-messages-groups-renders': true,
@@ -559,6 +584,9 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-verify-email-renders': true,
       'module-page-wallet-manage-renders': true
     }));
+    expect(checkByName['gated-page-jobs-bias-audit-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-jobs-talent-search-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-marketplace-coupons-returns-403'].status).toBe(403);
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/explore').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/messages').at(-1).cookie).toContain('token=signed-token');

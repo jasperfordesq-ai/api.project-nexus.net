@@ -8,8 +8,13 @@ const DEFAULT_LARAVEL_BASE_URL = 'http://127.0.0.1:8088';
 const DEFAULT_SMOKE_EMAIL = 'e2e.user.a@project-nexus.local';
 const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
-const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
+const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
+  { path: '/jobs/bias-audit', status: 403 },
+  { path: '/jobs/talent-search', status: 403 },
+  { path: '/marketplace/coupons', status: 403 }
+];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/explore',
   '/saved',
@@ -275,6 +280,14 @@ function modulePageCheckName(path) {
   return `module-page-${slug || 'home'}-renders`;
 }
 
+function gatedPageCheckName(path, status) {
+  const slug = String(path || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  return `gated-page-${slug || 'home'}-returns-${status}`;
+}
+
 function resolveOptions(options = {}, env = process.env) {
   return {
     webBaseUrl: stripTrailingSlash(options.webBaseUrl || env.WEB_UK_BASE_URL || DEFAULT_WEB_BASE_URL),
@@ -284,6 +297,7 @@ function resolveOptions(options = {}, env = process.env) {
     tenant: options.tenant || env.SMOKE_TENANT || DEFAULT_SMOKE_TENANT,
     timeoutMs: Number(options.timeoutMs || env.SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
     modulePagePaths: options.modulePagePaths || [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS],
+    gatedPagePaths: options.gatedPagePaths || DEFAULT_SIGNED_GATED_PAGE_PATHS,
     fetchImpl: options.fetchImpl || globalThis.fetch
   };
 }
@@ -429,6 +443,28 @@ async function runLaravelRuntimeSmoke(options = {}) {
     }
   }
 
+  for (const gatedPage of config.gatedPagePaths) {
+    const path = gatedPage.path;
+    const expectedStatus = gatedPage.status;
+    try {
+      const response = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar,
+        url: joinUrl(config.webBaseUrl, path)
+      });
+      addCheck(
+        checks,
+        gatedPageCheckName(path, expectedStatus),
+        response.status === expectedStatus,
+        response.status === expectedStatus ? `${path} returned expected ${expectedStatus}.` : `expected ${expectedStatus} from ${path}, got ${response.status} ${responseLocation(response)}`,
+        { status: response.status, location: responseLocation(response), path }
+      );
+    } catch (error) {
+      addCheck(checks, gatedPageCheckName(path, expectedStatus), false, error.message, { path });
+    }
+  }
+
   return {
     ok: checks.every((check) => check.ok),
     webBaseUrl: config.webBaseUrl,
@@ -457,6 +493,7 @@ if (require.main === module) {
 module.exports = {
   CookieJar,
   extractCsrfToken,
+  resolveOptions,
   runLaravelRuntimeSmoke,
   splitSetCookieHeader
 };

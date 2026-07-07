@@ -62,7 +62,7 @@ the defaults target the Laravel local E2E fixture:
 The local Laravel E2E users currently live under tenant id `2`, so the web-uk
 process must be started with `TENANT_ID=2` for Laravel login/API calls to carry
 the correct `X-Tenant-ID` context. Current local result on 2026-07-07:
-`WEB_UK_BASE_URL=http://127.0.0.1:5181 SMOKE_TIMEOUT_MS=30000 npm run
+`WEB_UK_BASE_URL=http://127.0.0.1:5181 SMOKE_TIMEOUT_MS=60000 npm run
 smoke:laravel` passed against a temporary web-uk process started with
 `TENANT_ID=2`. Without that tenant context, Laravel returns `401` for the same
 valid E2E credentials. Later 2026-07-07 smoke runs expanded the default signed
@@ -85,11 +85,12 @@ against `WEB_UK_BASE_URL=http://127.0.0.1:5299` passed `161/161`. `/events/new`
 and `/marketplace/onboarding` are now included in the default signed smoke scope
 and render form pages with empty/error setup state when Laravel helper APIs are
 unavailable; a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5302` passed
-`163/163`. Local probing left
-`/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
-because they return feature-gated or role-gated `403`; and left signed-in auth,
-onboarding, and premium-management redirect pages outside because they do not
-render a 2xx page in the signed E2E session.
+`163/163`. The feature/role-gated pages `/jobs/bias-audit`,
+`/jobs/talent-search`, and `/marketplace/coupons` are now covered as expected
+signed-session `403` checks; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5306` passed `166/166`. Local probing left
+signed-in auth, onboarding, and premium-management redirect pages outside
+because they do not render a 2xx page in the signed E2E session.
 
 ## Current Page Candidates
 

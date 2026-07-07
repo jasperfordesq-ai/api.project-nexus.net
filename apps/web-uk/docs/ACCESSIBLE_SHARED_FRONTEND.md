@@ -79,15 +79,16 @@ and `/marketplace/onboarding` are now also in the default signed scope and
 render their Blade-style forms with empty/error setup state when Laravel helper
 APIs are unavailable; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5302` passed `163/163` checks. The
-harness default timeout is now `30000` ms because Laravel-backed
+feature/role-gated pages `/jobs/bias-audit`, `/jobs/talent-search`, and
+`/marketplace/coupons` are now covered as expected signed-session `403` checks;
+a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5306` passed `166/166`
+checks. The
+harness default timeout is now `60000` ms because Laravel-backed
 profile/settings and discovery pages can be slow in the local fixture. Keep the
 tenant context visible: the same Laravel E2E credentials return `401` when
 web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`. Live probing
-still leaves
-`/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
-because they return feature-gated or role-gated `403`, and leaves signed-in
-auth, onboarding, and premium-management redirect pages outside because they do
-not render 2xx in the signed E2E session.
+still leaves signed-in auth, onboarding, and premium-management redirect pages
+outside because they do not render 2xx in the signed E2E session.
 
 ## Stack
 
