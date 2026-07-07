@@ -208,7 +208,22 @@ const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/goals', text: 'Goals' },
   { path: '/clubs', text: 'Clubs' },
   { path: '/saved', text: 'Saved items' },
-  { path: '/members', text: 'Community members' }
+  { path: '/members', text: 'Community members' },
+  { path: '/', text: 'Welcome to Project NEXUS Community' },
+  { path: '/about', text: 'About' },
+  { path: '/guide', text: 'How timebanking works' },
+  { path: '/features', text: 'Features' },
+  { path: '/faq', text: 'Frequently asked questions' },
+  { path: '/help', text: 'Help centre' },
+  { path: '/kb', text: 'Knowledge base' },
+  { path: '/trust-and-safety', text: 'Trust and safety' },
+  { path: '/legal', text: 'Legal' },
+  { path: '/accessibility', text: 'Accessibility statement' },
+  { path: '/legal/terms', text: 'Terms of service' },
+  { path: '/legal/privacy', text: 'Privacy policy' },
+  { path: '/legal/cookies', text: 'Cookie policy' },
+  { path: '/legal/community-guidelines', text: 'Community guidelines' },
+  { path: '/legal/acceptable-use', text: 'Acceptable use policy' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/',

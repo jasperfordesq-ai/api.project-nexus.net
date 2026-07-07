@@ -121,10 +121,40 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       return;
     }
 
+    const bodyTextFixtures = new Map([
+      ['/', 'Welcome to Project NEXUS Community'],
+      ['/explore', 'Explore'],
+      ['/chat', 'AI assistant'],
+      ['/account', 'My account'],
+      ['/wallet', 'Wallet'],
+      ['/messages', 'Messages'],
+      ['/connections', 'Connections'],
+      ['/resources', 'Resources'],
+      ['/skills', 'Skills'],
+      ['/goals', 'Goals'],
+      ['/clubs', 'Clubs'],
+      ['/saved', 'Saved items'],
+      ['/members', 'Community members'],
+      ['/about', 'About'],
+      ['/guide', 'How timebanking works'],
+      ['/features', 'Features'],
+      ['/faq', 'Frequently asked questions'],
+      ['/help', 'Help centre'],
+      ['/kb', 'Knowledge base'],
+      ['/trust-and-safety', 'Trust and safety'],
+      ['/legal', 'Legal'],
+      ['/accessibility', 'Accessibility statement'],
+      ['/legal/terms', 'Terms of service'],
+      ['/legal/privacy', 'Privacy policy'],
+      ['/legal/cookies', 'Cookie policy'],
+      ['/legal/community-guidelines', 'Community guidelines'],
+      ['/legal/acceptable-use', 'Acceptable use policy']
+    ]);
+
     const modulePages = new Set(['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help']);
     if (req.method === 'GET' && modulePages.has(req.url)) {
       res.writeHead(200, { 'content-type': 'text/html' });
-      res.end(`<h1>${req.url}</h1>`);
+      res.end(`<h1>${bodyTextFixtures.get(req.url) || req.url}</h1>`);
       return;
     }
 
@@ -405,20 +435,6 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       }
 
       if ((req.headers.cookie || '').includes('token=signed-token')) {
-        const bodyTextFixtures = new Map([
-          ['/explore', 'Explore'],
-          ['/chat', 'AI assistant'],
-          ['/account', 'My account'],
-          ['/wallet', 'Wallet'],
-          ['/messages', 'Messages'],
-          ['/connections', 'Connections'],
-          ['/resources', 'Resources'],
-          ['/skills', 'Skills'],
-          ['/goals', 'Goals'],
-          ['/clubs', 'Clubs'],
-          ['/saved', 'Saved items'],
-          ['/members', 'Community members']
-        ]);
         if (bodyTextFixtures.has(req.url)) {
           res.writeHead(200, { 'content-type': 'text/html' });
           res.end(`<h1>${bodyTextFixtures.get(req.url)}</h1>`);
@@ -954,7 +970,22 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/goals', text: 'Goals' },
       { path: '/clubs', text: 'Clubs' },
       { path: '/saved', text: 'Saved items' },
-      { path: '/members', text: 'Community members' }
+      { path: '/members', text: 'Community members' },
+      { path: '/', text: 'Welcome to Project NEXUS Community' },
+      { path: '/about', text: 'About' },
+      { path: '/guide', text: 'How timebanking works' },
+      { path: '/features', text: 'Features' },
+      { path: '/faq', text: 'Frequently asked questions' },
+      { path: '/help', text: 'Help centre' },
+      { path: '/kb', text: 'Knowledge base' },
+      { path: '/trust-and-safety', text: 'Trust and safety' },
+      { path: '/legal', text: 'Legal' },
+      { path: '/accessibility', text: 'Accessibility statement' },
+      { path: '/legal/terms', text: 'Terms of service' },
+      { path: '/legal/privacy', text: 'Privacy policy' },
+      { path: '/legal/cookies', text: 'Cookie policy' },
+      { path: '/legal/community-guidelines', text: 'Community guidelines' },
+      { path: '/legal/acceptable-use', text: 'Acceptable use policy' }
     ]));
   });
 
@@ -1473,7 +1504,22 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-goals-contains-goals': true,
       'body-text-page-clubs-contains-clubs': true,
       'body-text-page-saved-contains-saved-items': true,
-      'body-text-page-members-contains-community-members': true
+      'body-text-page-members-contains-community-members': true,
+      'body-text-page-home-contains-welcome-to-project-nexus-community': true,
+      'body-text-page-about-contains-about': true,
+      'body-text-page-guide-contains-how-timebanking-works': true,
+      'body-text-page-features-contains-features': true,
+      'body-text-page-faq-contains-frequently-asked-questions': true,
+      'body-text-page-help-contains-help-centre': true,
+      'body-text-page-kb-contains-knowledge-base': true,
+      'body-text-page-trust-and-safety-contains-trust-and-safety': true,
+      'body-text-page-legal-contains-legal': true,
+      'body-text-page-accessibility-contains-accessibility-statement': true,
+      'body-text-page-legal-terms-contains-terms-of-service': true,
+      'body-text-page-legal-privacy-contains-privacy-policy': true,
+      'body-text-page-legal-cookies-contains-cookie-policy': true,
+      'body-text-page-legal-community-guidelines-contains-community-guidelines': true,
+      'body-text-page-legal-acceptable-use-contains-acceptable-use-policy': true
     }));
     expect(checkByName['body-text-page-chat-contains-ai-assistant'].text).toBe('AI assistant');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/chat').at(-1).cookie).toContain('token=signed-token');

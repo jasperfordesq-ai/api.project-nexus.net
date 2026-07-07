@@ -382,10 +382,15 @@ same unsigned auth-required redirect against
 The signed `/explore`, `/chat`, `/account`, `/wallet`, `/messages`,
 `/connections`, `/resources`, `/skills`, `/goals`, `/clubs`, `/saved`, and
 `/members` hub pages returned expected body markers against
-`WEB_UK_BASE_URL=http://127.0.0.1:6200`. The default scope now contains `359`
+`WEB_UK_BASE_URL=http://127.0.0.1:6200`. The public/support/legal pages `/`,
+`/about`, `/guide`, `/features`, `/faq`, `/help`, `/kb`,
+`/trust-and-safety`, `/legal`, `/accessibility`, `/legal/terms`,
+`/legal/privacy`, `/legal/cookies`, `/legal/community-guidelines`, and
+`/legal/acceptable-use` returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6210`. The default scope now contains `374`
 checks: `279` module-page checks, 14 unsigned auth-required redirect checks, 3
 unsigned login redirect checks, 22 gated-status checks, and 21 signed redirect
-checks, plus 2 content-type contract checks, 12 body-text contract checks, and
+checks, plus 2 content-type contract checks, 27 body-text contract checks, and
 the 6 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0. The signed `/chat` AI assistant page returned `200` against
