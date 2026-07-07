@@ -47,12 +47,18 @@ public class MessagesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetConversations(
         [FromQuery] int page = 1,
-        [FromQuery] int limit = 20)
+        [FromQuery] int limit = 20,
+        [FromQuery(Name = "per_page")] int? perPage = null)
     {
         var userId = GetCurrentUserId();
         if (userId == null)
         {
             return Unauthorized(new { error = "Invalid token" });
+        }
+
+        if (perPage.HasValue)
+        {
+            limit = perPage.Value;
         }
 
         if (page < 1) page = 1;
@@ -131,7 +137,14 @@ public class MessagesController : ControllerBase
 
         return Ok(new
         {
+            success = true,
             data = result,
+            meta = new
+            {
+                per_page = limit,
+                has_more = page < totalPages,
+                cursor = page < totalPages ? (page + 1).ToString() : null
+            },
             pagination = new
             {
                 page,

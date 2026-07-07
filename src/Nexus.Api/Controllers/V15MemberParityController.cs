@@ -644,7 +644,6 @@ public class V15MemberParityController : ControllerBase
         return Ok(new { data = messages });
     }
 
-    [HttpGet("api/v2/messages")]
     [HttpGet("api/v2/conversations/groups")]
     public async Task<IActionResult> V2Messages()
     {

@@ -130,6 +130,15 @@ compatibility path returns the composer-gating fields read by
 `under_monitoring`, and `restriction_reason`, wrapped in the Laravel
 `success/data` envelope.
 
+The Laravel React message inbox slice now has focused ASP.NET regression
+coverage for `GET /api/v2/messages`. The .NET route is no longer ambiguous
+between the v1.5 member parity shim and `MessagesController`; the controller
+now owns the `/api/v2/messages` alias, accepts Laravel's `per_page` query
+parameter, and returns `success/data/meta` collection metadata while preserving
+the older `pagination` object for existing .NET clients. Conversation archived
+state remains a deeper parity gap because the current ASP.NET `Conversation`
+entity does not yet store archived status.
+
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static
 route content, notification unsubscribe, AI chat starters/feedback, admin

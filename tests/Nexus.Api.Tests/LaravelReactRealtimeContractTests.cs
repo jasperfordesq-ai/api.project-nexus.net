@@ -77,6 +77,21 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
         data.GetProperty("restriction_reason").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
+    [Fact]
+    public async Task MessageInbox_ReturnsLaravelReactCollectionEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.GetAsync("/api/v2/messages");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        json.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
+        json.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(20);
+        json.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeFalse();
+    }
+
     private static async Task<JsonElement> ReadDataAsync(HttpResponseMessage response)
     {
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
