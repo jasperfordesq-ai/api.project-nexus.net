@@ -256,6 +256,28 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/marketplace/267/report',
       '/marketplace/267/edit',
       '/blog/90001/likers/1',
+      '/events/14',
+      '/events/14/map',
+      '/events/14/polls',
+      '/events/14/translate',
+      '/groups/482',
+      '/groups/482/announcements',
+      '/groups/482/discussions',
+      '/groups/482/discussions/new',
+      '/groups/482/files',
+      '/groups/482/manage',
+      '/groups/482/invite',
+      '/groups/482/notifications',
+      '/groups/482/image',
+      '/marketplace/6',
+      '/marketplace/6/buy',
+      '/marketplace/6/offer',
+      '/marketplace/6/report',
+      '/marketplace/6/edit',
+      '/polls/8',
+      '/polls/4',
+      '/feed/item/listing/90967',
+      '/blog/64/likers/1',
       '/volunteering/accessibility',
       '/volunteering/certificates',
       '/volunteering/opportunities/create',
@@ -404,6 +426,12 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/courses/2/learn', '/courses/2?status=enrol-required'],
       ['/federation/messages/conversation/353', '/federation/messages'],
       ['/onboarding/profile', '/dashboard'],
+      ['/events/14/recurring-edit', '/events/14/edit'],
+      ['/groups/482/edit', '/groups/482'],
+      ['/courses/2/certificate', '/courses/2?status=certificate-failed'],
+      ['/onboarding/interests', '/dashboard'],
+      ['/onboarding/safeguarding', '/dashboard'],
+      ['/onboarding/confirm', '/dashboard'],
       ['/premium/manage', '/premium?status=no-subscription']
     ]);
     if (req.method === 'GET' && signedRedirectPages.has(req.url)) {
@@ -657,6 +685,43 @@ describe('Laravel runtime smoke harness', () => {
       '/marketplace/267/report',
       '/marketplace/267/edit',
       '/blog/90001/likers/1'
+    ]));
+  });
+
+  it('includes stable secondary event, group, marketplace, poll, feed, blog, course, and onboarding outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/events/14',
+      '/events/14/map',
+      '/events/14/polls',
+      '/events/14/translate',
+      '/groups/482',
+      '/groups/482/announcements',
+      '/groups/482/discussions',
+      '/groups/482/discussions/new',
+      '/groups/482/files',
+      '/groups/482/manage',
+      '/groups/482/invite',
+      '/groups/482/notifications',
+      '/groups/482/image',
+      '/marketplace/6',
+      '/marketplace/6/buy',
+      '/marketplace/6/offer',
+      '/marketplace/6/report',
+      '/marketplace/6/edit',
+      '/polls/8',
+      '/polls/4',
+      '/feed/item/listing/90967',
+      '/blog/64/likers/1'
+    ]));
+    expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
+      { path: '/events/14/recurring-edit', location: '/events/14/edit' },
+      { path: '/groups/482/edit', location: '/groups/482' },
+      { path: '/courses/2/certificate', location: '/courses/2?status=certificate-failed' },
+      { path: '/onboarding/interests', location: '/dashboard' },
+      { path: '/onboarding/safeguarding', location: '/dashboard' },
+      { path: '/onboarding/confirm', location: '/dashboard' }
     ]));
   });
 

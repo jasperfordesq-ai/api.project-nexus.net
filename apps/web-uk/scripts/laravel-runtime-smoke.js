@@ -70,7 +70,29 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/marketplace/267/offer',
   '/marketplace/267/report',
   '/marketplace/267/edit',
-  '/blog/90001/likers/1'
+  '/blog/90001/likers/1',
+  '/events/14',
+  '/events/14/map',
+  '/events/14/polls',
+  '/events/14/translate',
+  '/groups/482',
+  '/groups/482/announcements',
+  '/groups/482/discussions',
+  '/groups/482/discussions/new',
+  '/groups/482/files',
+  '/groups/482/manage',
+  '/groups/482/invite',
+  '/groups/482/notifications',
+  '/groups/482/image',
+  '/marketplace/6',
+  '/marketplace/6/buy',
+  '/marketplace/6/offer',
+  '/marketplace/6/report',
+  '/marketplace/6/edit',
+  '/polls/8',
+  '/polls/4',
+  '/feed/item/listing/90967',
+  '/blog/64/likers/1'
 ];
 const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/federation/listings/1/1',
@@ -115,6 +137,12 @@ const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/courses/2/learn', location: '/courses/2?status=enrol-required' },
   { path: '/federation/messages/conversation/353', location: '/federation/messages' },
   { path: '/onboarding/profile', location: '/dashboard' },
+  { path: '/events/14/recurring-edit', location: '/events/14/edit' },
+  { path: '/groups/482/edit', location: '/groups/482' },
+  { path: '/courses/2/certificate', location: '/courses/2?status=certificate-failed' },
+  { path: '/onboarding/interests', location: '/dashboard' },
+  { path: '/onboarding/safeguarding', location: '/dashboard' },
+  { path: '/onboarding/confirm', location: '/dashboard' },
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [

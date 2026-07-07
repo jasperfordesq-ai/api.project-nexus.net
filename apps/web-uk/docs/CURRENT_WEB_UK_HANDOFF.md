@@ -261,6 +261,27 @@ checks, plus the 6 auth/health checks. The expanded default scope was
 recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4` against the same temporary
 process: all four chunks passed on 2026-07-07 with `407` repeated checks, `0`
 failures, and `227` collective module-page checks.
+The default scope now additionally covers `/events/14`, `/events/14/map`,
+`/events/14/polls`, `/events/14/translate`, `/groups/482`,
+`/groups/482/announcements`, `/groups/482/discussions`,
+`/groups/482/discussions/new`, `/groups/482/files`, `/groups/482/manage`,
+`/groups/482/invite`, `/groups/482/notifications`, `/groups/482/image`,
+`/marketplace/6`, `/marketplace/6/buy`, `/marketplace/6/offer`,
+`/marketplace/6/report`, `/marketplace/6/edit`, `/polls/8`, `/polls/4`,
+`/feed/item/listing/90967`, and `/blog/64/likers/1` as signed 2xx routes;
+plus redirects from `/events/14/recurring-edit` to `/events/14/edit`,
+`/groups/482/edit` to `/groups/482`, `/courses/2/certificate` to
+`/courses/2?status=certificate-failed`, `/onboarding/interests` to
+`/dashboard`, `/onboarding/safeguarding` to `/dashboard`, and
+`/onboarding/confirm` to `/dashboard`. A targeted live run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5339`, started with `TENANT_ID=2`, passed on
+2026-07-07: `34/34` checks, `0` failures. The expanded default scope now
+contains `300` checks: `249` module-page checks, 8 unsigned auth-required
+redirect checks, 17 gated-status checks, and 20 signed redirect checks, plus the
+6 auth/health checks. The expanded default scope was recertified with
+`SMOKE_MODULE_PAGE_CHUNK=N/4` against the same temporary process: all four
+chunks passed on 2026-07-07 with `453` repeated checks, `0` failures, and `249`
+collective module-page checks.
 `/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to
 `/login?status=auth-required` before data lookup. Without
