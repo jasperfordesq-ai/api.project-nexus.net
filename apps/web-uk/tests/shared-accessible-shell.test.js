@@ -4915,7 +4915,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel-backed saved social public pages', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Avery Stone' } });
-    api.getUser.mockResolvedValue({ data: { id: 77, name: 'Morgan Lee' } });
+    api.getUserV2.mockResolvedValue({ data: { id: 77, name: 'Morgan Lee' } });
     api.getUserPublicCollections.mockResolvedValue({
       data: [
         {
@@ -4976,7 +4976,7 @@ describe('shared accessible frontend shell', () => {
     expect(appreciations.text).toContain('href="/users/77/appreciations?page=2"');
     expect(appreciations.text).not.toContain('shared accessible frontend preparation page');
 
-    expect(api.getUser).toHaveBeenCalledWith('test-token', 77);
+    expect(api.getUserV2).toHaveBeenCalledWith('test-token', 77);
     expect(api.getUserPublicCollections).toHaveBeenCalledWith('test-token', 77);
     expect(api.getUserAppreciations).toHaveBeenCalledWith('test-token', 77, { page: 1, per_page: 20 });
   });
@@ -11445,7 +11445,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel-backed employer brand page', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
-    api.getUser.mockResolvedValueOnce({
+    api.getUserV2.mockResolvedValueOnce({
       data: {
         id: 88,
         first_name: 'Morgan',
@@ -11494,7 +11494,7 @@ describe('shared accessible frontend shell', () => {
       .get('/jobs/employers/88')
       .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
 
-    expect(api.getUser).toHaveBeenCalledWith('test-token', 88);
+    expect(api.getUserV2).toHaveBeenCalledWith('test-token', 88);
     expect(api.getJobs).toHaveBeenCalledWith('test-token', {
       user_id: 88,
       status: 'open',

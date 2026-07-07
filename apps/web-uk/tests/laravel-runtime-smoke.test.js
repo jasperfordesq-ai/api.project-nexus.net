@@ -48,7 +48,9 @@ function createLaravelServer(requests) {
   });
 }
 
-function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths = {} } = {}) {
+function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths = {}, gatedRequiresFreshLogin = false } = {}) {
+  let loginCount = 0;
+
   return http.createServer(async (req, res) => {
     requests.push({
       surface: 'web',
@@ -101,10 +103,12 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       requests[requests.length - 1].body = body;
       const hasExpectedCsrf = params.get('_csrf') === 'csrf-token' && (req.headers.cookie || '').includes('nexus.csrf=csrf-cookie');
       if (hasExpectedCsrf && loginRedirect) {
+        loginCount += 1;
+        const token = gatedRequiresFreshLogin ? `signed-token-${loginCount}` : 'signed-token';
         res.writeHead(302, {
           location: loginRedirect,
           'set-cookie': [
-            'token=signed-token; Path=/; HttpOnly',
+            `token=${token}; Path=/; HttpOnly`,
             'refresh_token=signed-refresh; Path=/; HttpOnly'
           ]
         });
@@ -282,6 +286,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/feed/item/listing/90964',
       '/feed/item/listing/90963',
       '/feed/item/listing/90962',
+      '/users/14/appreciations',
+      '/jobs/employers/14',
       '/blog/64/likers/1',
       '/blog/test-sitemap-blog-post',
       '/blog/test-sitemap-blog-post/comments',
@@ -416,7 +422,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/marketplace/coupons/5/edit'
     ]);
     if (req.method === 'GET' && signedGatedPages.has(req.url)) {
-      if ((req.headers.cookie || '').includes('token=signed-token')) {
+      const expectedToken = gatedRequiresFreshLogin ? 'token=signed-token-2' : 'token=signed-token';
+      if ((req.headers.cookie || '').includes(expectedToken)) {
         res.writeHead(403, { 'content-type': 'text/html' });
         res.end('<h1>Forbidden</h1>');
         return;
@@ -444,6 +451,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/events/14/recurring-edit', '/events/14/edit'],
       ['/groups/482/edit', '/groups/482'],
       ['/courses/2/certificate', '/courses/2?status=certificate-failed'],
+      ['/groups/484/files/1/download', '/groups/484/files?status=file-not-found'],
       ['/onboarding/interests', '/dashboard'],
       ['/onboarding/safeguarding', '/dashboard'],
       ['/onboarding/confirm', '/dashboard'],
@@ -773,6 +781,18 @@ describe('Laravel runtime smoke harness', () => {
       '/feed/item/listing/90964',
       '/feed/item/listing/90963',
       '/feed/item/listing/90962'
+    ]));
+  });
+
+  it('includes stable user appreciation, employer brand, and group file fixture outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/users/14/appreciations',
+      '/jobs/employers/14'
+    ]));
+    expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
+      { path: '/groups/484/files/1/download', location: '/groups/484/files?status=file-not-found' }
     ]));
   });
 
@@ -1189,6 +1209,28 @@ describe('Laravel runtime smoke harness', () => {
     }));
     expect(checkByName['auth-required-page-federation-partners-1-redirects-login-status-auth-required'].location).toBe('/login?status=auth-required');
     expect(requests.find((request) => request.method === 'GET' && request.url === '/federation/partners/1').cookie).not.toContain('token=signed-token');
+  });
+
+  it('refreshes the signed session before gated checks after long module-page batches', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests, { gatedRequiresFreshLogin: true });
+    servers.push(laravel, web);
+
+    const laravelBaseUrl = await listen(laravel);
+    const webBaseUrl = await listen(web);
+    const result = await runLaravelRuntimeSmoke({
+      laravelBaseUrl,
+      webBaseUrl,
+      modulePagePaths: ['/explore'],
+      unsignedAuthRequiredPagePaths: [],
+      gatedPagePaths: [{ path: '/jobs/bias-audit', status: 403 }],
+      redirectPagePaths: []
+    });
+
+    const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
+    expect(checkByName['gated-page-jobs-bias-audit-returns-403'].ok).toBe(true);
+    expect(requests.filter((request) => request.method === 'POST' && request.url === '/login')).toHaveLength(2);
   });
 
   it('allows slower signed module pages in the default smoke timeout budget', async () => {

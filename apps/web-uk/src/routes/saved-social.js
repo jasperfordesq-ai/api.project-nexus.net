@@ -7,7 +7,7 @@ const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
   getProfile,
-  getUser,
+  getUserV2,
   getBookmarks,
   getUserPublicCollections,
   getUserAppreciations,
@@ -246,7 +246,7 @@ router.get('/users/:userId(\\d+)/collections', asyncRoute(async (req, res) => {
 
   const userId = Number(req.params.userId);
   const [ownerResult, collectionsResult] = await Promise.all([
-    getUser(token, userId),
+    getUserV2(token, userId),
     getUserPublicCollections(token, userId)
   ]);
   const owner = normalizeOwner(ownerResult, userId);
@@ -271,7 +271,7 @@ router.get('/users/:userId(\\d+)/appreciations', asyncRoute(async (req, res) => 
   const status = trimmed(req.query.status);
   const [viewerResult, ownerResult, appreciationsResult] = await Promise.all([
     getProfile(token),
-    getUser(token, userId),
+    getUserV2(token, userId),
     getUserAppreciations(token, userId, { page, per_page: 20 })
   ]);
   const viewer = normalizeOwner(viewerResult, 0);

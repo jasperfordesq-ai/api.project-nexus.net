@@ -14,7 +14,7 @@ const {
   getJobs,
   getJob,
   getProfile,
-  getUser,
+  getUserV2,
   uploadJobApplication
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -1666,7 +1666,7 @@ router.get('/employers/:employerId(\\d+)', asyncRoute(async (req, res) => {
   let employerResult;
 
   try {
-    employerResult = await getUser(token, employerId);
+    employerResult = await getUserV2(token, employerId);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     if (error instanceof ApiError && error.status === 403) {

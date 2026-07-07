@@ -97,6 +97,8 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/feed/item/listing/90964',
   '/feed/item/listing/90963',
   '/feed/item/listing/90962',
+  '/users/14/appreciations',
+  '/jobs/employers/14',
   '/blog/64/likers/1',
   '/blog/test-sitemap-blog-post',
   '/blog/test-sitemap-blog-post/comments',
@@ -155,6 +157,7 @@ const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/events/14/recurring-edit', location: '/events/14/edit' },
   { path: '/groups/482/edit', location: '/groups/482' },
   { path: '/courses/2/certificate', location: '/courses/2?status=certificate-failed' },
+  { path: '/groups/484/files/1/download', location: '/groups/484/files?status=file-not-found' },
   { path: '/onboarding/interests', location: '/dashboard' },
   { path: '/onboarding/safeguarding', location: '/dashboard' },
   { path: '/onboarding/confirm', location: '/dashboard' },
@@ -416,6 +419,42 @@ async function readTextSafely(response) {
 function extractCsrfToken(html) {
   const match = String(html || '').match(/name=["']_csrf["'][^>]*value=["']([^"']+)["']/i);
   return match ? match[1] : '';
+}
+
+async function refreshSignedSession(config, cookieJar) {
+  const loginResponse = await smokeRequest({
+    fetchImpl: config.fetchImpl,
+    timeoutMs: config.timeoutMs,
+    cookieJar,
+    url: joinUrl(config.webBaseUrl, '/login')
+  });
+  const html = await readTextSafely(loginResponse);
+  const csrfToken = extractCsrfToken(html);
+  if (!loginResponse.ok || !csrfToken) {
+    throw new Error(`expected login form with CSRF token, got ${loginResponse.status}`);
+  }
+
+  const form = new URLSearchParams({
+    _csrf: csrfToken,
+    email: config.email,
+    password: config.password,
+    tenant_slug: config.tenant
+  });
+  const response = await smokeRequest({
+    fetchImpl: config.fetchImpl,
+    timeoutMs: config.timeoutMs,
+    cookieJar,
+    url: joinUrl(config.webBaseUrl, '/login'),
+    options: {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString()
+    }
+  });
+
+  if (!isRedirectTo(response, '/dashboard')) {
+    throw new Error(`expected 302 redirect to /dashboard, got ${response.status} ${responseLocation(response)}`);
+  }
 }
 
 function addCheck(checks, name, ok, detail, meta = {}) {
@@ -731,7 +770,20 @@ async function runLaravelRuntimeSmoke(options = {}) {
     }
   }
 
+  if (config.gatedPagePaths.length > 0) {
+    try {
+      await refreshSignedSession(config, cookieJar);
+    } catch (error) {
+      for (const gatedPage of config.gatedPagePaths) {
+        addCheck(checks, gatedPageCheckName(gatedPage.path, gatedPage.status), false, error.message, { path: gatedPage.path });
+      }
+    }
+  }
+
   for (const gatedPage of config.gatedPagePaths) {
+    if (checks.some((check) => check.name === gatedPageCheckName(gatedPage.path, gatedPage.status) && !check.ok)) {
+      continue;
+    }
     const path = gatedPage.path;
     const expectedStatus = gatedPage.status;
     try {
@@ -753,7 +805,20 @@ async function runLaravelRuntimeSmoke(options = {}) {
     }
   }
 
+  if (config.redirectPagePaths.length > 0) {
+    try {
+      await refreshSignedSession(config, cookieJar);
+    } catch (error) {
+      for (const redirectPage of config.redirectPagePaths) {
+        addCheck(checks, redirectPageCheckName(redirectPage.path, redirectPage.location), false, error.message, { path: redirectPage.path });
+      }
+    }
+  }
+
   for (const redirectPage of config.redirectPagePaths) {
+    if (checks.some((check) => check.name === redirectPageCheckName(redirectPage.path, redirectPage.location) && !check.ok)) {
+      continue;
+    }
     const path = redirectPage.path;
     const expectedLocation = redirectPage.location;
     try {
