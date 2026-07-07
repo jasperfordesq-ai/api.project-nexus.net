@@ -1036,6 +1036,53 @@ describe('shared accessible frontend shell', () => {
     expect(enabled.text).toContain('Your password');
   });
 
+  it('renders the Laravel-style blocked members page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callProfileApi.mockResolvedValueOnce({
+      data: [
+        {
+          user_id: 88,
+          name: 'Grace Hopper',
+          avatar_url: '/avatars/grace.jpg',
+          reason: 'Blocked after repeated unwanted messages'
+        }
+      ]
+    });
+
+    const unsigned = await request(app).get('/profile/blocked');
+    const signed = await request(app)
+      .get('/profile/blocked?status=member-unblocked')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/users/blocked');
+    expect(signed.text).toContain('Back to settings');
+    expect(signed.text).toContain('Success');
+    expect(signed.text).toContain('The member has been unblocked.');
+    expect(signed.text).toContain('Blocked members');
+    expect(signed.text).toContain('Members you block cannot see your profile or contact you');
+    expect(signed.text).toContain('Grace Hopper');
+    expect(signed.text).toContain('Blocked after repeated unwanted messages');
+    expect(signed.text).toContain('/members/88/unblock');
+    expect(signed.text).toContain('name="from" value="list"');
+    expect(signed.text).toContain('Unblock');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+
+    api.callProfileApi.mockResolvedValueOnce({ data: [] });
+    const empty = await request(app)
+      .get('/profile/blocked')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(empty.status).toBe(200);
+    expect(empty.text).toContain('You have not blocked anyone.');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

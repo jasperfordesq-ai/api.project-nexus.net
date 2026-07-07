@@ -126,6 +126,11 @@ notifications, match, personalisation, safeguarding, and data/privacy sections.
 setup/status payload, and renders the Blade-style authenticator app setup,
 QR/setup key, verification form, enabled-state backup-code count, disable form,
 success banners, and validation error summary.
+`/profile/blocked` now redirects unsigned visitors to
+`/login?status=auth-required`, reads the Laravel-compatible blocked-members
+payload when available, and renders the Blade-style blocked member cards, empty
+state, success banner, and unblock forms through the existing member unblock
+POST alias.
 Public collection and appreciation wall GET pages now redirect unsigned visitors
 to `/login?status=auth-required`,
 read Laravel `/api/v2/users/{id}/public-collections` and

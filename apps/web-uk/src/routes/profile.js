@@ -630,6 +630,19 @@ function normalizeTwoFactorPayload(payload) {
   };
 }
 
+function normalizeBlockedUsers(payload) {
+  return arrayFromPayload(payload, ['blocked', 'users', 'items']).map((blockedUser) => {
+    const name = trimmed(blockedUser.name || blockedUser.display_name || blockedUser.full_name || 'Unknown member');
+    return {
+      user_id: Number(blockedUser.user_id || blockedUser.id || blockedUser.blocked_user_id || 0),
+      name,
+      initial: (name || 'U').slice(0, 1).toUpperCase(),
+      avatar_url: blockedUser.avatar_url || blockedUser.avatarUrl || '',
+      reason: blockedUser.reason || ''
+    };
+  });
+}
+
 router.get('/settings', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return res.redirect(loginRedirect());
@@ -1080,6 +1093,29 @@ router.get('/two-factor', asyncRoute(async (req, res) => {
     backupCodes: twoFactor.backupCodes,
     backupCodesRemaining: twoFactor.backupCodesRemaining,
     backupCodesRemainingLabel: twoFactor.backupCodesRemainingLabel,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/blocked', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let blocked = [];
+  try {
+    blocked = normalizeBlockedUsers(payloadFrom(await callProfile(token, 'GET', '/users/blocked')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  return res.render('profile/blocked', {
+    title: 'Blocked members',
+    activeNav: 'profile',
+    status,
+    successStatus: status === 'member-unblocked',
+    blocked,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
