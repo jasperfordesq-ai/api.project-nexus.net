@@ -980,6 +980,11 @@ app.get('/organisations/opportunities/:id(\\d+)/apply', (req, res) => {
 });
 
 app.get('/organisations/:id(\\d+)', (req, res) => {
+  const token = req.signedCookies.token || '';
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
   const {
     ApiError,
     getOrganisationOpportunities,

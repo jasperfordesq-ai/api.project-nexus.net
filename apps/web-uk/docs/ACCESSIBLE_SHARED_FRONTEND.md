@@ -57,7 +57,11 @@ plus deeper signed subpages
 across profile, settings, achievements, leaderboard, federation, courses,
 marketplace, static/legal/support, goals, groups, ideation, jobs, message
 groups, polls, resource-library, reviews, wallet management, and volunteering
-after the same login flow. The harness defaults to Laravel's local E2E fixture
+after the same login flow. Before login, it also checks auth-required
+parameterised pages (`/federation/partners/1`, `/ideation/1`,
+`/organisations/1`, `/podcasts/1`, `/resources/1/download`, and
+`/users/1/collections`) redirect to `/login?status=auth-required`. The harness
+defaults to Laravel's local E2E fixture
 (`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`).
 
@@ -98,6 +102,11 @@ web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`.
 session-backed 2FA token is absent; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5309` passed `173/173`: 6 auth/health checks,
 161 module/page checks, 3 gated-status checks, and 3 redirect-status checks.
+The default smoke scope now also covers six unsigned auth-required
+parameterised route redirects; a later live run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5313` passed `179/179`: 6 auth/health checks,
+6 unsigned auth-required redirect checks, 161 module/page checks, 3
+gated-status checks, and 3 redirect-status checks.
 
 ## Stack
 

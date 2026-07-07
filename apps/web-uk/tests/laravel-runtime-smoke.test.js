@@ -328,6 +328,20 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       return;
     }
 
+    const unsignedAuthRequiredPages = new Set([
+      '/federation/partners/1',
+      '/ideation/1',
+      '/organisations/1',
+      '/podcasts/1',
+      '/resources/1/download',
+      '/users/1/collections'
+    ]);
+    if (req.method === 'GET' && unsignedAuthRequiredPages.has(req.url)) {
+      res.writeHead(302, { location: '/login?status=auth-required' });
+      res.end();
+      return;
+    }
+
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('missing');
   });
@@ -626,6 +640,30 @@ describe('Laravel runtime smoke harness', () => {
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/messages').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/listings').at(-1).cookie).toContain('token=signed-token');
+  });
+
+  it('smokes unsigned redirects for auth-required parameterised Laravel routes', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests);
+    servers.push(laravel, web);
+
+    const [laravelBaseUrl, webBaseUrl] = await Promise.all([listen(laravel), listen(web)]);
+
+    const result = await runLaravelRuntimeSmoke({ laravelBaseUrl, webBaseUrl });
+    const checks = Object.fromEntries(result.checks.map((check) => [check.name, check.ok]));
+    const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
+
+    expect(checks).toEqual(expect.objectContaining({
+      'auth-required-page-federation-partners-1-redirects-login-status-auth-required': true,
+      'auth-required-page-ideation-1-redirects-login-status-auth-required': true,
+      'auth-required-page-organisations-1-redirects-login-status-auth-required': true,
+      'auth-required-page-podcasts-1-redirects-login-status-auth-required': true,
+      'auth-required-page-resources-1-download-redirects-login-status-auth-required': true,
+      'auth-required-page-users-1-collections-redirects-login-status-auth-required': true
+    }));
+    expect(checkByName['auth-required-page-federation-partners-1-redirects-login-status-auth-required'].location).toBe('/login?status=auth-required');
+    expect(requests.find((request) => request.method === 'GET' && request.url === '/federation/partners/1').cookie).not.toContain('token=signed-token');
   });
 
   it('allows slower signed module pages in the default smoke timeout budget', async () => {

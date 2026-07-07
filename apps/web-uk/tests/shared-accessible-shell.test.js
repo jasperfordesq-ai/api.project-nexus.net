@@ -10357,6 +10357,16 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('This organisation is awaiting administrator approval.');
   });
 
+  it('redirects signed-out Laravel organisation detail pages before data lookup', async () => {
+    const api = require('../src/lib/api');
+
+    const response = await request(app).get('/organisations/42');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(api.getVolunteerOrganisation).not.toHaveBeenCalled();
+  });
+
   it('renders the Blade-style organisation detail page from the Laravel public organisation contract', async () => {
     const api = require('../src/lib/api');
     api.getVolunteerOrganisation.mockResolvedValueOnce({
@@ -10406,7 +10416,9 @@ describe('shared accessible frontend shell', () => {
       }
     });
 
-    const response = await request(app).get('/organisations/42');
+    const response = await request(app)
+      .get('/organisations/42')
+      .set('Cookie', signedCookieHeader());
 
     expect(api.getVolunteerOrganisation).toHaveBeenCalledWith('42');
     expect(api.getOrganisationOpportunities).toHaveBeenCalledWith('42', { per_page: 10 });

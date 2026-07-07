@@ -10,6 +10,14 @@ const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
+const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
+  '/federation/partners/1',
+  '/ideation/1',
+  '/organisations/1',
+  '/podcasts/1',
+  '/resources/1/download',
+  '/users/1/collections'
+];
 const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/jobs/bias-audit', status: 403 },
   { path: '/jobs/talent-search', status: 403 },
@@ -309,6 +317,18 @@ function redirectPageCheckName(path, location) {
   return `redirect-page-${pathSlug || 'home'}-redirects-${locationSlug || 'home'}`;
 }
 
+function authRequiredPageCheckName(path, location) {
+  const pathSlug = String(path || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  const locationSlug = String(location || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  return `auth-required-page-${pathSlug || 'home'}-redirects-${locationSlug || 'home'}`;
+}
+
 function resolveOptions(options = {}, env = process.env) {
   return {
     webBaseUrl: stripTrailingSlash(options.webBaseUrl || env.WEB_UK_BASE_URL || DEFAULT_WEB_BASE_URL),
@@ -318,6 +338,7 @@ function resolveOptions(options = {}, env = process.env) {
     tenant: options.tenant || env.SMOKE_TENANT || DEFAULT_SMOKE_TENANT,
     timeoutMs: Number(options.timeoutMs || env.SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
     modulePagePaths: options.modulePagePaths || [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS],
+    unsignedAuthRequiredPagePaths: options.unsignedAuthRequiredPagePaths || DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS,
     gatedPagePaths: options.gatedPagePaths || DEFAULT_SIGNED_GATED_PAGE_PATHS,
     redirectPagePaths: options.redirectPagePaths || DEFAULT_SIGNED_REDIRECT_PAGE_PATHS,
     fetchImpl: options.fetchImpl || globalThis.fetch
@@ -373,6 +394,28 @@ async function runLaravelRuntimeSmoke(options = {}) {
     );
   } catch (error) {
     addCheck(checks, 'protected-account-redirects-to-login', false, error.message);
+  }
+
+  for (const path of config.unsignedAuthRequiredPagePaths) {
+    const expectedLocation = '/login?status=auth-required';
+    try {
+      const response = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar,
+        url: joinUrl(config.webBaseUrl, path)
+      });
+      const ok = isRedirectTo(response, expectedLocation);
+      addCheck(
+        checks,
+        authRequiredPageCheckName(path, expectedLocation),
+        ok,
+        ok ? `${path} redirected to ${expectedLocation}.` : `expected redirect to ${expectedLocation} from ${path}, got ${response.status} ${responseLocation(response)}`,
+        { status: response.status, location: responseLocation(response), path }
+      );
+    } catch (error) {
+      addCheck(checks, authRequiredPageCheckName(path, expectedLocation), false, error.message, { path });
+    }
   }
 
   let csrfToken = '';
