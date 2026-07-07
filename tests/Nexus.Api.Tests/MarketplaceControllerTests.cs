@@ -460,6 +460,72 @@ public class MarketplaceControllerTests : IntegrationTestBase
         deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
     }
 
+    [Fact]
+    public async Task MarketplacePickupReservationV2_MatchesLaravelReactBuyerAndSellerContract()
+    {
+        var (orderId, listingId) = await CreatePickupOrderForMemberAsync();
+
+        await AuthenticateAsAdminAsync();
+        var start = DateTime.UtcNow.AddDays(3).Date.AddHours(14);
+        var slotResponse = await Client.PostAsJsonAsync("/api/v2/marketplace/seller/pickup-slots", new
+        {
+            slot_start = start,
+            slot_end = start.AddHours(1),
+            capacity = 2,
+            is_active = true
+        });
+        slotResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var slotId = (await slotResponse.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        await AuthenticateAsMemberAsync();
+        var reserve = await Client.PostAsJsonAsync($"/api/v2/marketplace/orders/{orderId}/pickup-reservation", new
+        {
+            slot_id = slotId
+        });
+
+        reserve.StatusCode.Should().Be(HttpStatusCode.Created);
+        var reserveJson = await reserve.Content.ReadFromJsonAsync<JsonElement>();
+        reserveJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var reservation = reserveJson.GetProperty("data");
+        var reservationId = reservation.GetProperty("id").GetInt32();
+        reservation.GetProperty("slot_id").GetInt32().Should().Be(slotId);
+        reservation.GetProperty("order_id").GetInt32().Should().Be(orderId);
+        reservation.GetProperty("listing_id").GetInt32().Should().Be(listingId);
+        var qrCode = reservation.GetProperty("qr_code").GetString();
+        qrCode.Should().NotBeNullOrWhiteSpace();
+        reservation.GetProperty("status").GetString().Should().Be("reserved");
+        reservation.GetProperty("reserved_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var mine = await Client.GetAsync("/api/v2/marketplace/me/pickups");
+
+        mine.StatusCode.Should().Be(HttpStatusCode.OK);
+        var mineJson = await mine.Content.ReadFromJsonAsync<JsonElement>();
+        mineJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var mineReservation = mineJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        mineReservation.GetProperty("id").GetInt32().Should().Be(reservationId);
+        mineReservation.GetProperty("listing_title").GetString().Should().Be("Click and collect shelf");
+        mineReservation.GetProperty("qr_code").GetString().Should().Be(qrCode);
+        mineReservation.GetProperty("picked_up_at").ValueKind.Should().Be(JsonValueKind.Null);
+        mineReservation.GetProperty("slot").GetProperty("slot_start").GetString().Should().NotBeNullOrWhiteSpace();
+
+        await AuthenticateAsAdminAsync();
+        var scan = await Client.PostAsJsonAsync("/api/v2/marketplace/seller/pickup-scan", new
+        {
+            qr_code = qrCode
+        });
+
+        scan.StatusCode.Should().Be(HttpStatusCode.OK);
+        var scanJson = await scan.Content.ReadFromJsonAsync<JsonElement>();
+        scanJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var scanned = scanJson.GetProperty("data");
+        scanned.GetProperty("id").GetInt32().Should().Be(reservationId);
+        scanned.GetProperty("order_id").GetInt32().Should().Be(orderId);
+        scanned.GetProperty("listing_id").GetInt32().Should().Be(listingId);
+        scanned.GetProperty("status").GetString().Should().Be("picked_up");
+        scanned.GetProperty("picked_up_at").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
     private async Task<int> CreateMarketplaceListingAsync()
     {
         using var scope = Factory.Services.CreateScope();
@@ -481,6 +547,44 @@ public class MarketplaceControllerTests : IntegrationTestBase
         await db.SaveChangesAsync();
 
         return listing.Id;
+    }
+
+    private async Task<(int OrderId, int ListingId)> CreatePickupOrderForMemberAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var listing = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            Title = "Click and collect shelf",
+            Description = "A shelf that will be collected in a booked pickup slot",
+            Price = 25m,
+            PriceCurrency = "EUR",
+            Status = "active",
+            MarketplaceStatus = "available",
+            ModerationStatus = "approved",
+            DeliveryMethod = "pickup"
+        };
+        db.MarketplaceListings.Add(listing);
+        await db.SaveChangesAsync();
+
+        var order = new MarketplaceOrder
+        {
+            TenantId = TestData.Tenant1.Id,
+            MarketplaceListingId = listing.Id,
+            BuyerUserId = TestData.MemberUser.Id,
+            SellerUserId = TestData.AdminUser.Id,
+            TotalAmount = 25m,
+            Currency = "EUR",
+            Status = "confirmed",
+            DeliveryMethod = "pickup"
+        };
+        db.MarketplaceOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        return (order.Id, listing.Id);
     }
 
     private async Task<int> CreateCommunityDeliveryOrderAsync()

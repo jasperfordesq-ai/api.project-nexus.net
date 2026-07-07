@@ -929,8 +929,29 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("seller/pickup-scan")]
     [Authorize]
-    public IActionResult PickupScan([FromBody] PickupScanRequest request)
-        => Ok(new { data = new { request.Code, status = "accepted" } });
+    public async Task<IActionResult> PickupScan([FromBody] PickupScanRequest request)
+    {
+        var qrCode = request.QrCode ?? request.Code;
+        if (string.IsNullOrWhiteSpace(qrCode))
+            return BadRequest(new { success = false, code = "VALIDATION_ERROR", error = "qr_code is required" });
+
+        var reservation = await _db.MarketplacePickupReservations.FirstOrDefaultAsync(r => r.QrCode == qrCode);
+        if (reservation == null)
+            return UnprocessableEntity(new { success = false, code = "QR_NOT_FOUND", error = "QR_NOT_FOUND" });
+
+        var order = await _db.MarketplaceOrders.FirstOrDefaultAsync(o => o.Id == reservation.MarketplaceOrderId);
+        if (order == null || order.SellerUserId != RequireUserId())
+            return UnprocessableEntity(new { success = false, code = "NOT_FOR_SELLER", error = "NOT_FOR_SELLER" });
+
+        if (reservation.Status == "picked_up")
+            return UnprocessableEntity(new { success = false, code = "ALREADY_PICKED_UP", error = "ALREADY_PICKED_UP" });
+
+        reservation.Status = "picked_up";
+        reservation.PickedUpAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = MapPickupReservation(reservation) });
+    }
 
     [HttpGet("listings/{id:int}/pickup-slots")]
     [AllowAnonymous]
@@ -946,10 +967,47 @@ public class MarketplaceController : ControllerBase
     [Authorize]
     public async Task<IActionResult> ReservePickup(int id, [FromBody] PickupReservationRequest request)
     {
-        var row = new MarketplacePickupReservation { MarketplaceOrderId = id, MarketplacePickupSlotId = request.PickupSlotId, UserId = RequireUserId() };
+        var slotId = request.SlotId ?? request.PickupSlotId;
+        if (slotId <= 0)
+            return BadRequest(new { success = false, code = "VALIDATION_ERROR", error = "slot_id is required" });
+
+        var userId = RequireUserId();
+        var order = await _db.MarketplaceOrders.FirstOrDefaultAsync(o => o.Id == id && o.BuyerUserId == userId);
+        if (order == null)
+            return UnprocessableEntity(new { success = false, code = "ORDER_NOT_FOUND", error = "ORDER_NOT_FOUND" });
+
+        var slot = await _db.MarketplacePickupSlots.FirstOrDefaultAsync(s => s.Id == slotId);
+        if (slot == null)
+            return UnprocessableEntity(new { success = false, code = "SLOT_NOT_FOUND", error = "SLOT_NOT_FOUND" });
+        if (slot.UserId != order.SellerUserId)
+            return UnprocessableEntity(new { success = false, code = "SLOT_NOT_FOR_SELLER", error = "SLOT_NOT_FOR_SELLER" });
+        if (!slot.IsActive)
+            return UnprocessableEntity(new { success = false, code = "SLOT_INACTIVE", error = "SLOT_INACTIVE" });
+        if (slot.StartsAt < DateTime.UtcNow)
+            return UnprocessableEntity(new { success = false, code = "SLOT_PAST", error = "SLOT_PAST" });
+        if (slot.BookedCount >= slot.Capacity)
+            return UnprocessableEntity(new { success = false, code = "SLOT_FULL", error = "SLOT_FULL" });
+
+        var existing = await _db.MarketplacePickupReservations
+            .FirstOrDefaultAsync(r => r.MarketplaceOrderId == id && (r.Status == "reserved" || r.Status == "picked_up"));
+        if (existing != null)
+            return UnprocessableEntity(new { success = false, code = "DUPLICATE_RESERVATION", error = "DUPLICATE_RESERVATION" });
+
+        slot.BookedCount += 1;
+        var row = new MarketplacePickupReservation
+        {
+            TenantId = order.TenantId,
+            MarketplaceOrderId = id,
+            MarketplacePickupSlotId = slotId,
+            MarketplaceListingId = order.MarketplaceListingId,
+            UserId = userId,
+            QrCode = GeneratePickupQrCode(),
+            Status = "reserved",
+            ReservedAt = DateTime.UtcNow
+        };
         _db.MarketplacePickupReservations.Add(row);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/orders/{id}/pickup-reservation", new { data = row });
+        return Created($"/api/marketplace/orders/{id}/pickup-reservation", new { success = true, data = MapPickupReservation(row, slot) });
     }
 
     [HttpGet("me/pickups")]
@@ -957,7 +1015,23 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> MyPickups()
     {
         var rows = await _db.MarketplacePickupReservations.Where(r => r.UserId == RequireUserId()).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        var slots = await _db.MarketplacePickupSlots
+            .Where(s => rows.Select(r => r.MarketplacePickupSlotId).Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id);
+        var listingIds = rows.Select(r => r.MarketplaceListingId).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToArray();
+        var listings = listingIds.Length == 0
+            ? new Dictionary<int, MarketplaceListing>()
+            : await _db.MarketplaceListings.Where(l => listingIds.Contains(l.Id)).ToDictionaryAsync(l => l.Id);
+
+        return Ok(new
+        {
+            success = true,
+            data = rows.Select(r => MapPickupReservation(
+                r,
+                slots.GetValueOrDefault(r.MarketplacePickupSlotId),
+                r.MarketplaceListingId.HasValue ? listings.GetValueOrDefault(r.MarketplaceListingId.Value) : null)),
+            meta = new { total = rows.Count }
+        });
     }
 
     [HttpPatch("seller/listings/{id:int}/inventory")]
@@ -1218,6 +1292,32 @@ public class MarketplaceController : ControllerBase
         is_active = slot.IsActive
     };
 
+    private static object MapPickupReservation(
+        MarketplacePickupReservation reservation,
+        MarketplacePickupSlot? slot = null,
+        MarketplaceListing? listing = null) => new
+    {
+        id = reservation.Id,
+        slot_id = reservation.MarketplacePickupSlotId,
+        order_id = reservation.MarketplaceOrderId,
+        listing_id = reservation.MarketplaceListingId,
+        listing_title = listing?.Title,
+        qr_code = reservation.QrCode,
+        status = reservation.Status,
+        reserved_at = reservation.ReservedAt,
+        picked_up_at = reservation.PickedUpAt,
+        slot = slot == null
+            ? null
+            : new
+            {
+                slot_start = slot.StartsAt,
+                slot_end = slot.EndsAt
+            }
+    };
+
+    private static string GeneratePickupQrCode()
+        => Guid.NewGuid().ToString("N").ToUpperInvariant();
+
     private static string DisplayName(User user)
     {
         var name = $"{user.FirstName} {user.LastName}".Trim();
@@ -1350,6 +1450,6 @@ public record PickupSlotRequest(
     [property: JsonPropertyName("recurring_pattern")] string? RecurringPattern,
     [property: JsonPropertyName("is_active")] bool? IsActive);
 public record PickupScanRequest(string? Code, [property: JsonPropertyName("qr_code")] string? QrCode);
-public record PickupReservationRequest(int PickupSlotId);
+public record PickupReservationRequest(int PickupSlotId, [property: JsonPropertyName("slot_id")] int? SlotId);
 public record InventoryRequest(int Quantity);
 public record BulkActionRequest(string? Action, int[]? Ids);
