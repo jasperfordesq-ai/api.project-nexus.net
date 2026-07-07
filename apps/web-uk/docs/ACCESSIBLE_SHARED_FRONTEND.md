@@ -281,11 +281,15 @@ status banners. `/groups/{id}/announcements` and
 `/groups/{id}/announcements/{annId}/edit` now read Laravel-compatible group and
 announcement data, then render the Blade-style announcement cards, admin
 edit/pin/delete controls, create form, edit form, and announcement status
-states. `/groups/{id}/files` now reads Laravel-compatible group detail and file
-listing data, then renders the Blade-style file table, download/delete actions,
-upload form, empty state, and file status banners. Other group depth GET pages,
-owner/admin authorization depth, tenant/feature gates, localization, runtime
-behavior, and ASP.NET backend compatibility are not certified.
+states. `/groups/{id}/discussions`, `/groups/{id}/discussions/new`, and
+`/groups/{id}/discussions/{discussionId}` now read Laravel-compatible group and
+discussion data, then render the Blade-style discussion cards, member-only start
+button, create form, thread article, reply list, reply form, and discussion
+status states. `/groups/{id}/files` now reads Laravel-compatible group detail
+and file listing data, then renders the Blade-style file table, download/delete
+actions, upload form, empty state, and file status banners. Other group depth
+GET pages, owner/admin authorization depth, tenant/feature gates, localization,
+runtime behavior, and ASP.NET backend compatibility are not certified.
 Resource POST aliases are wired to Laravel v2 APIs for resource upload,
 resource delete, admin reorder, resource comments, comment deletion, and
 resource reactions while preserving Laravel library/comment status redirects.

@@ -13474,6 +13474,164 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/announcements/9');
   });
 
+  it('renders the Laravel group discussions page for signed-in group members', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: {
+          role: 'member',
+          status: 'active'
+        }
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 33,
+            title: 'Compost rota',
+            reply_count: 4,
+            is_pinned: true,
+            author: {
+              name: 'Avery Green'
+            }
+          }
+        ]
+      }
+    });
+
+    const unsigned = await request(app).get('/groups/42/discussions');
+    const signed = await request(app)
+      .get('/groups/42/discussions?status=discussion-created')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to group');
+    expect(signed.text).toContain('Garden Helpers');
+    expect(signed.text).toContain('Discussions');
+    expect(signed.text).toContain('Your discussion has been posted.');
+    expect(signed.text).toContain('href="/groups/42/discussions/new"');
+    expect(signed.text).toContain('Start a discussion');
+    expect(signed.text).toContain('Compost rota');
+    expect(signed.text).toContain('Pinned');
+    expect(signed.text).toContain('Started by Avery Green');
+    expect(signed.text).toContain('4 replies');
+    expect(signed.text).toContain('href="/groups/42/discussions/33"');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(1);
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/discussions');
+  });
+
+  it('renders the Laravel group discussion create page for signed-in group members', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: {
+          role: 'member',
+          status: 'active'
+        }
+      }
+    });
+    api.callGroupApi.mockReset();
+
+    const unsigned = await request(app).get('/groups/42/discussions/new');
+    const signed = await request(app)
+      .get('/groups/42/discussions/new?status=discussion-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to discussions');
+    expect(signed.text).toContain('Garden Helpers');
+    expect(signed.text).toContain('Start a discussion');
+    expect(signed.text).toContain('Share an update or ask a question with the rest of the group.');
+    expect(signed.text).toContain('Your discussion could not be posted. Please try again.');
+    expect(signed.text).toContain('id="title" name="title" type="text"');
+    expect(signed.text).toContain('A short summary of what you want to talk about.');
+    expect(signed.text).toContain('id="content" name="content"');
+    expect(signed.text).toContain('Write your opening message for the discussion.');
+    expect(signed.text).toContain('method="post" action="/groups/42/discussions/new"');
+    expect(signed.text).toContain('Post discussion');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel group discussion detail page for signed-in group members', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: {
+          role: 'member',
+          status: 'active'
+        }
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValueOnce({
+      data: {
+        discussion: {
+          id: 33,
+          title: 'Compost rota',
+          content: 'Please swap weeks here if you need help.',
+          author: {
+            name: 'Avery Green'
+          },
+          created_at: '2026-09-14T00:00:00Z'
+        },
+        items: [
+          {
+            id: 51,
+            content: 'I can cover the first week.',
+            author: {
+              name: 'Sam Lee'
+            },
+            created_at: '2026-09-14T09:30:00Z'
+          }
+        ]
+      }
+    });
+
+    const unsigned = await request(app).get('/groups/42/discussions/33');
+    const signed = await request(app)
+      .get('/groups/42/discussions/33?status=reply-posted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to discussions');
+    expect(signed.text).toContain('Garden Helpers');
+    expect(signed.text).toContain('Compost rota');
+    expect(signed.text).toContain('Your reply has been posted.');
+    expect(signed.text).toContain('Started by Avery Green');
+    expect(signed.text).toContain('Please swap weeks here if you need help.');
+    expect(signed.text).toContain('1 replies');
+    expect(signed.text).toContain('Reply by Sam Lee');
+    expect(signed.text).toContain('I can cover the first week.');
+    expect(signed.text).toContain('Your reply');
+    expect(signed.text).toContain('Add to the conversation.');
+    expect(signed.text).toContain('id="content" name="content"');
+    expect(signed.text).toContain('method="post" action="/groups/42/discussions/33/reply"');
+    expect(signed.text).toContain('Post reply');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(1);
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/discussions/33/messages');
+  });
+
   it('renders the Laravel group files page for signed-in group members', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockReset().mockResolvedValueOnce({

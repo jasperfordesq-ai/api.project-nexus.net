@@ -1,0 +1,72 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/groups/{{ group.id }}/discussions">Back to discussions</a>
+
+  <span class="govuk-caption-l">{{ group.name }}</span>
+  <h1 class="govuk-heading-xl">{{ discussion.title }}</h1>
+
+  {% if statusBanner and statusBanner.type == "success" %}
+    {{ govukNotificationBanner({
+      type: "success",
+      titleText: statusBanner.title,
+      text: statusBanner.message
+    }) }}
+  {% elif statusBanner and statusBanner.type == "error" %}
+    {{ govukErrorSummary({
+      titleText: statusBanner.title,
+      errorList: [
+        {
+          text: statusBanner.message,
+          href: "#content"
+        }
+      ]
+    }) }}
+  {% endif %}
+
+  <article class="nexus-alpha-card govuk-!-margin-bottom-4">
+    {% if discussion.authorName %}
+      <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+        Started by {{ discussion.authorName }}{% if discussion.createdAtLabel %} · {{ discussion.createdAtLabel }}{% endif %}
+      </p>
+    {% endif %}
+    <div class="govuk-body">{{ discussion.content | nl2br | safe }}</div>
+  </article>
+
+  <h2 class="govuk-heading-l" id="discussion-replies">{{ messages.length }} replies</h2>
+
+  {% if not messages.length %}
+    <div class="govuk-inset-text"><p class="govuk-body">There are no replies yet.</p></div>
+  {% else %}
+    {% for message in messages %}
+      <article class="nexus-alpha-card govuk-!-margin-bottom-3">
+        {% if message.authorName %}
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+            Reply by {{ message.authorName }}{% if message.createdAtLabel %} · {{ message.createdAtLabel }}{% endif %}
+          </p>
+        {% endif %}
+        <div class="govuk-body govuk-!-margin-bottom-0">{{ message.content | nl2br | safe }}</div>
+      </article>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" action="/groups/{{ group.id }}/discussions/{{ discussion.id }}/reply" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+    <div class="govuk-form-group{% if statusBanner and statusBanner.type == 'error' %} govuk-form-group--error{% endif %}">
+      <label class="govuk-label govuk-label--m" for="content">Your reply</label>
+      <div id="content-hint" class="govuk-hint">Add to the conversation.</div>
+      {% if statusBanner and statusBanner.type == "error" %}
+        <p class="govuk-error-message" id="content-error"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+      {% endif %}
+      <textarea class="govuk-textarea{% if statusBanner and statusBanner.type == 'error' %} govuk-textarea--error{% endif %}" id="content" name="content" rows="4" aria-describedby="content-hint{% if statusBanner and statusBanner.type == 'error' %} content-error{% endif %}"></textarea>
+    </div>
+    <button class="govuk-button" data-module="govuk-button">Post reply</button>
+  </form>
+{% endblock %}

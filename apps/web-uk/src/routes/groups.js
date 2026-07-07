@@ -80,6 +80,14 @@ const GROUP_ANNOUNCEMENT_ERROR_MESSAGES = {
   'ann-title-required': 'Enter a title for the announcement.',
   'ann-content-required': 'Enter content for the announcement.'
 };
+const GROUP_DISCUSSION_SUCCESS_MESSAGES = {
+  'discussion-created': 'Your discussion has been posted.',
+  'reply-posted': 'Your reply has been posted.'
+};
+const GROUP_DISCUSSION_ERROR_MESSAGES = {
+  'discussion-failed': 'Your discussion could not be posted. Please try again.',
+  'reply-failed': 'Your reply could not be posted. Please try again.'
+};
 const GROUP_FILE_SUCCESS_MESSAGES = {
   'file-uploaded': 'The file has been uploaded.',
   'file-deleted': 'The file has been deleted.'
@@ -235,6 +243,20 @@ function normalizeAnnouncement(item) {
   };
 }
 
+function normalizeDiscussion(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const author = raw.author && typeof raw.author === 'object' ? raw.author : {};
+  return {
+    id: positiveInteger(raw.id),
+    title: trimmed(raw.title || '') || 'View discussion',
+    content: trimmed(raw.content || ''),
+    authorName: trimmed(author.name || raw.author_name || raw.authorName || ''),
+    replyCount: Number(raw.reply_count ?? raw.replyCount ?? raw.replies_count ?? raw.repliesCount ?? 0) || 0,
+    isPinned: checked(raw.is_pinned ?? raw.isPinned),
+    createdAtLabel: dateLabel(raw.created_at || raw.createdAt || raw.posted_at || raw.postedAt)
+  };
+}
+
 function normalizeInvite(item) {
   const raw = item && typeof item === 'object' ? item : {};
   const type = trimmed(raw.invite_type || raw.inviteType || raw.type) === 'email' ? 'email' : 'link';
@@ -270,6 +292,13 @@ function normalizeGroupFile(item) {
 function isGroupAdmin(group) {
   const role = trimmed(group?.my_membership?.role || group?.myMembership?.role || group?.membership?.role || '');
   return ['admin', 'owner'].includes(role);
+}
+
+function isActiveGroupMember(group) {
+  const membership = group?.my_membership || group?.myMembership || group?.membership || null;
+  const role = trimmed(membership?.role || '');
+  const status = trimmed(membership?.status || membership?.state || '');
+  return ['member', 'admin', 'owner'].includes(role) || status === 'active' || checked(group?.is_member || group?.isMember);
 }
 
 function inviteGeneratedLink(result) {
@@ -376,6 +405,32 @@ function announcementStatus(status) {
         title: 'There is a problem',
         message: GROUP_ANNOUNCEMENT_ERROR_MESSAGES[value],
         href
+      }
+    };
+  }
+
+  return { statusBanner: null };
+}
+
+function discussionStatus(status) {
+  const value = trimmed(status);
+  if (Object.prototype.hasOwnProperty.call(GROUP_DISCUSSION_SUCCESS_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'success',
+        title: 'Success',
+        message: GROUP_DISCUSSION_SUCCESS_MESSAGES[value]
+      }
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(GROUP_DISCUSSION_ERROR_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'error',
+        title: value === 'discussion-failed' ? 'There is a problem posting your discussion' : 'There is a problem',
+        message: GROUP_DISCUSSION_ERROR_MESSAGES[value],
+        href: '#content'
       }
     };
   }
@@ -739,6 +794,67 @@ router.get('/:id(\\d+)/announcements/:annId(\\d+)/edit', asyncRoute(async (req, 
     ...announcementStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Announcement not found' }));
+
+router.get('/:id(\\d+)/discussions', asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const groupResult = await getGroup(req.token, id);
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const isMember = isActiveGroupMember(group);
+  const discussionsResult = isMember
+    ? await callGroup(req.token, 'GET', `/${id}/discussions`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: { items: [] } };
+    })
+    : { data: { items: [] } };
+  const discussions = collectionFrom(discussionsResult)
+    .map(normalizeDiscussion)
+    .filter((discussion) => discussion.id !== null);
+
+  return res.render('groups/discussions', {
+    title: 'Discussions',
+    activeNav: 'explore',
+    group,
+    isMember,
+    discussions,
+    ...discussionStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
+
+router.get('/:id(\\d+)/discussions/new', asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const groupResult = await getGroup(req.token, id);
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+
+  return res.render('groups/discussion-create', {
+    title: 'Start a discussion',
+    activeNav: 'explore',
+    group,
+    ...discussionStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
+
+router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', asyncRoute(async (req, res) => {
+  const { id, discussionId } = req.params;
+  const [groupResult, discussionResult] = await Promise.all([
+    getGroup(req.token, id),
+    callGroup(req.token, 'GET', `/${id}/discussions/${discussionId}/messages`)
+  ]);
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const data = dataFrom(discussionResult) || {};
+  const discussion = normalizeDiscussion(data.discussion || data.thread || data);
+  const messages = collectionFrom({ data })
+    .map(normalizeDiscussion)
+    .filter((message) => message.id !== null);
+
+  return res.render('groups/discussion-detail', {
+    title: discussion.title,
+    activeNav: 'explore',
+    group,
+    discussion,
+    messages,
+    ...discussionStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Discussion not found' }));
 
 router.get('/:id(\\d+)/files', asyncRoute(async (req, res) => {
   const id = req.params.id;

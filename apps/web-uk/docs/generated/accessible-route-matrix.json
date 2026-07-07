@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T09:36:07.172Z",
+    "generatedAt": "2026-07-07T09:40:50.894Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -5543,8 +5543,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/groups/{param}/discussions",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "groups/discussions",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js"
     },
     {
       "method": "GET",
@@ -5562,8 +5562,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/groups/{param}/discussions/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "groups/discussion-detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js"
     },
     {
       "method": "GET",
@@ -5581,8 +5581,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/groups/{param}/discussions/new",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "groups/discussion-create",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js"
     },
     {
       "method": "GET",

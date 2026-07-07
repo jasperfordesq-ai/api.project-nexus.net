@@ -1,0 +1,63 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+
+  <span class="govuk-caption-l">{{ group.name }}</span>
+  <h1 class="govuk-heading-xl">Discussions</h1>
+
+  {% if statusBanner and statusBanner.type == "success" %}
+    {{ govukNotificationBanner({
+      type: "success",
+      titleText: statusBanner.title,
+      text: statusBanner.message
+    }) }}
+  {% elif statusBanner and statusBanner.type == "error" %}
+    {{ govukErrorSummary({
+      titleText: statusBanner.title,
+      errorList: [
+        {
+          text: statusBanner.message,
+          href: statusBanner.href or "#content"
+        }
+      ]
+    }) }}
+  {% endif %}
+
+  {% if not isMember %}
+    <div class="govuk-inset-text"><p class="govuk-body">Your membership is pending approval.</p></div>
+  {% else %}
+    <p class="govuk-body">
+      <a class="govuk-button" role="button" draggable="false" data-module="govuk-button" href="/groups/{{ group.id }}/discussions/new">Start a discussion</a>
+    </p>
+
+    {% if not discussions.length %}
+      <div class="govuk-inset-text"><p class="govuk-body">There are no discussions yet. Start the first one.</p></div>
+    {% else %}
+      <div class="nexus-alpha-card-list">
+        {% for discussion in discussions %}
+          <article class="nexus-alpha-card">
+            <div class="nexus-alpha-module-row">
+              <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+                <a class="govuk-link" href="/groups/{{ group.id }}/discussions/{{ discussion.id }}">{{ discussion.title }}</a>
+              </h2>
+              {% if discussion.isPinned %}
+                <strong class="govuk-tag govuk-tag--yellow">Pinned</strong>
+              {% endif %}
+            </div>
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
+              {% if discussion.authorName %}Started by {{ discussion.authorName }} · {% endif %}{{ discussion.replyCount }} replies
+            </p>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}
