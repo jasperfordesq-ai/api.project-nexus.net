@@ -2377,6 +2377,27 @@ async function searchSuggestions(token, query, limit = 5) {
   });
 }
 
+async function searchV2(token, params = {}) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
+  }
+
+  return request(`/api/v2/search?${query.toString()}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+async function getSavedSearches(token) {
+  return request('/api/v2/search/saved', {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function saveSavedSearch(token, data) {
   return request('/api/v2/search/saved', {
     method: 'POST',
@@ -2968,6 +2989,8 @@ module.exports = {
   // Search
   search,
   searchSuggestions,
+  searchV2,
+  getSavedSearches,
   saveSavedSearch,
   deleteSavedSearch,
   runSavedSearch,

@@ -144,7 +144,11 @@ including the board `source` redirect and `#matches-top` fragment.
 Exchange action and rating POST aliases are wired to Laravel `/api/v2/exchanges`
 for accept/decline/start/complete/confirm/cancel actions and
 `/api/v2/exchanges/{id}/rate` for no-JS ratings.
-Search saved-search POST aliases are wired to Laravel `/api/v2/search/saved`:
+Search advanced GET now redirects unsigned visitors to
+`/login?status=auth-required`, calls Laravel `/api/v2/search` with the Blade
+advanced-search filters, calls `/api/v2/search/saved` for saved-search cards,
+and renders the Blade-style result tabs for listings, members, events, and
+groups. Saved-search POST aliases are wired to Laravel `/api/v2/search/saved`:
 `/search/saved` stores the Laravel-normalized query allow-list, delete calls
 `DELETE /api/v2/search/saved/{id}`, and run calls
 `POST /api/v2/search/saved/{id}/run` before redirecting to `/search/advanced`.

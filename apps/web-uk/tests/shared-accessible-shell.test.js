@@ -155,6 +155,8 @@ jest.mock('../src/lib/api', () => ({
   deleteComment: jest.fn().mockResolvedValue({ data: { deleted: true } }),
   toggleReaction: jest.fn().mockResolvedValue({ data: { action: 'added' } }),
   toggleFeedLike: jest.fn().mockResolvedValue({ data: { action: 'liked' } }),
+  searchV2: jest.fn().mockResolvedValue({ data: [], meta: { search: { total: 0 } } }),
+  getSavedSearches: jest.fn().mockResolvedValue({ data: [] }),
   saveSavedSearch: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   deleteSavedSearch: jest.fn().mockResolvedValue({ deleted: true }),
   runSavedSearch: jest.fn().mockResolvedValue({ data: { query_params: { q: 'gardening' } } }),
@@ -325,6 +327,8 @@ describe('shared accessible frontend shell', () => {
     api.getHelpFaqs.mockReset().mockResolvedValue({ data: [] });
     api.getLegalDocument.mockReset().mockResolvedValue({ data: null });
     api.toggleFeedLike.mockReset().mockResolvedValue({ data: { action: 'liked' } });
+    api.searchV2.mockReset().mockResolvedValue({ data: [], meta: { search: { total: 0 } } });
+    api.getSavedSearches.mockReset().mockResolvedValue({ data: [] });
     api.saveSavedSearch.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.deleteSavedSearch.mockReset().mockResolvedValue({ deleted: true });
     api.runSavedSearch.mockReset().mockResolvedValue({ data: { query_params: { q: 'gardening' } } });
@@ -5495,6 +5499,114 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
+  });
+
+  it('renders the Laravel-style advanced search page', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.searchV2.mockResolvedValueOnce({
+      data: [
+        {
+          type: 'listing',
+          id: 42,
+          title: 'Garden help',
+          description: 'Help with raised beds and compost.',
+          listing_type: 'offer',
+          hours_estimate: 2,
+          is_featured: true
+        },
+        {
+          type: 'user',
+          id: 77,
+          name: 'Avery Stone',
+          bio: 'Gardening mentor',
+          location: 'Town'
+        },
+        {
+          type: 'event',
+          id: 88,
+          title: 'Seed swap',
+          description: 'Bring seeds to share.',
+          location: 'Community hall',
+          start_date: '2026-07-20T10:00:00Z'
+        },
+        {
+          type: 'group',
+          id: 99,
+          name: 'Garden circle',
+          description: 'Weekly growing group.',
+          members_count: 6
+        }
+      ],
+      meta: {
+        search: { total: 4, query: 'garden', type: 'all' },
+        pagination: { has_more: false }
+      }
+    });
+    api.getSavedSearches.mockResolvedValueOnce({
+      data: [
+        {
+          id: 12,
+          name: 'Garden helpers',
+          query_params: { q: 'garden' },
+          last_result_count: 4
+        }
+      ]
+    });
+
+    const unsigned = await request(app).get('/search/advanced?q=garden');
+    const signed = await request(app)
+      .get('/search/advanced?q=garden&type=listings&sort=newest&category_id=3&skills=repair%2Cteaching&date_from=2026-07-01&location=Town&status=search-saved')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.searchV2).toHaveBeenCalledWith('test-token', {
+      q: 'garden',
+      type: 'listings',
+      per_page: 30,
+      category_id: '3',
+      sort: 'newest',
+      skills: 'repair,teaching'
+    });
+    expect(api.getSavedSearches).toHaveBeenCalledWith('test-token');
+    expect(signed.text).toContain('Your search has been saved.');
+    expect(signed.text).toContain('Search Project NEXUS Accessible');
+    expect(signed.text).toContain('Advanced search');
+    expect(signed.text).toContain('Search across listings, members, events and groups, then narrow your results with filters.');
+    expect(signed.text).toContain('href="/search"');
+    expect(signed.text).toContain('Switch to simple search');
+    expect(signed.text).toContain('What are you looking for?');
+    expect(signed.text).toContain('Advanced filters (6 applied)');
+    expect(signed.text).toContain('Content type');
+    expect(signed.text).toContain('Listings');
+    expect(signed.text).toContain('Skills and tags');
+    expect(signed.text).toContain('Selected skills');
+    expect(signed.text).toContain('repair');
+    expect(signed.text).toContain('teaching');
+    expect(signed.text).toContain('Save this search');
+    expect(signed.text).toContain('Name this search');
+    expect(signed.text).toContain('1 saved search');
+    expect(signed.text).toContain('Garden helpers');
+    expect(signed.text).toContain('Run search');
+    expect(signed.text).toContain('Delete');
+    expect(signed.text).toContain('4 results found');
+    expect(signed.text).toContain('All (4)');
+    expect(signed.text).toContain('Listings (1)');
+    expect(signed.text).toContain('Members (1)');
+    expect(signed.text).toContain('href="/search/advanced?q=garden&amp;type=listings&amp;category_id=3&amp;sort=newest&amp;skills=repair%2Cteaching&amp;date_from=2026-07-01&amp;location=Town&amp;tab=users"');
+    expect(signed.text).toContain('Events (1)');
+    expect(signed.text).toContain('Groups (1)');
+    expect(signed.text).toContain('Garden help');
+    expect(signed.text).toContain('Offering');
+    expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain('Seed swap');
+    expect(signed.text).toContain('Garden circle');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
   it('submits the Laravel saved search route through the search API helper', async () => {

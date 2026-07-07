@@ -1978,6 +1978,53 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel saved search helpers', () => {
+    it('should search through the Laravel v2 endpoint with advanced filters', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [], meta: { search: { total: 0 } } })
+      });
+
+      await api.searchV2('test-token', {
+        q: 'gardening',
+        type: 'listings',
+        per_page: 30,
+        category_id: 3,
+        sort: 'newest',
+        skills: 'repair,teaching'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/search?q=gardening&type=listings&per_page=30&category_id=3&sort=newest&skills=repair%2Cteaching',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should list saved searches through the Laravel v2 endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: [] })
+      });
+
+      await api.getSavedSearches('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/search/saved',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
     it('should save a search through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
