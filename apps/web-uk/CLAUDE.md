@@ -288,16 +288,16 @@ contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
 | `/api/auth/forgot-password` | POST | Request password reset email |
 | `/api/auth/reset-password` | POST | Reset password with token |
 | `/api/auth/validate` | GET | Validate token |
-| `/api/users/me` | GET | Get current user profile |
+| `/api/v2/users/me` | GET | Get current user profile |
 | `/api/users/me` | PATCH | Update profile (first_name, last_name) |
 | `/api/listings` | GET | List listings (supports filtering) |
 | `/api/listings` | POST | Create listing |
 | `/api/listings/{id}` | GET | Get listing |
 | `/api/listings/{id}` | PUT | Update listing |
 | `/api/listings/{id}` | DELETE | Delete listing |
-| `/api/wallet/balance` | GET | Get user balance |
-| `/api/wallet/transactions` | GET | List transactions |
-| `/api/messages` | GET | List conversations |
+| `/api/v2/wallet/balance` | GET | Get user balance |
+| `/api/v2/wallet/transactions` | GET | List transactions |
+| `/api/v2/messages` | GET | List conversations |
 | `/api/messages/{id}` | POST | Send message in conversation |
 | `/api/messages/{id}/read` | PUT | Mark conversation as read |
 | `/api/connections` | GET | List connections (?status=accepted\|pending) |

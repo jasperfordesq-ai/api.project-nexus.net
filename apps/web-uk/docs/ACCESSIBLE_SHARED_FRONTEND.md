@@ -44,17 +44,17 @@ redirects, `/login` CSRF handling, login POST redirect behavior, and a signed
 pages `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and
 `/help` return successful responses from the web-uk app while it is pointed at
 Laravel, plus the signed module pages `/explore`, `/saved`, `/notifications`,
-`/members/discover`, `/resources`, `/skills`, `/goals`, and `/clubs` after the
-same login flow. The harness defaults to Laravel's local E2E fixture
+`/members/discover`, `/resources`, `/skills`, `/goals`, `/clubs`, `/wallet`,
+and `/messages` after the same login flow. The harness defaults to Laravel's local E2E fixture
 (`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`).
 
-On 2026-07-07 the command passed end-to-end against a temporary web-uk process
-started with `TENANT_ID=2` and `SMOKE_TIMEOUT_MS=30000`. Keep the tenant context
-visible: the same Laravel E2E credentials return `401` when web-uk does not send
-Laravel's tenant id `2` as `X-Tenant-ID`. Live probing found `/wallet`,
-`/messages`, and `/coupons` are not ready for default signed smoke yet in this
-local fixture because they returned non-2xx responses.
+On 2026-07-07 the command passed `21/21` checks end-to-end against a temporary
+web-uk process started with `TENANT_ID=2`. Keep the tenant context visible: the
+same Laravel E2E credentials return `401` when web-uk does not send Laravel's
+tenant id `2` as `X-Tenant-ID`. Live probing still leaves `/coupons` outside the
+default signed smoke list because the local fixture returns a feature-gated
+`403` for merchant coupons.
 
 ## Stack
 
@@ -135,8 +135,9 @@ transfer forms, donation target controls, and status states. `/wallet/recipients
 returns Laravel wallet user-search suggestions for progressive enhancement, and
 `/wallet/export.csv` streams the Laravel `/api/v2/wallet/statement` CSV
 download. Tenant module gates, exact live recipient privacy behavior,
-localization, and wallet runtime smoke are not certified; the signed `/saved`
-and `/notifications` pages are covered by the default Laravel runtime smoke.
+localization, and deeper wallet workflows are not certified; the signed
+`/wallet`, `/saved`, and `/notifications` pages are covered by the default
+Laravel runtime smoke.
 `/saved` now redirects unsigned visitors to `/login?status=auth-required`, reads
 Laravel `/api/v2/bookmarks` with the Blade type filter, and renders the
 Blade-style saved item list, empty state, status banner, item links, type tags,

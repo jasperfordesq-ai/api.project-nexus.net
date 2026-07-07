@@ -10,7 +10,7 @@ const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
-const DEFAULT_SIGNED_MODULE_PAGE_PATHS = ['/explore', '/saved', '/notifications', '/members/discover', '/resources', '/skills', '/goals', '/clubs'];
+const DEFAULT_SIGNED_MODULE_PAGE_PATHS = ['/explore', '/saved', '/notifications', '/members/discover', '/resources', '/skills', '/goals', '/clubs', '/wallet', '/messages'];
 
 class CookieJar {
   constructor() {

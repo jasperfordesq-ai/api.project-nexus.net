@@ -2960,6 +2960,127 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel resource helpers', () => {
+    it('should fetch the signed-in profile through the Laravel v2 users endpoint', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42, name: 'Test Member' } })
+      });
+
+      await api.getProfile('test-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users/me',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should fetch wallet overview data through Laravel v2 endpoints', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ balance: 12 })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42 } })
+        });
+
+      await api.getBalance('test-token');
+      await api.getTransactions('test-token', { limit: 5, type: 'earned', page: 2 });
+      await api.getTransaction('test-token', 42);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/wallet/balance',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/wallet/transactions?type=earned&page=2&limit=5',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/v2/wallet/transactions/42',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
+    it('should fetch message overview data through Laravel v2 endpoints', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ count: 3 })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42 } })
+        });
+
+      await api.getConversations('test-token');
+      await api.getUnreadCount('test-token');
+      await api.getConversation('test-token', 42);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/messages',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/messages/unread-count',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/v2/messages/42',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+    });
+
     it('should fetch resources through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

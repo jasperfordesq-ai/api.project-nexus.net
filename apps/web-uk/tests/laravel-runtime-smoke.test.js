@@ -107,7 +107,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard' } = {}) {
       return;
     }
 
-    const signedModulePages = new Set(['/explore', '/saved', '/notifications', '/members/discover', '/resources', '/skills', '/goals', '/clubs']);
+    const signedModulePages = new Set(['/explore', '/saved', '/notifications', '/members/discover', '/resources', '/skills', '/goals', '/clubs', '/wallet', '/messages']);
     if (req.method === 'GET' && signedModulePages.has(req.url)) {
       if ((req.headers.cookie || '').includes('token=signed-token')) {
         res.writeHead(200, { 'content-type': 'text/html' });
@@ -250,8 +250,12 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-resources-renders': true,
       'module-page-skills-renders': true,
       'module-page-goals-renders': true,
-      'module-page-clubs-renders': true
+      'module-page-clubs-renders': true,
+      'module-page-wallet-renders': true,
+      'module-page-messages-renders': true
     }));
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/explore').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/messages').at(-1).cookie).toContain('token=signed-token');
   });
 });

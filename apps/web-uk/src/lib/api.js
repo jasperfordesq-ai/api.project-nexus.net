@@ -264,7 +264,7 @@ async function changePassword(token, currentPassword, newPassword) {
 
 // Users / Profile
 async function getProfile(token) {
-  return request('/api/users/me', {
+  return request('/api/v2/users/me', {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -998,7 +998,7 @@ async function getJob(token, id) {
 
 // Wallet
 async function getBalance(token) {
-  return request('/api/wallet/balance', {
+  return request('/api/v2/wallet/balance', {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -1010,7 +1010,7 @@ async function getTransactions(token, params = {}) {
   if (params.limit) query.set('limit', params.limit);
 
   const queryString = query.toString();
-  const endpoint = `/api/wallet/transactions${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/api/v2/wallet/transactions${queryString ? `?${queryString}` : ''}`;
 
   return request(endpoint, {
     headers: { Authorization: `Bearer ${token}` }
@@ -1018,7 +1018,7 @@ async function getTransactions(token, params = {}) {
 }
 
 async function getTransaction(token, id) {
-  return request(`/api/wallet/transactions/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/wallet/transactions/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -1672,13 +1672,13 @@ async function callFederationApi(token, method, path = '', data = undefined) {
 }
 
 async function getConversations(token) {
-  return request('/api/messages', {
+  return request('/api/v2/messages', {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
 
 async function getConversation(token, id) {
-  return request(`/api/messages/${encodeURIComponent(id)}`, {
+  return request(`/api/v2/messages/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 }
@@ -1691,7 +1691,7 @@ async function getUnreadCount(token) {
     return cached;
   }
 
-  const result = await request('/api/messages/unread-count', {
+  const result = await request('/api/v2/messages/unread-count', {
     headers: { Authorization: `Bearer ${token}` }
   });
 
