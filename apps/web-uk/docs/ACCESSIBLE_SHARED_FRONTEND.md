@@ -153,13 +153,17 @@ linked-account request/approve/permission/revoke, and multipart insurance
 uploads while preserving Laravel status redirects and anchors. `/settings/appearance`
 now redirects unsigned visitors to `/login?status=auth-required`, reads the
 current theme from the Laravel-compatible user settings payload when available,
-and renders the Blade-style theme form and status states. `/settings/data-rights`
+and renders the Blade-style theme form and status states. `/settings/linked-accounts`
+now renders the Blade-style incoming/managed linked-account sections, empty
+states, request form, relationship choices, permission checkboxes, and status
+states while loading Laravel-compatible sub-account payloads when available.
+`/settings/data-rights`
 renders the Blade-style request form, GDPR status banners, empty request-history
 state, and submits through the existing Laravel-compatible POST alias.
 `/settings/availability` renders the Blade-style weekly availability grid with
 status states and submits through the existing Laravel-compatible POST alias.
 Other settings GET pages remain generated preparation pages or local legacy
-settings pages, and linked-account data rendering, data-rights history loading,
+settings pages, and live linked-account runtime behavior, data-rights history loading,
 tenant feature gates, localization, insurance upload runtime smoke tests, and
 ASP.NET backend compatibility are not certified.
 Blog POST aliases are wired to Laravel v2 blog/comment/reaction APIs for

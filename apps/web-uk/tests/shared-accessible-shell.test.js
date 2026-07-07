@@ -902,6 +902,46 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style linked-accounts settings page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const unsigned = await request(app).get('/settings/linked-accounts');
+    const signed = await request(app)
+      .get('/settings/linked-accounts?status=link-requested')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to settings');
+    expect(signed.text).toContain('Success');
+    expect(signed.text).toContain('Your link request has been sent.');
+    expect(signed.text).toContain('Account settings');
+    expect(signed.text).toContain('Linked accounts');
+    expect(signed.text).toContain('Link a family member, dependant or someone you care for to your account');
+    expect(signed.text).toContain('Accounts that manage you');
+    expect(signed.text).toContain('No one has asked to manage your account.');
+    expect(signed.text).toContain('Accounts you manage');
+    expect(signed.text).toContain('You do not manage any linked accounts yet.');
+    expect(signed.text).toContain('Link a new account');
+    expect(signed.text).toContain('You can manage up to 20 linked accounts.');
+    expect(signed.text).toContain('Email address');
+    expect(signed.text).toContain('Relationship');
+    expect(signed.text).toContain('Family member');
+    expect(signed.text).toContain('Guardian');
+    expect(signed.text).toContain('Carer');
+    expect(signed.text).toContain('Organisation');
+    expect(signed.text).toContain('What this account can do');
+    expect(signed.text).toContain('View their activity');
+    expect(signed.text).toContain('Manage their listings');
+    expect(signed.text).toContain('Send and receive time credits');
+    expect(signed.text).toContain('View their messages');
+    expect(signed.text).toContain('Send link request');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
     const staticPageRoutes = require('../src/routes/static-pages');
 

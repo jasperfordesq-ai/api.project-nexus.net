@@ -52,6 +52,16 @@ const SETTINGS_GDPR_TYPE_HINTS = {
   objection: 'Object to us processing your data for a particular purpose.'
 };
 const SETTINGS_STATUS_MESSAGES = {
+  'link-requested': 'Your link request has been sent. The other member must approve it.',
+  'link-approved': 'You have approved the link.',
+  'link-revoked': 'The link has been removed.',
+  'link-permissions-saved': 'Permissions updated.',
+  'link-email-invalid': 'Enter a valid email address.',
+  'link-user-not-found': 'We could not find a member with that email address in this community.',
+  'link-self': 'You cannot link your own account to itself.',
+  'link-exists': 'A link with this member already exists.',
+  'link-max': 'You have reached the maximum number of linked accounts.',
+  'link-failed': 'Sorry, we could not complete that request. Please try again.',
   'appearance-saved': 'Your appearance settings have been saved.',
   'appearance-invalid': 'Choose one of the available themes.',
   'appearance-failed': 'Sorry, we could not save your appearance settings. Please try again.',
@@ -76,6 +86,18 @@ const SETTINGS_THEME_HINTS = {
 const SETTINGS_AVAILABILITY_DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
 const SETTINGS_AVAILABILITY_DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const SETTINGS_AVAILABILITY_SLOTS_PER_DAY = 3;
+const SETTINGS_LINK_TYPE_LABELS = {
+  family: 'Family member',
+  guardian: 'Guardian',
+  carer: 'Carer',
+  organization: 'Organisation'
+};
+const SETTINGS_LINK_PERMISSION_LABELS = {
+  can_view_activity: 'View their activity',
+  can_manage_listings: 'Manage their listings',
+  can_transact: 'Send and receive time credits',
+  can_view_messages: 'View their messages'
+};
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -131,6 +153,10 @@ function dataFrom(result) {
   return result && result.data && typeof result.data === 'object' ? result.data : {};
 }
 
+function payloadFrom(result) {
+  return result && Object.prototype.hasOwnProperty.call(result, 'data') ? result.data : result;
+}
+
 function redirectOnAuthError(error, res) {
   if (isAuthError(error)) {
     res.redirect(loginRedirect());
@@ -156,6 +182,58 @@ function permissionPayload(body) {
 
 function settingsStatusRedirect(path, status, fragment = '') {
   return `${path}?status=${encodeURIComponent(status)}${fragment}`;
+}
+
+function jsonObjectFrom(value) {
+  if (value && typeof value === 'object') return value;
+  if (typeof value !== 'string') return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function relationshipRowsFromPayload(payload, keys) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+
+  for (const key of keys) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+
+  if (payload.data && typeof payload.data === 'object') {
+    return relationshipRowsFromPayload(payload.data, keys);
+  }
+
+  return [];
+}
+
+function normalizeRelationship(row) {
+  const permissions = jsonObjectFrom(row && row.permissions);
+  const first = trimmed(row && row.first_name);
+  const last = trimmed(row && row.last_name);
+  const name = trimmed((row && row.name) || `${first} ${last}` || (row && row.email));
+  const type = allowedValue(row && row.relationship_type, SETTINGS_LINK_TYPES, 'family');
+
+  return {
+    relationshipId: positiveInteger(row && (row.relationship_id || row.id)) || 0,
+    name: name || 'Unknown member',
+    email: trimmed(row && row.email),
+    avatarUrl: trimmed(row && row.avatar_url),
+    relationshipType: type,
+    relationshipTypeLabel: SETTINGS_LINK_TYPE_LABELS[type],
+    status: trimmed(row && row.status) || 'pending',
+    permissions: SETTINGS_LINK_PERMISSIONS.reduce((acc, key) => {
+      acc[key] = Boolean(permissions[key]);
+      return acc;
+    }, {})
+  };
+}
+
+function normalizeRelationships(payload, keys) {
+  return relationshipRowsFromPayload(payload, keys).map(normalizeRelationship);
 }
 
 function themeFromSettingsData(data) {
@@ -256,6 +334,57 @@ function linkedFailureStatus(error) {
   if (code.includes('MAX') || code.includes('LIMIT')) return 'link-max';
   return 'link-failed';
 }
+
+router.get('/linked-accounts', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let children = [];
+  let parents = [];
+
+  try {
+    children = normalizeRelationships(payloadFrom(await callSettings(token, 'GET', '/sub-accounts')), [
+      'children',
+      'child_accounts',
+      'sub_accounts',
+      'accounts',
+      'items'
+    ]);
+    parents = normalizeRelationships(payloadFrom(await callSettings(token, 'GET', '/parent-accounts')), [
+      'parents',
+      'parent_accounts',
+      'accounts',
+      'items'
+    ]);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  return res.render('settings/linked-accounts', {
+    title: 'Linked accounts',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: ['link-requested', 'link-approved', 'link-revoked', 'link-permissions-saved'].includes(status),
+    errorStatus: ['link-email-invalid', 'link-user-not-found', 'link-self', 'link-exists', 'link-max', 'link-failed'].includes(status),
+    children,
+    parents,
+    maxChildren: 20,
+    linkTypes: SETTINGS_LINK_TYPES.map((type) => ({
+      value: type,
+      label: SETTINGS_LINK_TYPE_LABELS[type],
+      selected: type === 'family'
+    })),
+    permissions: SETTINGS_LINK_PERMISSIONS.map((permission) => ({
+      value: permission,
+      field: `perm_${permission}`,
+      label: SETTINGS_LINK_PERMISSION_LABELS[permission],
+      checkedByDefault: permission === 'can_view_activity'
+    }))
+  });
+}));
 
 router.get('/appearance', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
