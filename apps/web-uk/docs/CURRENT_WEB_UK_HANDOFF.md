@@ -306,6 +306,19 @@ redirect checks, 17 gated-status checks, and 20 signed redirect checks, plus the
 The expanded default scope was recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4`
 against the same temporary process: all four chunks passed on 2026-07-07 with
 `463` repeated checks, `0` failures, and `259` collective module-page checks.
+
+The default Laravel runtime smoke scope now additionally covers
+`/feed/item/listing/90966`, `/feed/item/listing/90965`,
+`/feed/item/listing/90964`, `/feed/item/listing/90963`, and
+`/feed/item/listing/90962` as signed 2xx typed feed item permalink routes. A
+targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:5342`, started with
+`TENANT_ID=2`, passed on 2026-07-07: `11/11` checks, `0` failures. The expanded
+default scope now contains `315` checks: `264` module-page checks, 8 unsigned
+auth-required redirect checks, 17 gated-status checks, and 20 signed redirect
+checks, plus the 6 auth/health checks.
+The expanded default scope was recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4`
+against the same temporary process: all four chunks passed on 2026-07-07 with
+`468` repeated checks, `0` failures, and `264` collective module-page checks.
 `/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to
 `/login?status=auth-required` before data lookup. Without
