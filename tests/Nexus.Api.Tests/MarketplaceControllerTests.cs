@@ -647,6 +647,59 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MarketplaceSellerManagementV2_ReturnsLaravelReactDashboardRenewAndDeleteContract()
+    {
+        var ids = await CreateSellerManagementListingsForMemberAsync();
+
+        await AuthenticateAsMemberAsync();
+        var dashboard = await Client.GetAsync("/api/v2/marketplace/seller/dashboard");
+
+        dashboard.StatusCode.Should().Be(HttpStatusCode.OK);
+        var dashboardJson = await dashboard.Content.ReadFromJsonAsync<JsonElement>();
+        dashboardJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var stats = dashboardJson.GetProperty("data");
+        stats.GetProperty("active_listings").GetInt32().Should().Be(1);
+        stats.GetProperty("draft_listings").GetInt32().Should().Be(1);
+        stats.GetProperty("sold_listings").GetInt32().Should().Be(1);
+        stats.GetProperty("expired_listings").GetInt32().Should().Be(1);
+        stats.GetProperty("total_listings").GetInt32().Should().Be(4);
+        stats.GetProperty("total_views").GetInt32().Should().Be(18);
+        stats.GetProperty("total_saves").GetInt32().Should().Be(3);
+        stats.GetProperty("pending_offers").GetInt32().Should().Be(1);
+        stats.GetProperty("total_revenue").GetDecimal().Should().Be(42m);
+        stats.GetProperty("revenue_currency").GetString().Should().Be("EUR");
+
+        var list = await Client.GetAsync($"/api/v2/marketplace/listings?user_id={TestData.MemberUser.Id}&status=active&limit=24");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var active = listJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        active.GetProperty("id").GetInt32().Should().Be(ids.ActiveId);
+        active.GetProperty("is_own").GetBoolean().Should().BeTrue();
+        active.GetProperty("status").GetString().Should().Be("active");
+
+        var renew = await Client.PostAsync($"/api/v2/marketplace/listings/{ids.ExpiredId}/renew", null);
+
+        renew.StatusCode.Should().Be(HttpStatusCode.OK);
+        var renewJson = await renew.Content.ReadFromJsonAsync<JsonElement>();
+        renewJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var renewed = renewJson.GetProperty("data");
+        renewed.GetProperty("id").GetInt32().Should().Be(ids.ExpiredId);
+        renewed.GetProperty("status").GetString().Should().Be("active");
+        renewed.GetProperty("expires_at").GetString().Should().NotBeNullOrWhiteSpace();
+        renewed.GetProperty("is_own").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/marketplace/listings/{ids.DraftId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(ids.DraftId);
+    }
+
+    [Fact]
     public async Task MarketplaceOrderHistoryV2_ReturnsLaravelReactShapeAndShipmentActions()
     {
         var (orderId, listingId) = await CreateShippableOrderForMemberAsync();
@@ -974,6 +1027,66 @@ public class MarketplaceControllerTests : IntegrationTestBase
 
         return (listing.Id, older.Id, category.Id);
     }
+
+    private async Task<(int ActiveId, int DraftId, int SoldId, int ExpiredId)> CreateSellerManagementListingsForMemberAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var active = SellerListing("Seller active listing", "active", views: 10, saves: 2);
+        var draft = SellerListing("Seller draft listing", "draft", views: 1, saves: 0);
+        var sold = SellerListing("Seller sold listing", "sold", views: 5, saves: 1);
+        var expired = SellerListing("Seller expired listing", "expired", views: 2, saves: 0);
+        expired.ExpiresAt = DateTime.UtcNow.AddDays(-1);
+
+        db.MarketplaceListings.AddRange(active, draft, sold, expired);
+        await db.SaveChangesAsync();
+
+        db.MarketplaceOffers.Add(new MarketplaceOffer
+        {
+            TenantId = TestData.Tenant1.Id,
+            MarketplaceListingId = active.Id,
+            BuyerUserId = TestData.AdminUser.Id,
+            SellerUserId = TestData.MemberUser.Id,
+            Amount = 15m,
+            Currency = "EUR",
+            Message = "Pending dashboard offer",
+            Status = "pending"
+        });
+
+        db.MarketplaceOrders.Add(new MarketplaceOrder
+        {
+            TenantId = TestData.Tenant1.Id,
+            MarketplaceListingId = sold.Id,
+            BuyerUserId = TestData.AdminUser.Id,
+            SellerUserId = TestData.MemberUser.Id,
+            Quantity = 1,
+            TotalAmount = 42m,
+            Currency = "EUR",
+            Status = "completed"
+        });
+        await db.SaveChangesAsync();
+
+        return (active.Id, draft.Id, sold.Id, expired.Id);
+    }
+
+    private MarketplaceListing SellerListing(string title, string status, int views, int saves) => new()
+    {
+        TenantId = TestData.Tenant1.Id,
+        UserId = TestData.MemberUser.Id,
+        Title = title,
+        Description = $"{title} description",
+        Price = 10m,
+        PriceCurrency = "EUR",
+        PriceType = "fixed",
+        Condition = "good",
+        Status = status,
+        MarketplaceStatus = status == "sold" ? "sold" : "available",
+        ModerationStatus = status == "active" ? "approved" : status,
+        ViewsCount = views,
+        SavesCount = saves,
+        CreatedAt = DateTime.UtcNow
+    };
 
     private async Task<(int OrderId, int ListingId)> CreateShippableOrderForMemberAsync()
     {

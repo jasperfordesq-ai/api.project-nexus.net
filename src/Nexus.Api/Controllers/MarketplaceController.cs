@@ -173,9 +173,9 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> DeleteListing(int id)
     {
         var error = await _marketplace.DeleteListingAsync(id, RequireUserId(), User.IsAdmin());
-        if (error == "Listing not found") return NotFound(new { error });
-        if (error != null) return StatusCode(403, new { error });
-        return NoContent();
+        if (error == "Listing not found") return NotFound(new { success = false, error });
+        if (error != null) return StatusCode(403, new { success = false, error });
+        return Ok(new { success = true, data = new { deleted = true, id } });
     }
 
     [HttpPost("listings/{id:int}/images")]
@@ -228,13 +228,18 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> RenewListing(int id)
     {
         var listing = await _db.MarketplaceListings.FirstOrDefaultAsync(l => l.Id == id);
-        if (listing == null) return NotFound(new { error = "Listing not found" });
-        if (listing.UserId != RequireUserId() && !User.IsAdmin()) return StatusCode(403, new { error = "Forbidden" });
+        var userId = RequireUserId();
+        if (listing == null) return NotFound(new { success = false, error = "Listing not found" });
+        if (listing.UserId != userId && !User.IsAdmin()) return StatusCode(403, new { success = false, error = "Forbidden" });
+        listing.Status = "active";
+        listing.MarketplaceStatus = "available";
+        listing.ModerationStatus = "approved";
         listing.RenewedAt = DateTime.UtcNow;
         listing.RenewalCount++;
         listing.ExpiresAt = DateTime.UtcNow.AddDays(30);
+        listing.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = MapListing(listing) });
+        return Ok(new { success = true, data = MapListing(listing, detailed: true, currentUserId: userId) });
     }
 
     [HttpGet("listings/{id:int}/analytics")]
@@ -387,10 +392,40 @@ public class MarketplaceController : ControllerBase
     {
         var userId = RequireUserId();
         var profile = await _marketplace.GetOrCreateSellerProfileAsync(userId);
-        var listings = await _db.MarketplaceListings.CountAsync(l => l.UserId == userId);
+        var sellerListings = _db.MarketplaceListings.Where(l => l.UserId == userId);
+        var activeListings = await sellerListings.CountAsync(l => l.Status == "active" && l.ModerationStatus == "approved");
+        var draftListings = await sellerListings.CountAsync(l => l.Status == "draft");
+        var soldListings = await sellerListings.CountAsync(l => l.Status == "sold");
+        var expiredListings = await sellerListings.CountAsync(l => l.Status == "expired");
+        var totalListings = await sellerListings.CountAsync();
+        var totalViews = await sellerListings.SumAsync(l => l.ViewsCount);
+        var totalSaves = await sellerListings.SumAsync(l => l.SavesCount);
+        var pendingOffers = await _db.MarketplaceOffers.CountAsync(o => o.SellerUserId == userId && o.Status == "pending");
         var orders = await _db.MarketplaceOrders.CountAsync(o => o.SellerUserId == userId);
-        var offers = await _db.MarketplaceOffers.CountAsync(o => o.SellerUserId == userId && o.Status == "pending");
-        return Ok(new { data = new { profile, listings, orders, pending_offers = offers } });
+        var totalRevenue = await _db.MarketplaceOrders
+            .Where(o => o.SellerUserId == userId && o.Status == "completed")
+            .SumAsync(o => o.TotalAmount ?? 0m);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                active_listings = activeListings,
+                draft_listings = draftListings,
+                sold_listings = soldListings,
+                expired_listings = expiredListings,
+                total_listings = totalListings,
+                total_views = totalViews,
+                total_saves = totalSaves,
+                pending_offers = pendingOffers,
+                total_revenue = totalRevenue,
+                revenue_currency = "EUR",
+                profile,
+                listings = totalListings,
+                orders
+            }
+        });
     }
 
     [HttpGet("seller/onboard/status")]
