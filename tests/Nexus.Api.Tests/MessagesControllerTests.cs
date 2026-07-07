@@ -62,12 +62,15 @@ public class MessagesControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
-        content.GetProperty("conversation_id").GetInt32().Should().BeGreaterThan(0);
-        content.GetProperty("content").GetString().Should().Be("Hello from Laravel React v2 body!");
-        content.GetProperty("sender").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
-        content.GetProperty("recipient").GetProperty("id").GetInt32().Should().Be(TestData.AdminUser.Id);
-        content.GetProperty("is_read").GetBoolean().Should().BeFalse();
+        content.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = content.GetProperty("data");
+        data.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("conversation_id").GetInt32().Should().BeGreaterThan(0);
+        data.GetProperty("content").GetString().Should().Be("Hello from Laravel React v2 body!");
+        data.GetProperty("body").GetString().Should().Be("Hello from Laravel React v2 body!");
+        data.GetProperty("sender").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        data.GetProperty("recipient").GetProperty("id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        data.GetProperty("is_read").GetBoolean().Should().BeFalse();
     }
 
     [Fact]

@@ -139,6 +139,16 @@ the older `pagination` object for existing .NET clients. Conversation archived
 state remains a deeper parity gap because the current ASP.NET `Conversation`
 entity does not yet store archived status.
 
+The Laravel React message send/thread slice now has focused ASP.NET regression
+coverage for `POST /api/v2/messages` and `GET /api/v2/messages/{id}` as used by
+`ConversationPage.tsx`. The duplicate explicit v2 send route was removed so the
+route-alias convention has a single owner, v2 sends now return the
+`success/data` envelope consumed by the Laravel React API client, and v2 thread
+loads treat `{id}` as the other user id instead of an internal conversation id.
+The thread response returns message rows in `data` with `meta.conversation`,
+`per_page`, `cursor`, and `has_more`; the legacy `/api/messages/{id}` path keeps
+its conversation-id response shape for existing ASP.NET callers.
+
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static
 route content, notification unsubscribe, AI chat starters/feedback, admin

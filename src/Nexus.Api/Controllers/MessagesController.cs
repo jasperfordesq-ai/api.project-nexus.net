@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -163,7 +164,10 @@ public class MessagesController : ControllerBase
     public async Task<IActionResult> GetConversation(
         int id,
         [FromQuery] int page = 1,
-        [FromQuery] int limit = 50)
+        [FromQuery] int limit = 50,
+        [FromQuery(Name = "per_page")] int? perPage = null,
+        [FromQuery] string? direction = null,
+        [FromQuery] string? cursor = null)
     {
         var userId = GetCurrentUserId();
         if (userId == null)
@@ -171,9 +175,19 @@ public class MessagesController : ControllerBase
             return Unauthorized(new { error = "Invalid token" });
         }
 
+        if (perPage.HasValue)
+        {
+            limit = perPage.Value;
+        }
+
         if (page < 1) page = 1;
         if (limit < 1) limit = 1;
         if (limit > 100) limit = 100;
+
+        if (IsLaravelV2Request())
+        {
+            return await GetLaravelReactConversationAsync(id, userId.Value, limit, direction, cursor);
+        }
 
         // Get conversation and verify user is a participant
         var conversation = await _db.Conversations
@@ -254,6 +268,160 @@ public class MessagesController : ControllerBase
         });
     }
 
+    private async Task<IActionResult> GetLaravelReactConversationAsync(
+        int otherUserId,
+        int currentUserId,
+        int limit,
+        string? direction,
+        string? cursor)
+    {
+        var otherUser = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == otherUserId);
+        if (otherUser == null)
+        {
+            return NotFound(new
+            {
+                success = false,
+                code = "NOT_FOUND",
+                error = "User not found"
+            });
+        }
+
+        var participant1Id = Math.Min(currentUserId, otherUserId);
+        var participant2Id = Math.Max(currentUserId, otherUserId);
+        var conversation = await _db.Conversations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Participant1Id == participant1Id && c.Participant2Id == participant2Id);
+
+        var normalizedDirection = string.Equals(direction, "newer", StringComparison.OrdinalIgnoreCase)
+            ? "newer"
+            : "older";
+        var cursorId = DecodeCursor(cursor);
+
+        var baseMessageQuery = _db.Messages
+            .AsNoTracking()
+            .Include(m => m.Sender);
+        var messageQuery = conversation == null
+            ? baseMessageQuery.Where(m => false)
+            : baseMessageQuery.Where(m => m.ConversationId == conversation.Id);
+
+        if (cursorId.HasValue)
+        {
+            messageQuery = normalizedDirection == "newer"
+                ? messageQuery.Where(m => m.Id > cursorId.Value)
+                : messageQuery.Where(m => m.Id < cursorId.Value);
+        }
+
+        messageQuery = normalizedDirection == "newer"
+            ? messageQuery.OrderBy(m => m.Id)
+            : messageQuery.OrderByDescending(m => m.Id);
+
+        var messages = await messageQuery
+            .Take(limit + 1)
+            .ToListAsync();
+        var hasMore = messages.Count > limit;
+        if (hasMore)
+        {
+            messages.RemoveAt(messages.Count - 1);
+        }
+
+        if (conversation != null && (normalizedDirection != "newer" || cursorId == null))
+        {
+            var now = DateTime.UtcNow;
+            await _db.Messages
+                .Where(m => m.ConversationId == conversation.Id
+                    && m.SenderId == otherUserId
+                    && !m.IsRead)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(m => m.IsRead, true)
+                    .SetProperty(m => m.ReadAt, now));
+        }
+
+        var messageCount = conversation == null
+            ? 0
+            : await _db.Messages.CountAsync(m => m.ConversationId == conversation.Id);
+        var unreadCount = conversation == null
+            ? 0
+            : await _db.Messages.CountAsync(m => m.ConversationId == conversation.Id
+                && m.SenderId == otherUserId
+                && !m.IsRead);
+
+        return Ok(new
+        {
+            success = true,
+            data = messages.Select(m => MapLaravelReactMessage(m, currentUserId, otherUserId)),
+            meta = new
+            {
+                conversation = new
+                {
+                    id = otherUserId,
+                    conversation_id = conversation?.Id,
+                    other_user = new
+                    {
+                        id = otherUser.Id,
+                        name = $"{otherUser.FirstName} {otherUser.LastName}".Trim(),
+                        first_name = otherUser.FirstName,
+                        last_name = otherUser.LastName,
+                        avatar_url = otherUser.AvatarUrl,
+                        is_online = otherUser.LastLoginAt.HasValue && otherUser.LastLoginAt.Value > DateTime.UtcNow.AddMinutes(-5)
+                    },
+                    unread_count = unreadCount,
+                    message_count = messageCount,
+                    safeguarding = (object?)null
+                },
+                cursor = hasMore && messages.Count > 0 ? EncodeCursor(messages[^1].Id) : null,
+                per_page = limit,
+                has_more = hasMore
+            }
+        });
+    }
+
+    private static object MapLaravelReactMessage(Message message, int currentUserId, int otherUserId)
+    {
+        var recipientId = message.SenderId == currentUserId ? otherUserId : currentUserId;
+        return new
+        {
+            id = message.Id,
+            conversation_id = message.ConversationId,
+            sender_id = message.SenderId,
+            receiver_id = recipientId,
+            recipient_id = recipientId,
+            content = message.Content,
+            body = message.Content,
+            sender = new
+            {
+                id = message.Sender?.Id,
+                first_name = message.Sender?.FirstName,
+                last_name = message.Sender?.LastName,
+                avatar_url = message.Sender?.AvatarUrl
+            },
+            is_read = message.IsRead,
+            created_at = message.CreatedAt,
+            read_at = message.ReadAt
+        };
+    }
+
+    private static int? DecodeCursor(string? cursor)
+    {
+        if (string.IsNullOrWhiteSpace(cursor))
+        {
+            return null;
+        }
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+            return int.TryParse(decoded, out var id) ? id : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    private static string EncodeCursor(int id) => Convert.ToBase64String(Encoding.UTF8.GetBytes(id.ToString()));
+
     /// <summary>
     /// Get the count of unread messages for the current user.
     /// </summary>
@@ -290,7 +458,6 @@ public class MessagesController : ControllerBase
     /// Creates a new conversation if one doesn't exist.
     /// </summary>
     [HttpPost]
-    [HttpPost("/api/v2/messages")]
     public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
     {
         var userId = GetCurrentUserId();
@@ -407,11 +574,14 @@ public class MessagesController : ControllerBase
             }
         });
 
-        return CreatedAtAction(nameof(GetConversation), new { id = conversation.Id }, new
+        var responseMessage = new
         {
             id = message.Id,
             conversation_id = conversation.Id,
+            sender_id = sender.Id,
+            recipient_id = recipient.Id,
             content = message.Content,
+            body = message.Content,
             sender = new
             {
                 id = sender.Id,
@@ -426,7 +596,22 @@ public class MessagesController : ControllerBase
             },
             is_read = message.IsRead,
             created_at = message.CreatedAt
-        });
+        };
+
+        if (IsLaravelV2Request())
+        {
+            return Created($"/api/v2/messages/{request.RecipientId}", new
+            {
+                success = true,
+                data = responseMessage,
+                meta = new
+                {
+                    base_url = $"{Request.Scheme}://{Request.Host}"
+                }
+            });
+        }
+
+        return CreatedAtAction(nameof(GetConversation), new { id = conversation.Id }, responseMessage);
     }
 
     /// <summary>
@@ -520,6 +705,8 @@ public class MessagesController : ControllerBase
 
         return Ok(new { data = result, messageCount = idList.Count });
     }
+
+    private bool IsLaravelV2Request() => Request.Path.StartsWithSegments("/api/v2", StringComparison.OrdinalIgnoreCase);
 
     private int? GetCurrentUserId() => User.GetUserId();
 }

@@ -92,6 +92,32 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
         json.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeFalse();
     }
 
+    [Fact]
+    public async Task MessageThread_ReturnsLaravelReactUserConversationEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var sendResponse = await Client.PostAsJsonAsync("/api/v2/messages", new
+        {
+            recipient_id = TestData.AdminUser.Id,
+            body = "Thread contract setup"
+        });
+        sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var sentMessage = await ReadDataAsync(sendResponse);
+        sentMessage.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+
+        var response = await Client.GetAsync($"/api/v2/messages/{TestData.AdminUser.Id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        json.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
+        json.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(50);
+        json.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeFalse();
+        json.GetProperty("meta").GetProperty("conversation").GetProperty("other_user").GetProperty("id").GetInt32()
+            .Should().Be(TestData.AdminUser.Id);
+    }
+
     private static async Task<JsonElement> ReadDataAsync(HttpResponseMessage response)
     {
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
