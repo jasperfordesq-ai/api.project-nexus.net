@@ -46,7 +46,11 @@ function compact(items) {
 
 function itemFrom(result) {
   const data = dataFrom(result);
-  return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) return data.data;
+    return data;
+  }
+  return {};
 }
 
 function compactQuery(params) {
@@ -160,6 +164,20 @@ function normalizeCampaign(item) {
   };
 }
 
+function normalizeCampaignDetail(item) {
+  const campaign = normalizeCampaign(item);
+  const row = item && typeof item === 'object' ? item : {};
+  return {
+    ...campaign,
+    description: trimmed(row.description),
+    startDate: trimmed(row.start_date ?? row.startDate),
+    endDate: trimmed(row.end_date ?? row.endDate),
+    challenges: collectionFrom(row.challenges)
+      .map(normalizeChallenge)
+      .filter((challenge) => challenge.id !== null)
+  };
+}
+
 function outcomeStatusDetails(status) {
   switch (trimmed(status).toLowerCase()) {
     case 'implemented':
@@ -243,7 +261,8 @@ function campaignStatusMessage(status) {
   const messages = {
     'campaign-created': 'The campaign has been created.',
     'campaign-updated': 'The campaign has been updated.',
-    'campaign-deleted': 'The campaign has been deleted.'
+    'campaign-deleted': 'The campaign has been deleted.',
+    'challenge-unlinked': 'The challenge has been unlinked from the campaign.'
   };
   return messages[trimmed(status)] || '';
 }
@@ -300,6 +319,25 @@ router.get('/campaigns', asyncRoute(async (req, res) => {
     errorMessage: campaignErrorMessage(status)
   });
 }, { redirectOn401: loginRedirect() }));
+
+router.get('/campaigns/:id(\\d+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = positiveInteger(req.params.id);
+  const result = await callIdeationApi(token, 'GET', `/ideation-campaigns/${id}`);
+  const campaign = normalizeCampaignDetail({ id, ...itemFrom(result) });
+  const status = trimmed(req.query.status);
+
+  return res.render('ideation/campaign-detail', {
+    title: campaign.title,
+    activeNav: 'explore',
+    campaign,
+    status,
+    successMessage: campaignStatusMessage(status),
+    errorMessage: campaignErrorMessage(status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation campaign not found' }));
 
 router.get('/outcomes', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

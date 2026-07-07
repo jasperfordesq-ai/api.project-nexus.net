@@ -10409,6 +10409,7 @@ describe('shared accessible frontend shell', () => {
     const detail = await request(app).get('/ideation/7');
     const tags = await request(app).get('/ideation/tags');
     const campaigns = await request(app).get('/ideation/campaigns');
+    const campaignDetail = await request(app).get('/ideation/campaigns/5');
     const outcomes = await request(app).get('/ideation/outcomes');
 
     expect(index.status).toBe(302);
@@ -10419,6 +10420,8 @@ describe('shared accessible frontend shell', () => {
     expect(tags.headers.location).toBe('/login?status=auth-required');
     expect(campaigns.status).toBe(302);
     expect(campaigns.headers.location).toBe('/login?status=auth-required');
+    expect(campaignDetail.status).toBe(302);
+    expect(campaignDetail.headers.location).toBe('/login?status=auth-required');
     expect(outcomes.status).toBe(302);
     expect(outcomes.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
@@ -10618,6 +10621,47 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('1 challenge');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-campaigns?per_page=50');
+  });
+
+  it('renders the Laravel-backed ideation campaign detail page', async () => {
+    const api = require('../src/lib/api');
+    api.callIdeationApi.mockResolvedValueOnce({
+      data: {
+        data: {
+          id: 5,
+          title: 'Park renewal',
+          description: 'Coordinate challenge work for renewing the central park.\nFocus on accessible paths and seating.',
+          status: 'active',
+          creator: { name: 'Avery Stone' },
+          challenges: [
+            { id: 7, title: 'Add safe lighting', ideas_count: 4 },
+            { id: 8, title: 'Accessible benches', ideas_count: 1 }
+          ]
+        }
+      }
+    });
+
+    const response = await request(app)
+      .get('/ideation/campaigns/5?status=challenge-unlinked')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/ideation/campaigns"');
+    expect(response.text).toContain('Campaigns');
+    expect(response.text).toContain('Park renewal');
+    expect(response.text).toContain('Active');
+    expect(response.text).toContain('Created by Avery Stone');
+    expect(response.text).toContain('Coordinate challenge work for renewing the central park.');
+    expect(response.text).toContain('Focus on accessible paths and seating.');
+    expect(response.text).toContain('The challenge has been unlinked from the campaign.');
+    expect(response.text).toContain('Linked challenges');
+    expect(response.text).toContain('Add safe lighting');
+    expect(response.text).toContain('4 ideas');
+    expect(response.text).toContain('href="/ideation/7"');
+    expect(response.text).toContain('Accessible benches');
+    expect(response.text).toContain('1 idea');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-campaigns/5');
   });
 
   it('renders the Laravel-backed ideation outcomes page', async () => {

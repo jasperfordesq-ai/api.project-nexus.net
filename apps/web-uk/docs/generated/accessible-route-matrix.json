@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T02:50:33.512Z",
+    "generatedAt": "2026-07-07T02:55:22.725Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -6379,8 +6379,8 @@
       "gates": "",
       "apiNeeds": "service:CampaignService",
       "webUkPath": "/ideation/campaigns/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "ideation/campaign-detail",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\ideation.js"
     },
     {
       "method": "GET",

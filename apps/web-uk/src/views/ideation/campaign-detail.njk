@@ -1,0 +1,60 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a href="/ideation/campaigns" class="govuk-back-link">Campaigns</a>
+
+  {% if successMessage %}
+    {% set notificationMessage = successMessage %}
+    {% set notificationType = "success" %}
+    {% include "partials/notification-banner.njk" %}
+  {% endif %}
+
+  {% if errorMessage %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-list govuk-error-summary__list">
+            <li>{{ errorMessage }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <span class="govuk-caption-xl">Campaigns</span>
+  <div class="nexus-alpha-module-row">
+    <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ campaign.title }}</h1>
+    <strong class="govuk-tag {{ campaign.statusClass }}">{{ campaign.statusLabel }}</strong>
+  </div>
+
+  {% if campaign.creatorName %}
+    <p class="govuk-body-s nexus-alpha-meta">Created by {{ campaign.creatorName }}</p>
+  {% endif %}
+
+  {% if campaign.description %}
+    <p class="govuk-body-l">{{ campaign.description }}</p>
+  {% endif %}
+
+  <h2 class="govuk-heading-l govuk-!-margin-top-6" id="challenges">Linked challenges</h2>
+  {% if campaign.challenges and campaign.challenges.length %}
+    <div class="nexus-alpha-card-list">
+      {% for challenge in campaign.challenges %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-module-row">
+            <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
+              <a class="govuk-link" href="/ideation/{{ challenge.id }}">{{ challenge.title }}</a>
+            </h3>
+          </div>
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ challenge.ideasCountText }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="govuk-inset-text">No challenges are linked to this campaign yet.</div>
+  {% endif %}
+{% endblock %}
