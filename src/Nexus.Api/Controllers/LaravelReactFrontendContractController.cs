@@ -159,9 +159,13 @@ public class LaravelReactFrontendContractController : ControllerBase
                 id = o.Id,
                 seller_id = o.UserId,
                 name = o.Name,
+                courier_name = o.Name,
+                courier_code = o.Region,
                 price = o.Price,
                 currency = o.Currency,
                 region = o.Region,
+                estimated_days = (int?)null,
+                is_default = false,
                 is_active = o.IsActive
             })
             .ToListAsync();

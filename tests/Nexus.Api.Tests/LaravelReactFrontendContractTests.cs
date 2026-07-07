@@ -1780,8 +1780,11 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         var data = json.GetProperty("data");
         data.ValueKind.Should().Be(JsonValueKind.Array);
         data.EnumerateArray().Should().Contain(item =>
-            item.GetProperty("name").GetString() == "Tracked courier" &&
-            item.GetProperty("currency").GetString() == "EUR");
+            item.GetProperty("courier_name").GetString() == "Tracked courier" &&
+            item.GetProperty("currency").GetString() == "EUR" &&
+            item.GetProperty("price").GetDecimal() == 4.95m &&
+            item.GetProperty("is_active").GetBoolean() &&
+            item.GetProperty("is_default").GetBoolean() == false);
     }
 
     [Fact]
