@@ -499,6 +499,12 @@ redirects unsigned visitors to `/login?status=auth-required`, reads Laravel
 `/api/v2/volunteering/donations?per_page=20`, and renders the Blade-style
 money-donation explanation, fundraising stats, giving-day campaign cards,
 donation history table, status banners, and offline bank transfer/PayPal form.
+Its `/volunteering/expenses` page redirects unsigned visitors to
+`/login?status=auth-required`, reads Laravel
+`/api/v2/volunteering/expenses?per_page=50` and
+`/api/v2/volunteering/my-organisations?per_page=50`, and renders the
+Blade-style expense totals, submit-claim form, status banners, and claims
+table.
 Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert

@@ -16084,6 +16084,104 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering expenses page for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 31,
+              expense_type: 'travel',
+              amount: 12.5,
+              currency: 'GBP',
+              description: 'Bus fare to the community kitchen',
+              status: 'pending',
+              submitted_at: '2026-07-04T10:00:00Z'
+            },
+            {
+              id: 30,
+              expense_type: 'supplies',
+              amount: 20,
+              currency: 'EUR',
+              description: 'Soup ingredients',
+              status: 'paid',
+              review_notes: 'Paid by finance',
+              submitted_at: '2026-06-20T10:00:00Z'
+            },
+            {
+              id: 29,
+              expense_type: 'meals',
+              amount: 8,
+              currency: 'EUR',
+              description: 'Lunch during long shift',
+              status: 'approved',
+              submitted_at: '2026-06-18T10:00:00Z'
+            }
+          ],
+          stats: {
+            total_submitted: 40.5,
+            approved_total: 28,
+            paid_total: 20
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            { id: 42, name: 'Community Kitchen' },
+            { id: 43, name: 'Mutual Aid Store' }
+          ]
+        }
+      });
+
+    const response = await request(app)
+      .get('/volunteering/expenses?status=expense-submitted')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/expenses?per_page=50');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/my-organisations?per_page=50');
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('Your expense claim has been submitted and is awaiting review.');
+    expect(response.text).toContain('My expenses');
+    expect(response.text).toContain('Claim back costs such as travel, meals or supplies');
+    expect(response.text).toContain('Your totals');
+    expect(response.text).toContain('Total claimed');
+    expect(response.text).toContain('40.50');
+    expect(response.text).toContain('Approved');
+    expect(response.text).toContain('28.00');
+    expect(response.text).toContain('Paid');
+    expect(response.text).toContain('20.00');
+    expect(response.text).toContain('Submit an expense claim');
+    expect(response.text).toContain('method="post" action="/volunteering/expenses"');
+    expect(response.text).toContain('id="organization_id" name="organization_id"');
+    expect(response.text).toContain('value="42"');
+    expect(response.text).toContain('Community Kitchen');
+    expect(response.text).toContain('id="expense_type" name="expense_type"');
+    expect(response.text).toContain('value="travel"');
+    expect(response.text).toContain('Travel');
+    expect(response.text).toContain('id="amount" name="amount" type="number"');
+    expect(response.text).toContain('id="currency" name="currency" type="text"');
+    expect(response.text).toContain('id="description" name="description"');
+    expect(response.text).toContain('Submit claim');
+    expect(response.text).toContain('Your claims');
+    expect(response.text).toContain('Bus fare to the community kitchen');
+    expect(response.text).toContain('Pending');
+    expect(response.text).toContain('GBP 12.50');
+    expect(response.text).toContain('4 July 2026');
+    expect(response.text).toContain('Soup ingredients');
+    expect(response.text).toContain('Supplies');
+    expect(response.text).toContain('EUR 20.00');
+    expect(response.text).toContain('Reviewer notes: Paid by finance');
+    expect(response.text).toContain('Meals');
+    expect(response.text).toContain('18 June 2026');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

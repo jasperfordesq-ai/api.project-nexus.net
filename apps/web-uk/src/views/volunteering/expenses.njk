@@ -1,0 +1,173 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+
+  {% if status %}
+    {% if status.type == "success" %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="expenses-success-title">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="expenses-success-title">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">{{ status.message }}</p>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              {% if status.field %}
+                <li><a href="#{{ status.field }}">{{ status.message }}</a></li>
+              {% else %}
+                <li>{{ status.message }}</li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <span class="govuk-caption-l">Volunteering</span>
+  <h1 class="govuk-heading-xl">My expenses</h1>
+  <p class="govuk-body-l">Claim back costs such as travel, meals or supplies from an organisation you volunteer for. Each claim is reviewed before it is paid.</p>
+
+  {% if loadError %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p>{{ loadError }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if dashboard.expenses.length %}
+    <h2 class="govuk-heading-l">Your totals</h2>
+    <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-6">
+      <div class="nexus-alpha-stat">
+        <dt>Total claimed</dt>
+        <dd>{{ dashboard.stats.totalClaimedLabel }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>Approved</dt>
+        <dd>{{ dashboard.stats.approvedLabel }}</dd>
+      </div>
+      <div class="nexus-alpha-stat">
+        <dt>Paid</dt>
+        <dd>{{ dashboard.stats.paidLabel }}</dd>
+      </div>
+    </dl>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">Submit an expense claim</h2>
+  <p class="govuk-body">Tell us what the cost was for and how much you spent. Your claim will be sent to the organisation for review.</p>
+
+  {% if not dashboard.organizations.length %}
+    <div class="govuk-inset-text">You need to be an approved volunteer with an organisation before you can claim expenses.</div>
+  {% else %}
+    <form method="post" action="/volunteering/expenses" class="govuk-!-margin-bottom-8">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+      <div class="govuk-form-group{% if status and status.field == 'organization_id' %} govuk-form-group--error{% endif %}">
+        <label class="govuk-label" for="organization_id">Organisation</label>
+        <div id="organization_id-hint" class="govuk-hint">The organisation you are claiming the expense from.</div>
+        {% if status and status.field == 'organization_id' %}
+          <p id="organization_id-error" class="govuk-error-message">
+            <span class="govuk-visually-hidden">There is a problem:</span>
+            {{ status.message }}
+          </p>
+        {% endif %}
+        <select class="govuk-select" id="organization_id" name="organization_id" aria-describedby="organization_id-hint{% if status and status.field == 'organization_id' %} organization_id-error{% endif %}" required>
+          <option value="">Choose an organisation</option>
+          {% for organization in dashboard.organizations %}
+            <option value="{{ organization.id }}">{{ organization.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="expense_type">Expense type</label>
+        <select class="govuk-select" id="expense_type" name="expense_type">
+          {% for type in dashboard.expenseTypes %}
+            <option value="{{ type.value }}">{{ type.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="govuk-form-group{% if status and status.field == 'amount' %} govuk-form-group--error{% endif %}">
+        <label class="govuk-label" for="amount">Amount</label>
+        <div id="amount-hint" class="govuk-hint">A whole or decimal amount, for example 12 or 12.50.</div>
+        {% if status and status.field == 'amount' %}
+          <p id="amount-error" class="govuk-error-message">
+            <span class="govuk-visually-hidden">There is a problem:</span>
+            {{ status.message }}
+          </p>
+        {% endif %}
+        <input class="govuk-input govuk-input--width-10" id="amount" name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" aria-describedby="amount-hint{% if status and status.field == 'amount' %} amount-error{% endif %}" required>
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="currency">Currency optional</label>
+        <div id="currency-hint" class="govuk-hint">A currency code such as EUR or GBP. Leave blank to use euro.</div>
+        <input class="govuk-input govuk-input--width-5" id="currency" name="currency" type="text" maxlength="10" aria-describedby="currency-hint">
+      </div>
+
+      <div class="govuk-form-group{% if status and status.field == 'description' %} govuk-form-group--error{% endif %}">
+        <label class="govuk-label" for="description">Description</label>
+        <div id="description-hint" class="govuk-hint">A short note explaining the cost.</div>
+        {% if status and status.field == 'description' %}
+          <p id="description-error" class="govuk-error-message">
+            <span class="govuk-visually-hidden">There is a problem:</span>
+            {{ status.message }}
+          </p>
+        {% endif %}
+        <textarea class="govuk-textarea" id="description" name="description" rows="3" aria-describedby="description-hint{% if status and status.field == 'description' %} description-error{% endif %}" required></textarea>
+      </div>
+
+      <button class="govuk-button" data-module="govuk-button">Submit claim</button>
+    </form>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">Your claims</h2>
+  {% if dashboard.expenses.length %}
+    <table class="govuk-table">
+      <caption class="govuk-visually-hidden">Your claims</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Type</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Amount</th>
+          <th scope="col" class="govuk-table__header">Description</th>
+          <th scope="col" class="govuk-table__header">Status</th>
+          <th scope="col" class="govuk-table__header">Submitted</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for expense in dashboard.expenses %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">{{ expense.typeLabel }}</td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ expense.amountWithCurrency }}</td>
+            <td class="govuk-table__cell">
+              {{ expense.description }}
+              {% if expense.reviewNotes %}
+                <br><span class="govuk-hint govuk-!-margin-bottom-0">Reviewer notes: {{ expense.reviewNotes }}</span>
+              {% endif %}
+            </td>
+            <td class="govuk-table__cell"><strong class="govuk-tag {{ expense.status.className }}">{{ expense.status.label }}</strong></td>
+            <td class="govuk-table__cell">{{ expense.submittedAtLabel or "-" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="govuk-inset-text">You have not submitted any expense claims yet.</div>
+  {% endif %}
+{% endblock %}

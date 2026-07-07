@@ -39,6 +39,15 @@ const CREDENTIAL_STATUS_CLASSES = {
   rejected: 'govuk-tag--red',
   expired: 'govuk-tag--grey'
 };
+const EXPENSE_TYPES = [
+  { value: 'travel', label: 'Travel' },
+  { value: 'meals', label: 'Meals' },
+  { value: 'supplies', label: 'Supplies' },
+  { value: 'equipment', label: 'Equipment' },
+  { value: 'parking', label: 'Parking' },
+  { value: 'other', label: 'Other' }
+];
+const EXPENSE_TYPE_LABELS = Object.fromEntries(EXPENSE_TYPES.map((type) => [type.value, type.label]));
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -262,6 +271,47 @@ function donationStatus(status, donateError = '') {
     };
   }
   return null;
+}
+
+function expenseStatus(status) {
+  const messages = {
+    'expense-submitted': {
+      type: 'success',
+      message: 'Your expense claim has been submitted and is awaiting review.'
+    },
+    'expense-org-required': {
+      type: 'error',
+      message: 'Choose an organisation',
+      field: 'organization_id'
+    },
+    'expense-amount-invalid': {
+      type: 'error',
+      message: 'Enter an amount greater than zero',
+      field: 'amount'
+    },
+    'expense-description-required': {
+      type: 'error',
+      message: 'Enter a description',
+      field: 'description'
+    },
+    'expense-validation': {
+      type: 'error',
+      message: 'Your claim could not be submitted. Check your answers and any expense limits, then try again.'
+    },
+    'expense-forbidden': {
+      type: 'error',
+      message: 'You are not allowed to claim expenses from this organisation.'
+    },
+    'expense-not-found': {
+      type: 'error',
+      message: 'That organisation could not be found.'
+    },
+    'expense-failed': {
+      type: 'error',
+      message: 'Your claim could not be submitted. Please try again.'
+    }
+  };
+  return messages[status] || null;
 }
 
 function credentialStatus(status) {
@@ -559,6 +609,82 @@ function normalizeDonationDashboard(givingDaysResult, donationsResult) {
       totalRaisedLabel: moneyLabel(stats.totalRaised),
       totalDonors: stats.totalDonors,
       activeCampaigns: stats.activeCampaigns
+    }
+  };
+}
+
+function expenseRowsFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.expenses)) return data.expenses;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function expenseStatusPresentation(value) {
+  const status = trimmed(value) || 'pending';
+  const labels = {
+    pending: 'Pending',
+    approved: 'Approved',
+    rejected: 'Rejected',
+    paid: 'Paid'
+  };
+  const classNames = {
+    pending: 'govuk-tag--yellow',
+    approved: 'govuk-tag--green',
+    rejected: 'govuk-tag--red',
+    paid: 'govuk-tag--blue'
+  };
+  return {
+    value: status,
+    label: labels[status] || headline(status) || 'Pending',
+    className: classNames[status] || 'govuk-tag--grey'
+  };
+}
+
+function normalizeExpense(row) {
+  const expense = row && typeof row === 'object' ? row : {};
+  const type = trimmed(expense.expense_type ?? expense.expenseType);
+  const status = expenseStatusPresentation(expense.status);
+  const currency = trimmed(expense.currency);
+  return {
+    id: positiveInteger(expense.id),
+    type,
+    typeLabel: EXPENSE_TYPE_LABELS[type] || headline(type) || 'Other',
+    amountLabel: moneyLabel(expense.amount),
+    currency,
+    amountWithCurrency: `${currency ? `${currency} ` : ''}${moneyLabel(expense.amount)}`,
+    description: trimmed(expense.description),
+    status,
+    submittedAtLabel: dateLabel(expense.submitted_at ?? expense.submittedAt ?? expense.created_at ?? expense.createdAt),
+    reviewNotes: trimmed(expense.review_notes ?? expense.reviewNotes)
+  };
+}
+
+function normalizeExpenseDashboard(expensesResult, organizationsResult) {
+  const data = dataFrom(expensesResult);
+  const statsData = data && typeof data === 'object' && data.stats && typeof data.stats === 'object'
+    ? data.stats
+    : {};
+  const expenses = expenseRowsFrom(expensesResult).map(normalizeExpense);
+  const fallbackStats = expenses.reduce((totals, expense) => {
+    const amount = Number(expense.amountLabel);
+    return {
+      totalClaimed: totals.totalClaimed + amount,
+      approved: totals.approved + (['approved', 'paid'].includes(expense.status.value) ? amount : 0),
+      paid: totals.paid + (expense.status.value === 'paid' ? amount : 0)
+    };
+  }, { totalClaimed: 0, approved: 0, paid: 0 });
+
+  return {
+    expenses,
+    organizations: collectionFrom(organizationsResult).map(normalizeOrganization).filter(Boolean),
+    expenseTypes: EXPENSE_TYPES,
+    stats: {
+      totalClaimedLabel: moneyLabel(statsData.total_submitted ?? statsData.total_claimed ?? fallbackStats.totalClaimed),
+      approvedLabel: moneyLabel(statsData.approved_total ?? statsData.total_approved ?? fallbackStats.approved),
+      paidLabel: moneyLabel(statsData.paid_total ?? statsData.total_paid ?? fallbackStats.paid)
     }
   };
 }
@@ -897,6 +1023,33 @@ router.get('/donations', asyncRoute(async (req, res) => {
     dashboard,
     loadError,
     status: donationStatus(trimmed(req.query.status), trimmed(req.query.donate_error)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/expenses', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let dashboard = normalizeExpenseDashboard({}, {});
+  let loadError = null;
+  try {
+    const expenses = await callApi(token, 'GET', '/expenses?per_page=50');
+    const organizations = await callApi(token, 'GET', '/my-organisations?per_page=50');
+    dashboard = normalizeExpenseDashboard(expenses, organizations);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your expenses. Please try again.';
+  }
+
+  return res.render('volunteering/expenses', {
+    title: 'My expenses',
+    activeNav: 'volunteering',
+    dashboard,
+    loadError,
+    status: expenseStatus(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));

@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T04:38:02.336Z",
+    "generatedAt": "2026-07-07T04:46:50.594Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -10291,7 +10291,7 @@
       "auth": "auth-optional",
       "tenantScoped": "yes",
       "gates": "feature:job_vacancies; feature:volunteering",
-      "apiNeeds": "service:JobVacancyService",
+      "apiNeeds": "",
       "webUkPath": "/organisations/{param}/jobs",
       "webUkView": "organisations-jobs",
       "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\server.js"
@@ -10364,7 +10364,7 @@
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\organisations.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\OrganisationsParity.php",
       "laravelMiddleware": "",
-      "auth": "auth-required",
+      "auth": "auth-optional",
       "tenantScoped": "yes",
       "gates": "feature:volunteering",
       "apiNeeds": "",
@@ -12573,8 +12573,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/volunteering/expenses",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "volunteering/expenses",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\volunteering-actions.js"
     },
     {
       "method": "GET",
