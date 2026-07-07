@@ -121,6 +121,11 @@ notification, match, skill, passkey, session, and safeguarding payloads where
 available, and renders the Blade-style settings links, profile photo, personal
 details, public profile, privacy, newsletter, skills, security, language,
 notifications, match, personalisation, safeguarding, and data/privacy sections.
+`/profile/two-factor` now redirects unsigned visitors to
+`/login?status=auth-required`, reads a Laravel-compatible two-step verification
+setup/status payload, and renders the Blade-style authenticator app setup,
+QR/setup key, verification form, enabled-state backup-code count, disable form,
+success banners, and validation error summary.
 Public collection and appreciation wall GET pages now redirect unsigned visitors
 to `/login?status=auth-required`,
 read Laravel `/api/v2/users/{id}/public-collections` and

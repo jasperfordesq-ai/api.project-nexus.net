@@ -186,6 +186,30 @@ const DELETE_ACCOUNT_ERRORS = {
   'delete-password-incorrect': 'The password you entered is incorrect.',
   'delete-failed': 'Your account could not be deleted. Try again or contact support.'
 };
+const TWO_FACTOR_STATUS_MESSAGES = {
+  '2fa-enabled': { type: 'success', message: 'Two-step verification is now turned on.' },
+  '2fa-disabled': { type: 'success', message: 'Two-step verification has been turned off.' },
+  '2fa-code-required': {
+    type: 'error',
+    message: 'Enter the 6-digit code from your authenticator app.',
+    anchor: 'tfa-form'
+  },
+  '2fa-code-invalid': {
+    type: 'error',
+    message: 'That code was not correct or has expired. Try the current code from your app.',
+    anchor: 'tfa-form'
+  },
+  '2fa-password-required': {
+    type: 'error',
+    message: 'Enter your password to turn off two-step verification.',
+    anchor: 'tfa-form'
+  },
+  '2fa-disable-failed': {
+    type: 'error',
+    message: 'We could not turn off two-step verification. Check your password and try again.',
+    anchor: 'tfa-form'
+  }
+};
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -567,6 +591,42 @@ function buildProfileSettingsViewModel(req, data) {
         ]
       }
     ]
+  };
+}
+
+function twoFactorStatusConfig(status) {
+  return TWO_FACTOR_STATUS_MESSAGES[status] || null;
+}
+
+function backupCodesRemainingLabel(count) {
+  const number = Number(count || 0);
+  if (number === 0) return 'You have no backup codes left.';
+  if (number === 1) return 'You have 1 backup code left.';
+  return `You have ${number} backup codes left.`;
+}
+
+function normalizeTwoFactorPayload(payload) {
+  const source = payload && typeof payload === 'object' ? payload : {};
+  const setup = source.setup && typeof source.setup === 'object' ? source.setup : source;
+  const enabled = boolValue(source.enabled, source.is_enabled, source.two_factor_enabled);
+  const qrDataUri = setup.qr_data_uri || setup.qrDataUri || setup.qr_code_data_uri || '';
+  const secret = setup.secret || setup.setup_key || setup.manual_key || '';
+  const backupCodes = arrayFromPayload(source, ['backup_codes', 'backupCodes']);
+  const backupCodesRemaining = Number(
+    source.backup_codes_remaining ?? source.backupCodesRemaining ?? source.backup_code_count ?? backupCodes.length
+  );
+
+  return {
+    enabled,
+    setup: enabled || (qrDataUri === '' && secret === '')
+      ? null
+      : {
+          qr_data_uri: qrDataUri,
+          secret
+        },
+    backupCodes,
+    backupCodesRemaining: Number.isFinite(backupCodesRemaining) ? backupCodesRemaining : 0,
+    backupCodesRemainingLabel: backupCodesRemainingLabel(backupCodesRemaining)
   };
 }
 
@@ -992,6 +1052,37 @@ router.get('/delete-account', (req, res) => {
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community'
   });
 });
+
+router.get('/two-factor', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let twoFactor = normalizeTwoFactorPayload({});
+  try {
+    twoFactor = normalizeTwoFactorPayload(payloadFrom(await callProfile(token, 'GET', '/auth/2fa/setup')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const statusConfig = twoFactorStatusConfig(status);
+
+  return res.render('profile/two-factor', {
+    title: 'Authenticator app (two-step verification)',
+    activeNav: 'profile',
+    status,
+    statusConfig,
+    successStatus: statusConfig && statusConfig.type === 'success',
+    errorStatus: statusConfig && statusConfig.type === 'error',
+    errorAnchor: statusConfig ? statusConfig.anchor || 'tfa-form' : '',
+    enabled: twoFactor.enabled,
+    setup: twoFactor.setup,
+    backupCodes: twoFactor.backupCodes,
+    backupCodesRemaining: twoFactor.backupCodesRemaining,
+    backupCodesRemainingLabel: twoFactor.backupCodesRemainingLabel,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
 
 router.post('/two-factor/verify', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

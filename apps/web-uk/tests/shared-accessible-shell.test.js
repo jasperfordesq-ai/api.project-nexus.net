@@ -977,6 +977,65 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style two-factor setup page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callProfileApi.mockResolvedValueOnce({
+      data: {
+        enabled: false,
+        setup: {
+          qr_data_uri: 'data:image/svg+xml;base64,PHN2Zy8+',
+          secret: 'ABCD EFGH IJKL'
+        }
+      }
+    });
+
+    const unsigned = await request(app).get('/profile/two-factor');
+    const setup = await request(app)
+      .get('/profile/two-factor?status=2fa-code-invalid')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(setup.status).toBe(200);
+    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/auth/2fa/setup');
+    expect(setup.text).toContain('Back to settings');
+    expect(setup.text).toContain('There is a problem');
+    expect(setup.text).toContain('That code was not correct or has expired. Try the current code from your app.');
+    expect(setup.text).toContain('Authenticator app (two-step verification)');
+    expect(setup.text).toContain('Add a second step to your sign-in using an authenticator app on your phone.');
+    expect(setup.text).toContain('Install an authenticator app such as Google Authenticator');
+    expect(setup.text).toContain('QR code for setting up two-step verification');
+    expect(setup.text).toContain('If you cannot scan the code, enter this setup key in your app instead:');
+    expect(setup.text).toContain('ABCD EFGH IJKL');
+    expect(setup.text).toContain('Enter the 6-digit code');
+    expect(setup.text).toContain('Turn on two-step verification');
+    expect(setup.text).not.toContain('shared accessible frontend preparation page');
+
+    api.callProfileApi.mockResolvedValueOnce({
+      data: {
+        enabled: true,
+        backup_codes_remaining: 3
+      }
+    });
+
+    const enabled = await request(app)
+      .get('/profile/two-factor?status=2fa-disabled')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(enabled.status).toBe(200);
+    expect(enabled.text).toContain('Success');
+    expect(enabled.text).toContain('Two-step verification has been turned off.');
+    expect(enabled.text).toContain('Two-step verification is turned on for your account.');
+    expect(enabled.text).toContain('You have 3 backup codes left.');
+    expect(enabled.text).toContain('Turn off two-step verification');
+    expect(enabled.text).toContain('Enter your password to turn off two-step verification.');
+    expect(enabled.text).toContain('Your password');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

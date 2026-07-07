@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T00:37:10.808Z",
+    "generatedAt": "2026-07-07T00:40:58.938Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -11167,8 +11167,8 @@
       "gates": "",
       "apiNeeds": "service:TotpService",
       "webUkPath": "/profile/two-factor",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "profile/two-factor",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\profile.js"
     },
     {
       "method": "POST",

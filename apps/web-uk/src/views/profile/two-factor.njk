@@ -1,0 +1,99 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <a class="govuk-back-link" href="/profile/settings">Back to settings</a>
+
+      {% if statusConfig and successStatus %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="tfa-success-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="tfa-success-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ statusConfig.message }}</p>
+          </div>
+        </div>
+      {% elif statusConfig and errorStatus %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">There is a problem</h2>
+            <div class="govuk-error-summary__body">
+              <ul class="govuk-list govuk-error-summary__list">
+                <li><a href="#{{ errorAnchor }}">{{ statusConfig.message }}</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Authenticator app (two-step verification)</h1>
+
+      {% if backupCodes.length %}
+        <div class="govuk-panel govuk-panel--confirmation govuk-!-margin-bottom-6">
+          <h2 class="govuk-panel__title">Two-step verification is on</h2>
+        </div>
+        <h2 class="govuk-heading-m">Save your backup codes</h2>
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-visually-hidden">Warning</span>
+            Save these codes somewhere safe. Each one can be used once to sign in if you lose access to your authenticator app. They will not be shown again.
+          </strong>
+        </div>
+        <ul class="govuk-list govuk-list--bullet nexus-alpha-backup-codes">
+          {% for code in backupCodes %}
+            <li><code>{{ code }}</code></li>
+          {% endfor %}
+        </ul>
+        <a class="govuk-button govuk-!-margin-top-2" data-module="govuk-button" href="/profile/settings">Finish</a>
+      {% elif enabled %}
+        <p class="govuk-body-l">Two-step verification is turned on for your account.</p>
+        <p class="govuk-body">{{ backupCodesRemainingLabel }}</p>
+
+        <h2 class="govuk-heading-m govuk-!-margin-top-6">Turn off two-step verification</h2>
+        <p class="govuk-body">Enter your password to turn off two-step verification. Your account will be less secure.</p>
+        <form id="tfa-form" method="post" action="/profile/two-factor/disable">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="password">Your password</label>
+            <input class="govuk-input govuk-input--width-20" id="password" name="password" type="password" autocomplete="current-password" spellcheck="false">
+          </div>
+          <button class="govuk-button govuk-button--warning" data-module="govuk-button">Turn off two-step verification</button>
+        </form>
+      {% elif setup %}
+        <p class="govuk-body-l">Add a second step to your sign-in using an authenticator app on your phone.</p>
+        <ol class="govuk-list govuk-list--number">
+          <li>Install an authenticator app such as Google Authenticator, Microsoft Authenticator or Authy.</li>
+          <li>Scan the QR code below with the app, or enter the setup key by hand.</li>
+          <li>Enter the 6-digit code the app shows to finish setting it up.</li>
+        </ol>
+
+        {% if setup.qr_data_uri %}
+          <img class="nexus-alpha-qr" src="{{ setup.qr_data_uri }}" alt="QR code for setting up two-step verification" width="200" height="200">
+        {% endif %}
+
+        <p class="govuk-body govuk-!-margin-top-4">If you cannot scan the code, enter this setup key in your app instead:</p>
+        <div class="govuk-inset-text">
+          <p class="govuk-body"><code class="nexus-alpha-totp-secret">{{ setup.secret }}</code></p>
+        </div>
+
+        <form id="tfa-form" method="post" action="/profile/two-factor/verify" class="govuk-!-margin-top-4">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <div class="govuk-form-group">
+            <label class="govuk-label govuk-label--m" for="code">Enter the 6-digit code</label>
+            <div id="code-hint" class="govuk-hint">Use the current code shown in your authenticator app.</div>
+            <input class="govuk-input govuk-input--width-10" id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" aria-describedby="code-hint">
+          </div>
+          <button class="govuk-button" data-module="govuk-button">Turn on two-step verification</button>
+        </form>
+      {% else %}
+        <div class="govuk-inset-text">We could not start two-step verification setup. Try again later.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
