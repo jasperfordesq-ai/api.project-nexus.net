@@ -405,6 +405,18 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       }
 
       if ((req.headers.cookie || '').includes('token=signed-token')) {
+        if (req.url === '/explore') {
+          res.writeHead(200, { 'content-type': 'text/html' });
+          res.end('<h1>Explore</h1>');
+          return;
+        }
+
+        if (req.url === '/chat') {
+          res.writeHead(200, { 'content-type': 'text/html' });
+          res.end('<h1>AI assistant</h1>');
+          return;
+        }
+
         if (req.url === '/blog/feed.xml') {
           res.writeHead(200, { 'content-type': 'application/rss+xml; charset=utf-8' });
           res.end('<rss version="2.0"></rss>');
@@ -557,7 +569,8 @@ describe('Laravel runtime smoke harness', () => {
       SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS: "/exchanges/1\n/jobs/applications/1/cv",
       SMOKE_GATED_PAGE_PATHS: '',
       SMOKE_REDIRECT_PAGE_PATHS: '',
-      SMOKE_CONTENT_TYPE_PAGE_PATHS: '/blog/feed.xml=>application/rss+xml\n/wallet/export.csv=>text/csv'
+      SMOKE_CONTENT_TYPE_PAGE_PATHS: '/blog/feed.xml=>application/rss+xml\n/wallet/export.csv=>text/csv',
+      SMOKE_BODY_TEXT_PAGE_PATHS: '/explore=>Explore\n/chat=>AI assistant'
     });
 
     expect(options.modulePagePaths).toEqual(['/login', '/register']);
@@ -569,6 +582,10 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/blog/feed.xml', contentType: 'application/rss+xml' },
       { path: '/wallet/export.csv', contentType: 'text/csv' }
     ]);
+    expect(options.bodyTextPagePaths).toEqual([
+      { path: '/explore', text: 'Explore' },
+      { path: '/chat', text: 'AI assistant' }
+    ]);
   });
 
   it('treats none as a portable CLI sentinel for disabled smoke page groups', () => {
@@ -578,7 +595,8 @@ describe('Laravel runtime smoke harness', () => {
       SMOKE_UNSIGNED_LOGIN_REDIRECT_PAGE_PATHS: 'none',
       SMOKE_GATED_PAGE_PATHS: 'none',
       SMOKE_REDIRECT_PAGE_PATHS: 'none',
-      SMOKE_CONTENT_TYPE_PAGE_PATHS: 'none'
+      SMOKE_CONTENT_TYPE_PAGE_PATHS: 'none',
+      SMOKE_BODY_TEXT_PAGE_PATHS: 'none'
     });
 
     expect(options.modulePagePaths).toEqual([]);
@@ -587,6 +605,7 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.gatedPagePaths).toEqual([]);
     expect(options.redirectPagePaths).toEqual([]);
     expect(options.contentTypePagePaths).toEqual([]);
+    expect(options.bodyTextPagePaths).toEqual([]);
   });
 
   it('allows CLI module page smoke runs to be split into deterministic chunks', () => {
@@ -909,6 +928,15 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.contentTypePagePaths).toEqual(expect.arrayContaining([
       { path: '/blog/feed.xml', contentType: 'application/rss+xml' },
       { path: '/wallet/export.csv', contentType: 'text/csv' }
+    ]));
+  });
+
+  it('includes stable body-text route outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.bodyTextPagePaths).toEqual(expect.arrayContaining([
+      { path: '/explore', text: 'Explore' },
+      { path: '/chat', text: 'AI assistant' }
     ]));
   });
 
@@ -1401,6 +1429,26 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['content-type-page-blog-feed-xml-returns-application-rss-xml'].contentType).toContain('application/rss+xml');
     expect(checkByName['content-type-page-wallet-export-csv-returns-text-csv'].contentType).toContain('text/csv');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet/export.csv').at(-1).cookie).toContain('token=signed-token');
+  });
+
+  it('smokes body-text markers for canonical signed pages', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests);
+    servers.push(laravel, web);
+
+    const [laravelBaseUrl, webBaseUrl] = await Promise.all([listen(laravel), listen(web)]);
+
+    const result = await runLaravelRuntimeSmoke({ laravelBaseUrl, webBaseUrl });
+    const checks = Object.fromEntries(result.checks.map((check) => [check.name, check.ok]));
+    const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
+
+    expect(checks).toEqual(expect.objectContaining({
+      'body-text-page-explore-contains-explore': true,
+      'body-text-page-chat-contains-ai-assistant': true
+    }));
+    expect(checkByName['body-text-page-chat-contains-ai-assistant'].text).toBe('AI assistant');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/chat').at(-1).cookie).toContain('token=signed-token');
   });
 
   it('refreshes the signed session before gated checks after long module-page batches', async () => {

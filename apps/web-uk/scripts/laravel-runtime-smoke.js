@@ -196,6 +196,10 @@ const DEFAULT_CONTENT_TYPE_PAGE_PATHS = [
   { path: '/blog/feed.xml', contentType: 'application/rss+xml' },
   { path: '/wallet/export.csv', contentType: 'text/csv' }
 ];
+const DEFAULT_BODY_TEXT_PAGE_PATHS = [
+  { path: '/explore', text: 'Explore' },
+  { path: '/chat', text: 'AI assistant' }
+];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/',
   '/account',
@@ -539,6 +543,18 @@ function contentTypePageCheckName(path, contentType) {
   return `content-type-page-${pathSlug || 'home'}-returns-${contentTypeSlug || 'unknown'}`;
 }
 
+function bodyTextPageCheckName(path, text) {
+  const pathSlug = String(path || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  const textSlug = String(text || '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+  return `body-text-page-${pathSlug || 'home'}-contains-${textSlug || 'text'}`;
+}
+
 function authRequiredPageCheckName(path, location) {
   const pathSlug = String(path || '')
     .replace(/^\/+|\/+$/g, '')
@@ -637,6 +653,17 @@ function parseContentTypePages(value) {
   }).filter((item) => item.path && item.contentType);
 }
 
+function parseBodyTextPages(value) {
+  return splitSmokeList(value).map((item) => {
+    const separator = item.indexOf('=>');
+    if (separator <= 0) return { path: item, text: '' };
+    return {
+      path: item.slice(0, separator).trim(),
+      text: item.slice(separator + 2).trim()
+    };
+  }).filter((item) => item.path && item.text);
+}
+
 function resolveGatedPages(options, env) {
   if (hasOwn(options, 'gatedPagePaths')) return options.gatedPagePaths;
   if (hasOwn(env, 'SMOKE_GATED_PAGE_PATHS')) return parseGatedPages(env.SMOKE_GATED_PAGE_PATHS);
@@ -653,6 +680,12 @@ function resolveContentTypePages(options, env) {
   if (hasOwn(options, 'contentTypePagePaths')) return options.contentTypePagePaths;
   if (hasOwn(env, 'SMOKE_CONTENT_TYPE_PAGE_PATHS')) return parseContentTypePages(env.SMOKE_CONTENT_TYPE_PAGE_PATHS);
   return DEFAULT_CONTENT_TYPE_PAGE_PATHS;
+}
+
+function resolveBodyTextPages(options, env) {
+  if (hasOwn(options, 'bodyTextPagePaths')) return options.bodyTextPagePaths;
+  if (hasOwn(env, 'SMOKE_BODY_TEXT_PAGE_PATHS')) return parseBodyTextPages(env.SMOKE_BODY_TEXT_PAGE_PATHS);
+  return DEFAULT_BODY_TEXT_PAGE_PATHS;
 }
 
 function resolveOptions(options = {}, env = process.env) {
@@ -681,6 +714,7 @@ function resolveOptions(options = {}, env = process.env) {
     gatedPagePaths: resolveGatedPages(options, env),
     redirectPagePaths: resolveRedirectPages(options, env),
     contentTypePagePaths: resolveContentTypePages(options, env),
+    bodyTextPagePaths: resolveBodyTextPages(options, env),
     fetchImpl: options.fetchImpl || globalThis.fetch
   };
 }
@@ -891,6 +925,30 @@ async function runLaravelRuntimeSmoke(options = {}) {
       );
     } catch (error) {
       addCheck(checks, contentTypePageCheckName(path, expectedContentType), false, error.message, { path });
+    }
+  }
+
+  for (const bodyTextPage of config.bodyTextPagePaths) {
+    const path = bodyTextPage.path;
+    const expectedText = String(bodyTextPage.text || '');
+    try {
+      const response = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar,
+        url: joinUrl(config.webBaseUrl, path)
+      });
+      const html = await readTextSafely(response);
+      const ok = response.ok && html.toLowerCase().includes(expectedText.toLowerCase());
+      addCheck(
+        checks,
+        bodyTextPageCheckName(path, expectedText),
+        ok,
+        ok ? `${path} included "${expectedText}".` : `expected 2xx body containing "${expectedText}" from ${path}, got ${response.status}`,
+        { status: response.status, text: expectedText, path }
+      );
+    } catch (error) {
+      addCheck(checks, bodyTextPageCheckName(path, expectedText), false, error.message, { path });
     }
   }
 
