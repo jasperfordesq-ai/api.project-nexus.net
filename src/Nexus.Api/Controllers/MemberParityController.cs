@@ -27,6 +27,7 @@ public class MemberParityController : ControllerBase
     private readonly TenantContext _tenantContext;
     private const string LocalAdvertisingCampaignsKey = "local_advertising.campaigns";
     private const string PaidPushCampaignsKey = "paid_push.campaigns";
+    private const string MerchantOnboardingProfileKeyPrefix = "merchant_onboarding.profile.";
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -577,8 +578,22 @@ public class MemberParityController : ControllerBase
     [HttpGet("merchant-onboarding/status")]
     public async Task<IActionResult> MerchantOnboardingStatus()
     {
-        var profile = await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.UserId == UserId());
-        return Ok(new { data = new { status = profile == null ? "not_started" : "complete", seller_profile_id = profile?.Id } });
+        var profile = await FindMerchantProfileAsync();
+        if (profile == null)
+        {
+            return Ok(new { data = new { has_profile = false, onboarding_completed = false, profile = (object?)null } });
+        }
+
+        var extras = await LoadMerchantOnboardingExtrasAsync();
+        return Ok(new
+        {
+            data = new
+            {
+                has_profile = true,
+                onboarding_completed = extras.ContainsKey("onboarding_completed_at"),
+                profile = MapMerchantProfile(profile, extras)
+            }
+        });
     }
 
     [HttpPost("merchant-onboarding/step-1")]
@@ -633,17 +648,171 @@ public class MemberParityController : ControllerBase
 
     private async Task<IActionResult> UpsertMerchant(JsonElement body, int step)
     {
-        var profile = await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.UserId == UserId());
+        if (step == 3 && string.IsNullOrWhiteSpace(Str(body, "avatar_url")))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "avatar_url is required.",
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "avatar_url is required.", field = "avatar_url" } }
+            });
+        }
+
+        var profile = await FindMerchantProfileAsync();
         if (profile == null)
         {
-            profile = new MarketplaceSellerProfile { TenantId = TenantId(), UserId = UserId(), DisplayName = Str(body, "display_name") ?? $"Seller {UserId()}" };
+            profile = new MarketplaceSellerProfile
+            {
+                TenantId = TenantId(),
+                UserId = UserId(),
+                DisplayName = Str(body, "display_name") ?? Str(body, "business_name") ?? $"Seller {UserId()}",
+                SellerType = Str(body, "seller_type") ?? "business"
+            };
             _db.MarketplaceSellerProfiles.Add(profile);
         }
-        profile.DisplayName = Str(body, "display_name") ?? profile.DisplayName;
-        profile.Bio = Str(body, "bio") ?? profile.Bio;
+
+        var extras = await LoadMerchantOnboardingExtrasAsync();
+
+        if (step == 1)
+        {
+            profile.DisplayName = Str(body, "display_name") ?? Str(body, "business_name") ?? profile.DisplayName;
+            profile.Bio = Str(body, "bio") ?? profile.Bio;
+            profile.SellerType = Str(body, "seller_type") ?? profile.SellerType;
+            CopyString(body, extras, "business_name");
+            CopyString(body, extras, "business_registration");
+        }
+        else if (step == 2)
+        {
+            CopyJson(body, extras, "business_address");
+            CopyJson(body, extras, "opening_hours");
+        }
+        else if (step == 3)
+        {
+            CopyString(body, extras, "avatar_url");
+            CopyString(body, extras, "cover_image_url");
+        }
+        else if (step >= 4)
+        {
+            if (!extras.ContainsKey("joined_marketplace_at"))
+                extras["joined_marketplace_at"] = JsonSerializer.SerializeToElement(DateTime.UtcNow);
+            if (!extras.ContainsKey("onboarding_completed_at"))
+                extras["onboarding_completed_at"] = JsonSerializer.SerializeToElement(DateTime.UtcNow);
+        }
+
         profile.UpdatedAt = DateTime.UtcNow;
+        await SaveMerchantOnboardingExtrasAsync(extras);
         await _db.SaveChangesAsync();
-        return Ok(new { data = new { step, status = step >= 4 ? "complete" : "in_progress", seller_profile_id = profile.Id } });
+
+        var mapped = MapMerchantProfile(profile, extras);
+        if (step >= 4)
+        {
+            mapped["badge_granted"] = true;
+            return Ok(new { data = mapped });
+        }
+
+        return Ok(new { data = new { profile = mapped } });
+    }
+
+    private async Task<MarketplaceSellerProfile?> FindMerchantProfileAsync()
+        => await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.TenantId == TenantId() && p.UserId == UserId());
+
+    private async Task<Dictionary<string, JsonElement>> LoadMerchantOnboardingExtrasAsync()
+    {
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c =>
+            c.TenantId == TenantId() && c.Key == MerchantOnboardingProfileKeyPrefix + UserId());
+
+        if (row == null || string.IsNullOrWhiteSpace(row.Value))
+            return new Dictionary<string, JsonElement>();
+
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(row.Value, StoreJsonOptions)
+                ?? new Dictionary<string, JsonElement>();
+        }
+        catch (JsonException)
+        {
+            return new Dictionary<string, JsonElement>();
+        }
+    }
+
+    private async Task SaveMerchantOnboardingExtrasAsync(Dictionary<string, JsonElement> extras)
+    {
+        var key = MerchantOnboardingProfileKeyPrefix + UserId();
+        var json = JsonSerializer.Serialize(extras, StoreJsonOptions);
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == TenantId() && c.Key == key);
+        if (row == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = TenantId(),
+                Key = key,
+                Value = json,
+                UpdatedAt = DateTime.UtcNow
+            });
+            return;
+        }
+
+        row.Value = json;
+        row.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static Dictionary<string, object?> MapMerchantProfile(
+        MarketplaceSellerProfile profile,
+        IReadOnlyDictionary<string, JsonElement> extras)
+    {
+        var mapped = new Dictionary<string, object?>
+        {
+            ["id"] = profile.Id,
+            ["tenant_id"] = profile.TenantId,
+            ["user_id"] = profile.UserId,
+            ["seller_type"] = profile.SellerType,
+            ["display_name"] = profile.DisplayName,
+            ["bio"] = profile.Bio,
+            ["is_verified"] = profile.IsVerified,
+            ["is_suspended"] = profile.IsSuspended,
+            ["rating_average"] = profile.RatingAverage,
+            ["rating_count"] = profile.RatingCount,
+            ["listings_count"] = profile.ListingsCount,
+            ["sales_count"] = profile.SalesCount,
+            ["stripe_account_id"] = profile.StripeAccountId,
+            ["created_at"] = profile.CreatedAt,
+            ["updated_at"] = profile.UpdatedAt
+        };
+
+        foreach (var key in new[]
+        {
+            "business_name",
+            "business_registration",
+            "business_address",
+            "opening_hours",
+            "avatar_url",
+            "cover_image_url",
+            "joined_marketplace_at",
+            "onboarding_completed_at"
+        })
+        {
+            if (extras.TryGetValue(key, out var value))
+                mapped[key] = value;
+        }
+
+        return mapped;
+    }
+
+    private static void CopyString(JsonElement source, IDictionary<string, JsonElement> target, string key)
+    {
+        var value = Str(source, key);
+        if (!string.IsNullOrWhiteSpace(value))
+            target[key] = JsonSerializer.SerializeToElement(value);
+    }
+
+    private static void CopyJson(JsonElement source, IDictionary<string, JsonElement> target, string key)
+    {
+        if (source.ValueKind == JsonValueKind.Object
+            && source.TryGetProperty(key, out var value)
+            && value.ValueKind != JsonValueKind.Null)
+        {
+            target[key] = value.Clone();
+        }
     }
 
     private async Task<List<LocalAdCampaignRecord>> LoadAdCampaignsAsync()

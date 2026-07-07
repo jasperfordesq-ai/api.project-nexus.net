@@ -33,7 +33,7 @@ Status values:
 | Tenant SSO / OIDC | `AdminSsoProvidersController.php`, `SsoOidcService.php`, `tenant_sso_providers` migration | `AdminSsoProvidersController.cs`, `TenantSsoProviderService.cs`, `TenantSsoProvider.cs`, `tenant_sso_providers` migration | Partial |
 | Jobs | `docs/modules/jobs.md`, jobs controllers/services | jobs controllers/services | Mapped |
 | Listings | `docs/modules/listings.md`, listings services/controllers | listings controllers/services | Mapped |
-| Marketplace | `docs/modules/marketplace.md`, `Marketplace*Controller.php`, `Marketplace*Service.php`, marketplace models | `MarketplaceController.cs`, `MarketplaceService.cs`, `MarketplaceEntities.cs` | Partial |
+| Marketplace | `docs/modules/marketplace.md`, `Marketplace*Controller.php`, `MerchantOnboardingController.php`, `Marketplace*Service.php`, marketplace models, Laravel React marketplace pages | `MarketplaceController.cs`, `AdminMarketplaceController.cs`, `MarketplaceService.cs`, `MarketplaceEntities.cs`, `MemberParityController.cs`; merchant-onboarding wizard contract is covered by `MarketplaceControllerTests` | Partial |
 | Members and GDPR | `docs/modules/members-and-gdpr.md`, member/GDPR services | user, GDPR, consent, deletion controllers/services | Mapped |
 | Messaging | `docs/modules/messaging.md`, message services, Pusher auth | messages controllers/services, SignalR/RabbitMQ surfaces | Mapped |
 | Monetization | `docs/modules/monetization.md`, subscriptions, coupons, ads | donations/plans/coupons/ad pages exist; verify contracts | Partial |
