@@ -23,11 +23,13 @@ public class MarketplaceController : ControllerBase
 {
     private readonly MarketplaceService _marketplace;
     private readonly NexusDbContext _db;
+    private readonly FileUploadService? _fileUploadService;
 
-    public MarketplaceController(MarketplaceService marketplace, NexusDbContext db)
+    public MarketplaceController(MarketplaceService marketplace, NexusDbContext db, FileUploadService? fileUploadService = null)
     {
         _marketplace = marketplace;
         _db = db;
+        _fileUploadService = fileUploadService;
     }
 
     [HttpGet("listings")]
@@ -65,13 +67,93 @@ public class MarketplaceController : ControllerBase
 
     [HttpGet("listings/nearby")]
     [AllowAnonymous]
-    public async Task<IActionResult> NearbyListings([FromQuery] double? lat = null, [FromQuery] double? lng = null, [FromQuery] double radius = 25)
+    public async Task<IActionResult> NearbyListings(
+        [FromQuery] double? lat = null,
+        [FromQuery] double? lng = null,
+        [FromQuery] double? latitude = null,
+        [FromQuery] double? longitude = null,
+        [FromQuery] double? radius = null,
+        [FromQuery] double? radius_km = null,
+        [FromQuery] string? q = null,
+        [FromQuery] int? category_id = null,
+        [FromQuery] int limit = 20)
     {
-        var (items, total) = await _marketplace.ListListingsAsync(null, null, null, null, null, null, null, null, null, null, false, false, 1, 100);
-        var filtered = items.Where(l => !lat.HasValue || !lng.HasValue || !l.Latitude.HasValue || !l.Longitude.HasValue
-            || DistanceKm(lat.Value, lng.Value, l.Latitude.Value, l.Longitude.Value) <= radius).ToList();
-        var savedIds = await LoadSavedListingIdsAsync(User.GetUserId(), filtered.Select(l => l.Id));
-        return Ok(new { success = true, data = filtered.Select(l => MapListing(l, currentUserId: User.GetUserId(), savedListingIds: savedIds)), meta = new { total = filtered.Count, unfiltered_total = total } });
+        var originLat = lat ?? latitude;
+        var originLng = lng ?? longitude;
+        if (!originLat.HasValue || !originLng.HasValue)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                code = "VALIDATION_ERROR",
+                error = "latitude and longitude are required."
+            });
+        }
+
+        if (originLat is < -90 or > 90 || originLng is < -180 or > 180)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                code = "VALIDATION_ERROR",
+                error = "Coordinates are invalid."
+            });
+        }
+
+        var radiusKm = Math.Clamp(radius_km ?? radius ?? 25d, 1d, 200d);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var query = _db.MarketplaceListings
+            .Include(l => l.User)
+            .Include(l => l.Category)
+            .Include(l => l.Images)
+            .Where(l => l.Status == "active"
+                && l.ModerationStatus == "approved"
+                && l.Latitude.HasValue
+                && l.Longitude.HasValue);
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim().ToLowerInvariant();
+            query = query.Where(l =>
+                l.Title.ToLower().Contains(term)
+                || l.Description.ToLower().Contains(term));
+        }
+
+        if (category_id.HasValue)
+            query = query.Where(l => l.CategoryId == category_id);
+
+        var rows = await query.ToListAsync();
+        var nearby = rows
+            .Select(listing => new
+            {
+                Listing = listing,
+                DistanceKm = DistanceKm(originLat.Value, originLng.Value, listing.Latitude!.Value, listing.Longitude!.Value)
+            })
+            .Where(row => row.DistanceKm <= radiusKm)
+            .OrderBy(row => row.DistanceKm)
+            .Take(limit)
+            .ToList();
+
+        var currentUserId = User.GetUserId();
+        var savedIds = await LoadSavedListingIdsAsync(currentUserId, nearby.Select(row => row.Listing.Id));
+        return Ok(new
+        {
+            success = true,
+            data = nearby.Select(row => MapListing(
+                row.Listing,
+                currentUserId: currentUserId,
+                savedListingIds: savedIds,
+                distanceKm: Math.Round(row.DistanceKm, 1))),
+            meta = new
+            {
+                total = nearby.Count,
+                per_page = limit,
+                radius_km = radiusKm,
+                lat = originLat,
+                lng = originLng
+            }
+        });
     }
 
     [HttpGet("listings/featured")]
@@ -313,11 +395,11 @@ public class MarketplaceController : ControllerBase
 
     [HttpPut("offers/{id:int}/accept")]
     [Authorize]
-    public Task<IActionResult> AcceptOffer(int id) => OfferStatus(id, "accepted");
+    public Task<IActionResult> AcceptOffer(int id) => SellerOfferStatus(id, "accepted");
 
     [HttpPut("offers/{id:int}/decline")]
     [Authorize]
-    public Task<IActionResult> DeclineOffer(int id) => OfferStatus(id, "declined");
+    public Task<IActionResult> DeclineOffer(int id) => SellerOfferStatus(id, "declined");
 
     [HttpPut("offers/{id:int}/counter")]
     [Authorize]
@@ -393,14 +475,18 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("seller/profile")]
     [Authorize]
-    public async Task<IActionResult> UpsertSellerProfile([FromBody] SellerProfileRequest request)
+    public async Task<IActionResult> UpsertSellerProfile()
     {
+        if (Request.HasFormContentType)
+            return await UploadSellerProfileMediaAsync();
+
+        var request = await ReadSellerProfileRequestAsync();
         var profile = await _marketplace.GetOrCreateSellerProfileAsync(RequireUserId(), request.DisplayName);
         if (request.Bio != null) profile.Bio = request.Bio;
         if (request.SellerType != null) profile.SellerType = request.SellerType;
         profile.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = profile });
+        return Ok(new { success = true, data = profile });
     }
 
     [HttpGet("seller/dashboard")]
@@ -449,8 +535,21 @@ public class MarketplaceController : ControllerBase
     [Authorize]
     public async Task<IActionResult> SellerOnboardStatus()
     {
-        var profile = await _db.MarketplaceSellerProfiles.FirstOrDefaultAsync(p => p.UserId == RequireUserId());
-        return Ok(new { data = new { onboarded = profile != null, profile } });
+        var profile = await _marketplace.GetOrCreateSellerProfileAsync(RequireUserId());
+        var onboardingComplete = !string.IsNullOrWhiteSpace(profile.StripeAccountId) && profile.IsVerified;
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                stripe_account_id = profile.StripeAccountId,
+                stripe_onboarding_complete = onboardingComplete,
+                details_submitted = onboardingComplete,
+                charges_enabled = onboardingComplete,
+                payouts_enabled = onboardingComplete
+            }
+        });
     }
 
     [HttpPost("orders")]
@@ -646,10 +745,29 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("seller/onboard")]
     [Authorize]
-    public async Task<IActionResult> SellerOnboard([FromBody] SellerProfileRequest request)
+    public async Task<IActionResult> SellerOnboard([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] SellerProfileRequest? request = null)
     {
-        var profile = await _marketplace.GetOrCreateSellerProfileAsync(RequireUserId(), request.DisplayName);
-        return Ok(new { data = new { profile, onboarding_url = (string?)null, status = "local" } });
+        var profile = await _marketplace.GetOrCreateSellerProfileAsync(RequireUserId(), request?.DisplayName);
+        if (string.IsNullOrWhiteSpace(profile.StripeAccountId))
+        {
+            profile.StripeAccountId = $"acct_local_{Guid.NewGuid():N}";
+            profile.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        var onboardingUrl = BuildLocalSellerOnboardingUrl(profile.StripeAccountId);
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                account_id = profile.StripeAccountId,
+                onboarding_url = onboardingUrl,
+                url = onboardingUrl,
+                profile,
+                status = "local"
+            }
+        });
     }
 
     [HttpGet("saved-searches")]
@@ -1591,6 +1709,50 @@ public class MarketplaceController : ControllerBase
         return Ok(new { success = true, data = MapMarketplaceOffer(offer) });
     }
 
+    private async Task<IActionResult> SellerOfferStatus(int id, string status)
+    {
+        var userId = RequireUserId();
+        var offer = await _db.MarketplaceOffers.FirstOrDefaultAsync(o => o.Id == id);
+        if (offer == null)
+            return NotFound(new { success = false, code = "NOT_FOUND", error = "Offer not found" });
+
+        if (offer.SellerUserId != userId && !User.IsAdmin())
+            return StatusCode(403, new { success = false, code = "FORBIDDEN", error = "Only the seller can update this offer." });
+
+        if (!string.Equals(offer.Status, "pending", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(offer.Status, "countered", StringComparison.OrdinalIgnoreCase))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", error = "Offer is no longer actionable." });
+        }
+
+        offer.Status = status;
+        offer.UpdatedAt = DateTime.UtcNow;
+
+        if (string.Equals(status, "accepted", StringComparison.OrdinalIgnoreCase))
+        {
+            var listing = await _db.MarketplaceListings.FirstOrDefaultAsync(l => l.Id == offer.MarketplaceListingId);
+            if (listing != null)
+            {
+                listing.Status = "reserved";
+                listing.UpdatedAt = DateTime.UtcNow;
+            }
+
+            var competingOffers = await _db.MarketplaceOffers
+                .Where(o => o.MarketplaceListingId == offer.MarketplaceListingId
+                    && o.Id != offer.Id
+                    && (o.Status == "pending" || o.Status == "countered"))
+                .ToListAsync();
+            foreach (var competing in competingOffers)
+            {
+                competing.Status = "declined";
+                competing.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, data = MapMarketplaceOffer(offer) });
+    }
+
     private static object MapMarketplaceOffer(MarketplaceOffer offer, MarketplaceListing? listing = null, User? buyer = null, User? seller = null) => new
     {
         id = offer.Id,
@@ -2162,6 +2324,94 @@ public class MarketplaceController : ControllerBase
             ? new { data, meta = new { per_page = perPage, has_more = hasMore } }
             : new { data, meta = new { per_page = perPage, has_more = hasMore, cursor } };
 
+    private async Task<SellerProfileRequest> ReadSellerProfileRequestAsync()
+    {
+        if (Request.ContentLength is null or 0)
+            return new SellerProfileRequest(null, null, null);
+
+        var request = await JsonSerializer.DeserializeAsync<SellerProfileRequest>(
+            Request.Body,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        return request ?? new SellerProfileRequest(null, null, null);
+    }
+
+    private async Task<IActionResult> UploadSellerProfileMediaAsync()
+    {
+        if (_fileUploadService == null)
+            return StatusCode(500, new { success = false, code = "UPLOAD_UNAVAILABLE", error = "File uploads are not configured." });
+
+        var field = Request.Form.Files.GetFile("avatar") != null
+            ? "avatar"
+            : Request.Form.Files.GetFile("cover_image") != null
+                ? "cover_image"
+                : Request.Form.Files.GetFile("file") != null
+                    ? "file"
+                    : null;
+
+        var file = field == null ? null : Request.Form.Files.GetFile(field);
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, code = "VALIDATION_ERROR", error = "No file provided" });
+
+        var userId = RequireUserId();
+        var tenantId = User.GetTenantId();
+        if (tenantId == null)
+            return Unauthorized(new { success = false, code = "UNAUTHORIZED", error = "Invalid token" });
+
+        var profile = await _marketplace.GetOrCreateSellerProfileAsync(userId);
+        var category = field == "cover_image" ? FileCategory.Listing : FileCategory.Avatar;
+        await using var stream = file.OpenReadStream();
+        var (upload, error) = await _fileUploadService.UploadAsync(
+            stream,
+            file.FileName,
+            file.ContentType,
+            file.Length,
+            userId,
+            tenantId.Value,
+            category,
+            profile.Id,
+            "marketplace_seller_profile");
+
+        if (error != null)
+            return BadRequest(new { success = false, code = "VALIDATION_ERROR", error });
+
+        var savedUpload = upload!;
+        var url = _fileUploadService.GetDownloadUrl(savedUpload);
+        if (field == "avatar")
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user != null)
+            {
+                user.AvatarUrl = url;
+                user.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                id = savedUpload.Id,
+                url,
+                avatar_url = field == "avatar" ? url : null,
+                cover_image_url = field == "cover_image" ? url : null,
+                field
+            }
+        });
+    }
+
+    private string BuildLocalSellerOnboardingUrl(string? accountId)
+    {
+        var host = Request.Host.HasValue ? Request.Host.Value : "localhost";
+        var scheme = string.IsNullOrWhiteSpace(Request.Scheme) ? "http" : Request.Scheme;
+        var encodedAccountId = Uri.EscapeDataString(accountId ?? string.Empty);
+        return $"{scheme}://{host}/marketplace/seller/onboarding?return=1&account_id={encodedAccountId}";
+    }
+
     private static int? DecodeListingCursor(string? cursor)
     {
         if (string.IsNullOrWhiteSpace(cursor))
@@ -2185,7 +2435,8 @@ public class MarketplaceController : ControllerBase
         MarketplaceListing listing,
         bool detailed = false,
         int? currentUserId = null,
-        IReadOnlySet<int>? savedListingIds = null)
+        IReadOnlySet<int>? savedListingIds = null,
+        double? distanceKm = null)
     {
         var images = listing.Images
             .OrderBy(i => i.SortOrder)
@@ -2230,6 +2481,7 @@ public class MarketplaceController : ControllerBase
             location = listing.Location,
             latitude = listing.Latitude,
             longitude = listing.Longitude,
+            distance_km = distanceKm,
             shipping_available = listing.ShippingAvailable,
             shippingAvailable = listing.ShippingAvailable,
             local_pickup = listing.LocalPickup,
@@ -2413,7 +2665,10 @@ public record OfferRequest(
     [property: JsonPropertyName("time_credit_amount")] decimal? TimeCreditAmount,
     string? Currency,
     string? Message);
-public record SellerProfileRequest(string? DisplayName, string? Bio, string? SellerType);
+public record SellerProfileRequest(
+    [property: JsonPropertyName("display_name")] string? DisplayName,
+    [property: JsonPropertyName("bio")] string? Bio,
+    [property: JsonPropertyName("seller_type")] string? SellerType);
 public record CreateOrderRequest(
     [property: JsonPropertyName("listing_id")] int ListingId,
     int Quantity,

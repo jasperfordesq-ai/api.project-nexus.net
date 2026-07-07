@@ -159,6 +159,68 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task SellerStripeOnboardingV2_MatchesLaravelReactContract()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var initial = await Client.GetAsync("/api/v2/marketplace/seller/onboard/status");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        initialJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var initialData = initialJson.GetProperty("data");
+        initialData.GetProperty("stripe_onboarding_complete").GetBoolean().Should().BeFalse();
+        initialData.GetProperty("details_submitted").GetBoolean().Should().BeFalse();
+        initialData.GetProperty("charges_enabled").GetBoolean().Should().BeFalse();
+        initialData.GetProperty("payouts_enabled").GetBoolean().Should().BeFalse();
+        initialData.GetProperty("stripe_account_id").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var start = await Client.PostAsync("/api/v2/marketplace/seller/onboard", null);
+
+        start.StatusCode.Should().Be(HttpStatusCode.OK);
+        var startJson = await start.Content.ReadFromJsonAsync<JsonElement>();
+        startJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var startData = startJson.GetProperty("data");
+        startData.GetProperty("account_id").GetString().Should().StartWith("acct_");
+        startData.GetProperty("onboarding_url").GetString().Should().StartWith("http");
+        startData.GetProperty("url").GetString().Should().Be(startData.GetProperty("onboarding_url").GetString());
+
+        var afterStart = await Client.GetAsync("/api/v2/marketplace/seller/onboard/status");
+        var afterStartJson = await afterStart.Content.ReadFromJsonAsync<JsonElement>();
+        var afterStartData = afterStartJson.GetProperty("data");
+        afterStartData.GetProperty("stripe_account_id").GetString().Should().Be(startData.GetProperty("account_id").GetString());
+        afterStartData.GetProperty("stripe_onboarding_complete").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SellerProfileUploadV2_MatchesLaravelReactMerchantOnboardingContract()
+    {
+        await AuthenticateAsMemberAsync();
+
+        using var avatar = CreateImageUpload("avatar", "seller-avatar.png");
+        var avatarResponse = await Client.PostAsync("/api/v2/marketplace/seller/profile", avatar);
+
+        avatarResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var avatarJson = await avatarResponse.Content.ReadFromJsonAsync<JsonElement>();
+        avatarJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var avatarData = avatarJson.GetProperty("data");
+        avatarData.GetProperty("url").GetString().Should().Contain("/api/files/");
+        avatarData.GetProperty("avatar_url").GetString().Should().Be(avatarData.GetProperty("url").GetString());
+        avatarData.GetProperty("field").GetString().Should().Be("avatar");
+
+        using var cover = CreateImageUpload("cover_image", "seller-cover.png");
+        var coverResponse = await Client.PostAsync("/api/v2/marketplace/seller/profile", cover);
+
+        coverResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var coverJson = await coverResponse.Content.ReadFromJsonAsync<JsonElement>();
+        coverJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var coverData = coverJson.GetProperty("data");
+        coverData.GetProperty("url").GetString().Should().Contain("/api/files/");
+        coverData.GetProperty("cover_image_url").GetString().Should().Be(coverData.GetProperty("url").GetString());
+        coverData.GetProperty("field").GetString().Should().Be("cover_image");
+    }
+
+    [Fact]
     public async Task PromotionProductsV2_MatchesLaravelReactSelectorContract()
     {
         Client.DefaultRequestHeaders.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
@@ -343,6 +405,94 @@ public class MarketplaceControllerTests : IntegrationTestBase
         data.GetProperty("counter_amount").ValueKind.Should().Be(JsonValueKind.Null);
         data.GetProperty("counter_message").ValueKind.Should().Be(JsonValueKind.Null);
         data.GetProperty("created_at").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task MarketplaceOfferAcceptV2_RequiresSellerAndReservesListing()
+    {
+        var listingId = await CreateMarketplaceListingAsync();
+        await AuthenticateAsMemberAsync();
+
+        var first = await Client.PostAsJsonAsync($"/api/v2/marketplace/listings/{listingId}/offers", new
+        {
+            amount = 42m,
+            currency = "EUR",
+            message = "First offer"
+        });
+        var firstId = (await first.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        var second = await Client.PostAsJsonAsync($"/api/v2/marketplace/listings/{listingId}/offers", new
+        {
+            amount = 44m,
+            currency = "EUR",
+            message = "Backup offer"
+        });
+        var secondId = (await second.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        var buyerAccept = await Client.PutAsync($"/api/v2/marketplace/offers/{firstId}/accept", null);
+
+        buyerAccept.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        await AuthenticateAsAdminAsync();
+        var sellerAccept = await Client.PutAsync($"/api/v2/marketplace/offers/{firstId}/accept", null);
+
+        sellerAccept.StatusCode.Should().Be(HttpStatusCode.OK);
+        var acceptedJson = await sellerAccept.Content.ReadFromJsonAsync<JsonElement>();
+        acceptedJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        acceptedJson.GetProperty("data").GetProperty("status").GetString().Should().Be("accepted");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var listing = await db.MarketplaceListings.FindAsync(listingId);
+        var competing = await db.MarketplaceOffers.FindAsync(secondId);
+        listing!.Status.Should().Be("reserved");
+        competing!.Status.Should().Be("declined");
+    }
+
+    [Fact]
+    public async Task MarketplaceNearbyV2_MatchesLaravelReactMapSearchContract()
+    {
+        var categoryId = await CreateMarketplaceCategoryAsync();
+        await CreateGeoMarketplaceListingAsync(
+            "Nearby coffee table",
+            categoryId,
+            latitude: 47.3770,
+            longitude: 8.5420,
+            status: "active",
+            moderationStatus: "approved");
+        await CreateGeoMarketplaceListingAsync(
+            "Faraway coffee table",
+            categoryId,
+            latitude: 46.2044,
+            longitude: 6.1432,
+            status: "active",
+            moderationStatus: "approved");
+        await CreateGeoMarketplaceListingAsync(
+            "Nearby lamp",
+            categoryId,
+            latitude: 47.3771,
+            longitude: 8.5421,
+            status: "active",
+            moderationStatus: "approved");
+
+        Client.DefaultRequestHeaders.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+        var response = await Client.GetAsync(
+            $"/api/v2/marketplace/listings/nearby?lat=47.3769&lng=8.5417&radius_km=5&q=coffee&category_id={categoryId}&limit=1");
+        Client.DefaultRequestHeaders.Remove("X-Tenant-ID");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = json.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        data.GetProperty("title").GetString().Should().Be("Nearby coffee table");
+        data.GetProperty("category").GetProperty("id").GetInt32().Should().Be(categoryId);
+        data.GetProperty("latitude").GetDouble().Should().BeApproximately(47.3770, 0.0001);
+        data.GetProperty("longitude").GetDouble().Should().BeApproximately(8.5420, 0.0001);
+        data.GetProperty("distance_km").GetDouble().Should().BeLessThan(1);
+        json.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(1);
+        json.GetProperty("meta").GetProperty("radius_km").GetDouble().Should().Be(5);
     }
 
     [Fact]
@@ -1749,6 +1899,40 @@ public class MarketplaceControllerTests : IntegrationTestBase
         return category.Id;
     }
 
+    private async Task<int> CreateGeoMarketplaceListingAsync(
+        string title,
+        int categoryId,
+        double latitude,
+        double longitude,
+        string status,
+        string moderationStatus)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var listing = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            CategoryId = categoryId,
+            Title = title,
+            Description = $"Geo listing for {title}",
+            Price = 25m,
+            PriceCurrency = "EUR",
+            PriceType = "fixed",
+            Status = status,
+            MarketplaceStatus = "available",
+            ModerationStatus = moderationStatus,
+            Latitude = latitude,
+            Longitude = longitude,
+            Location = "Zurich"
+        };
+
+        db.MarketplaceListings.Add(listing);
+        await db.SaveChangesAsync();
+        return listing.Id;
+    }
+
     private async Task<int> CreateCollectionListingAsync()
     {
         using var scope = Factory.Services.CreateScope();
@@ -1959,5 +2143,19 @@ public class MarketplaceControllerTests : IntegrationTestBase
         await db.SaveChangesAsync();
 
         return order.Id;
+    }
+
+    private static MultipartFormDataContent CreateImageUpload(string fieldName, string fileName)
+    {
+        var content = new ByteArrayContent(new byte[]
+        {
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D
+        });
+        content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+
+        var form = new MultipartFormDataContent();
+        form.Add(content, fieldName, fileName);
+        return form;
     }
 }

@@ -127,13 +127,23 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
      payload and return Laravel snake_case offer fields in a success envelope.
      MyOffers sent/received reads and counter/accept-counter/withdraw actions
      now return React-compatible success envelopes, cursor metadata, nested
-     listing/counterparty fields, and Laravel action statuses. Seller
+     listing/counterparty fields, and Laravel action statuses. Direct
+     accept/decline now uses Laravel seller-only authorization, accepted-offer
+     listing reservation, and competing-offer decline side effects. Seller
      pickup-slot create/list/delete now accepts React `slot_start`/`slot_end`
      payloads and returns Laravel slot field names with persisted recurrence
      and booked-count state. Seller coupon CRUD now accepts the React coupon
      form payload and returns formatted `data.items`/coupon/delete envelopes.
      BuyNow coupon validation, direct order creation, and local payment-intent
      calls now accept the React payloads and return Laravel-style envelopes.
+     Seller profile avatar/cover multipart uploads now return React-compatible
+     `data.url` payloads on `/api/v2/marketplace/seller/profile`.
+     Marketplace map-search nearby listing calls now support React `lat`/`lng`,
+     `radius_km`, `q`, `category_id`, `limit`, and return `distance_km`.
+     Seller Stripe onboarding status/start calls now return the React
+     `stripe_onboarding_complete` status shape and empty-body start response
+     with both `onboarding_url` and `url` aliases, while real Stripe Connect
+     provider orchestration remains a payment-provider gap.
      Listing create/edit media upload accepts Laravel React snake_case listing
      payloads and multipart `images[]`/`video` uploads. Pickup reservation,
      buyer my-pickups, and seller QR scan calls now return Laravel reservation
