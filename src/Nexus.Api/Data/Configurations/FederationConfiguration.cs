@@ -213,6 +213,46 @@ public class FederationConfiguration : TenantScopedConfiguration
         });
 
         // FederationWebhookSubscription — typed registry replacing TenantConfig JSON blob.
+        modelBuilder.Entity<FederationNeighborhood>(entity =>
+        {
+            entity.ToTable("federation_neighborhoods");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description").HasColumnType("text");
+            entity.Property(e => e.Region).HasColumnName("region").HasMaxLength(255);
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasIndex(e => e.Name).HasDatabaseName("federation_neighborhoods_name_idx");
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<FederationNeighborhoodTenant>(entity =>
+        {
+            entity.ToTable("federation_neighborhood_tenants");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.NeighborhoodId).HasColumnName("neighborhood_id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.HasIndex(e => e.NeighborhoodId).HasDatabaseName("federation_neighborhood_tenants_neighborhood_idx");
+            entity.HasIndex(e => e.TenantId).HasDatabaseName("federation_neighborhood_tenants_tenant_idx");
+            entity.HasIndex(e => new { e.NeighborhoodId, e.TenantId })
+                .IsUnique()
+                .HasDatabaseName("federation_neighborhood_tenants_unique");
+            entity.HasOne(e => e.Neighborhood)
+                .WithMany(e => e.Tenants)
+                .HasForeignKey(e => e.NeighborhoodId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<FederationWebhookSubscription>(entity =>
         {
             entity.ToTable("federation_webhook_subscriptions");

@@ -215,6 +215,8 @@ public class NexusDbContext : DbContext
     public DbSet<FederationTenantFeature> FederationTenantFeatures => Set<FederationTenantFeature>();
     public DbSet<FederationWebhookSubscription> FederationWebhookSubscriptions => Set<FederationWebhookSubscription>();
     public DbSet<FederationWebhookDeliveryLog> FederationWebhookDeliveryLogs => Set<FederationWebhookDeliveryLog>();
+    public DbSet<FederationNeighborhood> FederationNeighborhoods => Set<FederationNeighborhood>();
+    public DbSet<FederationNeighborhoodTenant> FederationNeighborhoodTenants => Set<FederationNeighborhoodTenant>();
 
     // Phase 36: Predictive Staffing
     public DbSet<StaffingPrediction> StaffingPredictions => Set<StaffingPrediction>();

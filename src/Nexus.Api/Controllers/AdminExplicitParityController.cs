@@ -562,7 +562,6 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPost("/api/v2/admin/federation/data/export")]
     [HttpPost("/api/v2/admin/federation/data/import")]
     [HttpPost("/api/v2/admin/federation/data/purge")]
-    [HttpPost("/api/v2/admin/federation/neighborhoods")]
     [HttpPost("/api/v2/admin/federation/partnerships/{id}/counter-propose")]
     [HttpPost("/api/v2/admin/federation/partnerships/{id}/reactivate")]
     [HttpPost("/api/v2/admin/federation/webhook-logs/{id}/retry")]

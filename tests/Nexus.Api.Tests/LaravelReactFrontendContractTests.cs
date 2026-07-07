@@ -1668,6 +1668,262 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminFederationNeighborhoodsV2_UsesLaravelReactCrudAndMembershipShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var available = await Client.GetAsync("/api/v2/admin/federation/available-tenants");
+
+        available.StatusCode.Should().Be(HttpStatusCode.OK);
+        var availableJson = await available.Content.ReadFromJsonAsync<JsonElement>();
+        availableJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        availableJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var availableTenants = availableJson.GetProperty("data").EnumerateArray().ToArray();
+        availableTenants.Should().Contain(t =>
+            t.GetProperty("id").GetInt32() == TestData.Tenant2.Id &&
+            t.GetProperty("name").GetString() == TestData.Tenant2.Name &&
+            t.GetProperty("slug").GetString() == TestData.Tenant2.Slug);
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/federation/neighborhoods", new
+        {
+            name = $"Laravel React Neighborhood {Guid.NewGuid():N}",
+            description = "Runtime contract neighborhood"
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        createJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var created = createJson.GetProperty("data");
+        var neighborhoodId = created.GetProperty("id").GetInt32();
+        created.GetProperty("name").GetString().Should().StartWith("Laravel React Neighborhood");
+        created.GetProperty("description").GetString().Should().Be("Runtime contract neighborhood");
+        created.GetProperty("tenants").ValueKind.Should().Be(JsonValueKind.Array);
+        created.GetProperty("tenant_count").GetInt32().Should().Be(0);
+        created.GetProperty("total_members").GetInt32().Should().Be(0);
+        created.GetProperty("shared_events_count").GetInt32().Should().Be(0);
+        created.GetProperty("created_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var addTenant = await Client.PostAsJsonAsync($"/api/v2/admin/federation/neighborhoods/{neighborhoodId}/tenants", new
+        {
+            tenant_id = TestData.Tenant2.Id
+        });
+
+        addTenant.StatusCode.Should().Be(HttpStatusCode.OK);
+        var addTenantJson = await addTenant.Content.ReadFromJsonAsync<JsonElement>();
+        addTenantJson.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var list = await Client.GetAsync("/api/v2/admin/federation/neighborhoods");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(n => n.GetProperty("id").GetInt32() == neighborhoodId);
+        listed.GetProperty("tenant_count").GetInt32().Should().Be(1);
+        listed.GetProperty("tenants").EnumerateArray().Should().Contain(t =>
+            t.GetProperty("tenant_id").GetInt32() == TestData.Tenant2.Id &&
+            t.GetProperty("name").GetString() == TestData.Tenant2.Name &&
+            t.GetProperty("slug").GetString() == TestData.Tenant2.Slug);
+        listed.GetProperty("total_members").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        listed.GetProperty("shared_events_count").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+
+        var removeTenant = await Client.DeleteAsync($"/api/v2/admin/federation/neighborhoods/{neighborhoodId}/tenants/{TestData.Tenant2.Id}");
+
+        removeTenant.StatusCode.Should().Be(HttpStatusCode.OK);
+        var removeTenantJson = await removeTenant.Content.ReadFromJsonAsync<JsonElement>();
+        removeTenantJson.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/federation/neighborhoods/{neighborhoodId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminCommunityAnalyticsV2_UsesLaravelReactDashboardGeographyAndExportShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var dashboard = await Client.GetAsync("/api/v2/admin/community-analytics");
+
+        dashboard.StatusCode.Should().Be(HttpStatusCode.OK);
+        var dashboardJson = await dashboard.Content.ReadFromJsonAsync<JsonElement>();
+        dashboardJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        dashboardJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var data = dashboardJson.GetProperty("data");
+        var overview = data.GetProperty("overview");
+        overview.GetProperty("total_credits_circulation").ValueKind.Should().Be(JsonValueKind.Number);
+        overview.GetProperty("transaction_volume_30d").ValueKind.Should().Be(JsonValueKind.Number);
+        overview.GetProperty("transaction_count_30d").ValueKind.Should().Be(JsonValueKind.Number);
+        overview.GetProperty("active_traders_30d").ValueKind.Should().Be(JsonValueKind.Number);
+        overview.GetProperty("new_users_30d").ValueKind.Should().Be(JsonValueKind.Number);
+        overview.GetProperty("avg_transaction_size").ValueKind.Should().Be(JsonValueKind.Number);
+        data.GetProperty("monthly_trends").GetArrayLength().Should().Be(12);
+        data.GetProperty("weekly_trends").GetArrayLength().Should().Be(12);
+        data.GetProperty("top_earners").ValueKind.Should().Be(JsonValueKind.Array);
+        data.GetProperty("top_spenders").ValueKind.Should().Be(JsonValueKind.Array);
+        data.GetProperty("category_demand").ValueKind.Should().Be(JsonValueKind.Array);
+        data.GetProperty("engagement_rate").ValueKind.Should().Be(JsonValueKind.Number);
+
+        var geography = await Client.GetAsync("/api/v2/admin/community-analytics/geography");
+
+        geography.StatusCode.Should().Be(HttpStatusCode.OK);
+        var geographyJson = await geography.Content.ReadFromJsonAsync<JsonElement>();
+        geographyJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var geographyData = geographyJson.GetProperty("data");
+        geographyData.GetProperty("member_locations").ValueKind.Should().Be(JsonValueKind.Array);
+        geographyData.GetProperty("total_with_location").ValueKind.Should().Be(JsonValueKind.Number);
+        geographyData.GetProperty("total_members").ValueKind.Should().Be(JsonValueKind.Number);
+        geographyData.GetProperty("coverage_percentage").ValueKind.Should().Be(JsonValueKind.Number);
+        geographyData.GetProperty("top_areas").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var export = await Client.GetAsync("/api/v2/admin/community-analytics/export");
+
+        export.StatusCode.Should().Be(HttpStatusCode.OK);
+        export.Content.Headers.ContentType?.MediaType.Should().Be("text/csv");
+        export.Content.Headers.ContentDisposition?.FileName.Should().Contain("community-analytics.csv");
+        var csv = await export.Content.ReadAsStringAsync();
+        csv.Split('\n')[0].Trim().Should().Be("Month,New Users,Active Traders,Transactions,Hours Exchanged");
+    }
+
+    [Fact]
+    public async Task AdminCommentsV2_UsesLaravelReactModerationListDetailHideAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var commentId = await SeedAdminFeedCommentAsync("Laravel React moderation comment");
+
+        var list = await Client.GetAsync("/api/v2/admin/comments?content_type=post&search=Laravel%20React%20moderation&page=1&limit=20");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(comment => comment.GetProperty("id").GetInt32() == commentId);
+        listed.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        listed.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        listed.GetProperty("tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("user_name").GetString().Should().Contain(TestData.MemberUser.FirstName);
+        listed.GetProperty("target_type").GetString().Should().Be("post");
+        listed.GetProperty("content_type").GetString().Should().Be("post");
+        listed.GetProperty("content").GetString().Should().Contain("Laravel React moderation comment");
+        listed.GetProperty("is_hidden").GetBoolean().Should().BeFalse();
+        listed.GetProperty("is_flagged").GetBoolean().Should().BeFalse();
+        listed.GetProperty("reports_count").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        listJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/comments/{commentId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        detailJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(commentId);
+
+        var hide = await Client.PostAsync($"/api/v2/admin/comments/{commentId}/hide", null);
+
+        hide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hideJson = await hide.Content.ReadFromJsonAsync<JsonElement>();
+        hideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        hideJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var hiddenList = await Client.GetAsync("/api/v2/admin/comments?content_type=post&search=Laravel%20React%20moderation&page=1&limit=20");
+
+        hiddenList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hiddenComment = (await hiddenList.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .EnumerateArray()
+            .Single(comment => comment.GetProperty("id").GetInt32() == commentId);
+        hiddenComment.GetProperty("is_hidden").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/comments/{commentId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminReviewsV2_UsesLaravelReactModerationListDetailFlagHideAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var seeded = await SeedAdminReviewAsync("Laravel React moderation review");
+
+        var list = await Client.GetAsync("/api/v2/admin/reviews?rating=2&search=Laravel%20React%20moderation&page=1&limit=20");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(review => review.GetProperty("id").GetInt32() == seeded.ReviewId);
+        listed.GetProperty("reviewer_id").GetInt32().Should().Be(seeded.ReviewerId);
+        listed.GetProperty("reviewee_id").GetInt32().Should().Be(seeded.RevieweeId);
+        listed.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        listed.GetProperty("tenant_name").GetString().Should().Be(TestData.Tenant1.Name);
+        listed.GetProperty("reviewer_name").GetString().Should().Contain("Review Writer");
+        listed.GetProperty("reviewee_name").GetString().Should().Contain("Review Target");
+        listed.GetProperty("rating").GetInt32().Should().Be(2);
+        listed.GetProperty("content").GetString().Should().Contain("Laravel React moderation review");
+        listed.GetProperty("is_hidden").GetBoolean().Should().BeFalse();
+        listed.GetProperty("is_flagged").GetBoolean().Should().BeFalse();
+        listed.GetProperty("reports_count").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        listJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/reviews/{seeded.ReviewId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        detailJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(seeded.ReviewId);
+
+        var flag = await Client.PostAsync($"/api/v2/admin/reviews/{seeded.ReviewId}/flag", null);
+
+        flag.StatusCode.Should().Be(HttpStatusCode.OK);
+        var flagJson = await flag.Content.ReadFromJsonAsync<JsonElement>();
+        flagJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        flagJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var flaggedList = await Client.GetAsync("/api/v2/admin/reviews?rating=2&search=Laravel%20React%20moderation&page=1&limit=20");
+
+        flaggedList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var flaggedReview = (await flaggedList.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .EnumerateArray()
+            .Single(review => review.GetProperty("id").GetInt32() == seeded.ReviewId);
+        flaggedReview.GetProperty("is_flagged").GetBoolean().Should().BeTrue();
+
+        var hide = await Client.PostAsync($"/api/v2/admin/reviews/{seeded.ReviewId}/hide", null);
+
+        hide.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hideJson = await hide.Content.ReadFromJsonAsync<JsonElement>();
+        hideJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        hideJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+
+        var hiddenList = await Client.GetAsync("/api/v2/admin/reviews?rating=2&search=Laravel%20React%20moderation&page=1&limit=20");
+
+        hiddenList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hiddenReview = (await hiddenList.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .EnumerateArray()
+            .Single(review => review.GetProperty("id").GetInt32() == seeded.ReviewId);
+        hiddenReview.GetProperty("is_hidden").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/reviews/{seeded.ReviewId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("success").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
     public async Task AdminPollsV2_UsesLaravelReactListDetailAndDeleteShape()
     {
         await AuthenticateAsAdminAsync();
@@ -2107,6 +2363,79 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         db.ContentReports.Add(report);
         await db.SaveChangesAsync();
         return report.Id;
+    }
+
+    private async Task<int> SeedAdminFeedCommentAsync(string content)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var post = new FeedPost
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            Content = "Feed post backing a Laravel React admin comment moderation test.",
+            CreatedAt = now.AddHours(-3)
+        };
+        db.FeedPosts.Add(post);
+        await db.SaveChangesAsync();
+
+        var comment = new PostComment
+        {
+            TenantId = TestData.Tenant1.Id,
+            PostId = post.Id,
+            UserId = TestData.MemberUser.Id,
+            Content = content,
+            CreatedAt = now.AddHours(-2)
+        };
+        db.PostComments.Add(comment);
+        await db.SaveChangesAsync();
+        return comment.Id;
+    }
+
+    private async Task<(int ReviewId, int ReviewerId, int RevieweeId)> SeedAdminReviewAsync(string content)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var suffix = Guid.NewGuid().ToString("N");
+        var now = DateTime.UtcNow;
+        var reviewer = new User
+        {
+            TenantId = TestData.Tenant1.Id,
+            Email = $"review-writer-{suffix}@example.test",
+            PasswordHash = "not-used-in-contract-test",
+            FirstName = "Review",
+            LastName = "Writer",
+            Role = "member",
+            IsActive = true,
+            CreatedAt = now.AddDays(-9)
+        };
+        var reviewee = new User
+        {
+            TenantId = TestData.Tenant1.Id,
+            Email = $"review-target-{suffix}@example.test",
+            PasswordHash = "not-used-in-contract-test",
+            FirstName = "Review",
+            LastName = "Target",
+            Role = "member",
+            IsActive = true,
+            CreatedAt = now.AddDays(-8)
+        };
+        db.Users.AddRange(reviewer, reviewee);
+        await db.SaveChangesAsync();
+
+        var review = new Review
+        {
+            TenantId = TestData.Tenant1.Id,
+            ReviewerId = reviewer.Id,
+            TargetUserId = reviewee.Id,
+            Rating = 2,
+            Comment = content,
+            CreatedAt = now.AddHours(-4)
+        };
+        db.Reviews.Add(review);
+        await db.SaveChangesAsync();
+        return (review.Id, reviewer.Id, reviewee.Id);
     }
 
     private async Task<(string ClientId, string ClientSecret)> RegisterApiPartnerAsync(string scopes)

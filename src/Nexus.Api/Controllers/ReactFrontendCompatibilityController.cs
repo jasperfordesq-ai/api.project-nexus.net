@@ -1839,15 +1839,18 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/federation/available-tenants")]
+    [HttpGet("api/v2/admin/federation/available-tenants")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminFederationAvailableTenants()
     {
+        var currentTenantId = User.GetTenantId() ?? _tenantContext.TenantId;
         var tenants = await _db.Tenants
+            .Where(t => t.IsActive && (!currentTenantId.HasValue || t.Id != currentTenantId.Value))
             .OrderBy(t => t.Name)
-            .Select(t => new { id = t.Id, name = t.Name, slug = t.Slug })
+            .Select(t => new { id = t.Id, name = t.Name, slug = t.Slug, domain = t.Domain })
             .ToListAsync();
 
-        return Ok(new { data = tenants, tenants });
+        return Ok(new { success = true, data = tenants, tenants });
     }
 
     [HttpGet("api/admin/federation/credit-agreements")]
@@ -1875,12 +1878,43 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminFederationNeighborhoods()
     {
-        var neighborhoods = await _db.Tenants
+        var neighborhoods = await _db.FederationNeighborhoods
             .OrderBy(t => t.Name)
-            .Select(t => new { id = t.Id, name = t.Name, slug = t.Slug, status = t.IsActive ? "active" : "inactive" })
             .ToListAsync();
+        var payload = await FormatFederationNeighborhoods(neighborhoods);
 
-        return Ok(new { data = neighborhoods, neighborhoods });
+        return Ok(new { success = true, data = payload, neighborhoods = payload });
+    }
+
+    [HttpPost("api/admin/federation/neighborhoods")]
+    [HttpPost("api/v2/admin/federation/neighborhoods")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> CreateAdminFederationNeighborhood([FromBody] JsonElement input)
+    {
+        var name = TryReadString(input, "name")?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BadRequest(new { success = false, error = "Name is required", code = "VALIDATION_ERROR", field = "name" });
+        }
+
+        var now = DateTime.UtcNow;
+        var neighborhood = new FederationNeighborhood
+        {
+            Name = name,
+            Description = TryReadString(input, "description")?.Trim(),
+            Region = TryReadString(input, "region")?.Trim(),
+            CreatedBy = User.GetUserId(),
+            CreatedAt = now
+        };
+
+        if (string.IsNullOrWhiteSpace(neighborhood.Description)) neighborhood.Description = null;
+        if (string.IsNullOrWhiteSpace(neighborhood.Region)) neighborhood.Region = null;
+
+        _db.FederationNeighborhoods.Add(neighborhood);
+        await _db.SaveChangesAsync();
+
+        var payload = (await FormatFederationNeighborhoods(new[] { neighborhood })).Single();
+        return StatusCode(StatusCodes.Status201Created, new { success = true, data = payload });
     }
 
     [HttpGet("api/admin/community-analytics/geography")]
@@ -2685,23 +2719,220 @@ public class ReactFrontendCompatibilityController : ControllerBase
     [HttpGet("api/v2/admin/federation/neighborhoods/{id:int}")]
     [HttpPut("api/admin/federation/neighborhoods/{id:int}")]
     [HttpPut("api/v2/admin/federation/neighborhoods/{id:int}")]
-    [HttpDelete("api/admin/federation/neighborhoods/{id:int}")]
-    [HttpDelete("api/v2/admin/federation/neighborhoods/{id:int}")]
     [HttpGet("api/admin/federation/partnerships/{id:int}")]
     [HttpPost("api/admin/federation/partnerships/{id:int}/approve")]
     [HttpPost("api/admin/federation/partnerships/{id:int}/reject")]
     [HttpDelete("api/admin/federation/partnerships/{id:int}")]
-    [HttpGet("api/admin/federation/neighborhoods/{id:int}/tenants")]
-    [HttpGet("api/v2/admin/federation/neighborhoods/{id:int}/tenants")]
-    [HttpPost("api/admin/federation/neighborhoods/{id:int}/tenants")]
-    [HttpPost("api/v2/admin/federation/neighborhoods/{id:int}/tenants")]
-    [HttpDelete("api/admin/federation/neighborhoods/{id:int}/tenants/{tenantId:int}")]
-    [HttpDelete("api/v2/admin/federation/neighborhoods/{id:int}/tenants/{tenantId:int}")]
     [HttpPut("api/admin/federation/credit-agreements/{id:int}/{tenantId:int}")]
     [Authorize(Policy = "AdminOnly")]
     public IActionResult AdminFederationNestedCompatibility()
     {
         return Ok(new { success = true, data = Array.Empty<object>() });
+    }
+
+    [HttpDelete("api/admin/federation/neighborhoods/{id:int}")]
+    [HttpDelete("api/v2/admin/federation/neighborhoods/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> DeleteAdminFederationNeighborhood(int id)
+    {
+        var neighborhood = await _db.FederationNeighborhoods.FindAsync(id);
+        if (neighborhood == null)
+        {
+            return NotFound(new { success = false, error = "Neighborhood not found", code = "NOT_FOUND" });
+        }
+
+        _db.FederationNeighborhoods.Remove(neighborhood);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { success = true } });
+    }
+
+    [HttpGet("api/admin/federation/neighborhoods/{id:int}/tenants")]
+    [HttpGet("api/v2/admin/federation/neighborhoods/{id:int}/tenants")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> GetAdminFederationNeighborhoodTenants(int id)
+    {
+        if (!await _db.FederationNeighborhoods.AnyAsync(n => n.Id == id))
+        {
+            return NotFound(new { success = false, error = "Neighborhood not found", code = "NOT_FOUND" });
+        }
+
+        var tenants = await _db.FederationNeighborhoodTenants
+            .Where(nt => nt.NeighborhoodId == id)
+            .Include(nt => nt.Tenant)
+            .OrderBy(nt => nt.Tenant!.Name)
+            .Select(nt => new
+            {
+                id = nt.TenantId,
+                tenant_id = nt.TenantId,
+                name = nt.Tenant == null ? string.Empty : nt.Tenant.Name,
+                slug = nt.Tenant == null ? string.Empty : nt.Tenant.Slug
+            })
+            .ToListAsync();
+
+        return Ok(new { success = true, data = tenants, tenants });
+    }
+
+    [HttpPost("api/admin/federation/neighborhoods/{id:int}/tenants")]
+    [HttpPost("api/v2/admin/federation/neighborhoods/{id:int}/tenants")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AddAdminFederationNeighborhoodTenant(int id, [FromBody] JsonElement input)
+    {
+        var tenantId = TryReadInt(input, "tenant_id") ?? TryReadInt(input, "tenantId") ?? 0;
+        if (tenantId <= 0)
+        {
+            return BadRequest(new { success = false, error = "Tenant id is required", code = "VALIDATION_ERROR", field = "tenant_id" });
+        }
+
+        if (!await _db.FederationNeighborhoods.AnyAsync(n => n.Id == id))
+        {
+            return NotFound(new { success = false, error = "Neighborhood not found", code = "NOT_FOUND" });
+        }
+
+        if (!await _db.Tenants.AnyAsync(t => t.Id == tenantId && t.IsActive))
+        {
+            return NotFound(new { success = false, error = "Tenant not found", code = "NOT_FOUND" });
+        }
+
+        var exists = await _db.FederationNeighborhoodTenants
+            .AnyAsync(nt => nt.NeighborhoodId == id && nt.TenantId == tenantId);
+
+        if (!exists)
+        {
+            _db.FederationNeighborhoodTenants.Add(new FederationNeighborhoodTenant
+            {
+                NeighborhoodId = id,
+                TenantId = tenantId
+            });
+            await _db.SaveChangesAsync();
+        }
+
+        return Ok(new { success = true, data = new { success = true } });
+    }
+
+    [HttpDelete("api/admin/federation/neighborhoods/{id:int}/tenants/{tenantId:int}")]
+    [HttpDelete("api/v2/admin/federation/neighborhoods/{id:int}/tenants/{tenantId:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> RemoveAdminFederationNeighborhoodTenant(int id, int tenantId)
+    {
+        var membership = await _db.FederationNeighborhoodTenants
+            .FirstOrDefaultAsync(nt => nt.NeighborhoodId == id && nt.TenantId == tenantId);
+
+        if (membership == null)
+        {
+            return NotFound(new { success = false, error = "Tenant not in neighborhood", code = "NOT_FOUND" });
+        }
+
+        _db.FederationNeighborhoodTenants.Remove(membership);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { success = true } });
+    }
+
+    private async Task<List<object>> FormatFederationNeighborhoods(IReadOnlyCollection<FederationNeighborhood> neighborhoods)
+    {
+        var neighborhoodIds = neighborhoods.Select(n => n.Id).ToArray();
+        var memberships = neighborhoodIds.Length == 0
+            ? new List<FederationNeighborhoodTenant>()
+            : await _db.FederationNeighborhoodTenants
+                .Where(nt => neighborhoodIds.Contains(nt.NeighborhoodId))
+                .Include(nt => nt.Tenant)
+                .ToListAsync();
+
+        var tenantIds = memberships.Select(m => m.TenantId).Distinct().ToArray();
+        var memberCounts = tenantIds.Length == 0
+            ? new Dictionary<int, int>()
+            : await _db.Users
+                .IgnoreQueryFilters()
+                .Where(u => tenantIds.Contains(u.TenantId) && u.IsActive)
+                .GroupBy(u => u.TenantId)
+                .Select(g => new { TenantId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(g => g.TenantId, g => g.Count);
+
+        var eventCounts = tenantIds.Length == 0
+            ? new Dictionary<int, int>()
+            : await _db.Events
+                .IgnoreQueryFilters()
+                .Where(e => tenantIds.Contains(e.TenantId) && !e.IsCancelled)
+                .GroupBy(e => e.TenantId)
+                .Select(g => new { TenantId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(g => g.TenantId, g => g.Count);
+
+        var membershipsByNeighborhood = memberships
+            .GroupBy(m => m.NeighborhoodId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(m => m.Tenant?.Name ?? string.Empty).ToList());
+
+        return neighborhoods
+            .OrderBy(n => n.Name)
+            .Select(n =>
+            {
+                var neighborhoodMemberships = membershipsByNeighborhood.GetValueOrDefault(n.Id) ?? new List<FederationNeighborhoodTenant>();
+                var tenants = neighborhoodMemberships
+                    .Where(m => m.Tenant != null)
+                    .Select(m => new
+                    {
+                        id = m.TenantId,
+                        tenant_id = m.TenantId,
+                        name = m.Tenant!.Name,
+                        slug = m.Tenant.Slug,
+                        member_count = memberCounts.GetValueOrDefault(m.TenantId)
+                    })
+                    .ToList();
+
+                return (object)new
+                {
+                    id = n.Id,
+                    name = n.Name,
+                    description = n.Description,
+                    region = n.Region,
+                    tenant_count = tenants.Count,
+                    total_members = neighborhoodMemberships.Sum(m => memberCounts.GetValueOrDefault(m.TenantId)),
+                    shared_events_count = neighborhoodMemberships.Sum(m => eventCounts.GetValueOrDefault(m.TenantId)),
+                    created_by = n.CreatedBy,
+                    created_by_name = (string?)null,
+                    tenants,
+                    created_at = n.CreatedAt,
+                    updated_at = n.UpdatedAt
+                };
+            })
+            .ToList();
+    }
+
+    private static string? TryReadString(JsonElement input, string propertyName)
+    {
+        if (input.ValueKind != JsonValueKind.Object || !input.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.String => property.GetString(),
+            JsonValueKind.Number => property.GetRawText(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            _ => null
+        };
+    }
+
+    private static int? TryReadInt(JsonElement input, string propertyName)
+    {
+        if (input.ValueKind != JsonValueKind.Object || !input.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var number))
+        {
+            return number;
+        }
+
+        if (property.ValueKind == JsonValueKind.String && int.TryParse(property.GetString(), out var parsed))
+        {
+            return parsed;
+        }
+
+        return null;
     }
 
     [HttpGet("api/admin/identity/provider-credentials")]

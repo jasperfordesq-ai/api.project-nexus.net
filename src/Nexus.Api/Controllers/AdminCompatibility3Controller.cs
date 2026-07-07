@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -764,65 +765,483 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/comments - List comments for moderation.</summary>
     [HttpGet("comments")]
-    public IActionResult ListAdminComments([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? status = null)
+    public async Task<IActionResult> ListAdminComments(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20,
+        [FromQuery] string? status = null,
+        [FromQuery(Name = "target_type")] string? targetType = null,
+        [FromQuery(Name = "content_type")] string? contentType = null,
+        [FromQuery] string? search = null)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+        var requestedType = (contentType ?? targetType)?.Trim().ToLowerInvariant();
+
+        if (!string.IsNullOrWhiteSpace(requestedType) && requestedType != "post")
+        {
+            return Ok(new
+            {
+                success = true,
+                data = Array.Empty<object>(),
+                meta = new { current_page = page, page, per_page = limit, limit, total = 0, total_pages = 1 }
+            });
+        }
+
+        var query = _db.PostComments
+            .Include(c => c.User)
+            .Include(c => c.Tenant)
+            .Include(c => c.Post)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var lowered = search.Trim().ToLowerInvariant();
+            query = query.Where(c =>
+                c.Content.ToLower().Contains(lowered) ||
+                (c.User != null && ((c.User.FirstName + " " + c.User.LastName).ToLower().Contains(lowered) ||
+                                    c.User.Email.ToLower().Contains(lowered))) ||
+                (c.Post != null && c.Post.Content.ToLower().Contains(lowered)));
+        }
+
+        var total = await query.CountAsync();
+        var comments = await query
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+        var hiddenIds = await GetHiddenAdminCommentIdsAsync();
+        var commentIds = comments.Select(c => c.Id).ToArray();
+        var reportCounts = commentIds.Length == 0
+            ? new Dictionary<int, int>()
+            : await _db.ContentReports
+                .Where(r => r.ContentType == "comment" && commentIds.Contains(r.ContentId))
+                .GroupBy(r => r.ContentId)
+                .Select(g => new { CommentId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(g => g.CommentId, g => g.Count);
+
+        var data = comments
+            .Select(c => MapAdminComment(c, hiddenIds.Contains(c.Id), reportCounts.GetValueOrDefault(c.Id)))
+            .ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data,
+            meta = new
+            {
+                current_page = page,
+                page,
+                per_page = limit,
+                limit,
+                total,
+                total_pages = Math.Max(1, (int)Math.Ceiling(total / (double)limit))
+            }
+        });
     }
 
     /// <summary>GET /api/admin/comments/{id} - Get comment.</summary>
     [HttpGet("comments/{id:int}")]
-    public IActionResult GetAdminComment(int id)
+    public async Task<IActionResult> GetAdminComment(int id)
     {
-        return Ok(new { id, content = "", author_id = 0, post_id = 0, is_hidden = false, created_at = DateTime.UtcNow });
+        var comment = await _db.PostComments
+            .Include(c => c.User)
+            .Include(c => c.Tenant)
+            .Include(c => c.Post)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (comment == null)
+        {
+            return NotFound(new { success = false, error = "Comment not found", code = "NOT_FOUND" });
+        }
+
+        var hiddenIds = await GetHiddenAdminCommentIdsAsync();
+        var reportsCount = await _db.ContentReports.CountAsync(r => r.ContentType == "comment" && r.ContentId == id);
+
+        return Ok(new
+        {
+            success = true,
+            data = MapAdminComment(comment, hiddenIds.Contains(comment.Id), reportsCount)
+        });
     }
 
     /// <summary>POST /api/admin/comments/{id}/hide - Hide comment.</summary>
     [HttpPost("comments/{id:int}/hide")]
-    public IActionResult HideAdminComment(int id)
+    public async Task<IActionResult> HideAdminComment(int id)
     {
-        return Ok(new { success = true, message = "Comment hidden", id });
+        if (!await _db.PostComments.AnyAsync(c => c.Id == id))
+        {
+            return NotFound(new { success = false, error = "Comment not found", code = "NOT_FOUND" });
+        }
+
+        var hiddenIds = await GetHiddenAdminCommentIdsAsync();
+        hiddenIds.Add(id);
+        await SaveHiddenAdminCommentIdsAsync(hiddenIds);
+
+        return Ok(new { success = true, data = new { success = true, message = "Comment hidden", id } });
     }
 
     /// <summary>DELETE /api/admin/comments/{id} - Delete comment.</summary>
     [HttpDelete("comments/{id:int}")]
-    public IActionResult DeleteAdminComment(int id)
+    public async Task<IActionResult> DeleteAdminComment(int id)
     {
-        return Ok(new { success = true, message = "Comment deleted", id });
+        var comment = await _db.PostComments.FirstOrDefaultAsync(c => c.Id == id);
+        if (comment == null)
+        {
+            return NotFound(new { success = false, error = "Comment not found", code = "NOT_FOUND" });
+        }
+
+        _db.PostComments.Remove(comment);
+        var hiddenIds = await GetHiddenAdminCommentIdsAsync();
+        hiddenIds.Remove(id);
+        await SaveHiddenAdminCommentIdsAsync(hiddenIds, saveChanges: false);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { success = true, message = "Comment deleted", id } });
+    }
+
+    private object MapAdminComment(PostComment comment, bool isHidden, int reportsCount)
+    {
+        var userName = comment.User == null
+            ? "Unknown"
+            : string.Join(" ", new[] { comment.User.FirstName, comment.User.LastName }
+                .Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+        if (string.IsNullOrWhiteSpace(userName)) userName = comment.User?.Email ?? "Unknown";
+
+        return new
+        {
+            id = comment.Id,
+            user_id = comment.UserId,
+            tenant_id = comment.TenantId,
+            tenant_name = comment.Tenant?.Name ?? "Unknown",
+            user_name = userName,
+            user_avatar = comment.User?.AvatarUrl,
+            target_type = "post",
+            content_type = "post",
+            target_id = comment.PostId,
+            content_id = comment.PostId,
+            content_title = comment.Post == null ? null : Truncate(comment.Post.Content, 80),
+            parent_id = comment.ParentCommentId,
+            content = comment.Content,
+            is_hidden = isHidden,
+            is_flagged = reportsCount > 0,
+            reports_count = reportsCount,
+            created_at = comment.CreatedAt,
+            updated_at = comment.UpdatedAt ?? comment.CreatedAt
+        };
+    }
+
+    private async Task<HashSet<int>> GetHiddenAdminCommentIdsAsync()
+    {
+        var tenantId = GetTenantId();
+        var raw = await _db.TenantConfigs
+            .Where(c => c.TenantId == tenantId && c.Key == "admin.comments.hidden_ids")
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(raw)) return new HashSet<int>();
+
+        try
+        {
+            return JsonSerializer.Deserialize<HashSet<int>>(raw) ?? new HashSet<int>();
+        }
+        catch (JsonException)
+        {
+            return new HashSet<int>();
+        }
+    }
+
+    private async Task SaveHiddenAdminCommentIdsAsync(HashSet<int> ids, bool saveChanges = true)
+    {
+        var tenantId = GetTenantId();
+        var config = await _db.TenantConfigs
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == "admin.comments.hidden_ids");
+        var now = DateTime.UtcNow;
+        var value = JsonSerializer.Serialize(ids.OrderBy(id => id));
+
+        if (config == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = "admin.comments.hidden_ids",
+                Value = value,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            config.Value = value;
+            config.UpdatedAt = now;
+        }
+
+        if (saveChanges)
+        {
+            await _db.SaveChangesAsync();
+        }
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (value.Length <= maxLength) return value;
+        return value[..maxLength];
     }
 
     /// <summary>GET /api/admin/reviews - List reviews for moderation.</summary>
     [HttpGet("reviews")]
-    public IActionResult ListAdminReviews([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? status = null)
+    public async Task<IActionResult> ListAdminReviews(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20,
+        [FromQuery] string? status = null,
+        [FromQuery] int? rating = null,
+        [FromQuery] string? search = null)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+        var hiddenIds = await GetAdminModerationIdSetAsync("admin.reviews.hidden_ids");
+        var flaggedIds = await GetAdminModerationIdSetAsync("admin.reviews.flagged_ids");
+
+        var query = _db.Reviews
+            .Include(r => r.Tenant)
+            .Include(r => r.Reviewer)
+            .Include(r => r.TargetUser)
+            .AsQueryable();
+
+        if (rating is >= 1 and <= 5)
+        {
+            query = query.Where(r => r.Rating == rating.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var normalizedStatus = status.Trim().ToLowerInvariant();
+            query = normalizedStatus switch
+            {
+                "hidden" or "rejected" => query.Where(r => hiddenIds.Contains(r.Id)),
+                "flagged" or "pending" => query.Where(r => flaggedIds.Contains(r.Id)),
+                "visible" or "approved" => query.Where(r => !hiddenIds.Contains(r.Id)),
+                _ => query
+            };
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var lowered = search.Trim().ToLowerInvariant();
+            query = query.Where(r =>
+                (r.Comment != null && r.Comment.ToLower().Contains(lowered)) ||
+                (r.Reviewer.FirstName + " " + r.Reviewer.LastName).ToLower().Contains(lowered) ||
+                r.Reviewer.Email.ToLower().Contains(lowered) ||
+                (r.TargetUser != null && ((r.TargetUser.FirstName + " " + r.TargetUser.LastName).ToLower().Contains(lowered) ||
+                                          r.TargetUser.Email.ToLower().Contains(lowered))));
+        }
+
+        var total = await query.CountAsync();
+        var reviews = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+        var reviewIds = reviews.Select(r => r.Id).ToArray();
+        var reportCounts = reviewIds.Length == 0
+            ? new Dictionary<int, int>()
+            : await _db.ContentReports
+                .Where(r => r.ContentType == "review" && reviewIds.Contains(r.ContentId))
+                .GroupBy(r => r.ContentId)
+                .Select(g => new { ReviewId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(g => g.ReviewId, g => g.Count);
+
+        var data = reviews
+            .Select(r => MapAdminReview(r, hiddenIds.Contains(r.Id), flaggedIds.Contains(r.Id), reportCounts.GetValueOrDefault(r.Id)))
+            .ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data,
+            meta = new
+            {
+                current_page = page,
+                page,
+                per_page = limit,
+                limit,
+                total,
+                total_pages = Math.Max(1, (int)Math.Ceiling(total / (double)limit))
+            }
+        });
     }
 
     /// <summary>GET /api/admin/reviews/{id} - Get review.</summary>
     [HttpGet("reviews/{id:int}")]
-    public IActionResult GetAdminReview(int id)
+    public async Task<IActionResult> GetAdminReview(int id)
     {
-        return Ok(new { id, rating = 0, content = "", reviewer_id = 0, target_user_id = 0, is_hidden = false, is_flagged = false, created_at = DateTime.UtcNow });
+        var review = await _db.Reviews
+            .Include(r => r.Tenant)
+            .Include(r => r.Reviewer)
+            .Include(r => r.TargetUser)
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (review == null)
+        {
+            return NotFound(new { success = false, error = "Review not found", code = "NOT_FOUND" });
+        }
+
+        var hiddenIds = await GetAdminModerationIdSetAsync("admin.reviews.hidden_ids");
+        var flaggedIds = await GetAdminModerationIdSetAsync("admin.reviews.flagged_ids");
+        var reportsCount = await _db.ContentReports.CountAsync(r => r.ContentType == "review" && r.ContentId == id);
+
+        return Ok(new
+        {
+            success = true,
+            data = MapAdminReview(review, hiddenIds.Contains(id), flaggedIds.Contains(id), reportsCount)
+        });
     }
 
     /// <summary>POST /api/admin/reviews/{id}/flag - Flag review.</summary>
     [HttpPost("reviews/{id:int}/flag")]
-    public IActionResult FlagAdminReview(int id)
+    public async Task<IActionResult> FlagAdminReview(int id)
     {
-        return Ok(new { success = true, message = "Review flagged", id });
+        if (!await _db.Reviews.AnyAsync(r => r.Id == id))
+        {
+            return NotFound(new { success = false, error = "Review not found", code = "NOT_FOUND" });
+        }
+
+        var flaggedIds = await GetAdminModerationIdSetAsync("admin.reviews.flagged_ids");
+        flaggedIds.Add(id);
+        await SaveAdminModerationIdSetAsync("admin.reviews.flagged_ids", flaggedIds);
+
+        return Ok(new { success = true, data = new { success = true, message = "Review flagged", id } });
     }
 
     /// <summary>POST /api/admin/reviews/{id}/hide - Hide review.</summary>
     [HttpPost("reviews/{id:int}/hide")]
-    public IActionResult HideAdminReview(int id)
+    public async Task<IActionResult> HideAdminReview(int id)
     {
-        return Ok(new { success = true, message = "Review hidden", id });
+        if (!await _db.Reviews.AnyAsync(r => r.Id == id))
+        {
+            return NotFound(new { success = false, error = "Review not found", code = "NOT_FOUND" });
+        }
+
+        var hiddenIds = await GetAdminModerationIdSetAsync("admin.reviews.hidden_ids");
+        hiddenIds.Add(id);
+        await SaveAdminModerationIdSetAsync("admin.reviews.hidden_ids", hiddenIds);
+
+        return Ok(new { success = true, data = new { success = true, message = "Review hidden", id } });
     }
 
     /// <summary>DELETE /api/admin/reviews/{id} - Delete review.</summary>
     [HttpDelete("reviews/{id:int}")]
-    public IActionResult DeleteAdminReview(int id)
+    public async Task<IActionResult> DeleteAdminReview(int id)
     {
-        return Ok(new { success = true, message = "Review deleted", id });
+        var review = await _db.Reviews.FirstOrDefaultAsync(r => r.Id == id);
+        if (review == null)
+        {
+            return NotFound(new { success = false, error = "Review not found", code = "NOT_FOUND" });
+        }
+
+        _db.Reviews.Remove(review);
+        var hiddenIds = await GetAdminModerationIdSetAsync("admin.reviews.hidden_ids");
+        var flaggedIds = await GetAdminModerationIdSetAsync("admin.reviews.flagged_ids");
+        hiddenIds.Remove(id);
+        flaggedIds.Remove(id);
+        await SaveAdminModerationIdSetAsync("admin.reviews.hidden_ids", hiddenIds, saveChanges: false);
+        await SaveAdminModerationIdSetAsync("admin.reviews.flagged_ids", flaggedIds, saveChanges: false);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { success = true, message = "Review deleted", id } });
+    }
+
+    private object MapAdminReview(Review review, bool isHidden, bool isFlagged, int reportsCount)
+    {
+        var reviewerName = FormatUserName(review.Reviewer);
+        var revieweeName = review.TargetUser == null
+            ? review.TargetListingId.HasValue ? $"Listing #{review.TargetListingId.Value}" : "Unknown"
+            : FormatUserName(review.TargetUser);
+        var revieweeId = review.TargetUserId ?? review.TargetListingId ?? 0;
+
+        return new
+        {
+            id = review.Id,
+            reviewer_id = review.ReviewerId,
+            tenant_id = review.TenantId,
+            tenant_name = review.Tenant?.Name ?? "Unknown",
+            reviewer_name = reviewerName,
+            reviewer_avatar = review.Reviewer?.AvatarUrl,
+            reviewee_id = revieweeId,
+            receiver_id = revieweeId,
+            reviewee_name = revieweeName,
+            receiver_name = revieweeName,
+            reviewee_avatar = review.TargetUser?.AvatarUrl,
+            receiver_avatar = review.TargetUser?.AvatarUrl,
+            rating = review.Rating,
+            comment = review.Comment,
+            content = review.Comment ?? string.Empty,
+            status = isHidden ? "rejected" : isFlagged ? "pending" : "approved",
+            is_hidden = isHidden,
+            is_flagged = isFlagged,
+            reports_count = reportsCount,
+            is_anonymous = false,
+            created_at = review.CreatedAt,
+            updated_at = review.UpdatedAt ?? review.CreatedAt
+        };
+    }
+
+    private static string FormatUserName(User? user)
+    {
+        if (user == null) return "Unknown";
+        var name = string.Join(" ", new[] { user.FirstName, user.LastName }
+            .Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+        return string.IsNullOrWhiteSpace(name) ? user.Email : name;
+    }
+
+    private async Task<HashSet<int>> GetAdminModerationIdSetAsync(string key)
+    {
+        var tenantId = GetTenantId();
+        var raw = await _db.TenantConfigs
+            .Where(c => c.TenantId == tenantId && c.Key == key)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(raw)) return new HashSet<int>();
+
+        try
+        {
+            return JsonSerializer.Deserialize<HashSet<int>>(raw) ?? new HashSet<int>();
+        }
+        catch (JsonException)
+        {
+            return new HashSet<int>();
+        }
+    }
+
+    private async Task SaveAdminModerationIdSetAsync(string key, HashSet<int> ids, bool saveChanges = true)
+    {
+        var tenantId = GetTenantId();
+        var config = await _db.TenantConfigs
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        var now = DateTime.UtcNow;
+        var value = JsonSerializer.Serialize(ids.OrderBy(id => id));
+
+        if (config == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = key,
+                Value = value,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            config.Value = value;
+            config.UpdatedAt = now;
+        }
+
+        if (saveChanges)
+        {
+            await _db.SaveChangesAsync();
+        }
     }
 
     // Reports routes removed — served by ReportsController

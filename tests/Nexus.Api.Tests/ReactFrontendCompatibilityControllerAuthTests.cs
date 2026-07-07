@@ -59,7 +59,16 @@ public class ReactFrontendCompatibilityControllerAuthTests : IntegrationTestBase
     {
         await AuthenticateAsAdminAsync();
 
-        var add = await Client.PostAsJsonAsync($"/api/v2/admin/federation/neighborhoods/{TestData.Tenant1.Id}/tenants", new
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/federation/neighborhoods", new
+        {
+            name = $"Auth alias neighborhood {Guid.NewGuid():N}",
+            description = "Created by the auth alias smoke test"
+        });
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var neighborhoodId = createJson.GetProperty("data").GetProperty("id").GetInt32();
+
+        var add = await Client.PostAsJsonAsync($"/api/v2/admin/federation/neighborhoods/{neighborhoodId}/tenants", new
         {
             tenant_id = TestData.Tenant2.Id
         });
@@ -67,7 +76,7 @@ public class ReactFrontendCompatibilityControllerAuthTests : IntegrationTestBase
         var addJson = await add.Content.ReadFromJsonAsync<JsonElement>();
         addJson.GetProperty("success").GetBoolean().Should().BeTrue();
 
-        var remove = await Client.DeleteAsync($"/api/v2/admin/federation/neighborhoods/{TestData.Tenant1.Id}/tenants/{TestData.Tenant2.Id}");
+        var remove = await Client.DeleteAsync($"/api/v2/admin/federation/neighborhoods/{neighborhoodId}/tenants/{TestData.Tenant2.Id}");
         remove.StatusCode.Should().Be(HttpStatusCode.OK);
         var removeJson = await remove.Content.ReadFromJsonAsync<JsonElement>();
         removeJson.GetProperty("success").GetBoolean().Should().BeTrue();

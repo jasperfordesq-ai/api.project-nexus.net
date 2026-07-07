@@ -1948,7 +1948,7 @@ public class AdminCompatibilityController : ControllerBase
         var convertedMatches = await _db.MatchResults.CountAsync(m => m.Status == MatchStatus.Accepted);
         var conversionRate = totalMatches > 0 ? (double)convertedMatches / totalMatches : 0;
 
-        return Ok(new
+        var data = new
         {
             overview = new
             {
@@ -1976,7 +1976,9 @@ public class AdminCompatibilityController : ControllerBase
             },
             category_demand,
             engagement_rate = engagementRate
-        });
+        };
+
+        return Ok(new { success = true, data });
     }
 
     private static DateTime StartOfWeek(DateTime dt)
@@ -2023,40 +2025,70 @@ public class AdminCompatibilityController : ControllerBase
             .Take(10)
             .ToList();
 
-        return Ok(new
+        var data = new
         {
             member_locations = clusters,
             total_with_location = totalWithLocation,
             total_members = totalMembers,
             coverage_percentage = totalMembers > 0 ? Math.Round(100.0 * totalWithLocation / totalMembers, 1) : 0,
             top_areas = topAreas
-        });
+        };
+
+        return Ok(new { success = true, data });
     }
 
     [HttpGet("community-analytics/export")]
     public async Task<IActionResult> ExportCommunityAnalytics()
     {
         var now = DateTime.UtcNow;
-        var thirtyDaysAgo = now.AddDays(-30);
-        var totalUsers = await _db.Users.CountAsync();
-        var activeUsers = await _db.Users.CountAsync(u => u.IsActive);
-        var newUsers30d = await _db.Users.CountAsync(u => u.CreatedAt >= thirtyDaysAgo);
-        var completedTx30d = _db.Transactions.Where(t => t.Status == TransactionStatus.Completed && t.CreatedAt >= thirtyDaysAgo);
-        var txCount = await completedTx30d.CountAsync();
-        var txVolume = await completedTx30d.SumAsync(t => (decimal?)t.Amount) ?? 0m;
-        var totalGroups = await _db.Groups.CountAsync();
-        var totalEvents = await _db.Events.CountAsync();
+        var twelveMonthsAgo = now.AddMonths(-12);
+        var completedTx = _db.Transactions
+            .Where(t => t.Status == TransactionStatus.Completed && t.CreatedAt >= twelveMonthsAgo);
+
+        var monthlyRaw = await completedTx
+            .GroupBy(t => new { t.CreatedAt.Year, t.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                TransactionCount = g.Count(),
+                TotalVolume = g.Sum(t => (decimal?)t.Amount) ?? 0m
+            })
+            .ToListAsync();
+
+        var monthlyUsers = await _db.Users
+            .Where(u => u.CreatedAt >= twelveMonthsAgo)
+            .GroupBy(u => new { u.CreatedAt.Year, u.CreatedAt.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, NewUsers = g.Count() })
+            .ToListAsync();
+
+        var activeTradersRaw = (await completedTx
+            .Select(t => new { t.CreatedAt, t.SenderId, t.ReceiverId })
+            .ToListAsync())
+            .GroupBy(t => new { t.CreatedAt.Year, t.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                ActiveTraders = g.SelectMany(t => new[] { t.SenderId, t.ReceiverId }).Distinct().Count()
+            })
+            .ToList();
 
         var csv = new StringBuilder();
-        csv.AppendLine("metric,value");
-        csv.AppendLine($"total_users,{totalUsers}");
-        csv.AppendLine($"active_users,{activeUsers}");
-        csv.AppendLine($"new_users_30d,{newUsers30d}");
-        csv.AppendLine($"transaction_count_30d,{txCount}");
-        csv.AppendLine($"transaction_volume_30d,{txVolume}");
-        csv.AppendLine($"total_groups,{totalGroups}");
-        csv.AppendLine($"total_events,{totalEvents}");
-        csv.AppendLine($"generated_at,{now:O}");
+        csv.AppendLine("Month,New Users,Active Traders,Transactions,Hours Exchanged");
+        foreach (var monthStart in Enumerable.Range(0, 12).Select(i => now.AddMonths(-(11 - i))))
+        {
+            var tx = monthlyRaw.FirstOrDefault(m => m.Year == monthStart.Year && m.Month == monthStart.Month);
+            var users = monthlyUsers.FirstOrDefault(m => m.Year == monthStart.Year && m.Month == monthStart.Month);
+            var traders = activeTradersRaw.FirstOrDefault(m => m.Year == monthStart.Year && m.Month == monthStart.Month);
+
+            csv.AppendLine(string.Join(",",
+                monthStart.ToString("yyyy-MM"),
+                users?.NewUsers ?? 0,
+                traders?.ActiveTraders ?? 0,
+                tx?.TransactionCount ?? 0,
+                Math.Round(tx?.TotalVolume ?? 0m, 1)));
+        }
 
         return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "community-analytics.csv");
     }
