@@ -43,15 +43,24 @@ public class MarketplaceController : ControllerBase
         [FromQuery] string? seller_type = null,
         [FromQuery] string? delivery_method = null,
         [FromQuery] string? status = null,
-        [FromQuery] int? user_id = null)
+        [FromQuery] int? user_id = null,
+        [FromQuery] string? cursor = null)
     {
-        page = Math.Max(1, page);
         limit = Math.Clamp(limit, 1, 100);
         var currentUserId = User.GetUserId();
         var ownUserId = user_id.HasValue && user_id == currentUserId ? user_id : null;
         var (items, total) = await _marketplace.ListListingsAsync(q, category_id, category, price_type,
-            condition, seller_type, delivery_method, status, ownUserId, null, false, false, page, limit);
-        return Ok(Paged(items.Select(l => MapListing(l)), page, limit, total));
+            condition, seller_type, delivery_method, status, ownUserId, null, false, false, 1, limit + 1, cursor);
+        var hasMore = items.Count > limit;
+        if (hasMore) items.RemoveAt(items.Count - 1);
+        var savedIds = await LoadSavedListingIdsAsync(currentUserId, items.Select(l => l.Id));
+        var nextCursor = hasMore && items.Count > 0 ? EncodeListingCursor(items[^1].Id) : null;
+        return Ok(new
+        {
+            success = true,
+            data = items.Select(l => MapListing(l, detailed: false, currentUserId, savedIds)),
+            meta = new { per_page = limit, cursor = nextCursor, next_cursor = nextCursor, has_more = hasMore, total }
+        });
     }
 
     [HttpGet("listings/nearby")]
@@ -61,7 +70,8 @@ public class MarketplaceController : ControllerBase
         var (items, total) = await _marketplace.ListListingsAsync(null, null, null, null, null, null, null, null, null, null, false, false, 1, 100);
         var filtered = items.Where(l => !lat.HasValue || !lng.HasValue || !l.Latitude.HasValue || !l.Longitude.HasValue
             || DistanceKm(lat.Value, lng.Value, l.Latitude.Value, l.Longitude.Value) <= radius).ToList();
-        return Ok(new { data = filtered.Select(l => MapListing(l)), meta = new { total = filtered.Count, unfiltered_total = total } });
+        var savedIds = await LoadSavedListingIdsAsync(User.GetUserId(), filtered.Select(l => l.Id));
+        return Ok(new { success = true, data = filtered.Select(l => MapListing(l, currentUserId: User.GetUserId(), savedListingIds: savedIds)), meta = new { total = filtered.Count, unfiltered_total = total } });
     }
 
     [HttpGet("listings/featured")]
@@ -69,7 +79,8 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> FeaturedListings([FromQuery] int limit = 20)
     {
         var (items, total) = await _marketplace.ListListingsAsync(null, null, null, null, null, null, null, null, null, null, true, false, 1, Math.Clamp(limit, 1, 100));
-        return Ok(new { data = items.Select(l => MapListing(l)), meta = new { total } });
+        var savedIds = await LoadSavedListingIdsAsync(User.GetUserId(), items.Select(l => l.Id));
+        return Ok(new { success = true, data = items.Select(l => MapListing(l, currentUserId: User.GetUserId(), savedListingIds: savedIds)), meta = new { total } });
     }
 
     [HttpGet("listings/free")]
@@ -77,7 +88,8 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> FreeListings([FromQuery] int limit = 20)
     {
         var (items, total) = await _marketplace.ListListingsAsync(null, null, null, null, null, null, null, null, null, null, false, true, 1, Math.Clamp(limit, 1, 100));
-        return Ok(new { data = items.Select(l => MapListing(l)), meta = new { total } });
+        var savedIds = await LoadSavedListingIdsAsync(User.GetUserId(), items.Select(l => l.Id));
+        return Ok(new { success = true, data = items.Select(l => MapListing(l, currentUserId: User.GetUserId(), savedListingIds: savedIds)), meta = new { total } });
     }
 
     [HttpGet("listings/saved")]
@@ -86,7 +98,8 @@ public class MarketplaceController : ControllerBase
     {
         var userId = RequireUserId();
         var listings = await _marketplace.GetSavedListingsAsync(userId);
-        return Ok(new { data = listings.Select(l => MapListing(l)), meta = new { total = listings.Count } });
+        var savedIds = listings.Select(l => l.Id).ToHashSet();
+        return Ok(new { success = true, data = listings.Select(l => MapListing(l, currentUserId: userId, savedListingIds: savedIds)), meta = new { total = listings.Count } });
     }
 
     [HttpGet("listings/export-csv")]
@@ -128,7 +141,11 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> GetListing(int id)
     {
         var listing = await _marketplace.GetListingAsync(id, incrementView: true);
-        return listing == null ? NotFound(new { error = "Listing not found" }) : Ok(new { data = MapListing(listing, detailed: true) });
+        var currentUserId = User.GetUserId();
+        var savedIds = listing == null ? new HashSet<int>() : await LoadSavedListingIdsAsync(currentUserId, new[] { listing.Id });
+        return listing == null
+            ? NotFound(new { success = false, error = "Listing not found" })
+            : Ok(new { success = true, data = MapListing(listing, detailed: true, currentUserId, savedIds) });
     }
 
     [HttpPost("listings")]
@@ -138,7 +155,7 @@ public class MarketplaceController : ControllerBase
         var userId = RequireUserId();
         var (listing, error) = await _marketplace.CreateListingAsync(userId, request);
         if (error != null) return BadRequest(new { error });
-        return Created($"/api/marketplace/listings/{listing!.Id}", new { data = MapListing(listing, detailed: true) });
+        return Created($"/api/marketplace/listings/{listing!.Id}", new { success = true, data = MapListing(listing, detailed: true, currentUserId: userId) });
     }
 
     [HttpPut("listings/{id:int}")]
@@ -148,7 +165,7 @@ public class MarketplaceController : ControllerBase
         var (listing, error) = await _marketplace.UpdateListingAsync(id, RequireUserId(), User.IsAdmin(), request);
         if (error == "Listing not found") return NotFound(new { error });
         if (error != null) return StatusCode(403, new { error });
-        return Ok(new { data = MapListing(listing!, detailed: true) });
+        return Ok(new { success = true, data = MapListing(listing!, detailed: true, currentUserId: RequireUserId()) });
     }
 
     [HttpDelete("listings/{id:int}")]
@@ -238,12 +255,16 @@ public class MarketplaceController : ControllerBase
     [HttpPost("listings/{id:int}/save")]
     [Authorize]
     public async Task<IActionResult> SaveListing(int id)
-        => await _marketplace.SaveListingAsync(id, RequireUserId()) ? Ok(new { data = new { saved = true } }) : NotFound(new { error = "Listing not found" });
+        => await _marketplace.SaveListingAsync(id, RequireUserId())
+            ? StatusCode(201, new { success = true, data = new { saved = true } })
+            : NotFound(new { success = false, error = "Listing not found" });
 
     [HttpDelete("listings/{id:int}/save")]
     [Authorize]
     public async Task<IActionResult> UnsaveListing(int id)
-        => await _marketplace.UnsaveListingAsync(id, RequireUserId()) ? NoContent() : NotFound(new { error = "Listing not found" });
+        => await _marketplace.UnsaveListingAsync(id, RequireUserId())
+            ? Ok(new { success = true, data = new { saved = false } })
+            : NotFound(new { success = false, error = "Listing not found" });
 
     [HttpPost("listings/{id:int}/offers")]
     [Authorize]
@@ -833,8 +854,8 @@ public class MarketplaceController : ControllerBase
     [Authorize]
     public async Task<IActionResult> ReportListing(int id, [FromBody] ReportRequest request)
     {
-        var report = await _marketplace.ReportListingAsync(id, RequireUserId(), request.Reason ?? "inappropriate", request.Details);
-        return Created($"/api/marketplace/reports/{report.Id}", new { data = report });
+        var report = await _marketplace.ReportListingAsync(id, RequireUserId(), request.Reason ?? "inappropriate", request.Details ?? request.Description);
+        return Created($"/api/marketplace/reports/{report.Id}", new { success = true, data = MapMarketplaceReport(report) });
     }
 
     [HttpGet("seller/coupons")]
@@ -1734,6 +1755,22 @@ public class MarketplaceController : ControllerBase
     private int RequireUserId()
         => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
 
+    private async Task<HashSet<int>> LoadSavedListingIdsAsync(int? userId, IEnumerable<int> listingIds)
+    {
+        if (!userId.HasValue)
+            return new HashSet<int>();
+
+        var ids = listingIds.Distinct().ToArray();
+        if (ids.Length == 0)
+            return new HashSet<int>();
+
+        return (await _db.MarketplaceSavedListings
+            .Where(s => s.UserId == userId.Value && ids.Contains(s.MarketplaceListingId))
+            .Select(s => s.MarketplaceListingId)
+            .ToListAsync())
+            .ToHashSet();
+    }
+
     private static object Paged(IEnumerable<object> data, int page, int limit, int total)
         => new { data, meta = new { page, limit, total, pages = (int)Math.Ceiling((double)total / limit) } };
 
@@ -1761,45 +1798,124 @@ public class MarketplaceController : ControllerBase
     private static string EncodeListingCursor(int id)
         => Convert.ToBase64String(Encoding.UTF8.GetBytes(id.ToString()));
 
-    private static object MapListing(MarketplaceListing listing, bool detailed = false)
-        => new
+    private static object MapListing(
+        MarketplaceListing listing,
+        bool detailed = false,
+        int? currentUserId = null,
+        IReadOnlySet<int>? savedListingIds = null)
+    {
+        var images = listing.Images
+            .OrderBy(i => i.SortOrder)
+            .Select(i => new
+            {
+                id = i.Id,
+                url = i.Url,
+                thumbnail_url = i.Url,
+                alt_text = i.AltText,
+                is_primary = i.SortOrder == 0,
+                sort_order = i.SortOrder
+            })
+            .ToArray();
+        var primaryImage = images.FirstOrDefault();
+        var userName = listing.User == null
+            ? $"User {listing.UserId}"
+            : DisplayName(listing.User);
+        var user = listing.User == null
+            ? new { id = listing.UserId, name = userName, avatar_url = (string?)null, is_verified = false, member_since = (DateTime?)null }
+            : new { id = listing.User.Id, name = userName, avatar_url = listing.User.AvatarUrl, is_verified = false, member_since = (DateTime?)listing.User.CreatedAt };
+
+        return new
         {
-            listing.Id,
-            listing.UserId,
-            listing.CategoryId,
-            category = listing.Category == null ? null : new { listing.Category.Id, listing.Category.Name, listing.Category.Slug, listing.Category.Icon },
-            seller = listing.User == null ? null : new { listing.User.Id, listing.User.FirstName, listing.User.LastName, listing.User.AvatarUrl },
-            listing.Title,
-            listing.Tagline,
-            listing.Description,
-            listing.Price,
-            listing.PriceCurrency,
-            listing.PriceType,
-            listing.TimeCreditPrice,
-            listing.Condition,
-            listing.Quantity,
-            listing.Location,
-            listing.Latitude,
-            listing.Longitude,
-            listing.ShippingAvailable,
-            listing.LocalPickup,
-            listing.DeliveryMethod,
-            listing.SellerType,
-            listing.Status,
-            listing.MarketplaceStatus,
-            listing.ModerationStatus,
-            listing.PromotionType,
-            listing.PromotedUntil,
-            listing.ExpiresAt,
-            listing.VideoUrl,
-            listing.ViewsCount,
-            listing.SavesCount,
-            listing.ContactsCount,
-            listing.CreatedAt,
-            listing.UpdatedAt,
-            images = listing.Images.OrderBy(i => i.SortOrder).Select(i => new { i.Id, i.Url, i.AltText, i.SortOrder }),
+            id = listing.Id,
+            user_id = listing.UserId,
+            userId = listing.UserId,
+            category_id = listing.CategoryId,
+            categoryId = listing.CategoryId,
+            title = listing.Title,
+            tagline = listing.Tagline,
+            description = detailed ? listing.Description : listing.Description,
+            price = listing.Price,
+            price_currency = listing.PriceCurrency,
+            priceCurrency = listing.PriceCurrency,
+            currency = listing.PriceCurrency,
+            price_type = listing.PriceType,
+            priceType = listing.PriceType,
+            time_credit_price = listing.TimeCreditPrice,
+            timeCreditPrice = listing.TimeCreditPrice,
+            condition = listing.Condition,
+            quantity = listing.Quantity,
+            location = listing.Location,
+            latitude = listing.Latitude,
+            longitude = listing.Longitude,
+            shipping_available = listing.ShippingAvailable,
+            shippingAvailable = listing.ShippingAvailable,
+            local_pickup = listing.LocalPickup,
+            localPickup = listing.LocalPickup,
+            delivery_method = listing.DeliveryMethod,
+            deliveryMethod = listing.DeliveryMethod,
+            seller_type = listing.SellerType,
+            sellerType = listing.SellerType,
+            status = listing.Status,
+            marketplace_status = listing.MarketplaceStatus,
+            marketplaceStatus = listing.MarketplaceStatus,
+            moderation_status = listing.ModerationStatus,
+            moderationStatus = listing.ModerationStatus,
+            promotion_type = listing.PromotionType,
+            promoted_until = listing.PromotedUntil,
+            expires_at = listing.ExpiresAt,
+            video_url = listing.VideoUrl,
+            videoUrl = listing.VideoUrl,
+            template_data = detailed ? ParseJsonObject(listing.TemplateDataJson) : null,
+            views_count = listing.ViewsCount,
+            viewsCount = listing.ViewsCount,
+            saves_count = listing.SavesCount,
+            savesCount = listing.SavesCount,
+            contacts_count = listing.ContactsCount,
+            contactsCount = listing.ContactsCount,
+            image = primaryImage == null ? null : new { primaryImage.url, primaryImage.thumbnail_url, primaryImage.alt_text },
+            image_count = images.Length,
+            images,
+            category = listing.Category == null ? null : new { id = listing.Category.Id, name = listing.Category.Name, slug = listing.Category.Slug, icon = listing.Category.Icon },
+            user,
+            seller = user,
+            is_saved = savedListingIds?.Contains(listing.Id) == true,
+            is_own = currentUserId.HasValue && listing.UserId == currentUserId.Value,
+            is_promoted = listing.PromotedUntil.HasValue && listing.PromotedUntil.Value > DateTime.UtcNow,
+            created_at = listing.CreatedAt,
+            createdAt = listing.CreatedAt,
+            updated_at = listing.UpdatedAt,
+            updatedAt = listing.UpdatedAt,
             details = detailed ? new { listing.TemplateDataJson, listing.ModerationNotes, offers = listing.Offers.Count } : null
         };
+    }
+
+    private static object? ParseJsonObject(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<JsonElement>(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static object MapMarketplaceReport(MarketplaceReport report) => new
+    {
+        id = report.Id,
+        listing_id = report.MarketplaceListingId,
+        marketplace_listing_id = report.MarketplaceListingId,
+        reporter_id = report.ReporterUserId,
+        reporter_user_id = report.ReporterUserId,
+        reason = report.Reason,
+        details = report.Details,
+        status = report.Status,
+        created_at = report.CreatedAt
+    };
 
     private static double DistanceKm(double lat1, double lon1, double lat2, double lon2)
     {
@@ -1836,7 +1952,10 @@ public record ShipOrderRequest(
     [property: JsonPropertyName("tracking_url")] string? TrackingUrl,
     [property: JsonPropertyName("shipping_method")] string? ShippingMethod);
 public record RateOrderRequest(int Rating, string? Comment);
-public record ReportRequest(string? Reason, string? Details);
+public record ReportRequest(
+    string? Reason,
+    string? Details,
+    [property: JsonPropertyName("description")] string? Description);
 public sealed class PaymentRequest
 {
     [JsonPropertyName("order_id")]

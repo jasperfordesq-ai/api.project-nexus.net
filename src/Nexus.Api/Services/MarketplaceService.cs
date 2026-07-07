@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
@@ -35,7 +36,8 @@ public class MarketplaceService
         bool featuredOnly,
         bool freeOnly,
         int page,
-        int limit)
+        int limit,
+        string? cursor = null)
     {
         var query = _db.MarketplaceListings
             .Include(l => l.User)
@@ -90,6 +92,10 @@ public class MarketplaceService
         if (freeOnly)
             query = query.Where(l => l.PriceType == "free" || l.Price == 0);
 
+        var cursorId = DecodeCursor(cursor);
+        if (cursorId.HasValue)
+            query = query.Where(l => l.Id < cursorId.Value);
+
         var total = await query.CountAsync();
         var items = await query
             .AsNoTracking()
@@ -100,6 +106,22 @@ public class MarketplaceService
             .ToListAsync();
 
         return (items, total);
+    }
+
+    private static int? DecodeCursor(string? cursor)
+    {
+        if (string.IsNullOrWhiteSpace(cursor))
+            return null;
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+            return int.TryParse(decoded, out var id) && id > 0 ? id : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
     }
 
     public async Task<MarketplaceListing?> GetListingAsync(int id, bool incrementView = false)

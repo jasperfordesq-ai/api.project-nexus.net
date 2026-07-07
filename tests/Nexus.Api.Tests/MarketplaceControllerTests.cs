@@ -549,6 +549,104 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MarketplaceListingBrowseDetailV2_ReturnsLaravelReactShapeAndActions()
+    {
+        var (listingId, otherListingId, categoryId) = await CreateBrowseListingsForMemberAsync();
+
+        await AuthenticateAsMemberAsync();
+        var list = await Client.GetAsync($"/api/v2/marketplace/listings?category_id={categoryId}&limit=1");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(1);
+        listJson.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeTrue();
+        var cursor = listJson.GetProperty("meta").GetProperty("cursor").GetString();
+        cursor.Should().NotBeNullOrWhiteSpace();
+
+        var item = listJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        item.GetProperty("id").GetInt32().Should().Be(listingId);
+        item.GetProperty("title").GetString().Should().Be("React browse listing");
+        item.GetProperty("tagline").GetString().Should().Be("Laravel React card shape");
+        item.GetProperty("price").GetDecimal().Should().Be(12.50m);
+        item.GetProperty("price_currency").GetString().Should().Be("EUR");
+        item.GetProperty("price_type").GetString().Should().Be("fixed");
+        item.GetProperty("time_credit_price").GetDecimal().Should().Be(1.5m);
+        item.GetProperty("condition").GetString().Should().Be("good");
+        item.GetProperty("location").GetString().Should().Be("Market Square");
+        item.GetProperty("delivery_method").GetString().Should().Be("pickup");
+        item.GetProperty("seller_type").GetString().Should().Be("private");
+        item.GetProperty("status").GetString().Should().Be("active");
+        item.GetProperty("image").GetProperty("url").GetString().Should().Be("/uploads/marketplace/react-browse.jpg");
+        item.GetProperty("image").GetProperty("thumbnail_url").GetString().Should().Be("/uploads/marketplace/react-browse.jpg");
+        item.GetProperty("image_count").GetInt32().Should().Be(1);
+        item.GetProperty("category").GetProperty("id").GetInt32().Should().Be(categoryId);
+        item.GetProperty("category").GetProperty("name").GetString().Should().Be("React Browse");
+        item.GetProperty("user").GetProperty("id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        item.GetProperty("user").GetProperty("name").GetString().Should().NotBeNullOrWhiteSpace();
+        item.GetProperty("is_saved").GetBoolean().Should().BeTrue();
+        item.GetProperty("is_own").GetBoolean().Should().BeFalse();
+        item.GetProperty("is_promoted").GetBoolean().Should().BeTrue();
+        item.GetProperty("views_count").GetInt32().Should().Be(3);
+        item.GetProperty("created_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var nextPage = await Client.GetAsync($"/api/v2/marketplace/listings?category_id={categoryId}&limit=1&cursor={Uri.EscapeDataString(cursor!)}");
+        nextPage.StatusCode.Should().Be(HttpStatusCode.OK);
+        var nextJson = await nextPage.Content.ReadFromJsonAsync<JsonElement>();
+        nextJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        nextJson.GetProperty("data").EnumerateArray().Should().ContainSingle()
+            .Which.GetProperty("id").GetInt32().Should().Be(otherListingId);
+
+        var detail = await Client.GetAsync($"/api/v2/marketplace/listings/{listingId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(listingId);
+        detailData.GetProperty("description").GetString().Should().Be("A listing shaped for the Laravel React detail page");
+        detailData.GetProperty("quantity").GetInt32().Should().Be(4);
+        detailData.GetProperty("shipping_available").GetBoolean().Should().BeTrue();
+        detailData.GetProperty("local_pickup").GetBoolean().Should().BeTrue();
+        detailData.GetProperty("template_data").GetProperty("material").GetString().Should().Be("wood");
+        detailData.GetProperty("images").EnumerateArray().Should().ContainSingle()
+            .Which.GetProperty("is_primary").GetBoolean().Should().BeTrue();
+        detailData.GetProperty("user").GetProperty("member_since").GetString().Should().NotBeNullOrWhiteSpace();
+        detailData.GetProperty("is_saved").GetBoolean().Should().BeTrue();
+        detailData.GetProperty("is_own").GetBoolean().Should().BeFalse();
+        detailData.GetProperty("saves_count").GetInt32().Should().Be(1);
+
+        var unsave = await Client.DeleteAsync($"/api/v2/marketplace/listings/{listingId}/save");
+
+        unsave.StatusCode.Should().Be(HttpStatusCode.OK);
+        var unsaveJson = await unsave.Content.ReadFromJsonAsync<JsonElement>();
+        unsaveJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        unsaveJson.GetProperty("data").GetProperty("saved").GetBoolean().Should().BeFalse();
+
+        var save = await Client.PostAsync($"/api/v2/marketplace/listings/{listingId}/save", null);
+
+        save.StatusCode.Should().Be(HttpStatusCode.Created);
+        var saveJson = await save.Content.ReadFromJsonAsync<JsonElement>();
+        saveJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        saveJson.GetProperty("data").GetProperty("saved").GetBoolean().Should().BeTrue();
+
+        var report = await Client.PostAsJsonAsync($"/api/v2/marketplace/listings/{listingId}/report", new
+        {
+            reason = "other",
+            description = "This needs a closer look"
+        });
+
+        report.StatusCode.Should().Be(HttpStatusCode.Created);
+        var reportJson = await report.Content.ReadFromJsonAsync<JsonElement>();
+        reportJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var reportData = reportJson.GetProperty("data");
+        reportData.GetProperty("listing_id").GetInt32().Should().Be(listingId);
+        reportData.GetProperty("reporter_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        reportData.GetProperty("reason").GetString().Should().Be("other");
+        reportData.GetProperty("details").GetString().Should().Be("This needs a closer look");
+    }
+
+    [Fact]
     public async Task MarketplaceOrderHistoryV2_ReturnsLaravelReactShapeAndShipmentActions()
     {
         var (orderId, listingId) = await CreateShippableOrderForMemberAsync();
@@ -787,6 +885,94 @@ public class MarketplaceControllerTests : IntegrationTestBase
         await db.SaveChangesAsync();
 
         return code;
+    }
+
+    private async Task<(int ListingId, int OtherListingId, int CategoryId)> CreateBrowseListingsForMemberAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var category = new MarketplaceCategory
+        {
+            TenantId = TestData.Tenant1.Id,
+            Name = "React Browse",
+            Slug = $"react-browse-{Guid.NewGuid():N}",
+            Icon = "shopping-bag",
+            IsActive = true
+        };
+        db.MarketplaceCategories.Add(category);
+        await db.SaveChangesAsync();
+
+        var older = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            CategoryId = category.Id,
+            Title = "Older browse listing",
+            Description = "A second listing for cursor pagination",
+            Price = 5m,
+            PriceCurrency = "EUR",
+            PriceType = "fixed",
+            Condition = "good",
+            Status = "active",
+            MarketplaceStatus = "available",
+            ModerationStatus = "approved",
+            CreatedAt = DateTime.UtcNow.AddMinutes(-10)
+        };
+        db.MarketplaceListings.Add(older);
+        await db.SaveChangesAsync();
+
+        var listing = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            CategoryId = category.Id,
+            Title = "React browse listing",
+            Description = "A listing shaped for the Laravel React detail page",
+            Tagline = "Laravel React card shape",
+            Price = 12.50m,
+            PriceCurrency = "EUR",
+            PriceType = "fixed",
+            TimeCreditPrice = 1.5m,
+            Condition = "good",
+            Quantity = 4,
+            TemplateDataJson = "{\"material\":\"wood\"}",
+            Location = "Market Square",
+            Latitude = 47.3769,
+            Longitude = 8.5417,
+            ShippingAvailable = true,
+            LocalPickup = true,
+            DeliveryMethod = "pickup",
+            SellerType = "private",
+            Status = "active",
+            MarketplaceStatus = "available",
+            ModerationStatus = "approved",
+            PromotedUntil = DateTime.UtcNow.AddDays(1),
+            ViewsCount = 3,
+            SavesCount = 1,
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            CreatedAt = DateTime.UtcNow
+        };
+        db.MarketplaceListings.Add(listing);
+        await db.SaveChangesAsync();
+
+        db.MarketplaceImages.Add(new MarketplaceImage
+        {
+            TenantId = TestData.Tenant1.Id,
+            MarketplaceListingId = listing.Id,
+            Url = "/uploads/marketplace/react-browse.jpg",
+            AltText = "React browse listing",
+            SortOrder = 0
+        });
+        db.MarketplaceSavedListings.Add(new MarketplaceSavedListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            MarketplaceListingId = listing.Id,
+            UserId = TestData.MemberUser.Id
+        });
+        await db.SaveChangesAsync();
+
+        return (listing.Id, older.Id, category.Id);
     }
 
     private async Task<(int OrderId, int ListingId)> CreateShippableOrderForMemberAsync()
