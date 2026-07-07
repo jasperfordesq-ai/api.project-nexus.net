@@ -9982,11 +9982,18 @@ namespace Nexus.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsAnonymous")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("MarketplaceOrderId")
                         .HasColumnType("integer");
 
                     b.Property<int>("Rating")
                         .HasColumnType("integer");
+
+                    b.Property<string>("RaterRole")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("SellerUserId")
                         .HasColumnType("integer");
@@ -10072,7 +10079,13 @@ namespace Nexus.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("EstimatedDays")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")

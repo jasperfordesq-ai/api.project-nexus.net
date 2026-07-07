@@ -534,18 +534,33 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> RateOrder(int id, [FromBody] RateOrderRequest request)
     {
         var order = await _db.MarketplaceOrders.FirstOrDefaultAsync(o => o.Id == id);
-        if (order == null) return NotFound(new { error = "Order not found" });
+        if (order == null) return NotFound(new { success = false, error = "Order not found" });
+        var userId = RequireUserId();
+        var role = order.BuyerUserId == userId ? "buyer" : order.SellerUserId == userId ? "seller" : null;
+        if (role == null) return StatusCode(403, new { success = false, error = "You do not have access to this order." });
+        if (!string.Equals(order.Status, "completed", StringComparison.OrdinalIgnoreCase))
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", error = "Can only rate completed orders." });
+        if (request.Rating is < 1 or > 5)
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", error = "Rating must be between 1 and 5." });
+        var existing = await _db.MarketplaceSellerRatings
+            .AnyAsync(r => r.MarketplaceOrderId == id && r.RaterRole == role);
+        if (existing)
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", error = "You have already rated this order." });
+
         var rating = new MarketplaceSellerRating
         {
             MarketplaceOrderId = id,
-            BuyerUserId = RequireUserId(),
+            BuyerUserId = order.BuyerUserId,
             SellerUserId = order.SellerUserId,
-            Rating = Math.Clamp(request.Rating, 1, 5),
-            Comment = request.Comment
+            RaterRole = role,
+            Rating = request.Rating,
+            Comment = request.Comment,
+            IsAnonymous = request.IsAnonymous ?? false
         };
         _db.MarketplaceSellerRatings.Add(rating);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/orders/{id}/ratings", new { data = rating });
+        var users = await LoadUsersAsync(new[] { userId });
+        return Created($"/api/marketplace/orders/{id}/ratings", new { success = true, data = MapMarketplaceRating(rating, users.GetValueOrDefault(userId)) });
     }
 
     [HttpGet("orders/{id:int}/ratings")]
@@ -553,7 +568,9 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> OrderRatings(int id)
     {
         var ratings = await _db.MarketplaceSellerRatings.Where(r => r.MarketplaceOrderId == id).ToListAsync();
-        return Ok(new { data = ratings, meta = new { total = ratings.Count } });
+        var raterIds = ratings.Select(r => r.RaterRole == "seller" ? r.SellerUserId : r.BuyerUserId);
+        var users = await LoadUsersAsync(raterIds);
+        return Ok(new { success = true, data = ratings.Select(r => MapMarketplaceRating(r, users.GetValueOrDefault(r.RaterRole == "seller" ? r.SellerUserId : r.BuyerUserId))), meta = new { total = ratings.Count } });
     }
 
     [HttpPost("orders/{id:int}/dispute")]
@@ -641,7 +658,7 @@ public class MarketplaceController : ControllerBase
     {
         var userId = RequireUserId();
         var rows = await _db.MarketplaceSavedSearches.Where(s => s.UserId == userId).OrderByDescending(s => s.CreatedAt).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        return Ok(new { success = true, data = rows.Select(MapSavedSearch), meta = new { total = rows.Count } });
     }
 
     [HttpPost("saved-searches")]
@@ -658,7 +675,7 @@ public class MarketplaceController : ControllerBase
         };
         _db.MarketplaceSavedSearches.Add(row);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/saved-searches/{row.Id}", new { data = row });
+        return Created($"/api/marketplace/saved-searches/{row.Id}", new { success = true, data = MapSavedSearch(row) });
     }
 
     [HttpDelete("saved-searches/{id:int}")]
@@ -678,7 +695,13 @@ public class MarketplaceController : ControllerBase
     {
         var userId = RequireUserId();
         var rows = await _db.MarketplaceCollections.Where(c => c.UserId == userId || c.IsPublic).OrderByDescending(c => c.CreatedAt).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        var collectionIds = rows.Select(c => c.Id).ToList();
+        var itemCounts = await _db.MarketplaceCollectionItems
+            .Where(i => collectionIds.Contains(i.MarketplaceCollectionId))
+            .GroupBy(i => i.MarketplaceCollectionId)
+            .Select(g => new { CollectionId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.CollectionId, g => g.Count);
+        return Ok(new { success = true, data = rows.Select(c => MapCollection(c, itemCounts.GetValueOrDefault(c.Id))), meta = new { total = rows.Count } });
     }
 
     [HttpPost("collections")]
@@ -688,7 +711,7 @@ public class MarketplaceController : ControllerBase
         var row = new MarketplaceCollection { UserId = RequireUserId(), Name = request.Name ?? "Collection", Description = request.Description, IsPublic = request.IsPublic };
         _db.MarketplaceCollections.Add(row);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/collections/{row.Id}", new { data = row });
+        return Created($"/api/marketplace/collections/{row.Id}", new { success = true, data = MapCollection(row, 0) });
     }
 
     [HttpPut("collections/{id:int}")]
@@ -702,7 +725,8 @@ public class MarketplaceController : ControllerBase
         row.IsPublic = request.IsPublic;
         row.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = row });
+        var itemCount = await _db.MarketplaceCollectionItems.CountAsync(i => i.MarketplaceCollectionId == id);
+        return Ok(new { success = true, data = MapCollection(row, itemCount) });
     }
 
     [HttpDelete("collections/{id:int}")]
@@ -724,16 +748,31 @@ public class MarketplaceController : ControllerBase
         var row = new MarketplaceCollectionItem { MarketplaceCollectionId = id, MarketplaceListingId = request.ListingId };
         _db.MarketplaceCollectionItems.Add(row);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/collections/{id}/items/{request.ListingId}", new { data = row });
+        var listing = await _db.MarketplaceListings
+            .Include(l => l.Images)
+            .Include(l => l.Category)
+            .Include(l => l.User)
+            .FirstOrDefaultAsync(l => l.Id == request.ListingId);
+        if (listing == null) return NotFound(new { success = false, error = "Listing not found" });
+        return Created($"/api/marketplace/collections/{id}/items/{request.ListingId}", new { success = true, data = MapCollectionItem(row, listing) });
     }
 
     [HttpGet("collections/{id:int}/items")]
     [Authorize]
     public async Task<IActionResult> CollectionItems(int id)
     {
-        var listingIds = await _db.MarketplaceCollectionItems.Where(i => i.MarketplaceCollectionId == id).Select(i => i.MarketplaceListingId).ToListAsync();
-        var listings = await _db.MarketplaceListings.Include(l => l.Images).Where(l => listingIds.Contains(l.Id)).ToListAsync();
-        return Ok(new { data = listings.Select(l => MapListing(l)), meta = new { total = listings.Count } });
+        var items = await _db.MarketplaceCollectionItems
+            .Where(i => i.MarketplaceCollectionId == id)
+            .OrderByDescending(i => i.CreatedAt)
+            .ToListAsync();
+        var listingIds = items.Select(i => i.MarketplaceListingId).ToList();
+        var listings = await _db.MarketplaceListings
+            .Include(l => l.Images)
+            .Include(l => l.Category)
+            .Include(l => l.User)
+            .Where(l => listingIds.Contains(l.Id))
+            .ToDictionaryAsync(l => l.Id);
+        return Ok(new { success = true, data = items.Select(i => MapCollectionItem(i, listings.GetValueOrDefault(i.MarketplaceListingId))).Where(i => i != null), meta = new { total = items.Count } });
     }
 
     [HttpDelete("collections/{id:int}/items/{listingId:int}")]
@@ -1036,32 +1075,60 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> ShippingOptions()
     {
         var rows = await _db.MarketplaceShippingOptions.Where(o => o.UserId == RequireUserId()).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        return Ok(new { success = true, data = rows.Select(MapShippingOption), meta = new { total = rows.Count } });
     }
 
     [HttpPost("seller/shipping-options")]
     [Authorize]
     public async Task<IActionResult> CreateShippingOption([FromBody] ShippingOptionRequest request)
     {
-        var row = new MarketplaceShippingOption { UserId = RequireUserId(), Name = request.Name ?? "Shipping", Price = request.Price, Currency = request.Currency ?? "EUR", Region = request.Region };
+        var userId = RequireUserId();
+        if (request.IsDefault == true)
+        {
+            await _db.MarketplaceShippingOptions
+                .Where(o => o.UserId == userId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(o => o.IsDefault, false));
+        }
+
+        var row = new MarketplaceShippingOption
+        {
+            UserId = userId,
+            Name = request.CourierName ?? request.Name ?? "Shipping",
+            Price = request.Price,
+            Currency = request.Currency ?? "EUR",
+            Region = request.Region,
+            EstimatedDays = request.EstimatedDays,
+            IsDefault = request.IsDefault ?? false,
+            IsActive = request.IsActive ?? true
+        };
         _db.MarketplaceShippingOptions.Add(row);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/seller/shipping-options/{row.Id}", new { data = row });
+        return Created($"/api/marketplace/seller/shipping-options/{row.Id}", new { success = true, data = MapShippingOption(row) });
     }
 
     [HttpPut("seller/shipping-options/{id:int}")]
     [Authorize]
     public async Task<IActionResult> UpdateShippingOption(int id, [FromBody] ShippingOptionRequest request)
     {
-        var row = await _db.MarketplaceShippingOptions.FirstOrDefaultAsync(o => o.Id == id && o.UserId == RequireUserId());
+        var userId = RequireUserId();
+        var row = await _db.MarketplaceShippingOptions.FirstOrDefaultAsync(o => o.Id == id && o.UserId == userId);
         if (row == null) return NotFound(new { error = "Shipping option not found" });
-        if (request.Name != null) row.Name = request.Name;
+        if (request.IsDefault == true)
+        {
+            await _db.MarketplaceShippingOptions
+                .Where(o => o.UserId == userId && o.Id != id)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(o => o.IsDefault, false));
+        }
+
+        if (request.CourierName != null || request.Name != null) row.Name = request.CourierName ?? request.Name!;
         row.Price = request.Price;
         if (request.Currency != null) row.Currency = request.Currency;
         if (request.Region != null) row.Region = request.Region;
+        row.EstimatedDays = request.EstimatedDays;
+        row.IsDefault = request.IsDefault ?? row.IsDefault;
         row.IsActive = request.IsActive ?? row.IsActive;
         await _db.SaveChangesAsync();
-        return Ok(new { data = row });
+        return Ok(new { success = true, data = MapShippingOption(row) });
     }
 
     [HttpDelete("seller/shipping-options/{id:int}")]
@@ -1441,6 +1508,63 @@ public class MarketplaceController : ControllerBase
         updated_at = coupon.UpdatedAt
     };
 
+    private static object MapShippingOption(MarketplaceShippingOption option) => new
+    {
+        id = option.Id,
+        courier_name = option.Name,
+        courier_code = (string?)null,
+        price = option.Price,
+        currency = option.Currency,
+        estimated_days = option.EstimatedDays,
+        is_default = option.IsDefault,
+        is_active = option.IsActive
+    };
+
+    private static object MapSavedSearch(MarketplaceSavedSearch search) => new
+    {
+        id = search.Id,
+        name = search.Name,
+        search_query = string.IsNullOrWhiteSpace(search.Query) ? null : search.Query,
+        filters = ParseJsonElementOrNull(search.FiltersJson),
+        alert_frequency = search.AlertsEnabled ? "instant" : "weekly",
+        alert_channel = "email",
+        is_active = search.AlertsEnabled,
+        last_alerted_at = (DateTime?)null,
+        created_at = search.CreatedAt
+    };
+
+    private static object MapCollection(MarketplaceCollection collection, int itemCount) => new
+    {
+        id = collection.Id,
+        name = collection.Name,
+        description = collection.Description,
+        is_public = collection.IsPublic,
+        item_count = itemCount,
+        created_at = collection.CreatedAt,
+        updated_at = collection.UpdatedAt
+    };
+
+    private static object MapCollectionItem(MarketplaceCollectionItem item, MarketplaceListing? listing) => new
+    {
+        collection_item_id = item.Id,
+        note = (string?)null,
+        added_at = item.CreatedAt,
+        listing = listing == null ? null : MapListing(listing)
+    };
+
+    private static object? ParseJsonElementOrNull(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<JsonElement>(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private IQueryable<MarketplaceOrder> BuildOrderQuery()
         => _db.MarketplaceOrders
             .Include(o => o.Listing)
@@ -1755,6 +1879,25 @@ public class MarketplaceController : ControllerBase
                 name = DisplayName(deliverer),
                 avatar_url = deliverer.AvatarUrl,
                 is_verified = deliverer.EmailVerified || deliverer.EmailVerifiedAt != null
+            }
+    };
+
+    private static object MapMarketplaceRating(MarketplaceSellerRating rating, User? rater = null) => new
+    {
+        id = rating.Id,
+        order_id = rating.MarketplaceOrderId,
+        rater_role = string.IsNullOrWhiteSpace(rating.RaterRole) ? "buyer" : rating.RaterRole,
+        rating = rating.Rating,
+        comment = rating.IsAnonymous ? null : rating.Comment,
+        is_anonymous = rating.IsAnonymous,
+        created_at = rating.CreatedAt,
+        rater = rating.IsAnonymous || rater == null
+            ? null
+            : new
+            {
+                id = rater.Id,
+                name = DisplayName(rater),
+                avatar_url = rater.AvatarUrl
             }
     };
 
@@ -2077,7 +2220,7 @@ public record ShipOrderRequest(
     [property: JsonPropertyName("tracking_number")] string? TrackingNumber,
     [property: JsonPropertyName("tracking_url")] string? TrackingUrl,
     [property: JsonPropertyName("shipping_method")] string? ShippingMethod);
-public record RateOrderRequest(int Rating, string? Comment);
+public record RateOrderRequest(int Rating, string? Comment, [property: JsonPropertyName("is_anonymous")] bool? IsAnonymous);
 public record ReportRequest(
     string? Reason,
     string? Details,
@@ -2092,9 +2235,13 @@ public sealed class PaymentRequest
     public string? Currency { get; set; }
 }
 public record PaymentConfirmRequest(string PaymentId);
-public record SavedSearchRequest(string? Name, string? Query, Dictionary<string, object>? Filters, bool? AlertsEnabled);
-public record CollectionRequest(string? Name, string? Description, bool IsPublic);
-public record CollectionItemRequest(int ListingId);
+public record SavedSearchRequest(
+    string? Name,
+    string? Query,
+    Dictionary<string, object>? Filters,
+    [property: JsonPropertyName("alerts_enabled")] bool? AlertsEnabled);
+public record CollectionRequest(string? Name, string? Description, [property: JsonPropertyName("is_public")] bool IsPublic);
+public record CollectionItemRequest([property: JsonPropertyName("listing_id")] int ListingId);
 public record PromotionRequest(
     [property: JsonPropertyName("product_code")] string? ProductCode,
     [property: JsonPropertyName("promotion_type")] string? PromotionType);
@@ -2107,7 +2254,15 @@ public sealed class DeliveryOfferRequest
     public decimal TimeCreditAmount { get; set; }
 }
 public record AutoReplyRequest(string? Question);
-public record ShippingOptionRequest(string? Name, decimal Price, string? Currency, string? Region, bool? IsActive);
+public record ShippingOptionRequest(
+    string? Name,
+    [property: JsonPropertyName("courier_name")] string? CourierName,
+    decimal Price,
+    string? Currency,
+    string? Region,
+    [property: JsonPropertyName("estimated_days")] int? EstimatedDays,
+    [property: JsonPropertyName("is_default")] bool? IsDefault,
+    [property: JsonPropertyName("is_active")] bool? IsActive);
 public record PickupSlotRequest(
     string? Location,
     DateTime StartsAt,

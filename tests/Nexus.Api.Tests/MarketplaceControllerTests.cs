@@ -796,6 +796,160 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MarketplaceSellerShippingOptionsV2_MatchesLaravelReactManagerContract()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/marketplace/seller/shipping-options", new
+        {
+            courier_name = "Cycle Courier",
+            price = 4.75m,
+            currency = "EUR",
+            estimated_days = 2,
+            is_default = true
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var created = createJson.GetProperty("data");
+        var optionId = created.GetProperty("id").GetInt32();
+        created.GetProperty("courier_name").GetString().Should().Be("Cycle Courier");
+        created.GetProperty("price").GetDecimal().Should().Be(4.75m);
+        created.GetProperty("currency").GetString().Should().Be("EUR");
+        created.GetProperty("estimated_days").GetInt32().Should().Be(2);
+        created.GetProperty("is_default").GetBoolean().Should().BeTrue();
+        created.GetProperty("is_active").GetBoolean().Should().BeTrue();
+
+        var list = await Client.GetAsync("/api/v2/marketplace/seller/shipping-options");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        listed.GetProperty("id").GetInt32().Should().Be(optionId);
+        listed.GetProperty("courier_name").GetString().Should().Be("Cycle Courier");
+        listed.GetProperty("estimated_days").GetInt32().Should().Be(2);
+        listed.GetProperty("is_default").GetBoolean().Should().BeTrue();
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/marketplace/seller/shipping-options/{optionId}", new
+        {
+            courier_name = "Postal Partner",
+            price = 6.25m,
+            currency = "CHF",
+            estimated_days = 4,
+            is_default = false,
+            is_active = true
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var updated = updateJson.GetProperty("data");
+        updated.GetProperty("courier_name").GetString().Should().Be("Postal Partner");
+        updated.GetProperty("price").GetDecimal().Should().Be(6.25m);
+        updated.GetProperty("currency").GetString().Should().Be("CHF");
+        updated.GetProperty("estimated_days").GetInt32().Should().Be(4);
+        updated.GetProperty("is_default").GetBoolean().Should().BeFalse();
+
+        var delete = await Client.DeleteAsync($"/api/v2/marketplace/seller/shipping-options/{optionId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task MarketplaceCollectionsV2_ReturnsLaravelReactCollectionAndSavedSearchShapes()
+    {
+        var listingId = await CreateCollectionListingAsync();
+
+        await AuthenticateAsMemberAsync();
+        var createCollection = await Client.PostAsJsonAsync("/api/v2/marketplace/collections", new
+        {
+            name = "Weekend finds",
+            description = "Things to collect on Saturday",
+            is_public = true
+        });
+
+        createCollection.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createCollectionJson = await createCollection.Content.ReadFromJsonAsync<JsonElement>();
+        createCollectionJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var collection = createCollectionJson.GetProperty("data");
+        var collectionId = collection.GetProperty("id").GetInt32();
+        collection.GetProperty("name").GetString().Should().Be("Weekend finds");
+        collection.GetProperty("description").GetString().Should().Be("Things to collect on Saturday");
+        collection.GetProperty("is_public").GetBoolean().Should().BeTrue();
+        collection.GetProperty("item_count").GetInt32().Should().Be(0);
+
+        var addItem = await Client.PostAsJsonAsync($"/api/v2/marketplace/collections/{collectionId}/items", new
+        {
+            listing_id = listingId
+        });
+
+        addItem.StatusCode.Should().Be(HttpStatusCode.Created);
+        var addItemJson = await addItem.Content.ReadFromJsonAsync<JsonElement>();
+        addItemJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        addItemJson.GetProperty("data").GetProperty("collection_item_id").GetInt32().Should().BeGreaterThan(0);
+        addItemJson.GetProperty("data").GetProperty("listing").GetProperty("id").GetInt32().Should().Be(listingId);
+
+        var listCollections = await Client.GetAsync("/api/v2/marketplace/collections");
+
+        listCollections.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listCollectionsJson = await listCollections.Content.ReadFromJsonAsync<JsonElement>();
+        listCollectionsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listedCollection = listCollectionsJson.GetProperty("data").EnumerateArray()
+            .Single(row => row.GetProperty("id").GetInt32() == collectionId);
+        listedCollection.GetProperty("is_public").GetBoolean().Should().BeTrue();
+        listedCollection.GetProperty("item_count").GetInt32().Should().Be(1);
+
+        var items = await Client.GetAsync($"/api/v2/marketplace/collections/{collectionId}/items?limit=50");
+
+        items.StatusCode.Should().Be(HttpStatusCode.OK);
+        var itemsJson = await items.Content.ReadFromJsonAsync<JsonElement>();
+        itemsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var item = itemsJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        item.GetProperty("collection_item_id").GetInt32().Should().BeGreaterThan(0);
+        item.GetProperty("added_at").GetString().Should().NotBeNullOrWhiteSpace();
+        var listing = item.GetProperty("listing");
+        listing.GetProperty("id").GetInt32().Should().Be(listingId);
+        listing.GetProperty("title").GetString().Should().Be("Collection lamp");
+        listing.GetProperty("image").ValueKind.Should().Be(JsonValueKind.Object);
+
+        var createSearch = await Client.PostAsJsonAsync("/api/v2/marketplace/saved-searches", new
+        {
+            name = "Furniture near me",
+            query = "lamp",
+            filters = new { category_id = 12, radius = 15 },
+            alerts_enabled = true
+        });
+
+        createSearch.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createSearchJson = await createSearch.Content.ReadFromJsonAsync<JsonElement>();
+        createSearchJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var savedSearch = createSearchJson.GetProperty("data");
+        var searchId = savedSearch.GetProperty("id").GetInt32();
+        savedSearch.GetProperty("search_query").GetString().Should().Be("lamp");
+        savedSearch.GetProperty("filters").GetProperty("category_id").GetInt32().Should().Be(12);
+        savedSearch.GetProperty("alert_frequency").GetString().Should().Be("instant");
+        savedSearch.GetProperty("alert_channel").GetString().Should().Be("email");
+        savedSearch.GetProperty("is_active").GetBoolean().Should().BeTrue();
+
+        var listSearches = await Client.GetAsync("/api/v2/marketplace/saved-searches");
+
+        listSearches.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listSearchesJson = await listSearches.Content.ReadFromJsonAsync<JsonElement>();
+        listSearchesJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listSearchesJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(row => row.GetProperty("id").GetInt32() == searchId
+                && row.GetProperty("search_query").GetString() == "lamp");
+
+        var deleteItem = await Client.DeleteAsync($"/api/v2/marketplace/collections/{collectionId}/items/{listingId}");
+        deleteItem.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var deleteSearch = await Client.DeleteAsync($"/api/v2/marketplace/saved-searches/{searchId}");
+        deleteSearch.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
     public async Task MarketplaceOrderHistoryV2_ReturnsLaravelReactShapeAndShipmentActions()
     {
         var (orderId, listingId) = await CreateShippableOrderForMemberAsync();
@@ -985,6 +1139,52 @@ public class MarketplaceControllerTests : IntegrationTestBase
         scanned.GetProperty("listing_id").GetInt32().Should().Be(listingId);
         scanned.GetProperty("status").GetString().Should().Be("picked_up");
         scanned.GetProperty("picked_up_at").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task MarketplaceOrderRatingV2_MatchesLaravelReactRatingContract()
+    {
+        var orderId = await CreateCompletedRatingOrderForMemberAsync();
+
+        await AuthenticateAsMemberAsync();
+        var rate = await Client.PostAsJsonAsync($"/api/v2/marketplace/orders/{orderId}/rate", new
+        {
+            rating = 5,
+            comment = "Smooth handover",
+            is_anonymous = true
+        });
+
+        rate.StatusCode.Should().Be(HttpStatusCode.Created);
+        var rateJson = await rate.Content.ReadFromJsonAsync<JsonElement>();
+        rateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var rating = rateJson.GetProperty("data");
+        var ratingId = rating.GetProperty("id").GetInt32();
+        rating.GetProperty("order_id").GetInt32().Should().Be(orderId);
+        rating.GetProperty("rater_role").GetString().Should().Be("buyer");
+        rating.GetProperty("rating").GetInt32().Should().Be(5);
+        rating.GetProperty("comment").ValueKind.Should().Be(JsonValueKind.Null);
+        rating.GetProperty("is_anonymous").GetBoolean().Should().BeTrue();
+        rating.GetProperty("rater").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var duplicate = await Client.PostAsJsonAsync($"/api/v2/marketplace/orders/{orderId}/rate", new
+        {
+            rating = 4
+        });
+
+        duplicate.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var duplicateJson = await duplicate.Content.ReadFromJsonAsync<JsonElement>();
+        duplicateJson.GetProperty("success").GetBoolean().Should().BeFalse();
+        duplicateJson.GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+
+        var list = await Client.GetAsync($"/api/v2/marketplace/orders/{orderId}/ratings");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        listed.GetProperty("id").GetInt32().Should().Be(ratingId);
+        listed.GetProperty("comment").ValueKind.Should().Be(JsonValueKind.Null);
+        listed.GetProperty("is_anonymous").GetBoolean().Should().BeTrue();
     }
 
     private async Task<int> CreateMarketplaceListingAsync()
@@ -1184,6 +1384,37 @@ public class MarketplaceControllerTests : IntegrationTestBase
         return category.Id;
     }
 
+    private async Task<int> CreateCollectionListingAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var listing = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.MemberUser.Id,
+            Title = "Collection lamp",
+            Description = "Small desk lamp for collection testing",
+            Price = 7m,
+            PriceCurrency = "EUR",
+            PriceType = "fixed",
+            Condition = "good",
+            MarketplaceStatus = "active",
+            ModerationStatus = "approved",
+            CreatedAt = DateTime.UtcNow.AddMinutes(-5)
+        };
+        listing.Images.Add(new MarketplaceImage
+        {
+            TenantId = TestData.Tenant1.Id,
+            Url = "/uploads/marketplace/images/lamp.png",
+            AltText = "lamp.png",
+            SortOrder = 0
+        });
+        db.MarketplaceListings.Add(listing);
+        await db.SaveChangesAsync();
+        return listing.Id;
+    }
+
     private MarketplaceListing SellerListing(string title, string status, int views, int saves) => new()
     {
         TenantId = TestData.Tenant1.Id,
@@ -1278,6 +1509,43 @@ public class MarketplaceControllerTests : IntegrationTestBase
         await db.SaveChangesAsync();
 
         return (order.Id, listing.Id);
+    }
+
+    private async Task<int> CreateCompletedRatingOrderForMemberAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var listing = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            Title = "Rated marketplace table",
+            Description = "A completed order ready for buyer rating",
+            Price = 25m,
+            PriceCurrency = "EUR",
+            Status = "active",
+            MarketplaceStatus = "available",
+            ModerationStatus = "approved"
+        };
+        db.MarketplaceListings.Add(listing);
+        await db.SaveChangesAsync();
+
+        var order = new MarketplaceOrder
+        {
+            TenantId = TestData.Tenant1.Id,
+            MarketplaceListingId = listing.Id,
+            BuyerUserId = TestData.MemberUser.Id,
+            SellerUserId = TestData.AdminUser.Id,
+            Quantity = 1,
+            TotalAmount = 25m,
+            Currency = "EUR",
+            Status = "completed"
+        };
+        db.MarketplaceOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        return order.Id;
     }
 
     private async Task<int> CreateCommunityDeliveryOrderAsync()

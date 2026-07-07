@@ -230,6 +230,8 @@ public class MarketplaceShippingOption : ITenantEntity
     public decimal Price { get; set; }
     public string Currency { get; set; } = "EUR";
     public string? Region { get; set; }
+    public int? EstimatedDays { get; set; }
+    public bool IsDefault { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
@@ -285,8 +287,10 @@ public class MarketplaceSellerRating : ITenantEntity
     public int MarketplaceOrderId { get; set; }
     public int SellerUserId { get; set; }
     public int BuyerUserId { get; set; }
+    public string RaterRole { get; set; } = "buyer";
     public int Rating { get; set; }
     public string? Comment { get; set; }
+    public bool IsAnonymous { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
