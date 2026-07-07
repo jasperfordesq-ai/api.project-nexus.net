@@ -167,6 +167,15 @@ the conversation, accepts Laravel's `target_language` payload, and returns
 content fallback; provider-backed translation quality remains a deeper parity
 gap.
 
+The Laravel React message reaction slice now has focused ASP.NET regression
+coverage for `POST /api/v2/messages/{id}/reactions` as used by
+`ConversationPage.tsx`. The compatibility handler verifies the current user
+participates in the conversation, toggles the posted `{ emoji }`, and returns
+Laravel's `success/data.action` contract with `added` or `removed`, plus
+`emoji` and `message_id`. The toggle is backed by tenant compatibility state;
+the full Laravel `message_reactions` schema and aggregate reaction projections
+remain deeper parity gaps.
+
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static
 route content, notification unsubscribe, AI chat starters/feedback, admin

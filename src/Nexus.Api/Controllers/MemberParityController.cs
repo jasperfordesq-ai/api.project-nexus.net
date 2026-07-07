@@ -28,6 +28,7 @@ public class MemberParityController : ControllerBase
     private const string LocalAdvertisingCampaignsKey = "local_advertising.campaigns";
     private const string PaidPushCampaignsKey = "paid_push.campaigns";
     private const string MerchantOnboardingProfileKeyPrefix = "merchant_onboarding.profile.";
+    private const string MessageReactionKeyPrefix = "message_reactions.";
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -619,7 +620,63 @@ public class MemberParityController : ControllerBase
     }
 
     [HttpPost("messages/{messageId:int}/reactions")]
-    public IActionResult MessageReactions(int messageId, [FromBody] JsonElement body) => Ok(new { data = new { message_id = messageId, reaction = Str(body, "reaction") ?? "like" } });
+    public async Task<IActionResult> MessageReactions(int messageId, [FromBody] JsonElement body)
+    {
+        var emoji = Str(body, "emoji") ?? Str(body, "reaction");
+        if (string.IsNullOrWhiteSpace(emoji))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                code = "VALIDATION_ERROR",
+                error = "emoji is required"
+            });
+        }
+
+        var userId = UserId();
+        var tenantId = TenantId();
+        var message = await _db.Messages
+            .Include(m => m.Conversation)
+            .FirstOrDefaultAsync(m => m.TenantId == tenantId && m.Id == messageId);
+
+        if (message?.Conversation == null
+            || (message.Conversation.Participant1Id != userId && message.Conversation.Participant2Id != userId))
+        {
+            return NotFound(new { success = false, code = "NOT_FOUND", error = "Message not found" });
+        }
+
+        var key = $"{MessageReactionKeyPrefix}{messageId}.{userId}.{Hex(emoji)}";
+        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        var added = false;
+        if (existing == null)
+        {
+            added = true;
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = key,
+                Value = JsonSerializer.Serialize(new { message_id = messageId, user_id = userId, emoji }),
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            _db.TenantConfigs.Remove(existing);
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                action = added ? "added" : "removed",
+                emoji,
+                message_id = messageId
+            }
+        });
+    }
 
     [HttpPost("messages/{messageId:int}/translate")]
     public async Task<IActionResult> TranslateMessage(int messageId, [FromBody] JsonElement body)
@@ -1092,6 +1149,7 @@ public class MemberParityController : ControllerBase
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
     private static string Required(string? value, string name) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException($"{name} is required") : value;
     private static int StableId(JsonElement body) => Math.Abs(HashCode.Combine(body.GetRawText()));
+    private static string Hex(string value) => Convert.ToHexString(Encoding.UTF8.GetBytes(value));
 
     private sealed class LocalAdCampaignRecord
     {

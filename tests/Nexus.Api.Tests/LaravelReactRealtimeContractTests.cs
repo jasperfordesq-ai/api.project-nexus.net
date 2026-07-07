@@ -180,6 +180,40 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
         data.GetProperty("source_type").GetString().Should().Be("body");
     }
 
+    [Fact]
+    public async Task MessageReaction_TogglesLaravelReactAction()
+    {
+        await AuthenticateAsMemberAsync();
+        var sendResponse = await Client.PostAsJsonAsync("/api/v2/messages", new
+        {
+            recipient_id = TestData.AdminUser.Id,
+            body = "React to this message"
+        });
+        sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var sentMessage = await ReadDataAsync(sendResponse);
+        var messageId = sentMessage.GetProperty("id").GetInt32();
+
+        var addedResponse = await Client.PostAsJsonAsync($"/api/v2/messages/{messageId}/reactions", new
+        {
+            emoji = "👍"
+        });
+
+        addedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var added = await ReadDataAsync(addedResponse);
+        added.GetProperty("action").GetString().Should().Be("added");
+        added.GetProperty("emoji").GetString().Should().Be("👍");
+        added.GetProperty("message_id").GetInt32().Should().Be(messageId);
+
+        var removedResponse = await Client.PostAsJsonAsync($"/api/v2/messages/{messageId}/reactions", new
+        {
+            emoji = "👍"
+        });
+
+        removedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var removed = await ReadDataAsync(removedResponse);
+        removed.GetProperty("action").GetString().Should().Be("removed");
+    }
+
     private static async Task<JsonElement> ReadDataAsync(HttpResponseMessage response)
     {
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
