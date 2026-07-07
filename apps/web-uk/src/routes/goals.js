@@ -202,6 +202,23 @@ function normalizeTemplate(item) {
   };
 }
 
+function ownerNameFrom(raw) {
+  const user = raw && typeof raw.user === 'object' && raw.user !== null ? raw.user : {};
+  const explicit = trimmed(raw.owner_name || raw.ownerName || raw.user_name || raw.userName || raw.owner);
+  const joined = trimmed(`${trimmed(user.first_name || user.firstName)} ${trimmed(user.last_name || user.lastName)}`);
+  const name = explicit || joined || trimmed(user.name);
+  return name || 'A member';
+}
+
+function normalizeDiscoverGoal(item) {
+  const goal = normalizeGoal(item);
+  const raw = item && typeof item === 'object' ? item : {};
+  return {
+    ...goal,
+    ownerName: ownerNameFrom(raw)
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     'goal-created': 'Goal created',
@@ -298,6 +315,31 @@ router.get('/templates', asyncRoute(async (req, res) => {
     meta,
     nextHref: meta.hasMore && meta.cursor ? `/goals/templates?${nextParams.toString()}` : '',
     errorMessage: status === 'goal-failed' ? 'Something went wrong. Please try again.' : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/discover', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const params = new URLSearchParams({ per_page: '30' });
+  if (trimmed(req.query.cursor)) params.set('cursor', trimmed(req.query.cursor));
+
+  const result = await callGoal(token, 'GET', `/discover?${params.toString()}`);
+  const goals = collectionFrom(result).map(normalizeDiscoverGoal).filter((goal) => goal.id !== null);
+  const meta = metaFrom(result);
+  const status = trimmed(req.query.status);
+  const nextParams = new URLSearchParams();
+  if (meta.cursor) nextParams.set('cursor', meta.cursor);
+
+  return res.render('goals/discover', {
+    title: 'Discover goals',
+    activeNav: 'explore',
+    goals,
+    meta,
+    nextHref: meta.hasMore && meta.cursor ? `/goals/discover?${nextParams.toString()}` : '',
+    successMessage: status === 'buddy-joined' ? 'You are now a buddy for this goal.' : '',
+    errorMessage: status === 'buddy-failed' ? 'We could not add you as a buddy. The goal may already have one.' : ''
   });
 }, { redirectOn401: loginRedirect() }));
 

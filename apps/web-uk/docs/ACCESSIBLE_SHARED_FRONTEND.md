@@ -394,9 +394,13 @@ create-goal form. `/goals/templates` now redirects unsigned visitors to
 `/login?status=auth-required`, calls Laravel `/api/v2/goals/templates/categories`
 and `/api/v2/goals/templates`, and renders the Blade-style category filter,
 template cards, target hints, title override form, public checkbox, status
-error, and load-more link. Existing goal POST aliases continue to call Laravel
-v2 goals, comment, and like APIs. This remains partial: detail, edit, buddying,
-discover, insights, check-in, reminder, history, and social GET pages, exact
+error, and load-more link. `/goals/discover` redirects unsigned visitors to
+`/login?status=auth-required`, calls Laravel `/api/v2/goals/discover`, and
+renders the Blade-style public buddy-goal list, owner names, progress display,
+buddy status errors, empty state, and no-JS buddy form. Existing goal POST
+aliases continue to call Laravel v2 goals, comment, and like APIs. This remains
+partial: detail, edit, buddying, insights, check-in, reminder, history, and
+social GET pages, exact
 tenant captions, goals feature-gate behavior, localization, runtime persistence,
 and ASP.NET backend compatibility are not certified.
 
