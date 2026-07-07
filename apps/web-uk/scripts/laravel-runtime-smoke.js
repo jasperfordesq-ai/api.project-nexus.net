@@ -133,6 +133,7 @@ const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/podcasts/1/episodes/1',
   '/resources/1/download',
   '/users/1/collections',
+  '/polls/1/export',
   '/marketplace/slots/1/edit',
   '/me/collections/1',
   '/search/saved/1/delete',
