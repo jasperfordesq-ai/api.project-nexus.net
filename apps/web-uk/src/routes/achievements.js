@@ -220,6 +220,33 @@ function normalizeShop(result) {
   };
 }
 
+function normalizeCollections(result) {
+  return nestedData(result, 'collections').map((collection) => {
+    const object = objectFrom(collection);
+    return {
+      name: textFrom(object.name),
+      description: textFrom(object.description),
+      earnedCount: intFrom(object.earned_count),
+      totalCount: intFrom(object.total_count),
+      progressPercent: percentFrom(object.progress_percent),
+      rewardXp: intFrom(object.bonus_xp ?? object.reward_xp),
+      rewardLabel: `${formatInteger(object.bonus_xp ?? object.reward_xp)} XP`,
+      completed: boolFrom(object.is_completed ?? object.completed),
+      bonusClaimed: boolFrom(object.bonus_claimed),
+      badges: nestedData({ data: object.badges || [] }, 'badges').map((badge) => {
+        const badgeObject = objectFrom(badge);
+        const key = textFrom(badgeObject.key ?? badgeObject.badge_key);
+        return {
+          key,
+          name: textFrom(badgeObject.name),
+          earned: boolFrom(badgeObject.earned),
+          href: key ? `/achievements/badges/${encodeURIComponent(key)}` : ''
+        };
+      }).filter((badge) => badge.name)
+    };
+  }).filter((collection) => collection.name);
+}
+
 async function safeGamificationCall(token, pathValue, fallback) {
   try {
     return await callGamificationApi(token, 'GET', pathValue);
@@ -330,6 +357,27 @@ router.get('/shop', asyncRoute(async (req, res) => {
         ? 'We could not complete that purchase. You may not have enough XP, or the item may be out of stock.'
         : ''
     }
+  });
+}));
+
+router.get('/collections', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let collectionsPayload;
+  try {
+    collectionsPayload = await callGamificationApi(token, 'GET', '/collections');
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    collectionsPayload = { data: [] };
+  }
+
+  return res.render('achievements/collections', {
+    title: 'Badge collections',
+    activeNav: 'achievements',
+    collections: normalizeCollections(collectionsPayload)
   });
 }));
 

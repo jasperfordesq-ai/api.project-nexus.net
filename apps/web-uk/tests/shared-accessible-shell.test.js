@@ -1528,6 +1528,89 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style badge collections page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/collections') {
+        return {
+          data: [
+            {
+              name: 'Community starter',
+              description: 'Earn the first badges for joining in.',
+              earned_count: 2,
+              total_count: 3,
+              progress_percent: 67,
+              bonus_xp: 100,
+              is_completed: false,
+              bonus_claimed: false,
+              badges: [
+                {
+                  key: 'welcome',
+                  name: 'Warm welcome',
+                  earned: true
+                },
+                {
+                  badge_key: 'connector',
+                  name: 'Connector',
+                  earned: false
+                }
+              ]
+            },
+            {
+              name: 'Helping hands',
+              description: 'Complete your first practical-help collection.',
+              earned_count: 4,
+              total_count: 4,
+              progress_percent: 100,
+              reward_xp: 250,
+              is_completed: true,
+              bonus_claimed: true,
+              badges: []
+            }
+          ]
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/achievements/collections');
+    const signed = await request(app)
+      .get('/achievements/collections')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/collections');
+    expect(signed.text).toContain('Back to achievements');
+    expect(signed.text).toContain('Achievements at');
+    expect(signed.text).toContain('Badge collections');
+    expect(signed.text).toContain('Complete a collection by earning every badge in it to unlock a bonus XP reward.');
+    expect(signed.text).toContain('Achievements and rewards');
+    expect(signed.text).toContain('/achievements/shop');
+    expect(signed.text).toContain('href="/achievements/collections" aria-current="page"');
+    expect(signed.text).toContain('Community starter');
+    expect(signed.text).toContain('Earn the first badges for joining in.');
+    expect(signed.text).toContain('2 of 3 badges');
+    expect(signed.text).toContain('Reward: 100 XP');
+    expect(signed.text).toContain('67%');
+    expect(signed.text).toContain('/achievements/badges/welcome');
+    expect(signed.text).toContain('Warm welcome');
+    expect(signed.text).toContain('Earned');
+    expect(signed.text).toContain('/achievements/badges/connector');
+    expect(signed.text).toContain('Connector');
+    expect(signed.text).toContain('Locked');
+    expect(signed.text).toContain('Helping hands');
+    expect(signed.text).toContain('Completed');
+    expect(signed.text).toContain('Bonus claimed');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

@@ -154,10 +154,13 @@ badge, progress, daily reward, and challenge endpoints, and renders the
 Blade-style achievements summary, daily reward, challenge, earned badge, and
 badge-progress sections. `/achievements/shop` renders the Laravel-style XP shop
 from `/api/v2/gamification/shop`, including balance, purchase warnings, item
-cards, status banners, and no-JS purchase forms. Achievement POST aliases are
-wired to Laravel `/api/v2/gamification`: daily reward, challenge claim, shop
-purchase, and showcase update preserve the Laravel accessible status redirects
-for `/achievements`, `/achievements/shop`, and `/achievements/showcase`.
+cards, status banners, and no-JS purchase forms. `/achievements/collections`
+renders Laravel badge collections from `/api/v2/gamification/collections`,
+including progress, reward XP, completed/bonus states, and earned/locked badge
+links. Achievement POST aliases are wired to Laravel `/api/v2/gamification`:
+daily reward, challenge claim, shop purchase, and showcase update preserve the
+Laravel accessible status redirects for `/achievements`, `/achievements/shop`,
+and `/achievements/showcase`.
 Member profile POST aliases are wired to Laravel v2 APIs for connection
 transitions, skill endorsements, block/unblock, profile reviews, and direct
 wallet transfers while preserving Laravel profile status redirects.
