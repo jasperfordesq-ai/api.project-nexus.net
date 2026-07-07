@@ -315,6 +315,58 @@ public class MarketplaceControllerTests : IntegrationTestBase
         completedOffer.GetProperty("status").GetString().Should().Be("completed");
     }
 
+    [Fact]
+    public async Task MarketplaceOfferV2_AcceptsLaravelReactPayloadAndReturnsSuccessEnvelope()
+    {
+        var listingId = await CreateMarketplaceListingAsync();
+        await AuthenticateAsMemberAsync();
+
+        var response = await Client.PostAsJsonAsync($"/api/v2/marketplace/listings/{listingId}/offers", new
+        {
+            amount = 42.50m,
+            currency = "EUR",
+            message = "I can collect this week"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = json.GetProperty("data");
+        data.GetProperty("marketplace_listing_id").GetInt32().Should().Be(listingId);
+        data.GetProperty("buyer_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        data.GetProperty("seller_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        data.GetProperty("amount").GetDecimal().Should().Be(42.50m);
+        data.GetProperty("currency").GetString().Should().Be("EUR");
+        data.GetProperty("message").GetString().Should().Be("I can collect this week");
+        data.GetProperty("status").GetString().Should().Be("pending");
+        data.GetProperty("counter_amount").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("counter_message").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("created_at").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    private async Task<int> CreateMarketplaceListingAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var listing = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            Title = "Offer-ready marketplace listing",
+            Description = "A listing that accepts buyer offers",
+            Price = 50m,
+            PriceCurrency = "EUR",
+            Status = "active",
+            MarketplaceStatus = "available",
+            ModerationStatus = "approved"
+        };
+        db.MarketplaceListings.Add(listing);
+        await db.SaveChangesAsync();
+
+        return listing.Id;
+    }
+
     private async Task<int> CreateCommunityDeliveryOrderAsync()
     {
         using var scope = Factory.Services.CreateScope();

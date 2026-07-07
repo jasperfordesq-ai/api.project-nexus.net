@@ -319,18 +319,20 @@ public class MarketplaceService
             .ToListAsync();
     }
 
-    public async Task<MarketplaceOffer?> CreateOfferAsync(int listingId, int buyerUserId, decimal? amount, decimal? timeCreditAmount, string? message)
+    public async Task<MarketplaceOffer?> CreateOfferAsync(int listingId, int buyerUserId, decimal? amount, decimal? timeCreditAmount, string? currency, string? message)
     {
         var listing = await _db.MarketplaceListings.FirstOrDefaultAsync(l => l.Id == listingId);
         if (listing == null || listing.UserId == buyerUserId) return null;
 
         var offer = new MarketplaceOffer
         {
+            TenantId = listing.TenantId,
             MarketplaceListingId = listingId,
             BuyerUserId = buyerUserId,
             SellerUserId = listing.UserId,
             Amount = amount,
             TimeCreditAmount = timeCreditAmount,
+            Currency = string.IsNullOrWhiteSpace(currency) ? listing.PriceCurrency : currency,
             Message = message ?? string.Empty
         };
         _db.MarketplaceOffers.Add(offer);

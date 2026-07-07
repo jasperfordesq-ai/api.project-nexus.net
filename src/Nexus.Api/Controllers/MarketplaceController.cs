@@ -249,8 +249,10 @@ public class MarketplaceController : ControllerBase
     [Authorize]
     public async Task<IActionResult> CreateOffer(int id, [FromBody] OfferRequest request)
     {
-        var offer = await _marketplace.CreateOfferAsync(id, RequireUserId(), request.Amount, request.TimeCreditAmount, request.Message);
-        return offer == null ? BadRequest(new { error = "Offer could not be created" }) : Created($"/api/marketplace/offers/{offer.Id}", new { data = offer });
+        var offer = await _marketplace.CreateOfferAsync(id, RequireUserId(), request.Amount, request.TimeCreditAmount, request.Currency, request.Message);
+        return offer == null
+            ? BadRequest(new { success = false, code = "VALIDATION_ERROR", error = "Offer could not be created" })
+            : Created($"/api/marketplace/offers/{offer.Id}", new { success = true, data = MapMarketplaceOffer(offer) });
     }
 
     [HttpGet("listings/{id:int}/offers")]
@@ -1035,6 +1037,23 @@ public class MarketplaceController : ControllerBase
         return offer == null ? NotFound(new { error = "Offer not found" }) : Ok(new { data = offer });
     }
 
+    private static object MapMarketplaceOffer(MarketplaceOffer offer) => new
+    {
+        id = offer.Id,
+        marketplace_listing_id = offer.MarketplaceListingId,
+        buyer_id = offer.BuyerUserId,
+        seller_id = offer.SellerUserId,
+        amount = offer.Amount,
+        time_credit_amount = offer.TimeCreditAmount,
+        currency = offer.Currency,
+        message = offer.Message,
+        status = offer.Status,
+        counter_amount = offer.CounterAmount,
+        counter_message = offer.CounterMessage,
+        created_at = offer.CreatedAt,
+        updated_at = offer.UpdatedAt
+    };
+
     private async Task<IActionResult> OrderStatus(int id, string status, string? trackingNumber = null)
     {
         var order = await _marketplace.SetOrderStatusAsync(id, RequireUserId(), User.IsAdmin(), status, trackingNumber);
@@ -1166,7 +1185,11 @@ public record ImageRequest(string? Url, string? AltText);
 public record ReorderImagesRequest(int[]? ImageIds);
 public record VideoRequest(string? Url);
 public record GenerateDescriptionRequest(string? Title, string? Keywords);
-public record OfferRequest(decimal? Amount, decimal? TimeCreditAmount, string? Message);
+public record OfferRequest(
+    decimal? Amount,
+    [property: JsonPropertyName("time_credit_amount")] decimal? TimeCreditAmount,
+    string? Currency,
+    string? Message);
 public record SellerProfileRequest(string? DisplayName, string? Bio, string? SellerType);
 public record CreateOrderRequest(int ListingId, int Quantity, string? DeliveryMethod, string? ShippingAddress);
 public record ShipOrderRequest(string? TrackingNumber);
