@@ -1097,15 +1097,54 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/goals")]
+    [HttpGet("api/v2/admin/goals")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> AdminGoals()
+    public async Task<IActionResult> AdminGoals(
+        [FromQuery] string? search = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 50)
     {
-        var goals = await _db.Goals
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 200);
+
+        var query = _db.Goals
+            .Include(g => g.User)
+            .Include(g => g.Milestones)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLowerInvariant();
+            query = query.Where(g =>
+                g.Title.ToLower().Contains(normalizedSearch) ||
+                (g.Description != null && g.Description.ToLower().Contains(normalizedSearch)) ||
+                (g.User != null &&
+                    ((g.User.FirstName + " " + g.User.LastName).ToLower().Contains(normalizedSearch) ||
+                     g.User.Email.ToLower().Contains(normalizedSearch))));
+        }
+
+        var total = await query.CountAsync();
+        var goalRows = await query
             .OrderByDescending(g => g.CreatedAt)
-            .Take(100)
-            .Select(g => new { id = g.Id, title = g.Title, status = g.Status, goal_type = g.GoalType, created_at = g.CreatedAt })
+            .Skip((page - 1) * limit)
+            .Take(limit)
             .ToListAsync();
-        return Ok(new { data = goals, goals });
+        var goals = goalRows.Select(MapAdminGoal).ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data = goals,
+            goals,
+            meta = new
+            {
+                total,
+                current_page = page,
+                per_page = limit,
+                total_pages = total > 0 ? (int)Math.Ceiling(total / (double)limit) : 0
+            }
+        });
     }
 
     [HttpGet("api/admin/ideation")]
@@ -1116,28 +1155,113 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/polls")]
+    [HttpGet("api/v2/admin/polls")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> AdminPolls()
+    public async Task<IActionResult> AdminPolls(
+        [FromQuery] string? search = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 50)
     {
-        var polls = await _db.Polls
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 200);
+
+        var query = _db.Polls
+            .Include(p => p.Options)
+            .Include(p => p.Votes)
+            .Include(p => p.CreatedBy)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLowerInvariant();
+            query = query.Where(p =>
+                p.Title.ToLower().Contains(normalizedSearch) ||
+                (p.Description != null && p.Description.ToLower().Contains(normalizedSearch)));
+        }
+
+        var total = await query.CountAsync();
+        var pollRows = await query
             .OrderByDescending(p => p.CreatedAt)
-            .Take(100)
-            .Select(p => new { id = p.Id, title = p.Title, status = p.Status, poll_type = p.PollType, created_at = p.CreatedAt })
+            .Skip((page - 1) * limit)
+            .Take(limit)
             .ToListAsync();
-        return Ok(new { data = polls, polls });
+        var polls = pollRows.Select(MapAdminPoll).ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data = polls,
+            polls,
+            meta = new
+            {
+                total,
+                current_page = page,
+                per_page = limit,
+                last_page = (int)Math.Ceiling(total / (double)limit)
+            }
+        });
     }
 
     [HttpGet("api/admin/resources")]
+    [HttpGet("api/v2/admin/resources")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> AdminResources()
+    public async Task<IActionResult> AdminResources(
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = "all",
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 50)
     {
-        var resources = await _db.Resources
-            .OrderBy(r => r.SortOrder)
-            .ThenBy(r => r.Title)
-            .Take(100)
-            .Select(r => new { id = r.Id, title = r.Title, resource_type = r.ResourceType, is_published = r.IsPublished, created_at = r.CreatedAt })
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 200);
+        var normalizedStatus = string.IsNullOrWhiteSpace(status) ? "all" : status.Trim().ToLowerInvariant();
+
+        var query = _db.KnowledgeArticles
+            .Include(a => a.CreatedBy)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (normalizedStatus == "published")
+        {
+            query = query.Where(a => a.IsPublished);
+        }
+        else if (normalizedStatus == "draft")
+        {
+            query = query.Where(a => !a.IsPublished);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLowerInvariant();
+            query = query.Where(a =>
+                a.Title.ToLower().Contains(normalizedSearch) ||
+                a.Content.ToLower().Contains(normalizedSearch));
+        }
+
+        var total = await query.CountAsync();
+        var articleRows = await query
+            .OrderByDescending(a => a.UpdatedAt ?? a.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
             .ToListAsync();
-        return Ok(new { data = resources, resources });
+        var resources = articleRows.Select(MapAdminResourceArticle).ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                items = resources,
+                meta = new
+                {
+                    page,
+                    per_page = limit,
+                    total,
+                    total_pages = total > 0 ? (int)Math.Ceiling(total / (double)limit) : 0
+                }
+            },
+            resources
+        });
     }
 
     [HttpGet("api/auth/registration-info")]
@@ -2700,6 +2824,108 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return Ok(new { success = true });
     }
 
+    [HttpGet("api/v2/admin/polls/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminPollDetail(int id)
+    {
+        var poll = await _db.Polls
+            .Include(p => p.Options)
+            .Include(p => p.Votes)
+            .Include(p => p.CreatedBy)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        return poll == null
+            ? NotFound(new { success = false, error = "NOT_FOUND", message = "Poll not found." })
+            : Ok(new { success = true, data = MapAdminPoll(poll) });
+    }
+
+    [HttpDelete("api/v2/admin/polls/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> DeleteAdminPoll(int id)
+    {
+        var poll = await _db.Polls
+            .Include(p => p.Options)
+            .Include(p => p.Votes)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (poll == null)
+        {
+            return NotFound(new { success = false, error = "NOT_FOUND", message = "Poll not found." });
+        }
+
+        _db.PollVotes.RemoveRange(poll.Votes);
+        _db.PollOptions.RemoveRange(poll.Options);
+        _db.Polls.Remove(poll);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { deleted = true, id } });
+    }
+
+    [HttpGet("api/v2/admin/resources/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminResourceDetail(int id)
+    {
+        var article = await _db.KnowledgeArticles
+            .Include(a => a.CreatedBy)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == id);
+
+        return article == null
+            ? NotFound(new { success = false, error = "NOT_FOUND", message = "Article not found." })
+            : Ok(new { success = true, data = MapAdminResourceArticleDetail(article) });
+    }
+
+    [HttpDelete("api/v2/admin/resources/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> DeleteAdminResource(int id)
+    {
+        var article = await _db.KnowledgeArticles.FirstOrDefaultAsync(a => a.Id == id);
+        if (article == null)
+        {
+            return NotFound(new { success = false, error = "NOT_FOUND", message = "Article not found." });
+        }
+
+        _db.KnowledgeArticles.Remove(article);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { deleted = true, id } });
+    }
+
+    [HttpGet("api/v2/admin/goals/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminGoalDetail(int id)
+    {
+        var goal = await _db.Goals
+            .Include(g => g.User)
+            .Include(g => g.Milestones)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g => g.Id == id);
+
+        return goal == null
+            ? NotFound(new { success = false, error = "NOT_FOUND", message = "Goal not found." })
+            : Ok(new { success = true, data = MapAdminGoal(goal) });
+    }
+
+    [HttpDelete("api/v2/admin/goals/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> DeleteAdminGoal(int id)
+    {
+        var goal = await _db.Goals
+            .Include(g => g.Milestones)
+            .FirstOrDefaultAsync(g => g.Id == id);
+        if (goal == null)
+        {
+            return NotFound(new { success = false, error = "NOT_FOUND", message = "Goal not found." });
+        }
+
+        _db.GoalMilestones.RemoveRange(goal.Milestones);
+        _db.Goals.Remove(goal);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { deleted = true, id } });
+    }
+
     [HttpGet("api/admin/goals/{id:int}")]
     [HttpPut("api/admin/goals/{id:int}")]
     [HttpDelete("api/admin/goals/{id:int}")]
@@ -2773,6 +2999,149 @@ public class ReactFrontendCompatibilityController : ControllerBase
         ends_at = challenge.EndsAt,
         created_at = challenge.CreatedAt
     };
+
+    private static object MapAdminPoll(Poll poll)
+    {
+        var totalVotes = poll.Votes?.Count ?? 0;
+        var closesAt = poll.ClosesAt;
+        var creatorName = poll.CreatedBy == null
+            ? string.Empty
+            : string.Join(" ", new[] { poll.CreatedBy.FirstName, poll.CreatedBy.LastName }
+                .Where(part => !string.IsNullOrWhiteSpace(part)));
+
+        return new
+        {
+            id = poll.Id,
+            title = poll.Title,
+            question = poll.Title,
+            description = poll.Description,
+            poll_type = poll.PollType,
+            status = string.Equals(poll.Status, "closed", StringComparison.OrdinalIgnoreCase) ? "ended" : poll.Status,
+            is_active = !string.Equals(poll.Status, "closed", StringComparison.OrdinalIgnoreCase),
+            end_date = closesAt,
+            closes_at = closesAt,
+            options = poll.Options
+                .OrderBy(o => o.SortOrder)
+                .ThenBy(o => o.Id)
+                .Select(o =>
+                {
+                    var voteCount = poll.Votes?.Count(v => v.OptionId == o.Id) ?? 0;
+                    return new
+                    {
+                        id = o.Id,
+                        text = o.Text,
+                        vote_count = voteCount,
+                        percentage = totalVotes == 0 ? 0 : Math.Round(voteCount * 100m / totalVotes, 2)
+                    };
+                })
+                .ToList(),
+            total_votes = totalVotes,
+            user = poll.CreatedBy == null
+                ? null
+                : new
+                {
+                    id = poll.CreatedBy.Id,
+                    first_name = poll.CreatedBy.FirstName,
+                    last_name = poll.CreatedBy.LastName,
+                    name = string.IsNullOrWhiteSpace(creatorName) ? poll.CreatedBy.Email : creatorName
+                },
+            created_at = poll.CreatedAt,
+            updated_at = poll.UpdatedAt
+        };
+    }
+
+    private static object MapAdminResourceArticle(KnowledgeArticle article)
+    {
+        var updatedAt = article.UpdatedAt ?? article.CreatedAt;
+        return new
+        {
+            id = article.Id,
+            title = article.Title,
+            category = article.Category ?? string.Empty,
+            author_name = DisplayName(article.CreatedBy, "System"),
+            views = article.ViewCount,
+            helpful_votes = 0,
+            status = article.IsPublished ? "published" : "draft",
+            updated_at = updatedAt
+        };
+    }
+
+    private static object MapAdminResourceArticleDetail(KnowledgeArticle article)
+    {
+        var updatedAt = article.UpdatedAt ?? article.CreatedAt;
+        return new
+        {
+            id = article.Id,
+            title = article.Title,
+            slug = article.Slug,
+            content = article.Content,
+            category = article.Category ?? string.Empty,
+            tags = string.IsNullOrWhiteSpace(article.Tags)
+                ? Array.Empty<string>()
+                : article.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            content_type = "article",
+            is_published = article.IsPublished,
+            views_count = article.ViewCount,
+            helpful_yes = 0,
+            author_name = DisplayName(article.CreatedBy, "System"),
+            created_at = article.CreatedAt,
+            updated_at = updatedAt,
+            attachments = Array.Empty<object>()
+        };
+    }
+
+    private static object MapAdminGoal(Goal goal) => new
+    {
+        id = goal.Id,
+        title = goal.Title,
+        description = goal.Description,
+        user_id = goal.UserId,
+        mentor_id = (int?)null,
+        buddy_id = (int?)null,
+        goal_type = goal.GoalType,
+        target_value = goal.TargetValue ?? 0m,
+        current_value = goal.CurrentValue,
+        category = goal.Category,
+        status = goal.Status,
+        target_date = goal.TargetDate,
+        completed_at = goal.CompletedAt,
+        user = goal.User == null
+            ? null
+            : new
+            {
+                id = goal.User.Id,
+                first_name = goal.User.FirstName,
+                last_name = goal.User.LastName,
+                name = DisplayName(goal.User, "Member")
+            },
+        milestones = goal.Milestones
+            .OrderBy(m => m.SortOrder)
+            .ThenBy(m => m.Id)
+            .Select(m => new
+            {
+                id = m.Id,
+                title = m.Title,
+                is_completed = m.IsCompleted,
+                completed_at = m.CompletedAt,
+                sort_order = m.SortOrder,
+                created_at = m.CreatedAt
+            })
+            .ToList(),
+        created_at = goal.CreatedAt,
+        updated_at = goal.UpdatedAt
+    };
+
+    private static string DisplayName(User? user, string fallback)
+    {
+        if (user == null)
+        {
+            return fallback;
+        }
+
+        var name = string.Join(" ", new[] { user.FirstName, user.LastName }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+        return string.IsNullOrWhiteSpace(name) ? user.Email : name;
+    }
 
     private static object ProjectIdea(Idea idea) => new
     {

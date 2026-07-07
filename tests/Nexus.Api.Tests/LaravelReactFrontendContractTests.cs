@@ -1533,6 +1533,142 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         config.GetProperty("podcasts.media_storage_driver").GetString().Should().Be("cloud");
     }
 
+    [Fact]
+    public async Task AdminPollsV2_UsesLaravelReactListDetailAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var pollId = await SeedAdminPollAsync("Laravel React admin poll");
+
+        var list = await Client.GetAsync("/api/v2/admin/polls?search=Laravel%20React&page=1&limit=50");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        listJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        listJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(50);
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == pollId);
+        listed.GetProperty("question").GetString().Should().Be("Laravel React admin poll");
+        listed.GetProperty("options").GetArrayLength().Should().Be(2);
+        listed.GetProperty("total_votes").GetInt32().Should().Be(1);
+        listed.GetProperty("user").GetProperty("name").GetString().Should().Be("Member User");
+
+        var detail = await Client.GetAsync($"/api/v2/admin/polls/{pollId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(pollId);
+        detailData.GetProperty("question").GetString().Should().Be("Laravel React admin poll");
+        detailData.GetProperty("options").GetArrayLength().Should().Be(2);
+        detailData.GetProperty("total_votes").GetInt32().Should().Be(1);
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/polls/{pollId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(pollId);
+    }
+
+    [Fact]
+    public async Task AdminResourcesV2_UsesLaravelReactListDetailAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var articleId = await SeedAdminResourceArticleAsync("Laravel React resource article");
+
+        var list = await Client.GetAsync("/api/v2/admin/resources?search=Laravel%20React&status=published&page=1&limit=50");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var payload = listJson.GetProperty("data");
+        payload.GetProperty("meta").GetProperty("page").GetInt32().Should().Be(1);
+        payload.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(50);
+        payload.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        var listed = payload.GetProperty("items").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == articleId);
+        listed.GetProperty("title").GetString().Should().Be("Laravel React resource article");
+        listed.GetProperty("category").GetString().Should().Be("Getting Started");
+        listed.GetProperty("author_name").GetString().Should().Be("Admin User");
+        listed.GetProperty("views").GetInt32().Should().Be(42);
+        listed.GetProperty("helpful_votes").GetInt32().Should().Be(0);
+        listed.GetProperty("status").GetString().Should().Be("published");
+        listed.GetProperty("updated_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var detail = await Client.GetAsync($"/api/v2/admin/resources/{articleId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(articleId);
+        detailData.GetProperty("title").GetString().Should().Be("Laravel React resource article");
+        detailData.GetProperty("slug").GetString().Should().Be($"resource-{articleId}");
+        detailData.GetProperty("content").GetString().Should().Contain("Laravel React resource body");
+        detailData.GetProperty("attachments").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/resources/{articleId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(articleId);
+    }
+
+    [Fact]
+    public async Task AdminGoalsV2_UsesLaravelReactListDetailAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var goalId = await SeedAdminGoalAsync("Laravel React admin goal");
+
+        var list = await Client.GetAsync("/api/v2/admin/goals?search=Laravel%20React&page=1&limit=50");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        listJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        listJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(50);
+        listJson.GetProperty("meta").GetProperty("total_pages").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == goalId);
+        listed.GetProperty("title").GetString().Should().Be("Laravel React admin goal");
+        listed.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        listed.GetProperty("target_value").GetDecimal().Should().Be(10m);
+        listed.GetProperty("current_value").GetDecimal().Should().Be(4m);
+        listed.GetProperty("status").GetString().Should().Be("active");
+        listed.GetProperty("mentor_id").ValueKind.Should().Be(JsonValueKind.Null);
+        listed.GetProperty("buddy_id").ValueKind.Should().Be(JsonValueKind.Null);
+        listed.GetProperty("user").GetProperty("name").GetString().Should().Be("Member User");
+
+        var detail = await Client.GetAsync($"/api/v2/admin/goals/{goalId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(goalId);
+        detailData.GetProperty("title").GetString().Should().Be("Laravel React admin goal");
+        detailData.GetProperty("description").GetString().Should().Contain("Laravel React goal body");
+        detailData.GetProperty("milestones").GetArrayLength().Should().Be(1);
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/goals/{goalId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(goalId);
+    }
+
     private async Task SeedRegionalAnalyticsSubscriptionAsync(string token)
     {
         using var scope = Factory.Services.CreateScope();
@@ -1562,6 +1698,121 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             FileUrl = "/storage/regional-analytics/report.pdf"
         });
         await db.SaveChangesAsync();
+    }
+
+    private async Task<int> SeedAdminPollAsync(string question)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var poll = new Poll
+        {
+            TenantId = TestData.Tenant1.Id,
+            CreatedById = TestData.MemberUser.Id,
+            Title = question,
+            Description = "Poll seeded for Laravel React admin contract tests.",
+            PollType = "single",
+            Status = "active",
+            ShowResultsBeforeClose = true,
+            CreatedAt = now.AddMinutes(-10)
+        };
+        db.Polls.Add(poll);
+        await db.SaveChangesAsync();
+
+        var yes = new PollOption
+        {
+            TenantId = TestData.Tenant1.Id,
+            PollId = poll.Id,
+            Text = "Yes",
+            SortOrder = 1,
+            CreatedAt = now.AddMinutes(-9)
+        };
+        var no = new PollOption
+        {
+            TenantId = TestData.Tenant1.Id,
+            PollId = poll.Id,
+            Text = "No",
+            SortOrder = 2,
+            CreatedAt = now.AddMinutes(-9)
+        };
+        db.PollOptions.AddRange(yes, no);
+        await db.SaveChangesAsync();
+
+        db.PollVotes.Add(new PollVote
+        {
+            TenantId = TestData.Tenant1.Id,
+            PollId = poll.Id,
+            OptionId = yes.Id,
+            UserId = TestData.AdminUser.Id,
+            CreatedAt = now.AddMinutes(-8)
+        });
+        await db.SaveChangesAsync();
+
+        return poll.Id;
+    }
+
+    private async Task<int> SeedAdminResourceArticleAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var article = new KnowledgeArticle
+        {
+            TenantId = TestData.Tenant1.Id,
+            CreatedById = TestData.AdminUser.Id,
+            Title = title,
+            Slug = $"resource-{Guid.NewGuid():N}",
+            Content = "Laravel React resource body for the admin resource table.",
+            Category = "Getting Started",
+            Tags = "contract,resources",
+            IsPublished = true,
+            SortOrder = 1,
+            ViewCount = 42,
+            CreatedAt = now.AddDays(-2),
+            UpdatedAt = now.AddHours(-1)
+        };
+        db.KnowledgeArticles.Add(article);
+        await db.SaveChangesAsync();
+        article.Slug = $"resource-{article.Id}";
+        await db.SaveChangesAsync();
+        return article.Id;
+    }
+
+    private async Task<int> SeedAdminGoalAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var goal = new Goal
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.MemberUser.Id,
+            Title = title,
+            Description = "Laravel React goal body for the admin goals table.",
+            GoalType = "hours",
+            TargetValue = 10m,
+            CurrentValue = 4m,
+            Category = "community",
+            Status = "active",
+            TargetDate = now.AddDays(30),
+            CreatedAt = now.AddDays(-1),
+            UpdatedAt = now.AddHours(-2)
+        };
+        db.Goals.Add(goal);
+        await db.SaveChangesAsync();
+
+        db.GoalMilestones.Add(new GoalMilestone
+        {
+            TenantId = TestData.Tenant1.Id,
+            GoalId = goal.Id,
+            Title = "First checkpoint",
+            IsCompleted = false,
+            SortOrder = 1,
+            CreatedAt = now.AddHours(-20)
+        });
+        await db.SaveChangesAsync();
+
+        return goal.Id;
     }
 
     private async Task<(string ClientId, string ClientSecret)> RegisterApiPartnerAsync(string scopes)
