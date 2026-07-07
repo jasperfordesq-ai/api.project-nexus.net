@@ -135,17 +135,21 @@ organisation detail/jobs/apply, job detail, group detail/depth, and resource
 comments. This specifically verifies Laravel v2 event/group detail payload
 unwrapping for `/events/6` and `/groups/484`; it does not certify ASP.NET mode.
 The same 18 stable real-fixture pages are now included in the default module
-page sweep. The default scope also covers `/groups/484/discussions/new` and
-`/jobs/90764/qualified` as signed 2xx pages, owner-only job checks for
-`/jobs/90764/edit`, `/jobs/90764/analytics`, `/jobs/90764/pipeline`, and
-`/jobs/90764/applications` as signed `403` responses, plus signed redirects
-from `/events/6/recurring-edit` to `/events/6/edit` and `/groups/484/edit` to
-`/groups/484`. A targeted live run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5330`, started with `TENANT_ID=2`, passed on
+page sweep. The default scope also covers `/groups/484/discussions/new`,
+`/jobs/90764/qualified`, `/members/77/insights`, `/listings/42/report`,
+`/listings/42/exchange-request`, `/listings/42/comments`,
+`/feed/hashtag/timebank`, and `/feed/item/listing/42` as signed 2xx pages;
+owner-only job/listing checks for `/jobs/90764/edit`,
+`/jobs/90764/analytics`, `/jobs/90764/pipeline`, `/jobs/90764/applications`,
+and `/listings/42/analytics` as signed `403` responses; plus signed redirects
+from `/events/6/recurring-edit` to `/events/6/edit`, `/groups/484/edit` to
+`/groups/484`, and `/courses/42/certificate` to
+`/courses/42?status=certificate-failed`. A targeted live run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5333`, started with `TENANT_ID=2`, passed on
 2026-07-07: `14/14` checks, `0` failures. A full default Laravel-backed run
-against `WEB_UK_BASE_URL=http://127.0.0.1:5331`, started with `TENANT_ID=2`,
-passed on 2026-07-07: `207/207` checks, `0` failures, `181` module-page
-checks, 8 unsigned auth-required redirect checks, 7 gated-status checks, and 5
+against `WEB_UK_BASE_URL=http://127.0.0.1:5334`, started with `TENANT_ID=2`,
+passed on 2026-07-07: `215/215` checks, `0` failures, `187` module-page
+checks, 8 unsigned auth-required redirect checks, 8 gated-status checks, and 6
 signed redirect checks; `npm run smoke:laravel` exited `0`.
 
 ## Current Page Candidates

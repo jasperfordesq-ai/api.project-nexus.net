@@ -19,6 +19,12 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/organisations/636',
   '/organisations/636/jobs',
   '/organisations/opportunities/307/apply',
+  '/members/77/insights',
+  '/listings/42/report',
+  '/listings/42/exchange-request',
+  '/listings/42/comments',
+  '/feed/hashtag/timebank',
+  '/feed/item/listing/42',
   '/jobs/90764',
   '/jobs/90764/qualified',
   '/groups/484',
@@ -49,6 +55,7 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/jobs/90764/analytics', status: 403 },
   { path: '/jobs/90764/pipeline', status: 403 },
   { path: '/jobs/90764/applications', status: 403 },
+  { path: '/listings/42/analytics', status: 403 },
   { path: '/marketplace/coupons', status: 403 }
 ];
 const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
@@ -56,6 +63,7 @@ const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/onboarding', location: '/dashboard' },
   { path: '/events/6/recurring-edit', location: '/events/6/edit' },
   { path: '/groups/484/edit', location: '/groups/484' },
+  { path: '/courses/42/certificate', location: '/courses/42?status=certificate-failed' },
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
