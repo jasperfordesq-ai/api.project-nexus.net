@@ -5,13 +5,133 @@
 
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { getBalance, getTransactions, getTransaction, transferCredits, donateCredits, getUsers, getProfile, ApiError } = require('../lib/api');
+const {
+  getBalance,
+  getTransactions,
+  getTransaction,
+  transferCredits,
+  donateCredits,
+  getUsers,
+  getProfile,
+  callWalletApi,
+  callWalletDownload,
+  ApiError
+} = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
 
 router.use(requireAuth);
+
+function dataFrom(result) {
+  if (result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'data')) {
+    return result.data;
+  }
+  return result;
+}
+
+function itemsFrom(result, key = 'items') {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data[key])) return data[key];
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function numberValue(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function creditsLabel(value) {
+  return `${numberValue(value).toFixed(2)} credits`;
+}
+
+function monthYear(value, style = 'long') {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB', { month: style, year: 'numeric' }).format(date);
+}
+
+function normalizeWallet(raw) {
+  const wallet = dataFrom(raw) || {};
+  const pendingIn = numberValue(wallet.pending_in ?? wallet.pending_incoming ?? wallet.pendingIn ?? wallet.pendingIncoming);
+  const pendingOut = numberValue(wallet.pending_out ?? wallet.pending_outgoing ?? wallet.pendingOut ?? wallet.pendingOutgoing);
+  return {
+    balance: numberValue(wallet.balance),
+    earned: numberValue(wallet.total_earned ?? wallet.totalEarned),
+    spent: numberValue(wallet.total_spent ?? wallet.totalSpent),
+    pendingIn,
+    pendingOut,
+    pendingTotal: pendingIn + pendingOut
+  };
+}
+
+function normalizeFund(raw) {
+  const fund = dataFrom(raw) || {};
+  return {
+    balance: numberValue(fund.balance),
+    donated: numberValue(fund.total_donated ?? fund.totalDonated)
+  };
+}
+
+function normalizeRecipient(row) {
+  const recipient = row && typeof row === 'object' ? row : {};
+  const id = Number.parseInt(recipient.id, 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return {
+    id,
+    name: String(recipient.name || [recipient.first_name, recipient.last_name].filter(Boolean).join(' ') || `Member #${id}`).trim(),
+    location: String(recipient.location || '').trim(),
+    since: String(recipient.since || '').trim() || monthYear(recipient.created_at ?? recipient.createdAt, 'short'),
+    memberSince: monthYear(recipient.created_at ?? recipient.createdAt, 'long')
+  };
+}
+
+function walletManageStatus(status, transferError = '', donateError = '') {
+  const errors = {
+    invalid: 'Check the details and try again.',
+    insufficient: 'You do not have enough credits for that transfer.',
+    'not-found': 'The recipient could not be found.',
+    self: 'You cannot send credits to yourself.',
+    inactive: 'That member cannot receive credits right now.',
+    'too-large': 'Enter 1,000 credits or fewer.',
+    decimals: 'Enter a valid credit amount.',
+    failed: 'We could not complete that wallet action. Try again.'
+  };
+
+  if (status === 'transfer-failed') {
+    return { type: 'error', href: '#transfer', message: errors[transferError] || errors.failed };
+  }
+  if (status === 'donate-failed') {
+    return { type: 'error', href: '#donate', message: errors[donateError] || errors.failed };
+  }
+  if (status === 'transfer-sent') {
+    return { type: 'success', message: 'Your time-credit transfer was sent.' };
+  }
+  if (status === 'donate-sent') {
+    return { type: 'success', message: 'Your time-credit donation was sent.' };
+  }
+  return null;
+}
+
+function walletSearchPath(query) {
+  const params = new URLSearchParams();
+  params.set('q', query);
+  params.set('limit', '10');
+  return `/user-search?${params.toString()}`;
+}
+
+async function walletRecipientsFor(token, query) {
+  const trimmed = String(query || '').trim();
+  if (trimmed.length < 2) return [];
+  return itemsFrom(await callWalletApi(token, 'GET', walletSearchPath(trimmed)), 'users')
+    .map(normalizeRecipient)
+    .filter(Boolean);
+}
 
 // Wallet overview
 router.get('/', asyncRoute(async (req, res) => {
@@ -34,6 +154,52 @@ router.get('/', asyncRoute(async (req, res) => {
     status: typeof req.query.status === 'string' ? req.query.status : '',
     donateError: typeof req.query.donate_error === 'string' ? req.query.donate_error : '',
     successMessage: req.flash ? req.flash('success')[0] : null
+  });
+}));
+
+router.get('/export.csv', asyncRoute(async (req, res) => {
+  const result = await callWalletDownload(req.token, '/statement');
+  res.status(result.status || 200);
+  const headers = result.headers || {};
+  res.set('Content-Type', headers['content-type'] || 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', headers['content-disposition'] || 'attachment; filename="wallet_statement.csv"');
+  if (headers['cache-control']) res.set('Cache-Control', headers['cache-control']);
+  if (headers.pragma) res.set('Pragma', headers.pragma);
+  if (headers.expires) res.set('Expires', headers.expires);
+  return res.send(result.body);
+}));
+
+router.get('/recipients', asyncRoute(async (req, res) => {
+  const recipients = await walletRecipientsFor(req.token, req.query.q);
+  return res.json({
+    results: recipients.map((recipient) => ({
+      id: recipient.id,
+      name: recipient.name,
+      location: recipient.location || null,
+      since: recipient.since || null
+    }))
+  });
+}));
+
+router.get('/manage', asyncRoute(async (req, res) => {
+  const recipientQuery = String(req.query.recipient_q || '').trim();
+  const donateTarget = req.query.donate_target === 'user' ? 'user' : 'community_fund';
+  const [walletRaw, fundRaw, recipients] = await Promise.all([
+    callWalletApi(req.token, 'GET', '/balance'),
+    callWalletApi(req.token, 'GET', '/community-fund'),
+    walletRecipientsFor(req.token, recipientQuery)
+  ]);
+
+  res.render('wallet/manage', {
+    title: 'Manage credits',
+    wallet: normalizeWallet(walletRaw),
+    fund: normalizeFund(fundRaw),
+    recipients,
+    recipientQuery,
+    donateTarget,
+    status: walletManageStatus(req.query.status, req.query.error, req.query.donate_error),
+    creditsLabel,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 

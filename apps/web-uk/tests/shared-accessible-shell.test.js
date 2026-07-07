@@ -108,6 +108,8 @@ jest.mock('../src/lib/api', () => ({
   getHelpFaqs: jest.fn().mockResolvedValue({ data: [] }),
   getLegalDocument: jest.fn().mockResolvedValue({ data: null }),
   getBalance: jest.fn(),
+  callWalletApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callWalletDownload: jest.fn(),
   donateCredits: jest.fn().mockResolvedValue({ data: { message: 'sent' } }),
   getBookmarks: jest.fn().mockResolvedValue({ data: [] }),
   unsaveSavedItem: jest.fn().mockResolvedValue({}),
@@ -330,6 +332,8 @@ describe('shared accessible frontend shell', () => {
     api.getKnowledgeBaseArticle.mockReset();
     api.getHelpFaqs.mockReset().mockResolvedValue({ data: [] });
     api.getLegalDocument.mockReset().mockResolvedValue({ data: null });
+    api.callWalletApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callWalletDownload.mockReset();
     api.toggleFeedLike.mockReset().mockResolvedValue({ data: { action: 'liked' } });
     api.searchV2.mockReset().mockResolvedValue({ data: [], meta: { search: { total: 0 } } });
     api.getSavedSearches.mockReset().mockResolvedValue({ data: [] });
@@ -4440,6 +4444,138 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="target" type="radio" value="user"');
     expect(response.text).toContain('Recipient member ID');
     expect(response.text).toContain('Your current balance is 8 credits.');
+  });
+
+  it('renders the Laravel wallet manage hub for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callWalletApi
+      .mockResolvedValueOnce({
+        data: {
+          balance: 8,
+          total_earned: 25,
+          total_spent: 17,
+          pending_incoming: 2,
+          pending_outgoing: 1
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          balance: 5,
+          total_donated: 11
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          users: [
+            {
+              id: 77,
+              name: 'Alex Helper',
+              location: 'Derry',
+              created_at: '2025-01-15T10:00:00Z'
+            }
+          ]
+        }
+      });
+
+    const response = await request(app)
+      .get('/wallet/manage?recipient_q=alex&donate_target=user&status=transfer-failed&error=insufficient')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callWalletApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/balance');
+    expect(api.callWalletApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/community-fund');
+    expect(api.callWalletApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/user-search?q=alex&limit=10');
+    expect(response.text).toContain('href="/wallet"');
+    expect(response.text).toContain('Back to wallet');
+    expect(response.text).toContain('Manage credits');
+    expect(response.text).toContain('Use this page to send time credits, donate credits, and review wallet status.');
+    expect(response.text).toContain('Your balance');
+    expect(response.text).toContain('8.00 credits');
+    expect(response.text).toContain('Total earned');
+    expect(response.text).toContain('25.00 credits');
+    expect(response.text).toContain('Total spent');
+    expect(response.text).toContain('17.00 credits');
+    expect(response.text).toContain('Pending');
+    expect(response.text).toContain('3.00 credits');
+    expect(response.text).toContain('You do not have enough credits for that transfer.');
+    expect(response.text).toContain('method="get" action="/wallet/manage"');
+    expect(response.text).toContain('value="alex"');
+    expect(response.text).toContain('Alex Helper');
+    expect(response.text).toContain('Derry');
+    expect(response.text).toContain('Member since January 2025');
+    expect(response.text).toContain('method="post" action="/wallet/transfer"');
+    expect(response.text).toContain('name="receiver_id" value="77"');
+    expect(response.text).toContain('Donate credits');
+    expect(response.text).toContain('Community fund balance');
+    expect(response.text).toContain('5.00 credits');
+    expect(response.text).toContain('name="target" type="radio" value="user" checked');
+    expect(response.text).toContain('name="recipient_id" value="77"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('returns Laravel wallet recipient suggestions for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callWalletApi.mockResolvedValueOnce({
+      data: {
+        users: [
+          {
+            id: 77,
+            name: 'Alex Helper',
+            location: 'Derry',
+            created_at: '2025-01-15T10:00:00Z'
+          }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/wallet/recipients?q=alex')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      results: [
+        {
+          id: 77,
+          name: 'Alex Helper',
+          location: 'Derry',
+          since: 'Jan 2025'
+        }
+      ]
+    });
+    expect(api.callWalletApi).toHaveBeenCalledWith('test-token', 'GET', '/user-search?q=alex&limit=10');
+  });
+
+  it('streams the Laravel wallet CSV export for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callWalletDownload.mockResolvedValueOnce({
+      status: 200,
+      body: Buffer.from('Date,Description,Amount\n2026-07-01,Transfer,2\n'),
+      headers: {
+        'content-type': 'text/csv; charset=utf-8',
+        'content-disposition': 'attachment; filename="wallet_statement_20260707.csv"',
+        'cache-control': 'no-cache, no-store, must-revalidate',
+        pragma: 'no-cache'
+      }
+    });
+
+    const response = await request(app)
+      .get('/wallet/export.csv')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callWalletDownload).toHaveBeenCalledWith('test-token', '/statement');
+    expect(response.headers['content-type']).toContain('text/csv');
+    expect(response.headers['content-disposition']).toBe('attachment; filename="wallet_statement_20260707.csv"');
+    expect(response.headers['cache-control']).toBe('no-cache, no-store, must-revalidate');
+    expect(response.text).toContain('Date,Description,Amount');
+    expect(response.text).toContain('Transfer');
   });
 
   it('validates wallet donations before calling the Laravel v2 donate API', async () => {

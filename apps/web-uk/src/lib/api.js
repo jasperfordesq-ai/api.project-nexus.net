@@ -1031,6 +1031,27 @@ async function donateCredits(token, data) {
   });
 }
 
+async function callWalletApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/wallet${normalizedPath}`, options);
+}
+
+async function callWalletDownload(token, path = '') {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  return downloadRequest(`/api/v2/wallet${normalizedPath}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function getBookmarks(token, params = {}) {
   const query = new URLSearchParams();
   if (params.type) query.set('type', params.type);
@@ -2868,6 +2889,8 @@ module.exports = {
   transferCredits,
   transferWalletCredits,
   donateCredits,
+  callWalletApi,
+  callWalletDownload,
   getBookmarks,
   saveSavedItem,
   checkSavedItem,

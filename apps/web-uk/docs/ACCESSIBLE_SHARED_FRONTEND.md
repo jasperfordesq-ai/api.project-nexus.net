@@ -102,6 +102,14 @@ the Laravel accessible `/notifications/group/read` and
 `/notifications/delete-all` POST aliases against the Laravel v2 notification API.
 The protected wallet module exposes a no-JS `/wallet/donate` form and POST route
 against Laravel `/api/v2/wallet/donate` with the same donation status keys.
+`/wallet/manage` now renders a Blade-style manage-credits hub backed by Laravel
+`/api/v2/wallet/balance`, `/api/v2/wallet/community-fund`, and
+`/api/v2/wallet/user-search`, including summary stats, recipient search,
+transfer forms, donation target controls, and status states. `/wallet/recipients`
+returns Laravel wallet user-search suggestions for progressive enhancement, and
+`/wallet/export.csv` streams the Laravel `/api/v2/wallet/statement` CSV
+download. Tenant module gates, exact live recipient privacy behavior,
+localization, and runtime smoke tests are not certified.
 `/saved` now redirects unsigned visitors to `/login?status=auth-required`, reads
 Laravel `/api/v2/bookmarks` with the Blade type filter, and renders the
 Blade-style saved item list, empty state, status banner, item links, type tags,
