@@ -17,6 +17,7 @@ const {
   toggleFeedLike,
   getListingReviews,
   getProfile,
+  callWalletApi,
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -147,6 +148,43 @@ function listingReportReasons() {
     { value: 'not_timebank_service', label: 'Not a timebank service' },
     { value: 'other', label: 'Other' }
   ];
+}
+
+function suggestedExchangeHours(listing) {
+  const raw = Number(listing && (listing.hours_estimate ?? listing.estimated_hours));
+  const hours = Number.isFinite(raw) && raw > 0 ? raw : 1;
+  return Math.max(0.25, Math.min(24, hours));
+}
+
+function oneDecimal(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(1) : '';
+}
+
+function exchangeRequestStatus(status) {
+  const messages = {
+    'compliance-failed': 'This exchange needs requirements to be resolved before it can be requested.',
+    'exchange-failed': 'The exchange request could not be created.'
+  };
+  const message = messages[trimmed(status)];
+  return message ? { type: 'error', message } : null;
+}
+
+function listingAuthorName(listing) {
+  return trimmed(listing && (listing.author_name || listing.authorName))
+    || trimmed(listing && listing.user && listing.user.name)
+    || '';
+}
+
+async function walletBalanceForExchange(token) {
+  try {
+    const result = await callWalletApi(token, 'GET', '/balance');
+    const data = dataFrom(result) || {};
+    const balance = Number(data.balance ?? data.available_balance ?? data.current_balance);
+    return Number.isFinite(balance) ? balance : null;
+  } catch {
+    return null;
+  }
 }
 
 router.post('/generate-description', asyncRoute(async (req, res) => {
@@ -312,6 +350,40 @@ router.post('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) =>
 
   return res.redirect(`/listings/${listingId}/exchange-request?status=exchange-failed`);
 }));
+
+router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const listingId = Number(req.params.listingId);
+  const [listingResult, profileResult, walletBalance] = await Promise.all([
+    callListing(token, 'GET', `/${listingId}`),
+    getProfile(token).catch(() => null),
+    walletBalanceForExchange(token)
+  ]);
+
+  const listing = dataFrom(listingResult) || {};
+  const currentUser = dataFrom(profileResult) || {};
+  const ownerId = listingOwnerId(listing);
+  const currentUserId = positiveInteger(currentUser.id);
+  if (ownerId !== null && currentUserId !== null && ownerId === currentUserId) {
+    return res.redirect(listingRedirect(listingId, 'own-listing'));
+  }
+
+  const suggestedHours = suggestedExchangeHours(listing);
+  res.render('listings/exchange-request', {
+    title: 'Request an exchange',
+    listing: { ...listing, id: listingId },
+    listingType: listingType(listing.type),
+    authorName: listingAuthorName(listing),
+    suggestedHours,
+    suggestedHoursLabel: oneDecimal(suggestedHours),
+    walletBalance,
+    walletBalanceLabel: walletBalance === null ? '' : oneDecimal(walletBalance),
+    status: exchangeRequestStatus(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Listing not found' }));
 
 router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);

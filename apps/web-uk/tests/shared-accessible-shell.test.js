@@ -13313,6 +13313,55 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-backed listing exchange request form', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.callListingApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Bike trailer loan',
+        type: 'offer',
+        category_name: 'Transport',
+        location: 'Town shed',
+        hours_estimate: 2.5,
+        user_id: 77,
+        user: { id: 77, name: 'Avery Stone' }
+      }
+    });
+    api.callWalletApi.mockResolvedValueOnce({ data: { balance: 1 } });
+
+    const unsigned = await request(app).get('/listings/42/exchange-request');
+    const signed = await request(app)
+      .get('/listings/42/exchange-request?status=compliance-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(api.callListingApi).toHaveBeenCalledWith('test-token', 'GET', '/42');
+    expect(api.callWalletApi).toHaveBeenCalledWith('test-token', 'GET', '/balance');
+    expect(signed.text).toContain('href="/listings/42"');
+    expect(signed.text).toContain('Request an exchange');
+    expect(signed.text).toContain('Bike trailer loan');
+    expect(signed.text).toContain('Tell the member what you need and how many hours you expect the exchange to take.');
+    expect(signed.text).toContain('This exchange needs requirements to be resolved before it can be requested.');
+    expect(signed.text).toContain('Type');
+    expect(signed.text).toContain('Offer');
+    expect(signed.text).toContain('Transport');
+    expect(signed.text).toContain('Town shed');
+    expect(signed.text).toContain('2.5 hours');
+    expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain('Your current balance is 1.0 hours.');
+    expect(signed.text).toContain('This listing is estimated at 2.5 hours, which is more than your current balance.');
+    expect(signed.text).toContain('method="post" action="/listings/42/exchange-request"');
+    expect(signed.text).toContain('name="proposed_hours"');
+    expect(signed.text).toContain('value="2.5"');
+    expect(signed.text).toContain('name="prep_time"');
+    expect(signed.text).toContain('Message to the member');
+    expect(signed.text).toContain('Send request');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits Laravel settings action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
