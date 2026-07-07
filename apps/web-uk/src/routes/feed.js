@@ -8,6 +8,7 @@ const {
   getFeedPosts,
   getFeedPost,
   getFeedPostV2,
+  getFeedItemV2,
   getFeedHashtags,
   getFeedHashtagPosts,
   createFeedPost,
@@ -125,6 +126,50 @@ function normalizeFeedPost(row) {
   };
 }
 
+function feedItemTypeLabel(type) {
+  const labels = {
+    post: 'Post',
+    listing: 'Listing',
+    event: 'Event',
+    poll: 'Poll',
+    goal: 'Goal',
+    review: 'Review',
+    volunteer: 'Volunteer opportunity',
+    challenge: 'Challenge',
+    resource: 'Resource',
+    blog: 'Blog post',
+    discussion: 'Discussion',
+    job: 'Job'
+  };
+  return labels[type] || 'Activity';
+}
+
+function feedItemDeepLink(type, id) {
+  if (type === 'listing') return { href: `/listings/${id}`, label: 'View listing' };
+  if (type === 'post') return { href: `/feed/posts/${id}`, label: 'Open full post' };
+  return null;
+}
+
+function isFeedItemCommentable(type) {
+  return ['post', 'listing', 'event', 'poll', 'goal', 'review', 'volunteer', 'challenge', 'resource', 'blog', 'discussion', 'job'].includes(type);
+}
+
+function normalizeFeedItem(row, fallbackType, fallbackId) {
+  const item = normalizeFeedPost(row);
+  const type = trimmed(row && row.type, 40) || fallbackType;
+  const id = item.id || fallbackId;
+
+  return {
+    ...item,
+    id,
+    type,
+    typeLabel: feedItemTypeLabel(type),
+    title: trimmed(row && row.title, 200),
+    deepLink: feedItemDeepLink(type, id),
+    isCommentable: isFeedItemCommentable(type)
+  };
+}
+
 function collectionMeta(result) {
   return result && typeof result === 'object' && result.meta && typeof result.meta === 'object'
     ? result.meta
@@ -213,6 +258,29 @@ router.get('/posts/:id(\\d+)', asyncRoute(async (req, res) => {
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Post not found' }));
+
+router.get('/item/:type([a-z]+)/:id(\\d+)', asyncRoute(async (req, res) => {
+  const type = trimmed(req.params.type, 40);
+  const id = positiveInteger(req.params.id, 0, 1, Number.MAX_SAFE_INTEGER);
+  const token = tokenFrom(req);
+  const result = await getFeedItemV2(token, type, id);
+  const item = normalizeFeedItem(dataFrom(result), type, id);
+  const comments = token && item.isCommentable
+    ? feedCollectionRows(await getComments(token, { target_type: item.type, target_id: item.id }).catch(() => ({ data: [] })))
+    : [];
+
+  res.render('feed/item', {
+    title: item.title || item.typeLabel,
+    activeNav: 'feed',
+    alphaActiveNav: 'feed',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    item,
+    comments,
+    requiresAuth: !token,
+    statusMessage: feedStatusMessage(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Feed item not found' }));
 
 router.get('/hashtag/:tag([A-Za-z0-9_]{1,100})', asyncRoute(async (req, res) => {
   const tag = trimmed(req.params.tag, 100).replace(/^#/, '').toLowerCase();

@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T07:27:19.985Z",
+    "generatedAt": "2026-07-07T07:32:52.523Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -4422,8 +4422,8 @@
       "gates": "module:feed",
       "apiNeeds": "service:feedService::getFeed",
       "webUkPath": "/feed/item/{param}/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "feed/item",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\feed.js"
     },
     {
       "method": "GET",

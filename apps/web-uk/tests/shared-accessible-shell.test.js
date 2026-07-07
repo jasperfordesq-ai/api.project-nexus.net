@@ -44,6 +44,7 @@ jest.mock('../src/lib/api', () => ({
   getFeedHashtags: jest.fn().mockResolvedValue({ data: [] }),
   getFeedHashtagPosts: jest.fn().mockResolvedValue({ data: [], meta: { total_items: 0, has_more: false } }),
   getFeedPostV2: jest.fn(),
+  getFeedItemV2: jest.fn(),
   getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
   updateProfile: jest.fn().mockResolvedValue({}),
   uploadProfileAvatar: jest.fn().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } }),
@@ -261,6 +262,7 @@ describe('shared accessible frontend shell', () => {
     api.getFeedHashtags.mockReset().mockResolvedValue({ data: [] });
     api.getFeedHashtagPosts.mockReset().mockResolvedValue({ data: [], meta: { total_items: 0, has_more: false } });
     api.getFeedPostV2.mockReset();
+    api.getFeedItemV2.mockReset();
     api.getMyGroups.mockReset().mockResolvedValue({ data: [] });
     api.updateProfile.mockReset().mockResolvedValue({});
     api.uploadProfileAvatar.mockReset().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } });
@@ -7756,6 +7758,59 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('alt="A repaired bicycle wheel"');
     expect(response.text).toContain('2 likes');
     expect(response.text).toContain('1 comment');
+    expect(response.text).toContain('Comments');
+    expect(response.text).toContain('No comments yet.');
+    expect(response.text).not.toContain('name="content"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the public Laravel polymorphic feed item permalink page', async () => {
+    const api = require('../src/lib/api');
+
+    api.getFeedItemV2.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        type: 'listing',
+        title: 'Borrow a cargo bike',
+        content: '<p>Available for local errands.</p>',
+        created_at: '2026-07-05T14:15:00Z',
+        author: {
+          name: 'Grace Hopper',
+          avatar_url: '/avatars/grace.jpg'
+        },
+        likes_count: 4,
+        comments_count: 0,
+        is_liked: false,
+        image_url: '/uploads/listings/cargo-bike.jpg',
+        reactions: {
+          counts: { helpful: 2 },
+          total: 2,
+          user_reaction: null
+        }
+      }
+    });
+
+    const response = await request(app).get('/feed/item/listing/42');
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedItemV2).toHaveBeenCalledWith('', 'listing', 42);
+    expect(api.getComments).not.toHaveBeenCalled();
+    expect(response.text).toContain('href="/feed"');
+    expect(response.text).toContain('Back to the feed');
+    expect(response.text).toContain('Community feed at');
+    expect(response.text).toContain('<h1');
+    expect(response.text).toContain('Borrow a cargo bike');
+    expect(response.text).toContain('Listing');
+    expect(response.text).toContain('Sign in to take part in the feed.');
+    expect(response.text).toContain('id="feed-item-listing-42"');
+    expect(response.text).toContain('Posted by Grace Hopper');
+    expect(response.text).toContain('Available for local errands.');
+    expect(response.text).toContain('src="/uploads/listings/cargo-bike.jpg"');
+    expect(response.text).toContain('alt="Image attached to this feed item"');
+    expect(response.text).toContain('href="/listings/42"');
+    expect(response.text).toContain('View listing');
+    expect(response.text).toContain('4 likes');
+    expect(response.text).toContain('0 comments');
     expect(response.text).toContain('Comments');
     expect(response.text).toContain('No comments yet.');
     expect(response.text).not.toContain('name="content"');
