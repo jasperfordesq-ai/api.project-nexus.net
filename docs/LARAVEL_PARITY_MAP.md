@@ -138,6 +138,16 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
      calls now accept the React payloads and return Laravel-style envelopes.
      Seller profile avatar/cover multipart uploads now return React-compatible
      `data.url` payloads on `/api/v2/marketplace/seller/profile`.
+     Category reads now return Laravel React category rows with
+     `listing_count` for active approved listings.
+     Category template reads now return the Laravel empty-template
+     `success/data` envelope with `category_id`, `name: null`, and `fields: []`
+     for the create/edit/category React pages.
+     Admin marketplace dashboard and moderation listing reads now return the
+     Laravel React stats, pagination metadata, `per_page` support, and
+     formatted listing rows instead of raw EF entities.
+     Admin coupon oversight now returns Laravel React `data.items` rows and
+     success envelopes for suspend/delete actions.
      Marketplace map-search nearby listing calls now support React `lat`/`lng`,
      `radius_km`, `q`, `category_id`, `limit`, and return `distance_km`.
      Seller Stripe onboarding status/start calls now return the React

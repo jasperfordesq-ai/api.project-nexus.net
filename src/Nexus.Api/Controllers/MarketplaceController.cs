@@ -1560,8 +1560,37 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> Categories()
     {
         await _marketplace.EnsureDefaultCategoriesAsync();
-        var rows = await _db.MarketplaceCategories.OrderBy(c => c.SortOrder).ThenBy(c => c.Name).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        var rows = await _db.MarketplaceCategories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.SortOrder)
+            .ThenBy(c => c.Name)
+            .ToListAsync();
+
+        var categoryIds = rows.Select(c => c.Id).ToArray();
+        var counts = await _db.MarketplaceListings
+            .AsNoTracking()
+            .Where(l =>
+                l.CategoryId.HasValue &&
+                categoryIds.Contains(l.CategoryId.Value) &&
+                l.Status == "active" &&
+                l.ModerationStatus == "approved")
+            .GroupBy(l => l.CategoryId!.Value)
+            .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.CategoryId, x => x.Count);
+
+        var data = rows.Select(c => new
+        {
+            id = c.Id,
+            name = c.Name,
+            slug = c.Slug,
+            description = c.Description,
+            icon = c.Icon,
+            parent_id = (int?)null,
+            listing_count = counts.GetValueOrDefault(c.Id)
+        });
+
+        return Ok(new { success = true, data, meta = new { total = rows.Count } });
     }
 
     [HttpGet("categories/{slug}/listings")]
@@ -1618,7 +1647,16 @@ public class MarketplaceController : ControllerBase
     [HttpGet("categories/{id:int}/template")]
     [AllowAnonymous]
     public IActionResult CategoryTemplate(int id)
-        => Ok(new { data = new { category_id = id, fields = Array.Empty<object>() } });
+        => Ok(new
+        {
+            success = true,
+            data = new
+            {
+                category_id = id,
+                name = (string?)null,
+                fields = Array.Empty<object>()
+            }
+        });
 
     [HttpGet("sellers/{id:int}")]
     [AllowAnonymous]

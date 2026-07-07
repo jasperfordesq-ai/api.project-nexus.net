@@ -19,6 +19,90 @@ namespace Nexus.Api.Tests;
 public class MarketplaceCategoryListingsControllerUnitTests
 {
     [Fact]
+    public async Task Categories_ReturnsLaravelReactCategoryRowsWithApprovedActiveListingCounts()
+    {
+        var tenantContext = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenantContext);
+
+        var tools = new MarketplaceCategory
+        {
+            TenantId = 42,
+            Name = "Tools",
+            Slug = "tools",
+            Description = "Shared tools",
+            Icon = "wrench",
+            SortOrder = 2,
+            IsActive = true
+        };
+        var garden = new MarketplaceCategory
+        {
+            TenantId = 42,
+            Name = "Garden",
+            Slug = "garden",
+            Description = "Garden items",
+            Icon = "leaf",
+            SortOrder = 1,
+            IsActive = true
+        };
+        var inactive = new MarketplaceCategory
+        {
+            TenantId = 42,
+            Name = "Hidden",
+            Slug = "hidden",
+            IsActive = false
+        };
+        db.MarketplaceCategories.AddRange(tools, garden, inactive);
+        await db.SaveChangesAsync();
+
+        db.Users.Add(CreateUser(100, "seller-100@example.test"));
+        await db.SaveChangesAsync();
+
+        db.MarketplaceListings.AddRange(
+            CreateApprovedListing(10, tools.Id, "Visible drill"),
+            CreateApprovedListing(20, tools.Id, "Visible saw"),
+            new MarketplaceListing
+            {
+                Id = 30,
+                TenantId = 42,
+                UserId = 100,
+                CategoryId = tools.Id,
+                Title = "Pending listing",
+                Description = "Does not count",
+                Status = "active",
+                ModerationStatus = "pending"
+            },
+            new MarketplaceListing
+            {
+                Id = 40,
+                TenantId = 42,
+                UserId = 100,
+                CategoryId = garden.Id,
+                Title = "Draft listing",
+                Description = "Does not count",
+                Status = "draft",
+                ModerationStatus = "approved"
+            });
+        await db.SaveChangesAsync();
+
+        var result = await CreateController(db).Categories();
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var root = document.RootElement;
+        root.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = root.GetProperty("data").EnumerateArray().ToArray();
+        data.Select(item => item.GetProperty("slug").GetString()).Should().Equal("garden", "tools");
+        data[0].GetProperty("listing_count").GetInt32().Should().Be(0);
+        data[0].GetProperty("parent_id").ValueKind.Should().Be(JsonValueKind.Null);
+        data[1].GetProperty("id").GetInt32().Should().Be(tools.Id);
+        data[1].GetProperty("name").GetString().Should().Be("Tools");
+        data[1].GetProperty("description").GetString().Should().Be("Shared tools");
+        data[1].GetProperty("icon").GetString().Should().Be("wrench");
+        data[1].GetProperty("listing_count").GetInt32().Should().Be(2);
+        root.GetProperty("meta").GetProperty("total").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
     public async Task CategoryListings_ReturnsActiveApprovedListingsForActiveTenantCategorySlug()
     {
         var tenantContext = CreateTenantContext(42);
@@ -91,7 +175,7 @@ public class MarketplaceCategoryListingsControllerUnitTests
         var meta = document.RootElement.GetProperty("meta");
 
         data.Should().HaveCount(1);
-        data[0].GetProperty("Title").GetString().Should().Be("Tenant toolbox");
+        data[0].GetProperty("title").GetString().Should().Be("Tenant toolbox");
         meta.GetProperty("per_page").GetInt32().Should().Be(20);
         meta.GetProperty("has_more").GetBoolean().Should().BeFalse();
     }
@@ -153,7 +237,7 @@ public class MarketplaceCategoryListingsControllerUnitTests
         var firstData = firstDocument.RootElement.GetProperty("data").EnumerateArray().ToArray();
         var firstMeta = firstDocument.RootElement.GetProperty("meta");
 
-        firstData.Select(item => item.GetProperty("Id").GetInt32()).Should().Equal(30, 20);
+        firstData.Select(item => item.GetProperty("id").GetInt32()).Should().Equal(30, 20);
         firstMeta.GetProperty("has_more").GetBoolean().Should().BeTrue();
         var cursor = firstMeta.GetProperty("cursor").GetString();
         cursor.Should().Be(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("20")));
@@ -165,9 +249,38 @@ public class MarketplaceCategoryListingsControllerUnitTests
         var secondData = secondDocument.RootElement.GetProperty("data").EnumerateArray().ToArray();
         var secondMeta = secondDocument.RootElement.GetProperty("meta");
 
-        secondData.Select(item => item.GetProperty("Id").GetInt32()).Should().Equal(10);
+        secondData.Select(item => item.GetProperty("id").GetInt32()).Should().Equal(10);
         secondMeta.GetProperty("has_more").GetBoolean().Should().BeFalse();
         secondMeta.TryGetProperty("cursor", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CategoryTemplate_ReturnsLaravelReactEmptyTemplateContract()
+    {
+        var tenantContext = CreateTenantContext(42);
+        await using var db = CreateDbContext(tenantContext);
+
+        var category = new MarketplaceCategory
+        {
+            TenantId = 42,
+            Name = "Furniture",
+            Slug = "furniture",
+            IsActive = true
+        };
+        db.MarketplaceCategories.Add(category);
+        await db.SaveChangesAsync();
+
+        var result = CreateController(db).CategoryTemplate(category.Id);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var root = document.RootElement;
+        root.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = root.GetProperty("data");
+        data.GetProperty("category_id").GetInt32().Should().Be(category.Id);
+        data.GetProperty("name").ValueKind.Should().Be(JsonValueKind.Null);
+        data.GetProperty("fields").ValueKind.Should().Be(JsonValueKind.Array);
+        data.GetProperty("fields").GetArrayLength().Should().Be(0);
     }
 
     private static async Task<IActionResult> InvokeCategoryListingsAsync(

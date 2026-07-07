@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
@@ -30,24 +31,44 @@ public class AdminMarketplaceController : ControllerBase
     [HttpGet("dashboard")]
     public async Task<IActionResult> Dashboard()
     {
-        var listings = await _db.MarketplaceListings.CountAsync();
-        var pending = await _db.MarketplaceListings.CountAsync(l => l.ModerationStatus == "pending");
-        var sellers = await _db.MarketplaceSellerProfiles.CountAsync();
-        var orders = await _db.MarketplaceOrders.CountAsync();
-        var reports = await _db.MarketplaceReports.CountAsync(r => r.Status != "resolved");
-        return Ok(new { data = new { listings, pending, sellers, orders, open_reports = reports } });
+        var totalListings = await _db.MarketplaceListings.CountAsync();
+        var activeListings = await _db.MarketplaceListings.CountAsync(l =>
+            l.Status == "active" &&
+            l.ModerationStatus == "approved");
+        var pendingModeration = await _db.MarketplaceListings.CountAsync(l => l.ModerationStatus == "pending");
+        var totalSellers = await _db.MarketplaceSellerProfiles.CountAsync();
+        var totalOrders = await _db.MarketplaceOrders.CountAsync(o => o.Status != "cancelled" && o.Status != "refunded");
+        var revenue = await _db.MarketplaceOrders
+            .Where(o => o.Status == "completed")
+            .SumAsync(o => o.TotalAmount ?? 0m);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                total_listings = totalListings,
+                active_listings = activeListings,
+                pending_moderation = pendingModeration,
+                total_sellers = totalSellers,
+                total_orders = totalOrders,
+                revenue,
+                currency = "EUR"
+            }
+        });
     }
 
     [HttpGet("listings")]
     public async Task<IActionResult> Listings(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 50,
+        [FromQuery] int? per_page = null,
         [FromQuery] string? status = null,
         [FromQuery] string? moderation_status = null,
         [FromQuery] string? q = null)
     {
         page = Math.Max(1, page);
-        limit = Math.Clamp(limit, 1, 100);
+        var pageSize = Math.Clamp(per_page ?? limit, 1, 100);
         var query = _db.MarketplaceListings
             .Include(l => l.User)
             .Include(l => l.Category)
@@ -63,8 +84,18 @@ public class AdminMarketplaceController : ControllerBase
         }
 
         var total = await query.CountAsync();
-        var rows = await query.OrderByDescending(l => l.CreatedAt).Skip((page - 1) * limit).Take(limit).ToListAsync();
-        return Ok(new { data = rows, meta = new { page, limit, total } });
+        var rows = await query
+            .OrderByDescending(l => l.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = rows.Select(MapAdminListing),
+            meta = new { page, per_page = pageSize, total }
+        });
     }
 
     [HttpPost("listings/{id:int}/approve")]
@@ -180,28 +211,113 @@ public class AdminMarketplaceController : ControllerBase
     [HttpGet("coupons")]
     public async Task<IActionResult> Coupons()
     {
-        var rows = await _db.MerchantCoupons.OrderByDescending(c => c.CreatedAt).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        var rows = await _db.MerchantCoupons
+            .AsNoTracking()
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+        return Ok(new
+        {
+            success = true,
+            data = new { items = rows.Select(MapMerchantCoupon) },
+            meta = new { total = rows.Count }
+        });
     }
 
     [HttpPost("coupons/{id:int}/suspend")]
     public async Task<IActionResult> SuspendCoupon(int id)
     {
         var coupon = await _db.MerchantCoupons.FirstOrDefaultAsync(c => c.Id == id);
-        if (coupon == null) return NotFound(new { error = "Coupon not found" });
+        if (coupon == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Coupon not found." });
         coupon.IsActive = false;
+        coupon.Status = "paused";
+        coupon.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = coupon });
+        return Ok(new { success = true, data = MapMerchantCoupon(coupon) });
     }
 
     [HttpDelete("coupons/{id:int}")]
     public async Task<IActionResult> DeleteCoupon(int id)
     {
         var coupon = await _db.MerchantCoupons.FirstOrDefaultAsync(c => c.Id == id);
-        if (coupon == null) return NotFound(new { error = "Coupon not found" });
+        if (coupon == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Coupon not found." });
         _db.MerchantCoupons.Remove(coupon);
         await _db.SaveChangesAsync();
-        return NoContent();
+        return Ok(new { success = true, data = new { deleted = true } });
+    }
+
+    private static object MapMerchantCoupon(MerchantCoupon coupon) => new
+    {
+        id = coupon.Id,
+        seller_id = coupon.SellerUserId,
+        code = coupon.Code,
+        title = coupon.Title,
+        description = string.IsNullOrEmpty(coupon.Description) ? null : coupon.Description,
+        discount_type = coupon.DiscountType,
+        discount_value = coupon.DiscountAmount,
+        min_order_cents = coupon.MinOrderCents,
+        max_uses = coupon.MaxUses,
+        max_uses_per_member = coupon.MaxUsesPerMember <= 0 ? 1 : coupon.MaxUsesPerMember,
+        valid_from = coupon.ValidFrom,
+        valid_until = coupon.ExpiresAt,
+        status = string.IsNullOrWhiteSpace(coupon.Status)
+            ? coupon.IsActive ? "active" : "paused"
+            : coupon.Status,
+        applies_to = string.IsNullOrWhiteSpace(coupon.AppliesTo) ? "all_listings" : coupon.AppliesTo,
+        applies_to_ids = ParseJsonArray(coupon.AppliesToIdsJson),
+        usage_count = coupon.UsageCount,
+        created_at = coupon.CreatedAt,
+        updated_at = coupon.UpdatedAt
+    };
+
+    private static object MapAdminListing(MarketplaceListing listing)
+    {
+        var primaryImage = listing.Images
+            .OrderBy(i => i.SortOrder)
+            .ThenBy(i => i.Id)
+            .FirstOrDefault();
+
+        return new
+        {
+            id = listing.Id,
+            title = listing.Title,
+            price = listing.Price,
+            price_currency = listing.PriceCurrency,
+            price_type = listing.PriceType,
+            status = listing.Status,
+            moderation_status = listing.ModerationStatus,
+            moderation_notes = listing.ModerationNotes,
+            seller_type = listing.SellerType,
+            views_count = listing.ViewsCount,
+            image = primaryImage?.Url,
+            category = listing.Category?.Name,
+            user = listing.User == null
+                ? null
+                : new
+                {
+                    id = listing.User.Id,
+                    name = DisplayName(listing.User)
+                },
+            created_at = listing.CreatedAt
+        };
+    }
+
+    private static string DisplayName(User user)
+    {
+        var name = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? user.Email : name;
+    }
+
+    private static object[] ParseJsonArray(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return Array.Empty<object>();
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<object[]>(json) ?? Array.Empty<object>();
+        }
+        catch
+        {
+            return Array.Empty<object>();
+        }
     }
 }
 
