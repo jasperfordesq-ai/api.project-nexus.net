@@ -13266,6 +13266,53 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/invites');
   });
 
+  it('renders the Laravel group notification preferences page for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers'
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValueOnce({
+      data: {
+        frequency: 'digest',
+        email_enabled: false,
+        push_enabled: true
+      }
+    });
+
+    const unsigned = await request(app).get('/groups/42/notifications');
+    const signed = await request(app)
+      .get('/groups/42/notifications?status=prefs-saved')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to group');
+    expect(signed.text).toContain('Notifications for Garden Helpers');
+    expect(signed.text).toContain('Notification preferences');
+    expect(signed.text).toContain('Your notification preferences have been saved.');
+    expect(signed.text).toContain('Choose how often you hear about activity in this group and which channels are used.');
+    expect(signed.text).toContain('How often do you want to be notified?');
+    expect(signed.text).toContain('Instant');
+    expect(signed.text).toContain('Digest');
+    expect(signed.text).toContain('Muted');
+    expect(signed.text).toContain('value="digest" checked');
+    expect(signed.text).toContain('Notification channels');
+    expect(signed.text).toContain('Channels apply when notifications are not muted.');
+    expect(signed.text).toContain('id="email_enabled" name="email_enabled" type="checkbox" value="1"');
+    expect(signed.text).toContain('id="push_enabled" name="push_enabled" type="checkbox" value="1" checked');
+    expect(signed.text).toContain('Save preferences');
+    expect(signed.text).toContain('method="post" action="/groups/42/notifications"');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(1);
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/notification-prefs');
+  });
+
   it('submits Laravel group image and file uploads with multipart file data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

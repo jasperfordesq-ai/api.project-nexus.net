@@ -271,9 +271,12 @@ surface. `/groups/{id}/invite` reads Laravel-compatible group detail and invite
 listing data, then renders the back link, generated invite-link inset, link
 expiry form, email invitation form, pending invitation table, revoke forms, and
 Laravel status banners. Group invite link/email/revoke POST aliases already call
-Laravel-compatible group invite endpoints. Other group depth GET pages,
-owner/admin authorization depth, tenant/feature gates, localization, runtime
-behavior, and ASP.NET backend compatibility are not certified.
+Laravel-compatible group invite endpoints. `/groups/{id}/notifications` now
+reads Laravel-compatible group detail and notification preference data, then
+renders the Blade-style frequency radios, channel checkboxes, save form, and
+status banners. Other group depth GET pages, owner/admin authorization depth,
+tenant/feature gates, localization, runtime behavior, and ASP.NET backend
+compatibility are not certified.
 Resource POST aliases are wired to Laravel v2 APIs for resource upload,
 resource delete, admin reorder, resource comments, comment deletion, and
 resource reactions while preserving Laravel library/comment status redirects.

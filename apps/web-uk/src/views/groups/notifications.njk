@@ -1,0 +1,82 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+
+  <span class="govuk-caption-xl">Notifications for {{ group.name }}</span>
+  <h1 class="govuk-heading-xl">Notification preferences</h1>
+
+  {% if statusBanner and statusBanner.type == "success" %}
+    {{ govukNotificationBanner({
+      type: "success",
+      titleText: statusBanner.title,
+      text: statusBanner.message
+    }) }}
+  {% elif statusBanner and statusBanner.type == "error" %}
+    {{ govukErrorSummary({
+      titleText: statusBanner.title,
+      errorList: [
+        {
+          text: statusBanner.message,
+          href: "#frequency-instant"
+        }
+      ]
+    }) }}
+  {% endif %}
+
+  <p class="govuk-body-l">Choose how often you hear about activity in this group and which channels are used.</p>
+
+  <form method="post" action="/groups/{{ group.id }}/notifications" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <div class="govuk-form-group">
+      <fieldset class="govuk-fieldset">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+          <h2 class="govuk-fieldset__heading">How often do you want to be notified?</h2>
+        </legend>
+        <div class="govuk-radios" data-module="govuk-radios">
+          <div class="govuk-radios__item">
+            <input class="govuk-radios__input" id="frequency-instant" name="frequency" type="radio" value="instant"{% if prefFrequency == "instant" %} checked{% endif %}>
+            <label class="govuk-label govuk-radios__label" for="frequency-instant">Instant - notify me as activity happens</label>
+          </div>
+          <div class="govuk-radios__item">
+            <input class="govuk-radios__input" id="frequency-digest" name="frequency" type="radio" value="digest"{% if prefFrequency == "digest" %} checked{% endif %}>
+            <label class="govuk-label govuk-radios__label" for="frequency-digest">Digest - group activity into a summary</label>
+          </div>
+          <div class="govuk-radios__item">
+            <input class="govuk-radios__input" id="frequency-muted" name="frequency" type="radio" value="muted"{% if prefFrequency == "muted" %} checked{% endif %}>
+            <label class="govuk-label govuk-radios__label" for="frequency-muted">Muted - do not notify me about this group</label>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="govuk-form-group">
+      <fieldset class="govuk-fieldset" aria-describedby="channels-hint">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+          <h2 class="govuk-fieldset__heading">Notification channels</h2>
+        </legend>
+        <div id="channels-hint" class="govuk-hint">Channels apply when notifications are not muted.</div>
+        <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+          <div class="govuk-checkboxes__item">
+            <input class="govuk-checkboxes__input" id="email_enabled" name="email_enabled" type="checkbox" value="1"{% if prefEmailEnabled %} checked{% endif %}>
+            <label class="govuk-label govuk-checkboxes__label" for="email_enabled">Email notifications</label>
+          </div>
+          <div class="govuk-checkboxes__item">
+            <input class="govuk-checkboxes__input" id="push_enabled" name="push_enabled" type="checkbox" value="1"{% if prefPushEnabled %} checked{% endif %}>
+            <label class="govuk-label govuk-checkboxes__label" for="push_enabled">Push notifications</label>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+
+    <button class="govuk-button" data-module="govuk-button">Save preferences</button>
+  </form>
+{% endblock %}

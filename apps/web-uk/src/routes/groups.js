@@ -49,6 +49,12 @@ const GROUP_INVITE_ERROR_MESSAGES = {
   'invite-revoke-failed': 'The invitation could not be revoked.',
   'invite-forbidden': 'You do not have permission to invite members to this group.'
 };
+const GROUP_NOTIFICATION_SUCCESS_MESSAGES = {
+  'prefs-saved': 'Your notification preferences have been saved.'
+};
+const GROUP_NOTIFICATION_ERROR_MESSAGES = {
+  'prefs-failed': 'Your notification preferences could not be saved. Please try again.'
+};
 
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
@@ -206,6 +212,49 @@ function inviteStatus(status) {
   }
 
   return { statusBanner: null };
+}
+
+function notificationStatus(status) {
+  const value = trimmed(status);
+  if (Object.prototype.hasOwnProperty.call(GROUP_NOTIFICATION_SUCCESS_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'success',
+        title: 'Success',
+        message: GROUP_NOTIFICATION_SUCCESS_MESSAGES[value]
+      }
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(GROUP_NOTIFICATION_ERROR_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'error',
+        title: 'There is a problem',
+        message: GROUP_NOTIFICATION_ERROR_MESSAGES[value]
+      }
+    };
+  }
+
+  return { statusBanner: null };
+}
+
+function booleanPref(raw, key, fallback) {
+  if (!raw || !Object.prototype.hasOwnProperty.call(raw, key)) {
+    return fallback;
+  }
+
+  return raw[key] === true || raw[key] === 1 || raw[key] === '1' || raw[key] === 'true';
+}
+
+function normalizeNotificationPrefs(result) {
+  const data = dataFrom(result) || {};
+  const raw = data.preferences || data.preference || data;
+  return {
+    prefFrequency: allowed(raw.frequency, GROUP_NOTIFICATION_FREQUENCIES, 'instant'),
+    prefEmailEnabled: booleanPref(raw, 'email_enabled', true),
+    prefPushEnabled: booleanPref(raw, 'push_enabled', true)
+  };
 }
 
 function parseInviteEmails(value) {
@@ -431,6 +480,33 @@ router.get('/:id(\\d+)/invite', asyncRoute(async (req, res) => {
     generatedLink: inviteGeneratedLink(invitesResult),
     pendingInvites,
     ...inviteStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
+
+router.get('/:id(\\d+)/notifications', asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const [groupResult, prefsResult] = await Promise.all([
+    getGroup(req.token, id),
+    callGroup(req.token, 'GET', `/${id}/notification-prefs`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return {
+        data: {
+          frequency: 'instant',
+          email_enabled: true,
+          push_enabled: true
+        }
+      };
+    })
+  ]);
+
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+
+  return res.render('groups/notifications', {
+    title: 'Notification preferences',
+    activeNav: 'explore',
+    group,
+    ...normalizeNotificationPrefs(prefsResult),
+    ...notificationStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
