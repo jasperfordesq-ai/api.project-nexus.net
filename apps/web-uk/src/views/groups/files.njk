@@ -1,0 +1,101 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+
+  <span class="govuk-caption-xl">Files for {{ group.name }}</span>
+  <h1 class="govuk-heading-xl">Group files</h1>
+
+  {% if statusBanner and statusBanner.type == "success" %}
+    {{ govukNotificationBanner({
+      type: "success",
+      titleText: statusBanner.title,
+      text: statusBanner.message
+    }) }}
+  {% elif statusBanner and statusBanner.type == "error" %}
+    {{ govukErrorSummary({
+      titleText: statusBanner.title,
+      errorList: [
+        {
+          text: statusBanner.message,
+          href: statusBanner.href or "#file-input"
+        }
+      ]
+    }) }}
+  {% endif %}
+
+  <p class="govuk-body">Files shared with all members of this group.</p>
+
+  {% if not files.length %}
+    <div class="govuk-inset-text"><p class="govuk-body">No files have been shared in this group yet.</p></div>
+  {% else %}
+    <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-visually-hidden">Group files</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">File name</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Size</th>
+          <th scope="col" class="govuk-table__header">Uploaded by</th>
+          <th scope="col" class="govuk-table__header">Date</th>
+          <th scope="col" class="govuk-table__header">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for file in files %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">{{ file.fileName }}</td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ file.sizeLabel }}</td>
+            <td class="govuk-table__cell">{{ file.uploaderName }}</td>
+            <td class="govuk-table__cell">{{ file.uploadedAtLabel }}</td>
+            <td class="govuk-table__cell">
+              <a class="govuk-link govuk-!-margin-right-2" href="/groups/{{ group.id }}/files/{{ file.id }}/download" aria-label="Download {{ file.fileName }}">Download</a>
+              {% if isAdmin %}
+                <form method="post" action="/groups/{{ group.id }}/files/{{ file.id }}/delete" style="display:inline">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Delete {{ file.fileName }}">Delete</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+  <h2 class="govuk-heading-l">Upload a file</h2>
+
+  <form method="post" action="/groups/{{ group.id }}/files" enctype="multipart/form-data" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <div class="govuk-form-group{% if statusBanner and statusBanner.href == '#file-input' %} govuk-form-group--error{% endif %}">
+      <label class="govuk-label govuk-label--s" for="file-input">Choose a file</label>
+      <div id="file-input-hint" class="govuk-hint">Accepted formats: images, PDF, Word, Excel, PowerPoint, text, CSV, ZIP, video and audio. Maximum size: 25 MB.</div>
+      {% if statusBanner and statusBanner.href == '#file-input' %}
+        <p class="govuk-error-message" id="file-input-error"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+      {% endif %}
+      <input class="govuk-file-upload{% if statusBanner and statusBanner.href == '#file-input' %} govuk-file-upload--error{% endif %}" id="file-input" name="file" type="file" aria-describedby="file-input-hint{% if statusBanner and statusBanner.href == '#file-input' %} file-input-error{% endif %}">
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="file-folder">Folder (optional)</label>
+      <div id="file-folder-hint" class="govuk-hint">Group files into a named folder, for example: Minutes.</div>
+      <input class="govuk-input govuk-input--width-20" id="file-folder" name="folder" type="text" maxlength="100" aria-describedby="file-folder-hint">
+    </div>
+
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="file-description">Description (optional)</label>
+      <div id="file-description-hint" class="govuk-hint">A short note about this file.</div>
+      <textarea class="govuk-textarea" id="file-description" name="description" rows="2" maxlength="500" aria-describedby="file-description-hint"></textarea>
+    </div>
+
+    <button type="submit" class="govuk-button" data-module="govuk-button">Upload file</button>
+  </form>
+{% endblock %}

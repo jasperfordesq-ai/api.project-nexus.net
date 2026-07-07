@@ -277,9 +277,11 @@ renders the Blade-style frequency radios, channel checkboxes, save form, and
 status banners. `/groups/{id}/image` now reads Laravel-compatible group detail
 and renders the Blade-style avatar and cover image management page, including
 current image previews or empty insets, multipart upload forms, and image
-status banners. Other group depth GET pages, owner/admin authorization depth,
-tenant/feature gates, localization, runtime behavior, and ASP.NET backend
-compatibility are not certified.
+status banners. `/groups/{id}/files` now reads Laravel-compatible group detail
+and file listing data, then renders the Blade-style file table, download/delete
+actions, upload form, empty state, and file status banners. Other group depth
+GET pages, owner/admin authorization depth, tenant/feature gates, localization,
+runtime behavior, and ASP.NET backend compatibility are not certified.
 Resource POST aliases are wired to Laravel v2 APIs for resource upload,
 resource delete, admin reorder, resource comments, comment deletion, and
 resource reactions while preserving Laravel library/comment status redirects.

@@ -13358,6 +13358,70 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
   });
 
+  it('renders the Laravel group files page for signed-in group members', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: {
+          role: 'admin'
+        }
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 7,
+            file_name: 'garden-plan.pdf',
+            file_size: 1536000,
+            uploader_name: 'Avery Green',
+            uploaded_by: 101,
+            created_at: '2026-08-05T00:00:00Z'
+          }
+        ]
+      }
+    });
+
+    const unsigned = await request(app).get('/groups/42/files');
+    const signed = await request(app)
+      .get('/groups/42/files?status=file-uploaded')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to group');
+    expect(signed.text).toContain('Files for Garden Helpers');
+    expect(signed.text).toContain('Group files');
+    expect(signed.text).toContain('The file has been uploaded.');
+    expect(signed.text).toContain('Files shared with all members of this group.');
+    expect(signed.text).toContain('File name');
+    expect(signed.text).toContain('Size');
+    expect(signed.text).toContain('Uploaded by');
+    expect(signed.text).toContain('garden-plan.pdf');
+    expect(signed.text).toContain('1.5 MB');
+    expect(signed.text).toContain('Avery Green');
+    expect(signed.text).toContain('5 August 2026');
+    expect(signed.text).toContain('href="/groups/42/files/7/download"');
+    expect(signed.text).toContain('Download');
+    expect(signed.text).toContain('method="post" action="/groups/42/files/7/delete"');
+    expect(signed.text).toContain('Delete');
+    expect(signed.text).toContain('Upload a file');
+    expect(signed.text).toContain('Accepted formats: images, PDF, Word, Excel, PowerPoint, text, CSV, ZIP, video and audio. Maximum size: 25 MB.');
+    expect(signed.text).toContain('id="file-input" name="file" type="file"');
+    expect(signed.text).toContain('id="file-folder" name="folder" type="text"');
+    expect(signed.text).toContain('id="file-description" name="description"');
+    expect(signed.text).toContain('method="post" action="/groups/42/files"');
+    expect(signed.text).toContain('enctype="multipart/form-data"');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(1);
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/files');
+  });
+
   it('submits Laravel group image and file uploads with multipart file data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

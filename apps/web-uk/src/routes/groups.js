@@ -63,6 +63,19 @@ const GROUP_IMAGE_ERROR_MESSAGES = {
   'image-missing': 'Choose an image to upload.',
   'image-failed': 'The image could not be uploaded. Please try again.'
 };
+const GROUP_FILE_SUCCESS_MESSAGES = {
+  'file-uploaded': 'The file has been uploaded.',
+  'file-deleted': 'The file has been deleted.'
+};
+const GROUP_FILE_ERROR_MESSAGES = {
+  'file-upload-failed': 'The file could not be uploaded. Please try again.',
+  'file-too-large': 'The file exceeds the 25 MB limit. Choose a smaller file.',
+  'file-type-invalid': 'That file type is not allowed. Check the accepted formats and try again.',
+  'file-missing': 'Choose a file to upload.',
+  'file-delete-failed': 'The file could not be deleted. Please try again.',
+  'file-forbidden': 'You do not have permission to perform this action.',
+  'file-not-found': 'That file could not be found.'
+};
 
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
@@ -194,6 +207,31 @@ function normalizeInvite(item) {
   };
 }
 
+function formatBytes(value) {
+  const bytes = Number(value) || 0;
+  if (bytes >= 1048576) return `${Math.round((bytes / 1048576) * 10) / 10} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+function normalizeGroupFile(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const fileName = trimmed(raw.file_name || raw.fileName || raw.name || raw.filename || '') || 'File';
+  return {
+    id: positiveInteger(raw.id),
+    fileName,
+    sizeLabel: formatBytes(raw.file_size || raw.fileSize || raw.size),
+    uploaderName: trimmed(raw.uploader_name || raw.uploaderName || raw.uploaded_by_name || raw.uploadedByName || '') || '-',
+    uploadedBy: positiveInteger(raw.uploaded_by || raw.uploadedBy || raw.user_id || raw.userId),
+    uploadedAtLabel: dateLabel(raw.created_at || raw.createdAt || raw.uploaded_at || raw.uploadedAt) || '-'
+  };
+}
+
+function isGroupAdmin(group) {
+  const role = trimmed(group?.my_membership?.role || group?.myMembership?.role || group?.membership?.role || '');
+  return ['admin', 'owner'].includes(role);
+}
+
 function inviteGeneratedLink(result) {
   const data = dataFrom(result) || {};
   return trimmed(data.generated_link || data.generatedLink || data.invite_url || data.inviteUrl || '');
@@ -267,6 +305,34 @@ function imageStatus(status) {
         type: 'error',
         title: 'There is a problem',
         message: GROUP_IMAGE_ERROR_MESSAGES[value]
+      }
+    };
+  }
+
+  return { statusBanner: null };
+}
+
+function fileStatus(status) {
+  const value = trimmed(status);
+  if (Object.prototype.hasOwnProperty.call(GROUP_FILE_SUCCESS_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'success',
+        title: 'Success',
+        message: GROUP_FILE_SUCCESS_MESSAGES[value]
+      }
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(GROUP_FILE_ERROR_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'error',
+        title: 'There is a problem',
+        message: GROUP_FILE_ERROR_MESSAGES[value],
+        href: ['file-missing', 'file-too-large', 'file-type-invalid', 'file-upload-failed'].includes(value)
+          ? '#file-input'
+          : null
       }
     };
   }
@@ -555,6 +621,31 @@ router.get('/:id(\\d+)/image', asyncRoute(async (req, res) => {
     activeNav: 'explore',
     group,
     ...imageStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
+
+router.get('/:id(\\d+)/files', asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const [groupResult, filesResult] = await Promise.all([
+    getGroup(req.token, id),
+    callGroup(req.token, 'GET', `/${id}/files`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: { items: [] } };
+    })
+  ]);
+
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const files = collectionFrom(filesResult)
+    .map(normalizeGroupFile)
+    .filter((file) => file.id !== null);
+
+  return res.render('groups/files', {
+    title: 'Group files',
+    activeNav: 'explore',
+    group,
+    files,
+    isAdmin: isGroupAdmin(group),
+    ...fileStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
