@@ -1,6 +1,6 @@
 # apps/web-uk Shared Accessible Frontend Notes
 
-Last reviewed: 2026-07-06
+Last reviewed: 2026-07-07
 
 `apps/web-uk` is the ASP.NET repo's future shared accessible frontend candidate.
 It is not production-ready, does not certify production readiness, and must not
@@ -478,7 +478,12 @@ and no-JS save form. Its `/volunteering/certificates` page redirects unsigned
 visitors to `/login?status=auth-required`, reads the member's certificates from
 Laravel `/api/v2/volunteering/certificates`, and renders the Blade-style
 generate form, status banners, empty state, certificate cards, organisation
-hour breakdown, verification code, and download link. Laravel POST aliases now
+hour breakdown, verification code, and download link. Its
+`/volunteering/credentials` page redirects unsigned visitors to
+`/login?status=auth-required`, reads the member's credentials from Laravel
+`/api/v2/volunteering/credentials`, and renders the Blade-style upload form,
+status banners, type options, credential table, status tags, expiry/uploaded
+dates, and delete controls. Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert
 responses, credential delete plus safe upload proxying, wellbeing check-ins,

@@ -15735,6 +15735,69 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering credentials page for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi.mockResolvedValueOnce({
+      data: {
+        credentials: [
+          {
+            id: 44,
+            credential_type: 'first_aid',
+            file_name: 'first-aid.pdf',
+            status: 'verified',
+            expires_at: '2027-01-31',
+            created_at: '2026-07-01T09:30:00Z'
+          },
+          {
+            id: 45,
+            credential_type: 'dbs',
+            file_name: 'dbs-check.pdf',
+            status: 'rejected',
+            created_at: '2026-06-15T09:30:00Z'
+          }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/volunteering/credentials?status=credential-uploaded')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/credentials');
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('Your credential has been uploaded and is awaiting review.');
+    expect(response.text).toContain('My credentials');
+    expect(response.text).toContain('Upload checks and certificates so organisations can verify you.');
+    expect(response.text).toContain('Upload a credential');
+    expect(response.text).toContain('method="post" action="/volunteering/credentials" enctype="multipart/form-data"');
+    expect(response.text).toContain('id="credential_type" name="credential_type"');
+    expect(response.text).toContain('value="first_aid"');
+    expect(response.text).toContain('First aid');
+    expect(response.text).toContain('id="document" name="document" type="file"');
+    expect(response.text).toContain('PDF, JPG, PNG or WEBP. Maximum size 10MB.');
+    expect(response.text).toContain('id="expiry_date" name="expiry_date" type="date"');
+    expect(response.text).toContain('Upload credential');
+    expect(response.text).toContain('Your credentials');
+    expect(response.text).toContain('Type');
+    expect(response.text).toContain('Status');
+    expect(response.text).toContain('Expires');
+    expect(response.text).toContain('Uploaded');
+    expect(response.text).toContain('Verified');
+    expect(response.text).toContain('31 January 2027');
+    expect(response.text).toContain('1 July 2026');
+    expect(response.text).toContain('DBS check');
+    expect(response.text).toContain('Rejected');
+    expect(response.text).toContain('No expiry');
+    expect(response.text).toContain('15 June 2026');
+    expect(response.text).toContain('method="post" action="/volunteering/credentials/44/delete"');
+    expect(response.text).toContain('Delete the First aid credential');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

@@ -18,6 +18,27 @@ const ACCESSIBILITY_NEED_TYPES = [
   { value: 'language', label: 'Language or communication' },
   { value: 'other', label: 'Other' }
 ];
+const CREDENTIAL_TYPES = [
+  { value: 'police_check', label: 'Police / background check' },
+  { value: 'first_aid', label: 'First aid' },
+  { value: 'safeguarding', label: 'Safeguarding' },
+  { value: 'dbs', label: 'DBS check' },
+  { value: 'driving_licence', label: 'Driving licence' },
+  { value: 'other', label: 'Other' }
+];
+const CREDENTIAL_TYPE_LABELS = Object.fromEntries(CREDENTIAL_TYPES.map((type) => [type.value, type.label]));
+const CREDENTIAL_STATUS_LABELS = {
+  pending: 'Awaiting review',
+  verified: 'Verified',
+  rejected: 'Rejected',
+  expired: 'Expired'
+};
+const CREDENTIAL_STATUS_CLASSES = {
+  pending: 'govuk-tag--yellow',
+  verified: 'govuk-tag--green',
+  rejected: 'govuk-tag--red',
+  expired: 'govuk-tag--grey'
+};
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -184,6 +205,71 @@ function certificateStatus(status) {
   return null;
 }
 
+function credentialStatus(status) {
+  const messages = {
+    'credential-uploaded': { type: 'success', message: 'Your credential has been uploaded and is awaiting review.' },
+    'credential-deleted': { type: 'success', message: 'The credential has been deleted.' },
+    'credential-type-required': {
+      type: 'error',
+      message: 'Select a credential type.',
+      field: 'credential_type',
+      linkText: 'Select a credential type'
+    },
+    'credential-file-required': {
+      type: 'error',
+      message: 'Choose a file to upload.',
+      field: 'document',
+      linkText: 'Choose a file to upload'
+    },
+    'credential-file-type': {
+      type: 'error',
+      message: 'The file must be a PDF, JPG, PNG or WEBP.',
+      field: 'document',
+      linkText: 'Choose a PDF, JPG, PNG or WEBP file'
+    },
+    'credential-file-size': {
+      type: 'error',
+      message: 'The file must be smaller than 10MB.',
+      field: 'document',
+      linkText: 'Choose a smaller file'
+    },
+    'credential-upload-failed': {
+      type: 'error',
+      message: 'The credential could not be uploaded. Please try again.'
+    },
+    'credential-delete-failed': {
+      type: 'error',
+      message: 'The credential could not be deleted. Please try again.'
+    }
+  };
+  return messages[status] || null;
+}
+
+function headline(value) {
+  return trimmed(value)
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function credentialRowsFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.credentials)) return data.credentials;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function credentialStatusPresentation(status) {
+  const value = trimmed(status) || 'pending';
+  return {
+    value,
+    label: CREDENTIAL_STATUS_LABELS[value] || headline(value) || 'Awaiting review',
+    className: CREDENTIAL_STATUS_CLASSES[value] || 'govuk-tag--grey'
+  };
+}
+
 function normalizeCertificate(row) {
   const certificate = row && typeof row === 'object' ? row : {};
   const code = trimmed(certificate.verification_code ?? certificate.verificationCode);
@@ -205,6 +291,31 @@ function normalizeCertificate(row) {
       hoursLabel: hoursLabel(organization?.hours)
     })),
     downloadPath: code ? `/volunteering/certificates/${encodeURIComponent(code)}/download` : ''
+  };
+}
+
+function normalizeCredential(row) {
+  const credential = row && typeof row === 'object' ? row : {};
+  const type = trimmed(credential.credential_type ?? credential.type);
+  const status = credentialStatusPresentation(credential.status);
+  const typeLabel = CREDENTIAL_TYPE_LABELS[type]
+    || trimmed(credential.type_label ?? credential.typeLabel)
+    || headline(type)
+    || 'Credential';
+
+  return {
+    id: positiveInteger(credential.id),
+    type,
+    typeLabel,
+    fileName: trimmed(credential.file_name ?? credential.document_name ?? credential.fileName ?? credential.documentName),
+    status,
+    expiryLabel: dateLabel(credential.expires_at ?? credential.expiry_date ?? credential.expiryDate) || 'No expiry',
+    uploadedLabel: dateLabel(
+      credential.created_at
+      ?? credential.upload_date
+      ?? credential.uploadDate
+      ?? credential.createdAt
+    ) || '-'
   };
 }
 
@@ -280,6 +391,32 @@ router.get('/accessibility', asyncRoute(async (req, res) => {
     selectedTypes: accessibility.selectedTypes,
     accessibility: accessibility.details,
     status: accessibilityStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/credentials', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let credentials = [];
+  let loadError = null;
+  try {
+    credentials = credentialRowsFrom(await callApi(token, 'GET', '/credentials')).map(normalizeCredential);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your credentials. Please try again.';
+  }
+
+  return res.render('volunteering/credentials', {
+    title: 'My credentials',
+    activeNav: 'volunteering',
+    credentialTypes: CREDENTIAL_TYPES,
+    credentials,
+    loadError,
+    status: credentialStatus(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
