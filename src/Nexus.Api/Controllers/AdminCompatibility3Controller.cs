@@ -116,15 +116,28 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/enterprise/gdpr/dashboard - GDPR dashboard.</summary>
     [HttpGet("enterprise/gdpr/dashboard")]
-    public IActionResult GetGdprDashboard()
+    public async Task<IActionResult> GetGdprDashboard()
     {
+        var exportRequests = await _db.DataExportRequests.CountAsync();
+        var deletionRequests = await _db.DataDeletionRequests.CountAsync();
+        var pendingExportRequests = await _db.DataExportRequests.CountAsync(r => r.Status == ExportStatus.Pending || r.Status == ExportStatus.Processing);
+        var pendingDeletionRequests = await _db.DataDeletionRequests.CountAsync(r => r.Status == DeletionStatus.Pending || r.Status == DeletionStatus.Processing);
+        var completedExportRequests = await _db.DataExportRequests.CountAsync(r => r.Status == ExportStatus.Ready || r.Status == ExportStatus.Downloaded);
+        var completedDeletionRequests = await _db.DataDeletionRequests.CountAsync(r => r.Status == DeletionStatus.Completed);
+        var activeConsents = await _db.ConsentRecords.CountAsync(c => c.IsGranted);
+        var breaches = await _db.GdprBreaches.CountAsync();
+        var totalRequests = exportRequests + deletionRequests;
+
         return Ok(new
         {
-            total_data_subjects = 0,
-            pending_requests = 0,
-            completed_requests = 0,
-            active_consents = 0,
-            breach_count = 0,
+            total_requests = totalRequests,
+            pending_requests = pendingExportRequests + pendingDeletionRequests,
+            total_consents = activeConsents,
+            total_breaches = breaches,
+            total_data_subjects = await _db.Users.CountAsync(),
+            completed_requests = completedExportRequests + completedDeletionRequests,
+            active_consents = activeConsents,
+            breach_count = breaches,
             compliance_score = 100,
             generated_at = DateTime.UtcNow
         });
@@ -132,9 +145,72 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/enterprise/gdpr/requests - GDPR data requests.</summary>
     [HttpGet("enterprise/gdpr/requests")]
-    public IActionResult GetGdprRequests([FromQuery] int page = 1, [FromQuery] int limit = 20)
+    public async Task<IActionResult> GetGdprRequests([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery(Name = "per_page")] int? perPage = null, [FromQuery] string? status = null)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        page = Math.Max(1, page);
+        limit = Math.Clamp(perPage ?? limit, 1, 100);
+
+        var exportRows = await _db.DataExportRequests
+            .AsNoTracking()
+            .Include(r => r.User)
+            .ToListAsync();
+        var deletionRows = await _db.DataDeletionRequests
+            .AsNoTracking()
+            .Include(r => r.User)
+            .ToListAsync();
+
+        var requests = exportRows
+            .Select(r => new
+            {
+                id = r.Id,
+                user_id = r.UserId,
+                user_name = DisplayName(r.User),
+                user_email = r.User?.Email,
+                type = MapGdprExportType(r.Format),
+                request_type = MapGdprExportType(r.Format),
+                status = MapExportStatus(r.Status),
+                priority = "normal",
+                notes = r.ErrorMessage,
+                created_at = r.CreatedAt,
+                updated_at = (DateTime?)null
+            })
+            .Concat(deletionRows.Select(r => new
+            {
+                id = r.Id,
+                user_id = r.UserId,
+                user_name = DisplayName(r.User),
+                user_email = r.User?.Email,
+                type = "erasure",
+                request_type = "erasure",
+                status = MapDeletionStatus(r.Status),
+                priority = "normal",
+                notes = r.Reason,
+                created_at = r.CreatedAt,
+                updated_at = r.ReviewedAt
+            }))
+            .Where(r => string.IsNullOrWhiteSpace(status) || status == "all" || string.Equals(r.status, status, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(r => r.created_at)
+            .ToList();
+
+        var paged = requests.Skip((page - 1) * limit).Take(limit).ToList();
+        var totalPages = requests.Count > 0 ? (int)Math.Ceiling(requests.Count / (double)limit) : 0;
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                data = paged,
+                meta = new
+                {
+                    current_page = page,
+                    per_page = limit,
+                    total = requests.Count,
+                    total_pages = totalPages,
+                    has_more = page < totalPages
+                }
+            }
+        });
     }
 
     /// <summary>PUT /api/admin/enterprise/gdpr/requests/{id} - Update GDPR request.</summary>
@@ -153,16 +229,63 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/enterprise/gdpr/breaches - List breaches.</summary>
     [HttpGet("enterprise/gdpr/breaches")]
-    public IActionResult GetGdprBreaches([FromQuery] int page = 1, [FromQuery] int limit = 20)
+    public async Task<IActionResult> GetGdprBreaches([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var query = _db.GdprBreaches.AsNoTracking().OrderByDescending(b => b.DetectedAt);
+        var total = await query.CountAsync();
+        var rows = await query
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+        var breaches = rows.Select(MapLaravelGdprBreach).ToList();
+
+        return Ok(new { data = breaches, meta = new { page, limit, total } });
     }
 
     /// <summary>POST /api/admin/enterprise/gdpr/breaches - Create breach record.</summary>
     [HttpPost("enterprise/gdpr/breaches")]
-    public IActionResult CreateGdprBreach()
+    public async Task<IActionResult> CreateGdprBreach([FromBody] AdminEnterpriseBreachRequest request)
     {
-        return Ok(new { success = true, message = "GDPR breach recorded", id = 0 });
+        var userId = User.GetUserId();
+        if (userId == null)
+        {
+            return Unauthorized(new { error = "Invalid token" });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest(new { error = "Title is required" });
+        }
+
+        var severity = string.IsNullOrWhiteSpace(request.Severity)
+            ? "medium"
+            : request.Severity.Trim().ToLowerInvariant();
+        if (severity is not ("low" or "medium" or "high" or "critical"))
+        {
+            return BadRequest(new { error = "Invalid severity. Valid: low, medium, high, critical" });
+        }
+
+        var now = DateTime.UtcNow;
+        var breach = new GdprBreach
+        {
+            TenantId = _tenantContext.GetTenantIdOrThrow(),
+            Title = request.Title.Trim(),
+            Description = request.Description?.Trim() ?? string.Empty,
+            Severity = severity,
+            Status = "open",
+            AffectedUsersCount = Math.Max(0, request.AffectedUsers ?? request.AffectedUsersCount ?? 0),
+            DetectedAt = now,
+            CreatedAt = now,
+            ReportedById = userId.Value
+        };
+
+        _db.GdprBreaches.Add(breach);
+        await _db.SaveChangesAsync();
+
+        return Ok(MapLaravelGdprBreach(breach));
     }
 
     /// <summary>GET /api/admin/enterprise/gdpr/audit - GDPR audit log.</summary>
@@ -174,12 +297,35 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/enterprise/monitoring - System monitoring.</summary>
     [HttpGet("enterprise/monitoring")]
-    public IActionResult GetEnterpriseMonitoring()
+    public async Task<IActionResult> GetEnterpriseMonitoring()
     {
+        var dbConnected = await _db.Database.CanConnectAsync();
+        var memoryBytes = GC.GetTotalMemory(forceFullCollection: false);
+        var memoryUsage = FormatBytes(memoryBytes);
+        var startedAt = System.Diagnostics.Process.GetCurrentProcess().StartTime.ToUniversalTime();
+        var uptime = DateTime.UtcNow - startedAt;
+
         return Ok(new
         {
+            php_version = $".NET {Environment.Version}",
+            memory_usage = memoryUsage,
+            memory_limit = "unlimited",
+            db_connected = dbConnected,
+            redis_connected = true,
+            redis_memory = "0 MB",
+            db_size = "n/a",
+            uptime = FormatDuration(uptime),
+            server_time = DateTime.UtcNow.ToString("O"),
+            os = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+            sys_memory = new
+            {
+                total = "n/a",
+                available = "n/a",
+                used = memoryUsage,
+                used_pct = 0
+            },
             cpu_usage = 0.0,
-            memory_usage = 0.0,
+            memory_usage_percent = 0.0,
             disk_usage = 0.0,
             active_connections = 0,
             uptime_seconds = 0,
@@ -189,12 +335,21 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/enterprise/monitoring/health - Health check.</summary>
     [HttpGet("enterprise/monitoring/health")]
-    public IActionResult GetEnterpriseMonitoringHealth()
+    public async Task<IActionResult> GetEnterpriseMonitoringHealth()
     {
+        var dbConnected = await _db.Database.CanConnectAsync();
+        var status = dbConnected ? "healthy" : "degraded";
+
         return Ok(new
         {
-            status = "healthy",
-            database = "connected",
+            status,
+            checks = new[]
+            {
+                new { name = "database", status = dbConnected ? "ok" : "fail", free = (string?)null, total = (string?)null },
+                new { name = "cache", status = "ok", free = (string?)null, total = (string?)null },
+                new { name = "queue", status = "ok", free = (string?)null, total = (string?)null }
+            },
+            database = dbConnected ? "connected" : "disconnected",
             cache = "connected",
             queue = "connected",
             checked_at = DateTime.UtcNow
@@ -1197,5 +1352,95 @@ public class AdminCompatibility3Controller : ControllerBase
     public IActionResult AddDeliverabilityComment(int id)
     {
         return Ok(new { success = true, message = "Comment added", deliverable_id = id, comment_id = 0 });
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+
+        var units = new[] { "KB", "MB", "GB", "TB" };
+        var value = bytes / 1024.0;
+        var unitIndex = 0;
+        while (value >= 1024 && unitIndex < units.Length - 1)
+        {
+            value /= 1024;
+            unitIndex++;
+        }
+
+        return $"{value:0.#} {units[unitIndex]}";
+    }
+
+    private static string FormatDuration(TimeSpan duration)
+        => duration.TotalDays >= 1
+            ? $"{(int)duration.TotalDays}d {duration.Hours}h {duration.Minutes}m"
+            : $"{duration.Hours}h {duration.Minutes}m";
+
+    private static object MapLaravelGdprBreach(GdprBreach breach)
+        => new
+        {
+            id = breach.Id,
+            title = breach.Title,
+            description = breach.Description,
+            severity = breach.Severity,
+            status = breach.Status,
+            affected_users = breach.AffectedUsersCount,
+            affected_users_count = breach.AffectedUsersCount,
+            reported_at = breach.DetectedAt,
+            detected_at = breach.DetectedAt,
+            created_at = breach.CreatedAt
+        };
+
+    private static string DisplayName(User? user)
+        => user == null
+            ? string.Empty
+            : string.Join(" ", new[] { user.FirstName, user.LastName }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+
+    private static string MapGdprExportType(string? format)
+    {
+        var value = format?.Trim().ToLowerInvariant();
+        return value is "access" or "portability" or "rectification" or "restriction" or "objection"
+            ? value
+            : "access";
+    }
+
+    private static string MapExportStatus(ExportStatus status)
+        => status switch
+        {
+            ExportStatus.Pending => "pending",
+            ExportStatus.Processing => "processing",
+            ExportStatus.Ready or ExportStatus.Downloaded => "completed",
+            ExportStatus.Failed or ExportStatus.Expired => "rejected",
+            _ => "pending"
+        };
+
+    private static string MapDeletionStatus(DeletionStatus status)
+        => status switch
+        {
+            DeletionStatus.Pending or DeletionStatus.Approved => "pending",
+            DeletionStatus.Processing => "processing",
+            DeletionStatus.Completed => "completed",
+            DeletionStatus.Rejected => "rejected",
+            _ => "pending"
+        };
+
+    public sealed class AdminEnterpriseBreachRequest
+    {
+        [JsonPropertyName("title")]
+        public string? Title { get; set; }
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+
+        [JsonPropertyName("severity")]
+        public string? Severity { get; set; }
+
+        [JsonPropertyName("affected_users")]
+        public int? AffectedUsers { get; set; }
+
+        [JsonPropertyName("affected_users_count")]
+        public int? AffectedUsersCount { get; set; }
     }
 }

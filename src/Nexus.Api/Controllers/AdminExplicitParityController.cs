@@ -619,6 +619,7 @@ public class AdminExplicitParityController : ControllerBase
 
         return path switch
         {
+            "/api/v2/admin/enterprise/gdpr/requests" => await CreateGdprRequest(),
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
             "/api/v2/admin/federation/credit-agreements" => await CreateFederationCreditAgreement(),
             "/api/v2/admin/invite-codes" => await GenerateInviteCodes(),
@@ -1159,6 +1160,86 @@ public class AdminExplicitParityController : ControllerBase
         return Ok(new { data = new { since, exports, deletions } });
     }
 
+    private async Task<IActionResult> CreateGdprRequest()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var userId = JsonInt(payload, "user_id", 0, 0, int.MaxValue);
+        var type = (JsonString(payload, "type") ?? string.Empty).Trim().ToLowerInvariant();
+        var notes = JsonString(payload, "notes");
+
+        if (userId <= 0)
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "user_id is required", field = "user_id" } }
+            });
+        }
+
+        var validTypes = new[] { "access", "erasure", "portability", "rectification", "restriction", "objection" };
+        if (!validTypes.Contains(type))
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid GDPR request type", field = "type" } }
+            });
+        }
+
+        var userExists = await _db.Users.AnyAsync(u => u.Id == userId);
+        if (!userExists)
+        {
+            return NotFound(new { success = false, error = "User not found" });
+        }
+
+        var now = DateTime.UtcNow;
+        int requestId;
+        if (type == "erasure")
+        {
+            var deletion = new DataDeletionRequest
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                Status = DeletionStatus.Pending,
+                Reason = notes,
+                CreatedAt = now
+            };
+            _db.DataDeletionRequests.Add(deletion);
+            await _db.SaveChangesAsync();
+            requestId = deletion.Id;
+        }
+        else
+        {
+            var export = new DataExportRequest
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                Status = ExportStatus.Pending,
+                Format = type,
+                ErrorMessage = notes,
+                RequestedAt = now,
+                CreatedAt = now
+            };
+            _db.DataExportRequests.Add(export);
+            await _db.SaveChangesAsync();
+            requestId = export.Id;
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            success = true,
+            data = new
+            {
+                id = requestId,
+                type,
+                status = "pending",
+                message = "GDPR request created"
+            }
+        });
+    }
+
     private async Task<IActionResult> GetGdprBreach(int id)
     {
         var breach = await _db.GdprBreaches.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
@@ -1167,15 +1248,25 @@ public class AdminExplicitParityController : ControllerBase
 
     private async Task<IActionResult> GetGdprRequest(int id)
     {
-        var exportRequest = await _db.DataExportRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
-        var deletionRequest = await _db.DataDeletionRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
+        var exportRequest = await _db.DataExportRequests
+            .AsNoTracking()
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.Id == id);
+        var deletionRequest = await _db.DataDeletionRequests
+            .AsNoTracking()
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.Id == id);
 
         if (exportRequest == null && deletionRequest == null)
         {
             return NotFound(new { error = "GDPR request not found" });
         }
 
-        return Ok(new { data = new { export_request = exportRequest, deletion_request = deletionRequest } });
+        var data = exportRequest != null
+            ? MapLaravelGdprRequestDetail(exportRequest)
+            : MapLaravelGdprRequestDetail(deletionRequest!);
+
+        return Ok(new { data });
     }
 
     private async Task<IActionResult> GetConsentTypeUsers(string slug)
@@ -1188,6 +1279,117 @@ public class AdminExplicitParityController : ControllerBase
 
         return Ok(new { data = rows, meta = new { total = rows.Count } });
     }
+
+    private static object MapLaravelGdprRequestDetail(DataExportRequest request)
+    {
+        var type = MapGdprExportType(request.Format);
+        var status = MapExportStatus(request.Status);
+        var sla = BuildGdprSla(request.CreatedAt);
+
+        return new
+        {
+            id = request.Id,
+            user_id = request.UserId,
+            user_name = DisplayName(request.User),
+            user_email = request.User?.Email,
+            type,
+            request_type = type,
+            status,
+            priority = "normal",
+            notes = request.ErrorMessage,
+            created_at = request.CreatedAt,
+            completed_at = request.CompletedAt,
+            verified_at = (DateTime?)null,
+            acknowledged_at = (DateTime?)null,
+            processed_at = request.CompletedAt,
+            processed_by = (int?)null,
+            assigned_to = (int?)null,
+            assigned_to_name = (string?)null,
+            export_file_path = request.FileUrl,
+            export_expires_at = request.ExpiresAt,
+            rejection_reason = status == "rejected" ? request.ErrorMessage : null,
+            metadata = (object?)null,
+            timeline = Array.Empty<object>(),
+            sla_deadline = sla.deadline,
+            sla_days_remaining = sla.daysRemaining,
+            sla_overdue = sla.overdue
+        };
+    }
+
+    private static object MapLaravelGdprRequestDetail(DataDeletionRequest request)
+    {
+        var status = MapDeletionStatus(request.Status);
+        var sla = BuildGdprSla(request.CreatedAt);
+
+        return new
+        {
+            id = request.Id,
+            user_id = request.UserId,
+            user_name = DisplayName(request.User),
+            user_email = request.User?.Email,
+            type = "erasure",
+            request_type = "erasure",
+            status,
+            priority = "normal",
+            notes = request.Reason,
+            created_at = request.CreatedAt,
+            completed_at = request.CompletedAt,
+            verified_at = (DateTime?)null,
+            acknowledged_at = (DateTime?)null,
+            processed_at = request.CompletedAt,
+            processed_by = request.ReviewedById,
+            assigned_to = request.ReviewedById,
+            assigned_to_name = DisplayName(request.ReviewedBy),
+            export_file_path = (string?)null,
+            export_expires_at = (DateTime?)null,
+            rejection_reason = status == "rejected" ? request.DataRetainedReason ?? request.Reason : null,
+            metadata = (object?)null,
+            timeline = Array.Empty<object>(),
+            sla_deadline = sla.deadline,
+            sla_days_remaining = sla.daysRemaining,
+            sla_overdue = sla.overdue
+        };
+    }
+
+    private static (DateTime deadline, int daysRemaining, bool overdue) BuildGdprSla(DateTime createdAt)
+    {
+        var deadline = createdAt.AddDays(30);
+        var daysRemaining = (int)Math.Ceiling((deadline - DateTime.UtcNow).TotalDays);
+        return (deadline, Math.Max(0, daysRemaining), daysRemaining < 0);
+    }
+
+    private static string DisplayName(User? user)
+        => user == null
+            ? string.Empty
+            : string.Join(" ", new[] { user.FirstName, user.LastName }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+
+    private static string MapGdprExportType(string? format)
+    {
+        var value = format?.Trim().ToLowerInvariant();
+        return value is "access" or "portability" or "rectification" or "restriction" or "objection"
+            ? value
+            : "access";
+    }
+
+    private static string MapExportStatus(ExportStatus status)
+        => status switch
+        {
+            ExportStatus.Pending => "pending",
+            ExportStatus.Processing => "processing",
+            ExportStatus.Ready or ExportStatus.Downloaded => "completed",
+            ExportStatus.Failed or ExportStatus.Expired => "rejected",
+            _ => "pending"
+        };
+
+    private static string MapDeletionStatus(DeletionStatus status)
+        => status switch
+        {
+            DeletionStatus.Pending or DeletionStatus.Approved => "pending",
+            DeletionStatus.Processing => "processing",
+            DeletionStatus.Completed => "completed",
+            DeletionStatus.Rejected => "rejected",
+            _ => "pending"
+        };
 
     private async Task<IActionResult> GetConsentTypeExport(string slug)
     {

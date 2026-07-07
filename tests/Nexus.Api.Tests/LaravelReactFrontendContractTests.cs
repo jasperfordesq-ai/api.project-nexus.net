@@ -59,6 +59,169 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminEnterpriseGdprDashboard_UsesLaravelReactMetricKeys()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/v2/admin/enterprise/gdpr/dashboard");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("total_requests").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        json.GetProperty("pending_requests").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        json.GetProperty("total_consents").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        json.GetProperty("total_breaches").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task AdminEnterpriseMonitoring_UsesLaravelReactHealthShapes()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var monitoring = await Client.GetAsync("/api/v2/admin/enterprise/monitoring");
+
+        monitoring.StatusCode.Should().Be(HttpStatusCode.OK);
+        var monitoringJson = await monitoring.Content.ReadFromJsonAsync<JsonElement>();
+        monitoringJson.GetProperty("php_version").GetString().Should().NotBeNullOrWhiteSpace();
+        monitoringJson.GetProperty("memory_usage").GetString().Should().NotBeNullOrWhiteSpace();
+        monitoringJson.GetProperty("memory_limit").GetString().Should().NotBeNullOrWhiteSpace();
+        monitoringJson.GetProperty("db_connected").GetBoolean().Should().BeTrue();
+        monitoringJson.GetProperty("redis_connected").ValueKind.Should().Be(JsonValueKind.True);
+        monitoringJson.GetProperty("redis_memory").GetString().Should().NotBeNullOrWhiteSpace();
+        monitoringJson.GetProperty("db_size").GetString().Should().NotBeNullOrWhiteSpace();
+        monitoringJson.GetProperty("uptime").GetString().Should().NotBeNullOrWhiteSpace();
+        monitoringJson.GetProperty("server_time").GetString().Should().NotBeNullOrWhiteSpace();
+        monitoringJson.GetProperty("os").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var health = await Client.GetAsync("/api/v2/admin/enterprise/monitoring/health");
+
+        health.StatusCode.Should().Be(HttpStatusCode.OK);
+        var healthJson = await health.Content.ReadFromJsonAsync<JsonElement>();
+        healthJson.GetProperty("status").GetString().Should().BeOneOf("healthy", "degraded", "unhealthy");
+        var checks = healthJson.GetProperty("checks");
+        checks.ValueKind.Should().Be(JsonValueKind.Array);
+        checks.EnumerateArray().Should().Contain(c =>
+            c.GetProperty("name").GetString() == "database" &&
+            c.GetProperty("status").GetString() == "ok");
+    }
+
+    [Fact]
+    public async Task AdminEnterpriseGdprBreaches_CreateAndListUseLaravelReactShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/enterprise/gdpr/breaches", new
+        {
+            title = "Contract parity breach",
+            description = "A runtime smoke test created this record.",
+            severity = "high",
+            affected_users = 3
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.OK);
+        var createdJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var createdData = createdJson.TryGetProperty("data", out var data) ? data : createdJson;
+        createdData.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        createdData.GetProperty("title").GetString().Should().Be("Contract parity breach");
+        createdData.GetProperty("description").GetString().Should().Be("A runtime smoke test created this record.");
+        createdData.GetProperty("severity").GetString().Should().Be("high");
+        createdData.GetProperty("status").GetString().Should().Be("open");
+        createdData.GetProperty("reported_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var list = await Client.GetAsync("/api/v2/admin/enterprise/gdpr/breaches");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var listData = listJson.GetProperty("data");
+        listData.ValueKind.Should().Be(JsonValueKind.Array);
+        var createdId = createdData.GetProperty("id").GetInt32();
+        listData.EnumerateArray()
+            .Any(item =>
+                item.GetProperty("id").GetInt32() == createdId &&
+                item.GetProperty("title").GetString() == "Contract parity breach" &&
+                item.GetProperty("status").GetString() == "open" &&
+                item.TryGetProperty("reported_at", out var reportedAt) &&
+            !string.IsNullOrWhiteSpace(reportedAt.GetString()))
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminEnterpriseGdprRequests_CreateAndListUseLaravelReactShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/enterprise/gdpr/requests", new
+        {
+            user_id = TestData.MemberUser.Id,
+            type = "access",
+            priority = "high",
+            notes = "Created by Laravel React contract smoke test"
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createdJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createdJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var createdData = createdJson.GetProperty("data");
+        createdData.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        createdData.GetProperty("type").GetString().Should().Be("access");
+        createdData.GetProperty("status").GetString().Should().Be("pending");
+
+        var list = await Client.GetAsync("/api/v2/admin/enterprise/gdpr/requests?status=pending");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var listData = listJson.GetProperty("data");
+        listData.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
+        listData.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThan(0);
+        var createdId = createdData.GetProperty("id").GetInt32();
+        listData.GetProperty("data").EnumerateArray()
+            .Any(item =>
+                item.GetProperty("id").GetInt32() == createdId &&
+                item.GetProperty("user_name").GetString() == $"{TestData.MemberUser.FirstName} {TestData.MemberUser.LastName}" &&
+                item.GetProperty("type").GetString() == "access" &&
+                item.GetProperty("status").GetString() == "pending" &&
+                !string.IsNullOrWhiteSpace(item.GetProperty("created_at").GetString()))
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminEnterpriseGdprRequestDetail_UsesLaravelReactDetailShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/enterprise/gdpr/requests", new
+        {
+            user_id = TestData.MemberUser.Id,
+            type = "portability",
+            priority = "normal",
+            notes = "Detail shape contract test"
+        });
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createdData = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var requestId = createdData.GetProperty("id").GetInt32();
+
+        var detail = await Client.GetAsync($"/api/v2/admin/enterprise/gdpr/requests/{requestId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        var data = detailJson.GetProperty("data");
+        data.GetProperty("id").GetInt32().Should().Be(requestId);
+        data.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        data.GetProperty("user_name").GetString().Should().Be($"{TestData.MemberUser.FirstName} {TestData.MemberUser.LastName}");
+        data.GetProperty("user_email").GetString().Should().Be(TestData.MemberUser.Email);
+        data.GetProperty("type").GetString().Should().Be("portability");
+        data.GetProperty("request_type").GetString().Should().Be("portability");
+        data.GetProperty("status").GetString().Should().Be("pending");
+        data.GetProperty("created_at").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("sla_deadline").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("sla_days_remaining").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        data.GetProperty("sla_overdue").GetBoolean().Should().BeFalse();
+        data.GetProperty("timeline").ValueKind.Should().Be(JsonValueKind.Array);
+        data.TryGetProperty("export_file_path", out _).Should().BeTrue();
+        data.TryGetProperty("assigned_to", out _).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task UserNotificationPreferences_UseLaravelSettingsShape()
     {
         await AuthenticateAsMemberAsync();
