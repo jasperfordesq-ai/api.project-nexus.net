@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,12 @@ namespace Nexus.Api.Controllers;
 [Authorize]
 public class UsersParityController : ControllerBase
 {
+    private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
 
@@ -156,7 +163,93 @@ public class UsersParityController : ControllerBase
     }
 
     [HttpGet("me/match-preferences")]
-    public async Task<IActionResult> MatchPreferences() => Ok(new { data = await _db.MatchPreferences.FirstOrDefaultAsync(p => p.TenantId == TenantId() && p.UserId == UserId()) });
+    public async Task<IActionResult> MatchPreferences()
+    {
+        var data = await BuildLaravelMatchPreferencesAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("/api/v2/users/me/match-preferences")]
+    public async Task<IActionResult> UpdateMatchPreferences([FromBody] JsonElement body)
+    {
+        var tenantId = TenantId();
+        var userId = UserId();
+        var preferences = await _db.MatchPreferences.FirstOrDefaultAsync(p => p.TenantId == tenantId && p.UserId == userId);
+        if (preferences == null)
+        {
+            preferences = new MatchPreference
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.MatchPreferences.Add(preferences);
+        }
+
+        if (Int(body, "max_distance_km") is { } maxDistance)
+        {
+            preferences.MaxDistanceKm = Math.Clamp(maxDistance, 1, 100);
+        }
+
+        if (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("categories", out var categories) && categories.ValueKind == JsonValueKind.Array)
+        {
+            preferences.PreferredCategories = JsonSerializer.Serialize(categories.EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out _))
+                .Select(item => item.GetInt32())
+                .ToArray(), StoreJsonOptions);
+        }
+
+        if (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("availability", out var availability) && availability.ValueKind == JsonValueKind.Array)
+        {
+            preferences.AvailableDays = JsonSerializer.Serialize(availability.EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.String)
+                .Select(item => (item.GetString() ?? string.Empty).Trim())
+                .Where(item => item.Length > 0)
+                .Select(item => item.Length > 50 ? item[..50] : item)
+                .ToArray(), StoreJsonOptions);
+        }
+
+        if (Bool(body, "matching_paused") is { } paused)
+        {
+            preferences.IsActive = !paused;
+        }
+
+        var user = await CurrentUserAsync();
+        var bag = ParsePreferenceBag(user.NotificationPreferences);
+        if (Str(body, "notification_frequency") is { } frequency)
+        {
+            var normalized = frequency == "weekly" ? "monthly" : frequency;
+            if (normalized is not ("daily" or "monthly" or "fortnightly" or "never"))
+            {
+                return BadRequest(new { success = false, error = "VALIDATION_ERROR", field = "notification_frequency" });
+            }
+
+            bag["match_notification_frequency"] = normalized;
+        }
+
+        if (Bool(body, "notify_hot_matches") is { } notifyHot)
+        {
+            bag["match_notify_hot_matches"] = notifyHot;
+        }
+
+        if (Bool(body, "notify_mutual_matches") is { } notifyMutual)
+        {
+            bag["match_notify_mutual_matches"] = notifyMutual;
+        }
+
+        if (Int(body, "min_match_score") is { } minScore)
+        {
+            bag["match_min_match_score"] = Math.Clamp(minScore, 0, 100);
+        }
+
+        user.NotificationPreferences = bag.ToJsonString(StoreJsonOptions);
+        user.UpdatedAt = DateTime.UtcNow;
+        preferences.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var data = await BuildLaravelMatchPreferencesAsync();
+        return Ok(new { success = true, data });
+    }
 
     [HttpPut("me/theme-preferences")]
     public async Task<IActionResult> ThemePreferences([FromBody] JsonElement body)
@@ -207,11 +300,144 @@ public class UsersParityController : ControllerBase
     [HttpGet("me/sub-accounts/{childId:int}/activity")]
     public IActionResult SubAccountActivity([FromRoute(Name = "childId")] int subAccountId) => Ok(new { data = Array.Empty<object>(), sub_account_id = subAccountId });
 
+    private async Task<object> BuildLaravelMatchPreferencesAsync()
+    {
+        var row = await _db.MatchPreferences
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.TenantId == TenantId() && p.UserId == UserId());
+        var user = await CurrentUserAsync();
+        var bag = ParsePreferenceBag(user.NotificationPreferences);
+
+        return new
+        {
+            max_distance_km = (int)Math.Round(row?.MaxDistanceKm ?? 25),
+            min_match_score = PreferenceInt(bag, "match_min_match_score", 50),
+            notification_frequency = PreferenceString(bag, "match_notification_frequency", "monthly"),
+            notify_hot_matches = PreferenceBool(bag, "match_notify_hot_matches", true),
+            notify_mutual_matches = PreferenceBool(bag, "match_notify_mutual_matches", true),
+            matching_paused = row?.IsActive == false,
+            categories = ParseIntArray(row?.PreferredCategories),
+            availability = ParseStringArray(row?.AvailableDays)
+        };
+    }
+
+    private async Task<User> CurrentUserAsync()
+    {
+        var userId = UserId();
+        return await _db.Users.FirstOrDefaultAsync(u => u.TenantId == TenantId() && u.Id == userId)
+            ?? throw new UnauthorizedAccessException("Invalid token");
+    }
+
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
     private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
     private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null ? v.ToString() : null;
     private static bool? Bool(JsonElement e, string name) => bool.TryParse(Str(e, name), out var value) ? value : null;
+    private static int? Int(JsonElement e, string name) => int.TryParse(Str(e, name), out var value) ? value : null;
     private static DateTime? Date(JsonElement e, string name) => DateTime.TryParse(Str(e, name), out var value) ? value : null;
+
+    private static JsonObject ParsePreferenceBag(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new JsonObject();
+        }
+
+        try
+        {
+            return JsonNode.Parse(raw) as JsonObject ?? new JsonObject();
+        }
+        catch (JsonException)
+        {
+            return new JsonObject();
+        }
+    }
+
+    private static bool PreferenceBool(JsonObject bag, string key, bool defaultValue)
+    {
+        if (!bag.TryGetPropertyValue(key, out var node) || node is not JsonValue value)
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            if (value.TryGetValue<bool>(out var boolValue)) return boolValue;
+            if (value.TryGetValue<int>(out var intValue)) return intValue != 0;
+            if (value.TryGetValue<string>(out var stringValue) && bool.TryParse(stringValue, out var parsed)) return parsed;
+        }
+        catch (InvalidOperationException)
+        {
+            return defaultValue;
+        }
+
+        return defaultValue;
+    }
+
+    private static int PreferenceInt(JsonObject bag, string key, int defaultValue)
+    {
+        if (!bag.TryGetPropertyValue(key, out var node) || node is not JsonValue value)
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            if (value.TryGetValue<int>(out var intValue)) return intValue;
+            if (value.TryGetValue<string>(out var stringValue) && int.TryParse(stringValue, out var parsed)) return parsed;
+        }
+        catch (InvalidOperationException)
+        {
+            return defaultValue;
+        }
+
+        return defaultValue;
+    }
+
+    private static string PreferenceString(JsonObject bag, string key, string defaultValue)
+    {
+        if (!bag.TryGetPropertyValue(key, out var node) || node is not JsonValue value)
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            return value.TryGetValue<string>(out var stringValue) && !string.IsNullOrWhiteSpace(stringValue)
+                ? stringValue
+                : defaultValue;
+        }
+        catch (InvalidOperationException)
+        {
+            return defaultValue;
+        }
+    }
+
+    private static int[] ParseIntArray(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+        try
+        {
+            return JsonSerializer.Deserialize<int[]>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string[] ParseStringArray(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+        try
+        {
+            return JsonSerializer.Deserialize<string[]>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
     private static int? ParseDayOfWeek(string day)
     {
         if (int.TryParse(day, out var number) && number is >= 0 and <= 6) return number;

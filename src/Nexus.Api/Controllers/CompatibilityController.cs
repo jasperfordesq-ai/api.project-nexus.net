@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -111,8 +112,7 @@ public class CompatibilityController : ControllerBase
     /// PUT /api/users/me/preferences - Update general preferences (alias).
     /// </summary>
     [HttpPut("api/users/me/preferences")]
-    public async Task<IActionResult> UpdatePreferences(
-        [FromBody] UpdatePreferencesDto dto)
+    public async Task<IActionResult> UpdatePreferences([FromBody] JsonElement body)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
@@ -121,28 +121,78 @@ public class CompatibilityController : ControllerBase
 
         try
         {
-            var prefs = await _preferencesService.UpdatePreferencesAsync(tenantId, userId.Value, dto);
+            var prefs = await _preferencesService.GetPreferencesAsync(tenantId, userId.Value);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Id == userId.Value);
+            if (user == null) return NotFound(new { error = "User not found" });
+
+            var bag = ParsePreferenceBag(user.NotificationPreferences);
+
+            if (ReadString(body, "theme") is { } theme) prefs.Theme = theme;
+            if (ReadString(body, "language") is { } language) prefs.Language = language;
+            if (ReadString(body, "timezone") is { } timezone) prefs.Timezone = timezone;
+            if (ReadString(body, "email_digest_frequency") is { } digest) prefs.EmailDigestFrequency = digest;
+
+            if (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("privacy", out var privacy) && privacy.ValueKind == JsonValueKind.Object)
+            {
+                var privacyProfile = ReadString(privacy, "privacy_profile");
+                if (!string.IsNullOrWhiteSpace(privacyProfile))
+                {
+                    if (privacyProfile is not ("public" or "members" or "connections"))
+                    {
+                        return BadRequest(new { success = false, error = "VALIDATION_ERROR", field = "privacy.privacy_profile" });
+                    }
+
+                    prefs.ProfileVisibility = privacyProfile;
+                }
+
+                if (ReadBool(privacy, "privacy_search") is { } privacySearch)
+                {
+                    prefs.Searchable = privacySearch;
+                }
+
+                if (ReadBool(privacy, "privacy_contact") is { } privacyContact)
+                {
+                    bag["privacy_contact"] = privacyContact;
+                }
+            }
+
+            if (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("feed", out var feed) && feed.ValueKind == JsonValueKind.Object)
+            {
+                if (ReadBool(feed, "prefers_chronological") is { } chronological)
+                {
+                    bag["prefers_chronological_feed"] = chronological;
+                }
+            }
+
+            if (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("translation", out var translation) && translation.ValueKind == JsonValueKind.Object)
+            {
+                if (ReadBool(translation, "auto_translate_ugc") is { } autoTranslate)
+                {
+                    bag["auto_translate_ugc"] = autoTranslate;
+                }
+
+                if (ReadString(translation, "auto_translate_target_locale") is { } targetLocale)
+                {
+                    bag["auto_translate_target_locale"] = string.IsNullOrWhiteSpace(targetLocale)
+                        ? null
+                        : targetLocale.Trim()[..Math.Min(5, targetLocale.Trim().Length)];
+                }
+            }
+
+            user.NotificationPreferences = bag.ToJsonString(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            user.UpdatedAt = DateTime.UtcNow;
+            prefs.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
 
             return Ok(new
             {
                 success = true,
-                message = "Preferences updated",
-                preferences = new
-                {
-                    theme = prefs.Theme,
-                    language = prefs.Language,
-                    timezone = prefs.Timezone,
-                    email_digest_frequency = prefs.EmailDigestFrequency,
-                    profile_visibility = prefs.ProfileVisibility,
-                    show_online_status = prefs.ShowOnlineStatus,
-                    show_last_seen = prefs.ShowLastSeen,
-                    updated_at = prefs.UpdatedAt
-                }
+                data = BuildLaravelPreferences(prefs, user)
             });
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new { success = false, error = ex.Message });
         }
     }
 
@@ -222,27 +272,26 @@ public class CompatibilityController : ControllerBase
     /// PUT /api/users/me/consent - Update a consent record (alias).
     /// </summary>
     [HttpPut("api/users/me/consent")]
-    public async Task<IActionResult> UpdateConsent(
-        [FromBody] ConsentUpdateRequest request)
+    public async Task<IActionResult> UpdateConsent([FromBody] JsonElement body)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        if (string.IsNullOrWhiteSpace(request.ConsentType))
-            return BadRequest(new { error = "consent_type is required" });
+        var consentType = ReadString(body, "slug", "consent_type", "consent_type_slug")?.Trim();
+        if (string.IsNullOrWhiteSpace(consentType))
+            return BadRequest(new { success = false, error = "VALIDATION_ERROR", field = "slug" });
+
+        var granted = ReadBool(body, "given", "is_granted", "granted") ?? false;
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         var consent = await _gdprService.RecordConsentAsync(
-            userId.Value, request.ConsentType, request.IsGranted, ipAddress);
+            userId.Value, consentType, granted, ipAddress);
 
         return Ok(new
         {
-            consent_type = consent.ConsentType,
-            is_granted = consent.IsGranted,
-            granted_at = consent.GrantedAt,
-            revoked_at = consent.RevokedAt,
-            updated_at = consent.UpdatedAt
+            success = true,
+            data = MapLaravelConsent(consent)
         });
     }
 
@@ -1164,22 +1213,13 @@ public class CompatibilityController : ControllerBase
         var tenantId = _tenantContext.GetTenantIdOrThrow();
 
         var prefs = await _preferencesService.GetPreferencesAsync(tenantId, userId.Value);
-        if (prefs == null)
-            return Ok(new { data = (object?)null, message = "No preferences set yet" });
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Id == userId.Value);
+        if (user == null) return NotFound(new { error = "User not found" });
 
         return Ok(new
         {
-            data = new
-            {
-                theme = prefs.Theme,
-                language = prefs.Language,
-                timezone = prefs.Timezone,
-                email_digest_frequency = prefs.EmailDigestFrequency,
-                profile_visibility = prefs.ProfileVisibility,
-                show_online_status = prefs.ShowOnlineStatus,
-                show_last_seen = prefs.ShowLastSeen,
-                updated_at = prefs.UpdatedAt
-            }
+            success = true,
+            data = BuildLaravelPreferences(prefs, user)
         });
     }
 
@@ -1192,23 +1232,37 @@ public class CompatibilityController : ControllerBase
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        var sessions = await _db.UserSessions
+        var rows = await _db.UserSessions
             .AsNoTracking()
             .Where(s => s.UserId == userId.Value && s.IsActive && s.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(s => s.LastActivityAt)
             .Select(s => new
             {
-                id = s.Id,
-                ip_address = s.IpAddress,
-                user_agent = s.UserAgent,
-                device_info = s.DeviceInfo,
-                created_at = s.CreatedAt,
-                last_activity_at = s.LastActivityAt,
-                expires_at = s.ExpiresAt
+                s.Id,
+                s.IpAddress,
+                s.UserAgent,
+                s.DeviceInfo,
+                s.CreatedAt,
+                s.LastActivityAt,
+                s.ExpiresAt
             })
             .ToListAsync();
+        var sessions = rows.Select(s => new
+        {
+            id = s.Id,
+            device = string.IsNullOrWhiteSpace(s.DeviceInfo) ? "Unknown device" : s.DeviceInfo,
+            browser = ParseSessionBrowser(s.UserAgent),
+            ip_address = s.IpAddress,
+            user_agent = s.UserAgent,
+            device_info = s.DeviceInfo,
+            last_active = s.LastActivityAt,
+            is_current = false,
+            created_at = s.CreatedAt,
+            last_activity_at = s.LastActivityAt,
+            expires_at = s.ExpiresAt
+        }).ToList();
 
-        return Ok(new { data = sessions, total = sessions.Count });
+        return Ok(new { success = true, data = sessions, total = sessions.Count });
     }
 
     /// <summary>
@@ -1224,14 +1278,8 @@ public class CompatibilityController : ControllerBase
 
         return Ok(new
         {
-            data = consents.Select(c => new
-            {
-                consent_type = c.ConsentType,
-                is_granted = c.IsGranted,
-                granted_at = c.GrantedAt,
-                revoked_at = c.RevokedAt,
-                updated_at = c.UpdatedAt
-            })
+            success = true,
+            data = consents.Select(MapLaravelConsent)
         });
     }
 
@@ -1308,35 +1356,62 @@ public class CompatibilityController : ControllerBase
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (string.IsNullOrWhiteSpace(request.Type))
-            return BadRequest(new { error = "type is required (export or deletion)" });
+            return BadRequest(new { success = false, error = "VALIDATION_ERROR", field = "type" });
 
         try
         {
-            if (request.Type.ToLower() == "export")
+            var type = request.Type.Trim().ToLowerInvariant();
+            if (type is "access" or "portability")
             {
                 var export = await _gdprService.RequestDataExportAsync(
                     userId.Value, request.Format ?? "json");
-                return Ok(new
+                return StatusCode(201, new
                 {
                     success = true,
-                    message = "Data export request created",
-                    data = new { id = export.Id, status = export.Status, format = export.Format, created_at = export.CreatedAt }
+                    data = new
+                    {
+                        request_id = export.Id,
+                        type,
+                        status = export.Status.ToString().ToLowerInvariant(),
+                        message = "GDPR request submitted"
+                    }
                 });
             }
-            else if (request.Type.ToLower() == "deletion")
+            else if (type is "erasure")
             {
                 var deletion = await _gdprService.RequestDataDeletionAsync(
-                    userId.Value, request.Reason);
-                return Ok(new
+                    userId.Value, request.Notes ?? request.Reason);
+                return StatusCode(201, new
                 {
                     success = true,
-                    message = "Data deletion request created",
-                    data = new { id = deletion.Id, status = deletion.Status, created_at = deletion.CreatedAt }
+                    data = new
+                    {
+                        request_id = deletion.Id,
+                        type,
+                        status = deletion.Status.ToString().ToLowerInvariant(),
+                        message = "GDPR request submitted"
+                    }
+                });
+            }
+            else if (type is "rectification" or "restriction" or "objection")
+            {
+                var export = await _gdprService.RequestDataExportAsync(
+                    userId.Value, request.Format ?? "json");
+                return StatusCode(201, new
+                {
+                    success = true,
+                    data = new
+                    {
+                        request_id = export.Id,
+                        type,
+                        status = export.Status.ToString().ToLowerInvariant(),
+                        message = "GDPR request submitted"
+                    }
                 });
             }
             else
             {
-                return BadRequest(new { error = "type must be 'export' or 'deletion'" });
+                return BadRequest(new { success = false, error = "VALIDATION_ERROR", field = "type" });
             }
         }
         catch (InvalidOperationException ex)
@@ -1987,6 +2062,154 @@ public class CompatibilityController : ControllerBase
     {
         return config.TryGetValue(key, out var value) ? value : defaultValue;
     }
+
+    private static object MapLaravelConsent(ConsentRecord consent)
+    {
+        return new
+        {
+            id = consent.Id,
+            consent_type_slug = consent.ConsentType,
+            consent_type = consent.ConsentType,
+            given = consent.IsGranted,
+            is_granted = consent.IsGranted,
+            granted_at = consent.GrantedAt,
+            revoked_at = consent.RevokedAt,
+            updated_at = consent.UpdatedAt
+        };
+    }
+
+    private static object BuildLaravelPreferences(UserPreference prefs, User user)
+    {
+        var bag = ParsePreferenceBag(user.NotificationPreferences);
+        var targetLocale = PreferenceString(bag, "auto_translate_target_locale", prefs.Language);
+
+        return new
+        {
+            privacy = new
+            {
+                privacy_profile = string.IsNullOrWhiteSpace(prefs.ProfileVisibility) ? "public" : prefs.ProfileVisibility,
+                privacy_search = prefs.Searchable,
+                privacy_contact = PreferenceBool(bag, "privacy_contact", true)
+            },
+            notifications = new { },
+            accessibility = new
+            {
+                large_text = false,
+                high_contrast = false,
+                reduced_motion = false,
+                simplified_layout = false
+            },
+            feed = new
+            {
+                prefers_chronological = PreferenceBool(bag, "prefers_chronological_feed", false)
+            },
+            translation = new
+            {
+                auto_translate_ugc = PreferenceBool(bag, "auto_translate_ugc", false),
+                auto_translate_target_locale = targetLocale
+            }
+        };
+    }
+
+    private static JsonObject ParsePreferenceBag(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new JsonObject();
+        }
+
+        try
+        {
+            return JsonNode.Parse(raw) as JsonObject ?? new JsonObject();
+        }
+        catch (JsonException)
+        {
+            return new JsonObject();
+        }
+    }
+
+    private static bool PreferenceBool(JsonObject bag, string key, bool defaultValue)
+    {
+        if (!bag.TryGetPropertyValue(key, out var node) || node is not JsonValue value)
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            if (value.TryGetValue<bool>(out var boolValue)) return boolValue;
+            if (value.TryGetValue<int>(out var intValue)) return intValue != 0;
+            if (value.TryGetValue<string>(out var stringValue) && bool.TryParse(stringValue, out var parsed)) return parsed;
+        }
+        catch (InvalidOperationException)
+        {
+            return defaultValue;
+        }
+
+        return defaultValue;
+    }
+
+    private static string? PreferenceString(JsonObject bag, string key, string? defaultValue)
+    {
+        if (!bag.TryGetPropertyValue(key, out var node) || node is not JsonValue value)
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            return value.TryGetValue<string>(out var stringValue) && !string.IsNullOrWhiteSpace(stringValue)
+                ? stringValue
+                : defaultValue;
+        }
+        catch (InvalidOperationException)
+        {
+            return defaultValue;
+        }
+    }
+
+    private static string ParseSessionBrowser(string? userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent)) return "Unknown";
+        if (userAgent.Contains("Edg/", StringComparison.OrdinalIgnoreCase)) return "Edge";
+        if (userAgent.Contains("Chrome/", StringComparison.OrdinalIgnoreCase)) return "Chrome";
+        if (userAgent.Contains("Firefox/", StringComparison.OrdinalIgnoreCase)) return "Firefox";
+        if (userAgent.Contains("Safari/", StringComparison.OrdinalIgnoreCase)) return "Safari";
+        return "Unknown";
+    }
+
+    private static string? ReadString(JsonElement body, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (body.ValueKind == JsonValueKind.Object &&
+                body.TryGetProperty(name, out var value) &&
+                value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+            {
+                return value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString();
+            }
+        }
+
+        return null;
+    }
+
+    private static bool? ReadBool(JsonElement body, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty(name, out var value))
+            {
+                continue;
+            }
+
+            if (value.ValueKind == JsonValueKind.True) return true;
+            if (value.ValueKind == JsonValueKind.False) return false;
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)) return number != 0;
+            if (value.ValueKind == JsonValueKind.String && bool.TryParse(value.GetString(), out var parsed)) return parsed;
+        }
+
+        return null;
+    }
 }
 
 // ──────────────────────────────────────────────
@@ -2035,4 +2258,7 @@ public class GdprRequestDto
 
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
 }

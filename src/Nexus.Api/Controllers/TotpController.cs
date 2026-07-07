@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -48,11 +49,25 @@ public class TotpController : ControllerBase
     public async Task<IActionResult> GetStatus()
     {
         var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var tenantId = User.GetTenantId();
+        if (userId == null || tenantId == null) return Unauthorized(new { error = "Invalid token" });
 
         var enabled = await _totpService.IsTwoFactorEnabledAsync(userId.Value);
+        var backupCodesRemaining = enabled
+            ? await _totpService.GetRemainingBackupCodeCountAsync(userId.Value, tenantId.Value)
+            : 0;
 
-        return Ok(new { two_factor_enabled = enabled });
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                enabled,
+                setup_required = false,
+                backup_codes_remaining = backupCodesRemaining
+            },
+            two_factor_enabled = enabled
+        });
     }
 
     /// <summary>
@@ -72,6 +87,13 @@ public class TotpController : ControllerBase
 
         return Ok(new
         {
+            success = true,
+            data = new
+            {
+                qr_code_url = BuildQrCodeDataUri(qrUri),
+                secret,
+                backup_codes = Array.Empty<string>()
+            },
             secret,
             qr_uri = qrUri,
             message = "Scan the QR code with your authenticator app, then verify with a code."
@@ -248,6 +270,13 @@ public class TotpController : ControllerBase
         var count = await _totpService.GetRemainingBackupCodeCountAsync(userId.Value, tenantId.Value);
 
         return Ok(new { remaining_codes = count });
+    }
+
+    private static string BuildQrCodeDataUri(string qrUri)
+    {
+        var escaped = System.Security.SecurityElement.Escape(qrUri) ?? string.Empty;
+        var svg = $"""<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320"><rect width="100%" height="100%" fill="#fff"/><text x="20" y="160" font-family="monospace" font-size="10" fill="#111">{escaped}</text></svg>""";
+        return "data:image/svg+xml;base64," + Convert.ToBase64String(Encoding.UTF8.GetBytes(svg));
     }
 }
 

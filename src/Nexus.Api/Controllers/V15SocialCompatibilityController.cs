@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,43 @@ public class V15SocialCompatibilityController : ControllerBase
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         PropertyNameCaseInsensitive = true
+    };
+    private static readonly string[] LaravelNotificationPreferenceKeys =
+    [
+        "email_messages",
+        "email_listings",
+        "email_digest",
+        "email_connections",
+        "email_transactions",
+        "email_reviews",
+        "email_gamification_digest",
+        "email_gamification_milestones",
+        "email_org_payments",
+        "email_org_transfers",
+        "email_org_membership",
+        "email_org_admin",
+        "caring_smart_nudges",
+        "push_enabled",
+        "push_campaigns_opted_in"
+    ];
+    private static readonly IReadOnlyDictionary<string, bool> LaravelNotificationPreferenceDefaults = new Dictionary<string, bool>
+    {
+        ["email_messages"] = true,
+        ["email_listings"] = true,
+        ["email_digest"] = false,
+        ["email_connections"] = true,
+        ["email_transactions"] = true,
+        ["email_reviews"] = true,
+        ["email_gamification_digest"] = true,
+        ["email_gamification_milestones"] = true,
+        ["email_org_payments"] = true,
+        ["email_org_transfers"] = true,
+        ["email_org_membership"] = true,
+        ["email_org_admin"] = true,
+        ["caring_smart_nudges"] = true,
+        ["push_enabled"] = true,
+        ["push_campaigns_opted_in"] = false,
+        ["federation_notifications_enabled"] = true
     };
 
     private const string SupportReportsKey = "admin_explicit.support_reports";
@@ -734,7 +772,6 @@ public class V15SocialCompatibilityController : ControllerBase
 
     [HttpPost("/api/notifications/settings")]
     [HttpPost("/api/v2/notifications/settings")]
-    [HttpPut("/api/v2/users/me/notifications")]
     public async Task<IActionResult> UpdateNotificationSettings([FromBody] JsonElement body)
     {
         if (TryGet(body, "context_type", out _) || TryGet(body, "frequency", out _) || TryGet(body, "push_enabled", out _))
@@ -752,11 +789,50 @@ public class V15SocialCompatibilityController : ControllerBase
         return Ok(new { success = true, data = pref });
     }
 
+    [HttpPut("/api/v2/users/me/notifications")]
+    public async Task<IActionResult> UpdateUserNotificationPreferences([FromBody] JsonElement body)
+    {
+        var user = await CurrentUserAsync();
+        var bag = ParseNotificationPreferenceBag(user.NotificationPreferences);
+        var changed = false;
+
+        foreach (var key in LaravelNotificationPreferenceKeys)
+        {
+            if (TryGet(body, key, out _))
+            {
+                bag[key] = ReadBool(body, key) ?? false;
+                changed = true;
+            }
+        }
+
+        if (!changed)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "VALIDATION_ERROR",
+                message = "No valid notification preferences provided."
+            });
+        }
+
+        if (TryGet(body, "federation_notifications_enabled", out _))
+        {
+            bag["federation_notifications_enabled"] = ReadBool(body, "federation_notifications_enabled") ?? true;
+        }
+
+        user.NotificationPreferences = bag.ToJsonString(StoreJsonOptions);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { message = "Notification preferences updated" } });
+    }
+
     [HttpGet("/api/v2/users/me/notifications")]
     public async Task<IActionResult> NotificationSettings()
     {
-        var data = await _pushService.GetPreferencesAsync(RequireUserId());
-        return Ok(new { data });
+        var user = await CurrentUserAsync();
+        var data = BuildLaravelNotificationPreferenceData(ParseNotificationPreferenceBag(user.NotificationPreferences));
+        return Ok(new { success = true, data });
     }
 
     [HttpPost("/api/push/register-device")]
@@ -1225,6 +1301,13 @@ public class V15SocialCompatibilityController : ControllerBase
 
     private int TenantId() => _tenantContext.GetTenantIdOrThrow();
 
+    private async Task<User> CurrentUserAsync()
+    {
+        var userId = RequireUserId();
+        return await _db.Users.FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == TenantId())
+            ?? throw new UnauthorizedAccessException("Invalid token");
+    }
+
     private int TenantIdOrDefault()
     {
         try
@@ -1286,6 +1369,55 @@ public class V15SocialCompatibilityController : ControllerBase
                 frequency
             }
         });
+    }
+
+    private static JsonObject ParseNotificationPreferenceBag(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new JsonObject();
+        }
+
+        try
+        {
+            return JsonNode.Parse(raw) as JsonObject ?? new JsonObject();
+        }
+        catch (JsonException)
+        {
+            return new JsonObject();
+        }
+    }
+
+    private static Dictionary<string, bool> BuildLaravelNotificationPreferenceData(JsonObject bag)
+    {
+        return LaravelNotificationPreferenceDefaults.ToDictionary(
+            pair => pair.Key,
+            pair => ReadPreferenceBool(bag, pair.Key, pair.Value));
+    }
+
+    private static bool ReadPreferenceBool(JsonObject bag, string key, bool defaultValue)
+    {
+        if (!bag.TryGetPropertyValue(key, out var node) || node is null)
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            if (node is JsonValue value)
+            {
+                if (value.TryGetValue<bool>(out var boolValue)) return boolValue;
+                if (value.TryGetValue<int>(out var intValue)) return intValue != 0;
+                if (value.TryGetValue<long>(out var longValue)) return longValue != 0;
+                if (value.TryGetValue<string>(out var stringValue) && bool.TryParse(stringValue, out var parsed)) return parsed;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            return defaultValue;
+        }
+
+        return defaultValue;
     }
 
     private async Task<List<SupportReportCompatRecord>> LoadAllSupportReports()

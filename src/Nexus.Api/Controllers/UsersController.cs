@@ -3,6 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -61,7 +63,11 @@ public class UsersController : ControllerBase
             return NotFound(new { error = "User not found" });
         }
 
-        return Ok(await BuildEnrichedUserResponse(user));
+        return Ok(new
+        {
+            success = true,
+            data = await BuildEnrichedUserResponse(user)
+        });
     }
 
     /// <summary>
@@ -217,14 +223,71 @@ public class UsersController : ControllerBase
             updated = true;
         }
 
+        var profileBag = ParseProfileBag(user.NotificationPreferences);
+        if (request.Phone != null)
+        {
+            profileBag["profile_phone"] = request.Phone.Trim();
+            updated = true;
+        }
+        if (request.Tagline != null)
+        {
+            profileBag["profile_tagline"] = request.Tagline.Trim();
+            updated = true;
+        }
+        if (request.Location != null)
+        {
+            profileBag["profile_location"] = request.Location.Trim();
+            updated = true;
+        }
+        if (request.Latitude.HasValue)
+        {
+            profileBag["profile_latitude"] = request.Latitude.Value;
+            updated = true;
+        }
+        if (request.Longitude.HasValue)
+        {
+            profileBag["profile_longitude"] = request.Longitude.Value;
+            updated = true;
+        }
+        if (request.ProfileType != null)
+        {
+            if (request.ProfileType is not ("individual" or "organisation"))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    errors = new[] { new { code = "VALIDATION_ERROR", message = "Profile type must be individual or organisation", field = "profile_type" } }
+                });
+            }
+
+            profileBag["profile_type"] = request.ProfileType;
+            updated = true;
+        }
+        if (request.OrganizationName != null)
+        {
+            profileBag["organization_name"] = request.OrganizationName.Trim();
+            updated = true;
+        }
+        if (request.DateOfBirth != null)
+        {
+            profileBag["date_of_birth"] = request.DateOfBirth;
+            updated = true;
+        }
+
         if (updated)
         {
+            user.NotificationPreferences = profileBag.ToJsonString(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            user.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
             _logger.LogInformation("User {UserId} updated their profile", userId);
         }
 
         // Return same shape as GET /api/users/me
-        return Ok(await BuildEnrichedUserResponse(user));
+        return Ok(new
+        {
+            success = true,
+            data = await BuildEnrichedUserResponse(user)
+        });
     }
 
     /// <summary>
@@ -335,6 +398,13 @@ public class UsersController : ControllerBase
     /// </summary>
     private async Task<object> BuildEnrichedUserResponse(User user)
     {
+        var profileBag = ParseProfileBag(user.NotificationPreferences);
+        var profileType = ProfileString(profileBag, "profile_type", "individual") ?? "individual";
+        var organizationName = ProfileString(profileBag, "organization_name", null);
+        var displayName = profileType == "organisation" && !string.IsNullOrWhiteSpace(organizationName)
+            ? organizationName
+            : $"{user.FirstName} {user.LastName}".Trim();
+
         // Check onboarding completion: user has completed all required steps
         var totalRequired = await _db.Set<OnboardingStep>()
             .Where(s => s.TenantId == user.TenantId && s.IsRequired)
@@ -365,11 +435,19 @@ public class UsersController : ControllerBase
             email = user.Email,
             first_name = user.FirstName,
             last_name = user.LastName,
-            name = $"{user.FirstName} {user.LastName}".Trim(),
+            name = displayName,
             role = user.Role,
             tenant_id = user.TenantId,
             avatar_url = user.AvatarUrl,
             bio = user.Bio,
+            tagline = ProfileString(profileBag, "profile_tagline", user.Bio?.Length > 120 ? user.Bio[..120] : user.Bio),
+            location = ProfileString(profileBag, "profile_location", null),
+            latitude = ProfileDecimal(profileBag, "profile_latitude"),
+            longitude = ProfileDecimal(profileBag, "profile_longitude"),
+            phone = ProfileString(profileBag, "profile_phone", null),
+            date_of_birth = ProfileString(profileBag, "date_of_birth", null),
+            profile_type = profileType,
+            organization_name = organizationName,
             is_active = user.IsActive,
             status,
             created_at = user.CreatedAt,
@@ -389,6 +467,58 @@ public class UsersController : ControllerBase
             skills = Array.Empty<string>()
         };
     }
+
+    private static JsonObject ParseProfileBag(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new JsonObject();
+        }
+
+        try
+        {
+            return JsonNode.Parse(raw) as JsonObject ?? new JsonObject();
+        }
+        catch (JsonException)
+        {
+            return new JsonObject();
+        }
+    }
+
+    private static string? ProfileString(JsonObject bag, string key, string? defaultValue)
+    {
+        if (!bag.TryGetPropertyValue(key, out var node) || node is not JsonValue value)
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            return value.TryGetValue<string>(out var text) ? text : defaultValue;
+        }
+        catch (InvalidOperationException)
+        {
+            return defaultValue;
+        }
+    }
+
+    private static decimal? ProfileDecimal(JsonObject bag, string key)
+    {
+        if (!bag.TryGetPropertyValue(key, out var node) || node is not JsonValue value)
+        {
+            return null;
+        }
+
+        try
+        {
+            if (value.TryGetValue<decimal>(out var number)) return number;
+            return value.TryGetValue<string>(out var text) && decimal.TryParse(text, out var parsed) ? parsed : null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
 }
 
 /// <summary>
@@ -404,6 +534,30 @@ public class UpdateProfileRequest
 
     [JsonPropertyName("bio")]
     public string? Bio { get; set; }
+
+    [JsonPropertyName("phone")]
+    public string? Phone { get; set; }
+
+    [JsonPropertyName("tagline")]
+    public string? Tagline { get; set; }
+
+    [JsonPropertyName("location")]
+    public string? Location { get; set; }
+
+    [JsonPropertyName("latitude")]
+    public decimal? Latitude { get; set; }
+
+    [JsonPropertyName("longitude")]
+    public decimal? Longitude { get; set; }
+
+    [JsonPropertyName("profile_type")]
+    public string? ProfileType { get; set; }
+
+    [JsonPropertyName("organization_name")]
+    public string? OrganizationName { get; set; }
+
+    [JsonPropertyName("date_of_birth")]
+    public string? DateOfBirth { get; set; }
 }
 
 public class DeleteAccountRequest

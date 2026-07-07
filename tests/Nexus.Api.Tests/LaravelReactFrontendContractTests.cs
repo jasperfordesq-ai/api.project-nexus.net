@@ -59,6 +59,310 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task UserNotificationPreferences_UseLaravelSettingsShape()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var initial = await Client.GetAsync("/api/v2/users/me/notifications");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        initialJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var initialData = initialJson.GetProperty("data");
+        initialData.GetProperty("email_messages").GetBoolean().Should().BeTrue();
+        initialData.GetProperty("email_digest").GetBoolean().Should().BeFalse();
+        initialData.GetProperty("federation_notifications_enabled").GetBoolean().Should().BeTrue();
+        initialData.GetProperty("push_enabled").GetBoolean().Should().BeTrue();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/users/me/notifications", new
+        {
+            email_messages = false,
+            email_listings = false,
+            email_digest = true,
+            email_connections = false,
+            email_transactions = true,
+            email_reviews = false,
+            email_gamification_digest = false,
+            email_gamification_milestones = true,
+            email_org_payments = false,
+            email_org_transfers = true,
+            email_org_membership = false,
+            email_org_admin = true,
+            caring_smart_nudges = false,
+            push_enabled = false,
+            push_campaigns_opted_in = true,
+            federation_notifications_enabled = false
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        updateJson.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var reloaded = await Client.GetAsync("/api/v2/users/me/notifications");
+
+        reloaded.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reloadedData = (await reloaded.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        reloadedData.GetProperty("email_messages").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("email_listings").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("email_digest").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("email_connections").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("email_transactions").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("email_reviews").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("email_gamification_digest").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("email_gamification_milestones").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("email_org_payments").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("email_org_transfers").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("email_org_membership").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("email_org_admin").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("caring_smart_nudges").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("push_enabled").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("push_campaigns_opted_in").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("federation_notifications_enabled").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UserMatchPreferences_UseLaravelDefaultsAndUpdateShape()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var initial = await Client.GetAsync("/api/v2/users/me/match-preferences");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        initialJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var initialData = initialJson.GetProperty("data");
+        initialData.GetProperty("max_distance_km").GetInt32().Should().Be(25);
+        initialData.GetProperty("min_match_score").GetInt32().Should().Be(50);
+        initialData.GetProperty("notification_frequency").GetString().Should().Be("monthly");
+        initialData.GetProperty("notify_hot_matches").GetBoolean().Should().BeTrue();
+        initialData.GetProperty("notify_mutual_matches").GetBoolean().Should().BeTrue();
+        initialData.GetProperty("matching_paused").GetBoolean().Should().BeFalse();
+        initialData.GetProperty("categories").EnumerateArray().Should().BeEmpty();
+        initialData.GetProperty("availability").EnumerateArray().Should().BeEmpty();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/users/me/match-preferences", new
+        {
+            notification_frequency = "weekly",
+            notify_hot_matches = false,
+            notify_mutual_matches = false,
+            matching_paused = true,
+            max_distance_km = 500,
+            min_match_score = -3,
+            categories = new[] { 3, 5, 5 },
+            availability = new[] { "weekends", "weekday_evenings" }
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateData = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updateData.GetProperty("notification_frequency").GetString().Should().Be("monthly");
+        updateData.GetProperty("notify_hot_matches").GetBoolean().Should().BeFalse();
+        updateData.GetProperty("notify_mutual_matches").GetBoolean().Should().BeFalse();
+        updateData.GetProperty("matching_paused").GetBoolean().Should().BeTrue();
+        updateData.GetProperty("max_distance_km").GetInt32().Should().Be(100);
+        updateData.GetProperty("min_match_score").GetInt32().Should().Be(0);
+        updateData.GetProperty("categories").EnumerateArray().Select(x => x.GetInt32()).Should().Equal(3, 5, 5);
+        updateData.GetProperty("availability").EnumerateArray().Select(x => x.GetString()).Should().Equal("weekends", "weekday_evenings");
+    }
+
+    [Fact]
+    public async Task UserConsentAndGdprRequest_UseLaravelSettingsShape()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var initial = await Client.GetAsync("/api/v2/users/me/consent");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        initialJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        initialJson.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var update = await Client.PutAsJsonAsync("/api/v2/users/me/consent", new
+        {
+            slug = "marketing_email",
+            given = true
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateData = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updateData.GetProperty("consent_type_slug").GetString().Should().Be("marketing_email");
+        updateData.GetProperty("given").GetBoolean().Should().BeTrue();
+
+        var reloaded = await Client.GetAsync("/api/v2/users/me/consent");
+
+        reloaded.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reloadedData = (await reloaded.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        reloadedData.EnumerateArray()
+            .Should().Contain(c => c.GetProperty("consent_type_slug").GetString() == "marketing_email"
+                && c.GetProperty("given").GetBoolean());
+
+        var gdpr = await Client.PostAsJsonAsync("/api/v2/users/me/gdpr-request", new
+        {
+            type = "access",
+            notes = "Please send my data export."
+        });
+
+        gdpr.StatusCode.Should().Be(HttpStatusCode.Created);
+        var gdprData = (await gdpr.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        gdprData.GetProperty("request_id").GetInt32().Should().BeGreaterThan(0);
+        gdprData.GetProperty("type").GetString().Should().Be("access");
+        gdprData.GetProperty("status").GetString().Should().Be("pending");
+    }
+
+    [Fact]
+    public async Task UserPreferences_UseLaravelPrivacyFeedAndTranslationShape()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var initial = await Client.GetAsync("/api/v2/users/me/preferences");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        initialJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var initialData = initialJson.GetProperty("data");
+        initialData.GetProperty("privacy").GetProperty("privacy_profile").GetString().Should().Be("public");
+        initialData.GetProperty("privacy").GetProperty("privacy_search").GetBoolean().Should().BeTrue();
+        initialData.GetProperty("privacy").GetProperty("privacy_contact").GetBoolean().Should().BeTrue();
+        initialData.GetProperty("feed").GetProperty("prefers_chronological").GetBoolean().Should().BeFalse();
+        initialData.GetProperty("translation").GetProperty("auto_translate_ugc").GetBoolean().Should().BeFalse();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/users/me/preferences", new
+        {
+            privacy = new
+            {
+                privacy_profile = "connections",
+                privacy_search = false,
+                privacy_contact = false
+            },
+            feed = new
+            {
+                prefers_chronological = true
+            },
+            translation = new
+            {
+                auto_translate_ugc = true,
+                auto_translate_target_locale = "ga"
+            }
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var updateData = updateJson.GetProperty("data");
+        updateData.GetProperty("privacy").GetProperty("privacy_profile").GetString().Should().Be("connections");
+        updateData.GetProperty("privacy").GetProperty("privacy_search").GetBoolean().Should().BeFalse();
+        updateData.GetProperty("privacy").GetProperty("privacy_contact").GetBoolean().Should().BeFalse();
+        updateData.GetProperty("feed").GetProperty("prefers_chronological").GetBoolean().Should().BeTrue();
+        updateData.GetProperty("translation").GetProperty("auto_translate_ugc").GetBoolean().Should().BeTrue();
+        updateData.GetProperty("translation").GetProperty("auto_translate_target_locale").GetString().Should().Be("ga");
+
+        var reloaded = await Client.GetAsync("/api/v2/users/me/preferences");
+
+        reloaded.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reloadedData = (await reloaded.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        reloadedData.GetProperty("privacy").GetProperty("privacy_profile").GetString().Should().Be("connections");
+        reloadedData.GetProperty("privacy").GetProperty("privacy_search").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("privacy").GetProperty("privacy_contact").GetBoolean().Should().BeFalse();
+        reloadedData.GetProperty("feed").GetProperty("prefers_chronological").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("translation").GetProperty("auto_translate_ugc").GetBoolean().Should().BeTrue();
+        reloadedData.GetProperty("translation").GetProperty("auto_translate_target_locale").GetString().Should().Be("ga");
+    }
+
+    [Fact]
+    public async Task SettingsSecurityApis_UseLaravelTwoFactorAndSessionsShape()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var status = await Client.GetAsync("/api/v2/auth/2fa/status");
+
+        status.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statusData = (await status.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        statusData.GetProperty("enabled").GetBoolean().Should().BeFalse();
+        statusData.GetProperty("setup_required").GetBoolean().Should().BeFalse();
+        statusData.GetProperty("backup_codes_remaining").GetInt32().Should().Be(0);
+
+        var setup = await Client.PostAsync("/api/v2/auth/2fa/setup", null);
+
+        setup.StatusCode.Should().Be(HttpStatusCode.OK);
+        var setupData = (await setup.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        setupData.GetProperty("secret").GetString().Should().NotBeNullOrWhiteSpace();
+        setupData.GetProperty("qr_code_url").GetString().Should().StartWith("data:image/svg+xml;base64,");
+        setupData.GetProperty("backup_codes").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var sessions = await Client.GetAsync("/api/v2/users/me/sessions");
+
+        sessions.StatusCode.Should().Be(HttpStatusCode.OK);
+        var sessionsJson = await sessions.Content.ReadFromJsonAsync<JsonElement>();
+        sessionsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        sessionsJson.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
+    }
+
+    [Fact]
+    public async Task UserProfileMe_UsesLaravelOwnProfileShapeAndUpdateFields()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var initial = await Client.GetAsync("/api/v2/users/me");
+
+        initial.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialJson = await initial.Content.ReadFromJsonAsync<JsonElement>();
+        initialJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var initialData = initialJson.GetProperty("data");
+        initialData.GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        initialData.GetProperty("email").GetString().Should().Be(TestData.MemberUser.Email);
+        initialData.GetProperty("profile_type").GetString().Should().Be("individual");
+        initialData.TryGetProperty("phone", out _).Should().BeTrue();
+        initialData.TryGetProperty("tagline", out _).Should().BeTrue();
+        initialData.TryGetProperty("location", out _).Should().BeTrue();
+        initialData.TryGetProperty("latitude", out _).Should().BeTrue();
+        initialData.TryGetProperty("longitude", out _).Should().BeTrue();
+        initialData.TryGetProperty("organization_name", out _).Should().BeTrue();
+        initialData.TryGetProperty("date_of_birth", out _).Should().BeTrue();
+        initialData.GetProperty("has_2fa_enabled").GetBoolean().Should().BeFalse();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/users/me", new
+        {
+            first_name = "Taylor",
+            last_name = "Timebank",
+            name = "Taylor Timebank",
+            phone = "+353 1 555 0101",
+            tagline = "Community repair mentor",
+            bio = "<p>I help neighbours repair bikes.</p>",
+            location = "Dublin",
+            latitude = 53.3498,
+            longitude = -6.2603,
+            profile_type = "organisation",
+            organization_name = "Taylor Repairs",
+            date_of_birth = "1990-01-02"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateData = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updateData.GetProperty("first_name").GetString().Should().Be("Taylor");
+        updateData.GetProperty("last_name").GetString().Should().Be("Timebank");
+        updateData.GetProperty("name").GetString().Should().Be("Taylor Repairs");
+        updateData.GetProperty("phone").GetString().Should().Be("+353 1 555 0101");
+        updateData.GetProperty("tagline").GetString().Should().Be("Community repair mentor");
+        updateData.GetProperty("bio").GetString().Should().Be("<p>I help neighbours repair bikes.</p>");
+        updateData.GetProperty("location").GetString().Should().Be("Dublin");
+        updateData.GetProperty("latitude").GetDecimal().Should().Be(53.3498m);
+        updateData.GetProperty("longitude").GetDecimal().Should().Be(-6.2603m);
+        updateData.GetProperty("profile_type").GetString().Should().Be("organisation");
+        updateData.GetProperty("organization_name").GetString().Should().Be("Taylor Repairs");
+        updateData.GetProperty("date_of_birth").GetString().Should().Be("1990-01-02");
+
+        var reloaded = await Client.GetAsync("/api/v2/users/me");
+
+        reloaded.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reloadedData = (await reloaded.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        reloadedData.GetProperty("name").GetString().Should().Be("Taylor Repairs");
+        reloadedData.GetProperty("phone").GetString().Should().Be("+353 1 555 0101");
+        reloadedData.GetProperty("tagline").GetString().Should().Be("Community repair mentor");
+        reloadedData.GetProperty("profile_type").GetString().Should().Be("organisation");
+        reloadedData.GetProperty("organization_name").GetString().Should().Be("Taylor Repairs");
+    }
+
+    [Fact]
     public async Task PartnerApiV1_UsesLaravelClientCredentialsAndScopedResponseShapes()
     {
         var (clientId, clientSecret) = await RegisterApiPartnerAsync("users.read listings.read wallet.read wallet.write aggregates.read webhooks.manage");
