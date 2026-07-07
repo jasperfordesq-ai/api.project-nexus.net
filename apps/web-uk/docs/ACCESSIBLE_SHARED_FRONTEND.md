@@ -515,6 +515,12 @@ Its `/volunteering/group-signups` page redirects unsigned visitors to
 `/api/v2/volunteering/group-reservations`, and renders the Blade-style group
 reservation cards, member status table, leader add/remove member controls,
 cancel warning, and status banners.
+Its `/volunteering/training` and `/volunteering/incidents` pages redirect
+unsigned visitors to `/login?status=auth-required`, read Laravel
+`/api/v2/volunteering/training` and `/api/v2/volunteering/incidents`, and
+render the Blade-style safeguarding tab navigation, training-record form and
+table, incident report form and table, status tags, validation banners, and
+confidentiality notice.
 Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert

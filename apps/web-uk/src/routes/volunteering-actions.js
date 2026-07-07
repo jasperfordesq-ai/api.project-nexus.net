@@ -80,6 +80,54 @@ const GROUP_MEMBER_STATUS_CLASSES = {
   pending: 'govuk-tag--yellow',
   declined: 'govuk-tag--red'
 };
+const SAFEGUARDING_TRAINING_TYPES = [
+  { value: 'children_first', label: 'Children First' },
+  { value: 'vulnerable_adults', label: 'Vulnerable Adults' },
+  { value: 'first_aid', label: 'First Aid' },
+  { value: 'manual_handling', label: 'Manual Handling' },
+  { value: 'other', label: 'Other' }
+];
+const SAFEGUARDING_TRAINING_TYPE_LABELS = Object.fromEntries(
+  SAFEGUARDING_TRAINING_TYPES.map((type) => [type.value, type.label])
+);
+const SAFEGUARDING_TRAINING_STATUS_LABELS = {
+  pending: 'Pending',
+  verified: 'Verified',
+  expired: 'Expired',
+  rejected: 'Not approved'
+};
+const SAFEGUARDING_TRAINING_STATUS_CLASSES = {
+  pending: 'govuk-tag--yellow',
+  verified: 'govuk-tag--green',
+  expired: 'govuk-tag--grey',
+  rejected: 'govuk-tag--red'
+};
+const SAFEGUARDING_SEVERITY_LABELS = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  critical: 'Critical'
+};
+const SAFEGUARDING_SEVERITY_CLASSES = {
+  low: 'govuk-tag--blue',
+  medium: 'govuk-tag--yellow',
+  high: 'govuk-tag--orange',
+  critical: 'govuk-tag--red'
+};
+const SAFEGUARDING_INCIDENT_STATUS_LABELS = {
+  open: 'Open',
+  investigating: 'Under review',
+  escalated: 'Escalated',
+  resolved: 'Resolved',
+  closed: 'Closed'
+};
+const SAFEGUARDING_INCIDENT_STATUS_CLASSES = {
+  open: 'govuk-tag--yellow',
+  investigating: 'govuk-tag--blue',
+  escalated: 'govuk-tag--red',
+  resolved: 'govuk-tag--green',
+  closed: 'govuk-tag--grey'
+};
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -368,6 +416,53 @@ function groupSignupStatus(status) {
     'reservation-cancel-failed': {
       type: 'error',
       message: 'The reservation could not be cancelled. Check that you lead this group.'
+    }
+  };
+  return messages[status] || null;
+}
+
+function safeguardingStatus(status) {
+  const messages = {
+    'training-added': {
+      type: 'success',
+      message: 'Your training record has been logged and is awaiting verification.'
+    },
+    'incident-reported': {
+      type: 'success',
+      message: 'Your report has been submitted. A designated person will review it confidentially.'
+    },
+    'training-type-required': {
+      type: 'error',
+      message: 'Select a training type',
+      field: 'training_type'
+    },
+    'training-name-required': {
+      type: 'error',
+      message: 'Enter the name of the course or programme',
+      field: 'training_name'
+    },
+    'training-date-required': {
+      type: 'error',
+      message: 'Enter the date you completed the training',
+      field: 'completed_at'
+    },
+    'training-failed': {
+      type: 'error',
+      message: 'Your training record could not be saved. Please try again.'
+    },
+    'incident-title-required': {
+      type: 'error',
+      message: 'Enter a brief title for the incident',
+      field: 'title'
+    },
+    'incident-description-too-short': {
+      type: 'error',
+      message: 'Describe what happened in at least 20 characters',
+      field: 'description'
+    },
+    'incident-failed': {
+      type: 'error',
+      message: 'Your report could not be submitted. Please try again.'
     }
   };
   return messages[status] || null;
@@ -836,6 +931,64 @@ function normalizeGroupReservation(row) {
   };
 }
 
+function safeguardingRowsFrom(result, keys = []) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  for (const key of keys) {
+    if (data && Array.isArray(data[key])) return data[key];
+  }
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function normalizeSafeguardingTraining(row) {
+  const training = row && typeof row === 'object' ? row : {};
+  const type = trimmed(training.training_type ?? training.trainingType);
+  return {
+    id: positiveInteger(training.id),
+    trainingName: trimmed(training.training_name ?? training.trainingName) || 'Training record',
+    provider: trimmed(training.provider),
+    type: {
+      value: type,
+      label: SAFEGUARDING_TRAINING_TYPE_LABELS[type] || headline(type)
+    },
+    completedAtLabel: dateLabel(training.completed_at ?? training.completedAt),
+    expiresAtLabel: dateLabel(training.expires_at ?? training.expiresAt),
+    status: statusPresentation(
+      training.status,
+      SAFEGUARDING_TRAINING_STATUS_LABELS,
+      SAFEGUARDING_TRAINING_STATUS_CLASSES,
+      'pending'
+    )
+  };
+}
+
+function normalizeSafeguardingIncident(row) {
+  const incident = row && typeof row === 'object' ? row : {};
+  const description = trimmed(incident.description);
+  return {
+    id: positiveInteger(incident.id),
+    title: trimmed(incident.title) || 'Safeguarding report',
+    description,
+    descriptionExcerpt: description.length > 100 ? `${description.slice(0, 97)}...` : description,
+    severity: statusPresentation(
+      incident.severity,
+      SAFEGUARDING_SEVERITY_LABELS,
+      SAFEGUARDING_SEVERITY_CLASSES,
+      'low'
+    ),
+    status: statusPresentation(
+      incident.status,
+      SAFEGUARDING_INCIDENT_STATUS_LABELS,
+      SAFEGUARDING_INCIDENT_STATUS_CLASSES,
+      'open'
+    ),
+    category: trimmed(incident.category),
+    createdAtLabel: dateLabel(incident.created_at ?? incident.createdAt)
+  };
+}
+
 function expenseRowsFrom(result) {
   const data = dataFrom(result);
   if (Array.isArray(data)) return data;
@@ -1182,6 +1335,51 @@ router.get('/group-signups', asyncRoute(async (req, res) => {
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
+
+async function renderSafeguarding(req, res) {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const queryTab = trimmed(req.query.tab);
+  const subView = ['training', 'incidents'].includes(queryTab)
+    ? queryTab
+    : (req.path.includes('/incidents') ? 'incidents' : 'training');
+  let trainings = [];
+  let incidents = [];
+  let loadError = null;
+
+  try {
+    trainings = safeguardingRowsFrom(
+      await callApi(token, 'GET', '/training'),
+      ['training', 'trainings']
+    ).map(normalizeSafeguardingTraining);
+    incidents = safeguardingRowsFrom(
+      await callApi(token, 'GET', '/incidents'),
+      ['incidents']
+    ).map(normalizeSafeguardingIncident);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your safeguarding records. Please try again.';
+  }
+
+  return res.render('volunteering/safeguarding', {
+    title: 'Safeguarding',
+    activeNav: 'volunteering',
+    subView,
+    trainings,
+    incidents,
+    trainingTypes: SAFEGUARDING_TRAINING_TYPES,
+    severities: Object.entries(SAFEGUARDING_SEVERITY_LABELS).map(([value, label]) => ({ value, label })),
+    loadError,
+    status: safeguardingStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}
+
+router.get('/training', asyncRoute(renderSafeguarding, { redirectOn401: loginRedirect() }));
+router.get('/incidents', asyncRoute(renderSafeguarding, { redirectOn401: loginRedirect() }));
 
 router.get('/credentials', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

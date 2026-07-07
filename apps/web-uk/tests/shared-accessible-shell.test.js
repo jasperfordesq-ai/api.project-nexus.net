@@ -16391,6 +16391,125 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering safeguarding training and incident tabs for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const trainingPayload = {
+      data: {
+        items: [
+          {
+            id: 71,
+            training_type: 'first_aid',
+            training_name: 'Emergency first aid at work',
+            provider: 'Red Cross',
+            completed_at: '2026-05-03',
+            expires_at: '2027-05-03',
+            status: 'verified'
+          },
+          {
+            id: 72,
+            training_type: 'children_first',
+            training_name: 'Children First refresher',
+            provider: null,
+            completed_at: '2026-06-12',
+            expires_at: null,
+            status: 'pending'
+          }
+        ],
+        cursor: null,
+        has_more: false
+      }
+    };
+    const incidentPayload = {
+      data: {
+        items: [
+          {
+            id: 81,
+            title: 'Wet floor near kitchen',
+            description: 'A wet floor caused a near miss beside the kitchen entrance during setup.',
+            severity: 'medium',
+            status: 'investigating',
+            category: 'site',
+            created_at: '2026-06-20T09:30:00Z'
+          },
+          {
+            id: 82,
+            title: 'Unattended equipment',
+            description: 'Equipment was left unattended in a public area after the afternoon session.',
+            severity: 'low',
+            status: 'open',
+            category: 'general',
+            created_at: '2026-06-21T10:00:00Z'
+          }
+        ],
+        total: 2
+      }
+    };
+
+    api.callVolunteeringApi
+      .mockResolvedValueOnce(trainingPayload)
+      .mockResolvedValueOnce(incidentPayload)
+      .mockResolvedValueOnce(trainingPayload)
+      .mockResolvedValueOnce(incidentPayload);
+
+    const trainingResponse = await request(app)
+      .get('/volunteering/training?status=training-added')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(trainingResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/training');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/incidents');
+    expect(trainingResponse.text).toContain('href="/volunteering"');
+    expect(trainingResponse.text).toContain('Back to volunteering');
+    expect(trainingResponse.text).toContain('Your training record has been logged and is awaiting verification.');
+    expect(trainingResponse.text).toContain('Safeguarding');
+    expect(trainingResponse.text).toContain('Log your safeguarding training and report any concerns or incidents.');
+    expect(trainingResponse.text).toContain('href="/volunteering/training"');
+    expect(trainingResponse.text).toContain('href="/volunteering/incidents"');
+    expect(trainingResponse.text).toContain('aria-current="page"');
+    expect(trainingResponse.text).toContain('Log a training record');
+    expect(trainingResponse.text).toContain('id="training_type" name="training_type"');
+    expect(trainingResponse.text).toContain('<option value="first_aid">First Aid</option>');
+    expect(trainingResponse.text).toContain('id="completed_at" name="completed_at" type="date"');
+    expect(trainingResponse.text).toContain('method="post" action="/volunteering/training"');
+    expect(trainingResponse.text).toContain('Emergency first aid at work');
+    expect(trainingResponse.text).toContain('Red Cross');
+    expect(trainingResponse.text).toContain('First Aid');
+    expect(trainingResponse.text).toContain('3 May 2026');
+    expect(trainingResponse.text).toContain('3 May 2027');
+    expect(trainingResponse.text).toContain('Verified');
+    expect(trainingResponse.text).toContain('Children First refresher');
+    expect(trainingResponse.text).toContain('Children First');
+    expect(trainingResponse.text).toContain('Pending');
+    expect(trainingResponse.text).not.toContain('shared accessible frontend preparation page');
+
+    const incidentResponse = await request(app)
+      .get('/volunteering/incidents?status=incident-reported')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(incidentResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/training');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(4, 'test-token', 'GET', '/incidents');
+    expect(incidentResponse.text).toContain('Your report has been submitted. A designated person will review it confidentially.');
+    expect(incidentResponse.text).toContain('Report a safeguarding concern or incident');
+    expect(incidentResponse.text).toContain('Use this form to report a concern, allegation, near-miss');
+    expect(incidentResponse.text).toContain('id="title" name="title" type="text"');
+    expect(incidentResponse.text).toContain('id="description" name="description" rows="5"');
+    expect(incidentResponse.text).toContain('id="severity-medium"');
+    expect(incidentResponse.text).toContain('method="post" action="/volunteering/incidents"');
+    expect(incidentResponse.text).toContain('Wet floor near kitchen');
+    expect(incidentResponse.text).toContain('site');
+    expect(incidentResponse.text).toContain('A wet floor caused a near miss beside the kitchen entrance during setup.');
+    expect(incidentResponse.text).toContain('Medium');
+    expect(incidentResponse.text).toContain('Under review');
+    expect(incidentResponse.text).toContain('20 June 2026');
+    expect(incidentResponse.text).toContain('Unattended equipment');
+    expect(incidentResponse.text).toContain('Low');
+    expect(incidentResponse.text).toContain('Open');
+    expect(incidentResponse.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
