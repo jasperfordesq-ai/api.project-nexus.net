@@ -10407,11 +10407,14 @@ describe('shared accessible frontend shell', () => {
 
     const index = await request(app).get('/ideation');
     const detail = await request(app).get('/ideation/7');
+    const tags = await request(app).get('/ideation/tags');
 
     expect(index.status).toBe(302);
     expect(index.headers.location).toBe('/login?status=auth-required');
     expect(detail.status).toBe(302);
     expect(detail.headers.location).toBe('/login?status=auth-required');
+    expect(tags.status).toBe(302);
+    expect(tags.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
@@ -10508,6 +10511,60 @@ describe('shared accessible frontend shell', () => {
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-challenges?limit=30&status=open&search=parks');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-challenges/7');
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/ideation-challenges/7/ideas?limit=30&sort=votes');
+  });
+
+  it('renders the Laravel-backed ideation tag browser', async () => {
+    const api = require('../src/lib/api');
+    api.callIdeationApi
+      .mockResolvedValueOnce({
+        data: [
+          { tag: 'parks', count: 2 },
+          { tag: 'accessibility', count: 1 }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 7,
+              title: 'Better local parks',
+              description: 'Gather practical ideas for improving local parks and entrances.',
+              status: 'open',
+              tags: ['parks', 'accessibility']
+            },
+            {
+              id: 8,
+              title: 'Community transport',
+              description: 'Coordinate shared transport.',
+              status: 'voting',
+              tags: ['mobility']
+            }
+          ]
+        }
+      });
+
+    const response = await request(app)
+      .get('/ideation/tags?tag=parks')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Back to all challenges');
+    expect(response.text).toContain('Browse by tag');
+    expect(response.text).toContain('Find challenges by their most popular tags.');
+    expect(response.text).toContain('Popular tags');
+    expect(response.text).toContain('parks (2 challenges)');
+    expect(response.text).toContain('accessibility (1 challenge)');
+    expect(response.text).toContain('Challenges tagged "parks"');
+    expect(response.text).toContain('Clear tag');
+    expect(response.text).toContain('Better local parks');
+    expect(response.text).toContain('Gather practical ideas for improving local parks and entrances.');
+    expect(response.text).toContain('Open');
+    expect(response.text).toContain('href="/ideation/7"');
+    expect(response.text).toContain('View challenge');
+    expect(response.text).not.toContain('Community transport');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-tags/popular');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-challenges?limit=100');
   });
 
   it('submits Laravel ideation challenge action aliases', async () => {

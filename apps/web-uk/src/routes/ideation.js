@@ -40,6 +40,10 @@ function collectionFrom(result) {
   return [];
 }
 
+function compact(items) {
+  return items.filter(Boolean);
+}
+
 function itemFrom(result) {
   const data = dataFrom(result);
   return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
@@ -79,6 +83,12 @@ function normalizeTags(value) {
   return [];
 }
 
+function limitText(value, maxLength = 160) {
+  const text = trimmed(value);
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1).trim()}...`;
+}
+
 function normalizeChallenge(item) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
@@ -103,6 +113,18 @@ function normalizeChallenge(item) {
     prizeDescription: trimmed(row.prize_description ?? row.prizeDescription),
     isOpenForIdeas: ['open', 'voting'].includes(trimmed(row.status).toLowerCase()),
     isOpenForVotes: ['open', 'voting'].includes(trimmed(row.status).toLowerCase())
+  };
+}
+
+function normalizeTag(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const name = trimmed(row.tag || row.name);
+  const count = Number(row.count ?? row.challenge_count ?? row.challengeCount ?? 0) || 0;
+  if (!name) return null;
+  return {
+    name,
+    count,
+    countText: plural(count, 'challenge', 'challenges')
   };
 }
 
@@ -160,6 +182,37 @@ router.get('/', asyncRoute(async (req, res) => {
     challenges,
     activeStatus: status,
     activeQuery: query
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/tags', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const selectedTag = trimmed(req.query.tag, 100);
+  const tagsResult = await callIdeationApi(token, 'GET', '/ideation-tags/popular');
+  const tags = compact(collectionFrom(tagsResult).map(normalizeTag));
+  let matches = [];
+
+  if (selectedTag) {
+    const selected = selectedTag.toLowerCase();
+    const challengesResult = await callIdeationApi(token, 'GET', '/ideation-challenges?limit=100');
+    matches = collectionFrom(challengesResult)
+      .map(normalizeChallenge)
+      .filter((challenge) => challenge.id !== null)
+      .filter((challenge) => challenge.tags.some((tag) => tag.toLowerCase() === selected))
+      .map((challenge) => ({
+        ...challenge,
+        description: limitText(challenge.description)
+      }));
+  }
+
+  return res.render('ideation/tags', {
+    title: 'Browse by tag',
+    activeNav: 'explore',
+    tags,
+    selectedTag,
+    matches
   });
 }, { redirectOn401: loginRedirect() }));
 

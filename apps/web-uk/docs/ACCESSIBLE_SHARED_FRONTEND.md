@@ -369,18 +369,21 @@ partial: RSS/media rendering, author configuration gates, moderation state,
 localization, runtime smoke tests, and ASP.NET backend compatibility are not
 certified.
 
-The `/ideation` and `/ideation/{id}` GET pages are now partial Laravel-backed
-candidates for the Blade ideation challenge list/detail flow. Unsigned visitors
-redirect to `/login?status=auth-required`; signed GET requests call Laravel
-`/api/v2/ideation-challenges`, `/api/v2/ideation-challenges/{id}`, and
-`/api/v2/ideation-challenges/{id}/ideas?limit=30&sort=votes`, then render
-Blade-style search/status filters, challenge cards, status tags, idea counts,
-success/error banners, challenge metadata, prize inset, idea cards, vote forms,
-and the submit-idea form. Existing POST aliases still call Laravel v2 ideation
+The `/ideation`, `/ideation/{id}`, and `/ideation/tags` GET pages are now
+partial Laravel-backed candidates for the Blade ideation challenge list,
+detail, and tag-browser flows. Unsigned visitors redirect to
+`/login?status=auth-required`; signed GET requests call Laravel
+`/api/v2/ideation-challenges`, `/api/v2/ideation-challenges/{id}`,
+`/api/v2/ideation-challenges/{id}/ideas?limit=30&sort=votes`, and
+`/api/v2/ideation-tags/popular`, then render Blade-style search/status
+filters, challenge cards, status tags, idea counts, success/error banners,
+challenge metadata, prize inset, idea cards, vote forms, the submit-idea form,
+popular tag links, selected-tag challenge matches, and tag empty states.
+Existing POST aliases still call Laravel v2 ideation
 APIs for challenge create/update/status/favorite, duplicate, delete, campaign
 linking, outcome updates, idea submit/draft/comment/vote/status/media/
 convert-to-group/delete actions, and campaign create/update/delete plus
-challenge unlinking. This remains partial: campaigns/outcomes/tags/new/manage/
+challenge unlinking. This remains partial: campaigns/outcomes/new/manage/
 edit/drafts/idea detail GET pages, admin authorization depth, multipart/media
 upload proxying, team conversion runtime behavior, tenant/feature gates,
 localization, runtime smoke tests, and ASP.NET backend compatibility are not
