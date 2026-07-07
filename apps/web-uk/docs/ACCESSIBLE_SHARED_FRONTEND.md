@@ -162,10 +162,13 @@ history table from `/api/v2/gamification/engagement-history`, including active
 status tags and pluralized activity counts. `/achievements/showcase` renders
 the Laravel-style earned-badge checkbox management page from
 `/api/v2/gamification/badges`, including success/error status states and the
-existing no-JS save form. Achievement POST aliases are wired to Laravel
-`/api/v2/gamification`: daily reward, challenge claim, shop purchase, and
-showcase update preserve the Laravel accessible status redirects for
-`/achievements`, `/achievements/shop`, and `/achievements/showcase`.
+existing no-JS save form. `/achievements/badges/{key}` renders the Laravel-style
+badge detail summary from `/api/v2/gamification/badges/{key}`, including earned
+status, metadata rows, showcased state, and the view-all link. Achievement POST
+aliases are wired to Laravel `/api/v2/gamification`: daily reward, challenge
+claim, shop purchase, and showcase update preserve the Laravel accessible status
+redirects for `/achievements`, `/achievements/shop`, and
+`/achievements/showcase`.
 Member profile POST aliases are wired to Laravel v2 APIs for connection
 transitions, skill endorsements, block/unblock, profile reviews, and direct
 wallet transfers while preserving Laravel profile status redirects.

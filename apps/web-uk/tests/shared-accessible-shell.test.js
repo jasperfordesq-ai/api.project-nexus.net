@@ -1731,6 +1731,62 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style badge detail page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/badges/community-builder') {
+        return {
+          data: {
+            badge_key: 'community-builder',
+            name: 'Community builder',
+            description: 'Helped five neighbours this month.',
+            earned: true,
+            earned_at: '2026-06-15T00:00:00Z',
+            rarity: 'rare',
+            xp_value: 250,
+            tier: { name: 'gold' },
+            type: 'impact',
+            is_showcased: true
+          }
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/achievements/badges/community-builder');
+    const signed = await request(app)
+      .get('/achievements/badges/community-builder')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/badges/community-builder');
+    expect(signed.text).toContain('Back to achievements');
+    expect(signed.text).toContain('Achievements at');
+    expect(signed.text).toContain('Community builder');
+    expect(signed.text).toContain('Helped five neighbours this month.');
+    expect(signed.text).toContain('You have earned this badge');
+    expect(signed.text).toContain('Earned on');
+    expect(signed.text).toContain('15 June 2026');
+    expect(signed.text).toContain('Rarity');
+    expect(signed.text).toContain('Rare');
+    expect(signed.text).toContain('XP value');
+    expect(signed.text).toContain('250');
+    expect(signed.text).toContain('Tier');
+    expect(signed.text).toContain('Gold');
+    expect(signed.text).toContain('Category');
+    expect(signed.text).toContain('Impact');
+    expect(signed.text).toContain('Showcased on your profile');
+    expect(signed.text).toContain('View all achievements');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

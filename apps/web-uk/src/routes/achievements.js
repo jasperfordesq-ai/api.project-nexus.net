@@ -85,6 +85,24 @@ function formatInteger(value) {
   return intFrom(value).toLocaleString('en-GB');
 }
 
+function capitalizeLabel(value) {
+  const text = textFrom(value);
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : '';
+}
+
+function formatDateLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Europe/London'
+  }).format(date);
+}
+
 function positiveInteger(value) {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
@@ -279,6 +297,27 @@ function normalizeShowcaseBadges(result) {
   }).filter((badge) => badge.key);
 }
 
+function normalizeBadgeDetail(result, key) {
+  const badge = objectFrom(payloadFrom(result));
+  const tier = objectFrom(badge.tier);
+  const earnedAt = textFrom(badge.earned_at);
+  const xpValue = intFrom(badge.xp_value);
+  return {
+    key,
+    name: textFrom(badge.name, key),
+    icon: textFrom(badge.icon),
+    description: textFrom(badge.description ?? badge.msg),
+    earned: boolFrom(badge.earned),
+    earnedAtLabel: earnedAt ? formatDateLabel(earnedAt) : '',
+    rarityLabel: capitalizeLabel(badge.rarity),
+    xpValue,
+    xpValueLabel: formatInteger(xpValue),
+    tierLabel: capitalizeLabel(tier.name ?? badge.tier),
+    typeLabel: capitalizeLabel(badge.type),
+    isShowcased: boolFrom(badge.is_showcased ?? badge.showcased)
+  };
+}
+
 async function safeGamificationCall(token, pathValue, fallback) {
   try {
     return await callGamificationApi(token, 'GET', pathValue);
@@ -453,6 +492,29 @@ router.get('/showcase', asyncRoute(async (req, res) => {
     activeNav: 'achievements',
     earnedBadges: normalizeShowcaseBadges(badgesPayload),
     status: textFrom(req.query.status)
+  });
+}));
+
+router.get('/badges/:key', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const key = textFrom(req.params.key);
+  let badgePayload;
+  try {
+    badgePayload = await callGamificationApi(token, 'GET', `/badges/${encodeURIComponent(key)}`);
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    throw error;
+  }
+
+  const badge = normalizeBadgeDetail(badgePayload, key);
+  return res.render('achievements/badge', {
+    title: badge.name || 'Badge',
+    activeNav: 'achievements',
+    badge
   });
 }));
 
