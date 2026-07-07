@@ -16773,6 +16773,221 @@ describe('shared accessible frontend shell', () => {
     expect(recommendedResponse.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders Laravel volunteering organisation owner pages for signed-in managers', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi
+      .mockResolvedValueOnce({
+        data: {
+          org_name: 'Food Share',
+          status: 'approved',
+          active_opportunities: 2,
+          pending_applications: 1,
+          pending_hours: 3,
+          total_volunteers: 12,
+          total_approved_hours: 45.5,
+          wallet_balance: 18.25,
+          auto_pay_enabled: true
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          org_name: 'Food Share',
+          wallet_balance: 18.25,
+          auto_pay_enabled: true
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 91,
+              status: 'pending',
+              message: 'Happy to help with lunch service.',
+              created_at: '2026-06-20T09:00:00Z',
+              user: { id: 55, name: 'Alex Applicant', email: 'alex@example.org' },
+              opportunity: { id: 77, title: 'Kitchen helper' },
+              shift: { start_time: '2026-07-20T10:00:00Z', end_time: '2026-07-20T13:00:00Z' }
+            }
+          ],
+          cursor: null,
+          has_more: false
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 19,
+              hours: 2.5,
+              date: '2026-08-03',
+              description: 'Front desk welcome',
+              status: 'pending',
+              user: { id: 56, name: 'Sam Logger' },
+              opportunity: { id: 78, title: 'Reception support' }
+            }
+          ],
+          cursor: null,
+          has_more: false
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 42,
+          name: 'Food Share',
+          status: 'approved',
+          description: 'Community food support and welcoming kitchen shifts.',
+          contact_email: 'hello@food.example',
+          website: 'https://food.example'
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          org_name: 'Food Share',
+          auto_pay_enabled: true
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 55,
+              name: 'Alex Applicant',
+              email: 'alex@example.org',
+              total_hours: 12.5,
+              applications_count: 3,
+              applied_at: '2026-06-20T09:00:00Z'
+            }
+          ],
+          cursor: '55',
+          has_more: true
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          org_name: 'Food Share',
+          auto_pay_enabled: true
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          balance: 18.25,
+          total_deposited: 30,
+          total_paid_out: 11.75,
+          pending_hours_value: 4.5
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 700,
+              created_at: '2026-07-07T11:15:00Z',
+              type: 'deposit',
+              amount: 10,
+              balance_after: 18.25,
+              description: 'Initial float'
+            }
+          ],
+          cursor: null,
+          has_more: false
+        }
+      });
+
+    const dashboardResponse = await request(app)
+      .get('/volunteering/organisations/42/dashboard')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(dashboardResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/organisations/42/stats');
+    expect(dashboardResponse.text).toContain('href="/volunteering/my-organisations"');
+    expect(dashboardResponse.text).toContain('Organisation dashboard');
+    expect(dashboardResponse.text).toContain('Food Share');
+    expect(dashboardResponse.text).toContain('Active opportunities');
+    expect(dashboardResponse.text).toContain('Pending applications');
+    expect(dashboardResponse.text).toContain('Total approved hours');
+    expect(dashboardResponse.text).toContain('45.5');
+    expect(dashboardResponse.text).toContain('18.3');
+    expect(dashboardResponse.text).toContain('Auto-pay enabled');
+    expect(dashboardResponse.text).toContain('href="/volunteering/organisations/42/manage"');
+    expect(dashboardResponse.text).toContain('href="/volunteering/opportunities/create"');
+    expect(dashboardResponse.text).not.toContain('shared accessible frontend preparation page');
+
+    const manageResponse = await request(app)
+      .get('/volunteering/organisations/42/manage?status=application-approved')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(manageResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/organisations/42/stats');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/organisations/42/applications?status=pending&per_page=20');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(4, 'test-token', 'GET', '/organisations/42/hours/pending?per_page=20');
+    expect(manageResponse.text).toContain('Application approved.');
+    expect(manageResponse.text).toContain('Manage volunteer organisation');
+    expect(manageResponse.text).toContain('Alex Applicant');
+    expect(manageResponse.text).toContain('Kitchen helper');
+    expect(manageResponse.text).toContain('Happy to help with lunch service.');
+    expect(manageResponse.text).toContain('method="post" action="/volunteering/organisations/42/applications/91"');
+    expect(manageResponse.text).toContain('Sam Logger');
+    expect(manageResponse.text).toContain('2.5');
+    expect(manageResponse.text).toContain('3 August 2026');
+    expect(manageResponse.text).toContain('Front desk welcome');
+    expect(manageResponse.text).toContain('method="post" action="/volunteering/organisations/42/hours/19"');
+    expect(manageResponse.text).not.toContain('shared accessible frontend preparation page');
+
+    const settingsResponse = await request(app)
+      .get('/volunteering/organisations/42/settings?status=settings-saved')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(settingsResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(5, 'test-token', 'GET', '/organisations/42');
+    expect(settingsResponse.text).toContain('Organisation settings');
+    expect(settingsResponse.text).toContain('Organisation details saved.');
+    expect(settingsResponse.text).toContain('method="post" action="/volunteering/organisations/42/settings"');
+    expect(settingsResponse.text).toContain('id="name" name="name" type="text" value="Food Share"');
+    expect(settingsResponse.text).toContain('Community food support and welcoming kitchen shifts.');
+    expect(settingsResponse.text).toContain('value="hello@food.example"');
+    expect(settingsResponse.text).toContain('value="https://food.example"');
+    expect(settingsResponse.text).not.toContain('shared accessible frontend preparation page');
+
+    const volunteersResponse = await request(app)
+      .get('/volunteering/organisations/42/volunteers?cursor=88')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(volunteersResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(6, 'test-token', 'GET', '/organisations/42/stats');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(7, 'test-token', 'GET', '/organisations/42/volunteers?per_page=20&cursor=88');
+    expect(volunteersResponse.text).toContain('Organisation volunteers');
+    expect(volunteersResponse.text).toContain('Alex Applicant');
+    expect(volunteersResponse.text).toContain('alex@example.org');
+    expect(volunteersResponse.text).toContain('12.5');
+    expect(volunteersResponse.text).toContain('3');
+    expect(volunteersResponse.text).toContain('20 June 2026');
+    expect(volunteersResponse.text).toContain('href="/volunteering/organisations/42/volunteers?cursor=55"');
+    expect(volunteersResponse.text).not.toContain('shared accessible frontend preparation page');
+
+    const walletResponse = await request(app)
+      .get('/volunteering/organisations/42/wallet?status=deposit-made')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(walletResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(8, 'test-token', 'GET', '/organisations/42/stats');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(9, 'test-token', 'GET', '/organisations/42/wallet');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(10, 'test-token', 'GET', '/organisations/42/wallet/transactions?per_page=20');
+    expect(walletResponse.text).toContain('Deposit recorded.');
+    expect(walletResponse.text).toContain('Organisation wallet');
+    expect(walletResponse.text).toContain('18.3');
+    expect(walletResponse.text).toContain('30.0');
+    expect(walletResponse.text).toContain('11.8');
+    expect(walletResponse.text).toContain('4.5');
+    expect(walletResponse.text).toContain('Auto-pay is on');
+    expect(walletResponse.text).toContain('method="post" action="/volunteering/organisations/42/wallet/auto-pay"');
+    expect(walletResponse.text).toContain('method="post" action="/volunteering/organisations/42/wallet/deposit"');
+    expect(walletResponse.text).toContain('Deposit');
+    expect(walletResponse.text).toContain('Initial float');
+    expect(walletResponse.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

@@ -534,6 +534,15 @@ pages redirect unsigned visitors to `/login?status=auth-required`, read Laravel
 Blade-style role filter, organisation status cards, dashboard links,
 pagination, recommended-shift cards, match-score progress, applied tags, and
 opportunity links.
+Its organisation-owner pages
+(`/volunteering/organisations/{id}/dashboard`, `/manage`, `/settings`,
+`/volunteers`, and `/wallet`) redirect unsigned visitors to
+`/login?status=auth-required`, read Laravel owner-scoped volunteering APIs for
+organisation stats, pending applications, pending hours, public organisation
+details, volunteers, wallet summary, and wallet transactions, and render the
+Blade-style dashboard stats, quick actions, management review cards, settings
+form, volunteers table, wallet auto-pay/deposit forms, transaction table, and
+status banners.
 Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert
@@ -541,9 +550,9 @@ responses, credential delete plus safe upload proxying, wellbeing check-ins,
 donations, group reservations, expenses, training, incidents, opportunity
 creation, and organisation owner application/hour, settings, and wallet actions
 through Laravel v2 volunteering APIs. This remains partial: certificate
-download and remaining GET depth pages still use generated preparation pages,
-and feature gates, tenant-prefixed routes, localization, runtime smoke tests,
-and ASP.NET backend compatibility are not certified.
+download, opportunity create GET depth, feature gates, tenant-prefixed routes,
+localization, runtime smoke tests, and ASP.NET backend compatibility are not
+certified.
 
 The `/organisations` page is now a local Blade-style candidate for the Laravel
 accessible organisations directory. It includes the caption, subnavigation,

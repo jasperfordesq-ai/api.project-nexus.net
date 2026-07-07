@@ -299,6 +299,10 @@ function orgSettingsRedirect(orgId, status) {
   return `/volunteering/organisations/${orgId}/settings?status=${encodeURIComponent(status)}`;
 }
 
+function orgVolunteersHref(orgId, cursor) {
+  return `/volunteering/organisations/${orgId}/volunteers?cursor=${encodeURIComponent(cursor)}`;
+}
+
 function opportunityRedirect(id, status) {
   return `/volunteering/opportunities/${id}?status=${encodeURIComponent(status)}`;
 }
@@ -567,6 +571,40 @@ function swapPageStatus(status) {
       type: 'error',
       message: 'We could not cancel this swap request.'
     }
+  };
+  return messages[status] || null;
+}
+
+function orgManageStatus(status) {
+  const messages = {
+    'application-approved': { type: 'success', message: 'Application approved.' },
+    'application-declined': { type: 'success', message: 'Application declined.' },
+    'hours-approved': { type: 'success', message: 'Hours approved.' },
+    'hours-declined': { type: 'success', message: 'Hours declined.' },
+    'application-failed': { type: 'error', message: 'The application could not be updated.' },
+    'hours-verify-failed': { type: 'error', message: 'The hours could not be verified.' }
+  };
+  return messages[status] || null;
+}
+
+function orgSettingsStatus(status) {
+  const messages = {
+    'settings-saved': { type: 'success', message: 'Organisation details saved.' },
+    'name-required': { type: 'error', message: 'Enter the organisation name', field: 'name' },
+    'email-invalid': { type: 'error', message: 'Enter an email address in the correct format', field: 'contact_email' },
+    'settings-failed': { type: 'error', message: 'The organisation details could not be saved.' }
+  };
+  return messages[status] || null;
+}
+
+function orgWalletStatus(status) {
+  const messages = {
+    'deposit-made': { type: 'success', message: 'Deposit recorded.' },
+    'autopay-enabled': { type: 'success', message: 'Auto-pay enabled.' },
+    'autopay-disabled': { type: 'success', message: 'Auto-pay disabled.' },
+    'deposit-failed': { type: 'error', message: 'The deposit could not be recorded.' },
+    'deposit-amount-invalid': { type: 'error', message: 'Enter an amount greater than zero', field: 'amount' },
+    'autopay-failed': { type: 'error', message: 'Auto-pay could not be updated.' }
   };
   return messages[status] || null;
 }
@@ -1210,6 +1248,120 @@ function volunteeringMyOrganisationsNextHref(roleFilter, meta) {
   return `/volunteering/my-organisations?${params.toString()}`;
 }
 
+function normalizeOrgStats(result) {
+  const data = dataFrom(result);
+  const stats = data && typeof data === 'object' ? data : {};
+  const orgStatus = trimmed(stats.status) || 'approved';
+  return {
+    orgName: trimmed(stats.org_name ?? stats.orgName) || 'Volunteering organisation',
+    orgStatus,
+    isApproved: ['approved', 'active'].includes(orgStatus),
+    activeOpportunities: Number(stats.active_opportunities ?? stats.activeOpportunities) || 0,
+    pendingApplications: Number(stats.pending_applications ?? stats.pendingApplications) || 0,
+    pendingHours: Number(stats.pending_hours ?? stats.pendingHours) || 0,
+    totalVolunteers: Number(stats.total_volunteers ?? stats.totalVolunteers) || 0,
+    totalApprovedHoursLabel: hoursLabel(stats.total_approved_hours ?? stats.totalApprovedHours),
+    walletBalanceLabel: hoursLabel(stats.wallet_balance ?? stats.walletBalance),
+    autoPayEnabled: checked(stats.auto_pay_enabled ?? stats.autoPayEnabled)
+  };
+}
+
+function normalizeOrgDetail(result) {
+  const data = dataFrom(result);
+  const organization = data && typeof data === 'object' ? data : {};
+  return {
+    id: positiveInteger(organization.id),
+    name: trimmed(organization.name),
+    description: trimmed(organization.description),
+    contactEmail: trimmed(organization.contact_email ?? organization.contactEmail ?? organization.email),
+    website: trimmed(organization.website)
+  };
+}
+
+function normalizeOrgApplication(row) {
+  const application = row && typeof row === 'object' ? row : {};
+  const user = application.user && typeof application.user === 'object' ? application.user : {};
+  const opportunity = application.opportunity && typeof application.opportunity === 'object' ? application.opportunity : {};
+  const shift = application.shift && typeof application.shift === 'object' ? application.shift : null;
+  return {
+    id: positiveInteger(application.id),
+    status: trimmed(application.status) || 'pending',
+    message: trimmed(application.message),
+    createdAtLabel: dateLabel(application.created_at ?? application.createdAt),
+    applicant: {
+      id: positiveInteger(user.id ?? application.user_id ?? application.userId),
+      name: trimmed(user.name ?? application.user_name ?? application.userName) || 'Volunteer',
+      email: trimmed(user.email ?? application.user_email ?? application.userEmail)
+    },
+    opportunity: {
+      id: positiveInteger(opportunity.id ?? application.opportunity_id ?? application.opportunityId),
+      title: trimmed(opportunity.title ?? application.opportunity_title ?? application.opportunityTitle) || 'Volunteering opportunity'
+    },
+    shiftLabel: shift ? dateTimeLabel(shift.start_time ?? shift.startTime) : ''
+  };
+}
+
+function normalizeOrgPendingHour(row) {
+  const log = row && typeof row === 'object' ? row : {};
+  const user = log.user && typeof log.user === 'object' ? log.user : {};
+  const opportunity = log.opportunity && typeof log.opportunity === 'object' ? log.opportunity : {};
+  return {
+    id: positiveInteger(log.id),
+    hoursLabel: hoursLabel(log.hours),
+    dateLabel: dateLabel(log.date ?? log.date_logged ?? log.dateLogged),
+    description: trimmed(log.description),
+    volunteer: {
+      id: positiveInteger(user.id ?? log.user_id ?? log.userId),
+      name: trimmed(user.name ?? log.user_name ?? log.userName) || 'Volunteer'
+    },
+    opportunity: {
+      id: positiveInteger(opportunity.id ?? log.opportunity_id ?? log.opportunityId),
+      title: trimmed(opportunity.title ?? log.opportunity_title ?? log.opportunityTitle)
+    }
+  };
+}
+
+function normalizeOrgVolunteer(row) {
+  const volunteer = row && typeof row === 'object' ? row : {};
+  return {
+    id: positiveInteger(volunteer.id),
+    name: trimmed(volunteer.name) || 'Volunteer',
+    email: trimmed(volunteer.email),
+    totalHoursLabel: hoursLabel(volunteer.total_hours ?? volunteer.totalHours),
+    applicationsCount: Number(volunteer.applications_count ?? volunteer.applicationsCount) || 0,
+    appliedAtLabel: dateLabel(volunteer.applied_at ?? volunteer.appliedAt)
+  };
+}
+
+function orgVolunteersNextHref(orgId, meta) {
+  const nextCursor = trimmed(meta.cursor ?? meta.next_cursor ?? meta.nextCursor);
+  const hasMore = Boolean(meta.has_more ?? meta.hasMore);
+  return hasMore && nextCursor ? orgVolunteersHref(orgId, nextCursor) : '';
+}
+
+function normalizeOrgWalletSummary(result) {
+  const data = dataFrom(result);
+  const summary = data && typeof data === 'object' ? data : {};
+  return {
+    balanceLabel: hoursLabel(summary.balance),
+    totalDepositedLabel: hoursLabel(summary.total_deposited ?? summary.totalDeposited),
+    totalPaidOutLabel: hoursLabel(summary.total_paid_out ?? summary.totalPaidOut),
+    pendingHoursValueLabel: hoursLabel(summary.pending_hours_value ?? summary.pendingHoursValue)
+  };
+}
+
+function normalizeOrgWalletTransaction(row) {
+  const transaction = row && typeof row === 'object' ? row : {};
+  return {
+    id: positiveInteger(transaction.id),
+    createdAtLabel: dateTimeLabel(transaction.created_at ?? transaction.createdAt),
+    typeLabel: headline(transaction.type) || 'Transaction',
+    amountLabel: hoursLabel(transaction.amount),
+    balanceAfterLabel: hoursLabel(transaction.balance_after ?? transaction.balanceAfter),
+    description: trimmed(transaction.description)
+  };
+}
+
 function expenseRowsFrom(result) {
   const data = dataFrom(result);
   if (Array.isArray(data)) return data;
@@ -1721,6 +1873,167 @@ router.get('/recommended-shifts', asyncRoute(async (req, res) => {
     activeNav: 'volunteering',
     shifts,
     loadError
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/organisations/:id(\\d+)/dashboard', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const id = Number(req.params.id);
+  let dashboard = normalizeOrgStats({});
+  let loadError = null;
+  try {
+    dashboard = normalizeOrgStats(await callApi(token, 'GET', `/organisations/${id}/stats`));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load the organisation dashboard. Check that you manage this organisation and try again.';
+  }
+
+  return res.render('volunteering/org-dashboard', {
+    title: 'Organisation dashboard',
+    activeNav: 'volunteering',
+    orgId: id,
+    dashboard,
+    loadError
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/organisations/:id(\\d+)/manage', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const id = Number(req.params.id);
+  let dashboard = normalizeOrgStats({});
+  let applications = [];
+  let hours = [];
+  let loadError = null;
+  try {
+    dashboard = normalizeOrgStats(await callApi(token, 'GET', `/organisations/${id}/stats`));
+    applications = collectionFrom(
+      await callApi(token, 'GET', `/organisations/${id}/applications?status=pending&per_page=20`)
+    ).map(normalizeOrgApplication).filter((application) => application.id);
+    hours = collectionFrom(
+      await callApi(token, 'GET', `/organisations/${id}/hours/pending?per_page=20`)
+    ).map(normalizeOrgPendingHour).filter((log) => log.id);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load the organisation management queue. Check that you manage this organisation and try again.';
+  }
+
+  return res.render('volunteering/org-manage', {
+    title: 'Manage volunteer organisation',
+    activeNav: 'volunteering',
+    orgId: id,
+    orgName: dashboard.orgName,
+    applications,
+    hours,
+    loadError,
+    status: orgManageStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/organisations/:id(\\d+)/settings', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const id = Number(req.params.id);
+  let organization = normalizeOrgDetail({});
+  let loadError = null;
+  try {
+    organization = normalizeOrgDetail(await callApi(token, 'GET', `/organisations/${id}`));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load the organisation settings. Check that you manage this organisation and try again.';
+  }
+
+  return res.render('volunteering/org-settings', {
+    title: 'Organisation settings',
+    activeNav: 'volunteering',
+    orgId: id,
+    organization,
+    loadError,
+    status: orgSettingsStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/organisations/:id(\\d+)/volunteers', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const id = Number(req.params.id);
+  const cursor = trimmed(req.query.cursor);
+  const params = new URLSearchParams({ per_page: '20' });
+  if (cursor) params.set('cursor', cursor);
+
+  let dashboard = normalizeOrgStats({});
+  let volunteers = [];
+  let nextHref = '';
+  let loadError = null;
+  try {
+    dashboard = normalizeOrgStats(await callApi(token, 'GET', `/organisations/${id}/stats`));
+    const result = await callApi(token, 'GET', `/organisations/${id}/volunteers?${params.toString()}`);
+    volunteers = collectionFrom(result).map(normalizeOrgVolunteer).filter((volunteer) => volunteer.id);
+    nextHref = orgVolunteersNextHref(id, collectionMetaFrom(result));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load the organisation volunteers. Check that you manage this organisation and try again.';
+  }
+
+  return res.render('volunteering/org-volunteers', {
+    title: 'Organisation volunteers',
+    activeNav: 'volunteering',
+    orgId: id,
+    orgName: dashboard.orgName,
+    volunteers,
+    nextHref,
+    loadError
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/organisations/:id(\\d+)/wallet', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const id = Number(req.params.id);
+  let dashboard = normalizeOrgStats({});
+  let summary = normalizeOrgWalletSummary({});
+  let transactions = [];
+  let loadError = null;
+  try {
+    dashboard = normalizeOrgStats(await callApi(token, 'GET', `/organisations/${id}/stats`));
+    summary = normalizeOrgWalletSummary(await callApi(token, 'GET', `/organisations/${id}/wallet`));
+    transactions = collectionFrom(
+      await callApi(token, 'GET', `/organisations/${id}/wallet/transactions?per_page=20`)
+    ).map(normalizeOrgWalletTransaction).filter((transaction) => transaction.id);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load the organisation wallet. Check that you manage this organisation and try again.';
+  }
+
+  return res.render('volunteering/org-wallet', {
+    title: 'Organisation wallet',
+    activeNav: 'volunteering',
+    orgId: id,
+    orgName: dashboard.orgName,
+    autoPayEnabled: dashboard.autoPayEnabled,
+    summary,
+    transactions,
+    loadError,
+    status: orgWalletStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
 

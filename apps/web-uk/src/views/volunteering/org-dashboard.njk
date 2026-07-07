@@ -1,0 +1,75 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/volunteering/my-organisations">Back to my organisations</a>
+
+  <span class="govuk-caption-l">{{ dashboard.orgName }}</span>
+  <h1 class="govuk-heading-xl">Organisation dashboard</h1>
+  <p class="govuk-body-l">Manage volunteer applications, logged hours, organisation settings and the time-credit float for this organisation.</p>
+
+  {% if loadError %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body"><p>{{ loadError }}</p></div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if not dashboard.isApproved %}
+    <div class="govuk-warning-text">
+      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+      <strong class="govuk-warning-text__text">
+        <span class="govuk-visually-hidden">Warning</span>
+        This organisation is awaiting approval. Some volunteer actions may stay limited until review is complete.
+      </strong>
+    </div>
+  {% endif %}
+
+  <h2 class="govuk-heading-l">Organisation stats</h2>
+  <dl class="nexus-alpha-stat-grid">
+    <div class="nexus-alpha-stat">
+      <dt>Active opportunities</dt>
+      <dd>{{ dashboard.activeOpportunities }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Pending applications</dt>
+      <dd>{{ dashboard.pendingApplications }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Pending hours</dt>
+      <dd>{{ dashboard.pendingHours }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Total volunteers</dt>
+      <dd>{{ dashboard.totalVolunteers }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Total approved hours</dt>
+      <dd>{{ dashboard.totalApprovedHoursLabel }}</dd>
+    </div>
+    <div class="nexus-alpha-stat">
+      <dt>Wallet balance</dt>
+      <dd>{{ dashboard.walletBalanceLabel }}</dd>
+    </div>
+  </dl>
+
+  <p class="govuk-body">
+    <strong class="govuk-tag {% if dashboard.autoPayEnabled %}govuk-tag--green{% else %}govuk-tag--grey{% endif %}">
+      {% if dashboard.autoPayEnabled %}Auto-pay enabled{% else %}Auto-pay disabled{% endif %}
+    </strong>
+  </p>
+
+  <h2 class="govuk-heading-l">Quick actions</h2>
+  <ul class="govuk-list">
+    <li><a class="govuk-link" href="/volunteering/organisations/{{ orgId }}/manage">Manage applications and hours</a></li>
+    <li><a class="govuk-link" href="/volunteering/organisations/{{ orgId }}/volunteers">Organisation volunteers</a></li>
+    <li><a class="govuk-link" href="/volunteering/opportunities/create">Create opportunity</a></li>
+    <li><a class="govuk-link" href="/volunteering/organisations/{{ orgId }}/settings">Organisation settings</a></li>
+    <li><a class="govuk-link" href="/volunteering/organisations/{{ orgId }}/wallet">Organisation wallet</a></li>
+  </ul>
+{% endblock %}

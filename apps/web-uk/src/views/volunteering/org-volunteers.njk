@@ -1,0 +1,67 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/volunteering/organisations/{{ orgId }}/dashboard">Back to dashboard</a>
+
+  <span class="govuk-caption-l">{{ orgName }}</span>
+  <h1 class="govuk-heading-xl">Organisation volunteers</h1>
+  <p class="govuk-body-l">Approved volunteers and their hours with this organisation.</p>
+
+  {% if loadError %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body"><p>{{ loadError }}</p></div>
+      </div>
+    </div>
+  {% elif not volunteers.length %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">There are no approved volunteers for this organisation yet.</p>
+      <p class="govuk-body govuk-!-margin-bottom-0">Volunteers appear here after an application is approved.</p>
+    </div>
+  {% else %}
+    <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Organisation volunteers</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Name</th>
+          <th scope="col" class="govuk-table__header">Email</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Hours</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Applications</th>
+          <th scope="col" class="govuk-table__header">Applied date</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for volunteer in volunteers %}
+          <tr class="govuk-table__row">
+            <th scope="row" class="govuk-table__header">
+              {% if volunteer.id %}
+                <a class="govuk-link" href="/members/{{ volunteer.id }}">{{ volunteer.name }}</a>
+              {% else %}
+                {{ volunteer.name }}
+              {% endif %}
+            </th>
+            <td class="govuk-table__cell">
+              {% if volunteer.email %}
+                <a class="govuk-link" href="mailto:{{ volunteer.email }}">{{ volunteer.email }}</a>
+              {% endif %}
+            </td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ volunteer.totalHoursLabel }}</td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ volunteer.applicationsCount }}</td>
+            <td class="govuk-table__cell">{{ volunteer.appliedAtLabel }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if nextHref %}
+      <p class="govuk-body govuk-!-margin-top-4">
+        <a class="govuk-link" href="{{ nextHref }}">Load more volunteers</a>
+      </p>
+    {% endif %}
+  {% endif %}
+{% endblock %}
