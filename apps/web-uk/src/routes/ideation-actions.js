@@ -172,15 +172,15 @@ function outcomePayload(body) {
 function mediaPayload(body) {
   return {
     media_type: trimmed(body.media_type, 64),
-    url: trimmed(body.url, 2048),
-    caption: trimmed(body.caption, 255)
+    url: trimmed(body.media_url || body.url, 2048),
+    caption: trimmed(body.media_caption || body.caption, 255)
   };
 }
 
 function convertPayload(body) {
   return {
     group_name: trimmed(body.group_name, 200),
-    description: trimmed(body.description, 10000)
+    description: trimmed(body.group_description || body.description, 10000)
   };
 }
 

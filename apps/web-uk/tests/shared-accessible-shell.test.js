@@ -10415,6 +10415,7 @@ describe('shared accessible frontend shell', () => {
     const edit = await request(app).get('/ideation/7/edit');
     const manage = await request(app).get('/ideation/7/manage');
     const drafts = await request(app).get('/ideation/7/drafts');
+    const ideaDetail = await request(app).get('/ideation/7/ideas/12');
 
     expect(index.status).toBe(302);
     expect(index.headers.location).toBe('/login?status=auth-required');
@@ -10436,6 +10437,8 @@ describe('shared accessible frontend shell', () => {
     expect(manage.headers.location).toBe('/login?status=auth-required');
     expect(drafts.status).toBe(302);
     expect(drafts.headers.location).toBe('/login?status=auth-required');
+    expect(ideaDetail.status).toBe(302);
+    expect(ideaDetail.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
@@ -10890,6 +10893,97 @@ describe('shared accessible frontend shell', () => {
     expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-challenges/7/ideas/drafts');
   });
 
+  it('renders the Laravel-backed ideation idea detail page', async () => {
+    const api = require('../src/lib/api');
+    api.callIdeationApi
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 12,
+            challenge_id: 7,
+            title: 'Solar path lights',
+            description: 'Install low-glare solar lights near the main path.',
+            status: 'shortlisted',
+            votes_count: 4,
+            creator: { name: 'Avery Stone' },
+            has_voted: true,
+            is_owner: true,
+            is_admin: true,
+            can_convert: true
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 7,
+            title: 'Improve park lighting',
+            status: 'voting'
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            { id: 31, body: 'This keeps the path safer.', author: { id: 99, name: 'Avery Stone' } },
+            { id: 32, body: 'Please use an amber tone.', author: { name: 'Sam Reed' } }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            {
+              id: 21,
+              url: 'https://example.test/design.pdf',
+              caption: 'Design sketch',
+              media_type: 'document'
+            }
+          ]
+        }
+      });
+
+    const response = await request(app)
+      .get('/ideation/7/ideas/12?status=comment-added')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/ideation/7"');
+    expect(response.text).toContain('Improve park lighting');
+    expect(response.text).toContain('Solar path lights');
+    expect(response.text).toContain('Shortlisted');
+    expect(response.text).toContain('Your comment has been posted.');
+    expect(response.text).toContain('Submitted by Avery Stone');
+    expect(response.text).toContain('4 votes');
+    expect(response.text).toContain('Idea details');
+    expect(response.text).toContain('Install low-glare solar lights near the main path.');
+    expect(response.text).toContain('Remove your vote');
+    expect(response.text).toContain('action="/ideation/7/ideas/12/toggle-vote"');
+    expect(response.text).toContain('Attachments');
+    expect(response.text).toContain('Design sketch');
+    expect(response.text).toContain('Document');
+    expect(response.text).toContain('Add an attachment');
+    expect(response.text).toContain('name="media_type"');
+    expect(response.text).toContain('name="media_url"');
+    expect(response.text).toContain('Admin controls');
+    expect(response.text).toContain('name="idea_status"');
+    expect(response.text).toContain('value="shortlisted" checked');
+    expect(response.text).toContain('Turn this idea into a group');
+    expect(response.text).toContain('name="group_name"');
+    expect(response.text).toContain('value="Solar path lights"');
+    expect(response.text).toContain('Delete idea');
+    expect(response.text).toContain('action="/ideation/7/ideas/12/delete"');
+    expect(response.text).toContain('Comments');
+    expect(response.text).toContain('This keeps the path safer.');
+    expect(response.text).toContain('Sam Reed commented');
+    expect(response.text).toContain('action="/ideation/7/ideas/12/comments"');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-ideas/12');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-challenges/7');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/ideation-ideas/12/comments?per_page=30');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(4, 'test-token', 'GET', '/ideation-ideas/12/media');
+  });
+
   it('renders the Laravel-backed ideation outcomes page', async () => {
     const api = require('../src/lib/api');
     api.callIdeationApi.mockResolvedValueOnce({
@@ -11092,8 +11186,8 @@ describe('shared accessible frontend shell', () => {
 
     const mediaResponse = await post('/ideation/7/ideas/12/media', {
       media_type: 'link',
-      url: ' https://example.org/proposal ',
-      caption: ' Proposal '
+      media_url: ' https://example.org/proposal ',
+      media_caption: ' Proposal '
     });
     expect(mediaResponse.headers.location).toBe('/ideation/7/ideas/12?status=media-added');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-ideas/12/media', {
@@ -11104,7 +11198,7 @@ describe('shared accessible frontend shell', () => {
 
     const convertResponse = await post('/ideation/7/ideas/12/convert', {
       group_name: ' Parks delivery team ',
-      description: ' Coordinate delivery. '
+      group_description: ' Coordinate delivery. '
     });
     expect(convertResponse.headers.location).toBe('/ideation/7/ideas/12?status=converted-to-group');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-ideas/12/convert-to-group', {

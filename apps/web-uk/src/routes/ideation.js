@@ -299,6 +299,72 @@ function normalizeDraft(item) {
   };
 }
 
+function ideaStatusDetails(status) {
+  switch (trimmed(status).toLowerCase()) {
+    case 'shortlisted':
+      return { label: 'Shortlisted', className: 'govuk-tag--yellow' };
+    case 'winner':
+      return { label: 'Winner', className: 'govuk-tag--green' };
+    case 'withdrawn':
+      return { label: 'Withdrawn', className: 'govuk-tag--grey' };
+    default:
+      return { label: 'Submitted', className: 'govuk-tag--blue' };
+  }
+}
+
+function normalizeIdeaDetail(item, challenge) {
+  const idea = normalizeIdea(item);
+  const row = item && typeof item === 'object' ? item : {};
+  const status = ideaStatusDetails(row.status);
+  const challengeStatus = trimmed(challenge?.status).toLowerCase();
+  const isOwner = Boolean(row.is_owner || row.isOwner);
+  const isAdmin = Boolean(row.is_admin || row.isAdmin);
+  const ideaStatus = trimmed(row.status || 'submitted').toLowerCase();
+  const hasVoted = Boolean(row.has_voted || row.hasVoted);
+  return {
+    ...idea,
+    challengeId: positiveInteger(row.challenge_id ?? row.challengeId),
+    status: ideaStatus || 'submitted',
+    statusLabel: status.label,
+    statusClass: status.className,
+    hasVoted,
+    isOwner,
+    isAdmin,
+    canVote: Boolean(row.can_vote || row.canVote)
+      || (['open', 'voting'].includes(challengeStatus) && !isOwner && !['withdrawn', 'draft'].includes(ideaStatus)),
+    canComment: row.can_comment !== false && row.canComment !== false && !['withdrawn', 'draft'].includes(ideaStatus),
+    canConvert: Boolean(row.can_convert || row.canConvert || ((isAdmin || isOwner) && ['shortlisted', 'winner'].includes(ideaStatus)))
+  };
+}
+
+function normalizeComment(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const author = row.author && typeof row.author === 'object' ? row.author : {};
+  return {
+    id: positiveInteger(row.id),
+    body: trimmed(row.body || row.comment || row.content),
+    authorName: trimmed(author.name || row.author_name || row.authorName)
+  };
+}
+
+function normalizeMedia(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const type = trimmed(row.media_type ?? row.mediaType ?? row.type).toLowerCase();
+  const typeLabels = {
+    image: 'Image',
+    video: 'Video',
+    document: 'Document',
+    link: 'Link'
+  };
+  return {
+    id: positiveInteger(row.id),
+    url: trimmed(row.url),
+    caption: trimmed(row.caption),
+    type: ['image', 'video', 'document', 'link'].includes(type) ? type : 'link',
+    typeLabel: typeLabels[type] || 'Link'
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     'idea-submitted': 'Thank you - your idea has been submitted.',
@@ -311,6 +377,31 @@ function errorMessage(status) {
   const messages = {
     'idea-invalid': 'Enter your idea.',
     'idea-failed': 'Something went wrong. Please try again.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function ideaDetailStatusMessage(status) {
+  const messages = {
+    'idea-voted': 'Your vote has been recorded.',
+    'idea-status-updated': 'The idea status has been updated.',
+    'idea-deleted': 'The idea has been deleted.',
+    'comment-added': 'Your comment has been posted.',
+    'comment-deleted': 'The comment has been deleted.',
+    'media-added': 'The attachment has been added.',
+    converted: 'A group has been created from this idea.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function ideaDetailErrorMessage(status) {
+  const messages = {
+    'idea-failed': 'Sorry, that action could not be completed. Please try again.',
+    'comment-invalid': 'Enter a comment before posting.',
+    'comment-failed': 'Sorry, your comment could not be posted. Please try again.',
+    'media-invalid': 'Enter a web address for the attachment.',
+    'media-failed': 'Sorry, the attachment could not be added. Please try again.',
+    'convert-failed': 'Sorry, the idea could not be turned into a group. Please try again.'
   };
   return messages[trimmed(status)] || '';
 }
@@ -554,6 +645,44 @@ router.get('/:id(\\d+)/drafts', asyncRoute(async (req, res) => {
     errorMessage: draftErrorMessage(status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
+
+router.get('/:id(\\d+)/ideas/:ideaId(\\d+)', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = positiveInteger(req.params.id);
+  const ideaId = positiveInteger(req.params.ideaId);
+  const ideaResult = await callIdeationApi(token, 'GET', `/ideation-ideas/${ideaId}`);
+  const ideaData = itemFrom(ideaResult);
+  if (positiveInteger(ideaData.challenge_id ?? ideaData.challengeId) !== id) {
+    return res.status(404).render('errors/404', { title: 'Ideation idea not found' });
+  }
+
+  const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);
+  const commentsResult = await callIdeationApi(token, 'GET', `/ideation-ideas/${ideaId}/comments?per_page=30`);
+  const mediaResult = await callIdeationApi(token, 'GET', `/ideation-ideas/${ideaId}/media`);
+  const challenge = normalizeChallenge({ id, ...itemFrom(challengeResult) });
+  const idea = normalizeIdeaDetail({ id: ideaId, ...ideaData }, challenge);
+  const comments = collectionFrom(commentsResult)
+    .map(normalizeComment)
+    .filter((comment) => comment.id !== null && comment.body);
+  const media = collectionFrom(mediaResult)
+    .map(normalizeMedia)
+    .filter((item) => item.id !== null && item.url);
+  const status = trimmed(req.query.status);
+
+  return res.render('ideation/idea-detail', {
+    title: idea.title,
+    activeNav: 'explore',
+    challenge,
+    idea,
+    comments,
+    media,
+    status,
+    successMessage: ideaDetailStatusMessage(status),
+    errorMessage: ideaDetailErrorMessage(status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation idea not found' }));
 
 router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
