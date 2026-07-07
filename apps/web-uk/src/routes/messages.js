@@ -13,6 +13,7 @@ const {
   replyToConversation,
   startConversation,
   getUser,
+  searchUsers,
   getConnections,
   markConversationRead,
   getProfile,
@@ -135,6 +136,73 @@ function memberIdsFrom(raw) {
     if (id !== null) seen.add(id);
   });
   return Array.from(seen);
+}
+
+function listFrom(value) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') return [];
+  if (Array.isArray(value.items)) return value.items;
+  if (Array.isArray(value.data)) return value.data;
+  if (Array.isArray(value.results)) return value.results;
+  if (Array.isArray(value.users)) return value.users;
+  return [];
+}
+
+function selectedGroupMemberIds(query) {
+  return memberIdsFrom(query.members || query['members[]']);
+}
+
+function groupStatusMessage(status) {
+  const messages = {
+    'group-created': 'Your group conversation has been created.',
+    'group-disabled': 'Direct messaging is currently turned off, so group conversations are unavailable.',
+    'group-create-failed': 'We could not create the group. Add a name and at least two other members, then try again.',
+    'group-message-sent': 'Your message has been sent to the group.',
+    'group-message-empty': 'Enter a message before sending.',
+    'group-message-too-long': 'Your message is too long. Please shorten it and try again.',
+    'group-message-failed': 'We could not send your message.',
+    'group-message-forbidden': 'You are no longer a member of this group, so you cannot send messages.',
+    'group-member-added': 'The member has been added to the group.',
+    'group-member-removed': 'The member has been removed from the group.',
+    'group-member-invalid': 'Choose a valid member to add.',
+    'group-member-forbidden': 'Only group administrators can add or remove members.',
+    'group-member-not-found': 'That member could not be found in this community.',
+    'group-member-limit': 'This group already has the maximum number of members.',
+    'group-member-failed': 'We could not update the group members.',
+    'group-left': 'You have left the group.',
+    'group-leave-failed': 'We could not remove you from the group.',
+    'reaction-added': 'Your reaction has been added.',
+    'reaction-removed': 'Your reaction has been removed.',
+    'reaction-invalid': 'That reaction is not available.',
+    'reaction-forbidden': 'You cannot react to this message.',
+    'reaction-failed': 'We could not save your reaction.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function groupName(group) {
+  return trimmed(group && (group.group_name || group.groupName || group.name)) || 'Group conversation';
+}
+
+function memberName(member) {
+  return trimmed(member && (member.name || member.full_name || member.fullName)) || 'Unknown member';
+}
+
+function senderName(message, currentUserId) {
+  const senderId = positiveInteger(message && message.sender_id);
+  if (senderId !== null && currentUserId !== null && senderId === currentUserId) return 'You';
+  const sender = message && message.sender && typeof message.sender === 'object' ? message.sender : {};
+  return trimmed(sender.name || sender.full_name || sender.fullName)
+    || trimmed(message && (message.sender_name || message.senderName))
+    || 'Unknown member';
+}
+
+function conversationApiPath(conversationId, query) {
+  const search = new URLSearchParams();
+  search.set('per_page', '50');
+  search.set('direction', 'older');
+  if (query.cursor) search.set('cursor', String(query.cursor));
+  return `/${conversationId}/messages?${search.toString()}`;
 }
 
 function editFailureStatus(error) {
@@ -387,6 +455,111 @@ router.post('/groups/:conversationId(\\d+)/m/:messageId(\\d+)/react', asyncRoute
 }));
 
 router.use(requireAuth);
+
+router.get('/groups', asyncRoute(async (req, res) => {
+  let groups = [];
+  let error = '';
+  try {
+    const result = await callConversation(req.token, 'GET', '/groups');
+    groups = listFrom(dataFrom(result));
+  } catch {
+    error = 'There was a problem loading your group conversations.';
+  }
+
+  res.render('messages/groups', {
+    title: 'Group conversations',
+    groups: groups.map(group => ({
+      ...group,
+      displayName: groupName(group)
+    })),
+    statusMessage: groupStatusMessage(req.query.status),
+    error
+  });
+}));
+
+router.get('/groups/new', asyncRoute(async (req, res) => {
+  const query = trimmed(req.query.q);
+  const selectedIds = selectedGroupMemberIds(req.query);
+  const selected = new Set(selectedIds);
+  let searchResults = [];
+  let rawSearchResults = [];
+  if (query !== '') {
+    const result = await searchUsers(req.token, query, { limit: 10 });
+    rawSearchResults = listFrom(dataFrom(result))
+      .map(member => ({
+        ...member,
+        displayName: memberName(member),
+        id: positiveInteger(member.id)
+      }))
+      .filter(member => member.id !== null);
+    searchResults = rawSearchResults.filter(member => !selected.has(member.id));
+  }
+  const namedSelected = new Map(rawSearchResults.map(member => [member.id, member.displayName]));
+
+  res.render('messages/group-create', {
+    title: 'Start a group conversation',
+    query,
+    groupName: trimmed(req.query.name, 100),
+    selectedIds,
+    selectedMembers: selectedIds.map(id => ({ id, displayName: namedSelected.get(id) || `Member ${id}` })),
+    searchResults,
+    canCreate: selectedIds.length >= 2,
+    statusMessage: groupStatusMessage(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.get('/groups/:conversationId(\\d+)', asyncRoute(async (req, res) => {
+  const conversationId = Number(req.params.conversationId);
+  const [messagesResult, participantsResult, profileResult] = await Promise.all([
+    callConversation(req.token, 'GET', conversationApiPath(conversationId, req.query)),
+    callConversation(req.token, 'GET', `/${conversationId}/participants`),
+    getProfile(req.token).catch(() => null)
+  ]);
+
+  const profile = dataFrom(profileResult);
+  const currentUserId = positiveInteger(profile && profile.id);
+  const meta = (messagesResult && messagesResult.meta) || {};
+  const conversation = meta.conversation || { id: conversationId, group_name: 'Group conversation' };
+  const participants = listFrom(dataFrom(participantsResult)).map(member => ({
+    ...member,
+    id: positiveInteger(member.id),
+    displayName: memberName(member)
+  }));
+  const viewer = participants.find(member => member.id !== null && member.id === currentUserId);
+  const viewerRole = trimmed(viewer && viewer.role) || 'member';
+  const searchQuery = trimmed(req.query.q);
+  const messages = listFrom(dataFrom(messagesResult)).map(message => ({
+    ...message,
+    displaySenderName: senderName(message, currentUserId)
+  }));
+  const visibleMessages = searchQuery
+    ? messages.filter(message => String(message.body || message.content || '').toLowerCase().includes(searchQuery.toLowerCase()))
+    : messages;
+
+  res.render('messages/group-conversation', {
+    title: groupName(conversation),
+    conversation: {
+      ...conversation,
+      id: conversationId,
+      displayName: groupName(conversation)
+    },
+    messages: visibleMessages,
+    participants,
+    currentUserId,
+    viewerRole,
+    isAdmin: viewerRole === 'admin',
+    canSend: true,
+    searchQuery,
+    meta: {
+      hasMore: Boolean(meta.has_more),
+      cursor: meta.cursor || ''
+    },
+    reactionEmojis: ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F62E}', '\u{1F622}', '\u{1F64F}'],
+    statusMessage: groupStatusMessage(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Group conversation not found' }));
 
 // List conversations
 router.get('/', asyncRoute(async (req, res) => {

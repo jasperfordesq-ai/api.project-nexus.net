@@ -1,0 +1,107 @@
+{# Copyright (C) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+
+{% block beforeContent %}
+  {{ super() }}
+  <a class="govuk-back-link" href="/messages/groups">Back to group conversations</a>
+{% endblock %}
+
+{% block mainContent %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      {% if statusMessage %}
+        <div class="govuk-notification-banner" role="region" aria-labelledby="messages-create-status-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="messages-create-status-title">Message</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-body">{{ statusMessage }}</p>
+          </div>
+        </div>
+      {% endif %}
+
+      <span class="govuk-caption-l">Group conversations</span>
+      <h1 class="govuk-heading-xl">Start a group conversation</h1>
+      <p class="govuk-body-l">Choose a name and add at least two other members. You will be the group administrator.</p>
+
+      <div class="nexus-alpha-card govuk-!-margin-bottom-6">
+        <h2 class="govuk-heading-m">Members in this group</h2>
+        {% if selectedMembers and selectedMembers.length %}
+          <ul class="govuk-list govuk-!-margin-bottom-0">
+            <li class="govuk-!-margin-bottom-2"><strong>You (administrator)</strong></li>
+            {% for member in selectedMembers %}
+              <li class="govuk-!-margin-bottom-2">{{ member.displayName }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="govuk-body govuk-!-margin-bottom-0">No members added yet.</p>
+        {% endif %}
+        {% if not canCreate %}
+          <p class="govuk-hint govuk-!-margin-top-3 govuk-!-margin-bottom-0">You need to add at least two other members before you can create the group.</p>
+        {% endif %}
+      </div>
+
+      <div class="nexus-alpha-card govuk-!-margin-bottom-6">
+        <form method="get" action="/messages/groups/new">
+          {% if groupName %}
+            <input type="hidden" name="name" value="{{ groupName }}">
+          {% endif %}
+          {% for selectedId in selectedIds %}
+            <input type="hidden" name="members[]" value="{{ selectedId }}">
+          {% endfor %}
+          <div class="govuk-form-group govuk-!-margin-bottom-2">
+            <label class="govuk-label govuk-label--m" for="group-member-search">Find members to add</label>
+            <div id="group-member-search-hint" class="govuk-hint">Search by name. Add at least two other members.</div>
+            <input class="govuk-input govuk-!-width-two-thirds" id="group-member-search" name="q" type="search" value="{{ query }}" aria-describedby="group-member-search-hint">
+          </div>
+          <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0">Search</button>
+        </form>
+
+        {% if query %}
+          {% if searchResults and searchResults.length %}
+            <ul class="govuk-list govuk-!-margin-top-3 govuk-!-margin-bottom-0">
+              {% for result in searchResults %}
+                <li class="govuk-!-margin-bottom-2">
+                  <span>{{ result.displayName }}</span>
+                  <form method="get" action="/messages/groups/new" class="govuk-!-display-inline">
+                    {% if groupName %}
+                      <input type="hidden" name="name" value="{{ groupName }}">
+                    {% endif %}
+                    {% for selectedId in selectedIds %}
+                      <input type="hidden" name="members[]" value="{{ selectedId }}">
+                    {% endfor %}
+                    <input type="hidden" name="members[]" value="{{ result.id }}">
+                    <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0">Add to group</button>
+                  </form>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-0">No members found for that search.</p>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <form method="post" action="/messages/groups">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        {% if selectedIds and selectedIds.length %}
+          {% for selectedId in selectedIds %}
+            <input type="hidden" name="member_ids[]" value="{{ selectedId }}">
+          {% endfor %}
+        {% else %}
+          <input type="hidden" name="member_ids[]" value="">
+        {% endif %}
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="group-name">Group name</label>
+          <div id="group-name-hint" class="govuk-hint">For example, the name of a project or a shared activity.</div>
+          <input class="govuk-input govuk-!-width-two-thirds" id="group-name" name="name" type="text" value="{{ groupName }}" maxlength="100" aria-describedby="group-name-hint" required>
+        </div>
+        <button class="govuk-button" {% if not canCreate %}disabled aria-disabled="true"{% endif %}>Create group conversation</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

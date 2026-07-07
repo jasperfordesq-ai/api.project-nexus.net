@@ -13271,6 +13271,140 @@ describe('shared accessible frontend shell', () => {
     expect(api.callConversationApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel group conversations list for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    api.callConversationApi.mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/groups') {
+        return {
+          data: [
+            {
+              id: 33,
+              group_name: 'Local helpers',
+              participant_count: 3,
+              unread_count: 2,
+              last_message: {
+                sender_name: 'Avery Stone',
+                body: 'Bring the spare keys',
+                created_at: '2026-07-06T10:30:00Z'
+              }
+            }
+          ]
+        };
+      }
+      throw new Error(`Unexpected conversation call ${method} ${pathName}`);
+    });
+
+    const response = await request(app)
+      .get('/messages/groups?status=group-left')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callConversationApi).toHaveBeenCalledWith('test-token', 'GET', '/groups');
+    expect(api.getConversation).not.toHaveBeenCalled();
+    expect(response.text).toContain('Group conversations');
+    expect(response.text).toContain('Direct messages');
+    expect(response.text).toContain('Start a group conversation');
+    expect(response.text).toContain('Local helpers');
+    expect(response.text).toContain('3 members');
+    expect(response.text).toContain('2 unread messages');
+    expect(response.text).toContain('Latest');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('Bring the spare keys');
+    expect(response.text).toContain('You have left the group.');
+  });
+
+  it('renders the Laravel group conversation create/search form', async () => {
+    const api = require('../src/lib/api');
+    api.searchUsers.mockResolvedValueOnce({
+      data: {
+        items: [
+          { id: 44, name: 'Casey Quinn', location: 'Derry' },
+          { id: 55, name: 'Morgan Lee', location: 'Belfast' }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/messages/groups/new?q=case&name=Local%20helpers&members[]=44')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.searchUsers).toHaveBeenCalledWith('test-token', 'case', { limit: 10 });
+    expect(api.callConversationApi).not.toHaveBeenCalled();
+    expect(response.text).toContain('Start a group conversation');
+    expect(response.text).toContain('Members in this group');
+    expect(response.text).toContain('Find members to add');
+    expect(response.text).toContain('Casey Quinn');
+    expect(response.text).toContain('Morgan Lee');
+    expect(response.text).toContain('name="members[]" value="44"');
+    expect(response.text).toContain('id="group-name" name="name"');
+    expect(response.text).toContain('Local helpers');
+    expect(response.text).toContain('Create group conversation');
+  });
+
+  it('renders the Laravel group conversation detail for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Avery Stone' } });
+    api.callConversationApi.mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/33/messages?per_page=50&direction=older&cursor=abc') {
+        return {
+          data: [
+            {
+              id: 12,
+              sender_id: 55,
+              body: 'Hello team, the rota is ready.',
+              created_at: '2026-07-06T12:15:00Z',
+              sender: { id: 55, name: 'Casey Quinn' }
+            },
+            {
+              id: 13,
+              sender_id: 101,
+              body: 'This should be hidden by the query.',
+              created_at: '2026-07-06T12:20:00Z',
+              sender: { id: 101, name: 'Avery Stone' }
+            }
+          ],
+          meta: {
+            conversation: { id: 33, group_name: 'Project team' },
+            cursor: 'older-cursor',
+            has_more: true
+          }
+        };
+      }
+      if (method === 'GET' && pathName === '/33/participants') {
+        return {
+          data: [
+            { id: 101, name: 'Avery Stone', role: 'admin', is_online: true },
+            { id: 55, name: 'Casey Quinn', role: 'member' }
+          ]
+        };
+      }
+      throw new Error(`Unexpected conversation call ${method} ${pathName}`);
+    });
+
+    const response = await request(app)
+      .get('/messages/groups/33?q=hello&cursor=abc&status=group-message-sent')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callConversationApi).toHaveBeenCalledWith('test-token', 'GET', '/33/messages?per_page=50&direction=older&cursor=abc');
+    expect(api.callConversationApi).toHaveBeenCalledWith('test-token', 'GET', '/33/participants');
+    expect(response.text).toContain('Project team');
+    expect(response.text).toContain('Your message has been sent to the group.');
+    expect(response.text).toContain('Members');
+    expect(response.text).toContain('Avery Stone');
+    expect(response.text).toContain('You');
+    expect(response.text).toContain('Administrator');
+    expect(response.text).toContain('Casey Quinn');
+    expect(response.text).toContain('Hello team, the rota is ready.');
+    expect(response.text).not.toContain('This should be hidden by the query.');
+    expect(response.text).toContain('action="/messages/groups/33"');
+    expect(response.text).toContain('action="/messages/groups/33/members"');
+    expect(response.text).toContain('action="/messages/groups/33/m/12/react"');
+    expect(response.text).toContain('action="/messages/groups/33/members/55/remove"');
+    expect(response.text).toContain('action="/messages/groups/33/members/101/remove"');
+  });
+
   it('renders and submits Laravel-style message attachments with multipart file data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

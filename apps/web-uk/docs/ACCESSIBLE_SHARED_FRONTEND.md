@@ -230,11 +230,16 @@ wallet transfers while preserving Laravel profile status redirects.
 dashboard endpoint, and render the Blade-style contribution summary, engagement
 stats, skills breakdown, monthly hours, detailed-insights navigation, timeline,
 dual-bar insights chart, quick stats, and typed activity badges.
-Message POST aliases are wired to Laravel v2 message and group conversation
-APIs for archive/restore, message edit/delete/translate, group create/reply,
-member add/remove, and group reactions while preserving Laravel status redirects
-and anchors. Voice-message upload proxies multipart audio to
-`/api/v2/messages/voice` with Laravel-compatible status redirects.
+Message group GET pages now render the Laravel Blade group-conversation list,
+create/search form, and conversation detail in Nunjucks. Signed-in requests call
+Laravel-compatible `/api/v2/conversations/groups`,
+`/api/v2/conversations/{id}/messages`, `/api/v2/conversations/{id}/participants`,
+and `/api/v2/users/search` for the no-JS member picker. Message POST aliases
+are wired to Laravel v2 message and group conversation APIs for archive/restore,
+message edit/delete/translate, group create/reply, member add/remove, and group
+reactions while preserving Laravel status redirects and anchors. Voice-message
+upload proxies multipart audio to `/api/v2/messages/voice` with
+Laravel-compatible status redirects.
 Resource POST aliases are wired to Laravel v2 APIs for resource upload,
 resource delete, admin reorder, resource comments, comment deletion, and
 resource reactions while preserving Laravel library/comment status redirects.

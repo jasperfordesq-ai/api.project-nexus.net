@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T06:02:49.510Z",
+    "generatedAt": "2026-07-07T06:12:28.248Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -9704,8 +9704,8 @@
       "gates": "module:messages",
       "apiNeeds": "service:BrokerMessageVisibilityService",
       "webUkPath": "/messages/groups",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "messages/groups",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\messages.js"
     },
     {
       "method": "GET",
@@ -9723,8 +9723,8 @@
       "gates": "module:messages",
       "apiNeeds": "service:BrokerMessageVisibilityService",
       "webUkPath": "/messages/groups/{param}",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "messages/group-conversation",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\messages.js"
     },
     {
       "method": "GET",
@@ -9742,8 +9742,8 @@
       "gates": "feature:connections; module:messages",
       "apiNeeds": "service:BrokerMessageVisibilityService",
       "webUkPath": "/messages/groups/new",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "messages/group-create",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\messages.js"
     },
     {
       "method": "GET",
