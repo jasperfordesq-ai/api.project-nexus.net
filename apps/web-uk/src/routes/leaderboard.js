@@ -304,6 +304,82 @@ function normalizeAllSeasons(result) {
   }).filter((season) => season.name);
 }
 
+function humanizeSummaryKey(key) {
+  return String(key).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function isJourneyScalar(value) {
+  return ['string', 'number', 'boolean'].includes(typeof value);
+}
+
+function formatJourneyScalar(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value.toLocaleString('en-GB', {
+      minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
+      maximumFractionDigits: 1
+    });
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed !== '') {
+      const numeric = Number(trimmed);
+      if (Number.isFinite(numeric)) {
+        return numeric.toLocaleString('en-GB', {
+          minimumFractionDigits: Number.isInteger(numeric) ? 0 : 1,
+          maximumFractionDigits: 1
+        });
+      }
+    }
+    return trimmed;
+  }
+
+  return String(value);
+}
+
+function labelFromJourneyItem(item) {
+  if (typeof item === 'string') {
+    return item.trim();
+  }
+
+  const object = objectFrom(item);
+  return textFrom(object.label ?? object.title ?? object.name ?? object.description ?? object.badge_key);
+}
+
+function normalizeJourney(result) {
+  const payload = objectFrom(payloadFrom(result));
+  const summary = objectFrom(payload.summary);
+  const milestones = Array.isArray(payload.milestones) ? payload.milestones : [];
+  const monthly = Array.isArray(payload.monthly_activity) ? payload.monthly_activity : [];
+  const badges = Array.isArray(payload.badge_progression) ? payload.badge_progression : [];
+
+  const summaryRows = Object.entries(summary).map(([key, value]) => {
+    if (!isJourneyScalar(value)) return null;
+    return {
+      key: humanizeSummaryKey(key),
+      value: formatJourneyScalar(value)
+    };
+  }).filter(Boolean);
+
+  const milestoneRows = milestones.map(labelFromJourneyItem).filter(Boolean);
+  const activityRows = monthly.map((row) => {
+    const object = objectFrom(row);
+    return {
+      month: textFrom(object.month ?? object.label ?? object.year_month),
+      countLabel: formatInteger(object.activity_count ?? object.count ?? object.activities)
+    };
+  }).filter((row) => row.month);
+  const badgeRows = badges.map(labelFromJourneyItem).filter(Boolean);
+
+  return {
+    isEmpty: summaryRows.length === 0 && milestoneRows.length === 0 && activityRows.length === 0 && badgeRows.length === 0,
+    summaryRows,
+    milestoneRows,
+    activityRows,
+    badgeRows
+  };
+}
+
 function redirectAuthIfNeeded(error, res) {
   if (error instanceof ApiError && error.status === 401) {
     res.redirect(loginRedirect());
@@ -355,6 +431,28 @@ router.get('/competitive', asyncRoute(async (req, res) => {
       nextLimit: Math.min(200, limit + 20),
       countLabel: countLabel(rows.length)
     }
+  });
+}));
+
+router.get('/journey', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let journeyPayload;
+  try {
+    journeyPayload = await callGamificationApi(token, 'GET', '/personal-journey');
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    journeyPayload = { data: {} };
+  }
+
+  return res.render('leaderboard/journey', {
+    title: 'My journey',
+    activeNav: 'leaderboard',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    journey: normalizeJourney(journeyPayload)
   });
 }));
 

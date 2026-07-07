@@ -182,6 +182,10 @@ metric/period filter, rank banner, table, and load-more link.
 Laravel-compatible seasons/current and seasons endpoints, and renders the
 Blade-style current-season card, rewards, season leaders, and past-seasons
 table.
+`/leaderboard/journey` now redirects unsigned visitors, calls the
+Laravel-compatible personal-journey endpoint, and renders the Blade-style
+summary list, milestones, monthly activity table, badge progression list, and
+empty states.
 Member profile POST aliases are wired to Laravel v2 APIs for connection
 transitions, skill endorsements, block/unblock, profile reviews, and direct
 wallet transfers while preserving Laravel profile status redirects.

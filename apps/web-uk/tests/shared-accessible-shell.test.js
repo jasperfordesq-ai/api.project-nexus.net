@@ -2042,6 +2042,77 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style leaderboard journey page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/personal-journey') {
+        return {
+          data: {
+            summary: {
+              xp: 2450,
+              level: 5,
+              level_name: 'Contributor',
+              total_badges: 7,
+              volunteer_hours: 12.5,
+              member_since: 'Jan 2026'
+            },
+            milestones: [
+              { label: 'Earned "Community Builder" badge' },
+              { title: '1,000 XP reached' }
+            ],
+            monthly_activity: [
+              { month: 'Jun 2026', activity_count: 6 },
+              { label: 'Jul 2026', count: 3 }
+            ],
+            badge_progression: [
+              { name: 'Community Builder' },
+              { badge_key: 'helpful_neighbour' }
+            ]
+          }
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/leaderboard/journey');
+    const signed = await request(app)
+      .get('/leaderboard/journey')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/personal-journey');
+    expect(signed.text).toContain('href="/leaderboard"');
+    expect(signed.text).toContain('Back to leaderboard');
+    expect(signed.text).toContain('Leaderboard at Project NEXUS Accessible');
+    expect(signed.text).toContain('My journey');
+    expect(signed.text).toContain('A timeline of your activity, milestones and progress in the community.');
+    expect(signed.text).toContain('aria-current="page">My journey</a>');
+    expect(signed.text).toContain('Summary');
+    expect(signed.text).toContain('Total Badges');
+    expect(signed.text).toContain('7');
+    expect(signed.text).toContain('Volunteer Hours');
+    expect(signed.text).toContain('12.5');
+    expect(signed.text).toContain('Milestones');
+    expect(signed.text).toContain('Earned &quot;Community Builder&quot; badge');
+    expect(signed.text).toContain('1,000 XP reached');
+    expect(signed.text).toContain('Monthly activity');
+    expect(signed.text).toContain('Jun 2026');
+    expect(signed.text).toContain('6');
+    expect(signed.text).toContain('Jul 2026');
+    expect(signed.text).toContain('3');
+    expect(signed.text).toContain('Badge progression');
+    expect(signed.text).toContain('Community Builder');
+    expect(signed.text).toContain('helpful_neighbour');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
