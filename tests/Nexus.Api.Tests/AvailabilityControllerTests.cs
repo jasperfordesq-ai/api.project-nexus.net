@@ -63,6 +63,47 @@ public class AvailabilityControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task LaravelReactV2AvailabilityGrid_ReturnsWeeklyEnvelopeAndPersistsBulkSlots()
+    {
+        await AuthenticateAsMemberAsync();
+
+        var update = await Client.PutAsJsonAsync("/api/v2/users/me/availability", new
+        {
+            slots = new[]
+            {
+                new { day_of_week = 1, start_time = "09:00", end_time = "12:00", note = (string?)null },
+                new { day_of_week = 3, start_time = "14:00", end_time = "18:00", note = (string?)"Afternoons" }
+            }
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var updateWeekly = updateJson.GetProperty("data").GetProperty("weekly").EnumerateArray().ToArray();
+        updateWeekly.Should().HaveCount(2);
+        updateWeekly.Should().Contain(slot =>
+            slot.GetProperty("day_of_week").GetInt32() == 1 &&
+            slot.GetProperty("start_time").GetString() == "09:00" &&
+            slot.GetProperty("end_time").GetString() == "12:00");
+
+        var mine = await Client.GetAsync("/api/v2/users/me/availability");
+
+        mine.StatusCode.Should().Be(HttpStatusCode.OK);
+        var mineJson = await mine.Content.ReadFromJsonAsync<JsonElement>();
+        mineJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var mineWeekly = mineJson.GetProperty("data").GetProperty("weekly").EnumerateArray().ToArray();
+        mineWeekly.Should().HaveCount(2);
+        mineJson.GetProperty("data").GetProperty("timezone").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var publicView = await Client.GetAsync($"/api/v2/users/{TestData.MemberUser.Id}/availability");
+
+        publicView.StatusCode.Should().Be(HttpStatusCode.OK);
+        var publicJson = await publicView.Content.ReadFromJsonAsync<JsonElement>();
+        publicJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        publicJson.GetProperty("data").GetProperty("weekly").EnumerateArray().Should().HaveCount(2);
+    }
+
+    [Fact]
     public async Task AddException_ReturnsCreated()
     {
         await AuthenticateAsMemberAsync();

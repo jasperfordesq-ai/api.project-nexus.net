@@ -2562,17 +2562,19 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/users/{id:int}/availability")]
+    [HttpGet("/api/v2/users/{id:int}/availability")]
     [Authorize]
     public async Task<IActionResult> UserAvailability(int id)
     {
+        var tenantId = _tenantContext.TenantId ?? 0;
         var availability = await _db.MemberAvailabilities
-            .Where(a => a.UserId == id && a.IsActive)
+            .Where(a => a.TenantId == tenantId && a.UserId == id && a.IsActive)
             .OrderBy(a => a.DayOfWeek)
             .ThenBy(a => a.StartTime)
             .Select(a => new { id = a.Id, day_of_week = a.DayOfWeek, start_time = a.StartTime, end_time = a.EndTime, note = a.Note })
             .ToListAsync();
 
-        return Ok(new { data = availability, availability });
+        return Ok(new { success = true, data = new { weekly = availability, timezone = "Europe/Zurich" } });
     }
 
     [HttpGet("api/events/{id:int}/attendees")]

@@ -202,18 +202,57 @@ public class CompatibilityAliasController : ControllerBase
     /// PUT /api/users/me/availability — Alias for POST /api/availability.
     /// </summary>
     [HttpPut("api/users/me/availability")]
-    public async Task<IActionResult> UpdateAvailabilityAlias([FromBody] AvailabilityAliasRequest request)
+    public async Task<IActionResult> UpdateAvailabilityAlias([FromBody] JsonElement body)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
-        // Store as a simple JSON preference
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var prefs = await _preferencesService.GetPreferencesAsync(tenantId, userId.Value);
-        prefs.UpdatedAt = DateTime.UtcNow;
+        if (!TryGetAvailabilitySlots(body, out var requestedSlots))
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                error = "VALIDATION_ERROR",
+                errors = new[] { new { code = "VALIDATION_ERROR", message = "The schedule field must be an array.", field = "schedule" } }
+            });
+        }
+
+        var existing = await _db.MemberAvailabilities
+            .Where(a => a.TenantId == tenantId && a.UserId == userId.Value)
+            .ToListAsync();
+        _db.MemberAvailabilities.RemoveRange(existing);
+
+        foreach (var slot in requestedSlots)
+        {
+            if (slot.DayOfWeek is < 0 or > 6 || !IsAvailabilityTime(slot.StartTime) || !IsAvailabilityTime(slot.EndTime))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error = "VALIDATION_ERROR",
+                    errors = new[] { new { code = "VALIDATION_ERROR", message = "Availability slots require day_of_week 0-6 and HH:mm times.", field = "schedule" } }
+                });
+            }
+
+            _db.MemberAvailabilities.Add(new MemberAvailability
+            {
+                TenantId = tenantId,
+                UserId = userId.Value,
+                DayOfWeek = slot.DayOfWeek,
+                StartTime = slot.StartTime,
+                EndTime = slot.EndTime,
+                Note = slot.Note,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
         await _db.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "Availability updated" });
+        var weekly = await BuildAvailabilityWeeklyAsync(tenantId, userId.Value);
+        return Ok(new { success = true, data = new { weekly, timezone = "Europe/Zurich" } });
     }
 
     /// <summary>
@@ -2792,7 +2831,73 @@ public class CompatibilityAliasController : ControllerBase
             : SkillLevel.Beginner;
     }
 
+    private async Task<List<object>> BuildAvailabilityWeeklyAsync(int tenantId, int userId)
+    {
+        var rows = await _db.MemberAvailabilities
+            .Where(a => a.TenantId == tenantId && a.UserId == userId && a.IsActive)
+            .OrderBy(a => a.DayOfWeek)
+            .ThenBy(a => a.StartTime)
+            .ToListAsync();
+
+        return rows.Select(a => (object)new
+        {
+            id = a.Id,
+            day_of_week = a.DayOfWeek,
+            start_time = a.StartTime,
+            end_time = a.EndTime,
+            note = a.Note
+        }).ToList();
+    }
+
+    private static bool TryGetAvailabilitySlots(JsonElement body, out List<AvailabilitySlotInput> slots)
+    {
+        slots = new List<AvailabilitySlotInput>();
+        if (body.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (!body.TryGetProperty("slots", out var source) && !body.TryGetProperty("schedule", out source))
+        {
+            return false;
+        }
+
+        if (source.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var item in source.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            var day = item.TryGetProperty("day_of_week", out var dayElement) && dayElement.TryGetInt32(out var dayValue)
+                ? dayValue
+                : -1;
+            slots.Add(new AvailabilitySlotInput(
+                day,
+                ReadString(item, "start_time") ?? string.Empty,
+                ReadString(item, "end_time") ?? string.Empty,
+                ReadString(item, "note")));
+        }
+
+        return true;
+    }
+
+    private static string? ReadString(JsonElement body, string name) =>
+        body.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null
+            ? value.ToString()
+            : null;
+
+    private static bool IsAvailabilityTime(string value) =>
+        System.Text.RegularExpressions.Regex.IsMatch(value, @"^([01]\d|2[0-3]):[0-5]\d$");
+
     private int? GetCurrentUserId() => User.GetUserId();
+
+    private sealed record AvailabilitySlotInput(int DayOfWeek, string StartTime, string EndTime, string? Note);
 }
 
 // ──────────────────────────────────────────────

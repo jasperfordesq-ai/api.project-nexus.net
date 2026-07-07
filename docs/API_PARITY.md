@@ -80,6 +80,14 @@ coverage for `POST /api/v2/donations/payment-intent` and
 tenant-scoped pending `MoneyDonation`, returns the React `client_secret` /
 `donation_id` envelope, and returns JSON receipt data for the receipt component.
 
+The Laravel React availability grid slice now has focused ASP.NET regression
+coverage for `GET /api/v2/users/me/availability`,
+`PUT /api/v2/users/me/availability`, and
+`GET /api/v2/users/{id}/availability`. The .NET compatibility path accepts the
+React `{ slots: [...] }` bulk payload, replaces tenant-scoped
+`MemberAvailability` rows, and returns the React `success/data.weekly/timezone`
+envelope.
+
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static
 route content, notification unsubscribe, AI chat starters/feedback, admin
@@ -171,6 +179,7 @@ buddy nudge, typed match dismissals, and coordinator assistance requests.
 | AI trace metrics | `Api/Admin/AiTraceMetricsController.php`, `AiTurnTraceService::metricsFor` | `AiKnowledgeController.TraceMetrics` | Basic tenant-scoped metrics response now matched for turns, tokens, estimated cost, latency, feedback counts, top tools, and downvote notes; text-rich unanswered trace rows remain limited by current .NET audit schema |
 | Tenant header logos | `AdminConfigController::uploadHeaderLogo*` / `removeHeaderLogo*`, `POST/DELETE /api/v2/admin/settings/header-logo*` | `AdminController.UploadHeaderLogo*`, `AdminController.RemoveHeaderLogo*` | Upload and clear endpoints now matched with tenant-scoped config updates, 2 MB logo validation, SVG allowance with script checks, and Laravel `{ data: { url } }` / `{ data: { url: null } }` shapes |
 | Bookmarks and collections | `BookmarkController::collections/createCollection/deleteCollection/status/move`, `GET/POST/DELETE /api/v2/bookmark-collections*`, `GET /api/v2/bookmarks/status`, `POST /api/v2/bookmarks/{id}/move` | `BookmarksController.ListLaravelCollections`, `CreateLaravelCollection`, `DeleteLaravelCollection`, `LaravelBookmarkStatus`, `MoveLaravelBookmark` | Top-level collection list/create/delete plus status and move routes now matched with Laravel-style `data`/`errors` envelopes, owner scoping, bookmark counts, type-string mapping, and explicit unlink-before-delete behavior; `GET/POST /api/v2/bookmarks` remain matched by route and still need deeper request/response schema audit |
+| Member availability | `MemberAvailabilityController.php`, Laravel React `AvailabilityGrid.tsx`, `GET/PUT /api/v2/users/me/availability`, `GET /api/v2/users/{id}/availability` | `UsersParityController.Availability`, `CompatibilityAliasController.UpdateAvailabilityAlias`, `ReactFrontendCompatibilityController.UserAvailability`, `AvailabilityControllerTests` | React availability-grid read/write calls now match the Laravel-style success/data envelope with `weekly` slots and `timezone`, persist bulk `slots` payloads into tenant-scoped `MemberAvailability`, and expose public user availability through `/api/v2/users/{id}/availability`. Day-specific updates, one-off date slots, compatible-time search, available-member search, and deeper validation parity remain gaps. |
 | Provisioning requests | `TenantProvisioningController.php`, `SuperAdmin\TenantProvisioningController.php`, Laravel React `PilotApplyPage`, `PilotApplyStatusPage`, `ProvisioningRequestsPage` | `PublicProvisioningController.LaravelSubmit/LaravelCheckSlug/LaravelStatus`, `AdminProvisioningController.LaravelList/LaravelGet/LaravelApprove/LaravelReject/LaravelRetry`, tenant middleware public `/api/v2/provisioning-requests` exclusion | Public slug availability, submit, status token, super-admin list/detail, approve, reject, and retry routes now match the Laravel method/path surface with `/api/v2` aliases, Laravel-style `data` envelopes, status-token projection, numeric compatibility ids, rejection validation, tenant-safe public handling, and focused integration tests. Deeper async tenant creation/job behavior remains a workflow parity item beyond the React contract smoke path. |
 | Accessible frontend backing routes | `routes/govuk-alpha.php`, `routes/govuk-alpha-parity/*` | `apps/web-uk/` consuming .NET API | Needs route-by-route API support verification |
 

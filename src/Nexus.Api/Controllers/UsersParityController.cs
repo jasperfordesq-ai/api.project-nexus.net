@@ -89,7 +89,11 @@ public class UsersParityController : ControllerBase
     public async Task<IActionResult> ActivityTimeline() => Ok(new { data = await _db.AuditLogs.Where(a => a.TenantId == TenantId() && a.UserId == UserId()).OrderByDescending(a => a.CreatedAt).Take(50).ToListAsync() });
 
     [HttpGet("me/availability")]
-    public async Task<IActionResult> Availability() => Ok(new { data = await _db.MemberAvailabilities.Where(a => a.TenantId == TenantId() && a.UserId == UserId()).OrderBy(a => a.DayOfWeek).ToListAsync() });
+    public async Task<IActionResult> Availability()
+    {
+        var weekly = await BuildAvailabilityWeeklyAsync(UserId());
+        return Ok(new { success = true, data = new { weekly, timezone = "Europe/Zurich" } });
+    }
 
     [HttpPost("me/availability/date")]
     public async Task<IActionResult> AvailabilityDate([FromBody] JsonElement body)
@@ -326,6 +330,25 @@ public class UsersParityController : ControllerBase
         var userId = UserId();
         return await _db.Users.FirstOrDefaultAsync(u => u.TenantId == TenantId() && u.Id == userId)
             ?? throw new UnauthorizedAccessException("Invalid token");
+    }
+
+    private async Task<List<object>> BuildAvailabilityWeeklyAsync(int userId)
+    {
+        var rows = await _db.MemberAvailabilities
+            .AsNoTracking()
+            .Where(a => a.TenantId == TenantId() && a.UserId == userId && a.IsActive)
+            .OrderBy(a => a.DayOfWeek)
+            .ThenBy(a => a.StartTime)
+            .ToListAsync();
+
+        return rows.Select(a => (object)new
+        {
+            id = a.Id,
+            day_of_week = a.DayOfWeek,
+            start_time = a.StartTime,
+            end_time = a.EndTime,
+            note = a.Note
+        }).ToList();
     }
 
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
