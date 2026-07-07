@@ -10,6 +10,7 @@ Edition. The canonical Laravel source for parity is
 
 | Document | Purpose |
 | --- | --- |
+| [CURRENT_LARAVEL_PARITY_HANDOFF.md](CURRENT_LARAVEL_PARITY_HANDOFF.md) | Resume protocol, live-state refresh commands, current blockers, and next-step rules for the Laravel backend parity job. Start here if an agent is taking over mid-stream. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Runtime boundaries, application surfaces, and invariants for the .NET edition. |
 | [MODULES.md](MODULES.md) | Module-by-module Laravel source paths, .NET target paths, and parity status. |
 | [LARAVEL_PARITY_MAP.md](LARAVEL_PARITY_MAP.md) | Canonical parity gap register and implementation backlog. |
@@ -17,6 +18,7 @@ Edition. The canonical Laravel source for parity is
 | [API_PARITY.md](API_PARITY.md) | API contract inventory and comparison policy. |
 | [REACT_FRONTEND_RETIREMENT.md](REACT_FRONTEND_RETIREMENT.md) | Retirement policy for the old ASP.NET React fork and contract-compatibility rules for the Laravel React frontend. |
 | [ACCESSIBLE_SHARED_FRONTEND.md](ACCESSIBLE_SHARED_FRONTEND.md) | Direction, GOV.UK upstream references, and guardrails for `apps/web-uk` as the future shared accessible frontend candidate. |
+| [../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md](../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md) | Resume protocol, route-matrix refresh commands, certification rules, and next-step checklist for the accessible Web UK rewrite. |
 | [SCHEMA_PARITY.md](SCHEMA_PARITY.md) | Database table/entity/migration parity inventory and generated report policy. |
 | [FRONTEND_PARITY.md](FRONTEND_PARITY.md) | React and accessible frontend route parity inventory and generated report policy. |
 | [LOCALIZATION_PARITY.md](LOCALIZATION_PARITY.md) | Locale, namespace, and translation-key parity inventory. |

@@ -23,9 +23,15 @@ accessible frontend. See `docs/ACCESSIBLE_SHARED_FRONTEND.md` and the root
 
 Route and backend preparation docs live beside this app:
 
+- `docs/CURRENT_WEB_UK_HANDOFF.md`
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
 - `docs/BACKEND_SWITCHING_CONTRACT.md`
+
+If an agent is resuming this work after an interrupted session, start with
+`docs/CURRENT_WEB_UK_HANDOFF.md`. It gives the live-state refresh commands,
+current handoff checklist, route-matrix interpretation rules, and safety rules
+for working while other agents may still be committing accessible parity work.
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with:

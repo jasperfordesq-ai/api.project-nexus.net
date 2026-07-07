@@ -24,6 +24,7 @@ the root [docs/ACCESSIBLE_SHARED_FRONTEND.md](../../docs/ACCESSIBLE_SHARED_FRONT
 
 Preparation docs:
 
+- [docs/CURRENT_WEB_UK_HANDOFF.md](docs/CURRENT_WEB_UK_HANDOFF.md) - start here when resuming interrupted accessible parity work.
 - [docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md](docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md)
 - [docs/BLADE_COMPONENT_PORT_AUDIT.md](docs/BLADE_COMPONENT_PORT_AUDIT.md)
 - [docs/BACKEND_SWITCHING_CONTRACT.md](docs/BACKEND_SWITCHING_CONTRACT.md)

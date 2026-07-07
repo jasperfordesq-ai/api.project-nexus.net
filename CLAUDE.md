@@ -108,8 +108,16 @@ until the parity maps in `docs/` show no open gaps and the relevant test suites
 pass. Previous numeric parity scores in this repo are retired because they
 excluded modules that are now in scope.
 
+If an agent is resuming this work after an interrupted session, start with
+`docs/CURRENT_LARAVEL_PARITY_HANDOFF.md`. For the accessible frontend branch,
+also read `apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md`. These handoff documents
+give live-state refresh commands, current handoff checklists, known verification
+blockers, and rules for working safely while other agents may still be
+committing parity work.
+
 The canonical tracking documents are:
 
+- `docs/CURRENT_LARAVEL_PARITY_HANDOFF.md` - resume protocol and current-state refresh checklist.
 - `docs/LARAVEL_PARITY_MAP.md` - gap register and backlog.
 - `docs/PARITY_BACKLOG.md` - generated backlog rollup and implementation queue rules.
 - `docs/API_PARITY.md` - API contract comparison method and known gaps.
@@ -155,6 +163,8 @@ canonical React frontend is the Laravel repo frontend at
 - `apps/web-uk/` is no longer dismissed from parity. It is the future shared
   accessible frontend candidate and must be mapped against Laravel
   `accessible-frontend/` and `routes/govuk-alpha*`.
+- If resuming the accessible frontend work after an interrupted session, start
+  with `apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md`.
 - The Laravel Blade accessible frontend remains the current visual/workflow
   source of truth. Port its shell, information architecture, footer, card-list,
   and Explore patterns into `apps/web-uk` while keeping the Express/Nunjucks/GOV.UK
