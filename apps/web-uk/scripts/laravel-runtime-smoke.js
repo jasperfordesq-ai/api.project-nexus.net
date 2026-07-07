@@ -126,6 +126,8 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/coupons', status: 403 },
   { path: '/jobs/bias-audit', status: 403 },
   { path: '/jobs/talent-search', status: 403 },
+  { path: '/events/6/edit', status: 403 },
+  { path: '/events/14/edit', status: 403 },
   { path: '/jobs/90764/edit', status: 403 },
   { path: '/jobs/90764/analytics', status: 403 },
   { path: '/jobs/90764/pipeline', status: 403 },

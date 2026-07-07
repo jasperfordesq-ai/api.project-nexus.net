@@ -407,6 +407,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/coupons',
       '/jobs/bias-audit',
       '/jobs/talent-search',
+      '/events/6/edit',
+      '/events/14/edit',
       '/jobs/90764/edit',
       '/jobs/90764/analytics',
       '/jobs/90764/pipeline',
@@ -813,6 +815,15 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
       { path: '/courses/instructor/1/analytics', status: 403 },
       { path: '/courses/instructor/1/grading', status: 403 }
+    ]));
+  });
+
+  it('includes stable event edit gated fixture outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/events/6/edit', status: 403 },
+      { path: '/events/14/edit', status: 403 }
     ]));
   });
 

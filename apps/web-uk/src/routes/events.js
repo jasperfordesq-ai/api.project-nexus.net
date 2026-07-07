@@ -23,6 +23,7 @@ const {
   uploadEventImage,
   callUgcTranslateApi,
   getMyGroups,
+  getProfile,
   ApiError
 } = require('../lib/api');
 const { requireAuth } = require('../middleware/auth');
@@ -140,6 +141,18 @@ function eventFrom(result) {
     return data.event || data;
   }
   return {};
+}
+
+function idFrom(value) {
+  const object = value && typeof value === 'object' ? value : {};
+  const data = dataFrom(object);
+  const row = data && typeof data === 'object' && !Array.isArray(data) ? data : object;
+  return positiveInteger(row.id || row.user_id || row.userId);
+}
+
+function eventOwnerId(event) {
+  const user = event && typeof event.user === 'object' ? event.user : {};
+  return positiveInteger(event.user_id || event.userId || user.id);
 }
 
 function coordinate(value) {
@@ -752,13 +765,34 @@ router.get('/:id', asyncRoute(async (req, res) => {
 router.get('/:id/edit', asyncRoute(async (req, res) => {
   const { id } = req.params;
 
-  const [eventResult, myGroupsResult, categoriesResult] = await Promise.all([
+  const [eventResult, currentUser] = await Promise.all([
     getEvent(req.token, id),
-    getMyGroups(req.token),
-    getEventCategories(req.token)
+    getProfile(req.token)
   ]);
-
   const event = eventFrom(eventResult);
+  const ownerId = eventOwnerId(event);
+  const currentUserId = idFrom(currentUser);
+  if (ownerId !== null && currentUserId !== null && String(ownerId) !== String(currentUserId)) {
+    return res.status(403).render('errors/403', { title: 'Forbidden' });
+  }
+
+  let setupErrorMessage = null;
+  const [myGroupsResult, categoriesResult] = await Promise.all([
+    getMyGroups(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+      return { data: [] };
+    }),
+    getEventCategories(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      setupErrorMessage = 'Sorry, there is a problem loading event setup information.';
+      return { data: [] };
+    })
+  ]);
   const myGroups = myGroupsResult.items || myGroupsResult.data || [];
   const categories = categoriesResult.items || categoriesResult.data || [];
 
@@ -771,6 +805,7 @@ router.get('/:id/edit', asyncRoute(async (req, res) => {
     event,
     myGroups,
     categories,
+    setupErrorMessage,
     startsAtDate: startsAt ? startsAt.toISOString().split('T')[0] : '',
     startsAtTime: startsAt ? startsAt.toTimeString().slice(0, 5) : '',
     endsAtDate: endsAt ? endsAt.toISOString().split('T')[0] : '',

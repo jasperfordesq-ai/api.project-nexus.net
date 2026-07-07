@@ -292,10 +292,15 @@ course instructor analytics and grading routes now preserve Laravel's owner/admi
 denial as a 403 page instead of the generic service-unavailable fallback; the
 targeted live run for `/courses/instructor/1/analytics` and
 `/courses/instructor/1/grading` passed on 2026-07-07 with `8/8` checks and `0`
-failures. The default scope now contains `321` checks: `267` module-page checks,
-8 unsigned auth-required redirect checks, 19 gated-status checks, and 21 signed
-redirect checks, plus the 6 auth/health checks. Parameterised matched GET route
-shapes without default runtime smoke coverage fell from 28 to 22.
+failures. The event edit form now preserves Laravel's organiser-only denial as
+a 403 page before optional group setup data can mask the result; `/events/6/edit`
+and `/events/14/edit` are covered as signed `403` responses. A targeted live
+run against `WEB_UK_BASE_URL=http://127.0.0.1:5343`, started with `TENANT_ID=2`,
+passed on 2026-07-07 with `8/8` checks and `0` failures. The default scope now
+contains `323` checks: `267` module-page checks, 8 unsigned auth-required
+redirect checks, 21 gated-status checks, and 21 signed redirect checks, plus the
+6 auth/health checks. Parameterised matched GET route shapes without default
+runtime smoke coverage fell from 28 to 21.
 
 ## Stack
 

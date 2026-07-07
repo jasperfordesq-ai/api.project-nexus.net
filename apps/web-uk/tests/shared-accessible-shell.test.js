@@ -14579,6 +14579,30 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Page not found');
   });
 
+  it('preserves Laravel non-owner denial for event edit when group setup is unavailable', async () => {
+    const api = require('../src/lib/api');
+
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        id: 6,
+        user_id: 110,
+        title: 'Community Meetup 3',
+        starts_at: '2026-08-01T14:00:00'
+      }
+    });
+    api.getProfile.mockResolvedValueOnce({ id: 101 });
+    api.getMyGroups.mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
+    api.getEventCategories.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/events/6/edit')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(api.getEvent).toHaveBeenCalledWith('test-token', '6');
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+  });
+
   it('renders and submits Laravel event edit cover images with multipart data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
