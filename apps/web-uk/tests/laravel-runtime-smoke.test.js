@@ -390,6 +390,15 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.redirectPagePaths).toEqual([]);
   });
 
+  it('allows CLI module page smoke runs to be split into deterministic chunks', () => {
+    const options = resolveOptions({}, {
+      SMOKE_MODULE_PAGE_PATHS: '/alpha,/bravo,/charlie,/delta,/echo,/foxtrot,/golf',
+      SMOKE_MODULE_PAGE_CHUNK: '2/3'
+    });
+
+    expect(options.modulePagePaths).toEqual(['/bravo', '/echo']);
+  });
+
   it('proves the Laravel-backed login path with CSRF, cookies, redirects, and a signed account page', async () => {
     const requests = [];
     const laravel = createLaravelServer(requests);

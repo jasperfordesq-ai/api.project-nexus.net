@@ -350,6 +350,32 @@ function resolvePathList(options, optionName, env, envName, fallback) {
   return fallback;
 }
 
+function applySmokeChunk(paths, chunk) {
+  const match = String(chunk || '').trim().match(/^(\d+)\/(\d+)$/);
+  if (!match) return paths;
+
+  const index = Number(match[1]);
+  const total = Number(match[2]);
+  if (!Number.isInteger(index) || !Number.isInteger(total) || index < 1 || total < 1 || index > total) {
+    return paths;
+  }
+
+  return paths.filter((_, position) => position % total === index - 1);
+}
+
+function resolveModulePagePaths(options, env) {
+  const paths = resolvePathList(
+    options,
+    'modulePagePaths',
+    env,
+    'SMOKE_MODULE_PAGE_PATHS',
+    [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS]
+  );
+
+  if (hasOwn(options, 'modulePagePaths')) return paths;
+  return applySmokeChunk(paths, env.SMOKE_MODULE_PAGE_CHUNK);
+}
+
 function parseGatedPages(value) {
   return splitSmokeList(value).map((item) => {
     const separator = item.lastIndexOf(':');
@@ -392,13 +418,7 @@ function resolveOptions(options = {}, env = process.env) {
     password: options.password || env.SMOKE_PASSWORD || DEFAULT_SMOKE_PASSWORD,
     tenant: options.tenant || env.SMOKE_TENANT || DEFAULT_SMOKE_TENANT,
     timeoutMs: Number(options.timeoutMs || env.SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
-    modulePagePaths: resolvePathList(
-      options,
-      'modulePagePaths',
-      env,
-      'SMOKE_MODULE_PAGE_PATHS',
-      [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS]
-    ),
+    modulePagePaths: resolveModulePagePaths(options, env),
     unsignedAuthRequiredPagePaths: resolvePathList(
       options,
       'unsignedAuthRequiredPagePaths',

@@ -115,7 +115,15 @@ portable sentinel `none` disables that group. A targeted live CLI run against
 `none` passed `14/14`, including all eight auth-required parameterised
 redirects. The full default `181`-check run needs a longer outer command
 timeout on this machine; one local attempt timed out while the signed
-module-page sweep was still progressing.
+module-page sweep was still progressing. `SMOKE_MODULE_PAGE_CHUNK=N/M` can now
+split only the module-page sweep into deterministic one-based chunks, for
+example `SMOKE_MODULE_PAGE_CHUNK=1/4`, so agents can certify the full default
+page list in repeatable smaller Laravel-backed runs without disabling the
+auth, unsigned auth-required, gated, or redirect checks.
+A chunked live run against `WEB_UK_BASE_URL=http://127.0.0.1:5320` with
+`TENANT_ID=2` and `SMOKE_MODULE_PAGE_CHUNK=1/16` passed `31/31`: 14 auth/API
+setup and unsigned redirect checks, 11 module-page shard checks, 3 gated
+status checks, and 3 redirect checks.
 
 ## Current Page Candidates
 

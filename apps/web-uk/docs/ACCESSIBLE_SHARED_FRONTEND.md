@@ -114,7 +114,15 @@ portable sentinel `none` disables that group. A targeted live CLI run against
 `none` passed `14/14`, including all eight auth-required parameterised redirect
 checks. A full default `181`-check live run should be rerun with a longer outer
 timeout; one local attempt timed out while still progressing through slower
-signed module pages.
+signed module pages. For repeatable live proof without relaxing the default
+scope, set `SMOKE_MODULE_PAGE_CHUNK=N/M` to run a deterministic one-based slice
+of only the module-page sweep, for example `SMOKE_MODULE_PAGE_CHUNK=1/4`; the
+auth, unsigned auth-required, gated, and redirect groups still run unless each
+is explicitly disabled with `none`.
+A chunked live run against `WEB_UK_BASE_URL=http://127.0.0.1:5320` with
+`TENANT_ID=2` and `SMOKE_MODULE_PAGE_CHUNK=1/16` passed `31/31`: 14 auth/API
+setup and unsigned redirect checks, 11 module-page shard checks, 3 gated
+status checks, and 3 redirect checks.
 
 ## Stack
 
