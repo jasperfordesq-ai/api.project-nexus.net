@@ -55,6 +55,9 @@ const SETTINGS_STATUS_MESSAGES = {
   'appearance-saved': 'Your appearance settings have been saved.',
   'appearance-invalid': 'Choose one of the available themes.',
   'appearance-failed': 'Sorry, we could not save your appearance settings. Please try again.',
+  'availability-saved': 'Your availability has been saved.',
+  'availability-invalid': 'Check the times you entered. Each end time must be after its start time.',
+  'availability-failed': 'Sorry, we could not save your availability. Please try again.',
   'gdpr-requested': 'Your request has been submitted. We will be in touch.',
   'gdpr-duplicate': 'You already have a request of this type being looked into.',
   'gdpr-invalid': 'Choose the type of request you want to make.',
@@ -70,6 +73,9 @@ const SETTINGS_THEME_HINTS = {
   dark: 'Light text on a dark background.',
   system: 'Follow the light or dark setting on your device.'
 };
+const SETTINGS_AVAILABILITY_DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
+const SETTINGS_AVAILABILITY_DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const SETTINGS_AVAILABILITY_SLOTS_PER_DAY = 3;
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -155,6 +161,35 @@ function settingsStatusRedirect(path, status, fragment = '') {
 function themeFromSettingsData(data) {
   const nested = data.user && typeof data.user === 'object' ? data.user : {};
   return allowedValue(data.preferred_theme || data.theme || nested.preferred_theme || nested.theme, SETTINGS_THEMES, 'system');
+}
+
+function normalizeAvailabilitySlot(slot) {
+  if (!slot || typeof slot !== 'object') return null;
+  const start = trimmed(slot.start || slot.start_time);
+  const end = trimmed(slot.end || slot.end_time);
+  return start || end ? { start, end } : null;
+}
+
+function availabilityByDayFromData(data) {
+  const raw = Array.isArray(data.schedule)
+    ? data.schedule
+    : Array.isArray(data.availability)
+      ? data.availability
+      : [];
+  const byDay = {};
+
+  for (const slot of raw) {
+    if (!slot || typeof slot !== 'object') continue;
+    const day = Number(slot.day_of_week ?? slot.day);
+    if (!Number.isInteger(day) || day < 0 || day > 6) continue;
+
+    const normalized = normalizeAvailabilitySlot(slot);
+    if (!normalized) continue;
+    byDay[day] = byDay[day] || [];
+    byDay[day].push(normalized);
+  }
+
+  return byDay;
 }
 
 function availabilitySlotsFromRawBody(rawBody) {
@@ -270,6 +305,33 @@ router.post('/appearance', asyncRoute(async (req, res) => {
   }
 
   return res.redirect(settingsStatusRedirect('/settings/appearance', status));
+}));
+
+router.get('/availability', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  let availabilityByDay = {};
+  try {
+    availabilityByDay = availabilityByDayFromData(dataFrom(await callSettings(token, 'GET', '/availability')));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  return res.render('settings/availability', {
+    title: 'Your availability',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: status === 'availability-saved',
+    errorStatus: ['availability-invalid', 'availability-failed'].includes(status),
+    availabilityByDay,
+    displayDays: SETTINGS_AVAILABILITY_DISPLAY_DAYS,
+    dayLabels: SETTINGS_AVAILABILITY_DAY_LABELS,
+    slotsPerDay: SETTINGS_AVAILABILITY_SLOTS_PER_DAY
+  });
 }));
 
 router.post('/availability', asyncRoute(async (req, res) => {

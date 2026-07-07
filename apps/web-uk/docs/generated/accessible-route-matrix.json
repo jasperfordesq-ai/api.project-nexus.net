@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T00:14:01.944Z",
+    "generatedAt": "2026-07-07T00:16:22.683Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -12098,8 +12098,8 @@
       "gates": "",
       "apiNeeds": "service:MemberAvailabilityService",
       "webUkPath": "/settings/availability",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "settings/availability",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\settings.js"
     },
     {
       "method": "GET",

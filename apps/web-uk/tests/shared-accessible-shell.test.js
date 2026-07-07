@@ -869,6 +869,39 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style availability settings page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const unsigned = await request(app).get('/settings/availability');
+    const signed = await request(app)
+      .get('/settings/availability?status=availability-saved')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to account settings');
+    expect(signed.text).toContain('Success');
+    expect(signed.text).toContain('Your availability has been saved.');
+    expect(signed.text).toContain('Account settings');
+    expect(signed.text).toContain('Your availability');
+    expect(signed.text).toContain('Set your weekly availability so others can find times that work for both of you.');
+    expect(signed.text).toContain('Add one or more time slots for each day.');
+    expect(signed.text).toContain('Monday');
+    expect(signed.text).toContain('Tuesday');
+    expect(signed.text).toContain('Wednesday');
+    expect(signed.text).toContain('Thursday');
+    expect(signed.text).toContain('Friday');
+    expect(signed.text).toContain('Saturday');
+    expect(signed.text).toContain('Sunday');
+    expect(signed.text).toContain('Start time');
+    expect(signed.text).toContain('End time');
+    expect(signed.text).toContain('Save availability');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
     const staticPageRoutes = require('../src/routes/static-pages');
 
