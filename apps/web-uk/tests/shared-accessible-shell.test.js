@@ -1672,6 +1672,65 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style badge showcase management page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/badges') {
+        return {
+          data: [
+            {
+              badge_key: 'community-builder',
+              name: 'Community builder',
+              description: 'Helped five neighbours this month.',
+              is_showcased: true
+            },
+            {
+              badge_key: 'event-host',
+              name: 'Event host',
+              msg: 'Hosted a community event.',
+              is_showcased: false
+            }
+          ]
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/achievements/showcase');
+    const signed = await request(app)
+      .get('/achievements/showcase?status=showcase-updated')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/badges');
+    expect(signed.text).toContain('Back to achievements');
+    expect(signed.text).toContain('Achievements at');
+    expect(signed.text).toContain('Showcase badges');
+    expect(signed.text).toContain('Choose up to 5 of your earned badges to feature on your profile.');
+    expect(signed.text).toContain('Achievements and rewards');
+    expect(signed.text).toContain('href="/achievements/showcase" aria-current="page"');
+    expect(signed.text).toContain('Your showcase has been updated.');
+    expect(signed.text).toContain('action="/achievements/showcase"');
+    expect(signed.text).toContain('Select up to 5 badges to showcase');
+    expect(signed.text).toContain('Tick a badge to show it on your profile. You can change this at any time.');
+    expect(signed.text).toContain('name="badge_keys[]"');
+    expect(signed.text).toContain('value="community-builder" checked');
+    expect(signed.text).toContain('Community builder');
+    expect(signed.text).toContain('Helped five neighbours this month.');
+    expect(signed.text).toContain('value="event-host"');
+    expect(signed.text).toContain('Event host');
+    expect(signed.text).toContain('Hosted a community event.');
+    expect(signed.text).toContain('Save showcase');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

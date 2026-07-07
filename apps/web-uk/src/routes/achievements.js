@@ -266,6 +266,19 @@ function normalizeEngagementHistory(result) {
   }).filter((row) => row.month);
 }
 
+function normalizeShowcaseBadges(result) {
+  return nestedData(result, 'badges').map((badge) => {
+    const object = objectFrom(badge);
+    const key = textFrom(object.badge_key ?? object.key);
+    return {
+      key,
+      name: textFrom(object.name, key),
+      description: textFrom(object.description ?? object.msg),
+      isShowcased: boolFrom(object.is_showcased ?? object.showcased)
+    };
+  }).filter((badge) => badge.key);
+}
+
 async function safeGamificationCall(token, pathValue, fallback) {
   try {
     return await callGamificationApi(token, 'GET', pathValue);
@@ -418,6 +431,28 @@ router.get('/engagement', asyncRoute(async (req, res) => {
     title: 'Engagement history',
     activeNav: 'achievements',
     engagementHistory: normalizeEngagementHistory(historyPayload)
+  });
+}));
+
+router.get('/showcase', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let badgesPayload;
+  try {
+    badgesPayload = await callGamificationApi(token, 'GET', '/badges');
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    badgesPayload = { data: [] };
+  }
+
+  return res.render('achievements/showcase', {
+    title: 'Showcase badges',
+    activeNav: 'achievements',
+    earnedBadges: normalizeShowcaseBadges(badgesPayload),
+    status: textFrom(req.query.status)
   });
 }));
 
