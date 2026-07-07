@@ -39,6 +39,24 @@ const SETTINGS_INSURANCE_TYPES = [
   'personal_accident',
   'other'
 ];
+const SETTINGS_GDPR_TYPE_LABELS = {
+  portability: 'Transfer my data to another service',
+  rectification: 'Correct my data',
+  restriction: 'Restrict how my data is used',
+  objection: 'Object to how my data is used'
+};
+const SETTINGS_GDPR_TYPE_HINTS = {
+  portability: 'Receive your data in a portable, machine-readable format you can give to another service.',
+  rectification: 'Ask us to correct personal data that is inaccurate or incomplete.',
+  restriction: 'Ask us to limit how we use your data while a concern is being looked into.',
+  objection: 'Object to us processing your data for a particular purpose.'
+};
+const SETTINGS_STATUS_MESSAGES = {
+  'gdpr-requested': 'Your request has been submitted. We will be in touch.',
+  'gdpr-duplicate': 'You already have a request of this type being looked into.',
+  'gdpr-invalid': 'Choose the type of request you want to make.',
+  'gdpr-failed': 'Sorry, we could not submit your request. Please try again.'
+};
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || req.token || '';
@@ -247,6 +265,30 @@ router.post('/data-rights', asyncRoute(async (req, res) => {
 
   return res.redirect(settingsStatusRedirect('/settings/data-rights', status, fragment));
 }));
+
+router.get('/data-rights', (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const requests = [];
+
+  return res.render('settings/data-rights', {
+    title: 'Your data rights',
+    activeNav: 'account',
+    status,
+    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    successStatus: status === 'gdpr-requested',
+    infoStatus: status === 'gdpr-duplicate',
+    errorStatus: ['gdpr-invalid', 'gdpr-failed'].includes(status),
+    requestTypes: SETTINGS_GDPR_TYPES.map((type) => ({
+      value: type,
+      label: SETTINGS_GDPR_TYPE_LABELS[type],
+      hint: SETTINGS_GDPR_TYPE_HINTS[type]
+    })),
+    requests
+  });
+});
 
 router.post('/linked-accounts/request', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

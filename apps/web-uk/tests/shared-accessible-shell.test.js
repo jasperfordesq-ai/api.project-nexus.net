@@ -807,6 +807,38 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style data-rights settings page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const unsigned = await request(app).get('/settings/data-rights');
+    const signed = await request(app)
+      .get('/settings/data-rights?status=gdpr-requested')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to settings');
+    expect(signed.text).toContain('Success');
+    expect(signed.text).toContain('Your request has been submitted. We will be in touch.');
+    expect(signed.text).toContain('Account settings');
+    expect(signed.text).toContain('Your data rights');
+    expect(signed.text).toContain('Under data protection law you have rights over the personal data we hold about you.');
+    expect(signed.text).toContain('Make a request');
+    expect(signed.text).toContain('What would you like to request?');
+    expect(signed.text).toContain('Transfer my data to another service');
+    expect(signed.text).toContain('Correct my data');
+    expect(signed.text).toContain('Restrict how my data is used');
+    expect(signed.text).toContain('Object to how my data is used');
+    expect(signed.text).toContain('Tell us more (optional)');
+    expect(signed.text).toContain('Submit request');
+    expect(signed.text).toContain('Requests you have made');
+    expect(signed.text).toContain('You have not made any data rights requests yet.');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
     const staticPageRoutes = require('../src/routes/static-pages');
 
