@@ -16288,6 +16288,109 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering group sign-ups page for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 30,
+          group_name: 'Wednesday Drivers',
+          status: 'active',
+          is_leader: true,
+          max_members: 3,
+          created_at: '2026-07-01T09:00:00Z',
+          shift: {
+            id: 501,
+            start_time: '2026-07-12T10:00:00Z',
+            end_time: '2026-07-12T12:00:00Z'
+          },
+          opportunity: {
+            id: 77,
+            title: 'Food parcel delivery',
+            location: 'Community depot'
+          },
+          organization: {
+            name: 'Community Kitchen'
+          },
+          members: [
+            { id: 55, name: 'Riley Driver', status: 'confirmed' },
+            { id: 56, name: 'Taylor Helper', status: 'pending' },
+            { id: 57, name: 'Morgan Maybe', status: 'declined' }
+          ]
+        },
+        {
+          id: 31,
+          group_name: 'Saturday Garden Team',
+          status: 'cancelled',
+          is_leader: false,
+          max_members: null,
+          created_at: '2026-06-20T09:00:00Z',
+          opportunity: {
+            id: 78,
+            title: 'Community garden tidy',
+            location: 'North allotments'
+          },
+          organization: {
+            name: 'Mutual Aid Store'
+          },
+          members: [
+            { id: 60, name: 'Jamie Volunteer', status: 'confirmed' }
+          ]
+        }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/volunteering/group-signups?status=member-added')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/group-reservations');
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('The member has been added to the reservation.');
+    expect(response.text).toContain('Group sign-ups');
+    expect(response.text).toContain('Shift reservations your group has made.');
+    expect(response.text).toContain('Wednesday Drivers');
+    expect(response.text).toContain('Active');
+    expect(response.text).toContain('You lead this group');
+    expect(response.text).toContain('Opportunity');
+    expect(response.text).toContain('href="/volunteering/opportunities/77"');
+    expect(response.text).toContain('Food parcel delivery');
+    expect(response.text).toContain('Organisation');
+    expect(response.text).toContain('Community Kitchen');
+    expect(response.text).toContain('Location');
+    expect(response.text).toContain('Community depot');
+    expect(response.text).toContain('Shift');
+    expect(response.text).toContain('12 July 2026');
+    expect(response.text).toContain('Reserved on');
+    expect(response.text).toContain('1 July 2026');
+    expect(response.text).toContain('Members');
+    expect(response.text).toContain('1 of 3 slots filled');
+    expect(response.text).toContain('Riley Driver');
+    expect(response.text).toContain('Confirmed');
+    expect(response.text).toContain('Taylor Helper');
+    expect(response.text).toContain('Pending');
+    expect(response.text).toContain('Morgan Maybe');
+    expect(response.text).toContain('Declined');
+    expect(response.text).toContain('method="post" action="/volunteering/group-signups/30/members/55/remove"');
+    expect(response.text).toContain('Remove');
+    expect(response.text).toContain('Add a member');
+    expect(response.text).toContain('id="user_id_30" name="user_id" type="number"');
+    expect(response.text).toContain('method="post" action="/volunteering/group-signups/30/members"');
+    expect(response.text).toContain('Add member');
+    expect(response.text).toContain('Cancel reservation');
+    expect(response.text).toContain('Cancelling releases all reserved slots');
+    expect(response.text).toContain('method="post" action="/volunteering/group-signups/30/cancel"');
+    expect(response.text).toContain('Cancel this reservation');
+    expect(response.text).toContain('Saturday Garden Team');
+    expect(response.text).toContain('Cancelled');
+    expect(response.text).toContain('1 members');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

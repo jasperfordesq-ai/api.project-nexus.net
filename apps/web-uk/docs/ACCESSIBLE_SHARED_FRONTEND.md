@@ -510,6 +510,11 @@ Its `/volunteering/emergency-alerts` page redirects unsigned visitors to
 `/api/v2/volunteering/emergency-alerts`, and renders the Blade-style urgent
 shift request cards, priority tags, metadata summary lists, status banners,
 accepted/declined states, and no-JS response forms.
+Its `/volunteering/group-signups` page redirects unsigned visitors to
+`/login?status=auth-required`, reads Laravel
+`/api/v2/volunteering/group-reservations`, and renders the Blade-style group
+reservation cards, member status table, leader add/remove member controls,
+cancel warning, and status banners.
 Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert

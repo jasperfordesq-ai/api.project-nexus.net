@@ -58,6 +58,28 @@ const ALERT_PRIORITY_CLASSES = {
   urgent: 'govuk-tag--orange',
   critical: 'govuk-tag--red'
 };
+const GROUP_RESERVATION_STATUS_LABELS = {
+  active: 'Active',
+  confirmed: 'Confirmed',
+  pending: 'Pending',
+  cancelled: 'Cancelled'
+};
+const GROUP_RESERVATION_STATUS_CLASSES = {
+  active: 'govuk-tag--green',
+  confirmed: 'govuk-tag--green',
+  pending: 'govuk-tag--yellow',
+  cancelled: 'govuk-tag--grey'
+};
+const GROUP_MEMBER_STATUS_LABELS = {
+  confirmed: 'Confirmed',
+  pending: 'Pending',
+  declined: 'Declined'
+};
+const GROUP_MEMBER_STATUS_CLASSES = {
+  confirmed: 'govuk-tag--green',
+  pending: 'govuk-tag--yellow',
+  declined: 'govuk-tag--red'
+};
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -312,6 +334,40 @@ function emergencyAlertStatus(status) {
     'alert-respond-failed': {
       type: 'error',
       message: 'Your response could not be recorded. The request may have been filled or expired.'
+    }
+  };
+  return messages[status] || null;
+}
+
+function groupSignupStatus(status) {
+  const messages = {
+    'member-added': {
+      type: 'success',
+      message: 'The member has been added to the reservation.'
+    },
+    'member-removed': {
+      type: 'success',
+      message: 'The member has been removed from the reservation.'
+    },
+    'reservation-cancelled': {
+      type: 'success',
+      message: 'The reservation has been cancelled.'
+    },
+    'member-id-required': {
+      type: 'error',
+      message: 'Enter a member ID'
+    },
+    'member-add-failed': {
+      type: 'error',
+      message: 'The member could not be added. Check that you lead this group and that slots are still available.'
+    },
+    'member-remove-failed': {
+      type: 'error',
+      message: 'The member could not be removed. Check that you lead this group.'
+    },
+    'reservation-cancel-failed': {
+      type: 'error',
+      message: 'The reservation could not be cancelled. Check that you lead this group.'
     }
   };
   return messages[status] || null;
@@ -711,6 +767,75 @@ function normalizeEmergencyAlertDashboard(result) {
   };
 }
 
+function groupReservationRowsFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.reservations)) return data.reservations;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function statusPresentation(value, labels, classNames, fallback) {
+  const status = trimmed(value) || fallback;
+  return {
+    value: status,
+    label: labels[status] || headline(status) || headline(fallback),
+    className: classNames[status] || 'govuk-tag--grey'
+  };
+}
+
+function normalizeGroupMember(row) {
+  const member = row && typeof row === 'object' ? row : {};
+  return {
+    id: positiveInteger(member.id ?? member.user_id ?? member.userId),
+    name: trimmed(member.name),
+    status: statusPresentation(
+      member.status,
+      GROUP_MEMBER_STATUS_LABELS,
+      GROUP_MEMBER_STATUS_CLASSES,
+      'pending'
+    )
+  };
+}
+
+function normalizeGroupReservation(row) {
+  const reservation = row && typeof row === 'object' ? row : {};
+  const shift = reservation.shift && typeof reservation.shift === 'object' ? reservation.shift : {};
+  const opportunity = reservation.opportunity && typeof reservation.opportunity === 'object' ? reservation.opportunity : {};
+  const organization = reservation.organization && typeof reservation.organization === 'object' ? reservation.organization : {};
+  const members = Array.isArray(reservation.members) ? reservation.members.map(normalizeGroupMember) : [];
+  const confirmedCount = members.filter((member) => member.status.value === 'confirmed').length;
+  const maxMembers = positiveInteger(reservation.max_members ?? reservation.maxMembers);
+  const isLeader = checked(reservation.is_leader ?? reservation.isLeader);
+  const status = statusPresentation(
+    reservation.status,
+    GROUP_RESERVATION_STATUS_LABELS,
+    GROUP_RESERVATION_STATUS_CLASSES,
+    'active'
+  );
+  const isCancelled = status.value === 'cancelled';
+
+  return {
+    id: positiveInteger(reservation.id),
+    groupName: trimmed(reservation.group_name ?? reservation.groupName) || 'Group sign-ups',
+    status,
+    isLeader,
+    isCancelled,
+    opportunityId: positiveInteger(opportunity.id),
+    opportunityTitle: trimmed(opportunity.title),
+    organizationName: trimmed(organization.name),
+    location: trimmed(opportunity.location),
+    shiftLabel: dateTimeLabel(shift.start_time ?? shift.startTime),
+    createdAtLabel: dateLabel(reservation.created_at ?? reservation.createdAt),
+    members,
+    confirmedCount,
+    maxMembers,
+    membersCountLabel: maxMembers ? `${confirmedCount} of ${maxMembers} slots filled` : `${members.length} members`,
+    canAddMembers: isLeader && !isCancelled && (!maxMembers || confirmedCount < maxMembers)
+  };
+}
+
 function expenseRowsFrom(result) {
   const data = dataFrom(result);
   if (Array.isArray(data)) return data;
@@ -1027,6 +1152,33 @@ router.get('/emergency-alerts', asyncRoute(async (req, res) => {
     dashboard,
     loadError,
     status: emergencyAlertStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/group-signups', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let reservations = [];
+  let loadError = null;
+  try {
+    reservations = groupReservationRowsFrom(await callApi(token, 'GET', '/group-reservations'))
+      .map(normalizeGroupReservation)
+      .filter((reservation) => reservation.id);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your group sign-ups. Please try again.';
+  }
+
+  return res.render('volunteering/group-signups', {
+    title: 'Group sign-ups',
+    activeNav: 'volunteering',
+    reservations,
+    loadError,
+    status: groupSignupStatus(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
