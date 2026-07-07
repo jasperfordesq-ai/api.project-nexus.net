@@ -393,20 +393,42 @@ public class MarketplaceController : ControllerBase
 
     [HttpGet("orders/purchases")]
     [Authorize]
-    public async Task<IActionResult> Purchases()
+    public async Task<IActionResult> Purchases(
+        [FromQuery] string? status = null,
+        [FromQuery] int limit = 20,
+        [FromQuery] string? cursor = null)
     {
         var userId = RequireUserId();
-        var orders = await _db.MarketplaceOrders.Include(o => o.Listing).Where(o => o.BuyerUserId == userId).OrderByDescending(o => o.CreatedAt).ToListAsync();
-        return Ok(new { data = orders, meta = new { total = orders.Count } });
+        var query = BuildOrderQuery()
+            .Where(o => o.BuyerUserId == userId);
+
+        var (orders, nextCursor, hasMore) = await ApplyOrderListQueryAsync(query, status, limit, cursor);
+        return Ok(new
+        {
+            success = true,
+            data = await MapMarketplaceOrdersAsync(orders),
+            meta = new { cursor = nextCursor, next_cursor = nextCursor, has_more = hasMore }
+        });
     }
 
     [HttpGet("orders/sales")]
     [Authorize]
-    public async Task<IActionResult> Sales()
+    public async Task<IActionResult> Sales(
+        [FromQuery] string? status = null,
+        [FromQuery] int limit = 20,
+        [FromQuery] string? cursor = null)
     {
         var userId = RequireUserId();
-        var orders = await _db.MarketplaceOrders.Include(o => o.Listing).Where(o => o.SellerUserId == userId).OrderByDescending(o => o.CreatedAt).ToListAsync();
-        return Ok(new { data = orders, meta = new { total = orders.Count } });
+        var query = BuildOrderQuery()
+            .Where(o => o.SellerUserId == userId);
+
+        var (orders, nextCursor, hasMore) = await ApplyOrderListQueryAsync(query, status, limit, cursor);
+        return Ok(new
+        {
+            success = true,
+            data = await MapMarketplaceOrdersAsync(orders),
+            meta = new { cursor = nextCursor, next_cursor = nextCursor, has_more = hasMore }
+        });
     }
 
     [HttpGet("orders/{id:int}")]
@@ -414,16 +436,17 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> GetOrder(int id)
     {
         var userId = RequireUserId();
-        var order = await _db.MarketplaceOrders.Include(o => o.Listing).FirstOrDefaultAsync(o => o.Id == id);
-        if (order == null) return NotFound(new { error = "Order not found" });
-        if (order.BuyerUserId != userId && order.SellerUserId != userId && !User.IsAdmin()) return StatusCode(403, new { error = "Forbidden" });
-        return Ok(new { data = order });
+        var order = await BuildOrderQuery().FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null) return NotFound(new { success = false, error = "Order not found" });
+        if (order.BuyerUserId != userId && order.SellerUserId != userId && !User.IsAdmin())
+            return StatusCode(403, new { success = false, error = "Forbidden" });
+        return Ok(new { success = true, data = await MapMarketplaceOrderAsync(order) });
     }
 
     [HttpPut("orders/{id:int}/ship")]
     [Authorize]
     public async Task<IActionResult> ShipOrder(int id, [FromBody] ShipOrderRequest request)
-        => await OrderStatus(id, "shipped", request.TrackingNumber);
+        => await OrderStatus(id, "shipped", request.TrackingNumber, request.TrackingUrl, request.ShippingMethod);
 
     [HttpPut("orders/{id:int}/confirm-delivery")]
     [Authorize]
@@ -1345,7 +1368,75 @@ public class MarketplaceController : ControllerBase
         updated_at = coupon.UpdatedAt
     };
 
-    private static object MapMarketplaceOrder(MarketplaceOrder order) => new
+    private IQueryable<MarketplaceOrder> BuildOrderQuery()
+        => _db.MarketplaceOrders
+            .Include(o => o.Listing)
+            .ThenInclude(l => l!.Images)
+            .AsQueryable();
+
+    private static async Task<(List<MarketplaceOrder> Orders, string? NextCursor, bool HasMore)> ApplyOrderListQueryAsync(
+        IQueryable<MarketplaceOrder> query,
+        string? status,
+        int limit,
+        string? cursor)
+    {
+        var take = Math.Clamp(limit, 1, 100);
+        var cursorId = DecodeListingCursor(cursor);
+        if (cursorId.HasValue)
+        {
+            query = query.Where(o => o.Id < cursorId.Value);
+        }
+
+        var statuses = status?
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToArray();
+        if (statuses is { Length: > 0 })
+        {
+            query = query.Where(o => statuses.Contains(o.Status));
+        }
+
+        var orders = await query
+            .OrderByDescending(o => o.Id)
+            .Take(take + 1)
+            .ToListAsync();
+        var hasMore = orders.Count > take;
+        if (hasMore)
+        {
+            orders.RemoveAt(orders.Count - 1);
+        }
+
+        var nextCursor = hasMore && orders.Count > 0 ? EncodeCursor(orders[^1].Id) : null;
+        return (orders, nextCursor, hasMore);
+    }
+
+    private async Task<List<object>> MapMarketplaceOrdersAsync(IReadOnlyCollection<MarketplaceOrder> orders)
+    {
+        var userIds = orders
+            .SelectMany(o => new[] { o.BuyerUserId, o.SellerUserId })
+            .Distinct()
+            .ToArray();
+        var users = await _db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+
+        return orders.Select(order => MapMarketplaceOrder(order, users)).ToList();
+    }
+
+    private async Task<object> MapMarketplaceOrderAsync(MarketplaceOrder order)
+    {
+        var mapped = await MapMarketplaceOrdersAsync(new[] { order });
+        return mapped[0];
+    }
+
+    private static object MapMarketplaceOrder(MarketplaceOrder order, IReadOnlyDictionary<int, User>? users = null)
+    {
+        var unitPrice = order.Quantity > 0 && order.TotalAmount.HasValue
+            ? order.TotalAmount.Value / order.Quantity
+            : order.Listing?.Price;
+        var primaryImage = order.Listing?.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
+
+        return new
     {
         id = order.Id,
         order_number = $"ORD-{order.Id:D6}",
@@ -1355,18 +1446,65 @@ public class MarketplaceController : ControllerBase
         seller_id = order.SellerUserId,
         quantity = order.Quantity,
         status = order.Status,
+        unit_price = unitPrice,
+        total_price = order.TotalAmount,
         total_amount = order.TotalAmount,
         total_cents = order.TotalAmount.HasValue ? (int)Math.Round(order.TotalAmount.Value * 100m) : 0,
         currency = order.Currency,
+        shipping_method = order.DeliveryMethod,
+        shipping_cost = 0,
         delivery_method = order.DeliveryMethod,
+        delivery_address = order.ShippingAddress,
+        delivery_notes = (string?)null,
         shipping_address = order.ShippingAddress,
         tracking_number = order.TrackingNumber,
+        tracking_url = order.TrackingUrl,
+        buyer_confirmed_at = order.DeliveredAt,
+        seller_confirmed_at = order.ShippedAt,
+        auto_complete_at = (DateTime?)null,
         shipped_at = order.ShippedAt,
         delivered_at = order.DeliveredAt,
         cancelled_at = order.CancelledAt,
+        cancellation_reason = (string?)null,
+        escrow_released_at = (DateTime?)null,
         created_at = order.CreatedAt,
-        updated_at = order.UpdatedAt
+        updated_at = order.UpdatedAt,
+        listing = order.Listing == null ? null : new
+        {
+            id = order.Listing.Id,
+            title = order.Listing.Title,
+            price = order.Listing.Price,
+            price_currency = order.Listing.PriceCurrency,
+            status = order.Listing.Status,
+            delivery_method = order.Listing.DeliveryMethod,
+            image = primaryImage == null ? null : new
+            {
+                url = primaryImage.Url,
+                thumbnail_url = primaryImage.Url
+            }
+        },
+        buyer = MapOrderUser(order.BuyerUserId, users),
+        seller = MapOrderUser(order.SellerUserId, users),
+        ratings = Array.Empty<object>(),
+        dispute = (object?)null
     };
+    }
+
+    private static object MapOrderUser(int userId, IReadOnlyDictionary<int, User>? users)
+    {
+        User? user = null;
+        users?.TryGetValue(userId, out user);
+        var name = user == null
+            ? $"User {userId}"
+            : string.Join(' ', new[] { user.FirstName, user.LastName }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+        return new
+        {
+            id = userId,
+            name = string.IsNullOrWhiteSpace(name) ? user?.Email ?? $"User {userId}" : name,
+            avatar_url = user?.AvatarUrl
+        };
+    }
 
     private static bool HasAny(JsonElement json, params string[] names) => TryGetAny(json, out _, names);
 
@@ -1494,10 +1632,24 @@ public class MarketplaceController : ControllerBase
     private static string EncodeCursor(int id)
         => Convert.ToBase64String(Encoding.UTF8.GetBytes(id.ToString()));
 
-    private async Task<IActionResult> OrderStatus(int id, string status, string? trackingNumber = null)
+    private async Task<IActionResult> OrderStatus(
+        int id,
+        string status,
+        string? trackingNumber = null,
+        string? trackingUrl = null,
+        string? shippingMethod = null)
     {
-        var order = await _marketplace.SetOrderStatusAsync(id, RequireUserId(), User.IsAdmin(), status, trackingNumber);
-        return order == null ? NotFound(new { error = "Order not found" }) : Ok(new { data = order });
+        var order = await _marketplace.SetOrderStatusAsync(
+            id,
+            RequireUserId(),
+            User.IsAdmin(),
+            status,
+            trackingNumber,
+            trackingUrl,
+            shippingMethod);
+        return order == null
+            ? NotFound(new { success = false, error = "Order not found" })
+            : Ok(new { success = true, data = await MapMarketplaceOrderAsync(order) });
     }
 
     private async Task<IActionResult> DeliveryOfferStatus(int orderId, int delivererId, string status, string message)
@@ -1679,7 +1831,10 @@ public record CreateOrderRequest(
     [property: JsonPropertyName("shipping_address")] string? ShippingAddress,
     [property: JsonPropertyName("delivery_notes")] string? DeliveryNotes,
     [property: JsonPropertyName("coupon_code")] string? CouponCode);
-public record ShipOrderRequest(string? TrackingNumber);
+public record ShipOrderRequest(
+    [property: JsonPropertyName("tracking_number")] string? TrackingNumber,
+    [property: JsonPropertyName("tracking_url")] string? TrackingUrl,
+    [property: JsonPropertyName("shipping_method")] string? ShippingMethod);
 public record RateOrderRequest(int Rating, string? Comment);
 public record ReportRequest(string? Reason, string? Details);
 public sealed class PaymentRequest

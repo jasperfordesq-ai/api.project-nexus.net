@@ -549,6 +549,80 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MarketplaceOrderHistoryV2_ReturnsLaravelReactShapeAndShipmentActions()
+    {
+        var (orderId, listingId) = await CreateShippableOrderForMemberAsync();
+
+        await AuthenticateAsMemberAsync();
+        var purchases = await Client.GetAsync("/api/v2/marketplace/orders/purchases?status=paid,shipped&limit=20");
+
+        purchases.StatusCode.Should().Be(HttpStatusCode.OK);
+        var purchasesJson = await purchases.Content.ReadFromJsonAsync<JsonElement>();
+        purchasesJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        purchasesJson.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeFalse();
+        purchasesJson.GetProperty("meta").GetProperty("cursor").ValueKind.Should().Be(JsonValueKind.Null);
+        var purchase = purchasesJson.GetProperty("data").EnumerateArray()
+            .Should().ContainSingle(o => o.GetProperty("id").GetInt32() == orderId).Subject;
+        purchase.GetProperty("order_number").GetString().Should().NotBeNullOrWhiteSpace();
+        purchase.GetProperty("listing_id").GetInt32().Should().Be(listingId);
+        purchase.GetProperty("status").GetString().Should().Be("paid");
+        purchase.GetProperty("quantity").GetInt32().Should().Be(2);
+        purchase.GetProperty("unit_price").GetDecimal().Should().Be(25m);
+        purchase.GetProperty("total_price").GetDecimal().Should().Be(50m);
+        purchase.GetProperty("currency").GetString().Should().Be("EUR");
+        purchase.GetProperty("shipping_method").GetString().Should().Be("standard");
+        purchase.GetProperty("tracking_number").ValueKind.Should().Be(JsonValueKind.Null);
+        purchase.GetProperty("tracking_url").ValueKind.Should().Be(JsonValueKind.Null);
+        purchase.GetProperty("listing").GetProperty("id").GetInt32().Should().Be(listingId);
+        purchase.GetProperty("listing").GetProperty("title").GetString().Should().Be("Order history shelf");
+        purchase.GetProperty("listing").GetProperty("image").ValueKind.Should().Be(JsonValueKind.Null);
+        purchase.GetProperty("seller").GetProperty("id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        purchase.GetProperty("seller").GetProperty("name").GetString().Should().NotBeNullOrWhiteSpace();
+        purchase.GetProperty("buyer").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        purchase.GetProperty("ratings").ValueKind.Should().Be(JsonValueKind.Array);
+
+        await AuthenticateAsAdminAsync();
+        var sales = await Client.GetAsync("/api/v2/marketplace/orders/sales?status=paid&limit=20");
+
+        sales.StatusCode.Should().Be(HttpStatusCode.OK);
+        var salesJson = await sales.Content.ReadFromJsonAsync<JsonElement>();
+        salesJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var sale = salesJson.GetProperty("data").EnumerateArray()
+            .Should().ContainSingle(o => o.GetProperty("id").GetInt32() == orderId).Subject;
+        sale.GetProperty("buyer").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        sale.GetProperty("buyer").GetProperty("name").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var ship = await Client.PutAsJsonAsync($"/api/v2/marketplace/orders/{orderId}/ship", new
+        {
+            tracking_number = "TRACK-123",
+            tracking_url = "https://carrier.example/track/TRACK-123",
+            shipping_method = "tracked"
+        });
+
+        ship.StatusCode.Should().Be(HttpStatusCode.OK);
+        var shipJson = await ship.Content.ReadFromJsonAsync<JsonElement>();
+        shipJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var shipped = shipJson.GetProperty("data");
+        shipped.GetProperty("status").GetString().Should().Be("shipped");
+        shipped.GetProperty("tracking_number").GetString().Should().Be("TRACK-123");
+        shipped.GetProperty("tracking_url").GetString().Should().Be("https://carrier.example/track/TRACK-123");
+        shipped.GetProperty("shipping_method").GetString().Should().Be("tracked");
+        shipped.GetProperty("shipped_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        await AuthenticateAsMemberAsync();
+        var confirm = await Client.PutAsync($"/api/v2/marketplace/orders/{orderId}/confirm-delivery", null);
+
+        confirm.StatusCode.Should().Be(HttpStatusCode.OK);
+        var confirmJson = await confirm.Content.ReadFromJsonAsync<JsonElement>();
+        confirmJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var delivered = confirmJson.GetProperty("data");
+        delivered.GetProperty("status").GetString().Should().Be("delivered");
+        delivered.GetProperty("tracking_number").GetString().Should().Be("TRACK-123");
+        delivered.GetProperty("tracking_url").GetString().Should().Be("https://carrier.example/track/TRACK-123");
+        delivered.GetProperty("delivered_at").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
     public async Task MarketplacePickupSlotsV2_MatchesLaravelReactSellerContract()
     {
         await AuthenticateAsAdminAsync();
@@ -713,6 +787,46 @@ public class MarketplaceControllerTests : IntegrationTestBase
         await db.SaveChangesAsync();
 
         return code;
+    }
+
+    private async Task<(int OrderId, int ListingId)> CreateShippableOrderForMemberAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var listing = new MarketplaceListing
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            Title = "Order history shelf",
+            Description = "A shelf with a paid buyer order",
+            Price = 25m,
+            PriceCurrency = "EUR",
+            Status = "active",
+            MarketplaceStatus = "available",
+            ModerationStatus = "approved",
+            DeliveryMethod = "standard"
+        };
+        db.MarketplaceListings.Add(listing);
+        await db.SaveChangesAsync();
+
+        var order = new MarketplaceOrder
+        {
+            TenantId = TestData.Tenant1.Id,
+            MarketplaceListingId = listing.Id,
+            BuyerUserId = TestData.MemberUser.Id,
+            SellerUserId = TestData.AdminUser.Id,
+            Quantity = 2,
+            TotalAmount = 50m,
+            Currency = "EUR",
+            Status = "paid",
+            DeliveryMethod = "standard",
+            ShippingAddress = "1 Community Lane"
+        };
+        db.MarketplaceOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        return (order.Id, listing.Id);
     }
 
     private async Task<(int OrderId, int ListingId)> CreatePickupOrderForMemberAsync()

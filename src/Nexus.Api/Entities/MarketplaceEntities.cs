@@ -149,6 +149,7 @@ public class MarketplaceOrder : ITenantEntity
     public string DeliveryMethod { get; set; } = "pickup";
     public string? ShippingAddress { get; set; }
     public string? TrackingNumber { get; set; }
+    public string? TrackingUrl { get; set; }
     public DateTime? ShippedAt { get; set; }
     public DateTime? DeliveredAt { get; set; }
     public DateTime? CancelledAt { get; set; }

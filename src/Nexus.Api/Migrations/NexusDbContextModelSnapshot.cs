@@ -9602,6 +9602,9 @@ namespace Nexus.Api.Migrations
                     b.Property<string>("TrackingNumber")
                         .HasColumnType("text");
 
+                    b.Property<string>("TrackingUrl")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 

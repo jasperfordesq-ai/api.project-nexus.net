@@ -377,7 +377,14 @@ public class MarketplaceService
         return order;
     }
 
-    public async Task<MarketplaceOrder?> SetOrderStatusAsync(int id, int userId, bool isAdmin, string status, string? trackingNumber = null)
+    public async Task<MarketplaceOrder?> SetOrderStatusAsync(
+        int id,
+        int userId,
+        bool isAdmin,
+        string status,
+        string? trackingNumber = null,
+        string? trackingUrl = null,
+        string? shippingMethod = null)
     {
         var order = await _db.MarketplaceOrders.Include(o => o.Listing).FirstOrDefaultAsync(o => o.Id == id);
         if (order == null) return null;
@@ -385,6 +392,8 @@ public class MarketplaceService
 
         order.Status = status;
         order.TrackingNumber = trackingNumber ?? order.TrackingNumber;
+        order.TrackingUrl = trackingUrl ?? order.TrackingUrl;
+        order.DeliveryMethod = shippingMethod ?? order.DeliveryMethod;
         order.UpdatedAt = DateTime.UtcNow;
         if (status == "shipped") order.ShippedAt = DateTime.UtcNow;
         if (status == "delivered") order.DeliveredAt = DateTime.UtcNow;
