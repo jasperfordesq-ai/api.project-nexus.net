@@ -9,6 +9,15 @@ const { ApiError, callVolunteeringApi, uploadVolunteerCredential } = require('..
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
+const ACCESSIBILITY_NEED_TYPES = [
+  { value: 'mobility', label: 'Mobility' },
+  { value: 'visual', label: 'Visual or sight' },
+  { value: 'hearing', label: 'Hearing' },
+  { value: 'cognitive', label: 'Cognitive or learning' },
+  { value: 'dietary', label: 'Dietary' },
+  { value: 'language', label: 'Language or communication' },
+  { value: 'other', label: 'Other' }
+];
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -78,6 +87,14 @@ function dataFrom(result) {
     : result;
 }
 
+function collectionFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
 function resultId(result) {
   const data = dataFrom(result);
   return data && typeof data === 'object' ? positiveInteger(data.id) : null;
@@ -124,6 +141,67 @@ function orgSettingsRedirect(orgId, status) {
 function opportunityRedirect(id, status) {
   return `/volunteering/opportunities/${id}?status=${encodeURIComponent(status)}`;
 }
+
+function accessibilityStatus(status) {
+  if (status === 'accessibility-saved') {
+    return { type: 'success', message: 'Your accessibility needs have been saved.' };
+  }
+  if (status === 'accessibility-failed') {
+    return { type: 'error', message: 'Your accessibility needs could not be saved. Try again.' };
+  }
+  return null;
+}
+
+function accessibilityPayload(rows) {
+  const selected = [];
+  const shared = {
+    description: '',
+    accommodations: '',
+    emergencyName: '',
+    emergencyPhone: ''
+  };
+
+  for (const item of rows) {
+    const row = item && typeof item === 'object' ? item : {};
+    const needType = trimmed(row.need_type ?? row.needType);
+    if (ACCESSIBILITY_NEED_TYPES.some((type) => type.value === needType)) {
+      selected.push(needType);
+    }
+    if (!shared.description && row.description) shared.description = trimmed(row.description);
+    if (!shared.accommodations && (row.accommodations_required ?? row.accommodationsRequired)) {
+      shared.accommodations = trimmed(row.accommodations_required ?? row.accommodationsRequired);
+    }
+    if (!shared.emergencyName && (row.emergency_contact_name ?? row.emergencyContactName)) {
+      shared.emergencyName = trimmed(row.emergency_contact_name ?? row.emergencyContactName);
+    }
+    if (!shared.emergencyPhone && (row.emergency_contact_phone ?? row.emergencyContactPhone)) {
+      shared.emergencyPhone = trimmed(row.emergency_contact_phone ?? row.emergencyContactPhone);
+    }
+  }
+
+  return {
+    selectedTypes: [...new Set(selected)],
+    details: shared
+  };
+}
+
+router.get('/accessibility', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  const accessibility = accessibilityPayload(collectionFrom(await callApi(token, 'GET', '/accessibility-needs')));
+  return res.render('volunteering/accessibility', {
+    title: 'Your accessibility needs',
+    activeNav: 'volunteering',
+    needTypes: ACCESSIBILITY_NEED_TYPES,
+    selectedTypes: accessibility.selectedTypes,
+    accessibility: accessibility.details,
+    status: accessibilityStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
 
 router.post('/opportunities/create', asyncRoute(async (req, res) => {
   const organizationId = positiveInteger(req.body.organization_id);

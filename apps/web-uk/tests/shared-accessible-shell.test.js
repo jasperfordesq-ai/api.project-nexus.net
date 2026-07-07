@@ -15641,6 +15641,47 @@ describe('shared accessible frontend shell', () => {
     expect(api.callMarketplaceApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel volunteering accessibility needs page for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi.mockResolvedValueOnce({
+      data: [
+        {
+          need_type: 'mobility',
+          description: 'Step-free access helps.',
+          accommodations_required: 'A ramp near the entrance.',
+          emergency_contact_name: 'Alex Helper',
+          emergency_contact_phone: '+1 555 123 4567'
+        },
+        { need_type: 'hearing' }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/volunteering/accessibility?status=accessibility-saved')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/accessibility-needs');
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('Your accessibility needs have been saved.');
+    expect(response.text).toContain('Your accessibility needs');
+    expect(response.text).toContain('Tell organisers about any accessibility needs so they can support you.');
+    expect(response.text).toContain('method="post" action="/volunteering/accessibility"');
+    expect(response.text).toContain('id="need-mobility" name="need_types[]" type="checkbox" value="mobility" checked');
+    expect(response.text).toContain('Mobility');
+    expect(response.text).toContain('id="need-hearing" name="need_types[]" type="checkbox" value="hearing" checked');
+    expect(response.text).toContain('Hearing');
+    expect(response.text).toContain('Step-free access helps.');
+    expect(response.text).toContain('A ramp near the entrance.');
+    expect(response.text).toContain('value="Alex Helper"');
+    expect(response.text).toContain('value="+1 555 123 4567"');
+    expect(response.text).toContain('Save accessibility needs');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
