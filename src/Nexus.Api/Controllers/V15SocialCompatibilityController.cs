@@ -1272,11 +1272,33 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/v2/coupons/validate")]
     public async Task<IActionResult> ValidateCoupon([FromBody] JsonElement body)
     {
-        var code = ReadString(body, "code")?.Trim();
+        var code = ReadString(body, "code")?.Trim().ToUpperInvariant();
+        var orderTotalCents = Math.Max(0, ReadInt(body, "order_total_cents") ?? 0);
         var row = string.IsNullOrWhiteSpace(code)
             ? null
-            : await _db.MerchantCoupons.FirstOrDefaultAsync(c => c.Code == code && c.IsActive && (c.ExpiresAt == null || c.ExpiresAt > DateTime.UtcNow));
-        return Ok(new { valid = row != null, data = row });
+            : await _db.MerchantCoupons.FirstOrDefaultAsync(c =>
+                c.TenantId == TenantId()
+                && c.Code == code
+                && c.IsActive
+                && c.Status == "active"
+                && (c.ValidFrom == null || c.ValidFrom <= DateTime.UtcNow)
+                && (c.ExpiresAt == null || c.ExpiresAt > DateTime.UtcNow)
+                && (c.MinOrderCents == null || orderTotalCents >= c.MinOrderCents)
+                && (c.MaxUses == null || c.UsageCount < c.MaxUses));
+
+        if (row == null)
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", error = "Coupon is invalid." });
+
+        var discountCents = CalculateCouponDiscountCents(row, orderTotalCents);
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                coupon = MapCoupon(row),
+                discount_cents = discountCents
+            }
+        });
     }
 
     [HttpPost("/api/v2/coupons/{id:int}/qr")]
@@ -1941,6 +1963,37 @@ public class V15SocialCompatibilityController : ControllerBase
     }
 
     private static object ValidationError(string field, string message) => new { field, message };
+
+    private static int CalculateCouponDiscountCents(MerchantCoupon coupon, int orderTotalCents)
+    {
+        return coupon.DiscountType switch
+        {
+            "percent" => (int)Math.Round(orderTotalCents * Math.Clamp(coupon.DiscountAmount, 0m, 100m) / 100m),
+            "fixed" => Math.Min(orderTotalCents, Math.Max(0, (int)Math.Round(coupon.DiscountAmount))),
+            "bogo" => (int)Math.Round(orderTotalCents / 2m),
+            _ => 0
+        };
+    }
+
+    private static object MapCoupon(MerchantCoupon coupon) => new
+    {
+        id = coupon.Id,
+        seller_id = coupon.SellerUserId,
+        code = coupon.Code,
+        title = coupon.Title,
+        description = string.IsNullOrWhiteSpace(coupon.Description) ? null : coupon.Description,
+        discount_type = coupon.DiscountType,
+        discount_value = coupon.DiscountAmount,
+        min_order_cents = coupon.MinOrderCents,
+        max_uses = coupon.MaxUses,
+        max_uses_per_member = coupon.MaxUsesPerMember <= 0 ? 1 : coupon.MaxUsesPerMember,
+        valid_from = coupon.ValidFrom,
+        valid_until = coupon.ExpiresAt,
+        status = coupon.Status,
+        applies_to = string.IsNullOrWhiteSpace(coupon.AppliesTo) ? "all_listings" : coupon.AppliesTo,
+        usage_count = coupon.UsageCount,
+        created_at = coupon.CreatedAt
+    };
 
     private static string? ReadString(JsonElement body, params string[] names)
     {

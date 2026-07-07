@@ -495,6 +495,60 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MarketplaceBuyNowV2_AcceptsReactOrderPayloadAndCouponValidation()
+    {
+        var listingId = await CreateMarketplaceListingAsync();
+        var couponCode = await CreateActiveMarketplaceCouponAsync("percent", 10m);
+
+        await AuthenticateAsMemberAsync();
+        var validate = await Client.PostAsJsonAsync("/api/v2/coupons/validate", new
+        {
+            code = couponCode,
+            order_total_cents = 5000,
+            listing_id = listingId
+        });
+
+        validate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var validateJson = await validate.Content.ReadFromJsonAsync<JsonElement>();
+        validateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var couponData = validateJson.GetProperty("data");
+        couponData.GetProperty("discount_cents").GetInt32().Should().Be(500);
+        couponData.GetProperty("coupon").GetProperty("code").GetString().Should().Be(couponCode);
+
+        var createOrder = await Client.PostAsJsonAsync("/api/v2/marketplace/orders", new
+        {
+            listing_id = listingId,
+            quantity = 1,
+            coupon_code = couponCode
+        });
+
+        createOrder.StatusCode.Should().Be(HttpStatusCode.Created);
+        var orderJson = await createOrder.Content.ReadFromJsonAsync<JsonElement>();
+        orderJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var order = orderJson.GetProperty("data");
+        order.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        order.GetProperty("listing_id").GetInt32().Should().Be(listingId);
+        order.GetProperty("buyer_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        order.GetProperty("seller_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        order.GetProperty("status").GetString().Should().Be("pending");
+        order.GetProperty("order_number").GetString().Should().NotBeNullOrWhiteSpace();
+        order.GetProperty("total_cents").GetInt32().Should().Be(5000);
+        order.GetProperty("currency").GetString().Should().Be("EUR");
+
+        var createIntent = await Client.PostAsJsonAsync("/api/v2/marketplace/payments/create-intent", new
+        {
+            order_id = order.GetProperty("id").GetInt32()
+        });
+
+        createIntent.StatusCode.Should().Be(HttpStatusCode.OK);
+        var intentJson = await createIntent.Content.ReadFromJsonAsync<JsonElement>();
+        intentJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var intent = intentJson.GetProperty("data");
+        intent.GetProperty("client_secret").GetString().Should().NotBeNullOrWhiteSpace();
+        intent.GetProperty("payment_intent_id").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
     public async Task MarketplacePickupSlotsV2_MatchesLaravelReactSellerContract()
     {
         await AuthenticateAsAdminAsync();
@@ -633,6 +687,32 @@ public class MarketplaceControllerTests : IntegrationTestBase
         await db.SaveChangesAsync();
 
         return listing.Id;
+    }
+
+    private async Task<string> CreateActiveMarketplaceCouponAsync(string discountType, decimal discountValue)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var code = $"BUY{Guid.NewGuid():N}"[..12].ToUpperInvariant();
+
+        db.MerchantCoupons.Add(new MerchantCoupon
+        {
+            TenantId = TestData.Tenant1.Id,
+            SellerUserId = TestData.AdminUser.Id,
+            Code = code,
+            Title = "Buy now discount",
+            Description = "Discount for the buy-now flow",
+            DiscountType = discountType,
+            DiscountAmount = discountValue,
+            MaxUsesPerMember = 1,
+            Status = "active",
+            IsActive = true,
+            AppliesTo = "all_listings",
+            UsageCount = 0
+        });
+        await db.SaveChangesAsync();
+
+        return code;
     }
 
     private async Task<(int OrderId, int ListingId)> CreatePickupOrderForMemberAsync()

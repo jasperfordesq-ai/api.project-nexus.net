@@ -384,8 +384,11 @@ public class MarketplaceController : ControllerBase
     [Authorize]
     public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
     {
-        var order = await _marketplace.CreateOrderAsync(request.ListingId, RequireUserId(), request.Quantity <= 0 ? 1 : request.Quantity, request.DeliveryMethod, request.ShippingAddress);
-        return order == null ? BadRequest(new { error = "Order could not be created" }) : Created($"/api/marketplace/orders/{order.Id}", new { data = order });
+        var deliveryMethod = request.DeliveryMethod ?? request.ShippingMethod;
+        var order = await _marketplace.CreateOrderAsync(request.ListingId, RequireUserId(), request.Quantity <= 0 ? 1 : request.Quantity, deliveryMethod, request.ShippingAddress);
+        return order == null
+            ? BadRequest(new { success = false, code = "VALIDATION_ERROR", error = "Order could not be created" })
+            : Created($"/api/marketplace/orders/{order.Id}", new { success = true, data = MapMarketplaceOrder(order) });
     }
 
     [HttpGet("orders/purchases")]
@@ -469,8 +472,46 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("payments/create-intent")]
     [Authorize]
-    public IActionResult CreatePaymentIntent([FromBody] PaymentRequest request)
-        => Ok(new { data = new { id = $"local_pi_{Guid.NewGuid():N}", status = "requires_confirmation", request.Amount, request.Currency } });
+    public async Task<IActionResult> CreatePaymentIntent([FromBody] PaymentRequest request)
+    {
+        if (request.OrderId.HasValue)
+        {
+            var order = await _db.MarketplaceOrders.FirstOrDefaultAsync(o => o.Id == request.OrderId.Value);
+            if (order == null)
+                return NotFound(new { success = false, code = "NOT_FOUND", error = "Order not found" });
+            if (order.BuyerUserId != RequireUserId())
+                return StatusCode(403, new { success = false, code = "FORBIDDEN", error = "Only the buyer can initiate payment." });
+
+            var paymentIntentId = $"local_pi_{Guid.NewGuid():N}";
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    client_secret = $"{paymentIntentId}_secret_local",
+                    payment_intent_id = paymentIntentId,
+                    order_id = order.Id,
+                    amount = order.TotalAmount,
+                    currency = order.Currency
+                }
+            });
+        }
+
+        var localIntentId = $"local_pi_{Guid.NewGuid():N}";
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                id = localIntentId,
+                client_secret = $"{localIntentId}_secret_local",
+                payment_intent_id = localIntentId,
+                status = "requires_confirmation",
+                amount = request.Amount,
+                currency = request.Currency ?? "EUR"
+            }
+        });
+    }
 
     [HttpPost("payments/confirm")]
     [Authorize]
@@ -1304,6 +1345,29 @@ public class MarketplaceController : ControllerBase
         updated_at = coupon.UpdatedAt
     };
 
+    private static object MapMarketplaceOrder(MarketplaceOrder order) => new
+    {
+        id = order.Id,
+        order_number = $"ORD-{order.Id:D6}",
+        listing_id = order.MarketplaceListingId,
+        marketplace_listing_id = order.MarketplaceListingId,
+        buyer_id = order.BuyerUserId,
+        seller_id = order.SellerUserId,
+        quantity = order.Quantity,
+        status = order.Status,
+        total_amount = order.TotalAmount,
+        total_cents = order.TotalAmount.HasValue ? (int)Math.Round(order.TotalAmount.Value * 100m) : 0,
+        currency = order.Currency,
+        delivery_method = order.DeliveryMethod,
+        shipping_address = order.ShippingAddress,
+        tracking_number = order.TrackingNumber,
+        shipped_at = order.ShippedAt,
+        delivered_at = order.DeliveredAt,
+        cancelled_at = order.CancelledAt,
+        created_at = order.CreatedAt,
+        updated_at = order.UpdatedAt
+    };
+
     private static bool HasAny(JsonElement json, params string[] names) => TryGetAny(json, out _, names);
 
     private static bool TryGetAny(JsonElement json, out JsonElement value, params string[] names)
@@ -1607,11 +1671,26 @@ public record OfferRequest(
     string? Currency,
     string? Message);
 public record SellerProfileRequest(string? DisplayName, string? Bio, string? SellerType);
-public record CreateOrderRequest(int ListingId, int Quantity, string? DeliveryMethod, string? ShippingAddress);
+public record CreateOrderRequest(
+    [property: JsonPropertyName("listing_id")] int ListingId,
+    int Quantity,
+    [property: JsonPropertyName("delivery_method")] string? DeliveryMethod,
+    [property: JsonPropertyName("shipping_method")] string? ShippingMethod,
+    [property: JsonPropertyName("shipping_address")] string? ShippingAddress,
+    [property: JsonPropertyName("delivery_notes")] string? DeliveryNotes,
+    [property: JsonPropertyName("coupon_code")] string? CouponCode);
 public record ShipOrderRequest(string? TrackingNumber);
 public record RateOrderRequest(int Rating, string? Comment);
 public record ReportRequest(string? Reason, string? Details);
-public record PaymentRequest(decimal Amount, string? Currency);
+public sealed class PaymentRequest
+{
+    [JsonPropertyName("order_id")]
+    public int? OrderId { get; set; }
+
+    public decimal? Amount { get; set; }
+
+    public string? Currency { get; set; }
+}
 public record PaymentConfirmRequest(string PaymentId);
 public record SavedSearchRequest(string? Name, string? Query, Dictionary<string, object>? Filters, bool? AlertsEnabled);
 public record CollectionRequest(string? Name, string? Description, bool IsPublic);
