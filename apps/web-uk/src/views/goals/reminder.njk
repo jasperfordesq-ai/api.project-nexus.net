@@ -1,0 +1,95 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/goals/{{ goal.id }}">Back to goal</a>
+
+  {% if successMessage %}
+    {{ govukNotificationBanner({
+      type: "success",
+      titleText: "Success",
+      text: successMessage
+    }) }}
+  {% endif %}
+
+  {% if errorMessage %}
+    {{ govukErrorSummary({
+      titleText: "There is a problem",
+      errorList: [
+        {
+          text: errorMessage,
+          href: "#frequency-daily"
+        }
+      ]
+    }) }}
+  {% endif %}
+
+  <span class="govuk-caption-xl">Goal: {{ goal.title }}</span>
+  <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">Reminder settings</h1>
+  <p class="govuk-body-l">Get an email and a notification reminding you to check in on this goal.</p>
+
+  <div class="govuk-inset-text">
+    {% if reminder.enabled %}
+      <p class="govuk-body govuk-!-margin-bottom-1"><strong>Reminder active</strong></p>
+      <p class="govuk-body govuk-!-margin-bottom-1">You will be reminded {{ reminder.frequencyLabel }}.</p>
+      {% if reminder.nextReminderLabel %}
+        <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">Next reminder: {{ reminder.nextReminderLabel }}</p>
+      {% endif %}
+    {% else %}
+      <p class="govuk-body govuk-!-margin-bottom-1"><strong>No reminder set</strong></p>
+      <p class="govuk-body govuk-!-margin-bottom-0">You are not currently reminded about this goal.</p>
+    {% endif %}
+  </div>
+
+  <form method="post" action="/goals/{{ goal.id }}/reminder" class="govuk-grid-row">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <div class="govuk-grid-column-two-thirds">
+      <fieldset class="govuk-fieldset govuk-form-group">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">How often should we remind you?</legend>
+        <div class="govuk-radios" data-module="govuk-radios">
+          {% for frequency in frequencies %}
+            <div class="govuk-radios__item">
+              <input class="govuk-radios__input" id="frequency-{{ frequency.value }}" name="frequency" type="radio" value="{{ frequency.value }}"{% if reminder.frequency == frequency.value %} checked{% endif %}>
+              <label class="govuk-label govuk-radios__label" for="frequency-{{ frequency.value }}">{{ frequency.label }}</label>
+            </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <div class="govuk-checkboxes govuk-checkboxes--small govuk-form-group" data-module="govuk-checkboxes">
+        <div class="govuk-checkboxes__item">
+          <input class="govuk-checkboxes__input" id="enabled" name="enabled" type="checkbox" value="1"{% if not reminder.hasReminder or reminder.enabled %} checked{% endif %}>
+          <label class="govuk-label govuk-checkboxes__label" for="enabled">Send me reminders for this goal</label>
+        </div>
+      </div>
+
+      <button class="govuk-button" data-module="govuk-button" type="submit">Save reminder</button>
+    </div>
+  </form>
+
+  {% if reminder.hasReminder %}
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-two-thirds">
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-visually-hidden">There is a problem</span>
+            Removing the reminder stops all emails and notifications for this goal. You can set it again at any time.
+          </strong>
+        </div>
+
+        <form method="post" action="/goals/{{ goal.id }}/reminder/delete">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <button class="govuk-button govuk-button--warning" data-module="govuk-button" type="submit">Remove reminder</button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

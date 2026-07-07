@@ -23,6 +23,12 @@ const GOAL_CHECKIN_MOODS = ['great', 'good', 'neutral', 'okay', 'struggling', 's
 const GOAL_CHECKIN_FREQUENCIES = ['none', 'daily', 'weekly', 'biweekly', 'monthly'];
 const GOAL_REMINDER_FREQUENCIES = ['daily', 'weekly', 'biweekly', 'monthly'];
 const GOAL_BUDDY_ACTION_TYPES = ['nudge', 'encouragement', 'offer_help'];
+const GOAL_REMINDER_LABELS = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  biweekly: 'Every 2 weeks',
+  monthly: 'Monthly'
+};
 const GOAL_MOOD_LABELS = {
   great: 'Great',
   good: 'Good',
@@ -282,6 +288,21 @@ function normalizeCheckin(item) {
   };
 }
 
+function normalizeReminder(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const hasReminder = Object.keys(raw).length > 0;
+  const frequency = allowedValue(raw.frequency, GOAL_REMINDER_FREQUENCIES, 'weekly');
+  const enabled = hasReminder && checked(raw.enabled);
+
+  return {
+    hasReminder,
+    enabled,
+    frequency,
+    frequencyLabel: GOAL_REMINDER_LABELS[frequency],
+    nextReminderLabel: dateTimeLabel(raw.next_reminder_at || raw.nextReminderAt)
+  };
+}
+
 function statusMessage(status) {
   const messages = {
     'goal-created': 'Goal created',
@@ -311,6 +332,23 @@ function checkinStatus(status) {
     return {
       successMessage: '',
       errorMessage: 'We could not record your check-in. Please try again.'
+    };
+  }
+  return { successMessage: '', errorMessage: '' };
+}
+
+function reminderStatus(status) {
+  const value = trimmed(status);
+  if (value === 'reminder-saved') {
+    return { successMessage: 'Your reminder settings have been saved.', errorMessage: '' };
+  }
+  if (value === 'reminder-removed') {
+    return { successMessage: 'Your reminder has been removed.', errorMessage: '' };
+  }
+  if (value === 'reminder-failed') {
+    return {
+      successMessage: '',
+      errorMessage: 'We could not save your reminder. Only the goal owner, or any member for a public goal, can set one.'
     };
   }
   return { successMessage: '', errorMessage: '' };
@@ -525,6 +563,33 @@ router.get('/:id(\\d+)/checkin', asyncRoute(async (req, res) => {
     moods: GOAL_CHECKIN_MOODS.map((value) => ({ value, label: GOAL_MOOD_LABELS[value] })),
     checkins: collectionFrom(checkinResult).map(normalizeCheckin),
     ...status
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
+
+router.get('/:id(\\d+)/reminder', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = req.params.id;
+  const [goalResult, reminderResult] = await Promise.all([
+    getGoal(token, id),
+    callGoal(token, 'GET', `/${id}/reminder`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: null };
+    })
+  ]);
+
+  const goal = normalizeGoal(dataFrom(goalResult));
+  goal.id = goal.id || Number(id);
+  const reminder = normalizeReminder(dataFrom(reminderResult));
+
+  return res.render('goals/reminder', {
+    title: 'Reminder settings',
+    activeNav: 'explore',
+    goal,
+    reminder,
+    frequencies: GOAL_REMINDER_FREQUENCIES.map((value) => ({ value, label: GOAL_REMINDER_LABELS[value] })),
+    ...reminderStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Goal not found' }));
 

@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T08:33:42.770Z",
+    "generatedAt": "2026-07-07T08:38:07.561Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -4916,8 +4916,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/goals/{param}/reminder",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "goals/reminder",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\goals.js"
     },
     {
       "method": "GET",

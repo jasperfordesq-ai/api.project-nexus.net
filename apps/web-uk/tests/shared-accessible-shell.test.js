@@ -5668,6 +5668,53 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/checkins?limit=20');
   });
 
+  it('renders the Laravel goal reminder form for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    api.getGoal.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Restore the community garden',
+        is_public: true
+      }
+    });
+    api.callGoalApi.mockReset().mockResolvedValueOnce({
+      data: {
+        enabled: true,
+        frequency: 'weekly',
+        next_reminder_at: '2026-07-12T08:30:00Z'
+      }
+    });
+
+    const unsigned = await request(app).get('/goals/42/reminder');
+    const signed = await request(app)
+      .get('/goals/42/reminder?status=reminder-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to goal');
+    expect(signed.text).toContain('Goal: Restore the community garden');
+    expect(signed.text).toContain('Reminder settings');
+    expect(signed.text).toContain('Get an email and a notification reminding you to check in on this goal.');
+    expect(signed.text).toContain('We could not save your reminder. Only the goal owner, or any member for a public goal, can set one.');
+    expect(signed.text).toContain('Reminder active');
+    expect(signed.text).toContain('You will be reminded Weekly.');
+    expect(signed.text).toContain('Next reminder:');
+    expect(signed.text).toContain('method="post" action="/goals/42/reminder"');
+    expect(signed.text).toContain('id="frequency-weekly" name="frequency" type="radio" value="weekly" checked');
+    expect(signed.text).toContain('id="enabled" name="enabled" type="checkbox" value="1" checked');
+    expect(signed.text).toContain('Save reminder');
+    expect(signed.text).toContain('Removing the reminder stops all emails and notifications for this goal. You can set it again at any time.');
+    expect(signed.text).toContain('method="post" action="/goals/42/reminder/delete"');
+    expect(signed.text).toContain('Remove reminder');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGoal).toHaveBeenCalledTimes(1);
+    expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGoalApi).toHaveBeenCalledTimes(1);
+    expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/reminder');
+  });
+
   it('redirects signed-out visitors away from the Laravel coupons pages before calling Laravel', async () => {
     const api = require('../src/lib/api');
 
