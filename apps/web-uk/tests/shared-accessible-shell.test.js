@@ -8496,6 +8496,29 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the signed Laravel feed index when the feed API is unavailable', async () => {
+    const api = require('../src/lib/api');
+    const { ApiError } = api;
+
+    api.getFeedPosts.mockRejectedValueOnce(new ApiError('Not found', 404, {}));
+
+    const response = await request(app)
+      .get('/feed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', {
+      page: 1,
+      limit: 20,
+      group_id: null
+    });
+    expect(response.text).toContain('<h1');
+    expect(response.text).toContain('Feed');
+    expect(response.text).toContain('The feed is empty.');
+    expect(response.text).toContain('Sorry, there is a problem loading the feed.');
+    expect(response.text).not.toContain('Page not found');
+  });
+
   it('renders the public Laravel feed hashtag detail page with post cards', async () => {
     const api = require('../src/lib/api');
 

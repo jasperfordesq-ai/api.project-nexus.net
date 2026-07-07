@@ -58,8 +58,8 @@ Regenerate before trusting it.
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
-| Dirty files seen | Current in-progress edits expand Laravel runtime smoke from the broad signed page set into deeper signed profile, settings, achievement, leaderboard, federation, course, marketplace, volunteering, static/legal/support, goals, groups, ideation, jobs, message-group, poll, resource-library, review, and wallet-management pages, then update docs. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `905/1000` implementation/certification parity |
+| Dirty files seen | Current in-progress edits add `/feed` to the default signed Laravel runtime smoke scope and keep the signed feed page renderable with an empty/error state when Laravel's feed collection API is unavailable, then update docs. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `908/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and broader signed module-page smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -103,11 +103,16 @@ scope. A follow-up 2026-07-07 probe against
 `WEB_UK_BASE_URL=http://127.0.0.1:5294` found another stable 2xx batch. The
 expanded harness passed `158/158` checks against
 `WEB_UK_BASE_URL=http://127.0.0.1:5295`: 6 auth/health checks and 152 module
-page checks. `/listings` needed a Nunjucks owner-id guard because Laravel can
-return nested `user.id` without a flat `user_id`; the default smoke timeout is
-now `30000` ms for slower Laravel fixture pages. Local probing left
-`/connections`, `/events/new`, `/feed`, `/marketplace/onboarding`, and
-`/members` outside the default list because they returned `404`, left
+page checks. `/feed` is now part of the default signed page scope and renders
+the local Laravel-backed feed page with an empty/error state when Laravel's feed
+collection API is unavailable; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5297` passed `159/159`: 6 auth/health checks
+and 153 module page checks. `/listings` needed a Nunjucks
+owner-id guard because Laravel can return nested `user.id` without a flat
+`user_id`; the default smoke timeout is now `30000` ms for slower Laravel
+fixture pages. Local probing left
+`/connections`, `/events/new`, `/marketplace/onboarding`, and `/members`
+outside the default list because they returned `404`, left
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
 because they returned feature-gated or role-gated `403`, and left signed-in
 auth, onboarding, and premium-management redirect pages outside because they do
@@ -225,7 +230,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `905/1000`.
+Current working estimate at this handoff: `908/1000`.
 
 ## Final Handoff Checklist
 

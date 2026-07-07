@@ -61,13 +61,17 @@ On 2026-07-07 the command passed `93/93` checks end-to-end against a temporary
 web-uk process started with `TENANT_ID=2` and
 `WEB_UK_BASE_URL=http://127.0.0.1:5293`. A follow-up live probe against
 `WEB_UK_BASE_URL=http://127.0.0.1:5294` expanded the default harness, which then
-passed `158/158` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5295`. The
+passed `158/158` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5295`.
+`/feed` is now part of the default signed page set and renders the local
+Blade-style feed page with an empty/error state when Laravel's feed collection
+API is unavailable; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5297` passed `159/159` checks. The
 harness default timeout is now `30000` ms because Laravel-backed
 profile/settings and discovery pages can be slow in the local fixture. Keep the
 tenant context visible: the same Laravel E2E credentials return `401` when
 web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`. Live probing
-still leaves `/connections`, `/events/new`, `/feed`, `/marketplace/onboarding`,
-and `/members` outside the default list because they return `404`, leaves
+still leaves `/connections`, `/events/new`, `/marketplace/onboarding`, and
+`/members` outside the default list because they return `404`, leaves
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
 because they return feature-gated or role-gated `403`, and leaves signed-in
 auth, onboarding, and premium-management redirect pages outside because they do

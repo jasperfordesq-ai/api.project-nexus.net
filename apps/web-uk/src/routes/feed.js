@@ -332,9 +332,13 @@ router.get('/', asyncRoute(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = 20;
   const groupId = req.query.group_id || null;
+  let feedErrorMessage = null;
 
   const [feedResult, myGroupsResult] = await Promise.all([
-    getFeedPosts(req.token, { page, limit, group_id: groupId }),
+    getFeedPosts(req.token, { page, limit, group_id: groupId }).catch(() => {
+      feedErrorMessage = 'Sorry, there is a problem loading the feed.';
+      return { data: [], pagination: { page, total_pages: 1 } };
+    }),
     getMyGroups(req.token).catch(() => ({ data: [] }))
   ]);
 
@@ -349,7 +353,7 @@ router.get('/', asyncRoute(async (req, res) => {
     pagination: feedResult.pagination || { page, total_pages: 1 },
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    errorMessage: feedErrorMessage || (req.flash ? req.flash('error')[0] : null)
   });
 }));
 

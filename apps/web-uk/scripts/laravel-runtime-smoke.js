@@ -104,6 +104,7 @@ const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/exchanges',
   '/faq',
   '/features',
+  '/feed',
   '/feed/hashtags',
   '/goals/buddying',
   '/goals/discover',
