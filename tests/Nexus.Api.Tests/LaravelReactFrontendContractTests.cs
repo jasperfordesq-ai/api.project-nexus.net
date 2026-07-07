@@ -146,6 +146,123 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminDeliverabilityV2_UsesLaravelReactCrudDashboardAnalyticsAndCommentShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var title = $"Laravel React deliverable {Guid.NewGuid():N}";
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/deliverability", new
+        {
+            title,
+            description = "Backend contract parity deliverable.",
+            priority = "high",
+            status = "in_progress",
+            due_date = "2026-08-15",
+            assigned_to = TestData.MemberUser.Id
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.OK);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var created = createJson.GetProperty("data");
+        var id = created.GetProperty("id").GetInt32();
+        id.Should().BeGreaterThan(0);
+        created.GetProperty("title").GetString().Should().Be(title);
+        created.GetProperty("status").GetString().Should().Be("in_progress");
+        created.GetProperty("priority").GetString().Should().Be("high");
+
+        var list = await Client.GetAsync("/api/v2/admin/deliverability?status=in_progress&priority=high&page=1&limit=10");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        var listData = listJson.GetProperty("data");
+        listData.ValueKind.Should().Be(JsonValueKind.Array);
+        listData.EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == id &&
+            item.GetProperty("title").GetString() == title &&
+            item.GetProperty("assigned_to").GetInt32() == TestData.MemberUser.Id);
+        var meta = listJson.GetProperty("meta");
+        meta.GetProperty("current_page").GetInt32().Should().Be(1);
+        meta.GetProperty("per_page").GetInt32().Should().Be(10);
+        meta.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/deliverability/{id}");
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(id);
+        detailData.GetProperty("description").GetString().Should().Be("Backend contract parity deliverable.");
+        detailData.GetProperty("comments").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var comment = await Client.PostAsJsonAsync($"/api/v2/admin/deliverability/{id}/comments", new
+        {
+            comment_text = "Confirmed against Laravel React contract.",
+            comment_type = "comment"
+        });
+
+        comment.StatusCode.Should().Be(HttpStatusCode.OK);
+        var commentJson = await comment.Content.ReadFromJsonAsync<JsonElement>();
+        var commentData = commentJson.GetProperty("data");
+        commentData.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        commentData.GetProperty("deliverable_id").GetInt32().Should().Be(id);
+        commentData.GetProperty("comment_text").GetString().Should().Be("Confirmed against Laravel React contract.");
+        commentData.GetProperty("comment_type").GetString().Should().Be("comment");
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/admin/deliverability/{id}", new
+        {
+            status = "completed",
+            priority = "urgent"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        var updateData = updateJson.GetProperty("data");
+        updateData.GetProperty("status").GetString().Should().Be("completed");
+        updateData.GetProperty("priority").GetString().Should().Be("urgent");
+        updateData.GetProperty("comments").EnumerateArray().Should().Contain(item =>
+            item.GetProperty("comment_text").GetString() == "Confirmed against Laravel React contract.");
+
+        var dashboard = await Client.GetAsync("/api/v2/admin/deliverability/dashboard");
+        dashboard.StatusCode.Should().Be(HttpStatusCode.OK);
+        var dashboardJson = await dashboard.Content.ReadFromJsonAsync<JsonElement>();
+        var dashboardData = dashboardJson.GetProperty("data");
+        dashboardData.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        dashboardData.GetProperty("by_status").TryGetProperty("completed", out _).Should().BeTrue();
+        dashboardData.GetProperty("completion_rate").GetDouble().Should().BeGreaterThanOrEqualTo(0);
+        dashboardData.GetProperty("recent_activity").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var analytics = await Client.GetAsync("/api/v2/admin/deliverability/analytics");
+        analytics.StatusCode.Should().Be(HttpStatusCode.OK);
+        var analyticsJson = await analytics.Content.ReadFromJsonAsync<JsonElement>();
+        var analyticsData = analyticsJson.GetProperty("data");
+        analyticsData.GetProperty("completion_trends").ValueKind.Should().Be(JsonValueKind.Array);
+        analyticsData.GetProperty("priority_distribution").TryGetProperty("urgent", out _).Should().BeTrue();
+        analyticsData.TryGetProperty("avg_days_to_complete", out _).Should().BeTrue();
+        analyticsData.GetProperty("risk_distribution").ValueKind.Should().Be(JsonValueKind.Object);
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/deliverability/{id}");
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        var deleteData = deleteJson.GetProperty("data");
+        deleteData.GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleteData.GetProperty("id").GetInt32().Should().Be(id);
+    }
+
+    [Fact]
+    public async Task AdminVolunteeringOpportunitiesV2_ExposesLaravelAdminAlias()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/v2/admin/volunteering/opportunities?page=1&limit=10");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
+        var meta = json.GetProperty("meta");
+        meta.GetProperty("current_page").GetInt32().Should().Be(1);
+        meta.GetProperty("per_page").GetInt32().Should().Be(10);
+        meta.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
     public async Task AdminEnterpriseGdprRequests_CreateAndListUseLaravelReactShape()
     {
         await AuthenticateAsAdminAsync();

@@ -1654,124 +1654,581 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/deliverability/dashboard - Deliverability dashboard.</summary>
     [HttpGet("deliverability/dashboard")]
-    public IActionResult GetDeliverabilityDashboard()
+    public async Task<IActionResult> GetDeliverabilityDashboard()
     {
+        var tenantId = GetTenantId();
+        var now = DateTime.UtcNow;
+        var deliverables = await _db.Deliverables
+            .AsNoTracking()
+            .Where(d => d.TenantId == tenantId)
+            .OrderByDescending(d => d.UpdatedAt)
+            .ThenByDescending(d => d.CreatedAt)
+            .ToListAsync();
+
+        var total = deliverables.Count;
+        var byStatus = deliverables
+            .GroupBy(d => ToLaravelDeliverabilityStatus(d.Status))
+            .ToDictionary(g => g.Key, g => g.Count());
+        var completed = byStatus.GetValueOrDefault("completed");
+        var overdue = deliverables.Count(d =>
+            d.DueDate.HasValue &&
+            d.DueDate.Value.Date < now.Date &&
+            d.Status is not DeliverableStatus.Completed and not DeliverableStatus.Cancelled);
+
         return Ok(new
         {
-            total_sent = 0,
-            delivered = 0,
-            bounced = 0,
-            open_rate = 0.0,
-            click_rate = 0.0,
-            delivery_rate = 100.0,
-            generated_at = DateTime.UtcNow
+            data = new
+            {
+                total,
+                by_status = byStatus,
+                overdue,
+                completion_rate = total > 0 ? Math.Round((double)completed / total * 100, 1) : 0.0,
+                recent_activity = deliverables.Take(10).Select(d => new
+                {
+                    id = d.Id,
+                    deliverable_id = d.Id,
+                    deliverable_title = d.Title,
+                    action_type = d.CreatedAt == d.UpdatedAt ? "created" : "updated",
+                    field_name = (string?)null,
+                    change_description = d.CreatedAt == d.UpdatedAt ? $"Created deliverable: {d.Title}" : $"Updated deliverable: {d.Title}",
+                    user_name = "",
+                    action_timestamp = d.UpdatedAt
+                })
+            },
+            meta = LaravelMeta()
         });
     }
 
     /// <summary>GET /api/admin/deliverability - List deliverables.</summary>
     [HttpGet("deliverability")]
-    public IActionResult ListDeliverability([FromQuery] int page = 1, [FromQuery] int limit = 20)
+    public async Task<IActionResult> ListDeliverability(
+        [FromQuery] string? status,
+        [FromQuery] string? priority,
+        [FromQuery] int? assigned_to,
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        var tenantId = GetTenantId();
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var query = _db.Deliverables
+            .AsNoTracking()
+            .Include(d => d.AssignedTo)
+            .Include(d => d.CreatedBy)
+            .Where(d => d.TenantId == tenantId);
+
+        if (!string.IsNullOrWhiteSpace(status) && TryParseLaravelDeliverabilityStatus(status, out var statusValue))
+        {
+            query = query.Where(d => d.Status == statusValue);
+        }
+
+        if (!string.IsNullOrWhiteSpace(priority) && TryParseLaravelDeliverabilityPriority(priority, out var priorityValue))
+        {
+            query = query.Where(d => d.Priority == priorityValue);
+        }
+
+        if (assigned_to.HasValue)
+        {
+            query = query.Where(d => d.AssignedToUserId == assigned_to.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(d =>
+                d.Title.Contains(search) ||
+                (d.Description != null && d.Description.Contains(search)));
+        }
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(d => d.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = items.Select(MapLaravelDeliverabilityListItem),
+            meta = LaravelPaginationMeta(page, limit, total)
+        });
     }
 
     /// <summary>GET /api/admin/deliverability/{id} - Get deliverable.</summary>
     [HttpGet("deliverability/{id:int}")]
-    public IActionResult GetDeliverability(int id)
+    public async Task<IActionResult> GetDeliverability(int id)
     {
-        return Ok(new { id, subject = "", status = "delivered", sent_at = DateTime.UtcNow, opened = false, clicked = false });
+        var deliverable = await LoadDeliverabilityDetailAsync(id);
+        if (deliverable is null)
+        {
+            return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Deliverable not found" } } });
+        }
+
+        return Ok(new { data = MapLaravelDeliverabilityDetail(deliverable), meta = LaravelMeta() });
     }
 
     /// <summary>POST /api/admin/deliverability - Create deliverable.</summary>
     [HttpPost("deliverability")]
-    public IActionResult CreateDeliverability()
+    public async Task<IActionResult> CreateDeliverability([FromBody] JsonElement body)
     {
-        return Ok(new { success = true, message = "Deliverable created", id = 0 });
+        var tenantId = GetTenantId();
+        var adminId = GetCurrentUserId();
+        var title = ReadString(body, "title")?.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return BadRequest(new { errors = new[] { new { code = "VALIDATION_ERROR", message = "Title is required.", field = "title" } } });
+        }
+
+        var now = DateTime.UtcNow;
+        var deliverable = new Deliverable
+        {
+            TenantId = tenantId,
+            CreatedByUserId = adminId ?? 0,
+            Title = title,
+            Description = ReadString(body, "description"),
+            AssignedToUserId = ReadInt(body, "assigned_to"),
+            DueDate = ReadDateTime(body, "due_date"),
+            Tags = ReadTags(body),
+            Status = TryParseLaravelDeliverabilityStatus(ReadString(body, "status"), out var statusValue) ? statusValue : DeliverableStatus.Pending,
+            Priority = TryParseLaravelDeliverabilityPriority(ReadString(body, "priority"), out var priorityValue) ? priorityValue : DeliverablePriority.Medium,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.Deliverables.Add(deliverable);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            data = new
+            {
+                id = deliverable.Id,
+                title = deliverable.Title,
+                status = ToLaravelDeliverabilityStatus(deliverable.Status),
+                priority = ToLaravelDeliverabilityPriority(deliverable.Priority)
+            },
+            meta = LaravelMeta()
+        });
     }
 
     /// <summary>PUT /api/admin/deliverability/{id} - Update deliverable.</summary>
     [HttpPut("deliverability/{id:int}")]
-    public IActionResult UpdateDeliverability(int id)
+    public async Task<IActionResult> UpdateDeliverability(int id, [FromBody] JsonElement body)
     {
-        return Ok(new { success = true, message = "Deliverable updated", id });
+        var tenantId = GetTenantId();
+        var deliverable = await _db.Deliverables
+            .Include(d => d.Comments).ThenInclude(c => c.User)
+            .Include(d => d.AssignedTo)
+            .Include(d => d.CreatedBy)
+            .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.Id == id);
+        if (deliverable is null)
+        {
+            return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Deliverable not found" } } });
+        }
+
+        if (body.TryGetProperty("title", out _))
+        {
+            var title = ReadString(body, "title")?.Trim();
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return BadRequest(new { errors = new[] { new { code = "VALIDATION_ERROR", message = "Title cannot be empty.", field = "title" } } });
+            }
+            deliverable.Title = title;
+        }
+
+        if (body.TryGetProperty("description", out _))
+        {
+            deliverable.Description = ReadString(body, "description");
+        }
+
+        if (body.TryGetProperty("assigned_to", out _))
+        {
+            deliverable.AssignedToUserId = ReadInt(body, "assigned_to");
+        }
+
+        if (body.TryGetProperty("due_date", out _))
+        {
+            deliverable.DueDate = ReadDateTime(body, "due_date");
+        }
+
+        if (body.TryGetProperty("status", out _))
+        {
+            if (!TryParseLaravelDeliverabilityStatus(ReadString(body, "status"), out var statusValue))
+            {
+                return BadRequest(new { errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid status value.", field = "status" } } });
+            }
+
+            deliverable.Status = statusValue;
+            deliverable.CompletedAt = statusValue == DeliverableStatus.Completed
+                ? deliverable.CompletedAt ?? DateTime.UtcNow
+                : null;
+        }
+
+        if (body.TryGetProperty("priority", out _))
+        {
+            if (!TryParseLaravelDeliverabilityPriority(ReadString(body, "priority"), out var priorityValue))
+            {
+                return BadRequest(new { errors = new[] { new { code = "VALIDATION_ERROR", message = "Invalid priority value.", field = "priority" } } });
+            }
+
+            deliverable.Priority = priorityValue;
+        }
+
+        if (body.TryGetProperty("tags", out _))
+        {
+            deliverable.Tags = ReadTags(body);
+        }
+
+        deliverable.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var reloaded = await LoadDeliverabilityDetailAsync(id);
+        return Ok(new { data = MapLaravelDeliverabilityDetail(reloaded!), meta = LaravelMeta() });
     }
 
     /// <summary>DELETE /api/admin/deliverability/{id} - Delete deliverable.</summary>
     [HttpDelete("deliverability/{id:int}")]
-    public IActionResult DeleteDeliverability(int id)
+    public async Task<IActionResult> DeleteDeliverability(int id)
     {
-        return Ok(new { success = true, message = "Deliverable deleted", id });
+        var tenantId = GetTenantId();
+        var deliverable = await _db.Deliverables
+            .Include(d => d.Comments)
+            .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.Id == id);
+        if (deliverable is null)
+        {
+            return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Deliverable not found" } } });
+        }
+
+        _db.DeliverableComments.RemoveRange(deliverable.Comments);
+        _db.Deliverables.Remove(deliverable);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { data = new { deleted = true, id }, meta = LaravelMeta() });
     }
 
     /// <summary>GET /api/admin/deliverability/analytics - Deliverability analytics.</summary>
     [HttpGet("deliverability/analytics")]
     public async Task<IActionResult> GetDeliverabilityAnalytics()
     {
-        var now = DateTime.UtcNow;
-        var thirtyDaysAgo = now.AddDays(-30);
-
-        var recentLogs = await _db.EmailLogs
-            .Where(l => l.CreatedAt >= thirtyDaysAgo)
-            .Select(l => new { l.CreatedAt, l.Status, l.ToEmail })
+        var tenantId = GetTenantId();
+        var thirtyDaysAgo = DateTime.UtcNow.Date.AddDays(-30);
+        var deliverables = await _db.Deliverables
+            .AsNoTracking()
+            .Where(d => d.TenantId == tenantId)
             .ToListAsync();
 
-        var dailyStats = Enumerable.Range(0, 30)
-            .Select(i => now.Date.AddDays(-i))
-            .Select(date =>
-            {
-                var dayLogs = recentLogs.Where(l => l.CreatedAt.Date == date).ToList();
-                return new
-                {
-                    date = date.ToString("yyyy-MM-dd"),
-                    sent = dayLogs.Count(l => l.Status == EmailSendStatus.Sent),
-                    failed = dayLogs.Count(l => l.Status == EmailSendStatus.Failed),
-                    bounced = dayLogs.Count(l => l.Status == EmailSendStatus.Bounced),
-                    pending = dayLogs.Count(l => l.Status == EmailSendStatus.Pending)
-                };
-            })
+        var completionTrends = deliverables
+            .Where(d => d.CompletedAt.HasValue && d.CompletedAt.Value.Date >= thirtyDaysAgo)
+            .GroupBy(d => d.CompletedAt!.Value.Date)
+            .Select(g => new { date = g.Key.ToString("yyyy-MM-dd"), count = g.Count() })
             .OrderBy(d => d.date)
             .ToList();
 
-        var topBouncedDomains = recentLogs
-            .Where(l => l.Status == EmailSendStatus.Bounced)
-            .Select(l =>
-            {
-                var at = l.ToEmail.IndexOf('@');
-                return at >= 0 && at < l.ToEmail.Length - 1 ? l.ToEmail[(at + 1)..].ToLowerInvariant() : "(unknown)";
-            })
-            .GroupBy(d => d)
-            .Select(g => new { domain = g.Key, count = g.Count() })
-            .OrderByDescending(x => x.count)
-            .Take(10)
+        var completed = deliverables
+            .Where(d => d.Status == DeliverableStatus.Completed && d.CompletedAt.HasValue)
             .ToList();
-
-        var totalSent = recentLogs.Count(l => l.Status == EmailSendStatus.Sent || l.Status == EmailSendStatus.Bounced || l.Status == EmailSendStatus.Failed);
-        var totalBounced = recentLogs.Count(l => l.Status == EmailSendStatus.Bounced);
-        var totalFailed = recentLogs.Count(l => l.Status == EmailSendStatus.Failed);
-        var bounceRate = totalSent > 0 ? Math.Round((double)totalBounced / totalSent, 4) : 0.0;
-        var failRate = totalSent > 0 ? Math.Round((double)totalFailed / totalSent, 4) : 0.0;
-        var complaintRate = bounceRate + failRate;
+        double? averageDays = completed.Count > 0
+            ? Math.Round(completed.Average(d => (d.CompletedAt!.Value - d.CreatedAt).TotalDays), 1)
+            : null;
 
         return Ok(new
         {
-            daily_stats = dailyStats,
-            top_bounced_domains = topBouncedDomains,
-            bounce_rate = bounceRate,
-            fail_rate = failRate,
-            complaint_rate = complaintRate,
-            total_sent_30d = totalSent,
-            total_bounced_30d = totalBounced,
-            total_failed_30d = totalFailed,
-            generated_at = now
+            data = new
+            {
+                completion_trends = completionTrends,
+                priority_distribution = deliverables
+                    .GroupBy(d => ToLaravelDeliverabilityPriority(d.Priority))
+                    .ToDictionary(g => g.Key, g => g.Count()),
+                avg_days_to_complete = averageDays,
+                risk_distribution = new Dictionary<string, int>()
+            },
+            meta = LaravelMeta()
         });
     }
 
     /// <summary>POST /api/admin/deliverability/{id}/comments - Add comment.</summary>
     [HttpPost("deliverability/{id:int}/comments")]
-    public IActionResult AddDeliverabilityComment(int id)
+    public async Task<IActionResult> AddDeliverabilityComment(int id, [FromBody] JsonElement body)
     {
-        return Ok(new { success = true, message = "Comment added", deliverable_id = id, comment_id = 0 });
+        var tenantId = GetTenantId();
+        var deliverableExists = await _db.Deliverables.AnyAsync(d => d.TenantId == tenantId && d.Id == id);
+        if (!deliverableExists)
+        {
+            return NotFound(new { errors = new[] { new { code = "NOT_FOUND", message = "Deliverable not found" } } });
+        }
+
+        var commentText = ReadString(body, "comment_text")?.Trim();
+        if (string.IsNullOrWhiteSpace(commentText))
+        {
+            return BadRequest(new { errors = new[] { new { code = "VALIDATION_ERROR", message = "Comment text is required.", field = "comment_text" } } });
+        }
+
+        var comment = new DeliverableComment
+        {
+            TenantId = tenantId,
+            DeliverableId = id,
+            UserId = GetCurrentUserId() ?? 0,
+            Content = commentText,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.DeliverableComments.Add(comment);
+        await _db.SaveChangesAsync();
+
+        var reloaded = await _db.DeliverableComments
+            .AsNoTracking()
+            .Include(c => c.User)
+            .FirstAsync(c => c.TenantId == tenantId && c.Id == comment.Id);
+
+        return Ok(new { data = MapLaravelDeliverabilityComment(reloaded), meta = LaravelMeta() });
     }
+
+    private async Task<Deliverable?> LoadDeliverabilityDetailAsync(int id)
+    {
+        var tenantId = GetTenantId();
+        return await _db.Deliverables
+            .AsNoTracking()
+            .Include(d => d.AssignedTo)
+            .Include(d => d.CreatedBy)
+            .Include(d => d.Comments).ThenInclude(c => c.User)
+            .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.Id == id);
+    }
+
+    private static object MapLaravelDeliverabilityListItem(Deliverable deliverable) => new
+    {
+        id = deliverable.Id,
+        title = deliverable.Title,
+        description = deliverable.Description ?? "",
+        category = (string?)null,
+        priority = ToLaravelDeliverabilityPriority(deliverable.Priority),
+        owner_id = deliverable.CreatedByUserId == 0 ? (int?)null : deliverable.CreatedByUserId,
+        owner_name = DisplayName(deliverable.CreatedBy),
+        assigned_to = deliverable.AssignedToUserId,
+        assignee_name = DisplayName(deliverable.AssignedTo),
+        assigned_group_id = (int?)null,
+        start_date = (DateTime?)null,
+        due_date = deliverable.DueDate,
+        completed_at = deliverable.CompletedAt,
+        status = ToLaravelDeliverabilityStatus(deliverable.Status),
+        progress_percentage = deliverable.Status == DeliverableStatus.Completed ? 100 : 0,
+        estimated_hours = (double?)null,
+        actual_hours = (double?)null,
+        parent_deliverable_id = (int?)null,
+        tags = SplitTags(deliverable.Tags),
+        delivery_confidence = (int?)null,
+        risk_level = (string?)null,
+        risk_notes = (string?)null,
+        created_at = deliverable.CreatedAt,
+        updated_at = deliverable.UpdatedAt
+    };
+
+    private static object MapLaravelDeliverabilityDetail(Deliverable deliverable) => new
+    {
+        id = deliverable.Id,
+        title = deliverable.Title,
+        description = deliverable.Description ?? "",
+        category = (string?)null,
+        priority = ToLaravelDeliverabilityPriority(deliverable.Priority),
+        owner_id = deliverable.CreatedByUserId == 0 ? (int?)null : deliverable.CreatedByUserId,
+        owner_name = DisplayName(deliverable.CreatedBy),
+        assigned_to = deliverable.AssignedToUserId,
+        assignee_name = DisplayName(deliverable.AssignedTo),
+        assigned_group_id = (int?)null,
+        start_date = (DateTime?)null,
+        due_date = deliverable.DueDate,
+        completed_at = deliverable.CompletedAt,
+        status = ToLaravelDeliverabilityStatus(deliverable.Status),
+        progress_percentage = deliverable.Status == DeliverableStatus.Completed ? 100 : 0,
+        estimated_hours = (double?)null,
+        actual_hours = (double?)null,
+        parent_deliverable_id = (int?)null,
+        blocking_deliverable_ids = Array.Empty<int>(),
+        depends_on_deliverable_ids = Array.Empty<int>(),
+        tags = SplitTags(deliverable.Tags),
+        custom_fields = new Dictionary<string, object?>(),
+        delivery_confidence = (int?)null,
+        risk_level = (string?)null,
+        risk_notes = (string?)null,
+        watchers = Array.Empty<int>(),
+        collaborators = Array.Empty<int>(),
+        attachment_urls = Array.Empty<string>(),
+        external_links = Array.Empty<string>(),
+        created_at = deliverable.CreatedAt,
+        updated_at = deliverable.UpdatedAt,
+        milestones = Array.Empty<object>(),
+        comments = deliverable.Comments
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(20)
+            .Select(MapLaravelDeliverabilityComment)
+    };
+
+    private static object MapLaravelDeliverabilityComment(DeliverableComment comment) => new
+    {
+        id = comment.Id,
+        deliverable_id = comment.DeliverableId,
+        user_id = comment.UserId,
+        user_name = DisplayName(comment.User),
+        user_avatar = comment.User?.AvatarUrl,
+        comment_text = comment.Content,
+        comment_type = "comment",
+        parent_comment_id = (int?)null,
+        reactions = Array.Empty<object>(),
+        is_pinned = false,
+        is_edited = false,
+        edited_at = (DateTime?)null,
+        mentioned_user_ids = Array.Empty<int>(),
+        created_at = comment.CreatedAt,
+        updated_at = (DateTime?)null
+    };
+
+    private object LaravelMeta() => new
+    {
+        base_url = $"{Request.Scheme}://{Request.Host}"
+    };
+
+    private object LaravelPaginationMeta(int page, int perPage, int total)
+    {
+        var totalPages = total > 0 ? (int)Math.Ceiling((double)total / perPage) : 0;
+        return new
+        {
+            base_url = $"{Request.Scheme}://{Request.Host}",
+            current_page = page,
+            per_page = perPage,
+            total,
+            total_pages = totalPages,
+            has_more = page < totalPages
+        };
+    }
+
+    private static bool TryParseLaravelDeliverabilityStatus(string? value, out DeliverableStatus status)
+    {
+        status = DeliverableStatus.Pending;
+        switch ((value ?? "").Trim().ToLowerInvariant())
+        {
+            case "":
+            case "draft":
+            case "ready":
+            case "review":
+            case "blocked":
+            case "on_hold":
+            case "pending":
+                status = DeliverableStatus.Pending;
+                return true;
+            case "in_progress":
+            case "inprogress":
+                status = DeliverableStatus.InProgress;
+                return true;
+            case "completed":
+                status = DeliverableStatus.Completed;
+                return true;
+            case "cancelled":
+            case "canceled":
+                status = DeliverableStatus.Cancelled;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static string ToLaravelDeliverabilityStatus(DeliverableStatus status) => status switch
+    {
+        DeliverableStatus.InProgress => "in_progress",
+        DeliverableStatus.Completed => "completed",
+        DeliverableStatus.Cancelled => "cancelled",
+        _ => "draft"
+    };
+
+    private static bool TryParseLaravelDeliverabilityPriority(string? value, out DeliverablePriority priority)
+    {
+        priority = DeliverablePriority.Medium;
+        switch ((value ?? "").Trim().ToLowerInvariant())
+        {
+            case "":
+            case "medium":
+                priority = DeliverablePriority.Medium;
+                return true;
+            case "low":
+                priority = DeliverablePriority.Low;
+                return true;
+            case "high":
+                priority = DeliverablePriority.High;
+                return true;
+            case "urgent":
+            case "critical":
+                priority = DeliverablePriority.Critical;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static string ToLaravelDeliverabilityPriority(DeliverablePriority priority) => priority switch
+    {
+        DeliverablePriority.Low => "low",
+        DeliverablePriority.High => "high",
+        DeliverablePriority.Critical => "urgent",
+        _ => "medium"
+    };
+
+    private static string? ReadString(JsonElement body, string propertyName)
+    {
+        if (!body.TryGetProperty(propertyName, out var property) || property.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        return property.ValueKind == JsonValueKind.String ? property.GetString() : property.ToString();
+    }
+
+    private static int? ReadInt(JsonElement body, string propertyName)
+    {
+        if (!body.TryGetProperty(propertyName, out var property) || property.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var number))
+        {
+            return number;
+        }
+
+        return int.TryParse(property.ToString(), out var parsed) ? parsed : null;
+    }
+
+    private static DateTime? ReadDateTime(JsonElement body, string propertyName)
+    {
+        var value = ReadString(body, propertyName);
+        if (!DateTime.TryParse(value, out var parsed))
+        {
+            return null;
+        }
+
+        return parsed.Kind switch
+        {
+            DateTimeKind.Utc => parsed,
+            DateTimeKind.Local => parsed.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(parsed, DateTimeKind.Utc)
+        };
+    }
+
+    private static string? ReadTags(JsonElement body)
+    {
+        if (!body.TryGetProperty("tags", out var tags) || tags.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        if (tags.ValueKind == JsonValueKind.Array)
+        {
+            return string.Join(",", tags.EnumerateArray().Select(t => t.ToString()).Where(t => !string.IsNullOrWhiteSpace(t)));
+        }
+
+        return tags.ToString();
+    }
+
+    private static string[] SplitTags(string? tags) => string.IsNullOrWhiteSpace(tags)
+        ? Array.Empty<string>()
+        : tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static string FormatBytes(long bytes)
     {

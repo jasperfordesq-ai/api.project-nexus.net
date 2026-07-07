@@ -891,6 +891,94 @@ public class AdminCompatibility2Controller : ControllerBase
     public IActionResult VolunteeringOverview()
         => Ok(new { data = new { total_volunteers = 0, active_opportunities = 0, pending_approvals = 0, total_hours = 0 } });
 
+    /// <summary>GET /api/admin/volunteering/opportunities - List admin volunteering opportunities.</summary>
+    [HttpGet("volunteering/opportunities")]
+    public async Task<IActionResult> VolunteeringOpportunities(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20,
+        [FromQuery] string? status = null,
+        [FromQuery] int? category_id = null,
+        [FromQuery] int? group_id = null,
+        [FromQuery] string? search = null)
+    {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var query = _db.VolunteerOpportunities
+            .AsNoTracking()
+            .Where(o => o.TenantId == tenantId);
+
+        if (!string.IsNullOrWhiteSpace(status) && TryParseOpportunityStatus(status, out var parsedStatus))
+        {
+            query = query.Where(o => o.Status == parsedStatus);
+        }
+
+        if (category_id.HasValue)
+        {
+            query = query.Where(o => o.CategoryId == category_id.Value);
+        }
+
+        if (group_id.HasValue)
+        {
+            query = query.Where(o => o.GroupId == group_id.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(o =>
+                o.Title.Contains(search) ||
+                (o.Description != null && o.Description.Contains(search)));
+        }
+
+        var total = await query.CountAsync();
+        var totalPages = total > 0 ? (int)Math.Ceiling((double)total / limit) : 0;
+        var opportunities = await query
+            .Include(o => o.Organizer)
+            .Include(o => o.Category)
+            .Include(o => o.Group)
+            .Include(o => o.Applications)
+            .Include(o => o.Shifts)
+            .OrderByDescending(o => o.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(o => new
+            {
+                id = o.Id,
+                title = o.Title,
+                description = o.Description,
+                organizer = o.Organizer != null ? new { id = o.Organizer.Id, first_name = o.Organizer.FirstName, last_name = o.Organizer.LastName } : null,
+                group = o.Group != null ? new { id = o.Group.Id, name = o.Group.Name } : null,
+                category = o.Category != null ? new { id = o.Category.Id, name = o.Category.Name } : null,
+                location = o.Location,
+                status = MapOpportunityStatus(o.Status),
+                required_volunteers = o.RequiredVolunteers,
+                approved_count = o.Applications.Count(a => a.Status == ApplicationStatus.Approved),
+                shift_count = o.Shifts.Count,
+                is_recurring = o.IsRecurring,
+                starts_at = o.StartsAt,
+                ends_at = o.EndsAt,
+                application_deadline = o.ApplicationDeadline,
+                skills_required = o.SkillsRequired,
+                credit_reward = o.CreditReward,
+                created_at = o.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = opportunities,
+            meta = new
+            {
+                current_page = page,
+                per_page = limit,
+                total,
+                total_pages = totalPages,
+                has_more = page < totalPages
+            }
+        });
+    }
+
     /// <summary>GET /api/admin/volunteering/approvals - Pending volunteering approvals.</summary>
     [HttpGet("volunteering/approvals")]
     public IActionResult VolunteeringApprovals()
@@ -1236,6 +1324,39 @@ public class AdminCompatibility2Controller : ControllerBase
         [JsonPropertyName("group_ids")] public List<int>? GroupIds { get; set; }
         [JsonPropertyName("limit")] public int? Limit { get; set; }
     }
+
+    private static bool TryParseOpportunityStatus(string? value, out OpportunityStatus status)
+    {
+        status = OpportunityStatus.Draft;
+        switch ((value ?? "").Trim().ToLowerInvariant())
+        {
+            case "draft":
+                status = OpportunityStatus.Draft;
+                return true;
+            case "published":
+            case "open":
+            case "active":
+                status = OpportunityStatus.Published;
+                return true;
+            case "closed":
+                status = OpportunityStatus.Closed;
+                return true;
+            case "cancelled":
+            case "canceled":
+                status = OpportunityStatus.Cancelled;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static string MapOpportunityStatus(OpportunityStatus status) => status switch
+    {
+        OpportunityStatus.Published => "published",
+        OpportunityStatus.Closed => "closed",
+        OpportunityStatus.Cancelled => "cancelled",
+        _ => "draft"
+    };
 
     private static IEnumerable<ImportSubscriberInput> ParseSubscriberCsv(string csv)
     {
