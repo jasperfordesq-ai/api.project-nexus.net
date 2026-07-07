@@ -13271,6 +13271,48 @@ describe('shared accessible frontend shell', () => {
     expect(api.callListingApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel-backed listing report form', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.callListingApi.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        title: 'Bike trailer loan',
+        user_id: 77,
+        user: { id: 77, name: 'Avery Stone' }
+      }
+    });
+
+    const unsigned = await request(app).get('/listings/42/report');
+    const signed = await request(app)
+      .get('/listings/42/report?status=report-invalid')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(signed.status).toBe(200);
+    expect(api.callListingApi).toHaveBeenCalledWith('test-token', 'GET', '/42');
+    expect(signed.text).toContain('href="/listings/42"');
+    expect(signed.text).toContain('Bike trailer loan');
+    expect(signed.text).toContain('Report listing');
+    expect(signed.text).toContain('Tell us why you are reporting this listing. We review all reports and take action where needed.');
+    expect(signed.text).toContain('There is a problem');
+    expect(signed.text).toContain('Select a reason for reporting');
+    expect(signed.text).toContain('method="post" action="/listings/42/report"');
+    expect(signed.text).toContain('Reason for report');
+    expect(signed.text).toContain('Inappropriate content');
+    expect(signed.text).toContain('Safety concern');
+    expect(signed.text).toContain('Misleading information');
+    expect(signed.text).toContain('Spam or misleading');
+    expect(signed.text).toContain('Not a timebank service');
+    expect(signed.text).toContain('Other');
+    expect(signed.text).toContain('Additional details (optional)');
+    expect(signed.text).toContain('maxlength="500"');
+    expect(signed.text).toContain('Send report');
+    expect(signed.text).toContain('Cancel');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits Laravel settings action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

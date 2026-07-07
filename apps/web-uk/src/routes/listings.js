@@ -123,6 +123,32 @@ function reportPayload(body) {
   };
 }
 
+function listingOwnerId(listing) {
+  return positiveInteger(listing && (listing.user_id || listing.author_id || listing.userId || listing.authorId))
+    || positiveInteger(listing && listing.user && listing.user.id);
+}
+
+function listingReportStatus(status) {
+  const messages = {
+    'report-invalid': 'Select a reason for reporting',
+    'report-failed': 'We could not submit your report. Please try again.',
+    'already-reported': 'You have already reported this listing.'
+  };
+  const message = messages[trimmed(status)];
+  return message ? { type: 'error', message } : null;
+}
+
+function listingReportReasons() {
+  return [
+    { value: 'inappropriate', label: 'Inappropriate content' },
+    { value: 'safety_concern', label: 'Safety concern' },
+    { value: 'misleading', label: 'Misleading information' },
+    { value: 'spam', label: 'Spam or misleading' },
+    { value: 'not_timebank_service', label: 'Not a timebank service' },
+    { value: 'other', label: 'Other' }
+  ];
+}
+
 router.post('/generate-description', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return res.redirect(loginRedirect());
@@ -309,6 +335,37 @@ router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
 
   return res.redirect(listingRedirect(id, status));
 }));
+
+router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = Number(req.params.id);
+  const [listingResult, profileResult] = await Promise.all([
+    callListing(token, 'GET', `/${id}`),
+    getProfile(token).catch(() => null)
+  ]);
+
+  const listing = dataFrom(listingResult) || {};
+  const currentUser = dataFrom(profileResult) || {};
+  const ownerId = listingOwnerId(listing);
+  const currentUserId = positiveInteger(currentUser.id);
+  if (ownerId !== null && currentUserId !== null && ownerId === currentUserId) {
+    return res.status(403).render('static-page', {
+      title: 'Cannot report listing',
+      heading: 'Cannot report listing',
+      body: 'You cannot report your own listing.'
+    });
+  }
+
+  res.render('listings/report', {
+    title: 'Report a listing',
+    listing: { ...listing, id },
+    status: listingReportStatus(req.query.status),
+    reasons: listingReportReasons(),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Listing not found' }));
 
 router.use(requireAuth);
 

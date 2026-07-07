@@ -309,16 +309,20 @@ partial: Laravel `cookie_consents` audit persistence, tenant scoping, route-name
 generation, localization, runtime smoke tests, and ASP.NET backend
 compatibility are not certified.
 
-Listing GET pages remain local/protected pages or generated preparation pages,
-but the Laravel accessible POST aliases under `/listings` are now local route
-declarations backed by Laravel v2 listing, comment, feed-like, and exchange
-APIs. The aliases cover save/unsave, renew, report, like, comment/reply,
-exchange request creation, and AI description generation redirects while
-preserving Laravel status keys and `#like` / `#add-comment` fragments. This
-remains partial: Blade listing/detail/comment/report/exchange-request rendering,
-generated description value repopulation, image and skill-tag form parity,
-owner/requester authorization depth, tenant/feature gates, localization, runtime
-smoke tests, and ASP.NET backend compatibility are not certified.
+The `/listings/{id}/report` GET page is now a partial Laravel-backed Blade
+candidate: it redirects unsigned visitors with Laravel's `auth-required` status,
+loads the listing from `/api/v2/listings/{id}`, blocks owner self-reports, and
+renders the Blade-style report form. Other listing GET pages remain
+local/protected pages or generated preparation pages, but the Laravel accessible
+POST aliases under `/listings` are local route declarations backed by Laravel v2
+listing, comment, feed-like, and exchange APIs. The aliases cover save/unsave,
+renew, report, like, comment/reply, exchange request creation, and AI
+description generation redirects while preserving Laravel status keys and
+`#like` / `#add-comment` fragments. This remains partial: Blade listing/detail,
+comment and exchange-request rendering, generated description value repopulation,
+image and skill-tag form parity, owner/requester authorization depth,
+tenant/feature gates, localization, runtime smoke tests, and ASP.NET backend
+compatibility are not certified.
 
 The `/exchanges` and `/exchanges/{id}` pages are now partial Laravel-backed
 candidates for the Blade exchange list and detail workflows. Signed-in GET

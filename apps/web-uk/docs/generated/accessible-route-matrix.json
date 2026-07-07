@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T06:38:51.176Z",
+    "generatedAt": "2026-07-07T06:43:54.475Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -7956,8 +7956,8 @@
       "gates": "module:listings",
       "apiNeeds": "service:listingService::getById",
       "webUkPath": "/listings/{param}/report",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "listings/report",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\listings.js"
     },
     {
       "method": "GET",
