@@ -115,6 +115,23 @@ function dataFrom(result) {
     : result;
 }
 
+function collectionFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  if (Array.isArray(result?.items)) return result.items;
+  return [];
+}
+
+function eventCategoryFrom(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  const name = trimmed(row.name || row.title);
+  if (id === null || !name) return null;
+  return { id, name };
+}
+
 function eventFrom(result) {
   const data = dataFrom(result);
   if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -178,6 +195,21 @@ async function runEventAction(req, res, method, path, data, successRedirect, fai
 function eventRedirect(id, status, fragment = '') {
   return `/events/${id}?status=${encodeURIComponent(status)}${fragment}`;
 }
+
+router.get('/browse', asyncRoute(async (req, res) => {
+  const categoriesResult = await getEventCategories(tokenFrom(req));
+  const categories = collectionFrom(categoriesResult)
+    .map(eventCategoryFrom)
+    .filter(Boolean);
+  const selectedCategoryId = positiveInteger(req.query.category_id);
+
+  return res.render('events/browse', {
+    title: 'Browse events by category',
+    activeNav: 'events',
+    categories,
+    selectedCategoryId
+  });
+}));
 
 router.get('/:id(\\d+)/map', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);

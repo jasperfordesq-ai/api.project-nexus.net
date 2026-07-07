@@ -424,8 +424,10 @@ time-credit settlement runtime behavior, feature gates, localization, runtime
 smoke tests, and ASP.NET backend compatibility are not certified.
 
 Event GET pages remain mostly existing local/protected pages or preparation
-pages, but `/events/{id}/map` now renders a Laravel-backed Blade-style location
-page through `/api/v2/events/{id}`, including the event back link, address,
+pages, but `/events/browse` now renders the Blade-style category chooser with
+Laravel event categories from `/api/v2/categories?type=event`, and
+`/events/{id}/map` now renders a Laravel-backed Blade-style location page
+through `/api/v2/events/{id}`, including the event back link, address,
 coordinates, no-JS OpenStreetMap embed/links, and no-map states for online or
 coordinate-less events. The Laravel accessible POST aliases under `/events` are
 now local route declarations backed by Laravel v2 event, poll, and UGC
@@ -443,8 +445,8 @@ and sends recurring creates through `/api/v2/events/recurring`, following the
 Laravel template response shape for redirects. Redirects preserve Laravel status
 keys and `#poll-*` fragments. This remains partial: cover image removal is still
 blocked by the absence of a Laravel v2 clear/delete event-image API contract,
-and events browse, polls, recurring edit, translation GET depth, full Blade
-list/detail rendering, owner/participant authorization depth, rendered
+and event polls, recurring edit, translation GET depth, full Blade list/detail
+rendering, owner/participant authorization depth, rendered
 translation result display, event notification/XP/waitlist promotion side
 effects, tenant/feature gates, localization, runtime smoke tests, and ASP.NET
 backend compatibility are not certified.

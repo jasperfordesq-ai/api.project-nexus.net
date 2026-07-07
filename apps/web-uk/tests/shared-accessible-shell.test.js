@@ -11948,6 +11948,37 @@ describe('shared accessible frontend shell', () => {
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel event category browse page', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.getEventCategories.mockResolvedValueOnce({
+      data: [
+        { id: 3, name: 'Gardening' },
+        { id: 4, name: 'Repair cafe' }
+      ]
+    });
+
+    const response = await request(app).get('/events/browse?category_id=4');
+
+    expect(response.status).toBe(200);
+    expect(staticPageRoutes.pages['/events/browse']).toBeUndefined();
+    expect(api.getEventCategories).toHaveBeenCalledWith('');
+    expect(response.text).toContain('href="/events"');
+    expect(response.text).toContain('Back to events');
+    expect(response.text).toContain('Events');
+    expect(response.text).toContain('Browse events by category');
+    expect(response.text).toContain('Choose a category to see the events in it.');
+    expect(response.text).toContain('method="get" action="/events"');
+    expect(response.text).toContain('name="category_id" type="radio" value=""');
+    expect(response.text).toContain('All events');
+    expect(response.text).toContain('value="3"');
+    expect(response.text).toContain('Gardening');
+    expect(response.text).toContain('value="4" checked');
+    expect(response.text).toContain('Repair cafe');
+    expect(response.text).toContain('View events');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel event map page and no-location state', async () => {
     const api = require('../src/lib/api');
 
