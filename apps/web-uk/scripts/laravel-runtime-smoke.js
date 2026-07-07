@@ -25,6 +25,8 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/listings/42/comments',
   '/feed/hashtag/timebank',
   '/feed/item/listing/42',
+  '/messages/77',
+  '/messages/new/77',
   '/jobs/90764',
   '/jobs/90764/qualified',
   '/groups/484',
@@ -36,7 +38,12 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/groups/484/discussions/new',
   '/groups/484/files',
   '/groups/484/manage',
-  '/resources/10/comments'
+  '/resources/10/comments',
+  '/volunteering/organisations/636/dashboard',
+  '/volunteering/organisations/636/manage',
+  '/volunteering/organisations/636/settings',
+  '/volunteering/organisations/636/volunteers',
+  '/volunteering/organisations/636/wallet'
 ];
 const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/federation/listings/1/1',
@@ -56,6 +63,8 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/jobs/90764/pipeline', status: 403 },
   { path: '/jobs/90764/applications', status: 403 },
   { path: '/listings/42/analytics', status: 403 },
+  { path: '/group-exchanges/1', status: 403 },
+  { path: '/messages/groups/33', status: 403 },
   { path: '/marketplace/coupons', status: 403 }
 ];
 const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
@@ -64,6 +73,7 @@ const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/events/6/recurring-edit', location: '/events/6/edit' },
   { path: '/groups/484/edit', location: '/groups/484' },
   { path: '/courses/42/certificate', location: '/courses/42?status=certificate-failed' },
+  { path: '/federation/messages/conversation/77', location: '/federation/messages' },
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [

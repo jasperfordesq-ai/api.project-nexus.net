@@ -209,6 +209,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/listings/42/comments',
       '/feed/hashtag/timebank',
       '/feed/item/listing/42',
+      '/messages/77',
+      '/messages/new/77',
       '/jobs/90764',
       '/jobs/90764/qualified',
       '/groups/484',
@@ -221,6 +223,11 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/groups/484/files',
       '/groups/484/manage',
       '/resources/10/comments',
+      '/volunteering/organisations/636/dashboard',
+      '/volunteering/organisations/636/manage',
+      '/volunteering/organisations/636/settings',
+      '/volunteering/organisations/636/volunteers',
+      '/volunteering/organisations/636/wallet',
       '/volunteering/accessibility',
       '/volunteering/certificates',
       '/volunteering/opportunities/create',
@@ -328,6 +335,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/jobs/90764/pipeline',
       '/jobs/90764/applications',
       '/listings/42/analytics',
+      '/group-exchanges/1',
+      '/messages/groups/33',
       '/marketplace/coupons'
     ]);
     if (req.method === 'GET' && signedGatedPages.has(req.url)) {
@@ -348,6 +357,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       ['/events/6/recurring-edit', '/events/6/edit'],
       ['/groups/484/edit', '/groups/484'],
       ['/courses/42/certificate', '/courses/42?status=certificate-failed'],
+      ['/federation/messages/conversation/77', '/federation/messages'],
       ['/premium/manage', '/premium?status=no-subscription']
     ]);
     if (req.method === 'GET' && signedRedirectPages.has(req.url)) {
@@ -493,6 +503,27 @@ describe('Laravel runtime smoke harness', () => {
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/courses/42/certificate', location: '/courses/42?status=certificate-failed' }
+    ]));
+  });
+
+  it('includes stable message and volunteering owner fixture outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/messages/77',
+      '/messages/new/77',
+      '/volunteering/organisations/636/dashboard',
+      '/volunteering/organisations/636/manage',
+      '/volunteering/organisations/636/settings',
+      '/volunteering/organisations/636/volunteers',
+      '/volunteering/organisations/636/wallet'
+    ]));
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/group-exchanges/1', status: 403 },
+      { path: '/messages/groups/33', status: 403 }
+    ]));
+    expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
+      { path: '/federation/messages/conversation/77', location: '/federation/messages' }
     ]));
   });
 
@@ -694,6 +725,8 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-listings-42-comments-renders': true,
       'module-page-feed-hashtag-timebank-renders': true,
       'module-page-feed-item-listing-42-renders': true,
+      'module-page-messages-77-renders': true,
+      'module-page-messages-new-77-renders': true,
       'module-page-jobs-90764-renders': true,
       'module-page-jobs-90764-qualified-renders': true,
       'module-page-groups-484-renders': true,
@@ -706,6 +739,11 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-groups-484-files-renders': true,
       'module-page-groups-484-manage-renders': true,
       'module-page-resources-10-comments-renders': true,
+      'module-page-volunteering-organisations-636-dashboard-renders': true,
+      'module-page-volunteering-organisations-636-manage-renders': true,
+      'module-page-volunteering-organisations-636-settings-renders': true,
+      'module-page-volunteering-organisations-636-volunteers-renders': true,
+      'module-page-volunteering-organisations-636-wallet-renders': true,
       'module-page-volunteering-accessibility-renders': true,
       'module-page-volunteering-certificates-renders': true,
       'module-page-volunteering-opportunities-create-renders': true,
@@ -763,6 +801,8 @@ describe('Laravel runtime smoke harness', () => {
       'gated-page-jobs-90764-pipeline-returns-403': true,
       'gated-page-jobs-90764-applications-returns-403': true,
       'gated-page-listings-42-analytics-returns-403': true,
+      'gated-page-group-exchanges-1-returns-403': true,
+      'gated-page-messages-groups-33-returns-403': true,
       'module-page-legal-renders': true,
       'module-page-legal-acceptable-use-renders': true,
       'module-page-legal-community-guidelines-renders': true,
@@ -793,6 +833,7 @@ describe('Laravel runtime smoke harness', () => {
       'redirect-page-events-6-recurring-edit-redirects-events-6-edit': true,
       'redirect-page-groups-484-edit-redirects-groups-484': true,
       'redirect-page-courses-42-certificate-redirects-courses-42-status-certificate-failed': true,
+      'redirect-page-federation-messages-conversation-77-redirects-federation-messages': true,
       'redirect-page-premium-manage-redirects-premium-status-no-subscription': true,
       'module-page-resources-library-renders': true,
       'module-page-resources-upload-renders': true,
@@ -810,10 +851,13 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['gated-page-jobs-90764-pipeline-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-jobs-90764-applications-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-listings-42-analytics-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-group-exchanges-1-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-messages-groups-33-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-returns-403'].status).toBe(403);
     expect(checkByName['redirect-page-events-6-recurring-edit-redirects-events-6-edit'].location).toBe('/events/6/edit');
     expect(checkByName['redirect-page-groups-484-edit-redirects-groups-484'].location).toBe('/groups/484');
     expect(checkByName['redirect-page-courses-42-certificate-redirects-courses-42-status-certificate-failed'].location).toBe('/courses/42?status=certificate-failed');
+    expect(checkByName['redirect-page-federation-messages-conversation-77-redirects-federation-messages'].location).toBe('/federation/messages');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/explore').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/messages').at(-1).cookie).toContain('token=signed-token');
@@ -824,6 +868,8 @@ describe('Laravel runtime smoke harness', () => {
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/groups/484/discussions/new').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/members/77/insights').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/feed/item/listing/42').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/messages/77').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/volunteering/organisations/636/manage').at(-1).cookie).toContain('token=signed-token');
   });
 
   it('smokes unsigned redirects for auth-required parameterised Laravel routes', async () => {

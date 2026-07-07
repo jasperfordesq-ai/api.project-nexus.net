@@ -74,12 +74,12 @@ The latest generated route matrix at this handoff reported:
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
 Focused runtime-smoke harness test: `npm test --
-tests/laravel-runtime-smoke.test.js --runInBand` passed with `14/14` tests
+tests/laravel-runtime-smoke.test.js --runInBand` passed with `15/15` tests
 after red steps for the missing harness, stale Acme defaults, missing public
 module-page checks, missing signed module-page checks, too-short default
 timeout for slower Laravel-backed signed pages, chunked fallback support, and
-the missing default real-fixture parameterised detail, secondary outcome, and
-listing/member/feed/course outcome scopes.
+the missing default real-fixture parameterised detail, secondary outcome,
+listing/member/feed/course, and message/volunteering-owner outcome scopes.
 
 Live local smoke result on 2026-07-07: direct Laravel login succeeds for the
 E2E fixture account when `X-Tenant-ID: 2` or `X-Tenant-Slug: hour-timebank` is
@@ -188,19 +188,26 @@ page sweep rather than targeted-only evidence. The default scope also covers
 `/groups/484/discussions/new`, `/jobs/90764/qualified`,
 `/members/77/insights`, `/listings/42/report`,
 `/listings/42/exchange-request`, `/listings/42/comments`,
-`/feed/hashtag/timebank`, and `/feed/item/listing/42` as signed 2xx pages;
-owner-only job/listing checks for `/jobs/90764/edit`,
+`/feed/hashtag/timebank`, `/feed/item/listing/42`, `/messages/77`,
+`/messages/new/77`, `/volunteering/organisations/636/dashboard`,
+`/volunteering/organisations/636/manage`,
+`/volunteering/organisations/636/settings`,
+`/volunteering/organisations/636/volunteers`, and
+`/volunteering/organisations/636/wallet` as signed 2xx pages; owner-only
+job/listing/message/group-exchange checks for `/jobs/90764/edit`,
 `/jobs/90764/analytics`, `/jobs/90764/pipeline`,
-`/jobs/90764/applications`, and `/listings/42/analytics` as signed `403`
-responses; plus signed redirects from `/events/6/recurring-edit` to
-`/events/6/edit`, `/groups/484/edit` to `/groups/484`, and
-`/courses/42/certificate` to `/courses/42?status=certificate-failed`. A
-targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:5333`, started
-with `TENANT_ID=2`, passed on 2026-07-07: `14/14` checks, `0` failures. A full
+`/jobs/90764/applications`, `/listings/42/analytics`,
+`/group-exchanges/1`, and `/messages/groups/33` as signed `403` responses;
+plus signed redirects from `/events/6/recurring-edit` to `/events/6/edit`,
+`/groups/484/edit` to `/groups/484`, `/courses/42/certificate` to
+`/courses/42?status=certificate-failed`, and
+`/federation/messages/conversation/77` to `/federation/messages`. A targeted
+live run against `WEB_UK_BASE_URL=http://127.0.0.1:5335`, started with
+`TENANT_ID=2`, passed on 2026-07-07: `16/16` checks, `0` failures. A full
 default Laravel-backed run against a temporary web-uk process at
-`WEB_UK_BASE_URL=http://127.0.0.1:5334`, started with `TENANT_ID=2`, passed on
-2026-07-07: `215/215` checks, `0` failures, `187` module-page checks, 8
-unsigned auth-required redirect checks, 8 gated-status checks, and 6 signed
+`WEB_UK_BASE_URL=http://127.0.0.1:5335`, started with `TENANT_ID=2`, passed on
+2026-07-07: `225/225` checks, `0` failures, `194` module-page checks, 8
+unsigned auth-required redirect checks, 10 gated-status checks, and 7 signed
 redirect checks; `npm run smoke:laravel` exited `0`.
 `/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to

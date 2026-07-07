@@ -138,19 +138,26 @@ Those 18 stable fixture-backed pages are now part of the default smoke scope.
 The default scope also covers `/groups/484/discussions/new`,
 `/jobs/90764/qualified`, `/members/77/insights`, `/listings/42/report`,
 `/listings/42/exchange-request`, `/listings/42/comments`,
-`/feed/hashtag/timebank`, and `/feed/item/listing/42` as signed 2xx pages;
-owner-only job/listing checks for `/jobs/90764/edit`,
+`/feed/hashtag/timebank`, `/feed/item/listing/42`, `/messages/77`,
+`/messages/new/77`, `/volunteering/organisations/636/dashboard`,
+`/volunteering/organisations/636/manage`,
+`/volunteering/organisations/636/settings`,
+`/volunteering/organisations/636/volunteers`, and
+`/volunteering/organisations/636/wallet` as signed 2xx pages; owner-only
+job/listing/message/group-exchange checks for `/jobs/90764/edit`,
 `/jobs/90764/analytics`, `/jobs/90764/pipeline`, `/jobs/90764/applications`,
-and `/listings/42/analytics` as signed `403` responses; plus signed redirects
-from `/events/6/recurring-edit` to `/events/6/edit`, `/groups/484/edit` to
-`/groups/484`, and `/courses/42/certificate` to
-`/courses/42?status=certificate-failed`. A targeted live run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5333`, started with `TENANT_ID=2`, passed on
-2026-07-07: `14/14` checks, `0` failures. A full default Laravel-backed run
-against a temporary web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:5334`,
-started with `TENANT_ID=2`, passed on 2026-07-07: `215/215` checks, `0`
-failures, `187` module-page checks, 8 unsigned auth-required redirect checks, 8
-gated-status checks, and 6 signed redirect checks; `npm run smoke:laravel`
+`/listings/42/analytics`, `/group-exchanges/1`, and `/messages/groups/33` as
+signed `403` responses; plus signed redirects from `/events/6/recurring-edit`
+to `/events/6/edit`, `/groups/484/edit` to `/groups/484`,
+`/courses/42/certificate` to `/courses/42?status=certificate-failed`, and
+`/federation/messages/conversation/77` to `/federation/messages`. A targeted
+live run against `WEB_UK_BASE_URL=http://127.0.0.1:5335`, started with
+`TENANT_ID=2`, passed on 2026-07-07: `16/16` checks, `0` failures. A full
+default Laravel-backed run against a temporary web-uk process at
+`WEB_UK_BASE_URL=http://127.0.0.1:5335`, started with `TENANT_ID=2`, passed on
+2026-07-07: `225/225` checks, `0` failures, `194` module-page checks, 8
+unsigned auth-required redirect checks, 10 gated-status checks, and 7 signed
+redirect checks; `npm run smoke:laravel`
 exited `0`.
 
 ## Header And Footer Contract
