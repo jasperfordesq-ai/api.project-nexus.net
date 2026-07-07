@@ -13358,6 +13358,122 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
   });
 
+  it('renders the Laravel group announcements page for signed-in group admins', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: {
+          role: 'admin'
+        }
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 9,
+            title: 'Autumn rota',
+            content: 'Please confirm your October availability.',
+            is_pinned: true,
+            is_expired: false,
+            author: {
+              name: 'Avery Green'
+            },
+            created_at: '2026-09-14T00:00:00Z'
+          }
+        ]
+      }
+    });
+
+    const unsigned = await request(app).get('/groups/42/announcements');
+    const signed = await request(app)
+      .get('/groups/42/announcements?status=ann-created')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to group');
+    expect(signed.text).toContain('Announcements for Garden Helpers');
+    expect(signed.text).toContain('Announcements');
+    expect(signed.text).toContain('The announcement has been posted.');
+    expect(signed.text).toContain('Autumn rota');
+    expect(signed.text).toContain('Pinned');
+    expect(signed.text).toContain('Please confirm your October availability.');
+    expect(signed.text).toContain('Posted by Avery Green on 14 September 2026');
+    expect(signed.text).toContain('href="/groups/42/announcements/9/edit"');
+    expect(signed.text).toContain('Save changes');
+    expect(signed.text).toContain('method="post" action="/groups/42/announcements/9/pin"');
+    expect(signed.text).toContain('name="is_pinned" value="0"');
+    expect(signed.text).toContain('Unpin');
+    expect(signed.text).toContain('method="post" action="/groups/42/announcements/9/delete"');
+    expect(signed.text).toContain('Delete announcement');
+    expect(signed.text).toContain('Post a new announcement');
+    expect(signed.text).toContain('A short summary of the announcement (max 255 characters).');
+    expect(signed.text).toContain('The full text of the announcement.');
+    expect(signed.text).toContain('id="ann-title" name="title" type="text"');
+    expect(signed.text).toContain('id="ann-content" name="content"');
+    expect(signed.text).toContain('id="ann-is-pinned" name="is_pinned" type="checkbox" value="1"');
+    expect(signed.text).toContain('id="ann-expires-at" name="expires_at" type="date"');
+    expect(signed.text).toContain('method="post" action="/groups/42/announcements"');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(1);
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/announcements');
+  });
+
+  it('renders the Laravel group announcement edit page for signed-in group admins', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: {
+          role: 'admin'
+        }
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 9,
+        title: 'Autumn rota',
+        content: 'Please confirm your October availability.',
+        is_pinned: true,
+        expires_at: '2026-10-31T00:00:00Z'
+      }
+    });
+
+    const unsigned = await request(app).get('/groups/42/announcements/9/edit');
+    const signed = await request(app)
+      .get('/groups/42/announcements/9/edit?status=ann-title-required')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to announcements');
+    expect(signed.text).toContain('Garden Helpers');
+    expect(signed.text).toContain('Edit announcement');
+    expect(signed.text).toContain('Enter a title for the announcement.');
+    expect(signed.text).toContain('id="edit-ann-title" name="title" type="text"');
+    expect(signed.text).toContain('value="Autumn rota"');
+    expect(signed.text).toContain('id="edit-ann-content" name="content"');
+    expect(signed.text).toContain('Please confirm your October availability.');
+    expect(signed.text).toContain('id="edit-ann-is-pinned" name="is_pinned" type="checkbox" value="1" checked');
+    expect(signed.text).toContain('id="edit-ann-expires-at" name="expires_at" type="date"');
+    expect(signed.text).toContain('value="2026-10-31"');
+    expect(signed.text).toContain('method="post" action="/groups/42/announcements/9/edit"');
+    expect(signed.text).toContain('Save changes');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(1);
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/announcements/9');
+  });
+
   it('renders the Laravel group files page for signed-in group members', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockReset().mockResolvedValueOnce({

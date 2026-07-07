@@ -1,0 +1,128 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+
+{% extends "layouts/base.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+
+{% block mainContent %}
+  <a class="govuk-back-link" href="/groups/{{ group.id }}">Back to group</a>
+
+  <span class="govuk-caption-xl">Announcements for {{ group.name }}</span>
+  <h1 class="govuk-heading-xl">Announcements</h1>
+
+  {% if statusBanner and statusBanner.type == "success" %}
+    {{ govukNotificationBanner({
+      type: "success",
+      titleText: statusBanner.title,
+      text: statusBanner.message
+    }) }}
+  {% elif statusBanner and statusBanner.type == "error" %}
+    {{ govukErrorSummary({
+      titleText: statusBanner.title,
+      errorList: [
+        {
+          text: statusBanner.message,
+          href: statusBanner.href or "#ann-title"
+        }
+      ]
+    }) }}
+  {% endif %}
+
+  {% if not announcements.length %}
+    <p class="govuk-body">There are no announcements for this group yet.</p>
+  {% else %}
+    {% for announcement in announcements %}
+      <div class="govuk-summary-card">
+        <div class="govuk-summary-card__title-wrapper">
+          <h2 class="govuk-summary-card__title">
+            {{ announcement.title }}
+            {% if announcement.isPinned %}
+              <strong class="govuk-tag govuk-tag--blue">Pinned</strong>
+            {% endif %}
+            {% if announcement.isExpired %}
+              <strong class="govuk-tag govuk-tag--grey">Expired</strong>
+            {% endif %}
+          </h2>
+          {% if isAdmin %}
+            <ul class="govuk-summary-card__actions">
+              <li class="govuk-summary-card__action">
+                <a class="govuk-link" href="/groups/{{ group.id }}/announcements/{{ announcement.id }}/edit" aria-label="Edit this announcement">Save changes</a>
+              </li>
+              <li class="govuk-summary-card__action">
+                <form method="post" action="/groups/{{ group.id }}/announcements/{{ announcement.id }}/pin" style="display:inline">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <input type="hidden" name="is_pinned" value="{% if announcement.isPinned %}0{% else %}1{% endif %}">
+                  <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="{% if announcement.isPinned %}Unpin this announcement{% else %}Pin this announcement{% endif %}">
+                    {% if announcement.isPinned %}Unpin{% else %}Pin{% endif %}
+                  </button>
+                </form>
+              </li>
+              <li class="govuk-summary-card__action">
+                <form method="post" action="/groups/{{ group.id }}/announcements/{{ announcement.id }}/delete" style="display:inline">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <button type="submit" class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="Delete this announcement">Delete announcement</button>
+                </form>
+              </li>
+            </ul>
+          {% endif %}
+        </div>
+        <div class="govuk-summary-card__content">
+          <p class="govuk-body">{{ announcement.content }}</p>
+          {% if announcement.authorName or announcement.postedAtLabel %}
+            <p class="govuk-body-s govuk-!-colour-secondary">Posted by {{ announcement.authorName }} on {{ announcement.postedAtLabel }}</p>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if isAdmin %}
+    <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+    <h2 class="govuk-heading-l">Post a new announcement</h2>
+
+    <form method="post" action="/groups/{{ group.id }}/announcements" novalidate>
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+      <div class="govuk-form-group{% if statusBanner and statusBanner.href == '#ann-title' %} govuk-form-group--error{% endif %}">
+        <label class="govuk-label govuk-label--s" for="ann-title">Title</label>
+        <div id="ann-title-hint" class="govuk-hint">A short summary of the announcement (max 255 characters).</div>
+        {% if statusBanner and statusBanner.href == '#ann-title' %}
+          <p class="govuk-error-message" id="ann-title-error"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+        {% endif %}
+        <input class="govuk-input{% if statusBanner and statusBanner.href == '#ann-title' %} govuk-input--error{% endif %}" id="ann-title" name="title" type="text" maxlength="255" aria-describedby="ann-title-hint{% if statusBanner and statusBanner.href == '#ann-title' %} ann-title-error{% endif %}">
+      </div>
+
+      <div class="govuk-form-group{% if statusBanner and statusBanner.href == '#ann-content' %} govuk-form-group--error{% endif %}">
+        <label class="govuk-label govuk-label--s" for="ann-content">Content</label>
+        <div id="ann-content-hint" class="govuk-hint">The full text of the announcement.</div>
+        {% if statusBanner and statusBanner.href == '#ann-content' %}
+          <p class="govuk-error-message" id="ann-content-error"><span class="govuk-visually-hidden">Error:</span> {{ statusBanner.message }}</p>
+        {% endif %}
+        <textarea class="govuk-textarea{% if statusBanner and statusBanner.href == '#ann-content' %} govuk-textarea--error{% endif %}" id="ann-content" name="content" rows="5" aria-describedby="ann-content-hint{% if statusBanner and statusBanner.href == '#ann-content' %} ann-content-error{% endif %}"></textarea>
+      </div>
+
+      <div class="govuk-form-group">
+        <fieldset class="govuk-fieldset">
+          <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="ann-is-pinned" name="is_pinned" type="checkbox" value="1" aria-describedby="ann-is-pinned-hint">
+              <label class="govuk-label govuk-checkboxes__label" for="ann-is-pinned">Pin this announcement</label>
+              <div id="ann-is-pinned-hint" class="govuk-hint govuk-checkboxes__hint">Pinned announcements appear at the top of the list.</div>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="govuk-form-group">
+        <label class="govuk-label govuk-label--s" for="ann-expires-at">Expiry date (optional)</label>
+        <div id="ann-expires-at-hint" class="govuk-hint">Leave blank for no expiry. Format: YYYY-MM-DD.</div>
+        <input class="govuk-input govuk-input--width-10" id="ann-expires-at" name="expires_at" type="date" aria-describedby="ann-expires-at-hint">
+      </div>
+
+      <button type="submit" class="govuk-button" data-module="govuk-button">Post announcement</button>
+    </form>
+  {% endif %}
+{% endblock %}

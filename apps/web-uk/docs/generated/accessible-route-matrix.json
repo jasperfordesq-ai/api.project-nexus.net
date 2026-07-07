@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T09:27:09.968Z",
+    "generatedAt": "2026-07-07T09:36:07.172Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -5505,8 +5505,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/groups/{param}/announcements",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "groups/announcements",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js"
     },
     {
       "method": "GET",
@@ -5524,8 +5524,8 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/groups/{param}/announcements/{param}/edit",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "groups/announcement-edit",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\groups.js"
     },
     {
       "method": "GET",

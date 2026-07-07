@@ -63,6 +63,23 @@ const GROUP_IMAGE_ERROR_MESSAGES = {
   'image-missing': 'Choose an image to upload.',
   'image-failed': 'The image could not be uploaded. Please try again.'
 };
+const GROUP_ANNOUNCEMENT_SUCCESS_MESSAGES = {
+  'ann-created': 'The announcement has been posted.',
+  'ann-updated': 'The announcement has been updated.',
+  'ann-deleted': 'The announcement has been deleted.',
+  'ann-pinned': 'The announcement has been pinned.',
+  'ann-unpinned': 'The announcement has been unpinned.'
+};
+const GROUP_ANNOUNCEMENT_ERROR_MESSAGES = {
+  'ann-create-failed': 'The announcement could not be posted. Please try again.',
+  'ann-update-failed': 'The announcement could not be updated. Please try again.',
+  'ann-delete-failed': 'The announcement could not be deleted. Please try again.',
+  'ann-pin-failed': 'The pin status could not be changed. Please try again.',
+  'ann-forbidden': 'You do not have permission to manage announcements for this group.',
+  'ann-not-found': 'That announcement could not be found.',
+  'ann-title-required': 'Enter a title for the announcement.',
+  'ann-content-required': 'Enter content for the announcement.'
+};
 const GROUP_FILE_SUCCESS_MESSAGES = {
   'file-uploaded': 'The file has been uploaded.',
   'file-deleted': 'The file has been deleted.'
@@ -184,6 +201,14 @@ function dateLabel(value) {
   });
 }
 
+function dateInputValue(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
 function normalizeGroup(item, fallbackId = null) {
   const raw = item && typeof item === 'object' ? item : {};
   return {
@@ -192,6 +217,21 @@ function normalizeGroup(item, fallbackId = null) {
     name: trimmed(raw.name || raw.title) || 'Group',
     imageUrl: trimmed(raw.image_url || raw.imageUrl || raw.avatar_url || raw.avatarUrl || ''),
     coverImageUrl: trimmed(raw.cover_image_url || raw.coverImageUrl || raw.cover_url || raw.coverUrl || '')
+  };
+}
+
+function normalizeAnnouncement(item) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const author = raw.author && typeof raw.author === 'object' ? raw.author : {};
+  return {
+    id: positiveInteger(raw.id),
+    title: trimmed(raw.title || '') || 'Announcement',
+    content: trimmed(raw.content || ''),
+    isPinned: checked(raw.is_pinned ?? raw.isPinned),
+    isExpired: checked(raw.is_expired ?? raw.isExpired),
+    authorName: trimmed(author.name || raw.author_name || raw.authorName || ''),
+    postedAtLabel: dateLabel(raw.created_at || raw.createdAt || raw.posted_at || raw.postedAt),
+    expiresAtInput: dateInputValue(raw.expires_at || raw.expiresAt)
   };
 }
 
@@ -305,6 +345,37 @@ function imageStatus(status) {
         type: 'error',
         title: 'There is a problem',
         message: GROUP_IMAGE_ERROR_MESSAGES[value]
+      }
+    };
+  }
+
+  return { statusBanner: null };
+}
+
+function announcementStatus(status) {
+  const value = trimmed(status);
+  if (Object.prototype.hasOwnProperty.call(GROUP_ANNOUNCEMENT_SUCCESS_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'success',
+        title: 'Success',
+        message: GROUP_ANNOUNCEMENT_SUCCESS_MESSAGES[value]
+      }
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(GROUP_ANNOUNCEMENT_ERROR_MESSAGES, value)) {
+    const href = value === 'ann-title-required'
+      ? '#ann-title'
+      : value === 'ann-content-required'
+        ? '#ann-content'
+        : null;
+    return {
+      statusBanner: {
+        type: 'error',
+        title: 'There is a problem',
+        message: GROUP_ANNOUNCEMENT_ERROR_MESSAGES[value],
+        href
       }
     };
   }
@@ -623,6 +694,51 @@ router.get('/:id(\\d+)/image', asyncRoute(async (req, res) => {
     ...imageStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
+
+router.get('/:id(\\d+)/announcements', asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const [groupResult, announcementsResult] = await Promise.all([
+    getGroup(req.token, id),
+    callGroup(req.token, 'GET', `/${id}/announcements`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: { items: [] } };
+    })
+  ]);
+
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const announcements = collectionFrom(announcementsResult)
+    .map(normalizeAnnouncement)
+    .filter((announcement) => announcement.id !== null);
+
+  return res.render('groups/announcements', {
+    title: 'Announcements',
+    activeNav: 'explore',
+    group,
+    announcements,
+    isAdmin: isGroupAdmin(group),
+    ...announcementStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
+
+router.get('/:id(\\d+)/announcements/:annId(\\d+)/edit', asyncRoute(async (req, res) => {
+  const { id, annId } = req.params;
+  const [groupResult, announcementResult] = await Promise.all([
+    getGroup(req.token, id),
+    callGroup(req.token, 'GET', `/${id}/announcements/${annId}`)
+  ]);
+
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const announcementData = dataFrom(announcementResult)?.announcement || dataFrom(announcementResult);
+  const announcement = normalizeAnnouncement(announcementData);
+
+  return res.render('groups/announcement-edit', {
+    title: 'Edit announcement',
+    activeNav: 'explore',
+    group,
+    announcement,
+    ...announcementStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Announcement not found' }));
 
 router.get('/:id(\\d+)/files', asyncRoute(async (req, res) => {
   const id = req.params.id;
