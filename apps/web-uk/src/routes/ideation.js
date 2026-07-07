@@ -160,6 +160,53 @@ function normalizeCampaign(item) {
   };
 }
 
+function outcomeStatusDetails(status) {
+  switch (trimmed(status).toLowerCase()) {
+    case 'implemented':
+      return { label: 'Implemented', className: 'govuk-tag--green' };
+    case 'in_progress':
+      return { label: 'In progress', className: 'govuk-tag--blue' };
+    case 'abandoned':
+      return { label: 'Abandoned', className: 'govuk-tag--red' };
+    default:
+      return { label: 'Not started', className: 'govuk-tag--grey' };
+  }
+}
+
+function dashboardFrom(result) {
+  const data = dataFrom(result);
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) return data.data;
+    return data;
+  }
+  return {};
+}
+
+function normalizeStats(stats) {
+  const row = stats && typeof stats === 'object' ? stats : {};
+  return {
+    total: Number(row.total ?? 0) || 0,
+    implemented: Number(row.implemented ?? 0) || 0,
+    inProgress: Number(row.in_progress ?? row.inProgress ?? 0) || 0,
+    notStarted: Number(row.not_started ?? row.notStarted ?? 0) || 0,
+    abandoned: Number(row.abandoned ?? 0) || 0
+  };
+}
+
+function normalizeOutcome(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  const challengeId = positiveInteger(row.challenge_id ?? row.challengeId);
+  const status = outcomeStatusDetails(row.status);
+  return {
+    ...row,
+    challengeId,
+    challengeTitle: trimmed(row.challenge_title ?? row.challengeTitle) || 'Challenges',
+    ideaTitle: trimmed(row.idea_title ?? row.ideaTitle) || 'Not set',
+    statusLabel: status.label,
+    statusClass: status.className
+  };
+}
+
 function normalizeIdea(item) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
@@ -251,6 +298,24 @@ router.get('/campaigns', asyncRoute(async (req, res) => {
     status,
     successMessage: campaignStatusMessage(status),
     errorMessage: campaignErrorMessage(status)
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/outcomes', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const result = await callIdeationApi(token, 'GET', '/ideation-outcomes/dashboard');
+  const dashboard = dashboardFrom(result);
+  const outcomes = collectionFrom(dashboard.outcomes)
+    .map(normalizeOutcome)
+    .filter((outcome) => outcome.challengeId !== null);
+
+  return res.render('ideation/outcomes', {
+    title: 'Outcomes',
+    activeNav: 'explore',
+    stats: normalizeStats(dashboard.stats),
+    outcomes
   });
 }, { redirectOn401: loginRedirect() }));
 

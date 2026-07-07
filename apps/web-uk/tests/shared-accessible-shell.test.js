@@ -10409,6 +10409,7 @@ describe('shared accessible frontend shell', () => {
     const detail = await request(app).get('/ideation/7');
     const tags = await request(app).get('/ideation/tags');
     const campaigns = await request(app).get('/ideation/campaigns');
+    const outcomes = await request(app).get('/ideation/outcomes');
 
     expect(index.status).toBe(302);
     expect(index.headers.location).toBe('/login?status=auth-required');
@@ -10418,6 +10419,8 @@ describe('shared accessible frontend shell', () => {
     expect(tags.headers.location).toBe('/login?status=auth-required');
     expect(campaigns.status).toBe(302);
     expect(campaigns.headers.location).toBe('/login?status=auth-required');
+    expect(outcomes.status).toBe(302);
+    expect(outcomes.headers.location).toBe('/login?status=auth-required');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 
@@ -10615,6 +10618,59 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('1 challenge');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-campaigns?per_page=50');
+  });
+
+  it('renders the Laravel-backed ideation outcomes page', async () => {
+    const api = require('../src/lib/api');
+    api.callIdeationApi.mockResolvedValueOnce({
+      data: {
+        data: {
+          stats: {
+            total: 4,
+            implemented: 2,
+            in_progress: 1,
+            not_started: 1,
+            abandoned: 0
+          },
+          outcomes: [
+            {
+              challenge_id: 7,
+              challenge_title: 'Make the park safer',
+              idea_title: 'Add solar lighting',
+              status: 'implemented'
+            },
+            {
+              challenge_id: 8,
+              challenge_title: 'Winter warm rooms',
+              status: 'in_progress'
+            }
+          ]
+        }
+      }
+    });
+
+    const response = await request(app)
+      .get('/ideation/outcomes')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Outcomes');
+    expect(response.text).toContain('Track what happened to the winning ideas after each challenge closed.');
+    expect(response.text).toContain('Ideation');
+    expect(response.text).toContain('Challenges');
+    expect(response.text).toContain('Campaigns');
+    expect(response.text).toContain('Total outcomes');
+    expect(response.text).toContain('Implemented');
+    expect(response.text).toContain('In progress');
+    expect(response.text).toContain('Not started');
+    expect(response.text).toContain('Abandoned');
+    expect(response.text).toContain('Make the park safer');
+    expect(response.text).toContain('Add solar lighting');
+    expect(response.text).toContain('href="/ideation/7"');
+    expect(response.text).toContain('Winter warm rooms');
+    expect(response.text).toContain('Not set');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-outcomes/dashboard');
   });
 
   it('submits Laravel ideation challenge action aliases', async () => {

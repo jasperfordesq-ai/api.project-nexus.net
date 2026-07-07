@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T02:45:50.171Z",
+    "generatedAt": "2026-07-07T02:50:33.512Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -6417,8 +6417,8 @@
       "gates": "",
       "apiNeeds": "service:ChallengeOutcomeService",
       "webUkPath": "/ideation/outcomes",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "ideation/outcomes",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\ideation.js"
     },
     {
       "method": "GET",

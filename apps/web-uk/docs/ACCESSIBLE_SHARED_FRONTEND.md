@@ -369,24 +369,25 @@ partial: RSS/media rendering, author configuration gates, moderation state,
 localization, runtime smoke tests, and ASP.NET backend compatibility are not
 certified.
 
-The `/ideation`, `/ideation/{id}`, `/ideation/tags`, and
-`/ideation/campaigns` GET pages are now partial Laravel-backed candidates for
-the Blade ideation challenge list, detail, tag-browser, and campaigns flows.
-Unsigned visitors redirect to
+The `/ideation`, `/ideation/{id}`, `/ideation/tags`, `/ideation/campaigns`,
+and `/ideation/outcomes` GET pages are now partial Laravel-backed candidates
+for the Blade ideation challenge list, detail, tag-browser, campaigns, and
+outcomes dashboard flows. Unsigned visitors redirect to
 `/login?status=auth-required`; signed GET requests call Laravel
 `/api/v2/ideation-challenges`, `/api/v2/ideation-challenges/{id}`,
 `/api/v2/ideation-challenges/{id}/ideas?limit=30&sort=votes`, and
 `/api/v2/ideation-tags/popular`, plus `/api/v2/ideation-campaigns?per_page=50`,
-then render Blade-style search/status filters, challenge cards, status tags,
-idea counts, success/error banners, challenge metadata, prize inset, idea
-cards, vote forms, the submit-idea form, popular tag links, selected-tag
-challenge matches, tag empty states, campaign tabs, campaign status banners,
-campaign cards, challenge counts, and creator metadata.
+and `/api/v2/ideation-outcomes/dashboard`, then render Blade-style search/status
+filters, challenge cards, status tags, idea counts, success/error banners,
+challenge metadata, prize inset, idea cards, vote forms, the submit-idea form,
+popular tag links, selected-tag challenge matches, tag empty states, campaign
+tabs, campaign status banners, campaign cards, challenge counts, creator
+metadata, outcome stats, and outcome tables.
 Existing POST aliases still call Laravel v2 ideation
 APIs for challenge create/update/status/favorite, duplicate, delete, campaign
 linking, outcome updates, idea submit/draft/comment/vote/status/media/
 convert-to-group/delete actions, and campaign create/update/delete plus
-challenge unlinking. This remains partial: campaign detail/outcomes/new/manage/
+challenge unlinking. This remains partial: campaign detail/new/manage/
 edit/drafts/idea detail GET pages, admin authorization depth, multipart/media
 upload proxying, team conversion runtime behavior, tenant/feature gates,
 localization, runtime smoke tests, and ASP.NET backend compatibility are not
