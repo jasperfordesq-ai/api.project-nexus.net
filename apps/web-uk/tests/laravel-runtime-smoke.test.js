@@ -250,6 +250,12 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/ideation/23/outcome',
       '/polls/20',
       '/polls/20/rank',
+      '/marketplace/267',
+      '/marketplace/267/buy',
+      '/marketplace/267/offer',
+      '/marketplace/267/report',
+      '/marketplace/267/edit',
+      '/blog/90001/likers/1',
       '/volunteering/accessibility',
       '/volunteering/certificates',
       '/volunteering/opportunities/create',
@@ -638,6 +644,19 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/courses/1/certificate', location: '/courses/1?status=certificate-failed' },
       { path: '/jobs/90764/applications/export.csv', location: '/jobs/90764/applications?status=export-failed' },
       { path: '/onboarding/profile', location: '/dashboard' }
+    ]));
+  });
+
+  it('includes stable marketplace action and blog liker fixture outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/marketplace/267',
+      '/marketplace/267/buy',
+      '/marketplace/267/offer',
+      '/marketplace/267/report',
+      '/marketplace/267/edit',
+      '/blog/90001/likers/1'
     ]));
   });
 

@@ -197,6 +197,17 @@ redirect checks, 17 gated-status checks, and 14 signed redirect checks, plus the
 `SMOKE_MODULE_PAGE_CHUNK=N/4` against the same temporary process: all four
 chunks passed on 2026-07-07 with `401` repeated checks, `0` failures, and `221`
 collective module-page checks.
+The default scope now additionally covers `/marketplace/267`,
+`/marketplace/267/buy`, `/marketplace/267/offer`, `/marketplace/267/report`,
+`/marketplace/267/edit`, and `/blog/90001/likers/1` as signed 2xx routes. A
+targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:5338`, started with
+`TENANT_ID=2`, passed on 2026-07-07: `12/12` checks, `0` failures. The expanded
+default scope now contains `272` checks: `227` module-page checks, 8 unsigned
+auth-required redirect checks, 17 gated-status checks, and 14 signed redirect
+checks, plus the 6 auth/health checks. The expanded default scope was
+recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4` against the same temporary
+process: all four chunks passed on 2026-07-07 with `407` repeated checks, `0`
+failures, and `227` collective module-page checks.
 
 ## Current Page Candidates
 
