@@ -1875,6 +1875,91 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style competitive leaderboard page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/leaderboard?type=nexus_score&period=month&limit=40') {
+        return {
+          data: [
+            {
+              position: 1,
+              user: { id: 77, name: 'Avery Stone' },
+              score: 89,
+              is_current_user: true
+            },
+            {
+              position: 2,
+              user: { id: 88, name: 'Morgan Lee' },
+              score: 72,
+              is_current_user: false
+            }
+          ],
+          meta: {
+            type: 'nexus_score',
+            period: 'month',
+            your_position: 1,
+            total_entries: 21,
+            has_more: true
+          }
+        };
+      }
+
+      if (token === 'test-token' && method === 'GET' && pathValue === '/seasons/current') {
+        return {
+          data: {
+            season: { id: 5, name: 'July Sprint' },
+            days_remaining: 3,
+            total_participants: 14,
+            user_data: { xp_earned: 1250 }
+          }
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/leaderboard/competitive');
+    const signed = await request(app)
+      .get('/leaderboard/competitive?type=nexus_score&period=month&limit=40')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/leaderboard?type=nexus_score&period=month&limit=40');
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/seasons/current');
+    expect(signed.text).toContain('href="/leaderboard"');
+    expect(signed.text).toContain('Back to leaderboard');
+    expect(signed.text).toContain('Leaderboard at Project NEXUS Accessible');
+    expect(signed.text).toContain('Competitive leaderboard');
+    expect(signed.text).toContain('See how members rank across experience points, volunteer hours, credits earned and NEXUS score.');
+    expect(signed.text).toContain('July Sprint');
+    expect(signed.text).toContain('3 days remaining');
+    expect(signed.text).toContain('14 participants');
+    expect(signed.text).toContain('Your season XP: 1,250');
+    expect(signed.text).toContain('View all seasons');
+    expect(signed.text).toContain('Filter the leaderboard');
+    expect(signed.text).toContain('Metric');
+    expect(signed.text).toContain('<option value="nexus_score" selected>NEXUS score</option>');
+    expect(signed.text).toContain('Period');
+    expect(signed.text).toContain('<option value="month" selected>This month</option>');
+    expect(signed.text).toContain('Update leaderboard');
+    expect(signed.text).toContain('Your rank: 1');
+    expect(signed.text).toContain('Showing 2 members');
+    expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain('href="/members/77"');
+    expect(signed.text).toContain('You');
+    expect(signed.text).toContain('89');
+    expect(signed.text).toContain('Morgan Lee');
+    expect(signed.text).toContain('Load more members');
+    expect(signed.text).toContain('/leaderboard/competitive?type=nexus_score&period=month&limit=60#leaderboard-end');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
