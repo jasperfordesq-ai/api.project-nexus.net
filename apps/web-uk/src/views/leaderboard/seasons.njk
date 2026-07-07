@@ -1,0 +1,125 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/leaderboard">Back to leaderboard</a>
+
+  <span class="govuk-caption-xl">Leaderboard at {{ communityName }}</span>
+  <h1 class="govuk-heading-xl">Leaderboard seasons</h1>
+  <p class="govuk-body-l">Each season resets the leaderboard so everyone has a fresh chance to compete.</p>
+
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Leaderboard">
+    <h2 class="govuk-tabs__title">Leaderboard</h2>
+    <ul class="govuk-tabs__list">
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/leaderboard/competitive">Competitive</a>
+      </li>
+      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+        <a class="govuk-tabs__tab" href="/leaderboard/seasons" aria-current="page">Seasons</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/leaderboard/journey">My journey</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/leaderboard/spotlight">Member spotlight</a>
+      </li>
+    </ul>
+  </nav>
+
+  <h2 class="govuk-heading-l">Current season</h2>
+  {% if not seasons.current.hasCurrent %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">There is no active season at the moment.</p>
+    </div>
+  {% else %}
+    <article class="nexus-alpha-card govuk-!-margin-bottom-6">
+      <div class="nexus-alpha-module-row">
+        <h3 class="govuk-heading-m govuk-!-margin-bottom-1">{{ seasons.current.name }}</h3>
+        {% if seasons.current.endingSoon %}
+          <strong class="govuk-tag govuk-tag--orange">Ending soon</strong>
+        {% endif %}
+      </div>
+      <p class="govuk-body-s nexus-alpha-meta">
+        {% if seasons.current.dateRange %}{{ seasons.current.dateRange }} &middot; {% endif %}
+        {{ seasons.current.daysRemainingLabel }} &middot; {{ seasons.current.participantsLabel }}
+      </p>
+
+      {% if seasons.current.hasUserData %}
+        <dl class="govuk-summary-list govuk-!-margin-bottom-2">
+          {% if seasons.current.hasUserRank %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Your rank:</dt>
+              <dd class="govuk-summary-list__value">{{ seasons.current.userRank }}</dd>
+            </div>
+          {% endif %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Season XP</dt>
+            <dd class="govuk-summary-list__value">{{ seasons.current.userXpLabel }}</dd>
+          </div>
+        </dl>
+      {% endif %}
+
+      <h4 class="govuk-heading-s govuk-!-margin-bottom-1">Season rewards</h4>
+      {% if seasons.current.rewards.length %}
+        <ul class="govuk-list govuk-list--bullet">
+          {% for reward in seasons.current.rewards %}
+            <li>{{ reward.rankLabel }} - {{ reward.rewardLabel }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="govuk-body-s nexus-alpha-meta">No rewards have been set for this season.</p>
+      {% endif %}
+
+      {% if seasons.current.topMembers.length %}
+        <h4 class="govuk-heading-s govuk-!-margin-top-4 govuk-!-margin-bottom-1">Season leaders</h4>
+        <table class="govuk-table">
+          <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Season leaders</caption>
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">Rank</th>
+              <th scope="col" class="govuk-table__header">Member</th>
+              <th scope="col" class="govuk-table__header govuk-table__header--numeric">Season XP</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for member in seasons.current.topMembers %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell govuk-table__cell--numeric">{{ member.rank }}</td>
+                <td class="govuk-table__cell">{{ member.name }}</td>
+                <td class="govuk-table__cell govuk-table__cell--numeric">{{ member.xpLabel }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </article>
+  {% endif %}
+
+  <h2 class="govuk-heading-l govuk-!-margin-top-7">Past seasons</h2>
+  {% if seasons.history.length %}
+    <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Past seasons</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Season</th>
+          <th scope="col" class="govuk-table__header">Period</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for season in seasons.history %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">{{ season.name }}</td>
+            <td class="govuk-table__cell">{{ season.dateRange }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">There are no past seasons yet.</p>
+    </div>
+  {% endif %}
+{% endblock %}

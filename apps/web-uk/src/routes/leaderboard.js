@@ -96,6 +96,19 @@ function formatDecimal(value) {
   });
 }
 
+function formatDateLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Europe/London'
+  }).format(date);
+}
+
 function formatScore(value, type) {
   if (type === 'volunteer_hours') {
     return formatDecimal(value);
@@ -167,6 +180,28 @@ function participantsLabel(count) {
   return `${formatInteger(count)} participants`;
 }
 
+function dateRangeLabel(startDate, endDate) {
+  const start = formatDateLabel(startDate);
+  const end = formatDateLabel(endDate);
+  return start && end ? `${start} to ${end}` : '';
+}
+
+function rewardValueLabel(value) {
+  if (Array.isArray(value)) {
+    return value.map(rewardValueLabel).filter(Boolean).join(', ');
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value).map(rewardValueLabel).filter(Boolean).join(', ');
+  }
+
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value);
+}
+
 function normalizeCompetitiveRows(result, type) {
   const payload = payloadFrom(result);
   const rows = Array.isArray(payload) ? payload : [];
@@ -204,6 +239,69 @@ function normalizeCompetitiveSeason(result) {
     xpLabel: formatInteger(userData.xp_earned),
     hasUserData: Object.keys(userData).length > 0
   };
+}
+
+function normalizeSeasonTopMembers(rows) {
+  return (Array.isArray(rows) ? rows : []).map((row, index) => {
+    const object = objectFrom(row);
+    const fullName = `${textFrom(object.first_name)} ${textFrom(object.last_name)}`.trim();
+    const name = fullName || textFrom(object.name, 'Community member');
+
+    return {
+      rank: index + 1,
+      name,
+      xpLabel: formatInteger(object.season_xp ?? object.xp_earned ?? object.xp)
+    };
+  }).filter((member) => member.name);
+}
+
+function normalizeSeasonRewards(rewards) {
+  if (!rewards || typeof rewards !== 'object') {
+    return [];
+  }
+
+  return Object.entries(rewards).map(([rank, reward]) => ({
+    rank,
+    rankLabel: `Rank ${Number.isFinite(Number(rank)) ? intFrom(rank) : rank}`,
+    rewardLabel: rewardValueLabel(reward)
+  })).filter((reward) => reward.rewardLabel);
+}
+
+function normalizeCurrentSeason(result) {
+  const payload = objectFrom(payloadFrom(result));
+  const season = objectFrom(payload.season);
+  const userData = objectFrom(payload.user_data);
+  const daysRemaining = intFrom(payload.days_remaining);
+  const participants = intFrom(payload.total_participants);
+  const dateRange = dateRangeLabel(season.start_date, season.end_date);
+
+  return {
+    hasCurrent: Object.keys(season).length > 0,
+    name: textFrom(season.name, 'Current season'),
+    dateRange,
+    daysRemainingLabel: daysRemainingLabel(daysRemaining),
+    participantsLabel: participantsLabel(participants),
+    endingSoon: boolFrom(payload.is_ending_soon),
+    hasUserData: Object.keys(userData).length > 0,
+    userRank: intFrom(userData.rank),
+    hasUserRank: Object.prototype.hasOwnProperty.call(userData, 'rank') && userData.rank !== null,
+    userXpLabel: formatInteger(userData.xp_earned),
+    rewards: normalizeSeasonRewards(payload.rewards),
+    topMembers: normalizeSeasonTopMembers(payload.leaderboard)
+  };
+}
+
+function normalizeAllSeasons(result) {
+  const payload = payloadFrom(result);
+  const rows = Array.isArray(payload) ? payload : [];
+
+  return rows.map((row) => {
+    const object = objectFrom(row);
+    return {
+      name: textFrom(object.name, 'Season'),
+      dateRange: dateRangeLabel(object.start_date, object.end_date)
+    };
+  }).filter((season) => season.name);
 }
 
 function redirectAuthIfNeeded(error, res) {
@@ -256,6 +354,36 @@ router.get('/competitive', asyncRoute(async (req, res) => {
       hasMore: boolFrom(meta.has_more),
       nextLimit: Math.min(200, limit + 20),
       countLabel: countLabel(rows.length)
+    }
+  });
+}));
+
+router.get('/seasons', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let currentPayload;
+  let seasonsPayload;
+  try {
+    [currentPayload, seasonsPayload] = await Promise.all([
+      callGamificationApi(token, 'GET', '/seasons/current'),
+      callGamificationApi(token, 'GET', '/seasons')
+    ]);
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    currentPayload = { data: { season: null } };
+    seasonsPayload = { data: [] };
+  }
+
+  return res.render('leaderboard/seasons', {
+    title: 'Leaderboard seasons',
+    activeNav: 'leaderboard',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    seasons: {
+      current: normalizeCurrentSeason(currentPayload),
+      history: normalizeAllSeasons(seasonsPayload)
     }
   });
 }));

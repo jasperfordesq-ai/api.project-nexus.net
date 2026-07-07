@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T01:36:00.921Z",
+    "generatedAt": "2026-07-07T01:42:37.993Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -7690,8 +7690,8 @@
       "gates": "",
       "apiNeeds": "service:LeaderboardSeasonService",
       "webUkPath": "/leaderboard/seasons",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "leaderboard/seasons",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\leaderboard.js"
     },
     {
       "method": "GET",

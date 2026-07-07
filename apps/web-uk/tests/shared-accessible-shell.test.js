@@ -1960,6 +1960,88 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style leaderboard seasons page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/seasons/current') {
+        return {
+          data: {
+            season: {
+              id: 5,
+              name: 'July Sprint',
+              start_date: '2026-07-01',
+              end_date: '2026-07-31'
+            },
+            days_remaining: 3,
+            is_ending_soon: true,
+            total_participants: 14,
+            user_data: { rank: 2, xp_earned: 1250 },
+            rewards: {
+              1: { xp: 500, badge: 'season_champion', title: 'Season Champion' },
+              top10: { xp: 100, badge: 'season_top10' }
+            },
+            leaderboard: [
+              { first_name: 'Avery', last_name: 'Stone', season_xp: 2100 },
+              { name: 'Morgan Lee', xp_earned: 1800 }
+            ]
+          }
+        };
+      }
+
+      if (token === 'test-token' && method === 'GET' && pathValue === '/seasons') {
+        return {
+          data: [
+            { id: 4, name: 'June Sprint', start_date: '2026-06-01', end_date: '2026-06-30' },
+            { id: 3, name: 'May Sprint', start_date: '2026-05-01', end_date: '2026-05-31' }
+          ]
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/leaderboard/seasons');
+    const signed = await request(app)
+      .get('/leaderboard/seasons')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/seasons/current');
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/seasons');
+    expect(signed.text).toContain('href="/leaderboard"');
+    expect(signed.text).toContain('Back to leaderboard');
+    expect(signed.text).toContain('Leaderboard at Project NEXUS Accessible');
+    expect(signed.text).toContain('Leaderboard seasons');
+    expect(signed.text).toContain('Each season resets the leaderboard so everyone has a fresh chance to compete.');
+    expect(signed.text).toContain('aria-current="page">Seasons</a>');
+    expect(signed.text).toContain('Current season');
+    expect(signed.text).toContain('July Sprint');
+    expect(signed.text).toContain('Ending soon');
+    expect(signed.text).toContain('1 July 2026 to 31 July 2026');
+    expect(signed.text).toContain('3 days remaining');
+    expect(signed.text).toContain('14 participants');
+    expect(signed.text).toContain('Your rank:');
+    expect(signed.text).toContain('Season XP');
+    expect(signed.text).toContain('1,250');
+    expect(signed.text).toContain('Season rewards');
+    expect(signed.text).toContain('Rank 1');
+    expect(signed.text).toContain('Season Champion');
+    expect(signed.text).toContain('Season leaders');
+    expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain('2,100');
+    expect(signed.text).toContain('Morgan Lee');
+    expect(signed.text).toContain('Past seasons');
+    expect(signed.text).toContain('June Sprint');
+    expect(signed.text).toContain('1 June 2026 to 30 June 2026');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
