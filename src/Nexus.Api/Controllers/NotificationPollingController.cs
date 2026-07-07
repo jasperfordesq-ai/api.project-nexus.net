@@ -21,11 +21,16 @@ public class NotificationPollingController : ControllerBase
 {
     private readonly NexusDbContext _db;
     private readonly ILogger<NotificationPollingController> _logger;
+    private readonly IConfiguration _configuration;
 
-    public NotificationPollingController(NexusDbContext db, ILogger<NotificationPollingController> logger)
+    public NotificationPollingController(
+        NexusDbContext db,
+        ILogger<NotificationPollingController> logger,
+        IConfiguration configuration)
     {
         _db = db;
         _logger = logger;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -76,16 +81,61 @@ public class NotificationPollingController : ControllerBase
     /// Returns SignalR hub URL, polling interval, and feature flags.
     /// </summary>
     [HttpGet("api/realtime/config")]
+    [HttpGet("api/v2/realtime/config")]
     [AllowAnonymous]
     public IActionResult GetRealtimeConfig()
     {
+        var pusherKey = PusherConfigValue("PUSHER_APP_KEY", "Pusher:Key", "Pusher:AppKey");
+        var pusherCluster = PusherConfigValue("PUSHER_APP_CLUSTER", "Pusher:Cluster") ?? "eu";
+        var wsHost = PusherConfigValue("PUSHER_HOST", "Pusher:Host") ?? string.Empty;
+        var wsPort = int.TryParse(PusherConfigValue("PUSHER_PORT", "Pusher:Port"), out var parsedPort) ? parsedPort : 443;
+        var enabled = !string.IsNullOrWhiteSpace(pusherKey)
+            && !string.IsNullOrWhiteSpace(PusherConfigValue("PUSHER_APP_SECRET", "Pusher:Secret", "Pusher:AppSecret"))
+            && !string.IsNullOrWhiteSpace(PusherConfigValue("PUSHER_APP_ID", "Pusher:AppId"));
+
         return Ok(new
         {
+            success = true,
             hub_url = "/hubs/messages",
             polling_interval_ms = 30000,
-            realtime_enabled = true,
-            transports = new[] { "websockets", "server-sent-events", "long-polling" }
+            realtime_enabled = enabled,
+            transports = new[] { "websockets", "server-sent-events", "long-polling" },
+            data = new
+            {
+                driver = "pusher",
+                key = pusherKey ?? string.Empty,
+                cluster = pusherCluster,
+                ws_host = wsHost,
+                ws_port = wsPort,
+                force_tls = true,
+                authEndpoint = "/api/pusher/auth",
+                enabled,
+                hub_url = "/hubs/messages",
+                polling_interval_ms = 30000,
+                realtime_enabled = enabled,
+                transports = new[] { "websockets", "server-sent-events", "long-polling" }
+            }
         });
+    }
+
+    private string? PusherConfigValue(string environmentName, params string[] configurationKeys)
+    {
+        var value = Environment.GetEnvironmentVariable(environmentName);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        foreach (var key in configurationKeys)
+        {
+            value = _configuration[key];
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return null;
     }
 
     private int? GetCurrentUserId() => User.GetUserId();

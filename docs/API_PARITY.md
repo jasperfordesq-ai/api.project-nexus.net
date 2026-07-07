@@ -106,6 +106,17 @@ status/privacy metadata in tenant config. Runtime test execution is still
 blocked in this Windows environment by Application Control on the copied
 `Nexus.Api.dll`; the focused test currently builds but cannot be counted as run.
 
+The Laravel React realtime bootstrap slice now has a backend contract test for
+`GET /api/v2/realtime/config` and invalid `POST /api/pusher/auth` requests. The
+.NET compatibility path returns the Laravel React Pusher bootstrap envelope
+(`success/data`, `driver`, `key`, `cluster`, `ws_host`, `ws_port`, `force_tls`,
+`authEndpoint`, `enabled`), keeps realtime disabled unless key/secret/app id are
+configured, and returns Laravel-style validation errors for missing
+`socket_id`/`channel_name`. Real Pusher channel signing and end-to-end broadcast
+smoke coverage remain gaps until a configured Pusher app is available. Runtime
+test execution is currently blocked in this Windows environment by Application
+Control on copied test dependencies.
+
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static
 route content, notification unsubscribe, AI chat starters/feedback, admin

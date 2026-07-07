@@ -5,6 +5,7 @@
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -71,15 +72,18 @@ public class V15SocialCompatibilityController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly PushNotificationService _pushService;
+    private readonly IConfiguration _configuration;
 
     public V15SocialCompatibilityController(
         NexusDbContext db,
         TenantContext tenantContext,
-        PushNotificationService pushService)
+        PushNotificationService pushService,
+        IConfiguration configuration)
     {
         _db = db;
         _tenantContext = tenantContext;
         _pushService = pushService;
+        _configuration = configuration;
     }
 
     [HttpGet("/api/v2/feed")]
@@ -955,11 +959,52 @@ public class V15SocialCompatibilityController : ControllerBase
 
     [HttpGet("/api/pusher/config")]
     [AllowAnonymous]
-    public IActionResult PusherConfig() => Ok(new { key = string.Empty, cluster = string.Empty, enabled = false });
+    public IActionResult PusherConfig()
+    {
+        var userId = User.GetUserId();
+        return Ok(new
+        {
+            success = true,
+            data = BuildRealtimeConfig(userId)
+        });
+    }
 
     [HttpGet("/api/pusher/auth")]
     [HttpPost("/api/pusher/auth")]
-    public IActionResult PusherAuth() => Ok(new { auth = string.Empty, enabled = false });
+    public IActionResult PusherAuth([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JsonElement body)
+    {
+        var userId = RequireUserId();
+        var socketId = ReadString(body, "socket_id", "socketId");
+        var channelName = ReadString(body, "channel_name", "channelName");
+
+        if (string.IsNullOrWhiteSpace(socketId) || string.IsNullOrWhiteSpace(channelName))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                code = "VALIDATION_ERROR",
+                message = "Missing socket_id or channel_name."
+            });
+        }
+
+        var config = BuildRealtimeConfig(userId);
+        if (!config.Enabled)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                success = false,
+                code = "REALTIME_DISABLED",
+                message = "Realtime transport is not configured."
+            });
+        }
+
+        return StatusCode(StatusCodes.Status501NotImplemented, new
+        {
+            success = false,
+            code = "REALTIME_AUTH_UNAVAILABLE",
+            message = "Pusher authentication requires a configured signing secret."
+        });
+    }
 
     [HttpPost("/api/v2/presence/heartbeat")]
     public async Task<IActionResult> Heartbeat([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JsonElement body)
@@ -1392,6 +1437,57 @@ public class V15SocialCompatibilityController : ControllerBase
             created_at = c.CreatedAt,
             updated_at = c.UpdatedAt
         };
+    }
+
+    private RealtimeBootstrapConfig BuildRealtimeConfig(int? userId)
+    {
+        var key = PusherConfigValue("PUSHER_APP_KEY", "Pusher:Key", "Pusher:AppKey") ?? string.Empty;
+        var cluster = PusherConfigValue("PUSHER_APP_CLUSTER", "Pusher:Cluster") ?? "eu";
+        var wsHost = PusherConfigValue("PUSHER_HOST", "Pusher:Host") ?? string.Empty;
+        var wsPort = int.TryParse(PusherConfigValue("PUSHER_PORT", "Pusher:Port"), out var parsedPort) ? parsedPort : 443;
+        var enabled = !string.IsNullOrWhiteSpace(key)
+            && !string.IsNullOrWhiteSpace(PusherConfigValue("PUSHER_APP_SECRET", "Pusher:Secret", "Pusher:AppSecret"))
+            && !string.IsNullOrWhiteSpace(PusherConfigValue("PUSHER_APP_ID", "Pusher:AppId"));
+
+        return new RealtimeBootstrapConfig
+        {
+            Driver = "pusher",
+            Key = key,
+            Cluster = cluster,
+            WsHost = wsHost,
+            WsPort = wsPort,
+            ForceTls = true,
+            AuthEndpoint = "/api/pusher/auth",
+            Enabled = enabled,
+            Channels = userId.HasValue
+                ? new Dictionary<string, string>
+                {
+                    ["user"] = $"private-tenant.{TenantIdOrDefault()}.user.{userId.Value}",
+                    ["presence"] = $"presence-tenant.{TenantIdOrDefault()}"
+                }
+                : null,
+            UserId = userId
+        };
+    }
+
+    private string? PusherConfigValue(string environmentName, params string[] configurationKeys)
+    {
+        var value = Environment.GetEnvironmentVariable(environmentName);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        foreach (var key in configurationKeys)
+        {
+            value = _configuration[key];
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return null;
     }
 
     private async Task<UserPresence> UpsertPresenceAsync(int userId, string? platform, string? status, bool preserveManualStatus)
@@ -1948,5 +2044,38 @@ public class V15SocialCompatibilityController : ControllerBase
         public string? CustomStatus { get; set; }
         public string? StatusEmoji { get; set; }
         public bool HidePresence { get; set; }
+    }
+
+    private sealed class RealtimeBootstrapConfig
+    {
+        [JsonPropertyName("driver")]
+        public string Driver { get; set; } = "pusher";
+
+        [JsonPropertyName("key")]
+        public string Key { get; set; } = string.Empty;
+
+        [JsonPropertyName("cluster")]
+        public string Cluster { get; set; } = "eu";
+
+        [JsonPropertyName("ws_host")]
+        public string WsHost { get; set; } = string.Empty;
+
+        [JsonPropertyName("ws_port")]
+        public int WsPort { get; set; } = 443;
+
+        [JsonPropertyName("force_tls")]
+        public bool ForceTls { get; set; } = true;
+
+        [JsonPropertyName("authEndpoint")]
+        public string AuthEndpoint { get; set; } = "/api/pusher/auth";
+
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; }
+
+        [JsonPropertyName("channels")]
+        public Dictionary<string, string>? Channels { get; set; }
+
+        [JsonPropertyName("userId")]
+        public int? UserId { get; set; }
     }
 }

@@ -632,18 +632,6 @@ public class MiscParityController : ControllerBase
     [Authorize]
     public IActionResult LegacyPollVote([FromBody] JsonElement body) => Ok(new { data = new { voted = true } });
 
-    [HttpPost("pusher/auth")]
-    [Authorize]
-    public IActionResult PusherAuthPost([FromBody] JsonElement body) => Ok(new { auth = "mock:pusher" });
-
-    [HttpGet("pusher/auth")]
-    [Authorize]
-    public IActionResult PusherAuthGet() => Ok(new { auth = "mock:pusher" });
-
-    [HttpGet("pusher/config")]
-    [AllowAnonymous]
-    public IActionResult PusherConfig() => Ok(new { data = new { enabled = false } });
-
     [HttpPost("reactions")]
     [Authorize]
     public IActionResult CreateReaction([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), reaction = Str(body, "reaction") ?? "like" } });
