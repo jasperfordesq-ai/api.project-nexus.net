@@ -135,11 +135,18 @@ organisation detail/jobs/apply, job detail, group detail/depth, and resource
 comments. This specifically verifies Laravel v2 event/group detail payload
 unwrapping for `/events/6` and `/groups/484`; it does not certify ASP.NET mode.
 The same 18 stable real-fixture pages are now included in the default module
-page sweep. A full default Laravel-backed run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5327`, started with `TENANT_ID=2`, passed on
-2026-07-07: `199/199` checks, `0` failures, `179` module-page checks, 8
-unsigned auth-required redirect checks, 3 gated-status checks, and 3 signed
-redirect checks; `npm run smoke:laravel` exited `0`.
+page sweep. The default scope also covers `/groups/484/discussions/new` and
+`/jobs/90764/qualified` as signed 2xx pages, owner-only job checks for
+`/jobs/90764/edit`, `/jobs/90764/analytics`, `/jobs/90764/pipeline`, and
+`/jobs/90764/applications` as signed `403` responses, plus signed redirects
+from `/events/6/recurring-edit` to `/events/6/edit` and `/groups/484/edit` to
+`/groups/484`. A targeted live run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5330`, started with `TENANT_ID=2`, passed on
+2026-07-07: `14/14` checks, `0` failures. A full default Laravel-backed run
+against `WEB_UK_BASE_URL=http://127.0.0.1:5331`, started with `TENANT_ID=2`,
+passed on 2026-07-07: `207/207` checks, `0` failures, `181` module-page
+checks, 8 unsigned auth-required redirect checks, 7 gated-status checks, and 5
+signed redirect checks; `npm run smoke:laravel` exited `0`.
 
 ## Current Page Candidates
 

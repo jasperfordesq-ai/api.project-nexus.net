@@ -20,12 +20,14 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/organisations/636/jobs',
   '/organisations/opportunities/307/apply',
   '/jobs/90764',
+  '/jobs/90764/qualified',
   '/groups/484',
   '/groups/484/invite',
   '/groups/484/notifications',
   '/groups/484/image',
   '/groups/484/announcements',
   '/groups/484/discussions',
+  '/groups/484/discussions/new',
   '/groups/484/files',
   '/groups/484/manage',
   '/resources/10/comments'
@@ -43,11 +45,17 @@ const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
 const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/jobs/bias-audit', status: 403 },
   { path: '/jobs/talent-search', status: 403 },
+  { path: '/jobs/90764/edit', status: 403 },
+  { path: '/jobs/90764/analytics', status: 403 },
+  { path: '/jobs/90764/pipeline', status: 403 },
+  { path: '/jobs/90764/applications', status: 403 },
   { path: '/marketplace/coupons', status: 403 }
 ];
 const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/login/two-factor', location: '/login?status=two-factor-expired' },
   { path: '/onboarding', location: '/dashboard' },
+  { path: '/events/6/recurring-edit', location: '/events/6/edit' },
+  { path: '/groups/484/edit', location: '/groups/484' },
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [

@@ -204,12 +204,14 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/organisations/636/jobs',
       '/organisations/opportunities/307/apply',
       '/jobs/90764',
+      '/jobs/90764/qualified',
       '/groups/484',
       '/groups/484/invite',
       '/groups/484/notifications',
       '/groups/484/image',
       '/groups/484/announcements',
       '/groups/484/discussions',
+      '/groups/484/discussions/new',
       '/groups/484/files',
       '/groups/484/manage',
       '/resources/10/comments',
@@ -315,6 +317,10 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     const signedGatedPages = new Set([
       '/jobs/bias-audit',
       '/jobs/talent-search',
+      '/jobs/90764/edit',
+      '/jobs/90764/analytics',
+      '/jobs/90764/pipeline',
+      '/jobs/90764/applications',
       '/marketplace/coupons'
     ]);
     if (req.method === 'GET' && signedGatedPages.has(req.url)) {
@@ -332,6 +338,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     const signedRedirectPages = new Map([
       ['/login/two-factor', '/login?status=two-factor-expired'],
       ['/onboarding', '/dashboard'],
+      ['/events/6/recurring-edit', '/events/6/edit'],
+      ['/groups/484/edit', '/groups/484'],
       ['/premium/manage', '/premium?status=no-subscription']
     ]);
     if (req.method === 'GET' && signedRedirectPages.has(req.url)) {
@@ -439,6 +447,25 @@ describe('Laravel runtime smoke harness', () => {
       '/groups/484/files',
       '/groups/484/manage',
       '/resources/10/comments'
+    ]));
+  });
+
+  it('includes stable real-fixture secondary page outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/groups/484/discussions/new',
+      '/jobs/90764/qualified'
+    ]));
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/jobs/90764/edit', status: 403 },
+      { path: '/jobs/90764/analytics', status: 403 },
+      { path: '/jobs/90764/pipeline', status: 403 },
+      { path: '/jobs/90764/applications', status: 403 }
+    ]));
+    expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
+      { path: '/events/6/recurring-edit', location: '/events/6/edit' },
+      { path: '/groups/484/edit', location: '/groups/484' }
     ]));
   });
 
@@ -635,12 +662,14 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-organisations-636-jobs-renders': true,
       'module-page-organisations-opportunities-307-apply-renders': true,
       'module-page-jobs-90764-renders': true,
+      'module-page-jobs-90764-qualified-renders': true,
       'module-page-groups-484-renders': true,
       'module-page-groups-484-invite-renders': true,
       'module-page-groups-484-notifications-renders': true,
       'module-page-groups-484-image-renders': true,
       'module-page-groups-484-announcements-renders': true,
       'module-page-groups-484-discussions-renders': true,
+      'module-page-groups-484-discussions-new-renders': true,
       'module-page-groups-484-files-renders': true,
       'module-page-groups-484-manage-renders': true,
       'module-page-resources-10-comments-renders': true,
@@ -696,6 +725,10 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-jobs-saved-renders': true,
       'gated-page-jobs-bias-audit-returns-403': true,
       'gated-page-jobs-talent-search-returns-403': true,
+      'gated-page-jobs-90764-edit-returns-403': true,
+      'gated-page-jobs-90764-analytics-returns-403': true,
+      'gated-page-jobs-90764-pipeline-returns-403': true,
+      'gated-page-jobs-90764-applications-returns-403': true,
       'module-page-legal-renders': true,
       'module-page-legal-acceptable-use-renders': true,
       'module-page-legal-community-guidelines-renders': true,
@@ -723,6 +756,8 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-report-a-problem-renders': true,
       'redirect-page-login-two-factor-redirects-login-status-two-factor-expired': true,
       'redirect-page-onboarding-redirects-dashboard': true,
+      'redirect-page-events-6-recurring-edit-redirects-events-6-edit': true,
+      'redirect-page-groups-484-edit-redirects-groups-484': true,
       'redirect-page-premium-manage-redirects-premium-status-no-subscription': true,
       'module-page-resources-library-renders': true,
       'module-page-resources-upload-renders': true,
@@ -735,13 +770,21 @@ describe('Laravel runtime smoke harness', () => {
     }));
     expect(checkByName['gated-page-jobs-bias-audit-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-jobs-talent-search-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-jobs-90764-edit-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-jobs-90764-analytics-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-jobs-90764-pipeline-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-jobs-90764-applications-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-returns-403'].status).toBe(403);
+    expect(checkByName['redirect-page-events-6-recurring-edit-redirects-events-6-edit'].location).toBe('/events/6/edit');
+    expect(checkByName['redirect-page-groups-484-edit-redirects-groups-484'].location).toBe('/groups/484');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/explore').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/messages').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/listings').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/events/6').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/groups/484').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/jobs/90764/qualified').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/groups/484/discussions/new').at(-1).cookie).toContain('token=signed-token');
   });
 
   it('smokes unsigned redirects for auth-required parameterised Laravel routes', async () => {
