@@ -56,6 +56,7 @@ jest.mock('../src/lib/api', () => ({
   completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
   getUser: jest.fn(),
   searchUsers: jest.fn().mockResolvedValue({ data: { items: [] } }),
+  getMembersV2: jest.fn(),
   getListings: jest.fn(),
   getConversations: jest.fn().mockResolvedValue({ data: [] }),
   getConversation: jest.fn().mockResolvedValue({ id: 77, messages: [] }),
@@ -276,6 +277,7 @@ describe('shared accessible frontend shell', () => {
     api.completeOnboarding.mockReset().mockResolvedValue({ data: { message: 'complete' } });
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
     api.searchUsers.mockReset().mockResolvedValue({ data: { items: [] } });
+    api.getMembersV2.mockReset();
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
     api.getUserPublicCollections.mockReset().mockResolvedValue({ data: [] });
@@ -6449,6 +6451,90 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.claimDailyReward).not.toHaveBeenCalled();
+  });
+
+  it('renders the Laravel members discovery page for signed-in members', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.getMembersV2.mockResolvedValueOnce({
+      data: [
+        {
+          id: 77,
+          name: 'Ada Lovelace',
+          avatar: '/avatars/ada.jpg',
+          tagline: 'Connects repair volunteers with neighbours.',
+          community_rank_score: 0.87,
+          location: 'Bandon',
+          total_hours_given: 42,
+          total_hours_received: 11,
+          rating: 4.8,
+          is_verified: true,
+          level: 5,
+          connection_state: 'connected'
+        },
+        {
+          id: 88,
+          first_name: 'Grace',
+          tagline: '',
+          community_rank_score: 0.61,
+          total_hours_given: 12,
+          total_hours_received: 3,
+          connection_state: 'pending_sent'
+        }
+      ],
+      meta: {
+        total_items: 31,
+        offset: 20,
+        per_page: 20,
+        has_more: true
+      }
+    });
+
+    const unsigned = await request(app).get('/members/discover');
+    const signed = await request(app)
+      .get('/members/discover?q=repair&offset=20')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.getMembersV2).toHaveBeenCalledWith('test-token', {
+      q: 'repair',
+      sort: 'communityrank',
+      limit: 20,
+      offset: 20
+    });
+    expect(signed.text).toContain('href="/members"');
+    expect(signed.text).toContain('Community members at');
+    expect(signed.text).toContain('Recommended members');
+    expect(signed.text).toContain('Recommended members are ordered using community signals');
+    expect(signed.text).toContain('href="/members?sort=joined&amp;order=DESC"');
+    expect(signed.text).toContain('href="/members/nearby"');
+    expect(signed.text).toContain('value="repair"');
+    expect(signed.text).toContain('31 members');
+    expect(signed.text).toContain('Ada Lovelace');
+    expect(signed.text).toContain('src="/avatars/ada.jpg"');
+    expect(signed.text).toContain('Connects repair volunteers with neighbours.');
+    expect(signed.text).toContain('Recommendation score:');
+    expect(signed.text).toContain('87%');
+    expect(signed.text).toContain('value="87"');
+    expect(signed.text).toContain('Bandon');
+    expect(signed.text).toContain('42 hours given');
+    expect(signed.text).toContain('11 hours received');
+    expect(signed.text).toContain('4.8 out of 5');
+    expect(signed.text).toContain('Verified');
+    expect(signed.text).toContain('Level 5');
+    expect(signed.text).toContain('Connected');
+    expect(signed.text).toContain('Grace');
+    expect(signed.text).toContain('Request sent');
+    expect(signed.text).toContain('href="/members/77"');
+    expect(signed.text).toContain('View profile');
+    expect(signed.text).toContain('href="/members/discover?q=repair&amp;offset=40"');
+    expect(signed.text).toContain('Load more');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
   it('submits the Laravel member connection request route through the connections API helpers', async () => {

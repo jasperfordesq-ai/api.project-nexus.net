@@ -7,6 +7,7 @@ const express = require('express');
 const {
   getUsers,
   getUser,
+  getMembersV2,
   getConnections,
   sendConnectionRequest,
   getMemberConnectionStatus,
@@ -60,8 +61,68 @@ function positiveInteger(value) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+function boundedInteger(value, fallback, min = 0, max = 1000) {
+  const number = Number.parseInt(value, 10);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(Math.max(number, min), max);
+}
+
 function connectionIdFrom(current) {
   return positiveInteger(current.connection_id || current.connectionId || current.id);
+}
+
+function rowsFrom(result) {
+  const data = dataFrom(result);
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  return [];
+}
+
+function metaFrom(result) {
+  return result && result.meta && typeof result.meta === 'object' ? result.meta : {};
+}
+
+function memberName(member) {
+  const explicit = String(member.name || '').trim();
+  if (explicit) return explicit;
+  const first = String(member.first_name || member.firstName || '').trim();
+  const last = String(member.last_name || member.lastName || '').trim();
+  return `${first} ${last}`.trim() || 'A community member';
+}
+
+function connectionLabel(state) {
+  const labels = {
+    connected: 'Connected',
+    pending_sent: 'Request sent',
+    pending_received: 'Wants to connect'
+  };
+  return labels[state] || '';
+}
+
+function normalizeDiscoverMember(member) {
+  const score = Number(member.community_rank_score);
+  const rankPercent = Number.isFinite(score) ? Math.round(score * 100) : null;
+  const level = boundedInteger(member.level, 0, 0, 1000);
+  const rating = Number(member.rating);
+  const given = boundedInteger(member.total_hours_given ?? member.hours_given, 0, 0, Number.MAX_SAFE_INTEGER);
+  const received = boundedInteger(member.total_hours_received ?? member.hours_received, 0, 0, Number.MAX_SAFE_INTEGER);
+
+  return {
+    id: positiveInteger(member.id) || 0,
+    name: memberName(member),
+    initial: memberName(member).slice(0, 1).toUpperCase() || 'M',
+    avatar: String(member.avatar || member.avatar_url || member.avatarUrl || '').trim(),
+    tagline: String(member.tagline || '').trim(),
+    rankPercent,
+    location: String(member.location || '').trim(),
+    hoursGivenLabel: `${given} hour${given === 1 ? '' : 's'} given`,
+    hoursReceivedLabel: `${received} hour${received === 1 ? '' : 's'} received`,
+    ratingLabel: Number.isFinite(rating) && rating > 0 ? `${rating.toFixed(1)} out of 5` : '',
+    isVerified: !!(member.is_verified || member.identity_verified),
+    level,
+    levelLabel: level > 0 ? `Level ${level}` : '',
+    connectionLabel: connectionLabel(member.connection_state || member.connectionState)
+  };
 }
 
 function redirectAuthIfNeeded(error, res) {
@@ -259,6 +320,51 @@ router.post('/:id(\\d+)/transfer', asyncRoute(async (req, res) => {
   }
 
   return res.redirect(memberUrl(id, status));
+}));
+
+router.get('/discover', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const search = String(req.query.q || '').trim().slice(0, 100);
+  const limit = boundedInteger(req.query.limit, 20, 1, 100);
+  const offset = boundedInteger(req.query.offset, 0, 0, 100000);
+
+  let members = [];
+  let totalItems = 0;
+  let hasMore = false;
+  let errorMessage = null;
+
+  try {
+    const result = await getMembersV2(token, {
+      q: search,
+      sort: 'communityrank',
+      limit,
+      offset
+    });
+    const meta = metaFrom(result);
+    members = rowsFrom(result).map(normalizeDiscoverMember).filter((member) => member.id > 0);
+    totalItems = boundedInteger(meta.total_items, members.length, 0, Number.MAX_SAFE_INTEGER);
+    hasMore = !!meta.has_more;
+  } catch {
+    errorMessage = 'Sorry, there is a problem loading recommended members.';
+  }
+
+  res.render('members/discover', {
+    title: 'Recommended members',
+    activeNav: 'members',
+    alphaActiveNav: 'members',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    members,
+    search,
+    totalItems,
+    totalItemsLabel: `${totalItems} member${totalItems === 1 ? '' : 's'}`,
+    hasMore,
+    nextHref: hasMore ? `/members/discover${search ? `?q=${encodeURIComponent(search)}&` : '?'}offset=${offset + limit}` : '',
+    errorMessage
+  });
 }));
 
 router.use(requireAuth);

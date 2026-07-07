@@ -2543,6 +2543,20 @@ async function getMembers(token, query = '', page = 1, limit = 20) {
   });
 }
 
+async function getMembersV2(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.q) query.set('q', params.q);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.order) query.set('order', params.order);
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset !== undefined && params.offset !== null) query.set('offset', params.offset);
+
+  const queryString = query.toString();
+  return request(`/api/v2/users${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Reviews
 async function getUserReviews(token, userId, page = 1, limit = 20) {
   const params = new URLSearchParams();
@@ -3130,6 +3144,7 @@ module.exports = {
   deleteSavedSearch,
   runSavedSearch,
   getMembers,
+  getMembersV2,
   // Reviews
   getUserReviews,
   createUserReview,

@@ -149,6 +149,14 @@ read Laravel `/api/v2/users/{id}/public-collections` and
 cards, thank-you form, appreciation cards, reaction forms, status messages, and
 pagination. Tenant routing, localization, runtime smoke tests, and ASP.NET
 backend compatibility are not certified.
+Member discovery GET `/members/discover` now redirects unsigned visitors to
+`/login?status=auth-required`, calls Laravel-compatible
+`/api/v2/users?sort=communityrank`, and renders the Blade-style recommended
+member page with filter navigation, search, recommendation score progress,
+member cards, profile links, and load-more navigation. `/members/nearby` and
+`/members/{id}/insights` remain generated preparation pages; base directory and
+profile visual parity, feature gates, localization, runtime smoke tests, and
+ASP.NET backend compatibility are not certified.
 Matches GET pages now redirect unsigned visitors to `/login?status=auth-required`,
 call Laravel-compatible `/api/v2/matches/all`, and render the Blade-style
 `/matches` summary plus the `/matches/board` stats/filter board. Match-dismiss
