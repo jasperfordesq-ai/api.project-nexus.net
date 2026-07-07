@@ -274,6 +274,9 @@ Laravel status banners. Group invite link/email/revoke POST aliases already call
 Laravel-compatible group invite endpoints. `/groups/{id}/notifications` now
 reads Laravel-compatible group detail and notification preference data, then
 renders the Blade-style frequency radios, channel checkboxes, save form, and
+status banners. `/groups/{id}/image` now reads Laravel-compatible group detail
+and renders the Blade-style avatar and cover image management page, including
+current image previews or empty insets, multipart upload forms, and image
 status banners. Other group depth GET pages, owner/admin authorization depth,
 tenant/feature gates, localization, runtime behavior, and ASP.NET backend
 compatibility are not certified.

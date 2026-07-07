@@ -13313,6 +13313,51 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/notification-prefs');
   });
 
+  it('renders the Laravel group image page for signed-in group admins', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        image_url: 'https://example.test/images/group-avatar.webp',
+        cover_image_url: 'https://example.test/images/group-cover.webp'
+      }
+    });
+
+    const unsigned = await request(app).get('/groups/42/image');
+    const signed = await request(app)
+      .get('/groups/42/image?status=cover-updated')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login');
+    expect(signed.status).toBe(200);
+    expect(signed.text).toContain('Back to group');
+    expect(signed.text).toContain('Images for Garden Helpers');
+    expect(signed.text).toContain('Group images');
+    expect(signed.text).toContain('The cover image has been updated.');
+    expect(signed.text).toContain('Upload a group avatar and a cover image. Each upload replaces the current image.');
+    expect(signed.text).toContain('Group avatar');
+    expect(signed.text).toContain('A small square image shown next to the group name.');
+    expect(signed.text).toContain('src="https://example.test/images/group-avatar.webp"');
+    expect(signed.text).toContain('alt="Current group avatar"');
+    expect(signed.text).toContain('id="avatar-image" name="image" type="file"');
+    expect(signed.text).toContain('name="type" value="avatar"');
+    expect(signed.text).toContain('Save avatar');
+    expect(signed.text).toContain('Cover image');
+    expect(signed.text).toContain('A wide banner image shown at the top of the group page.');
+    expect(signed.text).toContain('src="https://example.test/images/group-cover.webp"');
+    expect(signed.text).toContain('alt="Current group cover image"');
+    expect(signed.text).toContain('id="cover-image" name="image" type="file"');
+    expect(signed.text).toContain('name="type" value="cover"');
+    expect(signed.text).toContain('Save cover image');
+    expect(signed.text).toContain('method="post" action="/groups/42/image"');
+    expect(signed.text).toContain('enctype="multipart/form-data"');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+  });
+
   it('submits Laravel group image and file uploads with multipart file data', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

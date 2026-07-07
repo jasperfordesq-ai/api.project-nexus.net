@@ -55,6 +55,14 @@ const GROUP_NOTIFICATION_SUCCESS_MESSAGES = {
 const GROUP_NOTIFICATION_ERROR_MESSAGES = {
   'prefs-failed': 'Your notification preferences could not be saved. Please try again.'
 };
+const GROUP_IMAGE_SUCCESS_MESSAGES = {
+  'avatar-updated': 'The group avatar has been updated.',
+  'cover-updated': 'The cover image has been updated.'
+};
+const GROUP_IMAGE_ERROR_MESSAGES = {
+  'image-missing': 'Choose an image to upload.',
+  'image-failed': 'The image could not be uploaded. Please try again.'
+};
 
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
@@ -168,7 +176,9 @@ function normalizeGroup(item, fallbackId = null) {
   return {
     ...raw,
     id: positiveInteger(raw.id) || fallbackId,
-    name: trimmed(raw.name || raw.title) || 'Group'
+    name: trimmed(raw.name || raw.title) || 'Group',
+    imageUrl: trimmed(raw.image_url || raw.imageUrl || raw.avatar_url || raw.avatarUrl || ''),
+    coverImageUrl: trimmed(raw.cover_image_url || raw.coverImageUrl || raw.cover_url || raw.coverUrl || '')
   };
 }
 
@@ -232,6 +242,31 @@ function notificationStatus(status) {
         type: 'error',
         title: 'There is a problem',
         message: GROUP_NOTIFICATION_ERROR_MESSAGES[value]
+      }
+    };
+  }
+
+  return { statusBanner: null };
+}
+
+function imageStatus(status) {
+  const value = trimmed(status);
+  if (Object.prototype.hasOwnProperty.call(GROUP_IMAGE_SUCCESS_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'success',
+        title: 'Success',
+        message: GROUP_IMAGE_SUCCESS_MESSAGES[value]
+      }
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(GROUP_IMAGE_ERROR_MESSAGES, value)) {
+    return {
+      statusBanner: {
+        type: 'error',
+        title: 'There is a problem',
+        message: GROUP_IMAGE_ERROR_MESSAGES[value]
       }
     };
   }
@@ -507,6 +542,19 @@ router.get('/:id(\\d+)/notifications', asyncRoute(async (req, res) => {
     group,
     ...normalizeNotificationPrefs(prefsResult),
     ...notificationStatus(req.query.status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
+
+router.get('/:id(\\d+)/image', asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const groupResult = await getGroup(req.token, id);
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+
+  return res.render('groups/image', {
+    title: 'Group images',
+    activeNav: 'explore',
+    group,
+    ...imageStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
