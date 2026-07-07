@@ -43,7 +43,23 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/volunteering/organisations/636/manage',
   '/volunteering/organisations/636/settings',
   '/volunteering/organisations/636/volunteers',
-  '/volunteering/organisations/636/wallet'
+  '/volunteering/organisations/636/wallet',
+  '/courses/1',
+  '/courses/2',
+  '/courses/instructor/1/edit',
+  '/courses/instructor/2/edit',
+  '/federation/partners/1',
+  '/federation/partners/5',
+  '/federation/members/353',
+  '/federation/members/353/transfer',
+  '/federation/members/351',
+  '/ideation/23',
+  '/ideation/22',
+  '/ideation/2',
+  '/ideation/23/edit',
+  '/ideation/23/manage',
+  '/ideation/23/drafts',
+  '/ideation/23/outcome'
 ];
 const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/federation/listings/1/1',
@@ -65,6 +81,9 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/listings/42/analytics', status: 403 },
   { path: '/group-exchanges/1', status: 403 },
   { path: '/messages/groups/33', status: 403 },
+  { path: '/resources/10/delete', status: 403 },
+  { path: '/coupons/1', status: 403 },
+  { path: '/coupons/2', status: 403 },
   { path: '/marketplace/coupons', status: 403 }
 ];
 const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
@@ -74,6 +93,9 @@ const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/groups/484/edit', location: '/groups/484' },
   { path: '/courses/42/certificate', location: '/courses/42?status=certificate-failed' },
   { path: '/federation/messages/conversation/77', location: '/federation/messages' },
+  { path: '/courses/1/learn', location: '/courses/1?status=enrol-required' },
+  { path: '/courses/2/learn', location: '/courses/2?status=enrol-required' },
+  { path: '/federation/messages/conversation/353', location: '/federation/messages' },
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [

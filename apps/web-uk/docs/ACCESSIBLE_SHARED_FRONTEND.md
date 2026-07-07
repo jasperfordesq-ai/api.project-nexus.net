@@ -146,20 +146,30 @@ sweep. The default scope also covers `/groups/484/discussions/new`,
 `/volunteering/organisations/636/manage`,
 `/volunteering/organisations/636/settings`,
 `/volunteering/organisations/636/volunteers`, and
-`/volunteering/organisations/636/wallet` as signed 2xx pages; owner-only
-job/listing/message/group-exchange checks for `/jobs/90764/edit`,
+`/volunteering/organisations/636/wallet`, `/courses/1`, `/courses/2`,
+`/courses/instructor/1/edit`, `/courses/instructor/2/edit`,
+`/federation/partners/1`, `/federation/partners/5`,
+`/federation/members/353`, `/federation/members/353/transfer`,
+`/federation/members/351`, `/ideation/23`, `/ideation/22`, `/ideation/2`,
+`/ideation/23/edit`, `/ideation/23/manage`, `/ideation/23/drafts`, and
+`/ideation/23/outcome` as signed 2xx pages; owner-only
+job/listing/message/group-exchange/resource/coupon checks for `/jobs/90764/edit`,
 `/jobs/90764/analytics`, `/jobs/90764/pipeline`, `/jobs/90764/applications`,
-`/listings/42/analytics`, `/group-exchanges/1`, and `/messages/groups/33` as
+`/listings/42/analytics`, `/group-exchanges/1`, `/messages/groups/33`,
+`/resources/10/delete`, `/coupons/1`, and `/coupons/2` as
 signed `403` responses; plus signed redirects from `/events/6/recurring-edit`
 to `/events/6/edit`, `/groups/484/edit` to `/groups/484`,
 `/courses/42/certificate` to `/courses/42?status=certificate-failed`, and
-`/federation/messages/conversation/77` to `/federation/messages`. A targeted
-live run against `WEB_UK_BASE_URL=http://127.0.0.1:5335`, started with
-`TENANT_ID=2`, passed on 2026-07-07: `16/16` checks, `0` failures. A full
-default Laravel-backed run against `WEB_UK_BASE_URL=http://127.0.0.1:5335`,
-started with `TENANT_ID=2`, passed on 2026-07-07: `225/225` checks, `0`
-failures, `194` module-page checks, 8 unsigned auth-required redirect checks,
-10 gated-status checks, and 7 signed redirect checks; `npm run smoke:laravel`
+`/federation/messages/conversation/77` to `/federation/messages`,
+`/courses/1/learn` to `/courses/1?status=enrol-required`,
+`/courses/2/learn` to `/courses/2?status=enrol-required`, and
+`/federation/messages/conversation/353` to `/federation/messages`. A targeted
+live run against `WEB_UK_BASE_URL=http://127.0.0.1:5336`, started with
+`TENANT_ID=2`, passed on 2026-07-07: `28/28` checks, `0` failures. A full
+default Laravel-backed run against `WEB_UK_BASE_URL=http://127.0.0.1:5336`,
+started with `TENANT_ID=2`, passed on 2026-07-07: `247/247` checks, `0`
+failures, `210` module-page checks, 8 unsigned auth-required redirect checks,
+13 gated-status checks, and 10 signed redirect checks; `npm run smoke:laravel`
 exited `0`.
 
 ## Stack
