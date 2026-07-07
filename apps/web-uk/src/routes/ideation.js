@@ -270,6 +270,30 @@ function normalizeOutcome(item) {
   };
 }
 
+function normalizeOutcomeForm(item) {
+  const row = item && typeof item === 'object' ? item : {};
+  return {
+    winningIdeaId: positiveInteger(row.winning_idea_id ?? row.winningIdeaId),
+    status: trimmed(row.status) || 'not_started',
+    impactDescription: trimmed(row.impact_description ?? row.impactDescription, 5000)
+  };
+}
+
+function outcomeEditStatusMessage(status) {
+  const messages = {
+    'outcome-saved': 'The outcome has been saved.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
+function outcomeEditErrorMessage(status) {
+  const messages = {
+    'outcome-failed': 'Sorry, the outcome could not be saved. Please try again.',
+    'outcome-save-failed': 'Sorry, the outcome could not be saved. Please try again.'
+  };
+  return messages[trimmed(status)] || '';
+}
+
 function normalizeIdea(item) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
@@ -619,6 +643,33 @@ router.get('/:id(\\d+)/manage', asyncRoute(async (req, res) => {
     status,
     successMessage: manageStatusMessage(status),
     errorMessage: manageErrorMessage(status)
+  });
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
+
+router.get('/:id(\\d+)/outcome', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return res.redirect(loginRedirect());
+
+  const id = positiveInteger(req.params.id);
+  const challengeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}`);
+  const ideasResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}/ideas?limit=100&sort=votes`);
+  const outcomeResult = await callIdeationApi(token, 'GET', `/ideation-challenges/${id}/outcome`);
+  const challenge = normalizeChallenge({ id, ...itemFrom(challengeResult) });
+  const ideas = collectionFrom(ideasResult)
+    .map(normalizeIdea)
+    .filter((idea) => idea.id !== null);
+  const outcome = normalizeOutcomeForm(itemFrom(outcomeResult));
+  const status = trimmed(req.query.status);
+
+  return res.render('ideation/outcome-form', {
+    title: 'Record challenge outcome',
+    activeNav: 'explore',
+    challenge,
+    ideas,
+    outcome,
+    status,
+    successMessage: outcomeEditStatusMessage(status),
+    errorMessage: outcomeEditErrorMessage(status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation challenge not found' }));
 

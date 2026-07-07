@@ -10414,6 +10414,7 @@ describe('shared accessible frontend shell', () => {
     const create = await request(app).get('/ideation/new');
     const edit = await request(app).get('/ideation/7/edit');
     const manage = await request(app).get('/ideation/7/manage');
+    const outcomeEdit = await request(app).get('/ideation/7/outcome');
     const drafts = await request(app).get('/ideation/7/drafts');
     const ideaDetail = await request(app).get('/ideation/7/ideas/12');
 
@@ -10435,6 +10436,8 @@ describe('shared accessible frontend shell', () => {
     expect(edit.headers.location).toBe('/login?status=auth-required');
     expect(manage.status).toBe(302);
     expect(manage.headers.location).toBe('/login?status=auth-required');
+    expect(outcomeEdit.status).toBe(302);
+    expect(outcomeEdit.headers.location).toBe('/login?status=auth-required');
     expect(drafts.status).toBe(302);
     expect(drafts.headers.location).toBe('/login?status=auth-required');
     expect(ideaDetail.status).toBe(302);
@@ -11037,6 +11040,71 @@ describe('shared accessible frontend shell', () => {
     expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-outcomes/dashboard');
   });
 
+  it('renders the Laravel-backed ideation outcome edit page', async () => {
+    const api = require('../src/lib/api');
+    const staticPageRoutes = require('../src/routes/static-pages');
+    api.callIdeationApi
+      .mockResolvedValueOnce({
+        data: {
+          id: 7,
+          title: 'Improve park lighting',
+          status: 'evaluating'
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 12,
+              title: 'Solar path lights',
+              vote_count: 18
+            },
+            {
+              id: 13,
+              title: 'Community lighting rota',
+              vote_count: 6
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          winning_idea_id: 12,
+          status: 'implemented',
+          impact_description: 'The path is safer after evening events.'
+        }
+      });
+
+    const response = await request(app)
+      .get('/ideation/7/outcome?status=outcome-saved')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(staticPageRoutes.pages['/ideation/{param}/outcome']).toBeUndefined();
+    expect(response.text).toContain('href="/ideation/7"');
+    expect(response.text).toContain('Success');
+    expect(response.text).toContain('The outcome has been saved.');
+    expect(response.text).toContain('Improve park lighting');
+    expect(response.text).toContain('Record challenge outcome');
+    expect(response.text).toContain('Capture the winning idea, how far it has been implemented, and the impact it had.');
+    expect(response.text).toContain('method="post" action="/ideation/7/outcome"');
+    expect(response.text).toContain('name="winning_idea_id"');
+    expect(response.text).toContain('<option value="">No winning idea selected</option>');
+    expect(response.text).toContain('<option value="12" selected>Solar path lights</option>');
+    expect(response.text).toContain('Community lighting rota');
+    expect(response.text).toContain('name="outcome_status" type="radio" value="not_started"');
+    expect(response.text).toContain('name="outcome_status" type="radio" value="in_progress"');
+    expect(response.text).toContain('name="outcome_status" type="radio" value="implemented" checked');
+    expect(response.text).toContain('name="outcome_status" type="radio" value="abandoned"');
+    expect(response.text).toContain('name="impact_description"');
+    expect(response.text).toContain('The path is safer after evening events.');
+    expect(response.text).toContain('Save outcome');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/ideation-challenges/7');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/ideation-challenges/7/ideas?limit=100&sort=votes');
+    expect(api.callIdeationApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/ideation-challenges/7/outcome');
+  });
+
   it('submits Laravel ideation challenge action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
@@ -11105,15 +11173,15 @@ describe('shared accessible frontend shell', () => {
     });
 
     const outcomeResponse = await post('/ideation/7/outcome', {
-      outcome_title: ' Funded project ',
-      outcome_summary: ' The idea moved into delivery. ',
-      impact_metric: '42 households'
+      winning_idea_id: '12',
+      outcome_status: 'implemented',
+      impact_description: ' The idea moved into delivery. '
     });
     expect(outcomeResponse.headers.location).toBe('/ideation/7/outcome?status=outcome-saved');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-challenges/7/outcome', {
-      title: 'Funded project',
-      summary: 'The idea moved into delivery.',
-      impact_metric: '42 households'
+      status: 'implemented',
+      winning_idea_id: 12,
+      impact_description: 'The idea moved into delivery.'
     });
 
     const deleteResponse = await post('/ideation/7/delete');

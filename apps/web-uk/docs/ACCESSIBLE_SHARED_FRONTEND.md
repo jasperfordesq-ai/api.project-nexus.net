@@ -370,17 +370,20 @@ localization, runtime smoke tests, and ASP.NET backend compatibility are not
 certified.
 
 The `/ideation`, `/ideation/new`, `/ideation/{id}`, `/ideation/{id}/edit`,
-`/ideation/{id}/manage`, `/ideation/{id}/drafts`,
+`/ideation/{id}/manage`, `/ideation/{id}/outcome`,
+`/ideation/{id}/drafts`,
 `/ideation/{id}/ideas/{ideaId}`, `/ideation/tags`, `/ideation/campaigns`,
 `/ideation/campaigns/{id}`, and `/ideation/outcomes` GET pages are now partial
 Laravel-backed candidates for the Blade ideation challenge list, create/edit
-challenge forms, manage hub, drafts, detail, idea detail, tag-browser,
+challenge forms, manage hub, outcome editor, drafts, detail, idea detail, tag-browser,
 campaigns, campaign detail, and outcomes dashboard flows. Unsigned visitors redirect to
 `/login?status=auth-required`; signed GET requests call Laravel
 `/api/v2/ideation-challenges`, `/api/v2/ideation-categories`,
 `/api/v2/ideation-templates`, `/api/v2/ideation-challenges/{id}`,
 `/api/v2/ideation-challenges/{id}/ideas?limit=30&sort=votes`, and
+`/api/v2/ideation-challenges/{id}/ideas?limit=100&sort=votes`,
 `/api/v2/ideation-challenges/{id}/ideas/drafts`,
+`/api/v2/ideation-challenges/{id}/outcome`,
 `/api/v2/ideation-ideas/{ideaId}`,
 `/api/v2/ideation-ideas/{ideaId}/comments?per_page=30`,
 `/api/v2/ideation-ideas/{ideaId}/media`, `/api/v2/ideation-tags/popular`,
@@ -395,7 +398,7 @@ controls, challenge lifecycle controls, campaign-link controls,
 favourite/duplicate/delete management forms, popular tag links, selected-tag
 challenge matches, tag empty states, campaign tabs, campaign status banners,
 campaign cards, campaign detail metadata, linked challenge cards, challenge
-counts, creator metadata, outcome stats, and outcome tables.
+counts, creator metadata, outcome edit forms, outcome stats, and outcome tables.
 Existing POST aliases still call Laravel v2 ideation
 APIs for challenge create/update/status/favorite, duplicate, delete, campaign
 linking, outcome updates, idea submit/draft/comment/vote/status/media/

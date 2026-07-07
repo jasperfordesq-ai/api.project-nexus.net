@@ -156,15 +156,17 @@ function campaignPayload(body) {
 }
 
 function outcomePayload(body) {
-  const payload = {
-    title: trimmed(body.outcome_title || body.title, 200),
-    summary: trimmed(body.outcome_summary || body.summary, 10000)
-  };
+  const status = trimmed(body.outcome_status || body.status, 64);
+  const winningIdea = positiveInteger(body.winning_idea_id);
+  const impactDescription = trimmed(body.impact_description, 5000);
 
-  const impactMetric = trimmed(body.impact_metric, 255);
-  if (impactMetric !== '') {
-    payload.impact_metric = impactMetric;
-  }
+  const payload = {
+    status: ['not_started', 'in_progress', 'implemented', 'abandoned'].includes(status)
+      ? status
+      : 'not_started',
+    winning_idea_id: winningIdea,
+    impact_description: impactDescription || null
+  };
 
   return payload;
 }
@@ -338,7 +340,7 @@ router.post('/:id(\\d+)/outcome', asyncRoute(async (req, res) => {
     `/ideation-challenges/${id}/outcome`,
     outcomePayload(req.body),
     `/ideation/${id}/outcome?status=outcome-saved`,
-    `/ideation/${id}/outcome?status=outcome-save-failed`
+    `/ideation/${id}/outcome?status=outcome-failed`
   );
 }));
 
