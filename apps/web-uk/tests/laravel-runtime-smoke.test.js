@@ -409,6 +409,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/jobs/talent-search',
       '/events/6/edit',
       '/events/14/edit',
+      '/groups/484/announcements/1/edit',
       '/jobs/90764/edit',
       '/jobs/90764/analytics',
       '/jobs/90764/pipeline',
@@ -824,6 +825,14 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
       { path: '/events/6/edit', status: 403 },
       { path: '/events/14/edit', status: 403 }
+    ]));
+  });
+
+  it('includes the stable group announcement edit gated fixture outcome in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/groups/484/announcements/1/edit', status: 403 }
     ]));
   });
 

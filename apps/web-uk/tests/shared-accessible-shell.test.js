@@ -13567,11 +13567,15 @@ describe('shared accessible frontend shell', () => {
     });
     api.callGroupApi.mockReset().mockResolvedValueOnce({
       data: {
-        id: 9,
-        title: 'Autumn rota',
-        content: 'Please confirm your October availability.',
-        is_pinned: true,
-        expires_at: '2026-10-31T00:00:00Z'
+        items: [
+          {
+            id: 9,
+            title: 'Autumn rota',
+            content: 'Please confirm your October availability.',
+            is_pinned: true,
+            expires_at: '2026-10-31T00:00:00Z'
+          }
+        ]
       }
     });
 
@@ -13600,7 +13604,64 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledTimes(1);
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
-    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/announcements/9');
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/announcements');
+  });
+
+  it('returns Laravel group announcement edit denial before unsupported announcement lookups', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 484,
+        name: 'Dunmanway',
+        owner_id: 14,
+        my_membership: null
+      }
+    });
+    api.callGroupApi.mockReset().mockRejectedValueOnce(new api.ApiError('Method not allowed', 405, {}));
+
+    const response = await request(app)
+      .get('/groups/484/announcements/1/edit')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(response.text).toContain('Forbidden');
+    expect(api.getGroup).toHaveBeenCalledWith('test-token', '484');
+    expect(api.callGroupApi).not.toHaveBeenCalled();
+  });
+
+  it('loads Laravel group announcement edit details from the announcements collection endpoint', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: {
+          role: 'admin'
+        }
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 9,
+            title: 'Autumn rota',
+            content: 'Please confirm your October availability.',
+            is_pinned: true
+          }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/groups/42/announcements/9/edit')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Autumn rota');
+    expect(response.text).toContain('Please confirm your October availability.');
+    expect(api.callGroupApi).toHaveBeenCalledTimes(1);
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/announcements');
   });
 
   it('renders the Laravel group discussions page for signed-in group members', async () => {

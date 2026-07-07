@@ -866,13 +866,19 @@ router.get('/:id(\\d+)/announcements', asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/announcements/:annId(\\d+)/edit', asyncRoute(async (req, res) => {
   const { id, annId } = req.params;
-  const [groupResult, announcementResult] = await Promise.all([
-    getGroup(req.token, id),
-    callGroup(req.token, 'GET', `/${id}/announcements/${annId}`)
-  ]);
-
+  const groupResult = await getGroup(req.token, id);
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
-  const announcementData = dataFrom(announcementResult)?.announcement || dataFrom(announcementResult);
+  if (!isGroupAdmin(group)) {
+    return res.status(403).render('errors/403', { title: 'Forbidden' });
+  }
+
+  const announcementsResult = await callGroup(req.token, 'GET', `/${id}/announcements`);
+  const announcementData = collectionFrom(announcementsResult)
+    .find((announcement) => String(positiveInteger(announcement?.id)) === String(annId));
+  if (!announcementData) {
+    return res.status(404).render('errors/404', { title: 'Announcement not found' });
+  }
+
   const announcement = normalizeAnnouncement(announcementData);
 
   return res.render('groups/announcement-edit', {
