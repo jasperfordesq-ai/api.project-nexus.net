@@ -125,6 +125,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     }
 
     const signedModulePages = new Set([
+      '/',
       '/explore',
       '/saved',
       '/notifications',
@@ -263,6 +264,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/about',
       '/accessibility',
       '/blog',
+      '/blog/feed.xml',
       '/chat',
       '/contact',
       '/cookies',
@@ -303,6 +305,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/listings/new',
       '/marketplace/create',
       '/marketplace/search',
+      '/marketplace/coupons/new',
       '/me/collections',
       '/members/nearby',
       '/messages/groups',
@@ -325,7 +328,9 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/search',
       '/trust-and-safety',
       '/verify-email',
-      '/wallet/manage'
+      '/wallet/export.csv',
+      '/wallet/manage',
+      '/wallet/recipients'
     ]);
     if (req.method === 'GET' && signedModulePages.has(req.url)) {
       if (delayedPaths[req.url]) {
@@ -344,6 +349,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     }
 
     const signedGatedPages = new Set([
+      '/coupons',
       '/jobs/bias-audit',
       '/jobs/talent-search',
       '/jobs/90764/edit',
@@ -356,7 +362,8 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/resources/10/delete',
       '/coupons/1',
       '/coupons/2',
-      '/marketplace/coupons'
+      '/marketplace/coupons',
+      '/marketplace/coupons/5/edit'
     ]);
     if (req.method === 'GET' && signedGatedPages.has(req.url)) {
       if ((req.headers.cookie || '').includes('token=signed-token')) {
@@ -371,6 +378,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
     }
 
     const signedRedirectPages = new Map([
+      ['/password/reset', '/login/forgot-password'],
       ['/login/two-factor', '/login?status=two-factor-expired'],
       ['/onboarding', '/dashboard'],
       ['/events/6/recurring-edit', '/events/6/edit'],
@@ -582,6 +590,25 @@ describe('Laravel runtime smoke harness', () => {
     ]));
   });
 
+  it('includes stable home, blog feed, wallet export, and coupon management outcomes in the default smoke scopes', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/',
+      '/blog/feed.xml',
+      '/wallet/export.csv',
+      '/wallet/recipients',
+      '/marketplace/coupons/new'
+    ]));
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/coupons', status: 403 },
+      { path: '/marketplace/coupons/5/edit', status: 403 }
+    ]));
+    expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
+      { path: '/password/reset', location: '/login/forgot-password' }
+    ]));
+  });
+
   it('proves the Laravel-backed login path with CSRF, cookies, redirects, and a signed account page', async () => {
     const requests = [];
     const laravel = createLaravelServer(requests);
@@ -692,6 +719,7 @@ describe('Laravel runtime smoke harness', () => {
     const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
 
     expect(checks).toEqual(expect.objectContaining({
+      'module-page-home-renders': true,
       'module-page-login-renders': true,
       'module-page-login-forgot-password-renders': true,
       'module-page-password-reset-token-reset-token-renders': true,
@@ -834,6 +862,7 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-about-renders': true,
       'module-page-accessibility-renders': true,
       'module-page-blog-renders': true,
+      'module-page-blog-feed-xml-renders': true,
       'module-page-chat-renders': true,
       'module-page-contact-renders': true,
       'module-page-cookies-renders': true,
@@ -886,7 +915,10 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-listings-new-renders': true,
       'module-page-marketplace-create-renders': true,
       'module-page-marketplace-search-renders': true,
+      'module-page-marketplace-coupons-new-renders': true,
+      'gated-page-coupons-returns-403': true,
       'gated-page-marketplace-coupons-returns-403': true,
+      'gated-page-marketplace-coupons-5-edit-returns-403': true,
       'module-page-me-collections-renders': true,
       'module-page-members-nearby-renders': true,
       'module-page-messages-groups-renders': true,
@@ -902,6 +934,7 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-premium-return-renders': true,
       'module-page-profile-renders': true,
       'module-page-report-a-problem-renders': true,
+      'redirect-page-password-reset-redirects-login-forgot-password': true,
       'redirect-page-login-two-factor-redirects-login-status-two-factor-expired': true,
       'redirect-page-onboarding-redirects-dashboard': true,
       'redirect-page-events-6-recurring-edit-redirects-events-6-edit': true,
@@ -919,8 +952,11 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-search-renders': true,
       'module-page-trust-and-safety-renders': true,
       'module-page-verify-email-renders': true,
-      'module-page-wallet-manage-renders': true
+      'module-page-wallet-export-csv-renders': true,
+      'module-page-wallet-manage-renders': true,
+      'module-page-wallet-recipients-renders': true
     }));
+    expect(checkByName['gated-page-coupons-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-jobs-bias-audit-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-jobs-talent-search-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-jobs-90764-edit-returns-403'].status).toBe(403);
@@ -934,6 +970,8 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['gated-page-coupons-1-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-coupons-2-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-marketplace-coupons-5-edit-returns-403'].status).toBe(403);
+    expect(checkByName['redirect-page-password-reset-redirects-login-forgot-password'].location).toBe('/login/forgot-password');
     expect(checkByName['redirect-page-events-6-recurring-edit-redirects-events-6-edit'].location).toBe('/events/6/edit');
     expect(checkByName['redirect-page-groups-484-edit-redirects-groups-484'].location).toBe('/groups/484');
     expect(checkByName['redirect-page-courses-42-certificate-redirects-courses-42-status-certificate-failed'].location).toBe('/courses/42?status=certificate-failed');
@@ -956,6 +994,8 @@ describe('Laravel runtime smoke harness', () => {
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/courses/1').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/federation/members/353').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/ideation/23').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet/export.csv').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/marketplace/coupons/new').at(-1).cookie).toContain('token=signed-token');
   });
 
   it('smokes unsigned redirects for auth-required parameterised Laravel routes', async () => {

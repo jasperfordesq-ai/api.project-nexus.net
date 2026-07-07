@@ -74,13 +74,14 @@ The latest generated route matrix at this handoff reported:
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
 Focused runtime-smoke harness test: `npm test --
-tests/laravel-runtime-smoke.test.js --runInBand` passed with `16/16` tests
+tests/laravel-runtime-smoke.test.js --runInBand` passed with `17/17` tests
 after red steps for the missing harness, stale Acme defaults, missing public
 module-page checks, missing signed module-page checks, too-short default
 timeout for slower Laravel-backed signed pages, chunked fallback support, and
 the missing default real-fixture parameterised detail, secondary outcome,
 listing/member/feed/course, message/volunteering-owner, and
-course/federation/ideation/resource/coupon outcome scopes.
+course/federation/ideation/resource/coupon, home/blog/wallet/coupon-management
+outcome scopes.
 
 Live local smoke result on 2026-07-07: direct Laravel login succeeds for the
 E2E fixture account when `X-Tenant-ID: 2` or `X-Tenant-Slug: hour-timebank` is
@@ -220,6 +221,18 @@ default Laravel-backed run against a temporary web-uk process at
 2026-07-07: `247/247` checks, `0` failures, `210` module-page checks, 8
 unsigned auth-required redirect checks, 13 gated-status checks, and 10 signed
 redirect checks; `npm run smoke:laravel` exited `0`.
+The default scope now also covers `/`, `/blog/feed.xml`, `/wallet/export.csv`,
+`/wallet/recipients`, and `/marketplace/coupons/new` as signed 2xx routes;
+`/coupons` and `/marketplace/coupons/5/edit` as signed `403` responses; and
+`/password/reset` redirecting to `/login/forgot-password`. A targeted live run
+against `WEB_UK_BASE_URL=http://127.0.0.1:5336`, started with `TENANT_ID=2`,
+passed on 2026-07-07: `14/14` checks, `0` failures. The expanded default scope
+now contains `255` checks: `215` module-page checks, 8 unsigned auth-required
+redirect checks, 15 gated-status checks, and 11 signed redirect checks, plus the
+6 auth/health checks. The single unchunked live command exceeded a 600-second
+wrapper timeout, so the scope was recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4`
+against the same temporary process: all four chunks passed on 2026-07-07 with
+`375` repeated checks, `0` failures, and `215` collective module-page checks.
 `/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to
 `/login?status=auth-required` before data lookup. Without

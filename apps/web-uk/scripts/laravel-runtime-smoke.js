@@ -72,6 +72,7 @@ const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/users/1/collections'
 ];
 const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
+  { path: '/coupons', status: 403 },
   { path: '/jobs/bias-audit', status: 403 },
   { path: '/jobs/talent-search', status: 403 },
   { path: '/jobs/90764/edit', status: 403 },
@@ -84,9 +85,11 @@ const DEFAULT_SIGNED_GATED_PAGE_PATHS = [
   { path: '/resources/10/delete', status: 403 },
   { path: '/coupons/1', status: 403 },
   { path: '/coupons/2', status: 403 },
-  { path: '/marketplace/coupons', status: 403 }
+  { path: '/marketplace/coupons', status: 403 },
+  { path: '/marketplace/coupons/5/edit', status: 403 }
 ];
 const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
+  { path: '/password/reset', location: '/login/forgot-password' },
   { path: '/login/two-factor', location: '/login?status=two-factor-expired' },
   { path: '/onboarding', location: '/dashboard' },
   { path: '/events/6/recurring-edit', location: '/events/6/edit' },
@@ -99,6 +102,7 @@ const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
+  '/',
   '/login',
   '/login/forgot-password',
   '/password/reset?token=reset-token',
@@ -192,6 +196,7 @@ const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/about',
   '/accessibility',
   '/blog',
+  '/blog/feed.xml',
   '/chat',
   '/contact',
   '/cookies',
@@ -232,6 +237,7 @@ const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/listings/new',
   '/marketplace/create',
   '/marketplace/search',
+  '/marketplace/coupons/new',
   '/me/collections',
   '/members/nearby',
   '/messages/groups',
@@ -254,7 +260,9 @@ const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/search',
   '/trust-and-safety',
   '/verify-email',
-  '/wallet/manage'
+  '/wallet/export.csv',
+  '/wallet/manage',
+  '/wallet/recipients'
 ];
 
 class CookieJar {

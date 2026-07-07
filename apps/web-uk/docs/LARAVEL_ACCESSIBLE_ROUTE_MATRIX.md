@@ -169,6 +169,18 @@ default Laravel-backed run against a temporary web-uk process at
 unsigned auth-required redirect checks, 13 gated-status checks, and 10 signed
 redirect checks; `npm run smoke:laravel`
 exited `0`.
+The default scope now also covers `/`, `/blog/feed.xml`, `/wallet/export.csv`,
+`/wallet/recipients`, and `/marketplace/coupons/new` as signed 2xx routes;
+`/coupons` and `/marketplace/coupons/5/edit` as signed `403` responses; and
+`/password/reset` redirecting to `/login/forgot-password`. A targeted live run
+against `WEB_UK_BASE_URL=http://127.0.0.1:5336`, started with `TENANT_ID=2`,
+passed on 2026-07-07: `14/14` checks, `0` failures. The expanded default scope
+now contains `255` checks: `215` module-page checks, 8 unsigned auth-required
+redirect checks, 15 gated-status checks, and 11 signed redirect checks, plus the
+6 auth/health checks. The single unchunked live command exceeded a 600-second
+wrapper timeout, so the scope was recertified with `SMOKE_MODULE_PAGE_CHUNK=N/4`
+against the same temporary process: all four chunks passed on 2026-07-07 with
+`375` repeated checks, `0` failures, and `215` collective module-page checks.
 
 ## Header And Footer Contract
 
