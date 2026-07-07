@@ -128,6 +128,7 @@ const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/federation/listings/1/1',
   '/federation/partners/1',
   '/ideation/1',
+  '/ideation/campaigns/1',
   '/organisations/1',
   '/podcasts/1',
   '/podcasts/1/episodes/1',

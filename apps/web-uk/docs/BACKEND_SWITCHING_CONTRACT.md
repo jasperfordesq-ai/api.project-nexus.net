@@ -318,11 +318,13 @@ Laravel `/api/v2/listings/{id}` contract, and the E2E-owned fixture
 `/listings/90992/edit` returned `200` against
 `WEB_UK_BASE_URL=http://127.0.0.1:5349`. The poll export route
 `/polls/1/export` returned `/login?status=auth-required` when unsigned against
-`WEB_UK_BASE_URL=http://127.0.0.1:5350`. The default scope now contains `341`
-checks: `279` module-page checks, 13 unsigned auth-required redirect checks, 22
+`WEB_UK_BASE_URL=http://127.0.0.1:5350`; `/ideation/campaigns/1` returned the
+same unsigned auth-required redirect against
+`WEB_UK_BASE_URL=http://127.0.0.1:5351`. The default scope now contains `342`
+checks: `279` module-page checks, 14 unsigned auth-required redirect checks, 22
 gated-status checks, and 21 signed redirect checks, plus the 6 auth/health
 checks. Parameterised matched GET route shapes without default runtime smoke
-coverage fell from 28 to 4.
+coverage fell from 28 to 3.
 
 ## Current Page Candidates
 

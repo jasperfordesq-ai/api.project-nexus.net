@@ -491,6 +491,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/federation/listings/1/1',
       '/federation/partners/1',
       '/ideation/1',
+      '/ideation/campaigns/1',
       '/organisations/1',
       '/podcasts/1',
       '/podcasts/1/episodes/1',
@@ -837,6 +838,7 @@ describe('Laravel runtime smoke harness', () => {
     const options = resolveOptions({}, {});
 
     expect(options.unsignedAuthRequiredPagePaths).toEqual(expect.arrayContaining([
+      '/ideation/campaigns/1',
       '/polls/1/export',
       '/marketplace/slots/1/edit',
       '/me/collections/1',
