@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T02:12:57.145Z",
+    "generatedAt": "2026-07-07T02:16:42.821Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -12003,8 +12003,8 @@
       "gates": "feature:search",
       "apiNeeds": "",
       "webUkPath": "/search/saved/{param}/delete",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "search/saved-delete",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\search.js"
     },
     {
       "method": "POST",

@@ -152,6 +152,8 @@ groups. Saved-search POST aliases are wired to Laravel `/api/v2/search/saved`:
 `/search/saved` stores the Laravel-normalized query allow-list, delete calls
 `DELETE /api/v2/search/saved/{id}`, and run calls
 `POST /api/v2/search/saved/{id}/run` before redirecting to `/search/advanced`.
+The saved-search delete confirmation GET reads the owner-scoped saved-search
+list from `/api/v2/search/saved` and renders the Blade-style warning form.
 `/achievements` now redirects unsigned visitors to
 `/login?status=auth-required`, calls Laravel-compatible gamification profile,
 badge, progress, daily reward, and challenge endpoints, and renders the

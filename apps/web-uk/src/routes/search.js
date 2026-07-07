@@ -287,6 +287,10 @@ function savedCountLabel(count) {
   return `${count.toLocaleString('en-GB')} saved searches`;
 }
 
+function savedSearchById(result, id) {
+  return savedSearchRows(result).find((row) => row.id === id) || null;
+}
+
 router.get('/advanced', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) {
@@ -337,6 +341,26 @@ router.get('/advanced', asyncRoute(async (req, res) => {
     savedCountLabel: savedCountLabel(savedSearches.length),
     truncate,
     membersCountLabel
+  });
+}));
+
+router.get('/saved/:id(\\d+)/delete', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const id = Number(req.params.id);
+  const result = await getSavedSearches(token);
+  const savedSearch = savedSearchById(result, id);
+  if (savedSearch === null) {
+    throw new ApiError('Saved search not found', 404);
+  }
+
+  return res.render('search/saved-delete', {
+    title: 'Delete this saved search?',
+    activeNav: 'explore',
+    savedSearch
   });
 }));
 

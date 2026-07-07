@@ -5681,6 +5681,45 @@ describe('shared accessible frontend shell', () => {
     expect(api.saveSavedSearch).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel saved search delete confirmation page', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.getSavedSearches.mockResolvedValueOnce({
+      data: [
+        {
+          id: 12,
+          name: 'Garden helpers',
+          query_params: { q: 'gardening' }
+        }
+      ]
+    });
+
+    const unsigned = await request(app).get('/search/saved/12/delete');
+    const signed = await request(app)
+      .get('/search/saved/12/delete')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.getSavedSearches).toHaveBeenCalledWith('test-token');
+    expect(signed.text).toContain('href="/search/advanced"');
+    expect(signed.text).toContain('Back to search');
+    expect(signed.text).toContain('Delete this saved search?');
+    expect(signed.text).toContain('Saved search');
+    expect(signed.text).toContain('Garden helpers');
+    expect(signed.text).toContain('gardening');
+    expect(signed.text).toContain('There is a problem');
+    expect(signed.text).toContain('This will permanently delete the saved search. You cannot undo this.');
+    expect(signed.text).toContain('action="/search/saved/12/delete"');
+    expect(signed.text).toContain('Yes, delete it');
+    expect(signed.text).toContain('No, keep it');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits the Laravel saved search delete route through the search API helper', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
