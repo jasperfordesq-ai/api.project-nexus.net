@@ -383,7 +383,8 @@ unsigned visitors to `/login?status=auth-required`, calls Laravel
 and event sections when the aggregate response includes them. Tenant feature
 gating, exact recent-listing source parity, clubs detection, localization, and
 deeper runtime behavior are not certified; the signed `/explore` page is
-covered by the default Laravel runtime smoke.
+covered by the default Laravel runtime smoke and default `Explore` body-marker
+contract check.
 
 The public `/kb` and `/kb/{id}` pages are Laravel-backed knowledge-base
 candidates. They read Laravel `/api/v2/kb`, `/api/v2/kb/search`, and
@@ -721,8 +722,9 @@ selected thread, warning text, empty/error states, and no-JS message form. POST
 Laravel tenant `ai_chat` feature-gate proof, provider-enabled notice parity,
 fallback reply/tool-card display, localization, and ASP.NET backend
 compatibility are not certified; the signed `/chat` page is covered by targeted
-Laravel runtime smoke evidence from
-`WEB_UK_BASE_URL=http://127.0.0.1:5354`.
+Laravel runtime smoke evidence from `WEB_UK_BASE_URL=http://127.0.0.1:5354`
+and the default `AI assistant` body-marker contract check from
+`WEB_UK_BASE_URL=http://127.0.0.1:5356`.
 
 The `/skills` page is now a partial Laravel-backed candidate for the Blade
 skills directory. Unsigned visitors redirect to `/login?status=auth-required`;
