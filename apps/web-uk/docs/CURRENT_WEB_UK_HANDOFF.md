@@ -380,7 +380,10 @@ same unsigned auth-required redirect against
 checks: `279` module-page checks, 14 unsigned auth-required redirect checks, 3
 unsigned login redirect checks, 22 gated-status checks, and 21 signed redirect
 checks, plus the 6 auth/health checks. Parameterised matched GET route shapes
-without default runtime smoke coverage fell from 28 to 0.
+without default runtime smoke coverage fell from 28 to 0. The signed `/chat`
+AI assistant page returned `200` against
+`WEB_UK_BASE_URL=http://127.0.0.1:5354`, confirming the default
+`module-page-chat-renders` smoke outcome against Laravel.
 
 `/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to

@@ -712,8 +712,10 @@ selected thread, warning text, empty/error states, and no-JS message form. POST
 `/chat` sends trimmed messages to Laravel `/api/ai/chat` and preserves Laravel
 `empty`, `sent`, and `auth-required` redirect statuses. This remains partial:
 Laravel tenant `ai_chat` feature-gate proof, provider-enabled notice parity,
-fallback reply/tool-card display, localization, runtime smoke tests, and ASP.NET
-backend compatibility are not certified.
+fallback reply/tool-card display, localization, and ASP.NET backend
+compatibility are not certified; the signed `/chat` page is covered by targeted
+Laravel runtime smoke evidence from
+`WEB_UK_BASE_URL=http://127.0.0.1:5354`.
 
 The `/skills` page is now a partial Laravel-backed candidate for the Blade
 skills directory. Unsigned visitors redirect to `/login?status=auth-required`;
