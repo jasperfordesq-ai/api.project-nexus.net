@@ -58,9 +58,9 @@ Regenerate before trusting it.
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
-| Dirty files seen | Clean immediately after `8b503304`; current in-progress edits expand Laravel runtime smoke to public module pages. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `825/1000` implementation/certification parity |
-| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, and default public module-page smoke scope, assuming agents rerun the refresh protocol |
+| Dirty files seen | Clean immediately after `28d17f2d`; current in-progress edits expand Laravel runtime smoke to signed module pages. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `835/1000` implementation/certification parity |
+| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and signed module-page smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -74,9 +74,9 @@ The latest generated route matrix at this handoff reported:
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
 Focused runtime-smoke harness test: `npm test -- --runInBand
-tests/laravel-runtime-smoke.test.js` passed with `4/4` tests after red steps
-for the missing harness, stale Acme defaults, and missing public module-page
-checks.
+tests/laravel-runtime-smoke.test.js` passed with `5/5` tests after red steps
+for the missing harness, stale Acme defaults, missing public module-page checks,
+and missing signed module-page checks.
 
 Live local smoke result on 2026-07-07: direct Laravel login succeeds for the
 E2E fixture account when `X-Tenant-ID: 2` or `X-Tenant-Slug: hour-timebank` is
@@ -86,7 +86,11 @@ and `SMOKE_TIMEOUT_MS=30000`: Laravel API `200`, web-uk health `200`, unsigned
 `/account` -> `/login`, `/login` CSRF rendered, login POST -> `/dashboard`, and
 signed `/account` rendered `200`. The current smoke scope also checks
 `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and `/help`
-return 2xx through web-uk while Laravel is the backend target. Without
+return 2xx through web-uk while Laravel is the backend target. After the login
+flow, it checks `/explore`, `/saved`, `/notifications`, `/members/discover`,
+`/resources`, `/skills`, `/goals`, and `/clubs`. Live probing found `/wallet`,
+`/messages`, and `/coupons` are not ready for the default signed smoke list in
+the local fixture because they returned non-2xx responses. Without
 `TENANT_ID=2`, the same Laravel E2E credentials fail because web-uk does not
 send the tenant context Laravel uses to scope login.
 
@@ -200,7 +204,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `825/1000`.
+Current working estimate at this handoff: `835/1000`.
 
 ## Final Handoff Checklist
 

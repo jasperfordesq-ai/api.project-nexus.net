@@ -10,6 +10,7 @@ const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
+const DEFAULT_SIGNED_MODULE_PAGE_PATHS = ['/explore', '/saved', '/notifications', '/members/discover', '/resources', '/skills', '/goals', '/clubs'];
 
 class CookieJar {
   constructor() {
@@ -129,7 +130,7 @@ function resolveOptions(options = {}, env = process.env) {
     password: options.password || env.SMOKE_PASSWORD || DEFAULT_SMOKE_PASSWORD,
     tenant: options.tenant || env.SMOKE_TENANT || DEFAULT_SMOKE_TENANT,
     timeoutMs: Number(options.timeoutMs || env.SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
-    modulePagePaths: options.modulePagePaths || DEFAULT_PUBLIC_MODULE_PAGE_PATHS,
+    modulePagePaths: options.modulePagePaths || [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS],
     fetchImpl: options.fetchImpl || globalThis.fetch
   };
 }

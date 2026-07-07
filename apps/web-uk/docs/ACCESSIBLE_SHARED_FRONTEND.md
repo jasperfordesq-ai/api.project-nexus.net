@@ -43,14 +43,18 @@ redirects, `/login` CSRF handling, login POST redirect behavior, and a signed
 `/account` render. It also verifies the default public Laravel-backed module
 pages `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and
 `/help` return successful responses from the web-uk app while it is pointed at
-Laravel. The harness defaults to Laravel's local E2E fixture
+Laravel, plus the signed module pages `/explore`, `/saved`, `/notifications`,
+`/members/discover`, `/resources`, `/skills`, `/goals`, and `/clubs` after the
+same login flow. The harness defaults to Laravel's local E2E fixture
 (`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`).
 
 On 2026-07-07 the command passed end-to-end against a temporary web-uk process
 started with `TENANT_ID=2` and `SMOKE_TIMEOUT_MS=30000`. Keep the tenant context
 visible: the same Laravel E2E credentials return `401` when web-uk does not send
-Laravel's tenant id `2` as `X-Tenant-ID`.
+Laravel's tenant id `2` as `X-Tenant-ID`. Live probing found `/wallet`,
+`/messages`, and `/coupons` are not ready for default signed smoke yet in this
+local fixture because they returned non-2xx responses.
 
 ## Stack
 
@@ -94,7 +98,8 @@ unsigned visitors to `/login?status=auth-required`, calls Laravel
 `/api/v2/explore`, renders the Blade Explore card list, and shows live listing
 and event sections when the aggregate response includes them. Tenant feature
 gating, exact recent-listing source parity, clubs detection, localization, and
-runtime behavior are not certified.
+deeper runtime behavior are not certified; the signed `/explore` page is
+covered by the default Laravel runtime smoke.
 
 The public `/kb` and `/kb/{id}` pages are Laravel-backed knowledge-base
 candidates. They read Laravel `/api/v2/kb`, `/api/v2/kb/search`, and
@@ -130,7 +135,8 @@ transfer forms, donation target controls, and status states. `/wallet/recipients
 returns Laravel wallet user-search suggestions for progressive enhancement, and
 `/wallet/export.csv` streams the Laravel `/api/v2/wallet/statement` CSV
 download. Tenant module gates, exact live recipient privacy behavior,
-localization, and runtime smoke tests are not certified.
+localization, and wallet runtime smoke are not certified; the signed `/saved`
+and `/notifications` pages are covered by the default Laravel runtime smoke.
 `/saved` now redirects unsigned visitors to `/login?status=auth-required`, reads
 Laravel `/api/v2/bookmarks` with the Blade type filter, and renders the
 Blade-style saved item list, empty state, status banner, item links, type tags,
@@ -185,8 +191,9 @@ links, and load-more navigation. Member reputation GET
 `/api/v2/users/{id}` and `/api/v2/users/{id}/verification-badges`, and renders
 the Blade-style NEXUS score, activity stats, verification badges, and earned
 badges page. Base directory and profile visual parity, feature gates,
-localization, runtime smoke tests, and ASP.NET backend compatibility are not
-certified.
+localization, deeper member workflow runtime smoke, and ASP.NET backend
+compatibility are not certified; the signed `/members/discover` page is covered
+by the default Laravel runtime smoke.
 Matches GET pages now redirect unsigned visitors to `/login?status=auth-required`,
 call Laravel-compatible `/api/v2/matches/all`, and render the Blade-style
 `/matches` summary plus the `/matches/board` stats/filter board. Match-dismiss
@@ -314,7 +321,9 @@ binary download response and preserves safe download headers. `/groups/{id}/mana
 now reads Laravel-compatible member and pending-request data, then renders the
 Blade-style management page with request decisions and member role/removal
 forms. Owner/admin authorization depth, tenant/feature gates, localization,
-runtime behavior, and ASP.NET backend compatibility are not certified.
+deeper resource runtime behavior, and ASP.NET backend compatibility are not
+certified; the signed `/resources` page is covered by the default Laravel
+runtime smoke.
 Resource POST aliases are wired to Laravel v2 APIs for resource upload,
 resource delete, admin reorder, resource comments, comment deletion, and
 resource reactions while preserving Laravel library/comment status redirects.
@@ -431,8 +440,9 @@ signed-in GET requests call Laravel `/api/v2/skills/categories`, optional
 search form, member result list with proficiency/offers/wants tags, category
 skill count table, back-to-categories link, and nested category browser. This
 remains partial: exact tenant captions, localization, auth edge cases beyond the
-page guard, runtime smoke behavior, and ASP.NET backend compatibility are not
-certified.
+page guard, deeper runtime smoke behavior, and ASP.NET backend compatibility are
+not certified; the signed `/skills` page is covered by the default Laravel
+runtime smoke.
 
 The `/goals` page is now a partial Laravel-backed candidate for the Blade goals
 index. Unsigned visitors redirect to `/login?status=auth-required`; signed-in
@@ -478,7 +488,8 @@ like/comment counts, reply/delete controls, status banners, validation error,
 and add-comment form. Existing goal POST aliases continue to call Laravel v2
 goals, comment, and like APIs. This remains partial: the detail GET page, exact
 tenant captions, goals feature-gate behavior, localization, runtime persistence,
-and ASP.NET backend compatibility are not certified.
+and ASP.NET backend compatibility are not certified; the signed `/goals` page is
+covered by the default Laravel runtime smoke.
 
 The `/coupons` and `/coupons/{id}` pages are now partial Laravel-backed
 candidates for the Blade public merchant-coupon browsing flow. Unsigned

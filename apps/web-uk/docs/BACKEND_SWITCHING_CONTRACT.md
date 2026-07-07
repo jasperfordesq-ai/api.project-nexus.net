@@ -48,8 +48,10 @@ CSRF rendering, login POST redirect to `/dashboard`, and signed `/account`
 rendering. It also checks the default public Laravel-backed module pages
 `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and `/help`
 return successful responses through web-uk while Laravel is the backend target.
-Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and `SMOKE_TENANT`;
-the defaults target the Laravel local E2E fixture:
+After login, it checks the signed Laravel-backed pages `/explore`, `/saved`,
+`/notifications`, `/members/discover`, `/resources`, `/skills`, `/goals`, and
+`/clubs`. Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and
+`SMOKE_TENANT`; the defaults target the Laravel local E2E fixture:
 `e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`.
 
@@ -59,7 +61,9 @@ the correct `X-Tenant-ID` context. Current local result on 2026-07-07:
 `WEB_UK_BASE_URL=http://127.0.0.1:5181 SMOKE_TIMEOUT_MS=30000 npm run
 smoke:laravel` passed against a temporary web-uk process started with
 `TENANT_ID=2`. Without that tenant context, Laravel returns `401` for the same
-valid E2E credentials.
+valid E2E credentials. Live probing found `/wallet`, `/messages`, and
+`/coupons` are not ready for the default signed smoke list in the local fixture
+because they returned non-2xx responses.
 
 ## Current Page Candidates
 

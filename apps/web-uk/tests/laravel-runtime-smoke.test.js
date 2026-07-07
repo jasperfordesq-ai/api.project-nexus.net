@@ -107,6 +107,19 @@ function createWebServer(requests, { loginRedirect = '/dashboard' } = {}) {
       return;
     }
 
+    const signedModulePages = new Set(['/explore', '/saved', '/notifications', '/members/discover', '/resources', '/skills', '/goals', '/clubs']);
+    if (req.method === 'GET' && signedModulePages.has(req.url)) {
+      if ((req.headers.cookie || '').includes('token=signed-token')) {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(`<h1>${req.url}</h1>`);
+        return;
+      }
+
+      res.writeHead(302, { location: '/login?status=auth-required' });
+      res.end();
+      return;
+    }
+
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('missing');
   });
@@ -216,5 +229,29 @@ describe('Laravel runtime smoke harness', () => {
       'GET /kb',
       'GET /help'
     ]));
+  });
+
+  it('smokes the default signed Laravel-backed module pages after login', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests);
+    servers.push(laravel, web);
+
+    const [laravelBaseUrl, webBaseUrl] = await Promise.all([listen(laravel), listen(web)]);
+
+    const result = await runLaravelRuntimeSmoke({ laravelBaseUrl, webBaseUrl });
+    const checks = Object.fromEntries(result.checks.map((check) => [check.name, check.ok]));
+
+    expect(checks).toEqual(expect.objectContaining({
+      'module-page-explore-renders': true,
+      'module-page-saved-renders': true,
+      'module-page-notifications-renders': true,
+      'module-page-members-discover-renders': true,
+      'module-page-resources-renders': true,
+      'module-page-skills-renders': true,
+      'module-page-goals-renders': true,
+      'module-page-clubs-renders': true
+    }));
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/explore').at(-1).cookie).toContain('token=signed-token');
   });
 });

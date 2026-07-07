@@ -65,8 +65,10 @@ This uses `scripts/laravel-runtime-smoke.js` to verify local Laravel API
 reachability, web-uk health, unsigned protected redirects, login CSRF handling,
 login POST redirect behavior, signed `/account` rendering, and the default
 public Laravel-backed module pages `/volunteering`, `/organisations`,
-`/organisations/browse`, `/kb`, and `/help`. A Jest regression test covers the
-harness with fake Laravel/web-uk servers:
+`/organisations/browse`, `/kb`, and `/help`. After the login flow, it also
+checks the signed module pages `/explore`, `/saved`, `/notifications`,
+`/members/discover`, `/resources`, `/skills`, `/goals`, and `/clubs`. A Jest
+regression test covers the harness with fake Laravel/web-uk servers:
 
 ```bash
 npm test -- --runInBand tests/laravel-runtime-smoke.test.js
@@ -81,7 +83,10 @@ login request is scoped to the wrong tenant.
 The same smoke now confirms the default public module pages above return 2xx
 from web-uk while it is pointed at Laravel; it does not certify their deeper
 POST workflows, auth-only views, tenant-domain aliases, localization, or ASP.NET
-backend switching.
+backend switching. Live probing also found the signed module pages above return
+2xx after Laravel login; `/wallet`, `/messages`, and `/coupons` are excluded
+from the default signed smoke list because this local fixture returned non-2xx
+responses for them.
 
 ## Header And Footer Contract
 
