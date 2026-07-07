@@ -192,6 +192,10 @@ const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/onboarding/confirm', location: '/dashboard' },
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];
+const DEFAULT_CONTENT_TYPE_PAGE_PATHS = [
+  { path: '/blog/feed.xml', contentType: 'application/rss+xml' },
+  { path: '/wallet/export.csv', contentType: 'text/csv' }
+];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/',
   '/account',
@@ -523,6 +527,18 @@ function redirectPageCheckName(path, location) {
   return `redirect-page-${pathSlug || 'home'}-redirects-${locationSlug || 'home'}`;
 }
 
+function contentTypePageCheckName(path, contentType) {
+  const pathSlug = String(path || '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  const contentTypeSlug = String(contentType || '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+  return `content-type-page-${pathSlug || 'home'}-returns-${contentTypeSlug || 'unknown'}`;
+}
+
 function authRequiredPageCheckName(path, location) {
   const pathSlug = String(path || '')
     .replace(/^\/+|\/+$/g, '')
@@ -610,6 +626,17 @@ function parseRedirectPages(value) {
   }).filter((item) => item.path && item.location);
 }
 
+function parseContentTypePages(value) {
+  return splitSmokeList(value).map((item) => {
+    const separator = item.indexOf('=>');
+    if (separator <= 0) return { path: item, contentType: 'text/html' };
+    return {
+      path: item.slice(0, separator).trim(),
+      contentType: item.slice(separator + 2).trim().toLowerCase()
+    };
+  }).filter((item) => item.path && item.contentType);
+}
+
 function resolveGatedPages(options, env) {
   if (hasOwn(options, 'gatedPagePaths')) return options.gatedPagePaths;
   if (hasOwn(env, 'SMOKE_GATED_PAGE_PATHS')) return parseGatedPages(env.SMOKE_GATED_PAGE_PATHS);
@@ -620,6 +647,12 @@ function resolveRedirectPages(options, env) {
   if (hasOwn(options, 'redirectPagePaths')) return options.redirectPagePaths;
   if (hasOwn(env, 'SMOKE_REDIRECT_PAGE_PATHS')) return parseRedirectPages(env.SMOKE_REDIRECT_PAGE_PATHS);
   return DEFAULT_SIGNED_REDIRECT_PAGE_PATHS;
+}
+
+function resolveContentTypePages(options, env) {
+  if (hasOwn(options, 'contentTypePagePaths')) return options.contentTypePagePaths;
+  if (hasOwn(env, 'SMOKE_CONTENT_TYPE_PAGE_PATHS')) return parseContentTypePages(env.SMOKE_CONTENT_TYPE_PAGE_PATHS);
+  return DEFAULT_CONTENT_TYPE_PAGE_PATHS;
 }
 
 function resolveOptions(options = {}, env = process.env) {
@@ -647,6 +680,7 @@ function resolveOptions(options = {}, env = process.env) {
     ),
     gatedPagePaths: resolveGatedPages(options, env),
     redirectPagePaths: resolveRedirectPages(options, env),
+    contentTypePagePaths: resolveContentTypePages(options, env),
     fetchImpl: options.fetchImpl || globalThis.fetch
   };
 }
@@ -833,6 +867,30 @@ async function runLaravelRuntimeSmoke(options = {}) {
       );
     } catch (error) {
       addCheck(checks, modulePageCheckName(path), false, error.message, { path });
+    }
+  }
+
+  for (const contentTypePage of config.contentTypePagePaths) {
+    const path = contentTypePage.path;
+    const expectedContentType = String(contentTypePage.contentType || '').toLowerCase();
+    try {
+      const response = await smokeRequest({
+        fetchImpl: config.fetchImpl,
+        timeoutMs: config.timeoutMs,
+        cookieJar,
+        url: joinUrl(config.webBaseUrl, path)
+      });
+      const actualContentType = String(response.headers.get('content-type') || '').toLowerCase();
+      const ok = response.ok && actualContentType.includes(expectedContentType);
+      addCheck(
+        checks,
+        contentTypePageCheckName(path, expectedContentType),
+        ok,
+        ok ? `${path} returned ${actualContentType}.` : `expected 2xx ${expectedContentType} from ${path}, got ${response.status} ${actualContentType}`,
+        { status: response.status, contentType: actualContentType, path }
+      );
+    } catch (error) {
+      addCheck(checks, contentTypePageCheckName(path, expectedContentType), false, error.message, { path });
     }
   }
 

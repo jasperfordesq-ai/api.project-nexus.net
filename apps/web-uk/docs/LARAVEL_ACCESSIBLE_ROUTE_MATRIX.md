@@ -324,11 +324,15 @@ same unsigned auth-required redirect against
 `WEB_UK_BASE_URL=http://127.0.0.1:5351`. The plain-login unsigned routes
 `/exchanges/1`, `/jobs/applications/1/cv`, and
 `/jobs/applications/1/history` returned `/login` against
-`WEB_UK_BASE_URL=http://127.0.0.1:5352`. The default scope now contains `345`
+`WEB_UK_BASE_URL=http://127.0.0.1:5352`. The `/blog/feed.xml` and
+`/wallet/export.csv` responses returned the expected `application/rss+xml` and
+`text/csv` content types against `WEB_UK_BASE_URL=http://127.0.0.1:5355`. The
+default scope now contains `347`
 checks: `279` module-page checks, 14 unsigned auth-required redirect checks, 3
 unsigned login redirect checks, 22 gated-status checks, and 21 signed redirect
-checks, plus the 6 auth/health checks. Parameterised matched GET route shapes
-without default runtime smoke coverage fell from 28 to 0.
+checks, plus 2 content-type contract checks and the 6 auth/health checks.
+Parameterised matched GET route shapes without default runtime smoke coverage
+fell from 28 to 0.
 
 ## Header And Footer Contract
 
