@@ -153,8 +153,13 @@ Member discovery GET `/members/discover` now redirects unsigned visitors to
 `/login?status=auth-required`, calls Laravel-compatible
 `/api/v2/users?sort=communityrank`, and renders the Blade-style recommended
 member page with filter navigation, search, recommendation score progress,
-member cards, profile links, and load-more navigation. `/members/nearby` and
-`/members/{id}/insights` remain generated preparation pages; base directory and
+member cards, profile links, and load-more navigation. Member proximity GET
+`/members/nearby` now redirects unsigned visitors to
+`/login?status=auth-required`, reads the signed-in profile location, calls
+Laravel-compatible `/api/v2/members/nearby`, and renders the Blade-style
+radius/search page with no-location guidance, member distance cards, profile
+links, and load-more navigation. `/members/{id}/insights` remains a generated
+preparation page; base directory and
 profile visual parity, feature gates, localization, runtime smoke tests, and
 ASP.NET backend compatibility are not certified.
 Matches GET pages now redirect unsigned visitors to `/login?status=auth-required`,

@@ -2557,6 +2557,21 @@ async function getMembersV2(token, params = {}) {
   });
 }
 
+async function getMembersNearby(token, params = {}) {
+  const query = new URLSearchParams();
+  if (params.lat !== undefined && params.lat !== null) query.set('lat', params.lat);
+  if (params.lon !== undefined && params.lon !== null) query.set('lon', params.lon);
+  if (params.radius_km) query.set('radius_km', params.radius_km);
+  if (params.q) query.set('q', params.q);
+  if (params.limit) query.set('limit', params.limit);
+  if (params.offset !== undefined && params.offset !== null) query.set('offset', params.offset);
+
+  const queryString = query.toString();
+  return request(`/api/v2/members/nearby${queryString ? `?${queryString}` : ''}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 // Reviews
 async function getUserReviews(token, userId, page = 1, limit = 20) {
   const params = new URLSearchParams();
@@ -3145,6 +3160,7 @@ module.exports = {
   runSavedSearch,
   getMembers,
   getMembersV2,
+  getMembersNearby,
   // Reviews
   getUserReviews,
   createUserReview,

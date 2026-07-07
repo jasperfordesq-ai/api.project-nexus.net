@@ -57,6 +57,7 @@ jest.mock('../src/lib/api', () => ({
   getUser: jest.fn(),
   searchUsers: jest.fn().mockResolvedValue({ data: { items: [] } }),
   getMembersV2: jest.fn(),
+  getMembersNearby: jest.fn(),
   getListings: jest.fn(),
   getConversations: jest.fn().mockResolvedValue({ data: [] }),
   getConversation: jest.fn().mockResolvedValue({ id: 77, messages: [] }),
@@ -278,6 +279,7 @@ describe('shared accessible frontend shell', () => {
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
     api.searchUsers.mockReset().mockResolvedValue({ data: { items: [] } });
     api.getMembersV2.mockReset();
+    api.getMembersNearby.mockReset();
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
     api.getUserPublicCollections.mockReset().mockResolvedValue({ data: [] });
@@ -6534,6 +6536,99 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('View profile');
     expect(signed.text).toContain('href="/members/discover?q=repair&amp;offset=40"');
     expect(signed.text).toContain('Load more');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the Laravel nearby members page for signed-in members with a saved location', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.getProfile.mockResolvedValueOnce({
+      data: {
+        id: 101,
+        name: 'Signed in member',
+        latitude: 51.746,
+        longitude: -8.742
+      }
+    });
+    api.getMembersNearby.mockResolvedValueOnce({
+      data: [
+        {
+          id: 77,
+          name: 'Ada Lovelace',
+          avatar: '/avatars/ada.jpg',
+          tagline: 'Helps neighbours find practical support.',
+          distance: 4.25,
+          location: 'Bandon',
+          total_hours_given: 42,
+          total_hours_received: 11,
+          rating: 4.8,
+          identity_verified: true,
+          level: 5,
+          connection_state: 'connected'
+        },
+        {
+          id: 88,
+          first_name: 'Grace',
+          last_name: 'Hopper',
+          distance: 12,
+          total_hours_given: 9,
+          total_hours_received: 3,
+          connection_state: 'pending_received'
+        }
+      ],
+      meta: {
+        per_page: 24,
+        total_items: 31,
+        has_more: true
+      }
+    });
+
+    const unsigned = await request(app).get('/members/nearby');
+    const signed = await request(app)
+      .get('/members/nearby?q=repair&radius=50&offset=24')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(api.getMembersNearby).toHaveBeenCalledWith('test-token', {
+      lat: 51.746,
+      lon: -8.742,
+      q: 'repair',
+      radius_km: 50,
+      limit: 24,
+      offset: 24
+    });
+    expect(signed.text).toContain('href="/members"');
+    expect(signed.text).toContain('Community members at');
+    expect(signed.text).toContain('Members near me');
+    expect(signed.text).toContain('Members within the chosen distance of the location saved on your profile.');
+    expect(signed.text).toContain('href="/members/discover"');
+    expect(signed.text).toContain('Search nearby members');
+    expect(signed.text).toContain('value="repair"');
+    expect(signed.text).toContain('value="50" selected');
+    expect(signed.text).toContain('Results');
+    expect(signed.text).toContain('Ada Lovelace');
+    expect(signed.text).toContain('src="/avatars/ada.jpg"');
+    expect(signed.text).toContain('Helps neighbours find practical support.');
+    expect(signed.text).toContain('4.3 km away');
+    expect(signed.text).toContain('Bandon');
+    expect(signed.text).toContain('42 hours given');
+    expect(signed.text).toContain('11 hours received');
+    expect(signed.text).toContain('4.8 out of 5');
+    expect(signed.text).toContain('Verified');
+    expect(signed.text).toContain('Level 5');
+    expect(signed.text).toContain('Connected');
+    expect(signed.text).toContain('Grace Hopper');
+    expect(signed.text).toContain('Wants to connect');
+    expect(signed.text).toContain('href="/members/77"');
+    expect(signed.text).toContain('View profile');
+    expect(signed.text).toContain('href="/members/nearby?q=repair&amp;radius=50&amp;offset=48"');
+    expect(signed.text).toContain('More nearby members');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 

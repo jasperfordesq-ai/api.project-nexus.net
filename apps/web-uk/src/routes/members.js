@@ -8,6 +8,7 @@ const {
   getUsers,
   getUser,
   getMembersV2,
+  getMembersNearby,
   getConnections,
   sendConnectionRequest,
   getMemberConnectionStatus,
@@ -122,6 +123,20 @@ function normalizeDiscoverMember(member) {
     level,
     levelLabel: level > 0 ? `Level ${level}` : '',
     connectionLabel: connectionLabel(member.connection_state || member.connectionState)
+  };
+}
+
+function numericCoordinate(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizeNearbyMember(member) {
+  const normalized = normalizeDiscoverMember(member);
+  const distance = Number(member.distance);
+  return {
+    ...normalized,
+    distanceLabel: Number.isFinite(distance) ? `${distance.toFixed(1)} km away` : ''
   };
 }
 
@@ -363,6 +378,61 @@ router.get('/discover', asyncRoute(async (req, res) => {
     totalItemsLabel: `${totalItems} member${totalItems === 1 ? '' : 's'}`,
     hasMore,
     nextHref: hasMore ? `/members/discover${search ? `?q=${encodeURIComponent(search)}&` : '?'}offset=${offset + limit}` : '',
+    errorMessage
+  });
+}));
+
+router.get('/nearby', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect('/login?status=auth-required');
+  }
+
+  const search = String(req.query.q || '').trim().slice(0, 100);
+  const radius = boundedInteger(req.query.radius, 25, 5, 100);
+  const limit = boundedInteger(req.query.limit, 24, 1, 100);
+  const offset = boundedInteger(req.query.offset, 0, 0, 100000);
+
+  let members = [];
+  let hasMore = false;
+  let errorMessage = null;
+  let hasLocation = false;
+
+  try {
+    const profile = dataFrom(await getProfile(token)) || {};
+    const lat = numericCoordinate(profile.latitude ?? profile.lat);
+    const lon = numericCoordinate(profile.longitude ?? profile.lon ?? profile.lng);
+
+    if (lat !== null && lon !== null) {
+      hasLocation = true;
+      const result = await getMembersNearby(token, {
+        lat,
+        lon,
+        q: search,
+        radius_km: radius,
+        limit,
+        offset
+      });
+      const meta = metaFrom(result);
+      members = rowsFrom(result).map(normalizeNearbyMember).filter((member) => member.id > 0);
+      hasMore = !!meta.has_more;
+    }
+  } catch {
+    errorMessage = 'Nearby members could not be loaded. Try again.';
+  }
+
+  res.render('members/nearby', {
+    title: 'Members near me',
+    activeNav: 'members',
+    alphaActiveNav: 'members',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    members,
+    search,
+    radius,
+    radiusOptions: [5, 10, 25, 50, 100],
+    hasLocation,
+    hasMore,
+    nextHref: hasMore ? `/members/nearby${search ? `?q=${encodeURIComponent(search)}&` : '?'}radius=${radius}&offset=${offset + limit}` : '',
     errorMessage
   });
 }));
