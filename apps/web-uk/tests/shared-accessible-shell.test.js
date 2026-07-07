@@ -16510,6 +16510,163 @@ describe('shared accessible frontend shell', () => {
     expect(incidentResponse.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering waitlist and shift swaps pages for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 91,
+            position: 2,
+            status: 'waiting',
+            joined_at: '2026-06-10T09:00:00Z',
+            shift: { id: 501, start_time: '2026-07-20T10:00:00Z' },
+            opportunity: {
+              id: 77,
+              title: 'Community meal prep',
+              location: 'Town kitchen'
+            },
+            organization: { name: 'Food Share' }
+          },
+          {
+            id: 92,
+            position: 1,
+            status: 'notified',
+            joined_at: '2026-06-12T09:00:00Z',
+            shift: { id: 502, start_time: '2026-07-22T13:30:00Z' },
+            opportunity: {
+              id: 78,
+              title: 'Garden tidy',
+              location: 'North allotments'
+            },
+            organization: { name: 'Green Team' }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 12,
+            direction: 'received',
+            status: 'pending',
+            message: 'Could you take the evening shift?',
+            requester: { id: 55, name: 'Riley Driver' },
+            recipient: { id: 56, name: 'Taylor Helper' },
+            original_shift: {
+              id: 601,
+              opportunity_title: 'Evening deliveries',
+              organization_name: 'Food Share',
+              start_time: '2026-07-24T18:00:00Z'
+            },
+            proposed_shift: {
+              id: 602,
+              opportunity_title: 'Morning sorting',
+              organization_name: 'Food Share',
+              start_time: '2026-07-25T09:00:00Z'
+            }
+          },
+          {
+            id: 13,
+            direction: 'sent',
+            status: 'admin_pending',
+            message: 'I can cover the morning instead.',
+            requester: { id: 56, name: 'Taylor Helper' },
+            recipient: { id: 57, name: 'Morgan Maybe' },
+            original_shift: {
+              id: 603,
+              opportunity_title: 'Garden watering',
+              organization_name: 'Green Team',
+              start_time: '2026-07-26T08:00:00Z'
+            },
+            proposed_shift: {
+              id: 604,
+              opportunity_title: 'Compost turn',
+              organization_name: 'Green Team',
+              start_time: '2026-07-26T11:00:00Z'
+            }
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 701,
+              opportunity_title: 'Food bank reception',
+              start_time: '2026-07-30T09:00:00Z'
+            },
+            {
+              id: 702,
+              opportunity_title: 'Community garden lock-up',
+              start_time: '2026-08-01T17:00:00Z'
+            }
+          ],
+          cursor: null,
+          has_more: false
+        }
+      });
+
+    const waitlistResponse = await request(app)
+      .get('/volunteering/waitlist?status=waitlist-left')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(waitlistResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/my-waitlists');
+    expect(waitlistResponse.text).toContain('href="/volunteering"');
+    expect(waitlistResponse.text).toContain('Back to volunteering');
+    expect(waitlistResponse.text).toContain('You have left the waitlist.');
+    expect(waitlistResponse.text).toContain('Shift waitlist');
+    expect(waitlistResponse.text).toContain('Shifts you are waiting for a place on.');
+    expect(waitlistResponse.text).toContain('Community meal prep');
+    expect(waitlistResponse.text).toContain('Position 2');
+    expect(waitlistResponse.text).toContain('Food Share');
+    expect(waitlistResponse.text).toContain('Town kitchen');
+    expect(waitlistResponse.text).toContain('20 July 2026');
+    expect(waitlistResponse.text).toContain('10 June 2026');
+    expect(waitlistResponse.text).toContain('method="post" action="/volunteering/waitlist/501/leave"');
+    expect(waitlistResponse.text).toContain('Leave waitlist');
+    expect(waitlistResponse.text).toContain('Garden tidy');
+    expect(waitlistResponse.text).toContain('A place is available');
+    expect(waitlistResponse.text).toContain('A place has freed up on this shift.');
+    expect(waitlistResponse.text).not.toContain('shared accessible frontend preparation page');
+
+    const swapsResponse = await request(app)
+      .get('/volunteering/swaps?status=swap-requested')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(swapsResponse.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/swaps');
+    expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/shifts?limit=50');
+    expect(swapsResponse.text).toContain('Your swap request has been sent.');
+    expect(swapsResponse.text).toContain('Shift swaps');
+    expect(swapsResponse.text).toContain('Ask another volunteer to swap one of your shifts');
+    expect(swapsResponse.text).toContain('Request a shift swap');
+    expect(swapsResponse.text).toContain('id="from_shift_id" name="from_shift_id"');
+    expect(swapsResponse.text).toContain('<option value="701">Food bank reception');
+    expect(swapsResponse.text).toContain('id="to_shift_id" name="to_shift_id"');
+    expect(swapsResponse.text).toContain('id="to_user_id" name="to_user_id"');
+    expect(swapsResponse.text).toContain('method="post" action="/volunteering/swaps"');
+    expect(swapsResponse.text).toContain('Received');
+    expect(swapsResponse.text).toContain('Pending');
+    expect(swapsResponse.text).toContain('From Riley Driver');
+    expect(swapsResponse.text).toContain('Evening deliveries');
+    expect(swapsResponse.text).toContain('Morning sorting');
+    expect(swapsResponse.text).toContain('Could you take the evening shift?');
+    expect(swapsResponse.text).toContain('method="post" action="/volunteering/swaps/12/respond"');
+    expect(swapsResponse.text).toContain('name="action" value="accept"');
+    expect(swapsResponse.text).toContain('name="action" value="reject"');
+    expect(swapsResponse.text).toContain('Sent');
+    expect(swapsResponse.text).toContain('Awaiting approval');
+    expect(swapsResponse.text).toContain('To Morgan Maybe');
+    expect(swapsResponse.text).toContain('Garden watering');
+    expect(swapsResponse.text).toContain('Compost turn');
+    expect(swapsResponse.text).toContain('method="post" action="/volunteering/swaps/13/cancel"');
+    expect(swapsResponse.text).toContain('Cancel request');
+    expect(swapsResponse.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

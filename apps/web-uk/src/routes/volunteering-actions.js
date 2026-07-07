@@ -128,6 +128,26 @@ const SAFEGUARDING_INCIDENT_STATUS_CLASSES = {
   resolved: 'govuk-tag--green',
   closed: 'govuk-tag--grey'
 };
+const SWAP_STATUS_LABELS = {
+  pending: 'Pending',
+  admin_pending: 'Awaiting approval',
+  accepted: 'Accepted',
+  admin_approved: 'Approved',
+  rejected: 'Declined',
+  admin_rejected: 'Declined by organiser',
+  cancelled: 'Cancelled',
+  expired: 'Expired'
+};
+const SWAP_STATUS_CLASSES = {
+  pending: 'govuk-tag--yellow',
+  admin_pending: 'govuk-tag--yellow',
+  accepted: 'govuk-tag--green',
+  admin_approved: 'govuk-tag--green',
+  rejected: 'govuk-tag--red',
+  admin_rejected: 'govuk-tag--red',
+  cancelled: 'govuk-tag--grey',
+  expired: 'govuk-tag--grey'
+};
 
 function tokenFrom(req) {
   return req.signedCookies.token || '';
@@ -463,6 +483,58 @@ function safeguardingStatus(status) {
     'incident-failed': {
       type: 'error',
       message: 'Your report could not be submitted. Please try again.'
+    }
+  };
+  return messages[status] || null;
+}
+
+function waitlistStatus(status) {
+  const messages = {
+    'waitlist-left': {
+      type: 'success',
+      message: 'You have left the waitlist.'
+    },
+    'waitlist-leave-failed': {
+      type: 'error',
+      message: 'We could not remove you from the waitlist. You may not be on it.'
+    }
+  };
+  return messages[status] || null;
+}
+
+function swapPageStatus(status) {
+  const messages = {
+    'swap-requested': {
+      type: 'success',
+      message: 'Your swap request has been sent.'
+    },
+    'swap-accepted': {
+      type: 'success',
+      message: 'You have accepted the swap request.'
+    },
+    'swap-rejected': {
+      type: 'success',
+      message: 'You have declined the swap request.'
+    },
+    'swap-cancelled': {
+      type: 'success',
+      message: 'Your swap request has been cancelled.'
+    },
+    'swap-invalid': {
+      type: 'error',
+      message: 'Please complete all the required fields.'
+    },
+    'swap-request-failed': {
+      type: 'error',
+      message: 'We could not send your swap request. Check the shift and member numbers and try again.'
+    },
+    'swap-respond-failed': {
+      type: 'error',
+      message: 'We could not process your response to this swap request.'
+    },
+    'swap-cancel-failed': {
+      type: 'error',
+      message: 'We could not cancel this swap request.'
     }
   };
   return messages[status] || null;
@@ -989,6 +1061,67 @@ function normalizeSafeguardingIncident(row) {
   };
 }
 
+function normalizeWaitlistEntry(row) {
+  const entry = row && typeof row === 'object' ? row : {};
+  const shift = entry.shift && typeof entry.shift === 'object' ? entry.shift : {};
+  const opportunity = entry.opportunity && typeof entry.opportunity === 'object' ? entry.opportunity : {};
+  const organization = entry.organization && typeof entry.organization === 'object' ? entry.organization : {};
+  const status = trimmed(entry.status) || 'waiting';
+  const position = Number(entry.position);
+  return {
+    id: positiveInteger(entry.id),
+    position: Number.isFinite(position) ? position : 0,
+    status,
+    isNotified: status === 'notified',
+    shiftId: positiveInteger(shift.id ?? entry.shift_id ?? entry.shiftId),
+    title: trimmed(opportunity.title) || 'Volunteering opportunity',
+    location: trimmed(opportunity.location),
+    organizationName: trimmed(organization.name),
+    shiftLabel: dateTimeLabel(shift.start_time ?? shift.startTime),
+    joinedAtLabel: dateTimeLabel(entry.joined_at ?? entry.joinedAt ?? entry.created_at ?? entry.createdAt)
+  };
+}
+
+function normalizeMyShift(row) {
+  const shift = row && typeof row === 'object' ? row : {};
+  const id = positiveInteger(shift.id ?? shift.shift_id ?? shift.shiftId);
+  const title = trimmed(shift.opportunity_title ?? shift.opportunityTitle ?? shift.title) || 'Volunteering opportunity';
+  const when = dateTimeLabel(shift.start_time ?? shift.startTime);
+  return {
+    id,
+    label: when ? `${title} - ${when}` : title
+  };
+}
+
+function normalizeSwapShift(row) {
+  const shift = row && typeof row === 'object' ? row : {};
+  return {
+    id: positiveInteger(shift.id),
+    title: trimmed(shift.opportunity_title ?? shift.opportunityTitle) || 'Volunteering opportunity',
+    organizationName: trimmed(shift.organization_name ?? shift.organizationName),
+    startLabel: dateTimeLabel(shift.start_time ?? shift.startTime)
+  };
+}
+
+function normalizeSwapRequest(row) {
+  const swap = row && typeof row === 'object' ? row : {};
+  const direction = trimmed(swap.direction) === 'received' ? 'received' : 'sent';
+  const requester = swap.requester && typeof swap.requester === 'object' ? swap.requester : {};
+  const recipient = swap.recipient && typeof swap.recipient === 'object' ? swap.recipient : {};
+  return {
+    id: positiveInteger(swap.id),
+    direction,
+    directionLabel: direction === 'sent' ? 'Sent' : 'Received',
+    directionClassName: direction === 'sent' ? 'govuk-tag--blue' : 'govuk-tag--purple',
+    status: statusPresentation(swap.status, SWAP_STATUS_LABELS, SWAP_STATUS_CLASSES, 'pending'),
+    message: trimmed(swap.message),
+    requesterName: trimmed(requester.name),
+    recipientName: trimmed(recipient.name),
+    originalShift: normalizeSwapShift(swap.original_shift ?? swap.originalShift),
+    proposedShift: normalizeSwapShift(swap.proposed_shift ?? swap.proposedShift)
+  };
+}
+
 function expenseRowsFrom(result) {
   const data = dataFrom(result);
   if (Array.isArray(data)) return data;
@@ -1380,6 +1513,65 @@ async function renderSafeguarding(req, res) {
 
 router.get('/training', asyncRoute(renderSafeguarding, { redirectOn401: loginRedirect() }));
 router.get('/incidents', asyncRoute(renderSafeguarding, { redirectOn401: loginRedirect() }));
+
+router.get('/waitlist', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let entries = [];
+  let loadError = null;
+  try {
+    entries = collectionFrom(await callApi(token, 'GET', '/my-waitlists'))
+      .map(normalizeWaitlistEntry)
+      .filter((entry) => entry.id);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your waitlist. Please try again.';
+  }
+
+  return res.render('volunteering/waitlist', {
+    title: 'Shift waitlist',
+    activeNav: 'volunteering',
+    entries,
+    loadError,
+    status: waitlistStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/swaps', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let swaps = [];
+  let myShifts = [];
+  let loadError = null;
+  try {
+    swaps = collectionFrom(await callApi(token, 'GET', '/swaps'))
+      .map(normalizeSwapRequest)
+      .filter((swap) => swap.id);
+    myShifts = collectionFrom(await callApi(token, 'GET', '/shifts?limit=50'))
+      .map(normalizeMyShift)
+      .filter((shift) => shift.id);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your swap requests. Please try again.';
+  }
+
+  return res.render('volunteering/swaps', {
+    title: 'Shift swaps',
+    activeNav: 'volunteering',
+    swaps,
+    myShifts,
+    loadError,
+    status: swapPageStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
 
 router.get('/credentials', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

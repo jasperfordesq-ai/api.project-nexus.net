@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T05:06:38.144Z",
+    "generatedAt": "2026-07-07T05:18:51.442Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -12820,8 +12820,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/volunteering/swaps",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "volunteering/swaps",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\volunteering-actions.js"
     },
     {
       "method": "GET",
@@ -12858,8 +12858,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/volunteering/waitlist",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "volunteering/waitlist",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\volunteering-actions.js"
     },
     {
       "method": "GET",

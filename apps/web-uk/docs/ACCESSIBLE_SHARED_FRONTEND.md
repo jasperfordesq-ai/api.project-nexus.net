@@ -521,6 +521,12 @@ unsigned visitors to `/login?status=auth-required`, read Laravel
 render the Blade-style safeguarding tab navigation, training-record form and
 table, incident report form and table, status tags, validation banners, and
 confidentiality notice.
+Its `/volunteering/waitlist` and `/volunteering/swaps` pages redirect unsigned
+visitors to `/login?status=auth-required`, read Laravel
+`/api/v2/volunteering/my-waitlists`, `/api/v2/volunteering/swaps`, and
+`/api/v2/volunteering/shifts?limit=50`, and render the Blade-style waitlist
+cards, leave-waitlist forms, swap request form, sent/received swap cards,
+accept/decline controls, cancel controls, status tags, and banners.
 Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert

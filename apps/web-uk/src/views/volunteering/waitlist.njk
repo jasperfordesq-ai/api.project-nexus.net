@@ -1,0 +1,101 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/volunteering">Back to volunteering</a>
+
+  {% if status %}
+    {% if status.type == "success" %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="waitlist-success-title">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="waitlist-success-title">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">{{ status.message }}</p>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <p>{{ status.message }}</p>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <span class="govuk-caption-l">Volunteering</span>
+  <h1 class="govuk-heading-xl">Shift waitlist</h1>
+  <p class="govuk-body-l">Shifts you are waiting for a place on. You will be offered a place when one becomes free.</p>
+
+  {% if loadError %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p>{{ loadError }}</p>
+        </div>
+      </div>
+    </div>
+  {% elif not entries.length %}
+    <div class="govuk-inset-text">
+      <h2 class="govuk-heading-m">You are not on any waitlists</h2>
+      <p class="govuk-body">When a shift is full you can join its waitlist and we will notify you if a place frees up.</p>
+    </div>
+  {% else %}
+    <div class="nexus-alpha-card-list">
+      {% for entry in entries %}
+        <article class="nexus-alpha-card">
+          <h2 class="govuk-heading-m govuk-!-margin-bottom-2">{{ entry.title }}</h2>
+          {% if entry.isNotified %}
+            <strong class="govuk-tag govuk-tag--green">A place is available</strong>
+            <p class="govuk-body govuk-!-margin-top-3">A place has freed up on this shift. Sign up from the opportunity page to claim it before it is offered to the next person.</p>
+          {% else %}
+            <strong class="govuk-tag govuk-tag--yellow">Position {{ entry.position }}</strong>
+          {% endif %}
+
+          <dl class="govuk-summary-list govuk-!-margin-top-4 govuk-!-margin-bottom-3">
+            {% if entry.organizationName %}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Organisation</dt>
+                <dd class="govuk-summary-list__value">{{ entry.organizationName }}</dd>
+              </div>
+            {% endif %}
+            {% if entry.location %}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Location</dt>
+                <dd class="govuk-summary-list__value">{{ entry.location }}</dd>
+              </div>
+            {% endif %}
+            {% if entry.shiftLabel %}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Shift</dt>
+                <dd class="govuk-summary-list__value">{{ entry.shiftLabel }}</dd>
+              </div>
+            {% endif %}
+            {% if entry.joinedAtLabel %}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Joined waitlist</dt>
+                <dd class="govuk-summary-list__value">{{ entry.joinedAtLabel }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+
+          {% if entry.shiftId %}
+            <form method="post" action="/volunteering/waitlist/{{ entry.shiftId }}/leave">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">
+                Leave waitlist<span class="govuk-visually-hidden"> for {{ entry.title }}</span>
+              </button>
+            </form>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}
