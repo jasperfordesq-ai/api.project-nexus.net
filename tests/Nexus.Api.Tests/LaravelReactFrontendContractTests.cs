@@ -222,6 +222,325 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task LocalAdvertisingCampaigns_UseLaravelReactAdminShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/me/ad-campaigns", new
+        {
+            name = "Laravel React local ad",
+            advertiser_type = "verein",
+            budget_cents = 12345,
+            placement = "feed",
+            start_date = "2026-07-10",
+            end_date = "2026-07-31",
+            audience_filters = new { radius_km = 5, interests = new[] { "gardening" } }
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        created.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        created.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        created.GetProperty("created_by").GetInt32().Should().Be(TestData.AdminUser.Id);
+        created.GetProperty("name").GetString().Should().Be("Laravel React local ad");
+        created.GetProperty("status").GetString().Should().Be("pending_review");
+        created.GetProperty("advertiser_type").GetString().Should().Be("verein");
+        created.GetProperty("budget_cents").GetInt32().Should().Be(12345);
+        created.GetProperty("spent_cents").GetInt32().Should().Be(0);
+        created.GetProperty("placement").GetString().Should().Be("feed");
+        created.GetProperty("impression_count").GetInt32().Should().Be(0);
+        created.GetProperty("click_count").GetInt32().Should().Be(0);
+        created.GetProperty("advertiser_name").GetString().Should().Be("Admin User");
+        created.GetProperty("advertiser_email").GetString().Should().Be(TestData.AdminUser.Email);
+
+        var campaignId = created.GetProperty("id").GetInt32();
+
+        var list = await Client.GetAsync("/api/v2/admin/ad-campaigns?status=pending_review&limit=50");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == campaignId);
+        listed.GetProperty("creative_count").GetInt32().Should().Be(0);
+
+        var stats = await Client.GetAsync("/api/v2/admin/ad-campaigns/stats");
+
+        stats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statsData = (await stats.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        statsData.GetProperty("active_campaigns").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        statsData.GetProperty("impressions_today").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        statsData.GetProperty("clicks_today").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        statsData.GetProperty("total_revenue_cents").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/ad-campaigns/{campaignId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(campaignId);
+        detailData.GetProperty("creatives").ValueKind.Should().Be(JsonValueKind.Array);
+        detailData.GetProperty("stats").GetProperty("campaign_id").GetInt32().Should().Be(campaignId);
+        detailData.GetProperty("stats").GetProperty("daily").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var approve = await Client.PostAsync($"/api/v2/admin/ad-campaigns/{campaignId}/approve", null);
+
+        approve.StatusCode.Should().Be(HttpStatusCode.OK);
+        var approved = (await approve.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        approved.GetProperty("status").GetString().Should().Be("active");
+        approved.GetProperty("approved_by").GetInt32().Should().Be(TestData.AdminUser.Id);
+        approved.GetProperty("approved_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var pause = await Client.PostAsync($"/api/v2/admin/ad-campaigns/{campaignId}/pause", null);
+
+        pause.StatusCode.Should().Be(HttpStatusCode.OK);
+        var paused = (await pause.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        paused.GetProperty("id").GetInt32().Should().Be(campaignId);
+        paused.GetProperty("status").GetString().Should().Be("paused");
+
+        var rejectCreate = await Client.PostAsJsonAsync("/api/v2/me/ad-campaigns", new
+        {
+            name = "Laravel React rejected local ad",
+            advertiser_type = "sme",
+            budget_cents = 5000,
+            placement = "markt"
+        });
+        var rejectedCampaignId = (await rejectCreate.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var reject = await Client.PostAsJsonAsync($"/api/v2/admin/ad-campaigns/{rejectedCampaignId}/reject", new
+        {
+            reason = "Audience is too broad."
+        });
+
+        reject.StatusCode.Should().Be(HttpStatusCode.OK);
+        var rejected = (await reject.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        rejected.GetProperty("id").GetInt32().Should().Be(rejectedCampaignId);
+        rejected.GetProperty("status").GetString().Should().Be("rejected");
+
+        var rejectedDetail = await Client.GetAsync($"/api/v2/admin/ad-campaigns/{rejectedCampaignId}");
+        var rejectedDetailData = (await rejectedDetail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        rejectedDetailData.GetProperty("rejection_reason").GetString().Should().Be("Audience is too broad.");
+    }
+
+    [Fact]
+    public async Task PaidPushCampaigns_UseLaravelReactMemberAndAdminShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var estimate = await Client.PostAsJsonAsync("/api/v2/me/push-campaigns/estimate-audience", new
+        {
+            audience_min_trust_tier = "member",
+            audience_radius_km = 25
+        });
+
+        estimate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var estimateData = (await estimate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        estimateData.GetProperty("estimated_reach").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        estimateData.GetProperty("estimated_count").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        estimateData.GetProperty("minimum_reached").ValueKind.Should().BeOneOf(JsonValueKind.True, JsonValueKind.False);
+
+        var scheduledAt = DateTime.UtcNow.AddDays(7).ToString("O");
+        var create = await Client.PostAsJsonAsync("/api/v2/me/push-campaigns", new
+        {
+            name = "Laravel React push campaign",
+            title = "Garden day reminder",
+            body = "Join the community garden session this weekend.",
+            advertiser_type = "gemeinde",
+            cta_url = "https://example.test/garden",
+            schedule_at = scheduledAt,
+            audience_radius_km = 25,
+            audience_min_trust_tier = "trusted"
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var campaignId = created.GetProperty("id").GetInt32();
+        campaignId.Should().BeGreaterThan(0);
+        created.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        created.GetProperty("created_by").GetInt32().Should().Be(TestData.AdminUser.Id);
+        created.GetProperty("name").GetString().Should().Be("Laravel React push campaign");
+        created.GetProperty("title").GetString().Should().Be("Garden day reminder");
+        created.GetProperty("body").GetString().Should().Be("Join the community garden session this weekend.");
+        created.GetProperty("status").GetString().Should().Be("draft");
+        created.GetProperty("advertiser_type").GetString().Should().Be("gemeinde");
+        created.GetProperty("schedule_at").GetString().Should().NotBeNullOrWhiteSpace();
+        created.GetProperty("scheduled_at").GetString().Should().NotBeNullOrWhiteSpace();
+        created.GetProperty("audience_radius_km").GetInt32().Should().Be(25);
+        created.GetProperty("audience_min_trust_tier").GetString().Should().Be("trusted");
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/me/push-campaigns/{campaignId}", new
+        {
+            title = "Updated garden day reminder",
+            body = "Updated notification body.",
+            cost_per_send = 7
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updated.GetProperty("title").GetString().Should().Be("Updated garden day reminder");
+        updated.GetProperty("body").GetString().Should().Be("Updated notification body.");
+        updated.GetProperty("cost_per_send").GetInt32().Should().Be(7);
+
+        var submit = await Client.PostAsync($"/api/v2/me/push-campaigns/{campaignId}/submit", null);
+
+        submit.StatusCode.Should().Be(HttpStatusCode.OK);
+        var submitted = (await submit.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        submitted.GetProperty("status").GetString().Should().Be("pending_review");
+
+        var mine = await Client.GetAsync("/api/v2/me/push-campaigns");
+
+        mine.StatusCode.Should().Be(HttpStatusCode.OK);
+        var mineData = (await mine.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        mineData.EnumerateArray()
+            .Should().Contain(item => item.GetProperty("id").GetInt32() == campaignId
+                && item.GetProperty("status").GetString() == "pending_review");
+
+        var adminList = await Client.GetAsync("/api/v2/admin/push-campaigns?status=pending_review");
+
+        adminList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var adminListJson = await adminList.Content.ReadFromJsonAsync<JsonElement>();
+        adminListJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        adminListJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(item => item.GetProperty("id").GetInt32() == campaignId
+                && item.GetProperty("advertiser_name").GetString() == "Admin User");
+
+        var stats = await Client.GetAsync("/api/v2/admin/push-campaigns/stats");
+
+        stats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statsData = (await stats.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        statsData.GetProperty("total_campaigns").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        statsData.GetProperty("by_status").GetProperty("pending_review").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        statsData.GetProperty("sends_this_month").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        statsData.GetProperty("opens_this_month").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        statsData.GetProperty("revenue_cents_this_month").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/push-campaigns/{campaignId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(campaignId);
+        detailData.GetProperty("analytics").GetProperty("daily_breakdown").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var approve = await Client.PostAsync($"/api/v2/admin/push-campaigns/{campaignId}/approve", null);
+
+        approve.StatusCode.Should().Be(HttpStatusCode.OK);
+        var approved = (await approve.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        approved.GetProperty("status").GetString().Should().Be("scheduled");
+        approved.GetProperty("approved_by").GetInt32().Should().Be(TestData.AdminUser.Id);
+        approved.GetProperty("approved_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var dispatch = await Client.PostAsync($"/api/v2/admin/push-campaigns/{campaignId}/dispatch", null);
+
+        dispatch.StatusCode.Should().Be(HttpStatusCode.OK);
+        var dispatchData = (await dispatch.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        dispatchData.GetProperty("sent").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        dispatchData.GetProperty("failed").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        dispatchData.GetProperty("total_cost_cents").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+
+        var rejectCreate = await Client.PostAsJsonAsync("/api/v2/me/push-campaigns", new
+        {
+            name = "Laravel React rejected push campaign",
+            title = "Rejected title",
+            body = "Rejected body",
+            advertiser_type = "sme"
+        });
+        var rejectCampaignId = (await rejectCreate.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+        await Client.PostAsync($"/api/v2/me/push-campaigns/{rejectCampaignId}/submit", null);
+
+        var reject = await Client.PostAsJsonAsync($"/api/v2/admin/push-campaigns/{rejectCampaignId}/reject", new
+        {
+            reason = "Needs clearer targeting."
+        });
+
+        reject.StatusCode.Should().Be(HttpStatusCode.OK);
+        var rejectData = (await reject.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        rejectData.GetProperty("rejected").GetBoolean().Should().BeTrue();
+
+        var rejectedDetail = await Client.GetAsync($"/api/v2/admin/push-campaigns/{rejectCampaignId}");
+        var rejectedDetailData = (await rejectedDetail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        rejectedDetailData.GetProperty("status").GetString().Should().Be("rejected");
+        rejectedDetailData.GetProperty("rejection_reason").GetString().Should().Be("Needs clearer targeting.");
+    }
+
+    [Fact]
+    public async Task AdminApiPartners_UseLaravelReactManagementShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/api-partners", new
+        {
+            name = "Laravel React Bank Partner",
+            contact_email = "bank-partner@example.test",
+            description = "Created by Laravel React contract smoke test.",
+            allowed_scopes = new[] { "users.read", "wallet.read" },
+            allowed_ip_cidrs = new[] { "203.0.113.0/24" },
+            rate_limit_per_minute = 120,
+            is_sandbox = true
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var createData = createJson.GetProperty("data");
+        var partnerId = createData.GetProperty("partner_id").GetInt32();
+        partnerId.Should().BeGreaterThan(0);
+        createData.GetProperty("credentials").GetProperty("client_id").GetString().Should().NotBeNullOrWhiteSpace();
+        createData.GetProperty("credentials").GetProperty("client_secret").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var list = await Client.GetAsync("/api/v2/admin/api-partners");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var partners = listJson.GetProperty("data").GetProperty("partners").EnumerateArray().ToArray();
+        var partner = partners.Single(item => item.GetProperty("id").GetInt32() == partnerId);
+        partner.GetProperty("name").GetString().Should().Be("Laravel React Bank Partner");
+        partner.GetProperty("slug").GetString().Should().NotBeNullOrWhiteSpace();
+        partner.GetProperty("description").GetString().Should().Be("Created by Laravel React contract smoke test.");
+        partner.GetProperty("contact_email").GetString().Should().Be("bank-partner@example.test");
+        partner.GetProperty("status").GetString().Should().Be("pending");
+        partner.GetProperty("is_sandbox").GetBoolean().Should().BeTrue();
+        partner.GetProperty("allowed_scopes").EnumerateArray().Select(x => x.GetString()).Should().Equal("users.read", "wallet.read");
+        partner.GetProperty("allowed_ip_cidrs").EnumerateArray().Select(x => x.GetString()).Should().Equal("203.0.113.0/24");
+        partner.GetProperty("rate_limit_per_minute").GetInt32().Should().Be(120);
+
+        var activate = await Client.PostAsync($"/api/v2/admin/api-partners/{partnerId}/activate", null);
+
+        activate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var activated = (await activate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        activated.GetProperty("partner_id").GetInt32().Should().Be(partnerId);
+        activated.GetProperty("status").GetString().Should().Be("active");
+
+        var rotate = await Client.PostAsync($"/api/v2/admin/api-partners/{partnerId}/regenerate-credentials", null);
+
+        rotate.StatusCode.Should().Be(HttpStatusCode.Created);
+        var rotatedCredentials = (await rotate.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("credentials");
+        rotatedCredentials.GetProperty("client_id").GetString().Should().NotBeNullOrWhiteSpace();
+        rotatedCredentials.GetProperty("client_secret").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var suspend = await Client.PostAsync($"/api/v2/admin/api-partners/{partnerId}/suspend", null);
+
+        suspend.StatusCode.Should().Be(HttpStatusCode.OK);
+        var suspended = (await suspend.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        suspended.GetProperty("partner_id").GetInt32().Should().Be(partnerId);
+        suspended.GetProperty("status").GetString().Should().Be("suspended");
+
+        var callLog = await Client.GetAsync($"/api/v2/admin/api-partners/{partnerId}/call-log?per_page=50");
+
+        callLog.StatusCode.Should().Be(HttpStatusCode.OK);
+        var callLogData = (await callLog.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        callLogData.GetProperty("items").ValueKind.Should().Be(JsonValueKind.Array);
+        callLogData.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
     public async Task UserNotificationPreferences_UseLaravelSettingsShape()
     {
         await AuthenticateAsMemberAsync();

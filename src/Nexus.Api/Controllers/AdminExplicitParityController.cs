@@ -31,8 +31,12 @@ public class AdminExplicitParityController : ControllerBase
     private const string MemberPremiumConnectAccountKey = "donations.stripe_connect_account_id";
     private const string MemberPremiumDisputesKey = "donations.disputes";
     private const string SupportReportsKey = "admin_explicit.support_reports";
+    private const string ApiPartnersKey = "admin_explicit.api_partners";
+    private const string ApiPartnerCallLogPrefix = "admin_explicit.api_partner_call_log.";
     private const string ModuleConfigPrefix = "admin_explicit.module_config.";
     private const string TranslationGlossaryKey = "admin_explicit.translation_glossary";
+    private const string LocalAdvertisingCampaignsKey = "local_advertising.campaigns";
+    private const string PaidPushCampaignsKey = "paid_push.campaigns";
     private const string ModerationSettingPrefix = "moderation.";
     private static readonly string[] ModerationSettingKeys =
     [
@@ -402,6 +406,9 @@ public class AdminExplicitParityController : ControllerBase
         return path switch
         {
             "/api/admin/users/search" => await SearchUsers(),
+            "/api/v2/admin/ad-campaigns" => await GetAdminAdCampaigns(),
+            "/api/v2/admin/ad-campaigns/stats" => await GetAdminAdCampaignStats(),
+            "/api/v2/admin/api-partners" => await GetApiPartners(),
             "/api/v2/admin/billing/subscription" => await GetBillingSubscription(),
             "/api/v2/admin/billing/invoices" => await GetBillingInvoices(),
             "/api/v2/admin/config/groups" => await GetModuleConfig("groups"),
@@ -444,6 +451,8 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/member-premium/finance/overview" => await GetMemberPremiumFinanceOverview(),
             "/api/v2/admin/member-premium/settings" => await GetMemberPremiumSettings(),
             "/api/v2/admin/moderation/settings" => await GetModerationSettings(),
+            "/api/v2/admin/push-campaigns" => await GetAdminPushCampaigns(),
+            "/api/v2/admin/push-campaigns/stats" => await GetAdminPushCampaignStats(),
             "/api/v2/admin/reports/export-types" => GetReportExportTypes(),
             _ when IsAdminReportExportPath(path) => GetAdminReportExportCsv(path),
             "/api/v2/admin/support-reports" => await GetSupportReports(),
@@ -456,6 +465,10 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/volunteering/organizations" => await GetVolunteeringOrganizations(),
             _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/breaches/", out var breachId) => await GetGdprBreach(breachId),
             _ when TryGetLastInt(path, "/api/v2/admin/enterprise/gdpr/requests/", out var requestId) => await GetGdprRequest(requestId),
+            _ when TryGetLastInt(path, "/api/v2/admin/ad-campaigns/", out var adCampaignId) => await GetAdminAdCampaign(adCampaignId),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/api-partners/", "/call-log", out var apiPartnerCallLogId) => await GetApiPartnerCallLog(apiPartnerCallLogId),
+            _ when TryGetLastInt(path, "/api/v2/admin/api-partners/", out var apiPartnerId) => await GetApiPartner(apiPartnerId),
+            _ when TryGetLastInt(path, "/api/v2/admin/push-campaigns/", out var pushCampaignId) => await GetAdminPushCampaign(pushCampaignId),
             _ when TryGetSlugBeforeSuffix(path, "/api/v2/admin/enterprise/gdpr/consent-types/", "/users", out var usersSlug) => await GetConsentTypeUsers(usersSlug),
             _ when TryGetSlugBeforeSuffix(path, "/api/v2/admin/enterprise/gdpr/consent-types/", "/export", out var exportSlug) => await GetConsentTypeExport(exportSlug),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/logs", out var webhookLogId) => await GetFederationWebhookLogs(webhookLogId),
@@ -619,12 +632,22 @@ public class AdminExplicitParityController : ControllerBase
 
         return path switch
         {
+            "/api/v2/admin/api-partners" => await CreateApiPartner(),
             "/api/v2/admin/enterprise/gdpr/requests" => await CreateGdprRequest(),
             "/api/v2/admin/federation/webhooks" => await CreateFederationWebhook(),
             "/api/v2/admin/federation/credit-agreements" => await CreateFederationCreditAgreement(),
             "/api/v2/admin/invite-codes" => await GenerateInviteCodes(),
             "/api/v2/admin/member-premium/connect/onboarding" => await CreateMemberPremiumConnectOnboarding(),
             "/api/v2/admin/translation/glossary" => await CreateTranslationGlossaryEntry(),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/approve", out var approveAdCampaignId) => await ApproveAdCampaign(approveAdCampaignId),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/pause", out var pauseAdCampaignId) => await PauseAdCampaign(pauseAdCampaignId),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/reject", out var rejectAdCampaignId) => await RejectAdCampaign(rejectAdCampaignId),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/api-partners/", "/activate", out var activateApiPartnerId) => await SetApiPartnerStatus(activateApiPartnerId, "active"),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/api-partners/", "/regenerate-credentials", out var regenerateApiPartnerId) => await RegenerateApiPartnerCredentials(regenerateApiPartnerId),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/api-partners/", "/suspend", out var suspendApiPartnerId) => await SetApiPartnerStatus(suspendApiPartnerId, "suspended"),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/push-campaigns/", "/approve", out var approvePushCampaignId) => await ApprovePushCampaign(approvePushCampaignId),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/push-campaigns/", "/dispatch", out var dispatchPushCampaignId) => await DispatchPushCampaign(dispatchPushCampaignId),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/push-campaigns/", "/reject", out var rejectPushCampaignId) => await RejectPushCampaign(rejectPushCampaignId),
             _ when TryGetFederationCreditAgreementAction(path, out var creditAgreementId, out var creditAgreementAction) => await UpdateFederationCreditAgreementStatus(creditAgreementId, creditAgreementAction),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/federation/webhooks/", "/test", out var webhookId) => await TestFederationWebhook(webhookId),
             _ when TryGetJobModerationAction(path, out var jobId, out var action) => await ModerateJob(jobId, action),
@@ -916,6 +939,371 @@ public class AdminExplicitParityController : ControllerBase
                 id
             }
         });
+    }
+
+    private async Task<IActionResult> GetApiPartners()
+    {
+        var partners = (await LoadApiPartners())
+            .OrderByDescending(p => p.Id)
+            .Select(MapApiPartner)
+            .ToList();
+
+        return Ok(new { success = true, data = new { partners } });
+    }
+
+    private async Task<IActionResult> GetApiPartner(int id)
+    {
+        var partner = (await LoadApiPartners()).FirstOrDefault(p => p.Id == id);
+        return partner == null
+            ? NotFound(new { error = "PARTNER_NOT_FOUND", message = "Partner not found." })
+            : Ok(new { success = true, data = new { partner = MapApiPartner(partner), credentials = Array.Empty<object>() } });
+    }
+
+    private async Task<IActionResult> CreateApiPartner()
+    {
+        var payload = await ReadJsonObjectPayloadAsync();
+        var name = JsonString(payload, "name");
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return UnprocessableEntity(new { error = "invalid_request", field = "name", message = "name is required." });
+        }
+
+        var now = DateTime.UtcNow;
+        var partners = await LoadApiPartners();
+        var credentials = IssueApiPartnerCredentials();
+        var partner = new ApiPartnerRecord
+        {
+            Id = partners.Count == 0 ? 1 : partners.Max(p => p.Id) + 1,
+            Name = name.Trim(),
+            Slug = Slugify(JsonString(payload, "slug") ?? name) + "-" + RandomToken(6).ToLowerInvariant(),
+            Description = JsonString(payload, "description"),
+            ContactEmail = JsonString(payload, "contact_email"),
+            Status = "pending",
+            IsSandbox = JsonBool(payload, "is_sandbox", fallback: true),
+            AllowedScopes = JsonStringList(payload, "allowed_scopes"),
+            AllowedIpCidrs = JsonStringList(payload, "allowed_ip_cidrs"),
+            RateLimitPerMinute = JsonInt(payload, "rate_limit_per_minute", 60, 1, 6000),
+            CurrentClientId = credentials.ClientId,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        partners.Add(partner);
+        await SaveApiPartners(partners);
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            success = true,
+            data = new
+            {
+                partner_id = partner.Id,
+                credentials = new
+                {
+                    client_id = credentials.ClientId,
+                    client_secret = credentials.ClientSecret
+                }
+            }
+        });
+    }
+
+    private async Task<IActionResult> SetApiPartnerStatus(int id, string status)
+    {
+        var partners = await LoadApiPartners();
+        var partner = partners.FirstOrDefault(p => p.Id == id);
+        if (partner == null)
+        {
+            return NotFound(new { error = "PARTNER_NOT_FOUND", message = "Partner not found." });
+        }
+
+        partner.Status = status;
+        partner.UpdatedAt = DateTime.UtcNow;
+        await SaveApiPartners(partners);
+
+        return Ok(new { success = true, data = new { partner_id = id, status } });
+    }
+
+    private async Task<IActionResult> RegenerateApiPartnerCredentials(int id)
+    {
+        var partners = await LoadApiPartners();
+        var partner = partners.FirstOrDefault(p => p.Id == id);
+        if (partner == null)
+        {
+            return NotFound(new { error = "PARTNER_NOT_FOUND", message = "Partner not found." });
+        }
+
+        var credentials = IssueApiPartnerCredentials();
+        partner.CurrentClientId = credentials.ClientId;
+        partner.UpdatedAt = DateTime.UtcNow;
+        await SaveApiPartners(partners);
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            success = true,
+            data = new
+            {
+                credentials = new
+                {
+                    client_id = credentials.ClientId,
+                    client_secret = credentials.ClientSecret
+                }
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetApiPartnerCallLog(int id)
+    {
+        var partner = (await LoadApiPartners()).FirstOrDefault(p => p.Id == id);
+        if (partner == null)
+        {
+            return NotFound(new { error = "PARTNER_NOT_FOUND", message = "Partner not found." });
+        }
+
+        var page = QueryInt("page", 1, 1, int.MaxValue);
+        var perPage = QueryInt("per_page", 50, 1, 200);
+        var rows = await LoadApiPartnerCallLog(id);
+        var items = rows
+            .OrderByDescending(r => r.Id)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
+            .Select(r => new
+            {
+                id = r.Id,
+                method = r.Method,
+                path = r.Path,
+                status_code = r.StatusCode,
+                response_time_ms = r.ResponseTimeMs,
+                ip = r.Ip,
+                user_agent = r.UserAgent,
+                created_at = r.CreatedAt
+            })
+            .ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                items,
+                meta = new
+                {
+                    current_page = page,
+                    per_page = perPage,
+                    total = rows.Count,
+                    total_pages = rows.Count == 0 ? 0 : (int)Math.Ceiling(rows.Count / (double)perPage)
+                }
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetAdminAdCampaigns()
+    {
+        var status = Request.Query["status"].ToString();
+        var advertiserType = Request.Query["advertiser_type"].ToString();
+        var campaigns = (await LoadLocalAdCampaigns())
+            .Where(c => string.IsNullOrWhiteSpace(status) || string.Equals(c.Status, status, StringComparison.OrdinalIgnoreCase))
+            .Where(c => string.IsNullOrWhiteSpace(advertiserType) || string.Equals(c.AdvertiserType, advertiserType, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => MapLocalAdCampaign(c))
+            .ToList();
+
+        return Ok(new { data = campaigns, meta = new { total = campaigns.Count } });
+    }
+
+    private async Task<IActionResult> GetAdminAdCampaignStats()
+    {
+        var campaigns = await LoadLocalAdCampaigns();
+        return Ok(new
+        {
+            data = new
+            {
+                active_campaigns = campaigns.Count(c => c.Status == "active"),
+                impressions_today = 0,
+                clicks_today = 0,
+                total_revenue_cents = campaigns.Sum(c => c.SpentCents)
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetAdminAdCampaign(int id)
+    {
+        var campaign = (await LoadLocalAdCampaigns()).FirstOrDefault(c => c.Id == id);
+        return campaign == null
+            ? NotFound(new { error = "Campaign not found" })
+            : Ok(new { data = MapLocalAdCampaign(campaign, includeStats: true) });
+    }
+
+    private async Task<IActionResult> ApproveAdCampaign(int id)
+    {
+        var campaigns = await LoadLocalAdCampaigns();
+        var campaign = campaigns.FirstOrDefault(c => c.Id == id);
+        if (campaign == null)
+        {
+            return NotFound(new { error = "Campaign not found" });
+        }
+
+        var now = DateTime.UtcNow;
+        campaign.Status = "active";
+        campaign.ApprovedBy = GetCurrentAdminUserId();
+        campaign.ApprovedAt = now;
+        campaign.RejectionReason = null;
+        campaign.UpdatedAt = now;
+        await SaveLocalAdCampaigns(campaigns);
+
+        return Ok(new { data = MapLocalAdCampaign(campaign) });
+    }
+
+    private async Task<IActionResult> PauseAdCampaign(int id)
+    {
+        var campaigns = await LoadLocalAdCampaigns();
+        var campaign = campaigns.FirstOrDefault(c => c.Id == id);
+        if (campaign == null)
+        {
+            return NotFound(new { error = "Campaign not found" });
+        }
+
+        campaign.Status = "paused";
+        campaign.UpdatedAt = DateTime.UtcNow;
+        await SaveLocalAdCampaigns(campaigns);
+
+        return Ok(new { data = new { id, status = "paused" } });
+    }
+
+    private async Task<IActionResult> RejectAdCampaign(int id)
+    {
+        var campaigns = await LoadLocalAdCampaigns();
+        var campaign = campaigns.FirstOrDefault(c => c.Id == id);
+        if (campaign == null)
+        {
+            return NotFound(new { error = "Campaign not found" });
+        }
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var reason = JsonString(payload, "reason");
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return BadRequest(new { error = "VALIDATION_ERROR", field = "reason" });
+        }
+
+        campaign.Status = "rejected";
+        campaign.RejectionReason = reason.Trim();
+        campaign.UpdatedAt = DateTime.UtcNow;
+        await SaveLocalAdCampaigns(campaigns);
+
+        return Ok(new { data = new { id, status = "rejected" } });
+    }
+
+    private async Task<IActionResult> GetAdminPushCampaigns()
+    {
+        var status = Request.Query["status"].ToString();
+        var campaigns = (await LoadPushCampaigns())
+            .Where(c => string.IsNullOrWhiteSpace(status) || string.Equals(c.Status, status, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => MapPushCampaign(c))
+            .ToList();
+
+        return Ok(new { data = campaigns });
+    }
+
+    private async Task<IActionResult> GetAdminPushCampaignStats()
+    {
+        var campaigns = await LoadPushCampaigns();
+        var byStatus = campaigns
+            .GroupBy(c => c.Status)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+
+        return Ok(new
+        {
+            data = new
+            {
+                total_campaigns = campaigns.Count,
+                by_status = byStatus,
+                sends_this_month = campaigns.Sum(c => c.ActualSendCount),
+                opens_this_month = campaigns.Sum(c => c.OpenCount),
+                revenue_cents_this_month = campaigns.Sum(c => c.TotalCostCents)
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetAdminPushCampaign(int id)
+    {
+        var campaign = (await LoadPushCampaigns()).FirstOrDefault(c => c.Id == id);
+        return campaign == null
+            ? NotFound(new { error = "Campaign not found" })
+            : Ok(new { data = MapPushCampaign(campaign, includeAnalytics: true) });
+    }
+
+    private async Task<IActionResult> ApprovePushCampaign(int id)
+    {
+        var campaigns = await LoadPushCampaigns();
+        var campaign = campaigns.FirstOrDefault(c => c.Id == id);
+        if (campaign == null)
+        {
+            return NotFound(new { error = "Campaign not found" });
+        }
+
+        if (campaign.Status != "pending_review")
+        {
+            return UnprocessableEntity(new { error = "APPROVAL_FAILED" });
+        }
+
+        var now = DateTime.UtcNow;
+        campaign.Status = IsFutureDate(campaign.ScheduledAt) ? "scheduled" : "sending";
+        campaign.TargetCount = await _db.Users.CountAsync(u => u.TenantId == _db.CurrentTenantId && u.IsActive);
+        campaign.ApprovedBy = GetCurrentAdminUserId();
+        campaign.ApprovedAt = now;
+        campaign.UpdatedAt = now;
+        await SavePushCampaigns(campaigns);
+
+        return Ok(new { data = MapPushCampaign(campaign) });
+    }
+
+    private async Task<IActionResult> RejectPushCampaign(int id)
+    {
+        var campaigns = await LoadPushCampaigns();
+        var campaign = campaigns.FirstOrDefault(c => c.Id == id);
+        if (campaign == null)
+        {
+            return NotFound(new { error = "Campaign not found" });
+        }
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var reason = JsonString(payload, "reason");
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return UnprocessableEntity(new { error = "VALIDATION_ERROR", field = "reason" });
+        }
+
+        campaign.Status = "rejected";
+        campaign.RejectionReason = reason.Trim();
+        campaign.UpdatedAt = DateTime.UtcNow;
+        await SavePushCampaigns(campaigns);
+
+        return Ok(new { data = new { rejected = true } });
+    }
+
+    private async Task<IActionResult> DispatchPushCampaign(int id)
+    {
+        var campaigns = await LoadPushCampaigns();
+        var campaign = campaigns.FirstOrDefault(c => c.Id == id);
+        if (campaign == null)
+        {
+            return NotFound(new { error = "Campaign not found" });
+        }
+
+        if (campaign.Status is not ("scheduled" or "sending"))
+        {
+            return UnprocessableEntity(new { error = "DISPATCH_FAILED" });
+        }
+
+        var sent = campaign.TargetCount ?? await _db.Users.CountAsync(u => u.TenantId == _db.CurrentTenantId && u.IsActive);
+        campaign.Status = "sent";
+        campaign.ActualSendCount = sent;
+        campaign.TotalCostCents = sent * campaign.CostPerSend;
+        campaign.SentAt = DateTime.UtcNow;
+        campaign.UpdatedAt = DateTime.UtcNow;
+        await SavePushCampaigns(campaigns);
+
+        return Ok(new { data = new { sent, failed = 0, total_cost_cents = campaign.TotalCostCents } });
     }
 
     private async Task<IActionResult> GetBillingSubscription()
@@ -3826,6 +4214,303 @@ public class AdminExplicitParityController : ControllerBase
         return false;
     }
 
+    private async Task<List<ApiPartnerRecord>> LoadApiPartners()
+    {
+        var raw = await GetTenantConfigValueAsync(ApiPartnersKey);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<ApiPartnerRecord>>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private async Task SaveApiPartners(List<ApiPartnerRecord> partners)
+    {
+        var json = JsonSerializer.Serialize(partners.OrderBy(p => p.Id).ToList(), StoreJsonOptions);
+        await UpsertTenantConfigValueAsync(ApiPartnersKey, json);
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task<List<ApiPartnerCallLogRecord>> LoadApiPartnerCallLog(int partnerId)
+    {
+        var raw = await GetTenantConfigValueAsync(ApiPartnerCallLogPrefix + partnerId);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<ApiPartnerCallLogRecord>>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static object MapApiPartner(ApiPartnerRecord partner) => new
+    {
+        id = partner.Id,
+        name = partner.Name,
+        slug = partner.Slug,
+        description = partner.Description,
+        contact_email = partner.ContactEmail,
+        status = partner.Status,
+        is_sandbox = partner.IsSandbox,
+        allowed_scopes = partner.AllowedScopes,
+        allowed_ip_cidrs = partner.AllowedIpCidrs,
+        rate_limit_per_minute = partner.RateLimitPerMinute,
+        created_at = partner.CreatedAt,
+        updated_at = partner.UpdatedAt
+    };
+
+    private static (string ClientId, string ClientSecret) IssueApiPartnerCredentials() =>
+        ($"ap_{RandomToken(20)}", $"aps_{RandomToken(40)}");
+
+    private static string RandomToken(int length)
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        var buffer = new char[length];
+        for (var i = 0; i < buffer.Length; i++)
+        {
+            buffer[i] = chars[RandomNumberGenerator.GetInt32(chars.Length)];
+        }
+
+        return new string(buffer);
+    }
+
+    private static string Slugify(string value)
+    {
+        var builder = new StringBuilder();
+        foreach (var ch in value.Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                builder.Append(ch);
+            }
+            else if (builder.Length > 0 && builder[^1] != '-')
+            {
+                builder.Append('-');
+            }
+        }
+
+        var slug = builder.ToString().Trim('-');
+        return string.IsNullOrWhiteSpace(slug) ? "partner" : slug;
+    }
+
+    private async Task<List<LocalAdCampaignRecord>> LoadLocalAdCampaigns()
+    {
+        var raw = await GetTenantConfigValueAsync(LocalAdvertisingCampaignsKey);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<LocalAdCampaignRecord>>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private async Task SaveLocalAdCampaigns(List<LocalAdCampaignRecord> campaigns)
+    {
+        var json = JsonSerializer.Serialize(campaigns.OrderBy(c => c.Id).ToList(), StoreJsonOptions);
+        await UpsertTenantConfigValueAsync(LocalAdvertisingCampaignsKey, json);
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task<List<PaidPushCampaignRecord>> LoadPushCampaigns()
+    {
+        var raw = await GetTenantConfigValueAsync(PaidPushCampaignsKey);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<PaidPushCampaignRecord>>(raw, StoreJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private async Task SavePushCampaigns(List<PaidPushCampaignRecord> campaigns)
+    {
+        var json = JsonSerializer.Serialize(campaigns.OrderBy(c => c.Id).ToList(), StoreJsonOptions);
+        await UpsertTenantConfigValueAsync(PaidPushCampaignsKey, json);
+        await _db.SaveChangesAsync();
+    }
+
+    private static Dictionary<string, object?> MapLocalAdCampaign(LocalAdCampaignRecord campaign, bool includeStats = false)
+    {
+        var data = new Dictionary<string, object?>
+        {
+            ["id"] = campaign.Id,
+            ["tenant_id"] = campaign.TenantId,
+            ["created_by"] = campaign.CreatedBy,
+            ["name"] = campaign.Name,
+            ["status"] = campaign.Status,
+            ["advertiser_type"] = campaign.AdvertiserType,
+            ["budget_cents"] = campaign.BudgetCents,
+            ["spent_cents"] = campaign.SpentCents,
+            ["start_date"] = campaign.StartDate,
+            ["end_date"] = campaign.EndDate,
+            ["audience_filters"] = ParseJsonOrNull(campaign.AudienceFiltersJson),
+            ["placement"] = campaign.Placement,
+            ["approved_by"] = campaign.ApprovedBy,
+            ["approved_at"] = campaign.ApprovedAt,
+            ["rejection_reason"] = campaign.RejectionReason,
+            ["impression_count"] = campaign.ImpressionCount,
+            ["click_count"] = campaign.ClickCount,
+            ["created_at"] = campaign.CreatedAt,
+            ["updated_at"] = campaign.UpdatedAt,
+            ["advertiser_name"] = campaign.AdvertiserName,
+            ["advertiser_email"] = campaign.AdvertiserEmail,
+            ["creative_count"] = campaign.Creatives.Count,
+            ["creatives"] = campaign.Creatives.Select(MapLocalAdCreative).ToList()
+        };
+
+        if (includeStats)
+        {
+            data["stats"] = MapLocalAdCampaignStats(campaign);
+        }
+
+        return data;
+    }
+
+    private static object MapLocalAdCreative(LocalAdCreativeRecord creative) => new
+    {
+        id = creative.Id,
+        campaign_id = creative.CampaignId,
+        tenant_id = creative.TenantId,
+        headline = creative.Headline,
+        body = creative.Body,
+        cta_text = creative.CtaText,
+        image_url = creative.ImageUrl,
+        destination_url = creative.DestinationUrl,
+        is_active = creative.IsActive,
+        created_at = creative.CreatedAt
+    };
+
+    private static object MapLocalAdCampaignStats(LocalAdCampaignRecord campaign)
+    {
+        var ctr = campaign.ImpressionCount == 0
+            ? 0
+            : Math.Round(campaign.ClickCount * 100.0 / campaign.ImpressionCount, 2);
+
+        return new
+        {
+            campaign_id = campaign.Id,
+            impressions = campaign.ImpressionCount,
+            clicks = campaign.ClickCount,
+            ctr_percent = ctr,
+            budget_cents = campaign.BudgetCents,
+            spent_cents = campaign.SpentCents,
+            budget_remaining = Math.Max(0, campaign.BudgetCents - campaign.SpentCents),
+            daily = Enumerable.Range(0, 30)
+                .Select(offset => new
+                {
+                    date = DateTime.UtcNow.Date.AddDays(-29 + offset).ToString("yyyy-MM-dd"),
+                    impressions = 0,
+                    clicks = 0
+                })
+                .ToList()
+        };
+    }
+
+    private static Dictionary<string, object?> MapPushCampaign(PaidPushCampaignRecord campaign, bool includeAnalytics = false)
+    {
+        var data = new Dictionary<string, object?>
+        {
+            ["id"] = campaign.Id,
+            ["tenant_id"] = campaign.TenantId,
+            ["created_by"] = campaign.CreatedBy,
+            ["name"] = campaign.Name,
+            ["status"] = campaign.Status,
+            ["advertiser_type"] = campaign.AdvertiserType,
+            ["title"] = campaign.Title,
+            ["body"] = campaign.Body,
+            ["cta_url"] = campaign.CtaUrl,
+            ["audience_filter"] = ParseJsonOrNull(campaign.AudienceFilterJson),
+            ["audience_radius_km"] = campaign.AudienceRadiusKm,
+            ["audience_min_trust_tier"] = campaign.AudienceMinTrustTier,
+            ["target_count"] = campaign.TargetCount,
+            ["actual_send_count"] = campaign.ActualSendCount,
+            ["schedule_at"] = campaign.ScheduledAt,
+            ["scheduled_at"] = campaign.ScheduledAt,
+            ["sent_at"] = campaign.SentAt,
+            ["cost_per_send"] = campaign.CostPerSend,
+            ["total_cost_cents"] = campaign.TotalCostCents,
+            ["approved_by"] = campaign.ApprovedBy,
+            ["approved_at"] = campaign.ApprovedAt,
+            ["rejection_reason"] = campaign.RejectionReason,
+            ["open_count"] = campaign.OpenCount,
+            ["click_count"] = campaign.ClickCount,
+            ["created_at"] = campaign.CreatedAt,
+            ["updated_at"] = campaign.UpdatedAt,
+            ["advertiser_name"] = campaign.AdvertiserName,
+            ["advertiser_email"] = campaign.AdvertiserEmail
+        };
+
+        if (includeAnalytics)
+        {
+            data["analytics"] = new
+            {
+                send_count = campaign.ActualSendCount,
+                open_count = campaign.OpenCount,
+                click_count = campaign.ClickCount,
+                open_rate = campaign.ActualSendCount == 0 ? 0 : Math.Round(campaign.OpenCount * 100.0 / campaign.ActualSendCount, 2),
+                daily_breakdown = Enumerable.Range(0, 30)
+                    .Select(offset => new
+                    {
+                        date = DateTime.UtcNow.Date.AddDays(-29 + offset).ToString("yyyy-MM-dd"),
+                        sends = 0,
+                        opens = 0
+                    })
+                    .ToList()
+            };
+        }
+
+        return data;
+    }
+
+    private static bool IsFutureDate(string? value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
+            && parsed.ToUniversalTime() > DateTime.UtcNow;
+
+    private static object? ParseJsonOrNull(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<JsonElement>(raw);
+        }
+        catch (JsonException)
+        {
+            return raw;
+        }
+    }
+
     private async Task<string?> GetTenantConfigValueAsync(string key)
     {
         return await _db.TenantConfigs
@@ -4413,6 +5098,50 @@ public class AdminExplicitParityController : ControllerBase
         return null;
     }
 
+    private static bool JsonBool(Dictionary<string, JsonElement> payload, string key, bool fallback)
+    {
+        foreach (var item in payload)
+        {
+            if (string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase)
+                && TryReadBoolean(item.Value, out var result))
+            {
+                return result;
+            }
+        }
+
+        return fallback;
+    }
+
+    private static List<string> JsonStringList(Dictionary<string, JsonElement> payload, string key)
+    {
+        foreach (var item in payload)
+        {
+            if (!string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (item.Value.ValueKind == JsonValueKind.Array)
+            {
+                return item.Value.EnumerateArray()
+                    .Select(JsonElementToString)
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Select(value => value!.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            var single = JsonElementToString(item.Value);
+            return string.IsNullOrWhiteSpace(single)
+                ? []
+                : single.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+        }
+
+        return [];
+    }
+
     private static int JsonInt(Dictionary<string, JsonElement> payload, string key, int fallback, int min, int max)
     {
         foreach (var item in payload)
@@ -4654,6 +5383,106 @@ public class AdminExplicitParityController : ControllerBase
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    private sealed class LocalAdCampaignRecord
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public int CreatedBy { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Status { get; set; } = "pending_review";
+        public string AdvertiserType { get; set; } = "sme";
+        public int BudgetCents { get; set; }
+        public int SpentCents { get; set; }
+        public string? StartDate { get; set; }
+        public string? EndDate { get; set; }
+        public string? AudienceFiltersJson { get; set; }
+        public string Placement { get; set; } = "feed";
+        public int? ApprovedBy { get; set; }
+        public DateTime? ApprovedAt { get; set; }
+        public string? RejectionReason { get; set; }
+        public int ImpressionCount { get; set; }
+        public int ClickCount { get; set; }
+        public string? AdvertiserName { get; set; }
+        public string? AdvertiserEmail { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public List<LocalAdCreativeRecord> Creatives { get; set; } = [];
+    }
+
+    private sealed class LocalAdCreativeRecord
+    {
+        public int Id { get; set; }
+        public int CampaignId { get; set; }
+        public int TenantId { get; set; }
+        public string Headline { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
+        public string? CtaText { get; set; }
+        public string? ImageUrl { get; set; }
+        public string? DestinationUrl { get; set; }
+        public int IsActive { get; set; } = 1;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    private sealed class PaidPushCampaignRecord
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public int CreatedBy { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Status { get; set; } = "draft";
+        public string AdvertiserType { get; set; } = "sme";
+        public string Title { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
+        public string? CtaUrl { get; set; }
+        public string? AudienceFilterJson { get; set; }
+        public int? AudienceRadiusKm { get; set; }
+        public string AudienceMinTrustTier { get; set; } = "any";
+        public int? TargetCount { get; set; }
+        public int ActualSendCount { get; set; }
+        public string? ScheduledAt { get; set; }
+        public DateTime? SentAt { get; set; }
+        public int CostPerSend { get; set; } = 5;
+        public int TotalCostCents { get; set; }
+        public int? ApprovedBy { get; set; }
+        public DateTime? ApprovedAt { get; set; }
+        public string? RejectionReason { get; set; }
+        public int OpenCount { get; set; }
+        public int ClickCount { get; set; }
+        public string? AdvertiserName { get; set; }
+        public string? AdvertiserEmail { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    private sealed class ApiPartnerRecord
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? ContactEmail { get; set; }
+        public string Status { get; set; } = "pending";
+        public bool IsSandbox { get; set; } = true;
+        public List<string> AllowedScopes { get; set; } = [];
+        public List<string> AllowedIpCidrs { get; set; } = [];
+        public int RateLimitPerMinute { get; set; } = 60;
+        public string? CurrentClientId { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    private sealed class ApiPartnerCallLogRecord
+    {
+        public int Id { get; set; }
+        public string Method { get; set; } = "GET";
+        public string Path { get; set; } = "/";
+        public int StatusCode { get; set; } = 200;
+        public int ResponseTimeMs { get; set; }
+        public string? Ip { get; set; }
+        public string? UserAgent { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
     private sealed class SupportReportRecord
