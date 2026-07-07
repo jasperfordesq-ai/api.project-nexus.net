@@ -7,6 +7,7 @@ const express = require('express');
 const {
   getFeedPosts,
   getFeedPost,
+  getFeedPostV2,
   getFeedHashtags,
   getFeedHashtagPosts,
   createFeedPost,
@@ -17,6 +18,7 @@ const {
   getFeedComments,
   addFeedComment,
   deleteFeedComment,
+  getComments,
   getMyGroups,
   ApiError
 } = require('../lib/api');
@@ -147,6 +149,21 @@ function feedStatusMessage(status) {
   return messages[status] || null;
 }
 
+function feedPostStatusMessage(status) {
+  const messages = {
+    'reaction-added': { type: 'success', text: 'Your reaction has been added.' },
+    'reaction-removed': { type: 'success', text: 'Your reaction has been removed.' },
+    'comment-created': { type: 'success', text: 'Your comment has been posted.' },
+    'comment-updated': { type: 'success', text: 'Your comment has been updated.' },
+    'comment-deleted': { type: 'success', text: 'Your comment has been deleted.' },
+    'share-added': { type: 'success', text: 'This post has been shared to your feed.' },
+    'share-removed': { type: 'success', text: 'This post has been removed from your feed.' },
+    'save-added': { type: 'success', text: 'This post has been saved.' },
+    'save-removed': { type: 'success', text: 'This post has been removed from your saved items.' }
+  };
+  return messages[status] || null;
+}
+
 router.get('/hashtags', asyncRoute(async (req, res) => {
   const searchQuery = trimmed(req.query.q, 100);
   const searchTerm = strippedSearch(searchQuery);
@@ -174,6 +191,28 @@ router.get('/hashtags', asyncRoute(async (req, res) => {
     errorMessage
   });
 }));
+
+router.get('/posts/:id(\\d+)', asyncRoute(async (req, res) => {
+  const id = positiveInteger(req.params.id, 0, 1, Number.MAX_SAFE_INTEGER);
+  const token = tokenFrom(req);
+  const result = await getFeedPostV2(token, id);
+  const item = normalizeFeedPost(dataFrom(result));
+  const comments = token
+    ? feedCollectionRows(await getComments(token, { target_type: 'post', target_id: id }).catch(() => ({ data: [] })))
+    : [];
+
+  res.render('feed/post', {
+    title: 'Post',
+    activeNav: 'feed',
+    alphaActiveNav: 'feed',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    item,
+    comments,
+    requiresAuth: !token,
+    statusMessage: feedPostStatusMessage(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Post not found' }));
 
 router.get('/hashtag/:tag([A-Za-z0-9_]{1,100})', asyncRoute(async (req, res) => {
   const tag = trimmed(req.params.tag, 100).replace(/^#/, '').toLowerCase();

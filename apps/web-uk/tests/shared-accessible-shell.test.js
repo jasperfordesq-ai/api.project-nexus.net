@@ -43,6 +43,7 @@ jest.mock('../src/lib/api', () => ({
   getFeedPosts: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } }),
   getFeedHashtags: jest.fn().mockResolvedValue({ data: [] }),
   getFeedHashtagPosts: jest.fn().mockResolvedValue({ data: [], meta: { total_items: 0, has_more: false } }),
+  getFeedPostV2: jest.fn(),
   getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
   updateProfile: jest.fn().mockResolvedValue({}),
   uploadProfileAvatar: jest.fn().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } }),
@@ -259,6 +260,7 @@ describe('shared accessible frontend shell', () => {
     api.getFeedPosts.mockReset().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } });
     api.getFeedHashtags.mockReset().mockResolvedValue({ data: [] });
     api.getFeedHashtagPosts.mockReset().mockResolvedValue({ data: [], meta: { total_items: 0, has_more: false } });
+    api.getFeedPostV2.mockReset();
     api.getMyGroups.mockReset().mockResolvedValue({ data: [] });
     api.updateProfile.mockReset().mockResolvedValue({});
     api.uploadProfileAvatar.mockReset().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } });
@@ -7699,6 +7701,64 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('View this post');
     expect(response.text).toContain('href="/feed/hashtag/repair?cursor=next-cursor&amp;per_page=20"');
     expect(response.text).toContain('Show more posts');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the public Laravel feed post permalink page', async () => {
+    const api = require('../src/lib/api');
+
+    api.getFeedPostV2.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        content: '<p>Repair cafe is open.</p><p>Bring your bike lights.</p>',
+        created_at: '2026-07-06T09:30:00Z',
+        author: {
+          id: 77,
+          name: 'Ada Lovelace',
+          avatar_url: '/avatars/ada.jpg'
+        },
+        likes_count: 2,
+        comments_count: 1,
+        share_count: 3,
+        is_liked: false,
+        is_shared: false,
+        is_bookmarked: true,
+        media: [
+          {
+            file_url: '/uploads/feed/repair.jpg',
+            thumbnail_url: '/uploads/feed/repair-thumb.jpg',
+            alt_text: 'A repaired bicycle wheel'
+          }
+        ],
+        reactions: {
+          counts: { celebrate: 1 },
+          total: 1,
+          user_reaction: null
+        }
+      }
+    });
+
+    const response = await request(app).get('/feed/posts/42');
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedPostV2).toHaveBeenCalledWith('', 42);
+    expect(api.getComments).not.toHaveBeenCalled();
+    expect(response.text).toContain('href="/feed"');
+    expect(response.text).toContain('Back to the feed');
+    expect(response.text).toContain('Community feed at');
+    expect(response.text).toContain('<h1');
+    expect(response.text).toContain('Post');
+    expect(response.text).toContain('Sign in to take part in the feed.');
+    expect(response.text).toContain('Posted by Ada Lovelace');
+    expect(response.text).toContain('Repair cafe is open.');
+    expect(response.text).toContain('Bring your bike lights.');
+    expect(response.text).toContain('src="/uploads/feed/repair-thumb.jpg"');
+    expect(response.text).toContain('alt="A repaired bicycle wheel"');
+    expect(response.text).toContain('2 likes');
+    expect(response.text).toContain('1 comment');
+    expect(response.text).toContain('Comments');
+    expect(response.text).toContain('No comments yet.');
+    expect(response.text).not.toContain('name="content"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 

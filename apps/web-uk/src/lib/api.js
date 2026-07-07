@@ -2134,6 +2134,11 @@ async function getFeedPost(token, id) {
   });
 }
 
+async function getFeedPostV2(token = '', id) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return request(`/api/v2/feed/posts/${encodeURIComponent(id)}`, { headers });
+}
+
 async function getFeedHashtags(token = '', params = {}) {
   const query = new URLSearchParams();
   const searchQuery = params.q !== undefined && params.q !== null ? String(params.q).trim() : '';
@@ -3073,6 +3078,7 @@ module.exports = {
   // Feed
   getFeedPosts,
   getFeedPost,
+  getFeedPostV2,
   getFeedHashtags,
   getFeedHashtagPosts,
   createFeedPost,
