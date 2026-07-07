@@ -195,6 +195,24 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/marketplace/pickups',
       '/marketplace/onboarding',
       '/marketplace/slots',
+      '/events/6',
+      '/events/6/map',
+      '/events/6/polls',
+      '/events/6/translate',
+      '/volunteering/opportunities/307',
+      '/organisations/636',
+      '/organisations/636/jobs',
+      '/organisations/opportunities/307/apply',
+      '/jobs/90764',
+      '/groups/484',
+      '/groups/484/invite',
+      '/groups/484/notifications',
+      '/groups/484/image',
+      '/groups/484/announcements',
+      '/groups/484/discussions',
+      '/groups/484/files',
+      '/groups/484/manage',
+      '/resources/10/comments',
       '/volunteering/accessibility',
       '/volunteering/certificates',
       '/volunteering/opportunities/create',
@@ -399,6 +417,31 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.modulePagePaths).toEqual(['/bravo', '/echo']);
   });
 
+  it('includes stable real-fixture parameterised pages in the default module smoke scope', () => {
+    const options = resolveOptions({}, {});
+
+    expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/events/6',
+      '/events/6/map',
+      '/events/6/polls',
+      '/events/6/translate',
+      '/volunteering/opportunities/307',
+      '/organisations/636',
+      '/organisations/636/jobs',
+      '/organisations/opportunities/307/apply',
+      '/jobs/90764',
+      '/groups/484',
+      '/groups/484/invite',
+      '/groups/484/notifications',
+      '/groups/484/image',
+      '/groups/484/announcements',
+      '/groups/484/discussions',
+      '/groups/484/files',
+      '/groups/484/manage',
+      '/resources/10/comments'
+    ]));
+  });
+
   it('proves the Laravel-backed login path with CSRF, cookies, redirects, and a signed account page', async () => {
     const requests = [];
     const laravel = createLaravelServer(requests);
@@ -583,6 +626,24 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-marketplace-pickups-renders': true,
       'module-page-marketplace-onboarding-renders': true,
       'module-page-marketplace-slots-renders': true,
+      'module-page-events-6-renders': true,
+      'module-page-events-6-map-renders': true,
+      'module-page-events-6-polls-renders': true,
+      'module-page-events-6-translate-renders': true,
+      'module-page-volunteering-opportunities-307-renders': true,
+      'module-page-organisations-636-renders': true,
+      'module-page-organisations-636-jobs-renders': true,
+      'module-page-organisations-opportunities-307-apply-renders': true,
+      'module-page-jobs-90764-renders': true,
+      'module-page-groups-484-renders': true,
+      'module-page-groups-484-invite-renders': true,
+      'module-page-groups-484-notifications-renders': true,
+      'module-page-groups-484-image-renders': true,
+      'module-page-groups-484-announcements-renders': true,
+      'module-page-groups-484-discussions-renders': true,
+      'module-page-groups-484-files-renders': true,
+      'module-page-groups-484-manage-renders': true,
+      'module-page-resources-10-comments-renders': true,
       'module-page-volunteering-accessibility-renders': true,
       'module-page-volunteering-certificates-renders': true,
       'module-page-volunteering-opportunities-create-renders': true,
@@ -679,6 +740,8 @@ describe('Laravel runtime smoke harness', () => {
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/messages').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/listings').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/events/6').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/groups/484').at(-1).cookie).toContain('token=signed-token');
   });
 
   it('smokes unsigned redirects for auth-required parameterised Laravel routes', async () => {

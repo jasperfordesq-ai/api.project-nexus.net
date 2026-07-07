@@ -10,6 +10,26 @@ const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
 const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
+const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
+  '/events/6',
+  '/events/6/map',
+  '/events/6/polls',
+  '/events/6/translate',
+  '/volunteering/opportunities/307',
+  '/organisations/636',
+  '/organisations/636/jobs',
+  '/organisations/opportunities/307/apply',
+  '/jobs/90764',
+  '/groups/484',
+  '/groups/484/invite',
+  '/groups/484/notifications',
+  '/groups/484/image',
+  '/groups/484/announcements',
+  '/groups/484/discussions',
+  '/groups/484/files',
+  '/groups/484/manage',
+  '/resources/10/comments'
+];
 const DEFAULT_UNSIGNED_AUTH_REQUIRED_PAGE_PATHS = [
   '/federation/listings/1/1',
   '/federation/partners/1',
@@ -369,7 +389,7 @@ function resolveModulePagePaths(options, env) {
     'modulePagePaths',
     env,
     'SMOKE_MODULE_PAGE_PATHS',
-    [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS]
+    [...DEFAULT_PUBLIC_MODULE_PAGE_PATHS, ...DEFAULT_SIGNED_MODULE_PAGE_PATHS, ...DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS]
   );
 
   if (hasOwn(options, 'modulePagePaths')) return paths;

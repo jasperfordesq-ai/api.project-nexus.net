@@ -60,7 +60,7 @@ Regenerate before trusting it.
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
 | Dirty files seen | Latest focused edits record the full default Laravel runtime-smoke evidence. Rerun `git status --short --branch` and treat that as authoritative. |
 | Working estimate | about `940/1000` implementation/certification parity |
-| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, chunked runtime-smoke fallback evidence, and targeted real-fixture parameterised detail smoke evidence, assuming agents rerun the refresh protocol |
+| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, broader signed module-page smoke scope, unsigned auth-required parameterised redirect smoke scope, full default runtime smoke, chunked runtime-smoke fallback evidence, and default real-fixture parameterised detail smoke evidence, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -73,11 +73,12 @@ The latest generated route matrix at this handoff reported:
 | Extra Web UK routes | `83` |
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
-Focused runtime-smoke harness test: `npm test -- --runInBand
-tests/laravel-runtime-smoke.test.js` passed with `6/6` tests after red steps
-for the missing harness, stale Acme defaults, missing public module-page checks,
-missing signed module-page checks, and a too-short default timeout for slower
-Laravel-backed signed pages.
+Focused runtime-smoke harness test: `npm test --
+tests/laravel-runtime-smoke.test.js --runInBand` passed with `12/12` tests
+after red steps for the missing harness, stale Acme defaults, missing public
+module-page checks, missing signed module-page checks, too-short default
+timeout for slower Laravel-backed signed pages, chunked fallback support, and
+the missing default real-fixture parameterised detail page scope.
 
 Live local smoke result on 2026-07-07: direct Laravel login succeeds for the
 E2E fixture account when `X-Tenant-ID: 2` or `X-Tenant-Slug: hour-timebank` is
@@ -181,6 +182,13 @@ auth/health checks and 18 real-fixture parameterised module pages:
 `/groups/484/notifications`, `/groups/484/image`,
 `/groups/484/announcements`, `/groups/484/discussions`, `/groups/484/files`,
 `/groups/484/manage`, and `/resources/10/comments`.
+Those 18 real-fixture parameterised pages are now part of the default module
+page sweep rather than targeted-only evidence. A full default Laravel-backed run
+against a temporary web-uk process at `WEB_UK_BASE_URL=http://127.0.0.1:5327`,
+started with `TENANT_ID=2`, passed on 2026-07-07: `199/199` checks, `0`
+failures, `179` module-page checks, 8 unsigned auth-required redirect checks, 3
+gated-status checks, and 3 signed redirect checks; `npm run smoke:laravel`
+exited `0`.
 `/organisations/{id}` now
 matches Laravel's signed-out behavior by redirecting to
 `/login?status=auth-required` before data lookup. Without

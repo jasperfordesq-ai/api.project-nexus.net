@@ -134,6 +134,12 @@ detail/depth (`/groups/484`, `/groups/484/invite`,
 run also proves the current event and group detail handlers use Laravel v2
 detail payloads from `/api/v2/events/{id}` and `/api/v2/groups/{id}` without
 leaking the `{ data: ... }` wrapper into templates.
+Those 18 stable fixture-backed pages are now part of the default smoke scope.
+A full default Laravel-backed run against a temporary web-uk process at
+`WEB_UK_BASE_URL=http://127.0.0.1:5327`, started with `TENANT_ID=2`, passed on
+2026-07-07: `199/199` checks, `0` failures, `179` module-page checks, 8
+unsigned auth-required redirect checks, 3 gated-status checks, and 3 signed
+redirect checks; `npm run smoke:laravel` exited `0`.
 
 ## Header And Footer Contract
 

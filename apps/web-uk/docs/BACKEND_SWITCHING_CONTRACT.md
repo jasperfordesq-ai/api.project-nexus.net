@@ -134,6 +134,12 @@ module-page checks across event detail/depth, volunteering opportunity detail,
 organisation detail/jobs/apply, job detail, group detail/depth, and resource
 comments. This specifically verifies Laravel v2 event/group detail payload
 unwrapping for `/events/6` and `/groups/484`; it does not certify ASP.NET mode.
+The same 18 stable real-fixture pages are now included in the default module
+page sweep. A full default Laravel-backed run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5327`, started with `TENANT_ID=2`, passed on
+2026-07-07: `199/199` checks, `0` failures, `179` module-page checks, 8
+unsigned auth-required redirect checks, 3 gated-status checks, and 3 signed
+redirect checks; `npm run smoke:laravel` exited `0`.
 
 ## Current Page Candidates
 

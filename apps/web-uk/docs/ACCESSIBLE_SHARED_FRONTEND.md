@@ -137,6 +137,12 @@ real-fixture parameterised module pages. The checked pages were `/events/6`,
 `/groups/484/notifications`, `/groups/484/image`,
 `/groups/484/announcements`, `/groups/484/discussions`, `/groups/484/files`,
 `/groups/484/manage`, and `/resources/10/comments`.
+Those 18 stable real-fixture pages are now included in the default module-page
+sweep. A full default Laravel-backed run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5327`, started with `TENANT_ID=2`, passed on
+2026-07-07: `199/199` checks, `0` failures, `179` module-page checks, 8
+unsigned auth-required redirect checks, 3 gated-status checks, and 3 signed
+redirect checks; `npm run smoke:laravel` exited `0`.
 
 ## Stack
 
