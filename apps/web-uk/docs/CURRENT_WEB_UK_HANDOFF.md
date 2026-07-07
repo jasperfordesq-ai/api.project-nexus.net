@@ -58,8 +58,8 @@ Regenerate before trusting it.
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
-| Dirty files seen | Current in-progress edits expand Laravel runtime smoke to the broader signed page set, raise the smoke timeout default, fix the signed `/listings` owner-id render crash, and update docs. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `865/1000` implementation/certification parity |
+| Dirty files seen | Current in-progress edits expand Laravel runtime smoke from the broad signed page set into deeper signed profile, settings, achievement, leaderboard, federation, course, marketplace, and volunteering subpages, then update docs. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `890/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and broader signed module-page smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -88,19 +88,24 @@ and `SMOKE_TIMEOUT_MS=30000`: Laravel API `200`, web-uk health `200`, unsigned
 signed `/account` rendered `200`. The current smoke scope also checks
 `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and `/help`
 return 2xx through web-uk while Laravel is the backend target. After the login
-flow, it checks `/explore`, `/saved`, `/notifications`, `/members/discover`,
-`/resources`, `/skills`, `/goals`, `/clubs`, `/wallet`, `/messages`,
-`/connections/network`, `/matches`, `/matches/board`, `/activity`,
-`/achievements`, `/leaderboard`, `/nexus-score`, `/profile/settings`,
-`/settings/appearance`, `/settings/data-rights`, `/federation`, `/courses`,
-`/courses/mine`, `/marketplace`, `/marketplace/mine`, `/events`, `/listings`,
-`/search/advanced`, `/premium`, and `/podcasts`. A later 2026-07-07 smoke run
-against `WEB_UK_BASE_URL=http://127.0.0.1:5189` passed `41/41` checks with those
-signed pages. `/listings` needed a Nunjucks owner-id guard because Laravel can
-return nested `user.id` without a flat `user_id`; the default smoke timeout is
-now `30000` ms for slower Laravel fixture pages. `/coupons` remains outside the
-default signed smoke list because the local fixture returns a feature-gated
-`403`. Without
+flow, it checks the broad signed page set covering `/explore`, `/saved`,
+`/notifications`, `/members/discover`, `/resources`, `/skills`, `/goals`,
+`/clubs`, `/wallet`, `/messages`, `/connections/network`, `/matches`,
+`/matches/board`, `/activity`, `/achievements`, `/leaderboard`, `/nexus-score`,
+`/profile/settings`, `/settings/appearance`, `/settings/data-rights`,
+`/federation`, `/courses`, `/courses/mine`, `/marketplace`,
+`/marketplace/mine`, `/events`, `/listings`, `/search/advanced`, `/premium`,
+and `/podcasts`, plus deeper signed subpages across profile, settings,
+achievements, leaderboard, federation, courses, marketplace, and volunteering.
+A later 2026-07-07 smoke run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5293` passed `93/93` checks with that expanded
+scope. `/listings` needed a Nunjucks owner-id guard because Laravel can return
+nested `user.id` without a flat `user_id`; the default smoke timeout is now
+`30000` ms for slower Laravel fixture pages. Local probing left
+`/marketplace/onboarding` outside the default list because it returned `404`,
+and left `/marketplace/coupons` outside because it returned feature-gated
+`403`; `/marketplace/coupons/new` also stays out while its parent coupon index
+is feature-gated. Without
 `TENANT_ID=2`, the same Laravel E2E credentials fail because web-uk does not
 send the tenant context Laravel uses to scope login.
 
@@ -214,7 +219,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `865/1000`.
+Current working estimate at this handoff: `890/1000`.
 
 ## Final Handoff Checklist
 

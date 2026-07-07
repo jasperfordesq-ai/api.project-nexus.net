@@ -49,19 +49,24 @@ Laravel, plus the signed module pages `/explore`, `/saved`, `/notifications`,
 `/achievements`, `/leaderboard`, `/nexus-score`, `/profile/settings`,
 `/settings/appearance`, `/settings/data-rights`, `/federation`, `/courses`,
 `/courses/mine`, `/marketplace`, `/marketplace/mine`, `/events`, `/listings`,
-`/search/advanced`, `/premium`, and `/podcasts` after the same login flow. The
-harness defaults to Laravel's local E2E fixture
+`/search/advanced`, `/premium`, and `/podcasts`, plus deeper signed subpages
+across profile, settings, achievements, leaderboard, federation, courses,
+marketplace, and volunteering after the same login flow. The harness defaults
+to Laravel's local E2E fixture
 (`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`).
 
-On 2026-07-07 the command passed `41/41` checks end-to-end against a temporary
-web-uk process started with `TENANT_ID=2`. The harness default timeout is now
+On 2026-07-07 the command passed `93/93` checks end-to-end against a temporary
+web-uk process started with `TENANT_ID=2` and
+`WEB_UK_BASE_URL=http://127.0.0.1:5293`. The harness default timeout is now
 `30000` ms because Laravel-backed profile/settings and discovery pages can be
 slow in the local fixture. Keep the tenant context visible: the same Laravel E2E
 credentials return `401` when web-uk does not send Laravel's tenant id `2` as
-`X-Tenant-ID`. Live probing still leaves `/coupons` outside the default signed
-smoke list because the local fixture returns a feature-gated `403` for merchant
-coupons.
+`X-Tenant-ID`. Live probing still leaves `/marketplace/onboarding` outside the
+default list because it returns `404`, leaves `/marketplace/coupons` outside
+because the local fixture returns a feature-gated `403`, and leaves
+`/marketplace/coupons/new` outside while its parent coupon index is
+feature-gated.
 
 ## Stack
 

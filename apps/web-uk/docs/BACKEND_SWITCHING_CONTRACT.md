@@ -48,10 +48,13 @@ CSRF rendering, login POST redirect to `/dashboard`, and signed `/account`
 rendering. It also checks the default public Laravel-backed module pages
 `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and `/help`
 return successful responses through web-uk while Laravel is the backend target.
-After login, it checks the signed Laravel-backed pages `/explore`, `/saved`,
-`/notifications`, `/members/discover`, `/resources`, `/skills`, `/goals`, and
-`/clubs`. Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and
-`SMOKE_TENANT`; the defaults target the Laravel local E2E fixture:
+After login, it checks the signed Laravel-backed base pages and deeper module
+pages across explore, saved items, notifications, member discovery, resources,
+skills, goals, clubs, wallet, messages, connections, matches, activity,
+achievements, leaderboard, NEXUS score, profile, settings, federation, courses,
+marketplace, events, listings, search, premium, podcasts, and volunteering.
+Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and `SMOKE_TENANT`;
+the defaults target the Laravel local E2E fixture:
 `e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`.
 
@@ -61,12 +64,15 @@ the correct `X-Tenant-ID` context. Current local result on 2026-07-07:
 `WEB_UK_BASE_URL=http://127.0.0.1:5181 SMOKE_TIMEOUT_MS=30000 npm run
 smoke:laravel` passed against a temporary web-uk process started with
 `TENANT_ID=2`. Without that tenant context, Laravel returns `401` for the same
-valid E2E credentials. A later 2026-07-07 smoke run passed `41/41` checks with
-the broader default signed page list, including wallet, messages, connections,
-matches, activity, achievements, leaderboard, profile/settings, federation,
-courses, marketplace, events, listings, search, premium, and podcasts pages.
-`/coupons` remains outside that default list because the local fixture returns a
-feature-gated `403` for merchant coupons.
+valid E2E credentials. Later 2026-07-07 smoke runs expanded the default signed
+page list from the broader base module pages to deep profile, settings,
+achievement, leaderboard, federation, course, marketplace, and volunteering
+subpages. The latest run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5293` passed `93/93` checks. Local probing
+left `/marketplace/onboarding` outside the default list because it currently
+returns `404`, and left `/marketplace/coupons` outside because it returns a
+feature-gated `403`; `/marketplace/coupons/new` also stays outside the default
+smoke list while its parent coupon index is feature-gated.
 
 ## Current Page Candidates
 
