@@ -1534,6 +1534,140 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminPodcastsV2_UsesLaravelReactIndexAndModerationShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var createShow = await Client.PostAsJsonAsync("/api/v2/podcasts", new
+        {
+            title = $"Laravel React Podcast {Guid.NewGuid():N}",
+            summary = "Podcast admin contract show.",
+            language = "en",
+            category = "community",
+            visibility = "public"
+        });
+        createShow.StatusCode.Should().Be(HttpStatusCode.Created);
+        var showId = (await createShow.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var createEpisode = await Client.PostAsJsonAsync($"/api/v2/podcasts/{showId}/episodes", new
+        {
+            title = "Laravel React Podcast Episode",
+            summary = "Podcast admin contract episode.",
+            audio_url = "https://cdn.example.test/podcast-admin.mp3",
+            duration_seconds = 120
+        });
+        createEpisode.StatusCode.Should().Be(HttpStatusCode.Created);
+        var episodeId = (await createEpisode.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data")
+            .GetProperty("id")
+            .GetInt32();
+
+        var index = await Client.GetAsync("/api/v2/admin/podcasts?moderation_status=pending&shows_page=1&episodes_page=1&per_page=20");
+
+        index.StatusCode.Should().Be(HttpStatusCode.OK);
+        var indexJson = await index.Content.ReadFromJsonAsync<JsonElement>();
+        indexJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        indexJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var indexData = indexJson.GetProperty("data");
+        indexData.GetProperty("shows").EnumerateArray().Should().Contain(row => row.GetProperty("id").GetInt32() == showId);
+        indexData.GetProperty("episodes").EnumerateArray().Should().Contain(row => row.GetProperty("id").GetInt32() == episodeId);
+        indexData.GetProperty("stats").GetProperty("pending_shows").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        indexData.GetProperty("stats").GetProperty("pending_episodes").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        indexJson.GetProperty("meta").GetProperty("shows_total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        indexJson.GetProperty("meta").GetProperty("episodes_total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var moderateShow = await Client.PostAsJsonAsync($"/api/v2/admin/podcasts/shows/{showId}/moderate", new { action = "approve" });
+
+        moderateShow.StatusCode.Should().Be(HttpStatusCode.OK);
+        var moderateShowJson = await moderateShow.Content.ReadFromJsonAsync<JsonElement>();
+        moderateShowJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        moderateShowJson.GetProperty("data").GetProperty("moderation_status").GetString().Should().Be("approved");
+
+        var moderateEpisode = await Client.PostAsJsonAsync($"/api/v2/admin/podcasts/episodes/{episodeId}/moderate", new { action = "reject" });
+
+        moderateEpisode.StatusCode.Should().Be(HttpStatusCode.OK);
+        var moderateEpisodeJson = await moderateEpisode.Content.ReadFromJsonAsync<JsonElement>();
+        moderateEpisodeJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        moderateEpisodeJson.GetProperty("data").GetProperty("moderation_status").GetString().Should().Be("rejected");
+    }
+
+    [Fact]
+    public async Task AdminRegistrationPolicyV2_UsesLaravelReactPolicyProviderAndCredentialShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var policy = await Client.GetAsync("/api/v2/admin/config/registration-policy");
+
+        policy.StatusCode.Should().Be(HttpStatusCode.OK);
+        var policyJson = await policy.Content.ReadFromJsonAsync<JsonElement>();
+        policyJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        policyJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        var policyData = policyJson.GetProperty("data");
+        policyData.GetProperty("registration_mode").GetString().Should().NotBeNullOrWhiteSpace();
+        policyData.GetProperty("verification_level").GetString().Should().NotBeNullOrWhiteSpace();
+        policyData.GetProperty("post_verification").GetString().Should().NotBeNullOrWhiteSpace();
+        policyData.GetProperty("fallback_mode").GetString().Should().NotBeNullOrWhiteSpace();
+        policyData.GetProperty("require_email_verify").ValueKind.Should().BeOneOf(JsonValueKind.True, JsonValueKind.False);
+
+        var providers = await Client.GetAsync("/api/v2/admin/identity/providers");
+
+        providers.StatusCode.Should().Be(HttpStatusCode.OK);
+        var providersJson = await providers.Content.ReadFromJsonAsync<JsonElement>();
+        providersJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        providersJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        providersJson.GetProperty("data").EnumerateArray()
+            .Should().Contain(provider =>
+                provider.GetProperty("slug").GetString() == "veriff" &&
+                provider.GetProperty("levels").ValueKind == JsonValueKind.Array &&
+                HasProperty(provider, "available") &&
+                HasProperty(provider, "has_credentials"));
+
+        var update = await Client.PutAsJsonAsync("/api/v2/admin/config/registration-policy", new
+        {
+            registration_mode = "verified_identity",
+            verification_provider = "veriff",
+            verification_level = "document_selfie",
+            post_verification = "admin_approval",
+            fallback_mode = "admin_review",
+            require_email_verify = true
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var updatedPolicy = updateJson.GetProperty("data");
+        updatedPolicy.GetProperty("registration_mode").GetString().Should().Be("verified_identity");
+        updatedPolicy.GetProperty("verification_provider").GetString().Should().Be("veriff");
+        updatedPolicy.GetProperty("verification_level").GetString().Should().Be("document_selfie");
+        updatedPolicy.GetProperty("post_verification").GetString().Should().Be("admin_approval");
+        updatedPolicy.GetProperty("fallback_mode").GetString().Should().Be("admin_review");
+        updatedPolicy.GetProperty("require_email_verify").GetBoolean().Should().BeTrue();
+
+        var saveCredentials = await Client.PutAsJsonAsync("/api/v2/admin/identity/provider-credentials/veriff", new
+        {
+            api_key = "contract-veriff-key",
+            webhook_secret = "contract-veriff-secret"
+        });
+
+        saveCredentials.StatusCode.Should().Be(HttpStatusCode.OK);
+        var saveJson = await saveCredentials.Content.ReadFromJsonAsync<JsonElement>();
+        saveJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        saveJson.GetProperty("data").GetProperty("saved").GetBoolean().Should().BeTrue();
+        saveJson.GetProperty("data").GetProperty("provider_slug").GetString().Should().Be("veriff");
+
+        var deleteCredentials = await Client.DeleteAsync("/api/v2/admin/identity/provider-credentials/veriff");
+
+        deleteCredentials.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await deleteCredentials.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("provider_slug").GetString().Should().Be("veriff");
+    }
+
+    [Fact]
     public async Task AdminPollsV2_UsesLaravelReactListDetailAndDeleteShape()
     {
         await AuthenticateAsAdminAsync();
@@ -1667,6 +1801,109 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
         deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
         deleteJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(goalId);
+    }
+
+    [Fact]
+    public async Task AdminIdeationV2_UsesLaravelReactListDetailStatusAndDeleteShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var challengeId = await SeedAdminIdeationChallengeAsync("Laravel React ideation challenge");
+
+        var list = await Client.GetAsync("/api/v2/admin/ideation?search=Laravel%20React&status=open&page=1&limit=50");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        listJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        listJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        listJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(50);
+        var listed = listJson.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt32() == challengeId);
+        listed.GetProperty("title").GetString().Should().Be("Laravel React ideation challenge");
+        listed.GetProperty("creator_name").GetString().Should().NotBeNull();
+        listed.GetProperty("ideas_count").GetInt32().Should().Be(1);
+        listed.GetProperty("status").GetString().Should().Be("open");
+        listed.GetProperty("start_date").GetString().Should().NotBeNullOrWhiteSpace();
+        listed.GetProperty("end_date").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var detail = await Client.GetAsync($"/api/v2/admin/ideation/{challengeId}");
+
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        detailJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var detailData = detailJson.GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(challengeId);
+        detailData.GetProperty("title").GetString().Should().Be("Laravel React ideation challenge");
+        detailData.GetProperty("ideas_count").GetInt32().Should().Be(1);
+
+        var status = await Client.PostAsJsonAsync($"/api/v2/admin/ideation/{challengeId}/status", new { status = "archived" });
+
+        status.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statusJson = await status.Content.ReadFromJsonAsync<JsonElement>();
+        statusJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        statusJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(challengeId);
+        statusJson.GetProperty("data").GetProperty("status").GetString().Should().Be("archived");
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/ideation/{challengeId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("id").GetInt32().Should().Be(challengeId);
+    }
+
+    [Fact]
+    public async Task AdminModerationV2_UsesLaravelReactQueueStatsAndReviewShape()
+    {
+        await AuthenticateAsAdminAsync();
+        var reportId = await SeedAdminModerationReportAsync("Laravel React moderation queue item");
+
+        var queue = await Client.GetAsync("/api/v2/admin/moderation/queue?status=pending&content_type=listing&search=Laravel%20React&page=1&limit=20");
+
+        queue.StatusCode.Should().Be(HttpStatusCode.OK);
+        var queueJson = await queue.Content.ReadFromJsonAsync<JsonElement>();
+        queueJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        queueJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        queueJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        queueJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(20);
+        queueJson.GetProperty("meta").GetProperty("total_pages").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        var item = queueJson.GetProperty("data").EnumerateArray()
+            .Single(row => row.GetProperty("id").GetInt32() == reportId);
+        item.GetProperty("content_type").GetString().Should().Be("listing");
+        item.GetProperty("content_id").GetInt32().Should().Be(321);
+        item.GetProperty("title").GetString().Should().Be("Laravel React moderation queue item");
+        item.GetProperty("body").GetString().Should().Contain("Moderation details");
+        item.GetProperty("author_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        item.GetProperty("author_name").GetString().Should().Be("Member User");
+        item.GetProperty("status").GetString().Should().Be("pending");
+        item.GetProperty("auto_flagged").GetBoolean().Should().BeFalse();
+        item.GetProperty("submitted_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var stats = await Client.GetAsync("/api/v2/admin/moderation/stats");
+
+        stats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statsJson = await stats.Content.ReadFromJsonAsync<JsonElement>();
+        statsJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var statsData = statsJson.GetProperty("data");
+        statsData.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        statsData.GetProperty("pending").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        statsData.GetProperty("by_type").GetProperty("listing").GetProperty("pending").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var review = await Client.PostAsJsonAsync($"/api/v2/admin/moderation/{reportId}/review", new
+        {
+            decision = "approved"
+        });
+
+        review.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reviewJson = await review.Content.ReadFromJsonAsync<JsonElement>();
+        reviewJson.TryGetProperty("compatibility", out _).Should().BeFalse();
+        reviewJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var reviewData = reviewJson.GetProperty("data");
+        reviewData.GetProperty("success").GetBoolean().Should().BeTrue();
+        reviewData.GetProperty("content_type").GetString().Should().Be("listing");
+        reviewData.GetProperty("content_id").GetInt32().Should().Be(321);
     }
 
     private async Task SeedRegionalAnalyticsSubscriptionAsync(string token)
@@ -1815,6 +2052,63 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         return goal.Id;
     }
 
+    private async Task<int> SeedAdminIdeationChallengeAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+        var challenge = new Challenge
+        {
+            TenantId = TestData.Tenant1.Id,
+            Title = title,
+            Description = "Laravel React ideation body for the admin challenges table.",
+            ChallengeType = ChallengeType.Community,
+            TargetAction = "idea_submitted",
+            TargetCount = 3,
+            XpReward = 25,
+            StartsAt = now.AddDays(-1),
+            EndsAt = now.AddDays(14),
+            IsActive = true,
+            Difficulty = ChallengeDifficulty.Medium,
+            CreatedAt = now.AddHours(-3),
+            UpdatedAt = now.AddHours(-1)
+        };
+        db.Challenges.Add(challenge);
+        await db.SaveChangesAsync();
+
+        db.ChallengeParticipants.Add(new ChallengeParticipant
+        {
+            TenantId = TestData.Tenant1.Id,
+            ChallengeId = challenge.Id,
+            UserId = TestData.MemberUser.Id,
+            CurrentProgress = 1,
+            JoinedAt = now.AddHours(-2)
+        });
+        await db.SaveChangesAsync();
+
+        return challenge.Id;
+    }
+
+    private async Task<int> SeedAdminModerationReportAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var report = new ContentReport
+        {
+            TenantId = TestData.Tenant1.Id,
+            ReporterId = TestData.MemberUser.Id,
+            ContentType = "listing",
+            ContentId = 321,
+            Reason = ReportReason.SafetyConcern,
+            Description = $"{title}\nModeration details for the React moderation queue.",
+            Status = ReportStatus.Pending,
+            CreatedAt = DateTime.UtcNow.AddHours(-6)
+        };
+        db.ContentReports.Add(report);
+        await db.SaveChangesAsync();
+        return report.Id;
+    }
+
     private async Task<(string ClientId, string ClientSecret)> RegisterApiPartnerAsync(string scopes)
     {
         await AuthenticateAsAdminAsync();
@@ -1841,6 +2135,9 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             job.TryGetProperty("last_run_at", out _) &&
             job.TryGetProperty("next_run_at", out _);
     }
+
+    private static bool HasProperty(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out _);
 
     private async Task SeedShippingOptionAsync(int sellerId)
     {

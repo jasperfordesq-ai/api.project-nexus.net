@@ -259,6 +259,7 @@ public sealed class PodcastsCompatibilityController : ControllerBase
             var data = await _podcasts.AdminIndexAsync(_tenant.GetTenantIdOrThrow(), moderationStatus, showsPage, episodesPage, perPage, ct);
             return Ok(new
             {
+                success = true,
                 data,
                 meta = new
                 {
@@ -327,7 +328,7 @@ public sealed class PodcastsCompatibilityController : ControllerBase
             }
             else
             {
-                value = meta is null ? new { data } : new { data, meta };
+                value = meta is null ? new { success = true, data } : new { success = true, data, meta };
             }
 
             return successStatus == StatusCodes.Status200OK

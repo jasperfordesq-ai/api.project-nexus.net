@@ -324,7 +324,9 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/member-premium/subscribers")]
     [HttpGet("/api/v2/admin/member-premium/tiers")]
     [HttpGet("/api/v2/admin/member-premium/tiers/{id}")]
+    [HttpGet("/api/v2/admin/moderation/queue")]
     [HttpGet("/api/v2/admin/moderation/settings")]
+    [HttpGet("/api/v2/admin/moderation/stats")]
     [HttpGet("/api/v2/admin/national/kiss/comparative")]
     [HttpGet("/api/v2/admin/national/kiss/cooperatives")]
     [HttpGet("/api/v2/admin/national/kiss/summary")]
@@ -450,7 +452,9 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/member-premium/finance/gift-aid-export" => await GetMemberPremiumGiftAidCsv(),
             "/api/v2/admin/member-premium/finance/overview" => await GetMemberPremiumFinanceOverview(),
             "/api/v2/admin/member-premium/settings" => await GetMemberPremiumSettings(),
+            "/api/v2/admin/moderation/queue" => await GetModerationQueue(),
             "/api/v2/admin/moderation/settings" => await GetModerationSettings(),
+            "/api/v2/admin/moderation/stats" => await GetModerationStats(),
             "/api/v2/admin/push-campaigns" => await GetAdminPushCampaigns(),
             "/api/v2/admin/push-campaigns/stats" => await GetAdminPushCampaignStats(),
             "/api/v2/admin/reports/export-types" => GetReportExportTypes(),
@@ -645,6 +649,8 @@ public class AdminExplicitParityController : ControllerBase
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/api-partners/", "/activate", out var activateApiPartnerId) => await SetApiPartnerStatus(activateApiPartnerId, "active"),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/api-partners/", "/regenerate-credentials", out var regenerateApiPartnerId) => await RegenerateApiPartnerCredentials(regenerateApiPartnerId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/api-partners/", "/suspend", out var suspendApiPartnerId) => await SetApiPartnerStatus(suspendApiPartnerId, "suspended"),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ideation/", "/status", out var ideationStatusId) => await UpdateAdminIdeationStatus(ideationStatusId),
+            _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/moderation/", "/review", out var moderationReviewId) => await ReviewModerationItem(moderationReviewId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/push-campaigns/", "/approve", out var approvePushCampaignId) => await ApprovePushCampaign(approvePushCampaignId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/push-campaigns/", "/dispatch", out var dispatchPushCampaignId) => await DispatchPushCampaign(dispatchPushCampaignId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/push-campaigns/", "/reject", out var rejectPushCampaignId) => await RejectPushCampaign(rejectPushCampaignId),
@@ -654,6 +660,9 @@ public class AdminExplicitParityController : ControllerBase
             _ => await PersistCompatibilityWrite("post")
         };
     }
+
+    [HttpPost("/api/v2/admin/moderation/{id:int}/review")]
+    public Task<IActionResult> PostModerationReview(int id) => ReviewModerationItem(id);
 
     [ActionName("approve")]
     [HttpPost("/api/v2/admin/federation/credit-agreements/{id}/{action}")]
@@ -1020,6 +1029,141 @@ public class AdminExplicitParityController : ControllerBase
         await SaveApiPartners(partners);
 
         return Ok(new { success = true, data = new { partner_id = id, status } });
+    }
+
+    private async Task<IActionResult> UpdateAdminIdeationStatus(int id)
+    {
+        var payload = await ReadJsonObjectPayloadAsync();
+        var status = JsonString(payload, "status")?.Trim().ToLowerInvariant();
+        var validStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "draft",
+            "open",
+            "voting",
+            "evaluating",
+            "closed",
+            "archived"
+        };
+
+        if (string.IsNullOrWhiteSpace(status) || !validStatuses.Contains(status))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "VALIDATION_ERROR",
+                message = "Invalid challenge status.",
+                field = "status"
+            });
+        }
+
+        var challenge = await _db.Challenges.FirstOrDefaultAsync(c => c.Id == id);
+        if (challenge == null)
+        {
+            return NotFound(new { success = false, error = "NOT_FOUND", message = "Challenge not found." });
+        }
+
+        var now = DateTime.UtcNow;
+        if (status is "open" or "voting" or "evaluating")
+        {
+            challenge.IsActive = true;
+            if (challenge.StartsAt > now)
+            {
+                challenge.StartsAt = now;
+            }
+            if (challenge.EndsAt <= now)
+            {
+                challenge.EndsAt = now.AddDays(30);
+            }
+        }
+        else
+        {
+            challenge.IsActive = false;
+            if (status is "closed" or "archived" && challenge.EndsAt > now)
+            {
+                challenge.EndsAt = now;
+            }
+        }
+
+        challenge.UpdatedAt = now;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { id, status } });
+    }
+
+    private async Task<IActionResult> ReviewModerationItem(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var payload = await ReadJsonObjectPayloadAsync();
+        var decision = JsonString(payload, "decision")?.Trim().ToLowerInvariant();
+        var rejectionReason = JsonString(payload, "rejection_reason")?.Trim();
+
+        if (string.IsNullOrWhiteSpace(decision))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "VALIDATION_ERROR",
+                message = "Decision is required.",
+                field = "decision"
+            });
+        }
+
+        if (decision is not ("approved" or "rejected"))
+        {
+            return UnprocessableEntity(new
+            {
+                success = false,
+                error = "VALIDATION_ERROR",
+                message = "Invalid decision.",
+                field = "decision"
+            });
+        }
+
+        if (decision == "rejected" && string.IsNullOrWhiteSpace(rejectionReason))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "REVIEW_FAILED",
+                message = "Rejection reason is required.",
+                field = "rejection_reason"
+            });
+        }
+
+        var report = await _db.ContentReports
+            .FirstOrDefaultAsync(r => r.TenantId == tenantId && r.Id == id);
+
+        if (report == null)
+        {
+            return NotFound(new { success = false, error = "NOT_FOUND", message = "Moderation item not found." });
+        }
+
+        var currentStatus = MapModerationStatus(report.Status);
+        if (currentStatus is "approved" or "rejected")
+        {
+            return BadRequest(new { success = false, error = "REVIEW_FAILED", message = "Moderation item has already been reviewed." });
+        }
+
+        report.Status = decision == "approved" ? ReportStatus.ActionTaken : ReportStatus.Dismissed;
+        report.ReviewedById = GetCurrentAdminUserId();
+        report.ReviewedAt = DateTime.UtcNow;
+        report.ReviewNotes = rejectionReason;
+        report.ActionTaken = decision;
+        report.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                success = true,
+                message = $"Content {decision}.",
+                content_type = report.ContentType,
+                content_id = report.ContentId
+            }
+        });
     }
 
     private async Task<IActionResult> RegenerateApiPartnerCredentials(int id)
@@ -3345,6 +3489,103 @@ public class AdminExplicitParityController : ControllerBase
         return Ok(new { data = await BuildModerationSettings() });
     }
 
+    private async Task<IActionResult> GetModerationQueue()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var page = QueryInt("page", 1, 1, int.MaxValue);
+        var limit = QueryInt("limit", 50, 1, 200);
+        var status = Request.Query["status"].ToString();
+        var contentType = Request.Query["content_type"].ToString();
+        var search = Request.Query["search"].ToString();
+
+        var query = _db.ContentReports
+            .AsNoTracking()
+            .Include(r => r.Reporter)
+            .Include(r => r.ReviewedBy)
+            .Where(r => r.TenantId == tenantId);
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var normalizedStatus = status.Trim().ToLowerInvariant();
+            var statuses = ModerationStatusesFor(normalizedStatus);
+            query = query.Where(r => statuses.Contains(r.Status));
+        }
+
+        if (!string.IsNullOrWhiteSpace(contentType))
+        {
+            var normalizedContentType = contentType.Trim().ToLowerInvariant();
+            query = query.Where(r => r.ContentType.ToLower() == normalizedContentType);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLowerInvariant();
+            query = query.Where(r =>
+                r.Description != null && r.Description.ToLower().Contains(normalizedSearch) ||
+                r.ContentType.ToLower().Contains(normalizedSearch) ||
+                (r.Reporter != null &&
+                    ((r.Reporter.FirstName + " " + r.Reporter.LastName).ToLower().Contains(normalizedSearch) ||
+                     r.Reporter.Email.ToLower().Contains(normalizedSearch))));
+        }
+
+        var total = await query.CountAsync();
+        var reports = await query
+            .OrderBy(r => r.Status == ReportStatus.Escalated ? 0 : r.Status == ReportStatus.Pending ? 1 : 2)
+            .ThenBy(r => r.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = reports.Select(FormatModerationItem).ToList(),
+            meta = new
+            {
+                total,
+                current_page = page,
+                per_page = limit,
+                total_pages = total > 0 ? (int)Math.Ceiling(total / (double)limit) : 0
+            }
+        });
+    }
+
+    private async Task<IActionResult> GetModerationStats()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var reports = await _db.ContentReports
+            .AsNoTracking()
+            .Where(r => r.TenantId == tenantId)
+            .ToListAsync();
+
+        var statuses = new[] { "pending", "flagged", "approved", "rejected" };
+        var byType = reports
+            .GroupBy(r => string.IsNullOrWhiteSpace(r.ContentType) ? "unknown" : r.ContentType.ToLowerInvariant())
+            .ToDictionary(
+                group => group.Key,
+                group => statuses.ToDictionary(
+                    status => status,
+                    status => group.Count(r => MapModerationStatus(r.Status) == status)),
+                StringComparer.OrdinalIgnoreCase);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                total = reports.Count,
+                pending = reports.Count(r => MapModerationStatus(r.Status) == "pending"),
+                flagged = reports.Count(r => MapModerationStatus(r.Status) == "flagged"),
+                approved = reports.Count(r => MapModerationStatus(r.Status) == "approved"),
+                rejected = reports.Count(r => MapModerationStatus(r.Status) == "rejected"),
+                auto_flagged_total = reports.Count(r => r.Status == ReportStatus.Escalated),
+                by_type = byType
+            }
+        });
+    }
+
     private async Task<IActionResult> PutModerationSettings()
     {
         if (!TryRequireTenant(out _, out var tenantError)) return tenantError!;
@@ -3589,6 +3830,93 @@ public class AdminExplicitParityController : ControllerBase
         }
 
         return settings;
+    }
+
+    private static object FormatModerationItem(ContentReport report)
+    {
+        var title = ModerationTitle(report);
+        var authorName = FormatUserName(report.Reporter);
+        var reviewerName = FormatUserName(report.ReviewedBy);
+
+        return new
+        {
+            id = report.Id,
+            content_type = report.ContentType,
+            content_id = report.ContentId,
+            title,
+            body = report.Description,
+            author_id = report.ReporterId,
+            author_name = authorName,
+            author_avatar = report.Reporter?.AvatarUrl,
+            author = report.Reporter == null
+                ? null
+                : new
+                {
+                    id = report.Reporter.Id,
+                    name = authorName,
+                    email = report.Reporter.Email,
+                    avatar = report.Reporter.AvatarUrl
+                },
+            status = MapModerationStatus(report.Status),
+            auto_flagged = report.Status == ReportStatus.Escalated,
+            auto_flag_reason = report.Status == ReportStatus.Escalated ? report.Reason.ToString() : null,
+            flag_reason = report.Status == ReportStatus.Escalated ? report.Reason.ToString() : null,
+            reviewed_at = report.ReviewedAt,
+            reviewed_by = reviewerName,
+            rejection_reason = MapModerationStatus(report.Status) == "rejected" ? report.ReviewNotes : null,
+            submitted_at = report.CreatedAt,
+            created_at = report.CreatedAt,
+            updated_at = report.UpdatedAt
+        };
+    }
+
+    private static string ModerationTitle(ContentReport report)
+    {
+        if (!string.IsNullOrWhiteSpace(report.Description))
+        {
+            var firstLine = report.Description
+                .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
+                .FirstOrDefault(line => !string.IsNullOrWhiteSpace(line));
+            if (!string.IsNullOrWhiteSpace(firstLine))
+            {
+                return firstLine.Trim();
+            }
+        }
+
+        return string.IsNullOrWhiteSpace(report.ContentType)
+            ? $"Content #{report.ContentId}"
+            : $"{report.ContentType} #{report.ContentId}";
+    }
+
+    private static string MapModerationStatus(ReportStatus status) =>
+        status switch
+        {
+            ReportStatus.Escalated => "flagged",
+            ReportStatus.ActionTaken => "approved",
+            ReportStatus.Dismissed => "rejected",
+            _ => "pending"
+        };
+
+    private static ReportStatus[] ModerationStatusesFor(string status) =>
+        status switch
+        {
+            "flagged" => [ReportStatus.Escalated],
+            "approved" => [ReportStatus.ActionTaken],
+            "rejected" => [ReportStatus.Dismissed],
+            "pending" => [ReportStatus.Pending, ReportStatus.UnderReview],
+            _ => Enum.GetValues<ReportStatus>()
+        };
+
+    private static string FormatUserName(User? user)
+    {
+        if (user == null)
+        {
+            return string.Empty;
+        }
+
+        var name = string.Join(" ", new[] { user.FirstName, user.LastName }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+        return string.IsNullOrWhiteSpace(name) ? user.Email : name;
     }
 
     private IQueryable<MoneyDonation> CompletedMemberPremiumDonations(int tenantId)

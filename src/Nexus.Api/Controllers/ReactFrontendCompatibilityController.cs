@@ -788,7 +788,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
         var tenantId = _tenantContext.GetTenantIdOrThrow();
         var policy = await _db.TenantRegistrationPolicies
             .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.IsActive);
-        return Ok(new { data = RegistrationPolicySettingsPayload(policy) });
+        return Ok(new { success = true, data = RegistrationPolicySettingsPayload(policy) });
     }
 
     [HttpPut("api/admin/config/registration-policy")]
@@ -1148,10 +1148,61 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/ideation")]
+    [HttpGet("api/v2/admin/ideation")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> AdminIdeation()
+    public async Task<IActionResult> AdminIdeation(
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = "all",
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 50)
     {
-        return await IdeationCampaigns();
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 200);
+        var now = DateTime.UtcNow;
+        var normalizedStatus = string.IsNullOrWhiteSpace(status) ? "all" : status.Trim().ToLowerInvariant();
+
+        var query = _db.Challenges
+            .Include(c => c.Participants)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLowerInvariant();
+            query = query.Where(c =>
+                c.Title.ToLower().Contains(normalizedSearch) ||
+                (c.Description != null && c.Description.ToLower().Contains(normalizedSearch)));
+        }
+
+        query = normalizedStatus switch
+        {
+            "open" => query.Where(c => c.IsActive && c.StartsAt <= now && c.EndsAt >= now),
+            "draft" => query.Where(c => !c.IsActive && c.StartsAt > now),
+            "closed" or "archived" => query.Where(c => !c.IsActive || c.EndsAt < now),
+            _ => query
+        };
+
+        var total = await query.CountAsync();
+        var challengeRows = await query
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+        var challenges = challengeRows.Select(MapAdminIdeationChallenge).ToList();
+
+        return Ok(new
+        {
+            success = true,
+            data = challenges,
+            ideation = challenges,
+            meta = new
+            {
+                total,
+                current_page = page,
+                per_page = limit,
+                total_pages = total > 0 ? (int)Math.Ceiling(total / (double)limit) : 0
+            }
+        });
     }
 
     [HttpGet("api/admin/polls")]
@@ -1887,7 +1938,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
             })
             .ToArray();
 
-        return Ok(new { data = payload, providers = payload });
+        return Ok(new { success = true, data = payload, providers = payload });
     }
 
     private static IdentityProviderOptionDto IdentityProviderOption(string slug, string name, params string[] levels)
@@ -2892,6 +2943,40 @@ public class ReactFrontendCompatibilityController : ControllerBase
         return Ok(new { success = true, data = new { deleted = true, id } });
     }
 
+    [HttpGet("api/v2/admin/ideation/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> AdminIdeationDetail(int id)
+    {
+        var challenge = await _db.Challenges
+            .Include(c => c.Participants)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        return challenge == null
+            ? NotFound(new { success = false, error = "NOT_FOUND", message = "Challenge not found." })
+            : Ok(new { success = true, data = MapAdminIdeationChallenge(challenge) });
+    }
+
+    [HttpDelete("api/v2/admin/ideation/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> DeleteAdminIdeation(int id)
+    {
+        var challenge = await _db.Challenges
+            .Include(c => c.Participants)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (challenge == null)
+        {
+            return NotFound(new { success = false, error = "NOT_FOUND", message = "Challenge not found." });
+        }
+
+        _db.ChallengeParticipants.RemoveRange(challenge.Participants);
+        _db.Challenges.Remove(challenge);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { success = true, data = new { deleted = true, id } });
+    }
+
     [HttpGet("api/v2/admin/goals/{id:int}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminGoalDetail(int id)
@@ -2999,6 +3084,55 @@ public class ReactFrontendCompatibilityController : ControllerBase
         ends_at = challenge.EndsAt,
         created_at = challenge.CreatedAt
     };
+
+    private static object MapAdminIdeationChallenge(Challenge challenge)
+    {
+        var ideasCount = challenge.Participants?.Count ?? 0;
+        var status = MapAdminIdeationStatus(challenge);
+
+        return new
+        {
+            id = challenge.Id,
+            title = challenge.Title,
+            description = challenge.Description,
+            creator_name = string.Empty,
+            first_name = (string?)null,
+            last_name = (string?)null,
+            ideas_count = ideasCount,
+            status,
+            start_date = challenge.StartsAt,
+            end_date = challenge.EndsAt,
+            starts_at = challenge.StartsAt,
+            ends_at = challenge.EndsAt,
+            submission_deadline = challenge.EndsAt,
+            voting_deadline = challenge.EndsAt,
+            challenge_type = challenge.ChallengeType.ToString().ToLowerInvariant(),
+            difficulty = challenge.Difficulty.ToString().ToLowerInvariant(),
+            target_action = challenge.TargetAction,
+            target_count = challenge.TargetCount,
+            xp_reward = challenge.XpReward,
+            is_active = challenge.IsActive,
+            participant_count = ideasCount,
+            created_at = challenge.CreatedAt,
+            updated_at = challenge.UpdatedAt
+        };
+    }
+
+    private static string MapAdminIdeationStatus(Challenge challenge)
+    {
+        var now = DateTime.UtcNow;
+        if (challenge.IsActive && challenge.StartsAt <= now && challenge.EndsAt >= now)
+        {
+            return "open";
+        }
+
+        if (!challenge.IsActive && challenge.StartsAt > now)
+        {
+            return "draft";
+        }
+
+        return "closed";
+    }
 
     private static object MapAdminPoll(Poll poll)
     {
