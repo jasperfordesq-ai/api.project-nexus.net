@@ -1271,115 +1271,624 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/crm/dashboard - CRM dashboard.</summary>
     [HttpGet("crm/dashboard")]
-    public IActionResult GetCrmDashboard()
+    public async Task<IActionResult> GetCrmDashboard()
     {
+        var tenantId = GetTenantId();
+        var now = DateTime.UtcNow;
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var activeTaskStatuses = new[] { "pending", "in_progress" };
+
+        var totalContacts = await _db.Users.CountAsync(u => u.TenantId == tenantId);
+        var newThisMonth = await _db.Users.CountAsync(u => u.TenantId == tenantId && u.CreatedAt >= monthStart);
+        var activeTasks = await _db.CrmTasks.CountAsync(t => t.TenantId == tenantId && activeTaskStatuses.Contains(t.Status));
+        var overdueTasks = await _db.CrmTasks.CountAsync(t => t.TenantId == tenantId && activeTaskStatuses.Contains(t.Status) && t.DueDate != null && t.DueDate < now);
+        var totalNotes = await _db.AdminNotes.CountAsync(n => n.TenantId == tenantId);
+        var pinnedNotes = await _db.AdminNotes.CountAsync(n => n.TenantId == tenantId && n.IsFlagged);
+        var tagCount = await _db.UserTags.CountAsync(t => t.TenantId == tenantId);
+
         return Ok(new
         {
-            total_contacts = 0,
-            new_this_month = 0,
-            active_tasks = 0,
-            overdue_tasks = 0,
-            total_notes = 0,
-            flagged_notes = 0,
-            generated_at = DateTime.UtcNow
+            data = new
+            {
+                total_contacts = totalContacts,
+                new_this_month = newThisMonth,
+                active_tasks = activeTasks,
+                overdue_tasks = overdueTasks,
+                total_notes = totalNotes,
+                pinned_notes = pinnedNotes,
+                flagged_notes = pinnedNotes,
+                total_tags = tagCount,
+                generated_at = now
+            },
+            meta = LaravelMeta()
         });
     }
 
     /// <summary>GET /api/admin/crm/funnel - Onboarding funnel.</summary>
     [HttpGet("crm/funnel")]
-    public IActionResult GetCrmFunnel()
+    public async Task<IActionResult> GetCrmFunnel()
     {
+        var tenantId = GetTenantId();
+        var now = DateTime.UtcNow;
+        var users = _db.Users.AsNoTracking().Where(u => u.TenantId == tenantId);
+
+        var registered = await users.CountAsync();
+        var emailVerified = await users.CountAsync(u => u.EmailVerified || u.EmailVerifiedAt != null);
+        var profileComplete = await users.CountAsync(u =>
+            (u.EmailVerified || u.EmailVerifiedAt != null) &&
+            (!string.IsNullOrWhiteSpace(u.Bio) || !string.IsNullOrWhiteSpace(u.AvatarUrl)));
+        var firstListing = await _db.Listings
+            .AsNoTracking()
+            .Where(l => l.TenantId == tenantId)
+            .Select(l => l.UserId)
+            .Distinct()
+            .CountAsync();
+        var exchangeParticipants = await _db.Exchanges
+            .AsNoTracking()
+            .Where(e => e.TenantId == tenantId)
+            .Select(e => new { e.InitiatorId, e.ListingOwnerId, e.ProviderId, e.ReceiverId })
+            .ToListAsync();
+        var exchangeUserIds = exchangeParticipants
+            .SelectMany(e => new int?[] { e.InitiatorId, e.ListingOwnerId, e.ProviderId, e.ReceiverId })
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToList();
+        var firstExchange = exchangeUserIds.Distinct().Count();
+        var repeatUsers = exchangeUserIds
+            .GroupBy(id => id)
+            .Where(g => g.Count() > 1)
+            .Count();
+
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
+        var monthlyRows = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == tenantId && u.CreatedAt >= monthStart)
+            .Select(u => u.CreatedAt)
+            .ToListAsync();
+
+        var monthlyRegistrations = Enumerable.Range(0, 6)
+            .Select(offset => monthStart.AddMonths(offset))
+            .Select(month => new
+            {
+                month = month.ToString("yyyy-MM"),
+                count = monthlyRows.Count(created => created.Year == month.Year && created.Month == month.Month)
+            })
+            .ToArray();
+
         return Ok(new
         {
-            stages = new[]
+            data = new
             {
-                new { stage = "registered", count = 0 },
-                new { stage = "profile_complete", count = 0 },
-                new { stage = "first_exchange", count = 0 },
-                new { stage = "active_member", count = 0 }
+                stages = new[]
+                {
+                    new { name = "Registered", key = "registered", count = registered, color = "#3b82f6" },
+                    new { name = "Email Verified", key = "email_verified", count = emailVerified, color = "#6366f1" },
+                    new { name = "Profile Complete", key = "profile_complete", count = profileComplete, color = "#8b5cf6" },
+                    new { name = "First Listing", key = "first_listing", count = firstListing, color = "#06b6d4" },
+                    new { name = "First Exchange", key = "first_exchange", count = firstExchange, color = "#10b981" },
+                    new { name = "Repeat User", key = "repeat_user", count = repeatUsers, color = "#f59e0b" }
+                },
+                monthly_registrations = monthlyRegistrations
             },
-            generated_at = DateTime.UtcNow
+            meta = LaravelMeta()
         });
     }
 
     /// <summary>GET /api/admin/crm/admins - Admin list for assignment.</summary>
     [HttpGet("crm/admins")]
-    public IActionResult GetCrmAdmins()
+    public async Task<IActionResult> GetCrmAdmins()
     {
-        return Ok(new { data = Array.Empty<object>(), total = 0 });
+        var tenantId = GetTenantId();
+        var adminRoles = new[] { "admin", "moderator", "tenant_admin", "super_admin" };
+        var admins = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == tenantId && adminRoles.Contains(u.Role))
+            .OrderBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Select(u => new
+            {
+                id = u.Id,
+                name = (u.FirstName + " " + u.LastName).Trim(),
+                email = u.Email,
+                avatar_url = u.AvatarUrl,
+                role = u.Role
+            })
+            .ToListAsync();
+
+        return Ok(new { data = admins, meta = LaravelMeta() });
     }
 
     /// <summary>GET /api/admin/crm/notes - List all member notes.</summary>
     [HttpGet("crm/notes")]
-    public IActionResult ListCrmNotes([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] int? user_id = null)
+    public async Task<IActionResult> ListCrmNotes(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20,
+        [FromQuery] int? user_id = null,
+        [FromQuery] string? category = null,
+        [FromQuery] string? search = null)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        var tenantId = GetTenantId();
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var query = _db.AdminNotes
+            .AsNoTracking()
+            .Include(n => n.User)
+            .Include(n => n.Admin)
+            .Where(n => n.TenantId == tenantId);
+
+        if (user_id.HasValue)
+        {
+            query = query.Where(n => n.UserId == user_id.Value);
+        }
+
+        if (IsLaravelCrmNoteCategory(category))
+        {
+            query = query.Where(n => n.Category == category);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search) && search.Trim().Length >= 2)
+        {
+            var term = search.Trim().ToLowerInvariant();
+            query = query.Where(n =>
+                n.Content.ToLower().Contains(term) ||
+                (n.User != null && (n.User.FirstName + " " + n.User.LastName).ToLower().Contains(term)));
+        }
+
+        var total = await query.CountAsync();
+        var notes = await query
+            .OrderByDescending(n => n.IsFlagged)
+            .ThenByDescending(n => n.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = notes.Select(MapLaravelCrmNote),
+            meta = LaravelPaginationMeta(page, limit, total)
+        });
     }
 
     /// <summary>POST /api/admin/crm/notes - Create a note.</summary>
     [HttpPost("crm/notes")]
-    public IActionResult CreateCrmNote()
+    public async Task<IActionResult> CreateCrmNote([FromBody] JsonElement body)
     {
-        return Ok(new { success = true, message = "Note created", id = 0 });
+        var tenantId = GetTenantId();
+        var adminId = GetCurrentUserId();
+        if (adminId == null)
+        {
+            return Unauthorized(new { error = "Unable to determine admin identity" });
+        }
+
+        var userId = ReadInt(body, "user_id") ?? 0;
+        var content = ReadString(body, "content")?.Trim();
+        if (userId <= 0 || string.IsNullOrWhiteSpace(content))
+        {
+            return BadRequest(new { error = "user_id and content are required" });
+        }
+
+        var userExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.Id == userId);
+        if (!userExists)
+        {
+            return NotFound(new { error = "User not found" });
+        }
+
+        var category = NormalizeLaravelCrmNoteCategory(ReadString(body, "category"));
+        var note = new AdminNote
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            AdminId = adminId.Value,
+            Content = content,
+            Category = category,
+            IsFlagged = ReadBool(body, "is_pinned") ?? false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.AdminNotes.Add(note);
+        await _db.SaveChangesAsync();
+
+        var saved = await LoadCrmNoteAsync(tenantId, note.Id);
+        return Ok(new { data = MapLaravelCrmNote(saved!), meta = LaravelMeta() });
     }
-    // UpdateCrmNote and DeleteCrmNote removed — served by AdminCrmController
 
     /// <summary>GET /api/admin/crm/tags - List CRM tags.</summary>
     [HttpGet("crm/tags")]
-    public IActionResult ListCrmTags()
+    public async Task<IActionResult> ListCrmTags([FromQuery] int? user_id = null, [FromQuery] string? tag = null)
     {
-        return Ok(new { data = Array.Empty<object>(), total = 0 });
+        var tenantId = GetTenantId();
+        var query = _db.UserTags
+            .AsNoTracking()
+            .Include(t => t.User)
+            .Where(t => t.TenantId == tenantId);
+
+        if (user_id.HasValue)
+        {
+            var rows = await query
+                .Where(t => t.UserId == user_id.Value)
+                .OrderBy(t => t.Tag)
+                .ToListAsync();
+
+            return Ok(new { data = rows.Select(MapLaravelCrmTag), meta = LaravelMeta() });
+        }
+
+        if (!string.IsNullOrWhiteSpace(tag))
+        {
+            var tagValue = tag.Trim();
+            var rows = await query
+                .Where(t => t.Tag == tagValue)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            return Ok(new { data = rows.Select(MapLaravelCrmTag), meta = LaravelMeta() });
+        }
+
+        var summaries = await query
+            .GroupBy(t => t.Tag)
+            .Select(g => new { tag = g.Key, member_count = g.Count() })
+            .OrderByDescending(g => g.member_count)
+            .ThenBy(g => g.tag)
+            .ToListAsync();
+
+        return Ok(new { data = summaries, meta = LaravelMeta() });
     }
 
     /// <summary>POST /api/admin/crm/tags - Add CRM tag.</summary>
     [HttpPost("crm/tags")]
-    public IActionResult CreateCrmTag()
+    public async Task<IActionResult> CreateCrmTag([FromBody] JsonElement body)
     {
-        return Ok(new { success = true, message = "Tag created", id = 0 });
+        var tenantId = GetTenantId();
+        var adminId = GetCurrentUserId();
+        if (adminId == null)
+        {
+            return Unauthorized(new { error = "Unable to determine admin identity" });
+        }
+
+        var userId = ReadInt(body, "user_id") ?? 0;
+        var tag = ReadString(body, "tag")?.Trim();
+        if (userId <= 0 || string.IsNullOrWhiteSpace(tag))
+        {
+            return BadRequest(new { error = "user_id and tag are required" });
+        }
+
+        if (tag.Length > 50)
+        {
+            return BadRequest(new { error = "Tag must be 50 characters or fewer" });
+        }
+
+        var userExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.Id == userId);
+        if (!userExists)
+        {
+            return NotFound(new { error = "User not found" });
+        }
+
+        var existing = await _db.UserTags
+            .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.UserId == userId && t.Tag == tag);
+        if (existing != null)
+        {
+            return Conflict(new { error = "Tag already assigned" });
+        }
+
+        var userTag = new UserTag
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            Tag = tag,
+            AppliedByAdminId = adminId.Value,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.UserTags.Add(userTag);
+        await _db.SaveChangesAsync();
+
+        var saved = await _db.UserTags
+            .AsNoTracking()
+            .Include(t => t.User)
+            .FirstAsync(t => t.TenantId == tenantId && t.Id == userTag.Id);
+
+        return Ok(new { data = MapLaravelCrmTag(saved), meta = LaravelMeta() });
     }
 
     /// <summary>DELETE /api/admin/crm/tags/{id} - Remove CRM tag.</summary>
     [HttpDelete("crm/tags/{id:int}")]
-    public IActionResult DeleteCrmTag(int id)
+    public async Task<IActionResult> DeleteCrmTag(int id)
     {
-        return Ok(new { success = true, message = "Tag deleted", id });
+        var tenantId = GetTenantId();
+        var tag = await _db.UserTags.FirstOrDefaultAsync(t => t.TenantId == tenantId && t.Id == id);
+        if (tag == null)
+        {
+            return NotFound(new { error = "Tag not found" });
+        }
+
+        _db.UserTags.Remove(tag);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { data = new { deleted = true }, meta = LaravelMeta() });
     }
 
     /// <summary>DELETE /api/admin/crm/tags/bulk - Bulk remove tags.</summary>
     [HttpDelete("crm/tags/bulk")]
-    public IActionResult BulkDeleteCrmTags()
+    public async Task<IActionResult> BulkDeleteCrmTags([FromQuery] string? tag)
     {
-        return Ok(new { success = true, message = "Tags deleted", deleted_count = 0 });
+        var tenantId = GetTenantId();
+        var tagValue = tag?.Trim();
+        if (string.IsNullOrWhiteSpace(tagValue))
+        {
+            return BadRequest(new { error = "tag query parameter is required" });
+        }
+
+        var tags = await _db.UserTags
+            .Where(t => t.TenantId == tenantId && t.Tag == tagValue)
+            .ToListAsync();
+        if (tags.Count == 0)
+        {
+            return NotFound(new { error = "Tag not found" });
+        }
+
+        _db.UserTags.RemoveRange(tags);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { data = new { deleted = tags.Count }, meta = LaravelMeta() });
     }
 
     /// <summary>GET /api/admin/crm/timeline - Activity timeline.</summary>
     [HttpGet("crm/timeline")]
-    public IActionResult GetCrmTimeline([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] int? user_id = null)
+    public async Task<IActionResult> GetCrmTimeline(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 25,
+        [FromQuery] int? user_id = null,
+        [FromQuery] string? type = null,
+        [FromQuery] int days = 30)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        var activityType = type?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(activityType) && !LaravelCrmTimelineTypes.Contains(activityType))
+        {
+            return BadRequest(new { error = "Invalid activity type" });
+        }
+
+        var tenantId = GetTenantId();
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+        var cutoff = days > 0 ? DateTime.UtcNow.AddDays(-days) : (DateTime?)null;
+        var entries = new List<CrmTimelineEntry>();
+
+        var includeAll = string.IsNullOrWhiteSpace(activityType);
+        if (includeAll || activityType == "signup")
+        {
+            var users = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.TenantId == tenantId)
+                .Where(u => !user_id.HasValue || u.Id == user_id.Value)
+                .Where(u => !cutoff.HasValue || u.CreatedAt >= cutoff.Value)
+                .Select(u => new { u.Id, u.FirstName, u.LastName, u.AvatarUrl, u.CreatedAt })
+                .ToListAsync();
+
+            entries.AddRange(users.Select(u => new CrmTimelineEntry(
+                UserId: u.Id,
+                UserName: DisplayName(u.FirstName, u.LastName),
+                UserAvatar: u.AvatarUrl,
+                ActivityType: "signup",
+                Description: "Registered an account",
+                Metadata: new Dictionary<string, object?>(),
+                CreatedAt: u.CreatedAt)));
+        }
+
+        if (includeAll || activityType == "profile_updated")
+        {
+            var users = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.TenantId == tenantId && u.UpdatedAt != null && u.UpdatedAt > u.CreatedAt)
+                .Where(u => !user_id.HasValue || u.Id == user_id.Value)
+                .Where(u => !cutoff.HasValue || u.UpdatedAt >= cutoff.Value)
+                .Select(u => new { u.Id, u.FirstName, u.LastName, u.AvatarUrl, u.UpdatedAt })
+                .ToListAsync();
+
+            entries.AddRange(users.Select(u => new CrmTimelineEntry(
+                UserId: u.Id,
+                UserName: DisplayName(u.FirstName, u.LastName),
+                UserAvatar: u.AvatarUrl,
+                ActivityType: "profile_updated",
+                Description: "Updated their profile",
+                Metadata: new Dictionary<string, object?>(),
+                CreatedAt: u.UpdatedAt!.Value)));
+        }
+
+        if (includeAll || activityType == "listing_created")
+        {
+            var listings = await _db.Listings
+                .AsNoTracking()
+                .Include(l => l.User)
+                .Where(l => l.TenantId == tenantId)
+                .Where(l => !user_id.HasValue || l.UserId == user_id.Value)
+                .Where(l => !cutoff.HasValue || l.CreatedAt >= cutoff.Value)
+                .ToListAsync();
+
+            entries.AddRange(listings.Select(l => new CrmTimelineEntry(
+                UserId: l.UserId,
+                UserName: DisplayName(l.User),
+                UserAvatar: l.User?.AvatarUrl,
+                ActivityType: "listing_created",
+                Description: $"Created listing: {l.Title}",
+                Metadata: new Dictionary<string, object?> { ["listing_id"] = l.Id },
+                CreatedAt: l.CreatedAt)));
+        }
+
+        if (includeAll || activityType == "exchange_completed")
+        {
+            var exchanges = await _db.Exchanges
+                .AsNoTracking()
+                .Include(e => e.Initiator)
+                .Include(e => e.ListingOwner)
+                .Where(e => e.TenantId == tenantId && e.CompletedAt != null)
+                .Where(e => !user_id.HasValue || e.InitiatorId == user_id.Value)
+                .Where(e => !cutoff.HasValue || e.CompletedAt >= cutoff.Value)
+                .ToListAsync();
+
+            entries.AddRange(exchanges.Select(e => new CrmTimelineEntry(
+                UserId: e.InitiatorId,
+                UserName: DisplayName(e.Initiator),
+                UserAvatar: e.Initiator?.AvatarUrl,
+                ActivityType: "exchange_completed",
+                Description: $"Completed exchange with {DisplayName(e.ListingOwner)}",
+                Metadata: new Dictionary<string, object?> { ["exchange_id"] = e.Id },
+                CreatedAt: e.CompletedAt!.Value)));
+        }
+
+        if (includeAll || activityType == "note_added")
+        {
+            var notes = await _db.AdminNotes
+                .AsNoTracking()
+                .Include(n => n.User)
+                .Include(n => n.Admin)
+                .Where(n => n.TenantId == tenantId)
+                .Where(n => !user_id.HasValue || n.UserId == user_id.Value)
+                .Where(n => !cutoff.HasValue || n.CreatedAt >= cutoff.Value)
+                .ToListAsync();
+
+            entries.AddRange(notes.Select(n => new CrmTimelineEntry(
+                UserId: n.UserId,
+                UserName: DisplayName(n.User),
+                UserAvatar: n.User?.AvatarUrl,
+                ActivityType: "note_added",
+                Description: $"Note added by {DisplayName(n.Admin)}: {Truncate(n.Content ?? "", 80)}",
+                Metadata: new Dictionary<string, object?> { ["note_id"] = n.Id, ["category"] = n.Category },
+                CreatedAt: n.CreatedAt)));
+        }
+
+        if (includeAll || activityType == "task_created")
+        {
+            var tasks = await _db.CrmTasks
+                .AsNoTracking()
+                .Include(t => t.AssignedToAdmin)
+                .Include(t => t.TargetUser)
+                .Where(t => t.TenantId == tenantId)
+                .Where(t => !user_id.HasValue || t.AssignedToAdminId == user_id.Value)
+                .Where(t => !cutoff.HasValue || t.CreatedAt >= cutoff.Value)
+                .ToListAsync();
+
+            entries.AddRange(tasks.Select(t => new CrmTimelineEntry(
+                UserId: t.AssignedToAdminId,
+                UserName: DisplayName(t.AssignedToAdmin),
+                UserAvatar: t.AssignedToAdmin?.AvatarUrl,
+                ActivityType: "task_created",
+                Description: $"Created task: {t.Title}",
+                Metadata: new Dictionary<string, object?> { ["task_id"] = t.Id, ["member_user_id"] = t.TargetUserId },
+                CreatedAt: t.CreatedAt)));
+        }
+
+        var total = entries.Count;
+        var rows = entries
+            .OrderByDescending(e => e.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select((e, index) => new
+            {
+                id = (page - 1) * limit + index + 1,
+                user_id = e.UserId,
+                user_name = e.UserName,
+                user_avatar = e.UserAvatar,
+                activity_type = e.ActivityType,
+                description = e.Description,
+                metadata = e.Metadata,
+                created_at = e.CreatedAt
+            })
+            .ToList();
+
+        return Ok(new
+        {
+            data = rows,
+            meta = LaravelPaginationMeta(page, limit, total)
+        });
     }
 
     /// <summary>GET /api/admin/crm/export/notes - Export notes CSV.</summary>
     [HttpGet("crm/export/notes")]
-    public IActionResult ExportCrmNotes()
+    public async Task<IActionResult> ExportCrmNotes()
     {
-        var csv = "id,user_id,content,category,is_flagged,created_at\n";
+        var tenantId = GetTenantId();
+        var rows = await _db.AdminNotes
+            .AsNoTracking()
+            .Include(n => n.User)
+            .Include(n => n.Admin)
+            .Where(n => n.TenantId == tenantId)
+            .OrderByDescending(n => n.CreatedAt)
+            .Select(n => new object?[]
+            {
+                n.Id,
+                n.UserId,
+                DisplayName(n.User),
+                n.Content,
+                string.IsNullOrWhiteSpace(n.Category) ? "general" : n.Category,
+                n.IsFlagged ? "1" : "0",
+                DisplayName(n.Admin),
+                n.CreatedAt,
+                n.UpdatedAt
+            })
+            .ToListAsync();
+
+        var csv = BuildCsv(
+            new[] { "ID", "User ID", "User Name", "Content", "Category", "Pinned", "Author", "Created", "Updated" },
+            rows);
         return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "crm_notes_export.csv");
     }
 
     /// <summary>GET /api/admin/crm/export/tasks - Export tasks CSV.</summary>
     [HttpGet("crm/export/tasks")]
-    public IActionResult ExportCrmTasks()
+    public async Task<IActionResult> ExportCrmTasks()
     {
-        var csv = "id,target_user_id,title,status,priority,due_date,created_at\n";
+        var tenantId = GetTenantId();
+        var rows = await _db.CrmTasks
+            .AsNoTracking()
+            .Include(t => t.AssignedToAdmin)
+            .Include(t => t.TargetUser)
+            .Where(t => t.TenantId == tenantId)
+            .OrderByDescending(t => t.CreatedAt)
+            .Select(t => new object?[]
+            {
+                t.Id,
+                t.Title,
+                t.Description,
+                t.Priority,
+                t.Status == "done" ? "completed" : t.Status,
+                DisplayName(t.AssignedToAdmin),
+                DisplayName(t.TargetUser),
+                t.DueDate,
+                t.CompletedAt,
+                DisplayName(t.AssignedToAdmin),
+                t.CreatedAt
+            })
+            .ToListAsync();
+
+        var csv = BuildCsv(
+            new[] { "ID", "Title", "Description", "Priority", "Status", "Assigned To", "Related Member", "Due Date", "Completed At", "Created By", "Created" },
+            rows);
         return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "crm_tasks_export.csv");
     }
 
     /// <summary>GET /api/admin/crm/export/dashboard - Export dashboard CSV.</summary>
     [HttpGet("crm/export/dashboard")]
-    public IActionResult ExportCrmDashboard()
+    public async Task<IActionResult> ExportCrmDashboard()
     {
-        var csv = "metric,value\ntotal_contacts,0\nnew_this_month,0\nactive_tasks,0\n";
+        var tenantId = GetTenantId();
+        var now = DateTime.UtcNow;
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var activeTaskStatuses = new[] { "pending", "in_progress" };
+        var totalMembers = await _db.Users.CountAsync(u => u.TenantId == tenantId);
+        var activeMembers = await _db.Users.CountAsync(u => u.TenantId == tenantId && u.IsActive);
+        var newThisMonth = await _db.Users.CountAsync(u => u.TenantId == tenantId && u.CreatedAt >= monthStart);
+        var pendingApprovals = await _db.Users.CountAsync(u => u.TenantId == tenantId && !u.EmailVerified);
+        var activeTasks = await _db.CrmTasks.CountAsync(t => t.TenantId == tenantId && activeTaskStatuses.Contains(t.Status));
+        var rows = new List<object?[]>
+        {
+            new object?[] { "Total Members", totalMembers },
+            new object?[] { "Active Members", activeMembers },
+            new object?[] { "New This Month", newThisMonth },
+            new object?[] { "Pending Approvals", pendingApprovals },
+            new object?[] { "Active Tasks", activeTasks }
+        };
+
+        var csv = BuildCsv(new[] { "Metric", "Value" }, rows);
         return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "crm_dashboard_export.csv");
     }
 
@@ -2081,6 +2590,83 @@ public class AdminCompatibility3Controller : ControllerBase
         updated_at = (DateTime?)null
     };
 
+    private async Task<AdminNote?> LoadCrmNoteAsync(int tenantId, int noteId)
+        => await _db.AdminNotes
+            .AsNoTracking()
+            .Include(n => n.User)
+            .Include(n => n.Admin)
+            .FirstOrDefaultAsync(n => n.TenantId == tenantId && n.Id == noteId);
+
+    private static object MapLaravelCrmNote(AdminNote note) => new
+    {
+        id = note.Id,
+        tenant_id = note.TenantId,
+        user_id = note.UserId,
+        author_id = note.AdminId,
+        admin_id = note.AdminId,
+        content = note.Content,
+        category = string.IsNullOrWhiteSpace(note.Category) ? "general" : note.Category,
+        is_pinned = note.IsFlagged,
+        is_flagged = note.IsFlagged,
+        user_name = DisplayName(note.User),
+        user_avatar = note.User?.AvatarUrl,
+        author_name = DisplayName(note.Admin),
+        created_at = note.CreatedAt,
+        updated_at = note.UpdatedAt
+    };
+
+    private static object MapLaravelCrmTag(UserTag tag) => new
+    {
+        id = tag.Id,
+        tenant_id = tag.TenantId,
+        user_id = tag.UserId,
+        tag = tag.Tag,
+        created_by = tag.AppliedByAdminId,
+        created_at = tag.CreatedAt,
+        user_name = DisplayName(tag.User),
+        user_avatar = tag.User?.AvatarUrl
+    };
+
+    private static readonly HashSet<string> LaravelCrmNoteCategories = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "general",
+        "outreach",
+        "support",
+        "onboarding",
+        "concern",
+        "follow_up"
+    };
+
+    private static readonly HashSet<string> LaravelCrmTimelineTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "login",
+        "signup",
+        "listing_created",
+        "exchange_completed",
+        "note_added",
+        "task_created",
+        "group_joined",
+        "profile_updated"
+    };
+
+    private sealed record CrmTimelineEntry(
+        int UserId,
+        string UserName,
+        string? UserAvatar,
+        string ActivityType,
+        string Description,
+        Dictionary<string, object?> Metadata,
+        DateTime CreatedAt);
+
+    private static bool IsLaravelCrmNoteCategory(string? category)
+        => !string.IsNullOrWhiteSpace(category) && LaravelCrmNoteCategories.Contains(category.Trim());
+
+    private static string NormalizeLaravelCrmNoteCategory(string? category)
+    {
+        var value = category?.Trim();
+        return IsLaravelCrmNoteCategory(value) ? value!.ToLowerInvariant() : "general";
+    }
+
     private object LaravelMeta() => new
     {
         base_url = $"{Request.Scheme}://{Request.Host}"
@@ -2195,6 +2781,26 @@ public class AdminCompatibility3Controller : ControllerBase
         return int.TryParse(property.ToString(), out var parsed) ? parsed : null;
     }
 
+    private static bool? ReadBool(JsonElement body, string propertyName)
+    {
+        if (!body.TryGetProperty(propertyName, out var property) || property.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        if (property.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            return property.GetBoolean();
+        }
+
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var number))
+        {
+            return number != 0;
+        }
+
+        return bool.TryParse(property.ToString(), out var parsed) ? parsed : null;
+    }
+
     private static DateTime? ReadDateTime(JsonElement body, string propertyName)
     {
         var value = ReadString(body, propertyName);
@@ -2273,6 +2879,40 @@ public class AdminCompatibility3Controller : ControllerBase
         => user == null
             ? string.Empty
             : string.Join(" ", new[] { user.FirstName, user.LastName }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+
+    private static string DisplayName(string? firstName, string? lastName)
+        => string.Join(" ", new[] { firstName, lastName }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+
+    private static string BuildCsv(IEnumerable<string> headers, IEnumerable<object?[]> rows)
+    {
+        var builder = new System.Text.StringBuilder();
+        builder.AppendLine(string.Join(",", headers.Select(EscapeCsvValue)));
+        foreach (var row in rows)
+        {
+            builder.AppendLine(string.Join(",", row.Select(EscapeCsvValue)));
+        }
+
+        return builder.ToString();
+    }
+
+    private static string EscapeCsvValue(object? value)
+    {
+        var text = value switch
+        {
+            null => string.Empty,
+            DateTime dateTime => dateTime.ToString("O"),
+            DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("O"),
+            bool boolean => boolean ? "1" : "0",
+            _ => value.ToString() ?? string.Empty
+        };
+
+        if (text.Contains('"') || text.Contains(',') || text.Contains('\r') || text.Contains('\n'))
+        {
+            return $"\"{text.Replace("\"", "\"\"")}\"";
+        }
+
+        return text;
+    }
 
     private static string MapGdprExportType(string? format)
     {

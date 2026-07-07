@@ -7,6 +7,9 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Data;
+using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 
@@ -21,13 +24,16 @@ namespace Nexus.Api.Controllers;
 [Authorize(Policy = "AdminOnly")]
 public class AdminCrmController : ControllerBase
 {
+    private readonly NexusDbContext _db;
     private readonly AdminCrmService _crmService;
     private readonly ILogger<AdminCrmController> _logger;
 
     public AdminCrmController(
+        NexusDbContext db,
         AdminCrmService crmService,
         ILogger<AdminCrmController> logger)
     {
+        _db = db;
         _crmService = crmService;
         _logger = logger;
     }
@@ -133,10 +139,15 @@ public class AdminCrmController : ControllerBase
             return BadRequest(new { error = "Content is required" });
         }
 
-        var note = await _crmService.UpdateNoteAsync(id, adminId.Value, request.Content, request.Category, request.IsFlagged);
+        var note = await _crmService.UpdateNoteAsync(id, adminId.Value, request.Content, request.Category, request.IsPinned ?? request.IsFlagged);
         if (note == null)
         {
             return NotFound(new { error = "Note not found or you do not have permission to update it" });
+        }
+
+        if (IsLaravelReactV2Request())
+        {
+            return Ok(new { data = MapLaravelReactNote(note), meta = new { base_url = $"{Request.Scheme}://{Request.Host}" } });
         }
 
         return Ok(note);
@@ -160,6 +171,11 @@ public class AdminCrmController : ControllerBase
             return NotFound(new { error = "Note not found or you do not have permission to delete it" });
         }
 
+        if (IsLaravelReactV2Request())
+        {
+            return Ok(new { data = new { deleted = true }, meta = new { base_url = $"{Request.Scheme}://{Request.Host}" } });
+        }
+
         return NoContent();
     }
 
@@ -180,10 +196,71 @@ public class AdminCrmController : ControllerBase
     [HttpGet("tasks")]
     public async Task<IActionResult> ListCrmTasks(
         [FromQuery] int? user_id,
-        [FromQuery] string? status)
+        [FromQuery] string? status,
+        [FromQuery] string? priority,
+        [FromQuery] int? assigned_to,
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20)
     {
         var tenantId = GetCurrentTenantId();
         if (tenantId == null) return Unauthorized(new { error = "Invalid tenant" });
+
+        if (IsLaravelReactV2Request())
+        {
+            page = Math.Max(1, page);
+            limit = Math.Clamp(limit, 1, 100);
+
+            var query = _db.CrmTasks
+                .AsNoTracking()
+                .Include(t => t.TargetUser)
+                .Include(t => t.AssignedToAdmin)
+                .Where(t => t.TenantId == tenantId.Value);
+
+            if (!string.IsNullOrWhiteSpace(status) && IsLaravelCrmTaskStatus(status))
+            {
+                var statusValue = NormalizeLaravelCrmTaskStatus(status);
+                query = statusValue == "completed"
+                    ? query.Where(t => t.Status == "completed" || t.Status == "done")
+                    : query.Where(t => t.Status == statusValue);
+            }
+
+            if (!string.IsNullOrWhiteSpace(priority) && IsLaravelCrmTaskPriority(priority))
+            {
+                query = query.Where(t => t.Priority == priority);
+            }
+
+            if (assigned_to.HasValue)
+            {
+                query = query.Where(t => t.AssignedToAdminId == assigned_to.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search) && search.Trim().Length >= 2)
+            {
+                var term = search.Trim().ToLowerInvariant();
+                query = query.Where(t =>
+                    t.Title.ToLower().Contains(term) ||
+                    (t.Description != null && t.Description.ToLower().Contains(term)));
+            }
+
+            var v2Total = await query.CountAsync();
+            var v2Tasks = await query
+                .OrderBy(t => t.Status == "pending" ? 0 :
+                    t.Status == "in_progress" ? 1 :
+                    t.Status == "completed" || t.Status == "done" ? 2 : 3)
+                .ThenBy(t => t.Priority == "urgent" ? 0 : t.Priority == "high" ? 1 : t.Priority == "medium" ? 2 : 3)
+                .ThenBy(t => t.DueDate)
+                .ThenByDescending(t => t.CreatedAt)
+                .Skip((page - 1) * limit)
+                .Take(limit)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                data = v2Tasks.Select(MapLaravelReactTask),
+                meta = LaravelPaginationMeta(page, limit, v2Total)
+            });
+        }
 
         var (tasks, total) = await _crmService.ListCrmTasksAsync(tenantId.Value, user_id, status);
 
@@ -219,6 +296,49 @@ public class AdminCrmController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Title))
             return BadRequest(new { error = "Title is required" });
 
+        if (IsLaravelReactV2Request())
+        {
+            var targetUserId = request.UserId ?? request.TargetUserId;
+            var assignedTo = request.AssignedTo ?? adminId.Value;
+
+            if (targetUserId <= 0)
+            {
+                return BadRequest(new { error = "user_id is required" });
+            }
+
+            var targetUserExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId.Value && u.Id == targetUserId);
+            if (!targetUserExists)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            var assigneeExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId.Value && u.Id == assignedTo);
+            if (!assigneeExists)
+            {
+                assignedTo = adminId.Value;
+            }
+
+            var priority = IsLaravelCrmTaskPriority(request.Priority) ? request.Priority!.Trim().ToLowerInvariant() : "medium";
+            var v2Task = new CrmTask
+            {
+                TenantId = tenantId.Value,
+                TargetUserId = targetUserId,
+                AssignedToAdminId = assignedTo,
+                Title = request.Title.Trim(),
+                Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                Priority = priority,
+                Status = "pending",
+                DueDate = NormalizeUtc(request.DueDate),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _db.CrmTasks.Add(v2Task);
+            await _db.SaveChangesAsync();
+
+            var saved = await LoadLaravelReactTaskAsync(tenantId.Value, v2Task.Id);
+            return Ok(new { data = MapLaravelReactTask(saved!), meta = LaravelMeta() });
+        }
+
         var (task, error) = await _crmService.CreateCrmTaskAsync(
             tenantId.Value, request.TargetUserId, adminId.Value,
             request.Title, request.Description, request.Priority, request.DueDate);
@@ -233,6 +353,92 @@ public class AdminCrmController : ControllerBase
             task.Priority,
             task.Status,
             task.DueDate,
+            task.CreatedAt
+        });
+    }
+
+    /// <summary>PUT /api/admin/crm/tasks/{id} - Update CRM task.</summary>
+    [HttpPut("tasks/{id:int}")]
+    public async Task<IActionResult> UpdateCrmTask(int id, [FromBody] CreateCrmTaskRequest request)
+    {
+        var tenantId = GetCurrentTenantId();
+        if (tenantId == null) return Unauthorized(new { error = "Invalid tenant" });
+
+        var task = await _db.CrmTasks.FirstOrDefaultAsync(t => t.TenantId == tenantId.Value && t.Id == id);
+        if (task == null)
+        {
+            return NotFound(new { error = "Task not found" });
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Title))
+        {
+            task.Title = request.Title.Trim();
+        }
+
+        if (request.Description != null)
+        {
+            task.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+        }
+
+        if (IsLaravelCrmTaskPriority(request.Priority))
+        {
+            task.Priority = request.Priority!.Trim().ToLowerInvariant();
+        }
+
+        if (IsLaravelCrmTaskStatus(request.Status))
+        {
+            var newStatus = request.Status!.Trim().ToLowerInvariant();
+            task.Status = newStatus;
+            task.CompletedAt = newStatus == "completed" ? DateTime.UtcNow : null;
+        }
+
+        if (request.AssignedTo.HasValue)
+        {
+            var assigneeExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId.Value && u.Id == request.AssignedTo.Value);
+            if (assigneeExists)
+            {
+                task.AssignedToAdminId = request.AssignedTo.Value;
+            }
+        }
+
+        if (request.UserId.HasValue)
+        {
+            if (request.UserId.Value > 0)
+            {
+                var userExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId.Value && u.Id == request.UserId.Value);
+                if (!userExists)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
+
+                task.TargetUserId = request.UserId.Value;
+            }
+        }
+
+        if (request.DueDate.HasValue)
+        {
+            task.DueDate = NormalizeUtc(request.DueDate);
+        }
+
+        await _db.SaveChangesAsync();
+
+        if (IsLaravelReactV2Request())
+        {
+            var updated = await LoadLaravelReactTaskAsync(tenantId.Value, task.Id);
+            return Ok(new { data = MapLaravelReactTask(updated!), meta = LaravelMeta() });
+        }
+
+        return Ok(new
+        {
+            task.Id,
+            task.TargetUserId,
+            task.AssignedToAdminId,
+            task.Title,
+            task.Description,
+            task.Priority,
+            task.Status,
+            task.DueDate,
+            task.CompletedAt,
             task.CreatedAt
         });
     }
@@ -259,6 +465,11 @@ public class AdminCrmController : ControllerBase
 
         var (success, error) = await _crmService.DeleteCrmTaskAsync(tenantId.Value, id);
         if (!success) return NotFound(new { error = error ?? "Task not found" });
+
+        if (IsLaravelReactV2Request())
+        {
+            return Ok(new { data = new { deleted = true }, meta = LaravelMeta() });
+        }
 
         return NoContent();
     }
@@ -335,6 +546,108 @@ public class AdminCrmController : ControllerBase
         var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
         return int.TryParse(tenantIdClaim, out var id) ? id : null;
     }
+
+    private bool IsLaravelReactV2Request()
+        => Request.Path.StartsWithSegments("/api/v2", StringComparison.OrdinalIgnoreCase);
+
+    private object LaravelMeta() => new
+    {
+        base_url = $"{Request.Scheme}://{Request.Host}"
+    };
+
+    private object LaravelPaginationMeta(int page, int perPage, int total)
+    {
+        var totalPages = total > 0 ? (int)Math.Ceiling((double)total / perPage) : 0;
+        return new
+        {
+            base_url = $"{Request.Scheme}://{Request.Host}",
+            current_page = page,
+            per_page = perPage,
+            total,
+            total_pages = totalPages,
+            has_more = page < totalPages
+        };
+    }
+
+    private async Task<CrmTask?> LoadLaravelReactTaskAsync(int tenantId, int taskId)
+        => await _db.CrmTasks
+            .AsNoTracking()
+            .Include(t => t.TargetUser)
+            .Include(t => t.AssignedToAdmin)
+            .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.Id == taskId);
+
+    private static object MapLaravelReactTask(CrmTask task)
+    {
+        var assignedName = DisplayName(task.AssignedToAdmin);
+        return new
+        {
+            id = task.Id,
+            tenant_id = task.TenantId,
+            assigned_to = task.AssignedToAdminId,
+            assigned_to_name = assignedName,
+            created_by = task.AssignedToAdminId,
+            created_by_name = assignedName,
+            user_id = task.TargetUserId,
+            user_name = DisplayName(task.TargetUser),
+            user_avatar = task.TargetUser?.AvatarUrl,
+            title = task.Title,
+            description = task.Description,
+            priority = IsLaravelCrmTaskPriority(task.Priority) ? task.Priority : "medium",
+            status = NormalizeLaravelCrmTaskStatus(task.Status),
+            due_date = task.DueDate,
+            completed_at = task.CompletedAt,
+            created_at = task.CreatedAt,
+            updated_at = (DateTime?)null
+        };
+    }
+
+    private static string DisplayName(User? user)
+        => user == null
+            ? string.Empty
+            : string.Join(" ", new[] { user.FirstName, user.LastName }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+
+    private static bool IsLaravelCrmTaskPriority(string? value)
+        => value?.Trim().ToLowerInvariant() is "low" or "medium" or "high" or "urgent";
+
+    private static bool IsLaravelCrmTaskStatus(string? value)
+        => value?.Trim().ToLowerInvariant() is "pending" or "in_progress" or "completed" or "cancelled" or "done";
+
+    private static string NormalizeLaravelCrmTaskStatus(string? value)
+        => value?.Trim().ToLowerInvariant() switch
+        {
+            "done" => "completed",
+            "completed" => "completed",
+            "in_progress" => "in_progress",
+            "cancelled" => "cancelled",
+            _ => "pending"
+        };
+
+    private static DateTime? NormalizeUtc(DateTime? value)
+        => value?.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.Value.ToUniversalTime(),
+            DateTimeKind.Unspecified => DateTime.SpecifyKind(value.Value, DateTimeKind.Utc),
+            _ => value
+        };
+
+    private static object MapLaravelReactNote(AdminNoteDto note) => new
+    {
+        id = note.Id,
+        user_id = note.UserId,
+        author_id = note.AdminId,
+        admin_id = note.AdminId,
+        content = note.Content,
+        category = string.IsNullOrWhiteSpace(note.Category) ? "general" : note.Category,
+        is_pinned = note.IsFlagged,
+        is_flagged = note.IsFlagged,
+        user_name = note.UserName,
+        user_avatar = (string?)null,
+        author_name = note.AdminName,
+        admin_name = note.AdminName,
+        created_at = note.CreatedAt,
+        updated_at = note.UpdatedAt
+    };
 }
 
 #region Request DTOs
@@ -361,12 +674,21 @@ public class UpdateNoteRequest
 
     [JsonPropertyName("is_flagged")]
     public bool? IsFlagged { get; set; }
+
+    [JsonPropertyName("is_pinned")]
+    public bool? IsPinned { get; set; }
 }
 
 public class CreateCrmTaskRequest
 {
     [System.Text.Json.Serialization.JsonPropertyName("target_user_id")]
     public int TargetUserId { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("user_id")]
+    public int? UserId { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("assigned_to")]
+    public int? AssignedTo { get; set; }
 
     [System.Text.Json.Serialization.JsonPropertyName("title"), MaxLength(200)]
     public string Title { get; set; } = string.Empty;
@@ -376,6 +698,9 @@ public class CreateCrmTaskRequest
 
     [System.Text.Json.Serialization.JsonPropertyName("priority"), MaxLength(50)]
     public string? Priority { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("status"), MaxLength(50)]
+    public string? Status { get; set; }
 
     [System.Text.Json.Serialization.JsonPropertyName("due_date")]
     public DateTime? DueDate { get; set; }

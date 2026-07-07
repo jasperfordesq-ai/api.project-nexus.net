@@ -263,6 +263,297 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminCrmV2_UsesLaravelReactNotesTagsAdminsAndFunnelShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var funnel = await Client.GetAsync("/api/v2/admin/crm/funnel");
+        funnel.StatusCode.Should().Be(HttpStatusCode.OK);
+        var funnelData = (await funnel.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var stages = funnelData.GetProperty("stages");
+        stages.ValueKind.Should().Be(JsonValueKind.Array);
+        stages.EnumerateArray()
+            .Any(stage =>
+                stage.TryGetProperty("name", out var name) &&
+                !string.IsNullOrWhiteSpace(name.GetString()) &&
+                stage.TryGetProperty("color", out var color) &&
+                !string.IsNullOrWhiteSpace(color.GetString()))
+            .Should().BeTrue();
+        funnelData.GetProperty("monthly_registrations").ValueKind.Should().Be(JsonValueKind.Array);
+
+        var admins = await Client.GetAsync("/api/v2/admin/crm/admins");
+        admins.StatusCode.Should().Be(HttpStatusCode.OK);
+        var adminData = (await admins.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        adminData.ValueKind.Should().Be(JsonValueKind.Array);
+        adminData.EnumerateArray().Should().Contain(admin =>
+            admin.GetProperty("id").GetInt32() == TestData.AdminUser.Id &&
+            admin.GetProperty("email").GetString() == TestData.AdminUser.Email &&
+            admin.GetProperty("role").GetString() == "admin");
+
+        var noteContent = $"Laravel React CRM note {Guid.NewGuid():N}";
+        var createNote = await Client.PostAsJsonAsync("/api/v2/admin/crm/notes", new
+        {
+            user_id = TestData.MemberUser.Id,
+            content = noteContent,
+            category = "outreach",
+            is_pinned = true
+        });
+
+        createNote.StatusCode.Should().Be(HttpStatusCode.OK);
+        var createdNote = (await createNote.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var noteId = createdNote.GetProperty("id").GetInt32();
+        noteId.Should().BeGreaterThan(0);
+        createdNote.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        createdNote.GetProperty("content").GetString().Should().Be(noteContent);
+        createdNote.GetProperty("category").GetString().Should().Be("outreach");
+        createdNote.GetProperty("is_pinned").GetBoolean().Should().BeTrue();
+        createdNote.GetProperty("user_name").GetString().Should().Be($"{TestData.MemberUser.FirstName} {TestData.MemberUser.LastName}");
+        createdNote.GetProperty("author_name").GetString().Should().Be($"{TestData.AdminUser.FirstName} {TestData.AdminUser.LastName}");
+
+        var notes = await Client.GetAsync($"/api/v2/admin/crm/notes?user_id={TestData.MemberUser.Id}&category=outreach&page=1&limit=10");
+        notes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var notesJson = await notes.Content.ReadFromJsonAsync<JsonElement>();
+        notesJson.GetProperty("data").EnumerateArray().Should().Contain(note =>
+            note.GetProperty("id").GetInt32() == noteId &&
+            note.GetProperty("content").GetString() == noteContent);
+        notesJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        notesJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(10);
+
+        var updateNote = await Client.PutAsJsonAsync($"/api/v2/admin/crm/notes/{noteId}", new
+        {
+            content = $"{noteContent} updated",
+            category = "follow_up",
+            is_pinned = false
+        });
+
+        updateNote.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updatedNote = (await updateNote.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updatedNote.GetProperty("id").GetInt32().Should().Be(noteId);
+        updatedNote.GetProperty("content").GetString().Should().Be($"{noteContent} updated");
+        updatedNote.GetProperty("category").GetString().Should().Be("follow_up");
+        updatedNote.GetProperty("is_pinned").GetBoolean().Should().BeFalse();
+
+        var tag = $"crm-{Guid.NewGuid():N}"[..12];
+        var createTag = await Client.PostAsJsonAsync("/api/v2/admin/crm/tags", new
+        {
+            user_id = TestData.MemberUser.Id,
+            tag
+        });
+
+        createTag.StatusCode.Should().Be(HttpStatusCode.OK);
+        var createdTag = (await createTag.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var tagId = createdTag.GetProperty("id").GetInt32();
+        tagId.Should().BeGreaterThan(0);
+        createdTag.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        createdTag.GetProperty("tag").GetString().Should().Be(tag);
+
+        var tagsForUser = await Client.GetAsync($"/api/v2/admin/crm/tags?user_id={TestData.MemberUser.Id}");
+        tagsForUser.StatusCode.Should().Be(HttpStatusCode.OK);
+        var tagsForUserData = (await tagsForUser.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        tagsForUserData.EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == tagId &&
+            item.GetProperty("tag").GetString() == tag &&
+            item.GetProperty("user_name").GetString() == $"{TestData.MemberUser.FirstName} {TestData.MemberUser.LastName}");
+
+        var tagSummary = await Client.GetAsync("/api/v2/admin/crm/tags");
+        tagSummary.StatusCode.Should().Be(HttpStatusCode.OK);
+        var tagSummaryData = (await tagSummary.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        tagSummaryData.EnumerateArray().Should().Contain(item =>
+            item.GetProperty("tag").GetString() == tag &&
+            item.GetProperty("member_count").GetInt32() >= 1);
+
+        var bulkRemoveTag = await Client.DeleteAsync($"/api/v2/admin/crm/tags/bulk?tag={Uri.EscapeDataString(tag)}");
+        bulkRemoveTag.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bulkRemoveData = (await bulkRemoveTag.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        bulkRemoveData.GetProperty("deleted").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var deleteNote = await Client.DeleteAsync($"/api/v2/admin/crm/notes/{noteId}");
+        deleteNote.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteNoteData = (await deleteNote.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        deleteNoteData.GetProperty("deleted").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminCrmTasksV2_UsesLaravelReactCoordinatorTaskShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var title = $"Laravel React CRM task {Guid.NewGuid():N}";
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/crm/tasks", new
+        {
+            title,
+            description = "Created by backend contract smoke test.",
+            priority = "high",
+            assigned_to = TestData.AdminUser.Id,
+            user_id = TestData.MemberUser.Id,
+            due_date = "2026-09-01"
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.OK);
+        var created = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var taskId = created.GetProperty("id").GetInt32();
+        taskId.Should().BeGreaterThan(0);
+        created.GetProperty("title").GetString().Should().Be(title);
+        created.GetProperty("description").GetString().Should().Be("Created by backend contract smoke test.");
+        created.GetProperty("priority").GetString().Should().Be("high");
+        created.GetProperty("status").GetString().Should().Be("pending");
+        created.GetProperty("assigned_to").GetInt32().Should().Be(TestData.AdminUser.Id);
+        created.GetProperty("assigned_to_name").GetString().Should().Be($"{TestData.AdminUser.FirstName} {TestData.AdminUser.LastName}");
+        created.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        created.GetProperty("user_name").GetString().Should().Be($"{TestData.MemberUser.FirstName} {TestData.MemberUser.LastName}");
+        created.GetProperty("created_by").GetInt32().Should().Be(TestData.AdminUser.Id);
+        created.GetProperty("created_by_name").GetString().Should().Be($"{TestData.AdminUser.FirstName} {TestData.AdminUser.LastName}");
+
+        var list = await Client.GetAsync("/api/v2/admin/crm/tasks?status=pending&priority=high&page=1&limit=10");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("data").EnumerateArray().Should().Contain(task =>
+            task.GetProperty("id").GetInt32() == taskId &&
+            task.GetProperty("title").GetString() == title &&
+            task.GetProperty("assigned_to").GetInt32() == TestData.AdminUser.Id);
+        listJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        listJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(10);
+        listJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/admin/crm/tasks/{taskId}", new
+        {
+            title = $"{title} updated",
+            description = "Updated by backend contract smoke test.",
+            priority = "urgent",
+            status = "in_progress",
+            assigned_to = TestData.AdminUser.Id,
+            user_id = TestData.MemberUser.Id,
+            due_date = "2026-09-02"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updated.GetProperty("id").GetInt32().Should().Be(taskId);
+        updated.GetProperty("title").GetString().Should().Be($"{title} updated");
+        updated.GetProperty("priority").GetString().Should().Be("urgent");
+        updated.GetProperty("status").GetString().Should().Be("in_progress");
+        updated.GetProperty("due_date").GetString().Should().StartWith("2026-09-02");
+
+        var complete = await Client.PutAsJsonAsync($"/api/v2/admin/crm/tasks/{taskId}", new
+        {
+            status = "completed"
+        });
+
+        complete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var completed = (await complete.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        completed.GetProperty("status").GetString().Should().Be("completed");
+        completed.GetProperty("completed_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/crm/tasks/{taskId}");
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleted = (await delete.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        deleted.GetProperty("deleted").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminCrmTimelineV2_UsesLaravelReactActivityShapeAndFilters()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var noteContent = $"Timeline CRM note {Guid.NewGuid():N}";
+        var createNote = await Client.PostAsJsonAsync("/api/v2/admin/crm/notes", new
+        {
+            user_id = TestData.MemberUser.Id,
+            content = noteContent,
+            category = "support"
+        });
+        createNote.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var taskTitle = $"Timeline CRM task {Guid.NewGuid():N}";
+        var createTask = await Client.PostAsJsonAsync("/api/v2/admin/crm/tasks", new
+        {
+            title = taskTitle,
+            priority = "medium",
+            assigned_to = TestData.AdminUser.Id,
+            user_id = TestData.MemberUser.Id
+        });
+        createTask.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var notesTimeline = await Client.GetAsync($"/api/v2/admin/crm/timeline?type=note_added&user_id={TestData.MemberUser.Id}&days=30&page=1&limit=25");
+        notesTimeline.StatusCode.Should().Be(HttpStatusCode.OK);
+        var notesJson = await notesTimeline.Content.ReadFromJsonAsync<JsonElement>();
+        var noteSnippet = noteContent.Substring(0, Math.Min(noteContent.Length, 24));
+        notesJson.GetProperty("data").EnumerateArray().Should().Contain(entry =>
+            entry.GetProperty("activity_type").GetString() == "note_added" &&
+            entry.GetProperty("user_id").GetInt32() == TestData.MemberUser.Id &&
+            entry.GetProperty("user_name").GetString() == $"{TestData.MemberUser.FirstName} {TestData.MemberUser.LastName}" &&
+            entry.GetProperty("description").GetString()!.Contains(noteSnippet) &&
+            !string.IsNullOrWhiteSpace(entry.GetProperty("created_at").GetString()));
+        notesJson.GetProperty("meta").GetProperty("current_page").GetInt32().Should().Be(1);
+        notesJson.GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(25);
+        notesJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var tasksTimeline = await Client.GetAsync($"/api/v2/admin/crm/timeline?type=task_created&user_id={TestData.AdminUser.Id}&days=30&page=1&limit=25");
+        tasksTimeline.StatusCode.Should().Be(HttpStatusCode.OK);
+        var tasksJson = await tasksTimeline.Content.ReadFromJsonAsync<JsonElement>();
+        tasksJson.GetProperty("data").EnumerateArray().Should().Contain(entry =>
+            entry.GetProperty("activity_type").GetString() == "task_created" &&
+            entry.GetProperty("user_id").GetInt32() == TestData.AdminUser.Id &&
+            entry.GetProperty("description").GetString()!.Contains(taskTitle) &&
+            entry.GetProperty("metadata").ValueKind == JsonValueKind.Object);
+        tasksJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+    }
+
+    [Fact]
+    public async Task AdminCrmExportsV2_IncludeLaravelReactCsvRows()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var noteContent = $"Export CRM note {Guid.NewGuid():N}";
+        var createNote = await Client.PostAsJsonAsync("/api/v2/admin/crm/notes", new
+        {
+            user_id = TestData.MemberUser.Id,
+            content = noteContent,
+            category = "support",
+            is_pinned = true
+        });
+        createNote.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var taskTitle = $"Export CRM task {Guid.NewGuid():N}";
+        var createTask = await Client.PostAsJsonAsync("/api/v2/admin/crm/tasks", new
+        {
+            title = taskTitle,
+            description = "CSV export contract task.",
+            priority = "urgent",
+            assigned_to = TestData.AdminUser.Id,
+            user_id = TestData.MemberUser.Id,
+            due_date = "2026-10-01"
+        });
+        createTask.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var notesExport = await Client.GetAsync("/api/v2/admin/crm/export/notes");
+        notesExport.StatusCode.Should().Be(HttpStatusCode.OK);
+        notesExport.Content.Headers.ContentType?.MediaType.Should().Be("text/csv");
+        var notesCsv = await notesExport.Content.ReadAsStringAsync();
+        notesCsv.Should().Contain("ID,User ID,User Name,Content,Category,Pinned,Author,Created,Updated");
+        notesCsv.Should().Contain(noteContent);
+        notesCsv.Should().Contain($"{TestData.MemberUser.FirstName} {TestData.MemberUser.LastName}");
+        notesCsv.Should().Contain($"{TestData.AdminUser.FirstName} {TestData.AdminUser.LastName}");
+
+        var tasksExport = await Client.GetAsync("/api/v2/admin/crm/export/tasks");
+        tasksExport.StatusCode.Should().Be(HttpStatusCode.OK);
+        tasksExport.Content.Headers.ContentType?.MediaType.Should().Be("text/csv");
+        var tasksCsv = await tasksExport.Content.ReadAsStringAsync();
+        tasksCsv.Should().Contain("ID,Title,Description,Priority,Status,Assigned To,Related Member,Due Date,Completed At,Created By,Created");
+        tasksCsv.Should().Contain(taskTitle);
+        tasksCsv.Should().Contain("urgent");
+        tasksCsv.Should().Contain($"{TestData.MemberUser.FirstName} {TestData.MemberUser.LastName}");
+
+        var dashboardExport = await Client.GetAsync("/api/v2/admin/crm/export/dashboard");
+        dashboardExport.StatusCode.Should().Be(HttpStatusCode.OK);
+        dashboardExport.Content.Headers.ContentType?.MediaType.Should().Be("text/csv");
+        var dashboardCsv = await dashboardExport.Content.ReadAsStringAsync();
+        dashboardCsv.Should().Contain("Metric,Value");
+        dashboardCsv.Should().Contain("Total Members");
+        dashboardCsv.Should().Contain("New This Month");
+    }
+
+    [Fact]
     public async Task AdminEnterpriseGdprRequests_CreateAndListUseLaravelReactShape()
     {
         await AuthenticateAsAdminAsync();
