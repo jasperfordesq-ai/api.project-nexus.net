@@ -622,7 +622,38 @@ public class MemberParityController : ControllerBase
     public IActionResult MessageReactions(int messageId, [FromBody] JsonElement body) => Ok(new { data = new { message_id = messageId, reaction = Str(body, "reaction") ?? "like" } });
 
     [HttpPost("messages/{messageId:int}/translate")]
-    public IActionResult TranslateMessage(int messageId, [FromBody] JsonElement body) => Ok(new { data = new { message_id = messageId, translated_text = Str(body, "text") ?? string.Empty, locale = Str(body, "locale") ?? "en" } });
+    public async Task<IActionResult> TranslateMessage(int messageId, [FromBody] JsonElement body)
+    {
+        var userId = UserId();
+        var message = await _db.Messages
+            .Include(m => m.Conversation)
+            .FirstOrDefaultAsync(m => m.TenantId == TenantId() && m.Id == messageId);
+
+        if (message?.Conversation == null
+            || (message.Conversation.Participant1Id != userId && message.Conversation.Participant2Id != userId))
+        {
+            return NotFound(new { success = false, code = "NOT_FOUND", error = "Message not found" });
+        }
+
+        var sourceText = Str(body, "text") ?? Str(body, "message") ?? message.Content;
+        if (string.IsNullOrWhiteSpace(sourceText))
+        {
+            return UnprocessableEntity(new { success = false, code = "NO_CONTENT", error = "Message has no translatable content" });
+        }
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                message_id = messageId,
+                translated_text = sourceText,
+                locale = Str(body, "target_language") ?? Str(body, "locale") ?? "en",
+                source_type = "body",
+                context_used = false
+            }
+        });
+    }
 
     [HttpPost("messages/delete")]
     public IActionResult DeleteMessages([FromBody] JsonElement body) => Ok(new { data = new { deleted = true } });

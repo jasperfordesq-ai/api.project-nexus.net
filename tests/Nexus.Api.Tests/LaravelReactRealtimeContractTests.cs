@@ -156,6 +156,30 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
         after.GetProperty("count").GetInt32().Should().Be(0);
     }
 
+    [Fact]
+    public async Task MessageTranslate_UsesStoredMessageContent()
+    {
+        await AuthenticateAsMemberAsync();
+        var sendResponse = await Client.PostAsJsonAsync("/api/v2/messages", new
+        {
+            recipient_id = TestData.AdminUser.Id,
+            body = "Translate this message"
+        });
+        sendResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var sentMessage = await ReadDataAsync(sendResponse);
+        var messageId = sentMessage.GetProperty("id").GetInt32();
+
+        var response = await Client.PostAsJsonAsync($"/api/v2/messages/{messageId}/translate", new
+        {
+            target_language = "en"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var data = await ReadDataAsync(response);
+        data.GetProperty("translated_text").GetString().Should().NotBeNullOrWhiteSpace();
+        data.GetProperty("source_type").GetString().Should().Be("body");
+    }
+
     private static async Task<JsonElement> ReadDataAsync(HttpResponseMessage response)
     {
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();

@@ -158,6 +158,15 @@ that user as read, and returns `success/data.marked_read`. Legacy
 `/api/messages/unread-count` and `/api/messages/{conversationId}/read` retain
 their older response shapes and conversation-id semantics.
 
+The Laravel React message translation slice now has focused ASP.NET regression
+coverage for `POST /api/v2/messages/{id}/translate` as used by
+`MessageBubble.tsx` and `ConversationPage.tsx` auto-translate. The compatibility
+handler now loads the stored message, verifies the current user participates in
+the conversation, accepts Laravel's `target_language` payload, and returns
+`success/data.translated_text` plus `source_type`. This is a deterministic
+content fallback; provider-backed translation quality remains a deeper parity
+gap.
+
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static
 route content, notification unsubscribe, AI chat starters/feedback, admin
