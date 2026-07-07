@@ -1611,6 +1611,67 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style engagement history page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/engagement-history') {
+        return {
+          data: [
+            {
+              year_month: '2026-06',
+              was_active: true,
+              activity_count: 5
+            },
+            {
+              year_month: '2026-05',
+              was_active: false,
+              activity_count: 0
+            },
+            {
+              year_month: '2026-04',
+              was_active: true,
+              activity_count: 1
+            }
+          ]
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/achievements/engagement');
+    const signed = await request(app)
+      .get('/achievements/engagement')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/engagement-history');
+    expect(signed.text).toContain('Back to achievements');
+    expect(signed.text).toContain('Achievements at');
+    expect(signed.text).toContain('Engagement history');
+    expect(signed.text).toContain('Your community activity over the last 12 months.');
+    expect(signed.text).toContain('Achievements and rewards');
+    expect(signed.text).toContain('href="/achievements/engagement" aria-current="page"');
+    expect(signed.text).toContain('<th scope="col" class="govuk-table__header">Month</th>');
+    expect(signed.text).toContain('<th scope="col" class="govuk-table__header">Active</th>');
+    expect(signed.text).toContain('<th scope="col" class="govuk-table__header govuk-table__header--numeric">Activities</th>');
+    expect(signed.text).toContain('2026-06');
+    expect(signed.text).toContain('Active');
+    expect(signed.text).toContain('5 activities');
+    expect(signed.text).toContain('2026-05');
+    expect(signed.text).toContain('Inactive');
+    expect(signed.text).toContain('no activities');
+    expect(signed.text).toContain('2026-04');
+    expect(signed.text).toContain('1 activity');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

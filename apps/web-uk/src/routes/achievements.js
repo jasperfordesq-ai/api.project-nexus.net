@@ -247,6 +247,25 @@ function normalizeCollections(result) {
   }).filter((collection) => collection.name);
 }
 
+function activityCountLabel(count) {
+  if (count === 0) return 'no activities';
+  if (count === 1) return '1 activity';
+  return `${formatInteger(count)} activities`;
+}
+
+function normalizeEngagementHistory(result) {
+  return nestedData(result, 'history').map((row) => {
+    const object = objectFrom(row);
+    const activityCount = intFrom(object.activity_count);
+    return {
+      month: textFrom(object.year_month ?? object.month),
+      wasActive: boolFrom(object.was_active ?? object.active),
+      activityCount,
+      activityCountLabel: activityCountLabel(activityCount)
+    };
+  }).filter((row) => row.month);
+}
+
 async function safeGamificationCall(token, pathValue, fallback) {
   try {
     return await callGamificationApi(token, 'GET', pathValue);
@@ -378,6 +397,27 @@ router.get('/collections', asyncRoute(async (req, res) => {
     title: 'Badge collections',
     activeNav: 'achievements',
     collections: normalizeCollections(collectionsPayload)
+  });
+}));
+
+router.get('/engagement', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let historyPayload;
+  try {
+    historyPayload = await callGamificationApi(token, 'GET', '/engagement-history');
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    historyPayload = { data: [] };
+  }
+
+  return res.render('achievements/engagement', {
+    title: 'Engagement history',
+    activeNav: 'achievements',
+    engagementHistory: normalizeEngagementHistory(historyPayload)
   });
 }));
 
