@@ -54,12 +54,33 @@ public sealed class LaravelReactExportCompatibilityTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task MemberDataExportV2Alias_ReturnsSuccessfulExportResponse()
+    public async Task MemberDataExportV2Alias_ReturnsLaravelReactDownloadAndHistoryShape()
     {
         await AuthenticateAsMemberAsync();
 
         var response = await Client.PostAsJsonAsync("/api/v2/me/data-export", new { format = "json" });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
+        response.Content.Headers.ContentDisposition?.DispositionType.Should().Be("attachment");
+        response.Content.Headers.ContentDisposition?.FileName.Should().Be("personal-data.json");
+        response.Headers.TryGetValues("X-Export-Id", out var exportIds).Should().BeTrue();
+        var exportId = exportIds!.Single();
+        exportId.Should().NotBeNullOrWhiteSpace();
+
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain(TestData.MemberUser.Email);
+
+        var history = await Client.GetAsync("/api/v2/me/data-export/history");
+
+        history.StatusCode.Should().Be(HttpStatusCode.OK);
+        var historyJson = await history.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var exports = historyJson.GetProperty("data").GetProperty("exports");
+        exports.ValueKind.Should().Be(System.Text.Json.JsonValueKind.Array);
+        exports.GetArrayLength().Should().BeGreaterThanOrEqualTo(1);
+        exports.EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32().ToString() == exportId &&
+            item.GetProperty("format").GetString() == "json" &&
+            item.GetProperty("status").GetString() == "ready");
     }
 }

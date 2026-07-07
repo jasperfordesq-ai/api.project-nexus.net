@@ -42,7 +42,14 @@ public class VolunteeringParityController : ControllerBase
         if (!await _db.VolunteerApplications.AnyAsync(a => a.OpportunityId == shift.OpportunityId && a.UserId == UserId()))
             _db.VolunteerApplications.Add(new VolunteerApplication { TenantId = TenantId(), OpportunityId = shift.OpportunityId, UserId = UserId(), Status = ApplicationStatus.Approved });
         await _db.SaveChangesAsync();
-        return Ok(new { success = true, shift_id = shiftId });
+        return Ok(new
+        {
+            data = new
+            {
+                shift_id = shiftId,
+                message = "Signed up for shift"
+            }
+        });
     }
 
     [HttpDelete("shifts/{shiftId:int}/signup")]

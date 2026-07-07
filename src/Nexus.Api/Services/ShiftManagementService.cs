@@ -3,6 +3,7 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -27,11 +28,14 @@ public record SwapRequest(
     string? Message);
 
 public record GroupReservationRequest(
+    [property: JsonPropertyName("group_id")]
     int GroupId,
+    [property: JsonPropertyName("reserved_slots")]
     int ReservedSlots,
+    [property: JsonPropertyName("notes")]
     string? Notes);
 
-public record AddGroupMemberRequest(int UserId);
+public record AddGroupMemberRequest([property: JsonPropertyName("user_id")] int UserId);
 
 public class ShiftManagementService
 {
@@ -354,25 +358,30 @@ public class ShiftManagementService
     }
 
     public async Task<(ShiftWaitlistEntry? Entry, string? Error)> PromoteFromWaitlistAsync(
-        int shiftId)
+        int shiftId, int userId)
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(
             System.Data.IsolationLevel.Serializable);
         try
         {
             var next = await _db.ShiftWaitlistEntries
-                .FirstOrDefaultAsync(w => w.ShiftId == shiftId && w.Status == "waiting" && w.Position == 1);
+                .OrderByDescending(w => w.Status == "notified")
+                .ThenBy(w => w.Position)
+                .FirstOrDefaultAsync(w =>
+                    w.ShiftId == shiftId &&
+                    w.UserId == userId &&
+                    (w.Status == "waiting" || w.Status == "notified"));
             if (next == null)
             {
                 await transaction.RollbackAsync();
-                return (null, "Waitlist is empty");
+                return (null, "Waitlist entry not found");
             }
 
             next.Status = "promoted";
             next.PromotedAt = DateTime.UtcNow;
 
             var remaining = await _db.ShiftWaitlistEntries
-                .Where(w => w.ShiftId == shiftId && w.Status == "waiting" && w.Position > 1)
+                .Where(w => w.ShiftId == shiftId && w.Status == "waiting" && w.Position > next.Position)
                 .ToListAsync();
             foreach (var e in remaining) e.Position--;
 

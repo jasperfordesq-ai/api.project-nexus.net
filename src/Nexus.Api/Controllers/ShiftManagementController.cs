@@ -119,7 +119,15 @@ public class ShiftManagementController : ControllerBase
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
         var (entry, error) = await _svc.JoinWaitlistAsync(shiftId, userId.Value);
         if (error != null) return BadRequest(new { error });
-        return CreatedAtAction(nameof(GetMyWaitlists), entry);
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = new
+            {
+                id = entry!.Id,
+                position = entry.Position,
+                message = "Joined waitlist"
+            }
+        });
     }
 
     [HttpDelete("api/volunteering/shifts/{shiftId:int}/waitlist")]
@@ -133,12 +141,21 @@ public class ShiftManagementController : ControllerBase
     }
 
     [HttpPost("api/volunteering/shifts/{shiftId:int}/waitlist/promote")]
-    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> PromoteFromWaitlist(int shiftId)
     {
-        var (entry, error) = await _svc.PromoteFromWaitlistAsync(shiftId);
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized(new { error = "Invalid token" });
+        var (entry, error) = await _svc.PromoteFromWaitlistAsync(shiftId, userId.Value);
         if (error != null) return BadRequest(new { error });
-        return Ok(entry);
+        return Ok(new
+        {
+            data = new
+            {
+                id = entry!.Id,
+                shift_id = entry.ShiftId,
+                message = "Claimed spot"
+            }
+        });
     }
 
     // ── Group Reservations ────────────────────────────────────────────────────
@@ -160,7 +177,14 @@ public class ShiftManagementController : ControllerBase
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
         var (reservation, error) = await _svc.CreateGroupReservationAsync(shiftId, userId.Value, req);
         if (error != null) return BadRequest(new { error });
-        return CreatedAtAction(nameof(GetGroupReservations), reservation);
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = new
+            {
+                id = reservation!.Id,
+                message = $"Reserved {reservation.ReservedSlots} slots"
+            }
+        });
     }
 
     [HttpPost("api/volunteering/group-reservations/{reservationId:int}/members")]
@@ -171,7 +195,15 @@ public class ShiftManagementController : ControllerBase
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
         var (member, error) = await _svc.AddGroupMemberAsync(reservationId, userId.Value, req);
         if (error != null) return BadRequest(new { error });
-        return Ok(member);
+        return Ok(new
+        {
+            data = new
+            {
+                id = member!.Id,
+                user_id = member.UserId,
+                message = "Member added to reservation"
+            }
+        });
     }
 
     [HttpDelete("api/volunteering/group-reservations/{reservationId:int}/members/{memberId:int}")]

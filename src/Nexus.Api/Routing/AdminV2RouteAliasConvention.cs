@@ -1014,7 +1014,6 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/ideation-campaigns",
             "api/ideation-templates",
             "api/auth/2fa",
-            "api/auth/oauth",
             "api/admin/reports",
             "api/admin/crm",
             "api/admin/feed",

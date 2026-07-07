@@ -59,6 +59,60 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AuthOAuthV2_UsesLaravelReactProviderRedirectAndIdentityShapes()
+    {
+        ClearAuthToken();
+
+        var providers = await Client.GetAsync("/api/v2/auth/oauth/enabled-providers");
+        var providersBody = await providers.Content.ReadAsStringAsync();
+
+        providers.StatusCode.Should().Be(HttpStatusCode.OK, providersBody);
+        var providersJson = JsonDocument.Parse(providersBody).RootElement;
+        providersJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var providerList = providersJson.GetProperty("providers");
+        providerList.ValueKind.Should().Be(JsonValueKind.Array);
+        var supportedOAuthProviders = new[] { "google", "apple", "facebook" };
+        providerList.EnumerateArray()
+            .Select(item => item.GetString())
+            .Should()
+            .NotContain(provider => !supportedOAuthProviders.Contains(provider));
+        providersJson.TryGetProperty("data", out _).Should().BeFalse();
+
+        var redirect = await Client.GetAsync($"/api/v2/auth/oauth/google/redirect?tenant_id={TestData.Tenant1.Id}&intent=login");
+
+        redirect.StatusCode.Should().Be(HttpStatusCode.OK);
+        var redirectJson = await redirect.Content.ReadFromJsonAsync<JsonElement>();
+        redirectJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        redirectJson.GetProperty("provider").GetString().Should().Be("google");
+        redirectJson.GetProperty("redirect_url").GetString().Should().NotBeNullOrWhiteSpace();
+        redirectJson.GetProperty("state").GetString().Should().NotBeNullOrWhiteSpace();
+
+        await AuthenticateAsMemberAsync();
+
+        var identities = await Client.GetAsync("/api/v2/auth/oauth/me/identities");
+
+        identities.StatusCode.Should().Be(HttpStatusCode.OK);
+        var identitiesJson = await identities.Content.ReadFromJsonAsync<JsonElement>();
+        identitiesJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        identitiesJson.GetProperty("identities").ValueKind.Should().Be(JsonValueKind.Array);
+        identitiesJson.GetProperty("enabled_providers").ValueKind.Should().Be(JsonValueKind.Array);
+        identitiesJson.GetProperty("supported_providers").EnumerateArray()
+            .Select(item => item.GetString())
+            .Should()
+            .Contain(["google", "apple", "facebook"]);
+        identitiesJson.TryGetProperty("data", out _).Should().BeFalse();
+
+        var link = await Client.PostAsJsonAsync("/api/v2/auth/oauth/google/link", new { });
+
+        link.StatusCode.Should().Be(HttpStatusCode.OK);
+        var linkJson = await link.Content.ReadFromJsonAsync<JsonElement>();
+        linkJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        linkJson.GetProperty("redirect_url").GetString().Should().NotBeNullOrWhiteSpace();
+        linkJson.GetProperty("state").GetString().Should().NotBeNullOrWhiteSpace();
+        linkJson.TryGetProperty("data", out _).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AdminEnterpriseGdprDashboard_UsesLaravelReactMetricKeys()
     {
         await AuthenticateAsAdminAsync();
@@ -856,6 +910,71 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         clear.StatusCode.Should().Be(HttpStatusCode.OK);
         var clearData = (await clear.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         clearData.GetProperty("deleted_count").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+    }
+
+    [Fact]
+    public async Task VolunteeringShiftWaitlistV2_UsesLaravelReactActionEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+        var shiftId = await SeedVolunteerShiftAsync("Laravel React waitlist shift");
+
+        var join = await Client.PostAsJsonAsync($"/api/v2/volunteering/shifts/{shiftId}/waitlist", new { });
+
+        join.StatusCode.Should().Be(HttpStatusCode.Created);
+        var joinJson = await join.Content.ReadFromJsonAsync<JsonElement>();
+        joinJson.GetProperty("data").GetProperty("id").GetInt32().Should().BeGreaterThan(0);
+        joinJson.GetProperty("data").GetProperty("position").GetInt32().Should().Be(1);
+        joinJson.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var promote = await Client.PostAsJsonAsync($"/api/v2/volunteering/shifts/{shiftId}/waitlist/promote", new { });
+
+        promote.StatusCode.Should().Be(HttpStatusCode.OK);
+        var promoteJson = await promote.Content.ReadFromJsonAsync<JsonElement>();
+        promoteJson.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task VolunteeringShiftSignupV2_UsesLaravelReactActionEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+        var shiftId = await SeedVolunteerShiftAsync("Laravel React signup shift");
+
+        var signup = await Client.PostAsJsonAsync($"/api/v2/volunteering/shifts/{shiftId}/signup", new { });
+
+        signup.StatusCode.Should().Be(HttpStatusCode.OK);
+        var signupJson = await signup.Content.ReadFromJsonAsync<JsonElement>();
+        signupJson.GetProperty("data").GetProperty("shift_id").GetInt32().Should().Be(shiftId);
+        signupJson.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task VolunteeringGroupReserveV2_UsesLaravelReactActionEnvelope()
+    {
+        await AuthenticateAsMemberAsync();
+        var shiftId = await SeedVolunteerShiftAsync("Laravel React group reserve shift");
+        var groupId = await SeedVolunteerGroupAsync("Laravel React reservation group");
+
+        var reserve = await Client.PostAsJsonAsync($"/api/v2/volunteering/shifts/{shiftId}/group-reserve", new
+        {
+            group_id = groupId,
+            reserved_slots = 2,
+            notes = "Reserved from Laravel React contract test"
+        });
+
+        reserve.StatusCode.Should().Be(HttpStatusCode.Created);
+        var reserveJson = await reserve.Content.ReadFromJsonAsync<JsonElement>();
+        var reservationId = reserveJson.GetProperty("data").GetProperty("id").GetInt32();
+        reservationId.Should().BeGreaterThan(0);
+        reserveJson.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var addMember = await Client.PostAsJsonAsync($"/api/v2/volunteering/group-reservations/{reservationId}/members", new
+        {
+            user_id = TestData.AdminUser.Id
+        });
+
+        addMember.StatusCode.Should().Be(HttpStatusCode.OK);
+        var addMemberJson = await addMember.Content.ReadFromJsonAsync<JsonElement>();
+        addMemberJson.GetProperty("data").GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -3097,6 +3216,77 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         db.ScheduledJobRuns.Add(run);
         await db.SaveChangesAsync();
         return run.Id;
+    }
+
+    private async Task<int> SeedVolunteerShiftAsync(string title)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var now = DateTime.UtcNow;
+
+        var opportunity = new VolunteerOpportunity
+        {
+            TenantId = TestData.Tenant1.Id,
+            Title = title,
+            Description = "Created for Laravel React volunteering contract tests.",
+            OrganizerId = TestData.AdminUser.Id,
+            Status = OpportunityStatus.Published,
+            RequiredVolunteers = 3,
+            StartsAt = now.AddDays(2),
+            EndsAt = now.AddDays(2).AddHours(2),
+            CreatedAt = now
+        };
+
+        db.VolunteerOpportunities.Add(opportunity);
+        await db.SaveChangesAsync();
+
+        var shift = new VolunteerShift
+        {
+            TenantId = TestData.Tenant1.Id,
+            OpportunityId = opportunity.Id,
+            Title = title,
+            StartsAt = now.AddDays(2),
+            EndsAt = now.AddDays(2).AddHours(2),
+            MaxVolunteers = 3,
+            Status = ShiftStatus.Scheduled,
+            CreatedAt = now
+        };
+
+        db.VolunteerShifts.Add(shift);
+        await db.SaveChangesAsync();
+
+        return shift.Id;
+    }
+
+    private async Task<int> SeedVolunteerGroupAsync(string name)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+
+        var group = new Group
+        {
+            TenantId = TestData.Tenant1.Id,
+            CreatedById = TestData.MemberUser.Id,
+            Name = name,
+            Description = "Created for Laravel React volunteering contract tests.",
+            IsPrivate = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        db.Groups.Add(group);
+        await db.SaveChangesAsync();
+
+        db.GroupMembers.Add(new GroupMember
+        {
+            TenantId = TestData.Tenant1.Id,
+            GroupId = group.Id,
+            UserId = TestData.MemberUser.Id,
+            Role = Group.Roles.Owner,
+            JoinedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        return group.Id;
     }
 
     private async Task<int> SeedAdminFeedCommentAsync(string content)

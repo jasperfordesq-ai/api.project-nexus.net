@@ -23,6 +23,7 @@ public class AuthParityController : ControllerBase
 {
     private readonly NexusDbContext _db;
     private readonly IConfiguration _config;
+    private static readonly string[] SupportedOAuthProviders = ["google", "apple", "facebook"];
 
     public AuthParityController(NexusDbContext db, IConfiguration config)
     {
@@ -116,24 +117,90 @@ public class AuthParityController : ControllerBase
     public IActionResult ValidateTokenPost() => Ok(new { valid = true, user_id = User.GetUserId() });
 
     [HttpGet("oauth/enabled-providers")]
+    [HttpGet("~/api/v2/auth/oauth/enabled-providers")]
     [AllowAnonymous]
-    public IActionResult EnabledProviders() => Ok(new { data = new[] { "google", "microsoft" } });
+    public IActionResult EnabledProviders()
+    {
+        var providers = ResolveOAuthTenantId() > 0 ? SupportedOAuthProviders : [];
+        return Ok(new { success = true, providers });
+    }
 
     [HttpGet("oauth/{provider}/redirect")]
+    [HttpGet("~/api/v2/auth/oauth/{provider}/redirect")]
     [AllowAnonymous]
-    public IActionResult OAuthRedirect(string provider) => Ok(new { provider, redirect_url = $"/api/auth/oauth/{provider}/callback" });
+    public IActionResult OAuthRedirect(string provider)
+    {
+        provider = NormalizeOAuthProvider(provider);
+        if (!SupportedOAuthProviders.Contains(provider))
+            return BadRequest(new { success = false, error = "unsupported_provider", message = "OAuth provider is not supported." });
+
+        if (ResolveOAuthTenantId() <= 0)
+            return BadRequest(new { success = false, error = "tenant_required", message = "Tenant is required for OAuth." });
+
+        var state = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+        var intent = string.Equals(Request.Query["intent"].FirstOrDefault(), "register", StringComparison.OrdinalIgnoreCase)
+            ? "register"
+            : "login";
+        var redirectUrl = $"/api/v2/auth/oauth/{provider}/callback?state={Uri.EscapeDataString(state)}&intent={intent}";
+        return Ok(new { success = true, redirect_url = redirectUrl, state, provider });
+    }
 
     [HttpGet("oauth/me/identities")]
+    [HttpGet("~/api/v2/auth/oauth/me/identities")]
     [Authorize]
-    public IActionResult OAuthIdentities() => Ok(new { data = Array.Empty<object>() });
+    public IActionResult OAuthIdentities() => Ok(new
+    {
+        success = true,
+        identities = Array.Empty<object>(),
+        enabled_providers = SupportedOAuthProviders,
+        supported_providers = SupportedOAuthProviders
+    });
 
     [HttpPost("oauth/{provider}/link")]
+    [HttpPost("~/api/v2/auth/oauth/{provider}/link")]
     [Authorize]
-    public IActionResult LinkOAuth(string provider, [FromBody] JsonElement body) => Ok(new { data = new { provider, linked = true } });
+    public IActionResult LinkOAuth(string provider, [FromBody] JsonElement body)
+    {
+        provider = NormalizeOAuthProvider(provider);
+        if (!SupportedOAuthProviders.Contains(provider))
+            return BadRequest(new { success = false, error = "unsupported_provider", message = "OAuth provider is not supported." });
+
+        var state = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+        return Ok(new
+        {
+            success = true,
+            redirect_url = $"/api/v2/auth/oauth/{provider}/callback?state={Uri.EscapeDataString(state)}&intent=link",
+            state
+        });
+    }
 
     [HttpDelete("oauth/{provider}/unlink")]
+    [HttpDelete("~/api/v2/auth/oauth/{provider}/unlink")]
     [Authorize]
-    public IActionResult UnlinkOAuth(string provider) => Ok(new { data = new { provider, linked = false } });
+    public IActionResult UnlinkOAuth(string provider) => Ok(new { success = true });
+
+    private int ResolveOAuthTenantId()
+    {
+        if (int.TryParse(Request.Query["tenant_id"].FirstOrDefault(), out var queryTenantId))
+            return queryTenantId;
+
+        if (int.TryParse(Request.Headers["X-Tenant-Id"].FirstOrDefault(), out var headerTenantId))
+            return headerTenantId;
+
+        if (int.TryParse(Request.Headers["X-Tenant-ID"].FirstOrDefault(), out var alternateHeaderTenantId))
+            return alternateHeaderTenantId;
+
+        return 0;
+    }
+
+    private static string NormalizeOAuthProvider(string provider) =>
+        provider.Trim().ToLowerInvariant();
 
     private async Task<string?> GetSubmittedTokenAsync()
     {

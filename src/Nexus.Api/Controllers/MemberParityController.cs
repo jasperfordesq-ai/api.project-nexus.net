@@ -5,6 +5,7 @@
 
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -46,16 +47,87 @@ public class MemberParityController : ControllerBase
 
     [HttpGet("me/data-export/history")]
     [HttpGet("v2/me/data-export/history")]
-    public async Task<IActionResult> DataExportHistory() => Ok(new { data = await _db.DataExportRequests.Where(r => r.UserId == UserId()).OrderByDescending(r => r.CreatedAt).ToListAsync() });
+    public async Task<IActionResult> DataExportHistory()
+    {
+        var exports = await _db.DataExportRequests
+            .AsNoTracking()
+            .Where(r => r.UserId == UserId())
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(10)
+            .Select(r => new
+            {
+                id = r.Id,
+                format = r.Format,
+                status = r.Status.ToString().ToLowerInvariant(),
+                file_size_bytes = r.FileSizeBytes,
+                requested_at = r.RequestedAt,
+                completed_at = r.CompletedAt,
+                expires_at = r.ExpiresAt
+            })
+            .ToListAsync();
+
+        return Ok(new { data = new { exports } });
+    }
 
     [HttpPost("me/data-export")]
     [HttpPost("v2/me/data-export")]
-    public async Task<IActionResult> RequestDataExport()
+    public async Task<IActionResult> RequestDataExport([FromBody] MemberDataExportRequest? body)
     {
-        var request = new DataExportRequest { TenantId = TenantId(), UserId = UserId(), Status = ExportStatus.Pending };
+        var format = string.Equals(body?.Format, "zip", StringComparison.OrdinalIgnoreCase) ? "zip" : "json";
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == UserId());
+        if (user == null) return Unauthorized(new { error = "Invalid token" });
+
+        var payload = new
+        {
+            exported_at = DateTime.UtcNow,
+            user = new
+            {
+                id = user.Id,
+                email = user.Email,
+                first_name = user.FirstName,
+                last_name = user.LastName,
+                role = user.Role,
+                created_at = user.CreatedAt
+            }
+        };
+        var json = JsonSerializer.Serialize(payload, StoreJsonOptions);
+        var bytes = Encoding.UTF8.GetBytes(json);
+        var filename = "personal-data.json";
+        var contentType = "application/json";
+
+        if (format == "zip")
+        {
+            await using var stream = new MemoryStream();
+            using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+            {
+                var entry = archive.CreateEntry("personal-data.json");
+                await using var entryStream = entry.Open();
+                await entryStream.WriteAsync(bytes);
+            }
+
+            bytes = stream.ToArray();
+            filename = "personal-data.zip";
+            contentType = "application/zip";
+        }
+
+        var now = DateTime.UtcNow;
+        var request = new DataExportRequest
+        {
+            TenantId = TenantId(),
+            UserId = UserId(),
+            Status = ExportStatus.Ready,
+            Format = format,
+            FileSizeBytes = bytes.LongLength,
+            RequestedAt = now,
+            CompletedAt = now,
+            ExpiresAt = now.AddDays(30),
+            CreatedAt = now
+        };
         _db.DataExportRequests.Add(request);
         await _db.SaveChangesAsync();
-        return Ok(new { data = request });
+
+        Response.Headers["X-Export-Id"] = request.Id.ToString();
+        return File(bytes, contentType, filename);
     }
 
     [HttpGet("me/fadp/consent-history")]
@@ -860,6 +932,8 @@ public class MemberParityController : ControllerBase
         public int IsActive { get; set; } = 1;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
+
+    public sealed record MemberDataExportRequest([property: JsonPropertyName("format")] string? Format);
 
     private sealed class PaidPushCampaignRecord
     {

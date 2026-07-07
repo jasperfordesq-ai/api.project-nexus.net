@@ -57,6 +57,14 @@ public class TenantResolutionMiddleware
         "/api/v2/auth/sso",                    // Laravel-compatible public SSO endpoints
         "/api/auth/oauth/exchange",            // Public one-time OAuth callback-code exchange
         "/api/v2/auth/oauth/exchange",         // Laravel-compatible OAuth callback-code exchange
+        "/api/auth/oauth/enabled-providers",   // Public OAuth provider discovery
+        "/api/v2/auth/oauth/enabled-providers", // Laravel-compatible OAuth provider discovery
+        "/api/auth/oauth/google/redirect",     // Public OAuth redirect bootstrap resolves tenant from query/header
+        "/api/auth/oauth/apple/redirect",
+        "/api/auth/oauth/facebook/redirect",
+        "/api/v2/auth/oauth/google/redirect",  // Laravel-compatible OAuth redirect bootstrap
+        "/api/v2/auth/oauth/apple/redirect",
+        "/api/v2/auth/oauth/facebook/redirect",
         "/api/geo/os-places/search",           // Public geocoding proxy resolves tenant internally
         "/api/v2/geo/os-places/search",        // Laravel-compatible OS Places proxy
         "/api/public-changelog",               // Public React static content
