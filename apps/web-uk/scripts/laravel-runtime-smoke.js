@@ -14,6 +14,7 @@ const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/explore',
   '/saved',
   '/notifications',
+  '/members',
   '/members/discover',
   '/resources',
   '/skills',

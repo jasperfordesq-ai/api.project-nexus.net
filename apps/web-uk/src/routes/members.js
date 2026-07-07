@@ -554,9 +554,16 @@ router.get('/', asyncRoute(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = 20;
   const searchQuery = req.query.search ? req.query.search.trim() : '';
+  let memberErrorMessage = null;
 
   const [usersResult, connectionsResult] = await Promise.all([
-    getUsers(req.token),
+    getUsers(req.token).catch((error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        throw error;
+      }
+      memberErrorMessage = 'Sorry, there is a problem loading members.';
+      return { data: [] };
+    }),
     getConnections(req.token).catch(() => ({ data: [] }))
   ]);
 
@@ -614,8 +621,9 @@ router.get('/', asyncRoute(async (req, res) => {
       total,
       totalPages: totalPages
     },
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    errorMessage: memberErrorMessage || (req.flash ? req.flash('error')[0] : null)
   });
 }));
 

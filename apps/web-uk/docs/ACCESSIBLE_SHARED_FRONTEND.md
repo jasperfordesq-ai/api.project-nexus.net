@@ -44,8 +44,8 @@ redirects, `/login` CSRF handling, login POST redirect behavior, and a signed
 pages `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and
 `/help` return successful responses from the web-uk app while it is pointed at
 Laravel, plus the signed module pages `/explore`, `/saved`, `/notifications`,
-`/members/discover`, `/resources`, `/skills`, `/goals`, `/clubs`, `/wallet`,
-`/messages`, `/connections`, `/connections/network`, `/matches`,
+`/members`, `/members/discover`, `/resources`, `/skills`, `/goals`, `/clubs`,
+`/wallet`, `/messages`, `/connections`, `/connections/network`, `/matches`,
 `/matches/board`, `/activity`, `/achievements`, `/leaderboard`,
 `/nexus-score`, `/profile/settings`,
 `/settings/appearance`, `/settings/data-rights`, `/federation`, `/courses`,
@@ -70,13 +70,16 @@ API is unavailable; a later run against
 plain `/connections` index is now also in scope and renders the signed page
 with an empty/error state when Laravel's legacy connections API is unavailable,
 and a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5298` passed
-`160/160` checks. The
+`160/160` checks. Plain `/members` is now also in scope and renders the signed
+member directory with an empty/error state when Laravel's legacy members API is
+unavailable; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5299` passed `161/161` checks. The
 harness default timeout is now `30000` ms because Laravel-backed
 profile/settings and discovery pages can be slow in the local fixture. Keep the
 tenant context visible: the same Laravel E2E credentials return `401` when
 web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`. Live probing
-still leaves `/events/new`, `/marketplace/onboarding`, and `/members` outside
-the default list because they return `404`, leaves
+still leaves `/events/new` and `/marketplace/onboarding` outside the default
+list because they return `404`, leaves
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
 because they return feature-gated or role-gated `403`, and leaves signed-in
 auth, onboarding, and premium-management redirect pages outside because they do

@@ -56,6 +56,7 @@ jest.mock('../src/lib/api', () => ({
   getOnboardingSafeguardingOptions: jest.fn().mockResolvedValue({ data: [] }),
   saveOnboardingSafeguarding: jest.fn().mockResolvedValue({}),
   completeOnboarding: jest.fn().mockResolvedValue({ data: { message: 'complete' } }),
+  getUsers: jest.fn().mockResolvedValue({ data: [] }),
   getUser: jest.fn(),
   getUserV2: jest.fn(),
   getMemberVerificationBadges: jest.fn(),
@@ -282,6 +283,7 @@ describe('shared accessible frontend shell', () => {
     api.startConversation.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.saveOnboardingSafeguarding.mockReset().mockResolvedValue({});
     api.completeOnboarding.mockReset().mockResolvedValue({ data: { message: 'complete' } });
+    api.getUsers.mockReset().mockResolvedValue({ data: [] });
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
     api.getUserV2.mockReset();
     api.getMemberVerificationBadges.mockReset();
@@ -7051,6 +7053,25 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.claimDailyReward).not.toHaveBeenCalled();
+  });
+
+  it('renders the signed Laravel members index when the members API is unavailable', async () => {
+    const api = require('../src/lib/api');
+    const { ApiError } = api;
+
+    api.getUsers.mockRejectedValueOnce(new ApiError('Not found', 404, {}));
+
+    const response = await request(app)
+      .get('/members')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getUsers).toHaveBeenCalledWith('test-token');
+    expect(response.text).toContain('<h1');
+    expect(response.text).toContain('Community members');
+    expect(response.text).toContain('No members found');
+    expect(response.text).toContain('Sorry, there is a problem loading members.');
+    expect(response.text).not.toContain('Page not found');
   });
 
   it('renders the Laravel members discovery page for signed-in members', async () => {
