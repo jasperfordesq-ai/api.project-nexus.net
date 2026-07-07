@@ -458,7 +458,7 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             .Where(template => template.Equals("api", StringComparison.OrdinalIgnoreCase))
             .Concat(controller.Selectors
                 .Select(selector => Normalize(selector.AttributeRouteModel?.Template))
-                .Where(template => template.Equals("api/auth", StringComparison.OrdinalIgnoreCase) || template.Equals("api/resources", StringComparison.OrdinalIgnoreCase) || template.Equals("api/skills", StringComparison.OrdinalIgnoreCase) || template.Equals("api/search", StringComparison.OrdinalIgnoreCase)))
+                .Where(template => template.Equals("api/auth", StringComparison.OrdinalIgnoreCase) || template.Equals("api/skills", StringComparison.OrdinalIgnoreCase) || template.Equals("api/search", StringComparison.OrdinalIgnoreCase)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -1009,7 +1009,6 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/group-chatrooms",
             "api/team-tasks",
             "api/team-documents",
-            "api/resources/categories",
             "api/skills/categories",
             "api/search/saved",
             "api/ideation-campaigns",
@@ -1037,7 +1036,6 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             "api/admin/ideation",
             "api/admin/events",
             "api/admin/members",
-            "api/admin/vetting",
             "api/community/stats",
             "api/csrf-token",
             "api/donations",

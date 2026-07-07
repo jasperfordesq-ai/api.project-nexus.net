@@ -554,6 +554,311 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AdminVettingV2_UsesLaravelReactWorkflowShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var reference = $"GV-{Guid.NewGuid():N}"[..12];
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/vetting", new
+        {
+            user_id = TestData.MemberUser.Id,
+            vetting_type = "garda_vetting",
+            status = "submitted",
+            reference_number = reference,
+            issue_date = "2026-01-01",
+            expiry_date = "2027-01-01",
+            notes = "Created by Laravel React contract smoke test.",
+            works_with_children = true,
+            works_with_vulnerable_adults = true,
+            requires_enhanced_check = false
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var vettingId = created.GetProperty("id").GetInt32();
+        vettingId.Should().BeGreaterThan(0);
+        created.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        created.GetProperty("first_name").GetString().Should().Be(TestData.MemberUser.FirstName);
+        created.GetProperty("last_name").GetString().Should().Be(TestData.MemberUser.LastName);
+        created.GetProperty("email").GetString().Should().Be(TestData.MemberUser.Email);
+        created.GetProperty("vetting_type").GetString().Should().Be("garda_vetting");
+        created.GetProperty("status").GetString().Should().Be("submitted");
+        created.GetProperty("reference_number").GetString().Should().Be(reference);
+        created.GetProperty("issue_date").GetString().Should().StartWith("2026-01-01");
+        created.GetProperty("expiry_date").GetString().Should().StartWith("2027-01-01");
+        created.GetProperty("works_with_children").GetBoolean().Should().BeTrue();
+        created.GetProperty("works_with_vulnerable_adults").GetBoolean().Should().BeTrue();
+        created.GetProperty("requires_enhanced_check").GetBoolean().Should().BeFalse();
+
+        var list = await Client.GetAsync($"/api/v2/admin/vetting?status=pending_review&vetting_type=garda_vetting&search={Uri.EscapeDataString(reference)}&page=1&per_page=10");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("data").EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == vettingId &&
+            item.GetProperty("reference_number").GetString() == reference);
+        var meta = listJson.GetProperty("meta");
+        meta.GetProperty("current_page").GetInt32().Should().Be(1);
+        meta.GetProperty("per_page").GetInt32().Should().Be(10);
+        meta.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var stats = await Client.GetAsync("/api/v2/admin/vetting/stats");
+        stats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statsData = (await stats.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        statsData.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        statsData.GetProperty("submitted").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        statsData.GetProperty("pending_review").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        statsData.GetProperty("by_type").GetProperty("garda_vetting").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var show = await Client.GetAsync($"/api/v2/admin/vetting/{vettingId}");
+        show.StatusCode.Should().Be(HttpStatusCode.OK);
+        var shown = (await show.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        shown.GetProperty("id").GetInt32().Should().Be(vettingId);
+        shown.GetProperty("verifier_first_name").ValueKind.Should().Be(JsonValueKind.Null);
+        shown.GetProperty("rejection_reason").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/admin/vetting/{vettingId}", new
+        {
+            notes = "Updated by Laravel React contract smoke test.",
+            requires_enhanced_check = true
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updated.GetProperty("id").GetInt32().Should().Be(vettingId);
+        updated.GetProperty("notes").GetString().Should().Be("Updated by Laravel React contract smoke test.");
+        updated.GetProperty("requires_enhanced_check").GetBoolean().Should().BeTrue();
+
+        var verify = await Client.PostAsync($"/api/v2/admin/vetting/{vettingId}/verify", null);
+        verify.StatusCode.Should().Be(HttpStatusCode.OK);
+        var verified = (await verify.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        verified.GetProperty("status").GetString().Should().Be("verified");
+        verified.GetProperty("verified_by").GetInt32().Should().Be(TestData.AdminUser.Id);
+        verified.GetProperty("verifier_first_name").GetString().Should().Be(TestData.AdminUser.FirstName);
+        verified.GetProperty("verified_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var userRecords = await Client.GetAsync($"/api/v2/admin/vetting/user/{TestData.MemberUser.Id}");
+        userRecords.StatusCode.Should().Be(HttpStatusCode.OK);
+        var userRecordData = (await userRecords.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        userRecordData.EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == vettingId &&
+            item.GetProperty("user_id").GetInt32() == TestData.MemberUser.Id);
+
+        var reject = await Client.PostAsJsonAsync($"/api/v2/admin/vetting/{vettingId}/reject", new
+        {
+            reason = "Contract test rejection reason"
+        });
+
+        reject.StatusCode.Should().Be(HttpStatusCode.OK);
+        var rejected = (await reject.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        rejected.GetProperty("status").GetString().Should().Be("rejected");
+        rejected.GetProperty("rejected_by").GetInt32().Should().Be(TestData.AdminUser.Id);
+        rejected.GetProperty("rejector_first_name").GetString().Should().Be(TestData.AdminUser.FirstName);
+        rejected.GetProperty("rejection_reason").GetString().Should().Be("Contract test rejection reason");
+
+        var bulkDelete = await Client.PostAsJsonAsync("/api/v2/admin/vetting/bulk", new
+        {
+            ids = new[] { vettingId },
+            action = "delete"
+        });
+
+        bulkDelete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var bulkData = (await bulkDelete.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        bulkData.GetProperty("action").GetString().Should().Be("delete");
+        bulkData.GetProperty("processed").GetInt32().Should().Be(1);
+        bulkData.GetProperty("failed").GetInt32().Should().Be(0);
+        bulkData.GetProperty("total").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AdminInsuranceV2_UsesLaravelReactWorkflowShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var policyNumber = $"PL-{Guid.NewGuid():N}"[..12];
+        var create = await Client.PostAsJsonAsync("/api/v2/admin/insurance", new
+        {
+            user_id = TestData.MemberUser.Id,
+            insurance_type = "public_liability",
+            status = "submitted",
+            provider_name = "Contract Assurance",
+            policy_number = policyNumber,
+            coverage_amount = 2500000,
+            start_date = "2026-02-01",
+            expiry_date = "2027-02-01",
+            notes = "Created by Laravel React insurance contract smoke test."
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var insuranceId = created.GetProperty("id").GetInt32();
+        insuranceId.Should().BeGreaterThan(0);
+        created.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        created.GetProperty("first_name").GetString().Should().Be(TestData.MemberUser.FirstName);
+        created.GetProperty("last_name").GetString().Should().Be(TestData.MemberUser.LastName);
+        created.GetProperty("email").GetString().Should().Be(TestData.MemberUser.Email);
+        created.GetProperty("insurance_type").GetString().Should().Be("public_liability");
+        created.GetProperty("status").GetString().Should().Be("submitted");
+        created.GetProperty("provider_name").GetString().Should().Be("Contract Assurance");
+        created.GetProperty("policy_number").GetString().Should().Be(policyNumber);
+        created.GetProperty("coverage_amount").GetDecimal().Should().Be(2500000m);
+        created.GetProperty("start_date").GetString().Should().StartWith("2026-02-01");
+        created.GetProperty("expiry_date").GetString().Should().StartWith("2027-02-01");
+
+        var list = await Client.GetAsync($"/api/v2/admin/insurance?status=pending_review&insurance_type=public_liability&search={Uri.EscapeDataString(policyNumber)}&page=1&per_page=10");
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("data").EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == insuranceId &&
+            item.GetProperty("policy_number").GetString() == policyNumber);
+        var meta = listJson.GetProperty("meta");
+        meta.GetProperty("current_page").GetInt32().Should().Be(1);
+        meta.GetProperty("per_page").GetInt32().Should().Be(10);
+        meta.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var stats = await Client.GetAsync("/api/v2/admin/insurance/stats");
+        stats.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statsData = (await stats.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        statsData.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        statsData.GetProperty("submitted").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        statsData.GetProperty("pending_review").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        var show = await Client.GetAsync($"/api/v2/admin/insurance/{insuranceId}");
+        show.StatusCode.Should().Be(HttpStatusCode.OK);
+        var shown = (await show.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        shown.GetProperty("id").GetInt32().Should().Be(insuranceId);
+        shown.GetProperty("verifier_first_name").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/admin/insurance/{insuranceId}", new
+        {
+            provider_name = "Updated Contract Assurance",
+            coverage_amount = 3000000,
+            notes = "Updated by Laravel React insurance contract smoke test."
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        updated.GetProperty("id").GetInt32().Should().Be(insuranceId);
+        updated.GetProperty("provider_name").GetString().Should().Be("Updated Contract Assurance");
+        updated.GetProperty("coverage_amount").GetDecimal().Should().Be(3000000m);
+        updated.GetProperty("notes").GetString().Should().Be("Updated by Laravel React insurance contract smoke test.");
+
+        var verify = await Client.PostAsync($"/api/v2/admin/insurance/{insuranceId}/verify", null);
+        verify.StatusCode.Should().Be(HttpStatusCode.OK);
+        var verified = (await verify.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        verified.GetProperty("status").GetString().Should().Be("verified");
+        verified.GetProperty("verified_by").GetInt32().Should().Be(TestData.AdminUser.Id);
+        verified.GetProperty("verifier_first_name").GetString().Should().Be(TestData.AdminUser.FirstName);
+        verified.GetProperty("verified_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var userCertificates = await Client.GetAsync($"/api/v2/admin/insurance/user/{TestData.MemberUser.Id}");
+        userCertificates.StatusCode.Should().Be(HttpStatusCode.OK);
+        var userCertificateData = (await userCertificates.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        userCertificateData.EnumerateArray().Should().Contain(item =>
+            item.GetProperty("id").GetInt32() == insuranceId &&
+            item.GetProperty("user_id").GetInt32() == TestData.MemberUser.Id);
+
+        var reject = await Client.PostAsJsonAsync($"/api/v2/admin/insurance/{insuranceId}/reject", new
+        {
+            reason = "Insurance contract test rejection reason"
+        });
+
+        reject.StatusCode.Should().Be(HttpStatusCode.OK);
+        var rejected = (await reject.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        rejected.GetProperty("status").GetString().Should().Be("rejected");
+        rejected.GetProperty("verified_by").GetInt32().Should().Be(TestData.AdminUser.Id);
+        rejected.GetProperty("notes").GetString().Should().Be("Insurance contract test rejection reason");
+
+        var delete = await Client.DeleteAsync($"/api/v2/admin/insurance/{insuranceId}");
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleted = (await delete.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        deleted.GetProperty("deleted").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminCronV2_UsesLaravelReactLogsSettingsAndHealthShape()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var jobId = $"contract-cron-{Guid.NewGuid():N}"[..24];
+        var runId = await SeedScheduledJobRunAsync(jobId, ScheduledJobRunStatus.Failed, "Contract cron failure output");
+
+        var logs = await Client.GetAsync($"/api/v2/admin/system/cron-jobs/logs?jobId={Uri.EscapeDataString(jobId)}&status=failed&limit=10&offset=0");
+        logs.StatusCode.Should().Be(HttpStatusCode.OK);
+        var logsJson = await logs.Content.ReadFromJsonAsync<JsonElement>();
+        var log = logsJson.GetProperty("data").EnumerateArray().Should().ContainSingle(item =>
+            item.GetProperty("id").GetInt32() == runId &&
+            item.GetProperty("job_id").GetString() == jobId &&
+            item.GetProperty("status").GetString() == "failed").Subject;
+        log.GetProperty("job_name").GetString().Should().Be(jobId);
+        log.GetProperty("output").GetString().Should().Contain("Contract cron failure output");
+        log.GetProperty("duration_seconds").GetDouble().Should().BeGreaterThan(0);
+        log.GetProperty("executed_by").GetString().Should().Be("cron");
+        logsJson.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        logsJson.GetProperty("meta").GetProperty("limit").GetInt32().Should().Be(10);
+        logsJson.GetProperty("meta").GetProperty("offset").GetInt32().Should().Be(0);
+
+        var detail = await Client.GetAsync($"/api/v2/admin/system/cron-jobs/logs/{runId}");
+        detail.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detailData = (await detail.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        detailData.GetProperty("id").GetInt32().Should().Be(runId);
+        detailData.GetProperty("job_id").GetString().Should().Be(jobId);
+        detailData.GetProperty("status").GetString().Should().Be("failed");
+
+        var updateJobSettings = await Client.PutAsJsonAsync($"/api/v2/admin/system/cron-jobs/{jobId}/settings", new
+        {
+            is_enabled = false,
+            custom_schedule = "*/15 * * * *",
+            notify_on_failure = true,
+            notify_emails = "ops@example.test",
+            max_retries = 5,
+            timeout_seconds = 900
+        });
+        updateJobSettings.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var jobSettings = await Client.GetAsync($"/api/v2/admin/system/cron-jobs/{jobId}/settings");
+        jobSettings.StatusCode.Should().Be(HttpStatusCode.OK);
+        var jobSettingsData = (await jobSettings.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        jobSettingsData.GetProperty("job_id").GetString().Should().Be(jobId);
+        jobSettingsData.GetProperty("is_enabled").GetBoolean().Should().BeFalse();
+        jobSettingsData.GetProperty("custom_schedule").GetString().Should().Be("*/15 * * * *");
+        jobSettingsData.GetProperty("notify_on_failure").GetBoolean().Should().BeTrue();
+        jobSettingsData.GetProperty("notify_emails").GetString().Should().Be("ops@example.test");
+        jobSettingsData.GetProperty("max_retries").GetInt32().Should().Be(5);
+        jobSettingsData.GetProperty("timeout_seconds").GetInt32().Should().Be(900);
+
+        var updateGlobalSettings = await Client.PutAsJsonAsync("/api/v2/admin/system/cron-jobs/settings", new
+        {
+            default_notify_email = "platform-ops@example.test",
+            log_retention_days = 14,
+            max_concurrent_jobs = 2
+        });
+        updateGlobalSettings.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var globalSettings = await Client.GetAsync("/api/v2/admin/system/cron-jobs/settings");
+        globalSettings.StatusCode.Should().Be(HttpStatusCode.OK);
+        var globalSettingsData = (await globalSettings.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        globalSettingsData.GetProperty("default_notify_email").GetString().Should().Be("platform-ops@example.test");
+        globalSettingsData.GetProperty("log_retention_days").GetInt32().Should().Be(14);
+        globalSettingsData.GetProperty("max_concurrent_jobs").GetInt32().Should().Be(2);
+
+        var health = await Client.GetAsync("/api/v2/admin/system/cron-jobs/health");
+        health.StatusCode.Should().Be(HttpStatusCode.OK);
+        var healthData = (await health.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        healthData.GetProperty("health_score").GetInt32().Should().BeInRange(0, 100);
+        healthData.GetProperty("jobs_failed_24h").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        healthData.GetProperty("recent_failures").EnumerateArray().Should().Contain(item =>
+            item.GetProperty("job_name").GetString() == jobId &&
+            item.GetProperty("reason").GetString()!.Contains("Contract cron failure output"));
+        healthData.GetProperty("jobs_overdue").ValueKind.Should().Be(JsonValueKind.Array);
+        healthData.GetProperty("avg_success_rate_7d").GetDouble().Should().BeInRange(0, 1);
+
+        var clear = await Client.DeleteAsync($"/api/v2/admin/system/cron-jobs/logs?before={Uri.EscapeDataString(DateTime.UtcNow.AddDays(1).ToString("O"))}");
+        clear.StatusCode.Should().Be(HttpStatusCode.OK);
+        var clearData = (await clear.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        clearData.GetProperty("deleted_count").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+    }
+
+    [Fact]
     public async Task AdminEnterpriseGdprRequests_CreateAndListUseLaravelReactShape()
     {
         await AuthenticateAsAdminAsync();
@@ -2771,6 +3076,27 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         db.ContentReports.Add(report);
         await db.SaveChangesAsync();
         return report.Id;
+    }
+
+    private async Task<int> SeedScheduledJobRunAsync(string jobName, ScheduledJobRunStatus status, string output)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var run = new ScheduledJobRun
+        {
+            TenantId = TestData.Tenant1.Id,
+            JobName = jobName,
+            StartedAt = DateTime.UtcNow.AddMinutes(-15),
+            CompletedAt = DateTime.UtcNow.AddMinutes(-14),
+            Status = status,
+            ItemsProcessed = 3,
+            ErrorMessage = output,
+            ErrorType = status == ScheduledJobRunStatus.Failed ? "ContractTestFailure" : null,
+            DurationMs = 1234
+        };
+        db.ScheduledJobRuns.Add(run);
+        await db.SaveChangesAsync();
+        return run.Id;
     }
 
     private async Task<int> SeedAdminFeedCommentAsync(string content)

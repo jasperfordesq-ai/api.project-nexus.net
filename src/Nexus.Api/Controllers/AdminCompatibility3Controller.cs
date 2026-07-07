@@ -1903,60 +1903,445 @@ public class AdminCompatibility3Controller : ControllerBase
     //   POST {id}/verify, POST {id}/reject (POST methods — different from PUT)
     // ───────────────────────────────────────────────────────────────
 
-    /// <summary>POST /api/admin/vetting - Create vetting record (alias).</summary>
-    [HttpPost("vetting")]
-    public IActionResult CreateVettingRecord()
+    /// <summary>GET /api/v2/admin/vetting - Laravel React vetting list.</summary>
+    [HttpGet("/api/v2/admin/vetting")]
+    public async Task<IActionResult> ListVettingRecords(
+        [FromQuery] string? status = null,
+        [FromQuery(Name = "vetting_type")] string? vettingType = null,
+        [FromQuery] string? search = null,
+        [FromQuery(Name = "expiring_soon")] bool expiringSoon = false,
+        [FromQuery] bool expired = false,
+        [FromQuery] int page = 1,
+        [FromQuery(Name = "per_page")] int perPage = 25)
     {
-        return Ok(new { success = true, message = "Vetting record created", id = 0 });
+        var tenantId = GetTenantId();
+        page = Math.Max(1, page);
+        perPage = Math.Clamp(perPage, 10, 100);
+
+        var query = _db.VettingRecords
+            .AsNoTracking()
+            .Include(v => v.User)
+            .Include(v => v.VerifiedBy)
+            .Where(v => v.TenantId == tenantId)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var normalizedStatus = status.Trim().ToLowerInvariant();
+            query = normalizedStatus == "pending_review"
+                ? query.Where(v => v.Status == "pending" || v.Status == "submitted")
+                : query.Where(v => v.Status == normalizedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(vettingType))
+        {
+            var normalizedType = vettingType.Trim().ToLowerInvariant();
+            query = query.Where(v => v.VettingType == normalizedType);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var lowered = search.Trim().ToLowerInvariant();
+            query = query.Where(v =>
+                (v.ReferenceNumber != null && v.ReferenceNumber.ToLower().Contains(lowered)) ||
+                (v.Notes != null && v.Notes.ToLower().Contains(lowered)) ||
+                (v.User != null && v.User.Email.ToLower().Contains(lowered)) ||
+                (v.User != null && (v.User.FirstName + " " + v.User.LastName).ToLower().Contains(lowered)));
+        }
+
+        if (expiringSoon)
+        {
+            var now = DateTime.UtcNow;
+            var cutoff = now.AddDays(30);
+            query = query.Where(v => v.Status == "verified" && v.ExpiresAt != null && v.ExpiresAt >= now && v.ExpiresAt <= cutoff);
+        }
+
+        if (expired)
+        {
+            var now = DateTime.UtcNow;
+            query = query.Where(v => v.ExpiresAt != null && v.ExpiresAt < now && (v.Status == "verified" || v.Status == "expired"));
+        }
+
+        var total = await query.CountAsync();
+        var records = await query
+            .OrderByDescending(v => v.CreatedAt)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
+            .ToListAsync();
+        var metadata = await LoadLaravelVettingMetadataAsync(tenantId, records.Select(v => v.Id));
+
+        return Ok(new
+        {
+            data = records.Select(v => MapLaravelVettingRecord(v, metadata.GetValueOrDefault(v.Id))),
+            meta = LaravelPaginationMeta(page, perPage, total)
+        });
     }
 
-    /// <summary>PUT /api/admin/vetting/{id} - Update vetting record (alias).</summary>
-    [HttpPut("vetting/{id:int}")]
-    public IActionResult UpdateVettingRecord(int id)
+    /// <summary>GET /api/v2/admin/vetting/stats - Laravel React vetting stats.</summary>
+    [HttpGet("/api/v2/admin/vetting/stats")]
+    public async Task<IActionResult> GetVettingStats()
     {
-        return Ok(new { success = true, message = "Vetting record updated", id });
+        var tenantId = GetTenantId();
+        var records = await _db.VettingRecords
+            .AsNoTracking()
+            .Where(v => v.TenantId == tenantId)
+            .ToListAsync();
+
+        var byStatus = records
+            .GroupBy(v => v.Status)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+        var byType = records
+            .GroupBy(v => v.VettingType)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+        var now = DateTime.UtcNow;
+        var cutoff = now.AddDays(30);
+        var expiringSoon = records.Count(v => v.Status == "verified" && v.ExpiresAt is not null && v.ExpiresAt >= now && v.ExpiresAt <= cutoff);
+        var expired = records.Count(v => v.ExpiresAt is not null && v.ExpiresAt < now && (v.Status == "verified" || v.Status == "expired"));
+
+        return Ok(new
+        {
+            data = new
+            {
+                total = records.Count,
+                by_status = byStatus,
+                by_type = byType,
+                expiring_soon = expiringSoon,
+                expired,
+                pending = byStatus.GetValueOrDefault("pending"),
+                submitted = byStatus.GetValueOrDefault("submitted"),
+                pending_review = byStatus.GetValueOrDefault("pending") + byStatus.GetValueOrDefault("submitted"),
+                verified = byStatus.GetValueOrDefault("verified"),
+                rejected = byStatus.GetValueOrDefault("rejected")
+            },
+            meta = LaravelMeta()
+        });
     }
 
-    /// <summary>DELETE /api/admin/vetting/{id} - Delete vetting record (alias).</summary>
-    [HttpDelete("vetting/{id:int}")]
-    public IActionResult DeleteVettingRecord(int id)
+    /// <summary>GET /api/v2/admin/vetting/{id} - Laravel React vetting detail.</summary>
+    [HttpGet("/api/v2/admin/vetting/{id:int}")]
+    public async Task<IActionResult> GetVettingRecord(int id)
     {
-        return Ok(new { success = true, message = "Vetting record deleted", id });
+        var tenantId = GetTenantId();
+        var record = await LoadLaravelVettingRecordAsync(tenantId, id);
+        if (record == null)
+        {
+            return NotFound(new { success = false, code = "NOT_FOUND", message = "Vetting record not found" });
+        }
+
+        var metadata = await LoadLaravelVettingMetadataAsync(tenantId, id);
+        return Ok(new { data = MapLaravelVettingRecord(record, metadata), meta = LaravelMeta() });
     }
 
-    /// <summary>GET /api/admin/vetting/user/{userId} - User vetting records.</summary>
-    [HttpGet("vetting/user/{userId}")]
-    public IActionResult GetUserVettingRecords(int userId)
+    /// <summary>POST /api/v2/admin/vetting - Create vetting record.</summary>
+    [HttpPost("/api/v2/admin/vetting")]
+    public async Task<IActionResult> CreateVettingRecord([FromBody] JsonElement body)
     {
-        return Ok(new { data = Array.Empty<object>(), total = 0, user_id = userId });
+        var tenantId = GetTenantId();
+        var userId = ReadInt(body, "user_id") ?? 0;
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Id == userId);
+        if (user == null)
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "User not found in tenant", field = "user_id" });
+        }
+
+        var vettingType = NormalizeLaravelVettingType(ReadString(body, "vetting_type"));
+        if (!IsLaravelVettingType(vettingType))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Invalid vetting type", field = "vetting_type" });
+        }
+
+        var status = NormalizeLaravelVettingStatus(ReadString(body, "status"));
+        if (!IsLaravelVettingStatus(status))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Invalid status", field = "status" });
+        }
+
+        var issueDate = ReadDateTime(body, "issue_date") ?? ReadDateTime(body, "issued_at");
+        var expiryDate = ReadDateTime(body, "expiry_date") ?? ReadDateTime(body, "expires_at");
+        if (issueDate is not null && expiryDate is not null && expiryDate < issueDate)
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Expiry date must be after issue date", field = "expiry_date" });
+        }
+
+        var record = new VettingRecord
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            VettingType = vettingType,
+            Status = status,
+            ReferenceNumber = ReadString(body, "reference_number"),
+            IssuedAt = issueDate,
+            ExpiresAt = expiryDate,
+            DocumentUrl = ReadString(body, "document_url"),
+            Notes = ReadString(body, "notes"),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.VettingRecords.Add(record);
+        await _db.SaveChangesAsync();
+
+        var metadata = LaravelVettingMetadata.FromBody(body);
+        await SaveLaravelVettingMetadataAsync(tenantId, record.Id, metadata);
+
+        var saved = await LoadLaravelVettingRecordAsync(tenantId, record.Id);
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = MapLaravelVettingRecord(saved!, metadata),
+            meta = LaravelMeta()
+        });
     }
 
-    /// <summary>POST /api/admin/vetting/{id}/upload - Upload vetting document.</summary>
-    [HttpPost("vetting/{id:int}/upload")]
-    public IActionResult UploadVettingDocument(int id)
+    /// <summary>PUT /api/v2/admin/vetting/{id} - Update vetting record.</summary>
+    [HttpPut("/api/v2/admin/vetting/{id:int}")]
+    public async Task<IActionResult> UpdateVettingRecord(int id, [FromBody] JsonElement body)
     {
-        return Ok(new { success = true, message = "Document uploaded", id });
+        var tenantId = GetTenantId();
+        var record = await _db.VettingRecords.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == id);
+        if (record == null)
+        {
+            return NotFound(new { success = false, code = "NOT_FOUND", message = "Vetting record not found" });
+        }
+
+        if (body.TryGetProperty("vetting_type", out _))
+        {
+            var vettingType = NormalizeLaravelVettingType(ReadString(body, "vetting_type"));
+            if (!IsLaravelVettingType(vettingType))
+            {
+                return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Invalid vetting type", field = "vetting_type" });
+            }
+
+            record.VettingType = vettingType;
+        }
+
+        if (body.TryGetProperty("status", out _))
+        {
+            var status = NormalizeLaravelVettingStatus(ReadString(body, "status"));
+            if (!IsLaravelVettingStatus(status))
+            {
+                return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Invalid status", field = "status" });
+            }
+
+            record.Status = status;
+        }
+
+        if (body.TryGetProperty("reference_number", out _)) record.ReferenceNumber = ReadString(body, "reference_number");
+        if (body.TryGetProperty("issue_date", out _) || body.TryGetProperty("issued_at", out _))
+        {
+            record.IssuedAt = ReadDateTime(body, "issue_date") ?? ReadDateTime(body, "issued_at");
+        }
+        if (body.TryGetProperty("expiry_date", out _) || body.TryGetProperty("expires_at", out _))
+        {
+            record.ExpiresAt = ReadDateTime(body, "expiry_date") ?? ReadDateTime(body, "expires_at");
+        }
+        if (record.IssuedAt is not null && record.ExpiresAt is not null && record.ExpiresAt < record.IssuedAt)
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Expiry date must be after issue date", field = "expiry_date" });
+        }
+        if (body.TryGetProperty("document_url", out _)) record.DocumentUrl = ReadString(body, "document_url");
+        if (body.TryGetProperty("notes", out _)) record.Notes = ReadString(body, "notes");
+        record.UpdatedAt = DateTime.UtcNow;
+
+        var metadata = await LoadLaravelVettingMetadataAsync(tenantId, id);
+        metadata.ApplyBody(body);
+        await SaveLaravelVettingMetadataAsync(tenantId, id, metadata, saveChanges: false);
+        await _db.SaveChangesAsync();
+
+        var saved = await LoadLaravelVettingRecordAsync(tenantId, id);
+        return Ok(new { data = MapLaravelVettingRecord(saved!, metadata), meta = LaravelMeta() });
     }
 
-    /// <summary>POST /api/admin/vetting/bulk - Bulk vetting action.</summary>
-    [HttpPost("vetting/bulk")]
-    public IActionResult BulkVettingAction()
+    /// <summary>DELETE /api/v2/admin/vetting/{id} - Delete vetting record.</summary>
+    [HttpDelete("/api/v2/admin/vetting/{id:int}")]
+    public async Task<IActionResult> DeleteVettingRecord(int id)
     {
-        return Ok(new { success = true, message = "Bulk action completed", processed_count = 0 });
+        var tenantId = GetTenantId();
+        var record = await _db.VettingRecords.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == id);
+        if (record == null)
+        {
+            return NotFound(new { success = false, code = "NOT_FOUND", message = "Vetting record not found" });
+        }
+
+        _db.VettingRecords.Remove(record);
+        await DeleteLaravelVettingMetadataAsync(tenantId, id, saveChanges: false);
+        await _db.SaveChangesAsync();
+        return Ok(new { data = new { deleted = true, id }, meta = LaravelMeta() });
     }
 
-    /// <summary>POST /api/admin/vetting/{id}/verify - Verify vetting record (POST).</summary>
-    [HttpPost("vetting/{id:int}/verify")]
-    public IActionResult PostVerifyVettingRecord(int id)
+    /// <summary>GET /api/v2/admin/vetting/user/{userId} - User vetting records.</summary>
+    [HttpGet("/api/v2/admin/vetting/user/{userId:int}")]
+    public async Task<IActionResult> GetUserVettingRecords(int userId)
     {
-        return Ok(new { success = true, message = "Vetting record verified", id });
+        var tenantId = GetTenantId();
+        var records = await _db.VettingRecords
+            .AsNoTracking()
+            .Include(v => v.User)
+            .Include(v => v.VerifiedBy)
+            .Where(v => v.TenantId == tenantId && v.UserId == userId)
+            .OrderByDescending(v => v.CreatedAt)
+            .ToListAsync();
+        var metadata = await LoadLaravelVettingMetadataAsync(tenantId, records.Select(v => v.Id));
+        return Ok(new
+        {
+            data = records.Select(v => MapLaravelVettingRecord(v, metadata.GetValueOrDefault(v.Id))),
+            meta = LaravelMeta()
+        });
     }
 
-    /// <summary>POST /api/admin/vetting/{id}/reject - Reject vetting record (POST).</summary>
-    [HttpPost("vetting/{id:int}/reject")]
-    public IActionResult PostRejectVettingRecord(int id)
+    /// <summary>POST /api/v2/admin/vetting/{id}/upload - Upload vetting document.</summary>
+    [HttpPost("/api/v2/admin/vetting/{id:int}/upload")]
+    public async Task<IActionResult> UploadVettingDocument(int id, IFormFile? file)
     {
-        return Ok(new { success = true, message = "Vetting record rejected", id });
+        var tenantId = GetTenantId();
+        var record = await _db.VettingRecords.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == id);
+        if (record == null)
+        {
+            return NotFound(new { success = false, code = "NOT_FOUND", message = "Vetting record not found" });
+        }
+        if (file == null || file.Length == 0)
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "File is required", field = "file" });
+        }
+
+        record.DocumentUrl = $"/uploads/vetting/documents/{id}/{Path.GetFileName(file.FileName)}";
+        record.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var saved = await LoadLaravelVettingRecordAsync(tenantId, id);
+        var metadata = await LoadLaravelVettingMetadataAsync(tenantId, id);
+        return Ok(new { data = MapLaravelVettingRecord(saved!, metadata), meta = LaravelMeta() });
+    }
+
+    /// <summary>POST /api/v2/admin/vetting/bulk - Bulk vetting action.</summary>
+    [HttpPost("/api/v2/admin/vetting/bulk")]
+    public async Task<IActionResult> BulkVettingAction([FromBody] JsonElement body)
+    {
+        var tenantId = GetTenantId();
+        var adminId = GetCurrentUserId();
+        var ids = ReadIntArray(body, "ids");
+        var action = (ReadString(body, "action") ?? "").Trim().ToLowerInvariant();
+        var reason = ReadString(body, "reason");
+        if (ids.Length == 0)
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "ids must be a non-empty array", field = "ids" });
+        }
+        if (action is not ("verify" or "reject" or "delete"))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Invalid bulk action", field = "action" });
+        }
+        if (action == "reject" && string.IsNullOrWhiteSpace(reason))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Rejection reason is required", field = "reason" });
+        }
+
+        var processed = 0;
+        var failed = 0;
+        foreach (var id in ids.Take(100))
+        {
+            var record = await _db.VettingRecords.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == id);
+            if (record == null)
+            {
+                failed++;
+                continue;
+            }
+
+            if (action == "delete")
+            {
+                _db.VettingRecords.Remove(record);
+                await DeleteLaravelVettingMetadataAsync(tenantId, id, saveChanges: false);
+                processed++;
+                continue;
+            }
+
+            if (action == "verify")
+            {
+                if (string.IsNullOrWhiteSpace(record.ReferenceNumber))
+                {
+                    failed++;
+                    continue;
+                }
+
+                record.Status = "verified";
+                record.VerifiedById = adminId;
+                record.VerifiedAt = DateTime.UtcNow;
+                record.UpdatedAt = DateTime.UtcNow;
+                processed++;
+                continue;
+            }
+
+            var metadata = await LoadLaravelVettingMetadataAsync(tenantId, id);
+            record.Status = "rejected";
+            record.UpdatedAt = DateTime.UtcNow;
+            metadata.RejectedBy = adminId;
+            metadata.RejectedAt = DateTime.UtcNow;
+            metadata.RejectionReason = reason;
+            await SaveLaravelVettingMetadataAsync(tenantId, id, metadata, saveChanges: false);
+            processed++;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            data = new { action, processed, failed, total = ids.Length },
+            meta = LaravelMeta()
+        });
+    }
+
+    /// <summary>POST /api/v2/admin/vetting/{id}/verify - Verify vetting record.</summary>
+    [HttpPost("/api/v2/admin/vetting/{id:int}/verify")]
+    public async Task<IActionResult> PostVerifyVettingRecord(int id)
+    {
+        var tenantId = GetTenantId();
+        var adminId = GetCurrentUserId();
+        var record = await _db.VettingRecords.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == id);
+        if (record == null)
+        {
+            return NotFound(new { success = false, code = "NOT_FOUND", message = "Vetting record not found" });
+        }
+        if (string.IsNullOrWhiteSpace(record.ReferenceNumber))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Reference number is required", field = "reference_number" });
+        }
+
+        record.Status = "verified";
+        record.VerifiedById = adminId;
+        record.VerifiedAt = DateTime.UtcNow;
+        record.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var saved = await LoadLaravelVettingRecordAsync(tenantId, id);
+        var metadata = await LoadLaravelVettingMetadataAsync(tenantId, id);
+        return Ok(new { data = MapLaravelVettingRecord(saved!, metadata), meta = LaravelMeta() });
+    }
+
+    /// <summary>POST /api/v2/admin/vetting/{id}/reject - Reject vetting record.</summary>
+    [HttpPost("/api/v2/admin/vetting/{id:int}/reject")]
+    public async Task<IActionResult> PostRejectVettingRecord(int id, [FromBody] JsonElement body)
+    {
+        var tenantId = GetTenantId();
+        var adminId = GetCurrentUserId();
+        var reason = ReadString(body, "reason")?.Trim();
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Rejection reason is required", field = "reason" });
+        }
+
+        var record = await _db.VettingRecords.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == id);
+        if (record == null)
+        {
+            return NotFound(new { success = false, code = "NOT_FOUND", message = "Vetting record not found" });
+        }
+
+        record.Status = "rejected";
+        record.UpdatedAt = DateTime.UtcNow;
+        var metadata = await LoadLaravelVettingMetadataAsync(tenantId, id);
+        metadata.RejectedBy = adminId;
+        metadata.RejectedAt = DateTime.UtcNow;
+        metadata.RejectionReason = reason;
+        await SaveLaravelVettingMetadataAsync(tenantId, id, metadata, saveChanges: false);
+        await _db.SaveChangesAsync();
+
+        var saved = await LoadLaravelVettingRecordAsync(tenantId, id);
+        return Ok(new { data = MapLaravelVettingRecord(saved!, metadata), meta = LaravelMeta() });
     }
 
     // ───────────────────────────────────────────────────────────────
@@ -1964,127 +2349,317 @@ public class AdminCompatibility3Controller : ControllerBase
     // Existing InsuranceController is at /api/insurance — no conflict.
     // ───────────────────────────────────────────────────────────────
 
-    /// <summary>GET /api/admin/insurance - List all certificates.</summary>
+    /// <summary>GET /api/v2/admin/insurance - Laravel React insurance list.</summary>
     [HttpGet("insurance")]
-    public async Task<IActionResult> ListInsuranceCertificates([FromQuery] string? status = null)
+    public async Task<IActionResult> ListInsuranceCertificates(
+        [FromQuery] string? status = null,
+        [FromQuery(Name = "insurance_type")] string? insuranceType = null,
+        [FromQuery] string? search = null,
+        [FromQuery(Name = "expiring_soon")] bool expiringSoon = false,
+        [FromQuery] bool expired = false,
+        [FromQuery] int page = 1,
+        [FromQuery(Name = "per_page")] int perPage = 25)
     {
-        var certs = await _insurance.AdminListPendingAsync();
-        if (status == "expiring")
+        var tenantId = GetTenantId();
+        page = Math.Max(1, page);
+        perPage = Math.Clamp(perPage, 1, 100);
+
+        var query = _db.InsuranceCertificates
+            .AsNoTracking()
+            .Include(c => c.User)
+            .Include(c => c.VerifiedBy)
+            .Where(c => c.TenantId == tenantId)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
         {
-            certs = await _insurance.AdminListExpiringAsync(30);
+            var normalizedStatus = status.Trim().ToLowerInvariant();
+            query = normalizedStatus == "pending_review"
+                ? query.Where(c => c.Status == "pending" || c.Status == "submitted")
+                : query.Where(c => c.Status == normalizedStatus);
         }
+
+        if (!string.IsNullOrWhiteSpace(insuranceType))
+        {
+            var normalizedType = insuranceType.Trim().ToLowerInvariant();
+            query = query.Where(c => c.Type == normalizedType);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var lowered = search.Trim().ToLowerInvariant();
+            query = query.Where(c =>
+                (c.Provider != null && c.Provider.ToLower().Contains(lowered)) ||
+                (c.PolicyNumber != null && c.PolicyNumber.ToLower().Contains(lowered)) ||
+                (c.User != null && c.User.Email.ToLower().Contains(lowered)) ||
+                (c.User != null && (c.User.FirstName + " " + c.User.LastName).ToLower().Contains(lowered)));
+        }
+
+        if (expiringSoon)
+        {
+            var now = DateTime.UtcNow;
+            var cutoff = now.AddDays(30);
+            query = query.Where(c => c.ExpiryDate >= now && c.ExpiryDate <= cutoff && c.Status != "expired");
+        }
+
+        if (expired)
+        {
+            var now = DateTime.UtcNow;
+            query = query.Where(c => c.ExpiryDate < now || c.Status == "expired");
+        }
+
+        var total = await query.CountAsync();
+        var certs = await query
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip((page - 1) * perPage)
+            .Take(perPage)
+            .ToListAsync();
+
         return Ok(new
         {
-            data = certs.Select(c => MapInsuranceCert(c)),
-            total = certs.Count
+            data = certs.Select(MapLaravelInsuranceCertificate),
+            meta = LaravelPaginationMeta(page, perPage, total)
         });
     }
 
-    /// <summary>GET /api/admin/insurance/stats - Insurance stats.</summary>
+    /// <summary>GET /api/v2/admin/insurance/stats - Laravel React insurance stats.</summary>
     [HttpGet("insurance/stats")]
     public async Task<IActionResult> GetInsuranceStats()
     {
-        var pending = await _insurance.AdminListPendingAsync();
-        var expiring = await _insurance.AdminListExpiringAsync(30);
+        var tenantId = GetTenantId();
+        var certs = await _db.InsuranceCertificates
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId)
+            .ToListAsync();
+        var now = DateTime.UtcNow;
+        var cutoff = now.AddDays(30);
+
         return Ok(new
         {
-            pending_count = pending.Count,
-            expiring_count = expiring.Count,
-            generated_at = DateTime.UtcNow
+            data = new
+            {
+                total = certs.Count,
+                pending = certs.Count(c => c.Status == "pending"),
+                submitted = certs.Count(c => c.Status == "submitted"),
+                pending_review = certs.Count(c => c.Status == "pending" || c.Status == "submitted"),
+                verified = certs.Count(c => c.Status == "verified"),
+                expired = certs.Count(c => c.Status == "expired" || c.ExpiryDate < now),
+                expiring_soon = certs.Count(c => c.ExpiryDate >= now && c.ExpiryDate <= cutoff && c.Status is not ("expired" or "rejected" or "revoked")),
+                rejected = certs.Count(c => c.Status == "rejected"),
+                revoked = certs.Count(c => c.Status == "revoked")
+            },
+            meta = LaravelMeta()
         });
     }
 
-    /// <summary>GET /api/admin/insurance/{id} - Get certificate.</summary>
+    /// <summary>GET /api/v2/admin/insurance/{id} - Laravel React insurance detail.</summary>
     [HttpGet("insurance/{id:int}")]
     public async Task<IActionResult> GetInsuranceCertificate(int id)
     {
-        var cert = await _insurance.GetByIdAsync(id);
-        if (cert == null) return NotFound(new { error = "Certificate not found" });
-        return Ok(new { data = MapInsuranceCert(cert) });
+        var tenantId = GetTenantId();
+        var cert = await LoadLaravelInsuranceCertificateAsync(tenantId, id);
+        if (cert == null) return NotFound(new { success = false, code = "NOT_FOUND", message = "Insurance certificate not found" });
+        return Ok(new { data = MapLaravelInsuranceCertificate(cert), meta = LaravelMeta() });
     }
 
-    /// <summary>POST /api/admin/insurance - Create certificate.</summary>
+    /// <summary>POST /api/v2/admin/insurance - Create certificate.</summary>
     [HttpPost("insurance")]
-    public IActionResult CreateInsuranceCertificate()
+    public async Task<IActionResult> CreateInsuranceCertificate([FromBody] JsonElement body)
     {
-        return Ok(new { success = true, message = "Insurance certificate created", id = 0 });
-    }
-
-    /// <summary>PUT /api/admin/insurance/{id} - Update certificate.</summary>
-    [HttpPut("insurance/{id:int}")]
-    public IActionResult UpdateInsuranceCertificate(int id)
-    {
-        return Ok(new { success = true, message = "Insurance certificate updated", id });
-    }
-
-    /// <summary>POST /api/admin/insurance/{id}/verify - Verify certificate.</summary>
-    [HttpPost("insurance/{id:int}/verify")]
-    public async Task<IActionResult> VerifyInsuranceCertificate(int id)
-    {
-        var adminId = GetCurrentUserId();
-        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
-
-        var (cert, error) = await _insurance.AdminVerifyAsync(id, adminId.Value);
-        if (error != null) return NotFound(new { error });
-        return Ok(new { success = true, message = "Certificate verified", data = new { cert!.Id, cert.Status, verified_at = cert.VerifiedAt } });
-    }
-
-    /// <summary>POST /api/admin/insurance/{id}/reject - Reject certificate.</summary>
-    [HttpPost("insurance/{id:int}/reject")]
-    public async Task<IActionResult> RejectInsuranceCertificate(int id)
-    {
-        var adminId = GetCurrentUserId();
-        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
-
-        var (cert, error) = await _insurance.AdminRejectAsync(id, adminId.Value);
-        if (error != null) return NotFound(new { error });
-        return Ok(new { success = true, message = "Certificate rejected", data = new { cert!.Id, cert.Status } });
-    }
-
-    /// <summary>DELETE /api/admin/insurance/{id} - Delete certificate.</summary>
-    [HttpDelete("insurance/{id:int}")]
-    public async Task<IActionResult> DeleteInsuranceCertificate(int id)
-    {
-        var cert = await _insurance.GetByIdAsync(id);
-        if (cert == null) return NotFound(new { error = "Certificate not found" });
-
-        var error = await _insurance.DeleteAsync(id, cert.UserId);
-        if (error != null) return BadRequest(new { error });
-        return Ok(new { success = true, message = "Certificate deleted", id });
-    }
-
-    /// <summary>GET /api/admin/insurance/user/{userId} - User certificates.</summary>
-    [HttpGet("insurance/user/{userId}")]
-    public async Task<IActionResult> GetUserInsuranceCertificates(int userId)
-    {
-        var certs = await _insurance.GetUserCertificatesAsync(userId);
-        return Ok(new
+        var tenantId = GetTenantId();
+        var userId = ReadInt(body, "user_id") ?? 0;
+        var userExists = await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.Id == userId);
+        if (!userExists)
         {
-            data = certs.Select(c => MapInsuranceCert(c)),
-            total = certs.Count,
-            user_id = userId
+            return NotFound(new { success = false, code = "NOT_FOUND", message = "User not found", field = "user_id" });
+        }
+
+        var insuranceType = NormalizeLaravelInsuranceType(ReadString(body, "insurance_type"));
+        if (!IsLaravelInsuranceType(insuranceType))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Invalid insurance type", field = "insurance_type" });
+        }
+
+        var status = NormalizeLaravelInsuranceStatus(ReadString(body, "status"));
+        if (!IsLaravelInsuranceStatus(status))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Invalid status", field = "status" });
+        }
+
+        var startDate = ReadDateTime(body, "start_date") ?? DateTime.UtcNow;
+        var expiryDate = ReadDateTime(body, "expiry_date") ?? startDate.AddYears(1);
+        if (expiryDate < startDate)
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Expiry date must be after start date", field = "expiry_date" });
+        }
+
+        var cert = new InsuranceCertificate
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            Type = insuranceType,
+            Status = status,
+            Provider = ReadString(body, "provider_name"),
+            PolicyNumber = ReadString(body, "policy_number"),
+            CoverAmount = ReadDecimal(body, "coverage_amount"),
+            StartDate = startDate,
+            ExpiryDate = expiryDate,
+            DocumentUrl = ReadString(body, "certificate_file_path") ?? ReadString(body, "document_url"),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.InsuranceCertificates.Add(cert);
+        await _db.SaveChangesAsync();
+        var notes = ReadString(body, "notes");
+        if (!string.IsNullOrWhiteSpace(notes))
+        {
+            await SaveLaravelInsuranceNotesAsync(tenantId, cert.Id, notes);
+        }
+
+        var saved = await LoadLaravelInsuranceCertificateAsync(tenantId, cert.Id);
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            data = MapLaravelInsuranceCertificate(saved!, notes),
+            meta = LaravelMeta()
         });
     }
 
-    private static object MapInsuranceCert(InsuranceCertificate c) => new
+    /// <summary>PUT /api/v2/admin/insurance/{id} - Update certificate.</summary>
+    [HttpPut("insurance/{id:int}")]
+    public async Task<IActionResult> UpdateInsuranceCertificate(int id, [FromBody] JsonElement body)
     {
-        c.Id,
-        user_id = c.UserId,
-        c.Type,
-        c.Provider,
-        policy_number = c.PolicyNumber,
-        cover_amount = c.CoverAmount,
-        start_date = c.StartDate,
-        expiry_date = c.ExpiryDate,
-        document_url = c.DocumentUrl,
-        c.Status,
-        verified_at = c.VerifiedAt,
-        verified_by_id = c.VerifiedById,
-        created_at = c.CreatedAt,
-        updated_at = c.UpdatedAt,
-        user = c.User != null ? new { c.User.Id, c.User.FirstName, c.User.LastName, c.User.Email } : null,
-        verified_by = c.VerifiedBy != null ? new { c.VerifiedBy.Id, c.VerifiedBy.FirstName, c.VerifiedBy.LastName } : null
-    };
+        var tenantId = GetTenantId();
+        var cert = await _db.InsuranceCertificates.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == id);
+        if (cert == null)
+        {
+            return NotFound(new { success = false, code = "NOT_FOUND", message = "Insurance certificate not found" });
+        }
+
+        if (body.TryGetProperty("insurance_type", out _))
+        {
+            var insuranceType = NormalizeLaravelInsuranceType(ReadString(body, "insurance_type"));
+            if (!IsLaravelInsuranceType(insuranceType))
+            {
+                return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Invalid insurance type", field = "insurance_type" });
+            }
+            cert.Type = insuranceType;
+        }
+
+        if (body.TryGetProperty("status", out _))
+        {
+            var status = NormalizeLaravelInsuranceStatus(ReadString(body, "status"));
+            if (!IsLaravelInsuranceStatus(status))
+            {
+                return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Invalid status", field = "status" });
+            }
+            cert.Status = status;
+        }
+
+        if (body.TryGetProperty("provider_name", out _)) cert.Provider = ReadString(body, "provider_name");
+        if (body.TryGetProperty("policy_number", out _)) cert.PolicyNumber = ReadString(body, "policy_number");
+        if (body.TryGetProperty("coverage_amount", out _)) cert.CoverAmount = ReadDecimal(body, "coverage_amount");
+        if (body.TryGetProperty("start_date", out _)) cert.StartDate = ReadDateTime(body, "start_date") ?? cert.StartDate;
+        if (body.TryGetProperty("expiry_date", out _)) cert.ExpiryDate = ReadDateTime(body, "expiry_date") ?? cert.ExpiryDate;
+        if (cert.ExpiryDate < cert.StartDate)
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Expiry date must be after start date", field = "expiry_date" });
+        }
+        if (body.TryGetProperty("certificate_file_path", out _) || body.TryGetProperty("document_url", out _))
+        {
+            cert.DocumentUrl = ReadString(body, "certificate_file_path") ?? ReadString(body, "document_url");
+        }
+        cert.UpdatedAt = DateTime.UtcNow;
+
+        var notes = ReadString(body, "notes");
+        if (body.TryGetProperty("notes", out _))
+        {
+            await SaveLaravelInsuranceNotesAsync(tenantId, id, notes, saveChanges: false);
+        }
+        await _db.SaveChangesAsync();
+
+        var saved = await LoadLaravelInsuranceCertificateAsync(tenantId, id);
+        return Ok(new { data = MapLaravelInsuranceCertificate(saved!, notes), meta = LaravelMeta() });
+    }
+
+    /// <summary>POST /api/v2/admin/insurance/{id}/verify - Verify certificate.</summary>
+    [HttpPost("insurance/{id:int}/verify")]
+    public async Task<IActionResult> VerifyInsuranceCertificate(int id)
+    {
+        var tenantId = GetTenantId();
+        var adminId = GetCurrentUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+        var cert = await _db.InsuranceCertificates.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == id);
+        if (cert == null) return NotFound(new { success = false, code = "NOT_FOUND", message = "Insurance certificate not found" });
+
+        cert.Status = "verified";
+        cert.VerifiedById = adminId.Value;
+        cert.VerifiedAt = DateTime.UtcNow;
+        cert.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var saved = await LoadLaravelInsuranceCertificateAsync(tenantId, id);
+        return Ok(new { data = MapLaravelInsuranceCertificate(saved!), meta = LaravelMeta() });
+    }
+
+    /// <summary>POST /api/v2/admin/insurance/{id}/reject - Reject certificate.</summary>
+    [HttpPost("insurance/{id:int}/reject")]
+    public async Task<IActionResult> RejectInsuranceCertificate(int id, [FromBody] JsonElement body)
+    {
+        var tenantId = GetTenantId();
+        var adminId = GetCurrentUserId();
+        if (adminId == null) return Unauthorized(new { error = "Invalid token" });
+        var reason = ReadString(body, "reason")?.Trim();
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", message = "Rejection reason is required", field = "reason" });
+        }
+
+        var cert = await _db.InsuranceCertificates.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == id);
+        if (cert == null) return NotFound(new { success = false, code = "NOT_FOUND", message = "Insurance certificate not found" });
+
+        cert.Status = "rejected";
+        cert.VerifiedById = adminId.Value;
+        cert.VerifiedAt = DateTime.UtcNow;
+        cert.UpdatedAt = DateTime.UtcNow;
+        await SaveLaravelInsuranceNotesAsync(tenantId, id, reason, saveChanges: false);
+        await _db.SaveChangesAsync();
+
+        var saved = await LoadLaravelInsuranceCertificateAsync(tenantId, id);
+        return Ok(new { data = MapLaravelInsuranceCertificate(saved!, reason), meta = LaravelMeta() });
+    }
+
+    /// <summary>DELETE /api/v2/admin/insurance/{id} - Delete certificate.</summary>
+    [HttpDelete("insurance/{id:int}")]
+    public async Task<IActionResult> DeleteInsuranceCertificate(int id)
+    {
+        var tenantId = GetTenantId();
+        var cert = await _db.InsuranceCertificates.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == id);
+        if (cert == null) return NotFound(new { success = false, code = "NOT_FOUND", message = "Insurance certificate not found" });
+
+        _db.InsuranceCertificates.Remove(cert);
+        await DeleteLaravelInsuranceNotesAsync(tenantId, id, saveChanges: false);
+        await _db.SaveChangesAsync();
+        return Ok(new { data = new { deleted = true, id }, meta = LaravelMeta() });
+    }
+
+    /// <summary>GET /api/v2/admin/insurance/user/{userId} - User certificates.</summary>
+    [HttpGet("insurance/user/{userId:int}")]
+    public async Task<IActionResult> GetUserInsuranceCertificates(int userId)
+    {
+        var tenantId = GetTenantId();
+        var certs = await _db.InsuranceCertificates
+            .AsNoTracking()
+            .Include(c => c.User)
+            .Include(c => c.VerifiedBy)
+            .Where(c => c.TenantId == tenantId && c.UserId == userId)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+        return Ok(new
+        {
+            data = certs.Select(MapLaravelInsuranceCertificate),
+            meta = LaravelMeta()
+        });
+    }
 
     // ───────────────────────────────────────────────────────────────
     // Cron Job Monitoring (/api/admin/system/cron-jobs)
@@ -2094,65 +2669,187 @@ public class AdminCompatibility3Controller : ControllerBase
 
     /// <summary>GET /api/admin/system/cron-jobs/logs - List cron job logs.</summary>
     [HttpGet("system/cron-jobs/logs")]
-    public IActionResult ListCronJobLogs([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? job_id = null)
+    public async Task<IActionResult> ListCronJobLogs(
+        [FromQuery] string? jobId = null,
+        [FromQuery(Name = "job_id")] string? jobIdSnake = null,
+        [FromQuery] int limit = 50,
+        [FromQuery] int offset = 0,
+        [FromQuery] string? status = null,
+        [FromQuery] string? startDate = null,
+        [FromQuery] string? endDate = null)
     {
-        return Ok(new { data = Array.Empty<object>(), meta = new { page, limit, total = 0 } });
+        var tenantId = GetTenantId();
+        limit = Math.Clamp(limit, 1, 200);
+        offset = Math.Max(0, offset);
+        var query = VisibleCronRuns(tenantId).AsNoTracking();
+        var resolvedJobId = string.IsNullOrWhiteSpace(jobId) ? jobIdSnake : jobId;
+
+        if (!string.IsNullOrWhiteSpace(resolvedJobId))
+        {
+            query = query.Where(r => r.JobName == resolvedJobId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var mapped = FromLaravelCronStatus(status);
+            query = query.Where(r => r.Status == mapped);
+        }
+
+        if (DateTime.TryParse(startDate, out var start))
+        {
+            query = query.Where(r => r.StartedAt >= NormalizeUtc(start));
+        }
+
+        if (DateTime.TryParse(endDate, out var end))
+        {
+            query = query.Where(r => r.StartedAt <= NormalizeUtc(end));
+        }
+
+        var total = await query.CountAsync();
+        var logs = await query
+            .OrderByDescending(r => r.StartedAt)
+            .Skip(offset)
+            .Take(limit)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = logs.Select(MapLaravelCronLog),
+            meta = new { total, limit, offset }
+        });
     }
 
     /// <summary>GET /api/admin/system/cron-jobs/logs/{logId} - Cron job log detail.</summary>
     [HttpGet("system/cron-jobs/logs/{logId}")]
-    public IActionResult GetCronJobLog(int logId)
+    public async Task<IActionResult> GetCronJobLog(int logId)
     {
-        return Ok(new { id = logId, job_id = "", status = "success", started_at = DateTime.UtcNow, completed_at = DateTime.UtcNow, duration_ms = 0, output = "" });
+        var tenantId = GetTenantId();
+        var run = await VisibleCronRuns(tenantId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == logId);
+        if (run == null)
+        {
+            return NotFound(new { success = false, message = "Cron log not found" });
+        }
+
+        return Ok(new { data = MapLaravelCronLog(run), meta = LaravelMeta() });
     }
 
     /// <summary>DELETE /api/admin/system/cron-jobs/logs - Clear cron job logs.</summary>
     [HttpDelete("system/cron-jobs/logs")]
-    public IActionResult ClearCronJobLogs()
+    public async Task<IActionResult> ClearCronJobLogs([FromQuery] string? before = null)
     {
-        return Ok(new { success = true, message = "Cron job logs cleared", deleted_count = 0 });
+        var tenantId = GetTenantId();
+        var query = VisibleCronRuns(tenantId);
+        if (DateTime.TryParse(before, out var beforeDate))
+        {
+            var normalizedBefore = NormalizeUtc(beforeDate);
+            query = query.Where(r => r.StartedAt < normalizedBefore);
+        }
+
+        var rows = await query.ToListAsync();
+        _db.ScheduledJobRuns.RemoveRange(rows);
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            data = new { message = $"Deleted {rows.Count} cron log entries.", deleted_count = rows.Count },
+            meta = LaravelMeta()
+        });
     }
 
     /// <summary>GET /api/admin/system/cron-jobs/{jobId}/settings - Job settings.</summary>
     [HttpGet("system/cron-jobs/{jobId}/settings")]
-    public IActionResult GetCronJobSettings(string jobId)
+    public async Task<IActionResult> GetCronJobSettings(string jobId)
     {
-        return Ok(new { job_id = jobId, enabled = true, cron_expression = "0 * * * *", timeout_seconds = 300, retry_count = 3 });
+        var settings = await LoadCronJobSettingsAsync(jobId);
+        return Ok(new { data = MapLaravelCronJobSettings(jobId, settings), meta = LaravelMeta() });
     }
 
     /// <summary>PUT /api/admin/system/cron-jobs/{jobId}/settings - Update job settings.</summary>
     [HttpPut("system/cron-jobs/{jobId}/settings")]
-    public IActionResult UpdateCronJobSettings(string jobId)
+    public async Task<IActionResult> UpdateCronJobSettings(string jobId, [FromBody] JsonElement body)
     {
-        return Ok(new { success = true, message = "Cron job settings updated", job_id = jobId });
+        var settings = await LoadCronJobSettingsAsync(jobId);
+        settings.Apply(body);
+        await SaveCronJobSettingsAsync(jobId, settings);
+        return Ok(new { data = MapLaravelCronJobSettings(jobId, settings), meta = LaravelMeta() });
     }
 
     /// <summary>GET /api/admin/system/cron-jobs/settings - Global cron settings.</summary>
     [HttpGet("system/cron-jobs/settings")]
-    public IActionResult GetGlobalCronSettings()
+    public async Task<IActionResult> GetGlobalCronSettings()
     {
-        return Ok(new { enabled = true, max_concurrent_jobs = 5, default_timeout_seconds = 300, log_retention_days = 30 });
+        var settings = await LoadGlobalCronSettingsAsync();
+        return Ok(new { data = MapLaravelGlobalCronSettings(settings), meta = LaravelMeta() });
     }
 
     /// <summary>PUT /api/admin/system/cron-jobs/settings - Update global cron settings.</summary>
     [HttpPut("system/cron-jobs/settings")]
-    public IActionResult UpdateGlobalCronSettings()
+    public async Task<IActionResult> UpdateGlobalCronSettings([FromBody] JsonElement body)
     {
-        return Ok(new { success = true, message = "Global cron settings updated" });
+        var settings = await LoadGlobalCronSettingsAsync();
+        settings.Apply(body);
+        await SaveGlobalCronSettingsAsync(settings);
+        return Ok(new { data = MapLaravelGlobalCronSettings(settings), meta = LaravelMeta() });
     }
 
     /// <summary>GET /api/admin/system/cron-jobs/health - Cron health metrics.</summary>
     [HttpGet("system/cron-jobs/health")]
-    public IActionResult GetCronJobHealth()
+    public async Task<IActionResult> GetCronJobHealth()
     {
+        var tenantId = GetTenantId();
+        var now = DateTime.UtcNow;
+        var since24h = now.AddHours(-24);
+        var since7d = now.AddDays(-7);
+        var runs = await VisibleCronRuns(tenantId).AsNoTracking().ToListAsync();
+        var recentRuns = runs.Where(r => r.StartedAt >= since7d).ToList();
+        var failures24h = runs.Count(r => r.Status == ScheduledJobRunStatus.Failed && r.StartedAt >= since24h);
+        var recentFailures = runs
+            .Where(r => r.Status == ScheduledJobRunStatus.Failed)
+            .OrderByDescending(r => r.StartedAt)
+            .Take(5)
+            .Select(r => new
+            {
+                job_name = r.JobName,
+                failed_at = r.StartedAt,
+                reason = CronRunOutput(r)
+            })
+            .ToList();
+        var successRate = recentRuns.Count == 0
+            ? 1.0
+            : Math.Round((double)recentRuns.Count(r => r.Status == ScheduledJobRunStatus.Success) / recentRuns.Count, 2);
+
+        var lastByJob = runs
+            .GroupBy(r => r.JobName)
+            .Select(g => g.OrderByDescending(r => r.StartedAt).First())
+            .ToList();
+        var overdue = lastByJob
+            .Where(r => r.StartedAt < since24h)
+            .Take(5)
+            .Select(r => new
+            {
+                job_id = r.JobName,
+                job_name = r.JobName,
+                last_run = r.StartedAt,
+                expected_interval = "24 hours"
+            })
+            .ToList();
+
+        var healthScore = 100 - failures24h * 5 - (int)Math.Round((1.0 - successRate) * 50) - overdue.Count * 10;
+        healthScore = Math.Clamp(healthScore, 0, 100);
+
         return Ok(new
         {
-            status = "healthy",
-            total_jobs = 0,
-            running_jobs = 0,
-            failed_last_24h = 0,
-            next_scheduled = (DateTime?)null,
-            checked_at = DateTime.UtcNow
+            data = new
+            {
+                health_score = healthScore,
+                recent_failures = recentFailures,
+                jobs_failed_24h = failures24h,
+                jobs_overdue = overdue,
+                avg_success_rate_7d = successRate,
+                alert_status = healthScore < 50 ? "critical" : healthScore < 80 ? "warning" : "healthy"
+            },
+            meta = LaravelMeta()
         });
     }
 
@@ -2667,6 +3364,517 @@ public class AdminCompatibility3Controller : ControllerBase
         return IsLaravelCrmNoteCategory(value) ? value!.ToLowerInvariant() : "general";
     }
 
+    private async Task<VettingRecord?> LoadLaravelVettingRecordAsync(int tenantId, int recordId)
+        => await _db.VettingRecords
+            .AsNoTracking()
+            .Include(v => v.User)
+            .Include(v => v.VerifiedBy)
+            .FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == recordId);
+
+    private async Task<LaravelVettingMetadata> LoadLaravelVettingMetadataAsync(int tenantId, int recordId)
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key == LaravelVettingMetadataKey(recordId))
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+
+        return DeserializeLaravelVettingMetadata(raw);
+    }
+
+    private async Task<Dictionary<int, LaravelVettingMetadata>> LoadLaravelVettingMetadataAsync(int tenantId, IEnumerable<int> recordIds)
+    {
+        var ids = recordIds.Distinct().ToArray();
+        if (ids.Length == 0) return new Dictionary<int, LaravelVettingMetadata>();
+
+        var keysById = ids.ToDictionary(id => LaravelVettingMetadataKey(id), id => id);
+        var rows = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && keysById.Keys.Contains(c.Key))
+            .Select(c => new { c.Key, c.Value })
+            .ToListAsync();
+
+        var result = ids.ToDictionary(id => id, _ => new LaravelVettingMetadata());
+        foreach (var row in rows)
+        {
+            if (keysById.TryGetValue(row.Key, out var id))
+            {
+                result[id] = DeserializeLaravelVettingMetadata(row.Value);
+            }
+        }
+
+        return result;
+    }
+
+    private async Task SaveLaravelVettingMetadataAsync(int tenantId, int recordId, LaravelVettingMetadata metadata, bool saveChanges = true)
+    {
+        var key = LaravelVettingMetadataKey(recordId);
+        var now = DateTime.UtcNow;
+        var value = JsonSerializer.Serialize(metadata);
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (row == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = key,
+                Value = value,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            row.Value = value;
+            row.UpdatedAt = now;
+        }
+
+        if (saveChanges)
+        {
+            await _db.SaveChangesAsync();
+        }
+    }
+
+    private async Task DeleteLaravelVettingMetadataAsync(int tenantId, int recordId, bool saveChanges = true)
+    {
+        var key = LaravelVettingMetadataKey(recordId);
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (row != null)
+        {
+            _db.TenantConfigs.Remove(row);
+            if (saveChanges)
+            {
+                await _db.SaveChangesAsync();
+            }
+        }
+    }
+
+    private static LaravelVettingMetadata DeserializeLaravelVettingMetadata(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return new LaravelVettingMetadata();
+        try
+        {
+            return JsonSerializer.Deserialize<LaravelVettingMetadata>(raw) ?? new LaravelVettingMetadata();
+        }
+        catch (JsonException)
+        {
+            return new LaravelVettingMetadata();
+        }
+    }
+
+    private static string LaravelVettingMetadataKey(int recordId) => $"admin.vetting.metadata.{recordId}";
+
+    private static object MapLaravelVettingRecord(VettingRecord record, LaravelVettingMetadata? metadata)
+    {
+        metadata ??= new LaravelVettingMetadata();
+        var rejectedBy = metadata.RejectedBy;
+        return new
+        {
+            id = record.Id,
+            tenant_id = record.TenantId,
+            user_id = record.UserId,
+            first_name = record.User?.FirstName ?? "",
+            last_name = record.User?.LastName ?? "",
+            email = record.User?.Email ?? "",
+            avatar_url = record.User?.AvatarUrl,
+            vetting_type = record.VettingType,
+            status = record.Status,
+            reference_number = record.ReferenceNumber,
+            issue_date = record.IssuedAt,
+            issued_at = record.IssuedAt,
+            expiry_date = record.ExpiresAt,
+            expires_at = record.ExpiresAt,
+            verified_by = record.VerifiedById,
+            verifier_first_name = record.VerifiedBy?.FirstName,
+            verifier_last_name = record.VerifiedBy?.LastName,
+            verified_at = record.VerifiedAt,
+            rejected_by = rejectedBy,
+            rejector_first_name = rejectedBy == record.VerifiedById ? record.VerifiedBy?.FirstName : metadata.RejectorFirstName,
+            rejector_last_name = rejectedBy == record.VerifiedById ? record.VerifiedBy?.LastName : metadata.RejectorLastName,
+            rejected_at = metadata.RejectedAt,
+            rejection_reason = metadata.RejectionReason,
+            document_url = record.DocumentUrl,
+            notes = record.Notes,
+            works_with_children = metadata.WorksWithChildren,
+            works_with_vulnerable_adults = metadata.WorksWithVulnerableAdults,
+            requires_enhanced_check = metadata.RequiresEnhancedCheck,
+            created_at = record.CreatedAt,
+            updated_at = record.UpdatedAt
+        };
+    }
+
+    private static readonly HashSet<string> LaravelVettingTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "dbs_basic",
+        "dbs_standard",
+        "dbs_enhanced",
+        "garda_vetting",
+        "access_ni",
+        "pvg_scotland",
+        "international",
+        "other"
+    };
+
+    private static readonly HashSet<string> LaravelVettingStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "pending",
+        "submitted",
+        "verified",
+        "expired",
+        "rejected",
+        "revoked"
+    };
+
+    private static bool IsLaravelVettingType(string value) => LaravelVettingTypes.Contains(value);
+
+    private static bool IsLaravelVettingStatus(string value) => LaravelVettingStatuses.Contains(value);
+
+    private static string NormalizeLaravelVettingType(string? value)
+    {
+        var normalized = (value ?? "dbs_basic").Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(normalized) ? "dbs_basic" : normalized;
+    }
+
+    private static string NormalizeLaravelVettingStatus(string? value)
+    {
+        var normalized = (value ?? "pending").Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(normalized) ? "pending" : normalized;
+    }
+
+    private sealed class LaravelVettingMetadata
+    {
+        public bool WorksWithChildren { get; set; }
+        public bool WorksWithVulnerableAdults { get; set; }
+        public bool RequiresEnhancedCheck { get; set; }
+        public int? RejectedBy { get; set; }
+        public string? RejectorFirstName { get; set; }
+        public string? RejectorLastName { get; set; }
+        public DateTime? RejectedAt { get; set; }
+        public string? RejectionReason { get; set; }
+
+        public static LaravelVettingMetadata FromBody(JsonElement body)
+        {
+            var metadata = new LaravelVettingMetadata();
+            metadata.ApplyBody(body);
+            return metadata;
+        }
+
+        public void ApplyBody(JsonElement body)
+        {
+            if (body.TryGetProperty("works_with_children", out _))
+            {
+                WorksWithChildren = ReadBool(body, "works_with_children") ?? false;
+            }
+            if (body.TryGetProperty("works_with_vulnerable_adults", out _))
+            {
+                WorksWithVulnerableAdults = ReadBool(body, "works_with_vulnerable_adults") ?? false;
+            }
+            if (body.TryGetProperty("requires_enhanced_check", out _))
+            {
+                RequiresEnhancedCheck = ReadBool(body, "requires_enhanced_check") ?? false;
+            }
+        }
+    }
+
+    private async Task<InsuranceCertificate?> LoadLaravelInsuranceCertificateAsync(int tenantId, int certificateId)
+        => await _db.InsuranceCertificates
+            .AsNoTracking()
+            .Include(c => c.User)
+            .Include(c => c.VerifiedBy)
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == certificateId);
+
+    private object MapLaravelInsuranceCertificate(InsuranceCertificate certificate)
+    {
+        var notes = LoadLaravelInsuranceNotes(certificate.TenantId, certificate.Id);
+        return MapLaravelInsuranceCertificate(certificate, notes);
+    }
+
+    private static object MapLaravelInsuranceCertificate(InsuranceCertificate certificate, string? notes) => new
+    {
+        id = certificate.Id,
+        tenant_id = certificate.TenantId,
+        user_id = certificate.UserId,
+        first_name = certificate.User?.FirstName ?? "",
+        last_name = certificate.User?.LastName ?? "",
+        email = certificate.User?.Email ?? "",
+        avatar_url = certificate.User?.AvatarUrl,
+        insurance_type = certificate.Type,
+        status = certificate.Status,
+        provider_name = certificate.Provider,
+        policy_number = certificate.PolicyNumber,
+        coverage_amount = certificate.CoverAmount,
+        start_date = certificate.StartDate,
+        expiry_date = certificate.ExpiryDate,
+        certificate_file_path = certificate.DocumentUrl,
+        document_url = certificate.DocumentUrl,
+        verified_by = certificate.VerifiedById,
+        verifier_first_name = certificate.VerifiedBy?.FirstName,
+        verifier_last_name = certificate.VerifiedBy?.LastName,
+        verified_at = certificate.VerifiedAt,
+        notes,
+        created_at = certificate.CreatedAt,
+        updated_at = certificate.UpdatedAt
+    };
+
+    private string? LoadLaravelInsuranceNotes(int tenantId, int certificateId)
+    {
+        return _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.Key == LaravelInsuranceNotesKey(certificateId))
+            .Select(c => c.Value)
+            .FirstOrDefault();
+    }
+
+    private async Task SaveLaravelInsuranceNotesAsync(int tenantId, int certificateId, string? notes, bool saveChanges = true)
+    {
+        var key = LaravelInsuranceNotesKey(certificateId);
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (string.IsNullOrWhiteSpace(notes))
+        {
+            if (row != null)
+            {
+                _db.TenantConfigs.Remove(row);
+            }
+        }
+        else if (row == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = key,
+                Value = notes,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            row.Value = notes;
+            row.UpdatedAt = DateTime.UtcNow;
+        }
+
+        if (saveChanges)
+        {
+            await _db.SaveChangesAsync();
+        }
+    }
+
+    private async Task DeleteLaravelInsuranceNotesAsync(int tenantId, int certificateId, bool saveChanges = true)
+    {
+        var key = LaravelInsuranceNotesKey(certificateId);
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (row != null)
+        {
+            _db.TenantConfigs.Remove(row);
+            if (saveChanges)
+            {
+                await _db.SaveChangesAsync();
+            }
+        }
+    }
+
+    private static string LaravelInsuranceNotesKey(int certificateId) => $"admin.insurance.notes.{certificateId}";
+
+    private static readonly HashSet<string> LaravelInsuranceTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "public_liability",
+        "professional_indemnity",
+        "employers_liability",
+        "product_liability",
+        "personal_accident",
+        "other"
+    };
+
+    private static readonly HashSet<string> LaravelInsuranceStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "pending",
+        "submitted",
+        "verified",
+        "expired",
+        "rejected",
+        "revoked"
+    };
+
+    private static bool IsLaravelInsuranceType(string value) => LaravelInsuranceTypes.Contains(value);
+
+    private static bool IsLaravelInsuranceStatus(string value) => LaravelInsuranceStatuses.Contains(value);
+
+    private static string NormalizeLaravelInsuranceType(string? value)
+    {
+        var normalized = (value ?? "public_liability").Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(normalized) ? "public_liability" : normalized;
+    }
+
+    private static string NormalizeLaravelInsuranceStatus(string? value)
+    {
+        var normalized = (value ?? "pending").Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(normalized) ? "pending" : normalized;
+    }
+
+    private IQueryable<ScheduledJobRun> VisibleCronRuns(int tenantId)
+        => _db.ScheduledJobRuns.Where(r => r.TenantId == tenantId || r.TenantId == null);
+
+    private static object MapLaravelCronLog(ScheduledJobRun run) => new
+    {
+        id = run.Id,
+        job_id = run.JobName,
+        job_name = run.JobName,
+        status = ToLaravelCronStatus(run.Status),
+        output = CronRunOutput(run),
+        duration_seconds = CronDurationSeconds(run),
+        executed_at = run.StartedAt,
+        executed_by = "cron"
+    };
+
+    private static string ToLaravelCronStatus(ScheduledJobRunStatus status) => status switch
+    {
+        ScheduledJobRunStatus.Failed => "failed",
+        _ => "success"
+    };
+
+    private static ScheduledJobRunStatus FromLaravelCronStatus(string status)
+        => status.Trim().ToLowerInvariant() switch
+        {
+            "failed" or "error" => ScheduledJobRunStatus.Failed,
+            "running" => ScheduledJobRunStatus.Running,
+            "skipped" => ScheduledJobRunStatus.Skipped,
+            _ => ScheduledJobRunStatus.Success
+        };
+
+    private static string CronRunOutput(ScheduledJobRun run)
+    {
+        if (!string.IsNullOrWhiteSpace(run.ErrorMessage)) return run.ErrorMessage;
+        if (!string.IsNullOrWhiteSpace(run.ErrorType)) return run.ErrorType;
+        return $"Processed {run.ItemsProcessed} item(s).";
+    }
+
+    private static double CronDurationSeconds(ScheduledJobRun run)
+    {
+        if (run.DurationMs.HasValue) return Math.Round(run.DurationMs.Value / 1000d, 3);
+        if (run.CompletedAt.HasValue) return Math.Round((run.CompletedAt.Value - run.StartedAt).TotalSeconds, 3);
+        return 0;
+    }
+
+    private async Task<CronJobSettingsState> LoadCronJobSettingsAsync(string jobId)
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == GetTenantId() && c.Key == CronJobSettingsKey(jobId))
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+        return DeserializeState(raw, () => new CronJobSettingsState());
+    }
+
+    private async Task SaveCronJobSettingsAsync(string jobId, CronJobSettingsState settings)
+        => await SaveStateAsync(CronJobSettingsKey(jobId), settings);
+
+    private async Task<GlobalCronSettingsState> LoadGlobalCronSettingsAsync()
+    {
+        var raw = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == GetTenantId() && c.Key == GlobalCronSettingsKey)
+            .Select(c => c.Value)
+            .FirstOrDefaultAsync();
+        return DeserializeState(raw, () => new GlobalCronSettingsState());
+    }
+
+    private async Task SaveGlobalCronSettingsAsync(GlobalCronSettingsState settings)
+        => await SaveStateAsync(GlobalCronSettingsKey, settings);
+
+    private async Task SaveStateAsync<T>(string key, T state)
+    {
+        var tenantId = GetTenantId();
+        var now = DateTime.UtcNow;
+        var value = JsonSerializer.Serialize(state);
+        var row = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        if (row == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig
+            {
+                TenantId = tenantId,
+                Key = key,
+                Value = value,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            row.Value = value;
+            row.UpdatedAt = now;
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    private static T DeserializeState<T>(string? raw, Func<T> fallback)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return fallback();
+        try
+        {
+            return JsonSerializer.Deserialize<T>(raw) ?? fallback();
+        }
+        catch (JsonException)
+        {
+            return fallback();
+        }
+    }
+
+    private static object MapLaravelCronJobSettings(string jobId, CronJobSettingsState settings) => new
+    {
+        job_id = jobId,
+        is_enabled = settings.IsEnabled,
+        custom_schedule = settings.CustomSchedule,
+        notify_on_failure = settings.NotifyOnFailure,
+        notify_emails = settings.NotifyEmails,
+        max_retries = settings.MaxRetries,
+        timeout_seconds = settings.TimeoutSeconds
+    };
+
+    private static object MapLaravelGlobalCronSettings(GlobalCronSettingsState settings) => new
+    {
+        default_notify_email = settings.DefaultNotifyEmail,
+        log_retention_days = settings.LogRetentionDays,
+        max_concurrent_jobs = settings.MaxConcurrentJobs
+    };
+
+    private static string CronJobSettingsKey(string jobId) => $"admin.cron.job.{jobId}.settings";
+    private const string GlobalCronSettingsKey = "admin.cron.global.settings";
+
+    private sealed class CronJobSettingsState
+    {
+        public bool IsEnabled { get; set; } = true;
+        public string? CustomSchedule { get; set; }
+        public bool NotifyOnFailure { get; set; }
+        public string? NotifyEmails { get; set; }
+        public int MaxRetries { get; set; } = 3;
+        public int TimeoutSeconds { get; set; } = 300;
+
+        public void Apply(JsonElement body)
+        {
+            if (body.TryGetProperty("is_enabled", out _)) IsEnabled = ReadBool(body, "is_enabled") ?? IsEnabled;
+            if (body.TryGetProperty("custom_schedule", out _)) CustomSchedule = ReadString(body, "custom_schedule");
+            if (body.TryGetProperty("notify_on_failure", out _)) NotifyOnFailure = ReadBool(body, "notify_on_failure") ?? NotifyOnFailure;
+            if (body.TryGetProperty("notify_emails", out _)) NotifyEmails = ReadString(body, "notify_emails");
+            if (body.TryGetProperty("max_retries", out _)) MaxRetries = ReadInt(body, "max_retries") ?? MaxRetries;
+            if (body.TryGetProperty("timeout_seconds", out _)) TimeoutSeconds = ReadInt(body, "timeout_seconds") ?? TimeoutSeconds;
+        }
+    }
+
+    private sealed class GlobalCronSettingsState
+    {
+        public string? DefaultNotifyEmail { get; set; }
+        public int LogRetentionDays { get; set; } = 30;
+        public int MaxConcurrentJobs { get; set; } = 5;
+
+        public void Apply(JsonElement body)
+        {
+            if (body.TryGetProperty("default_notify_email", out _)) DefaultNotifyEmail = ReadString(body, "default_notify_email");
+            if (body.TryGetProperty("log_retention_days", out _)) LogRetentionDays = ReadInt(body, "log_retention_days") ?? LogRetentionDays;
+            if (body.TryGetProperty("max_concurrent_jobs", out _)) MaxConcurrentJobs = ReadInt(body, "max_concurrent_jobs") ?? MaxConcurrentJobs;
+        }
+    }
+
     private object LaravelMeta() => new
     {
         base_url = $"{Request.Scheme}://{Request.Host}"
@@ -2781,6 +3989,43 @@ public class AdminCompatibility3Controller : ControllerBase
         return int.TryParse(property.ToString(), out var parsed) ? parsed : null;
     }
 
+    private static int[] ReadIntArray(JsonElement body, string propertyName)
+    {
+        if (!body.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<int>();
+        }
+
+        return property.EnumerateArray()
+            .Select(item =>
+            {
+                if (item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var number))
+                {
+                    return (int?)number;
+                }
+
+                return int.TryParse(item.ToString(), out var parsed) ? parsed : null;
+            })
+            .Where(item => item.HasValue)
+            .Select(item => item!.Value)
+            .ToArray();
+    }
+
+    private static decimal? ReadDecimal(JsonElement body, string propertyName)
+    {
+        if (!body.TryGetProperty(propertyName, out var property) || property.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetDecimal(out var number))
+        {
+            return number;
+        }
+
+        return decimal.TryParse(property.ToString(), out var parsed) ? parsed : null;
+    }
+
     private static bool? ReadBool(JsonElement body, string propertyName)
     {
         if (!body.TryGetProperty(propertyName, out var property) || property.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
@@ -2816,6 +4061,13 @@ public class AdminCompatibility3Controller : ControllerBase
             _ => DateTime.SpecifyKind(parsed, DateTimeKind.Utc)
         };
     }
+
+    private static DateTime NormalizeUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+    };
 
     private static string? ReadTags(JsonElement body)
     {

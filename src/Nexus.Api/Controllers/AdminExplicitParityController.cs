@@ -376,8 +376,6 @@ public class AdminExplicitParityController : ControllerBase
     [HttpGet("/api/v2/admin/translation/glossary")]
     [HttpGet("/api/v2/admin/users/{id}/verification-badges")]
     [HttpGet("/api/v2/admin/users/import/template")]
-    [HttpGet("/api/v2/admin/vetting")]
-    [HttpGet("/api/v2/admin/vetting/{id}")]
     [HttpGet("/api/v2/admin/volunteering/activity-feed")]
     [HttpGet("/api/v2/admin/volunteering/applications")]
     [HttpGet("/api/v2/admin/volunteering/community-projects")]
