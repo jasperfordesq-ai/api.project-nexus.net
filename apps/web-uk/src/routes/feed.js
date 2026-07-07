@@ -8,6 +8,7 @@ const {
   getFeedPosts,
   getFeedPost,
   getFeedHashtags,
+  getFeedHashtagPosts,
   createFeedPost,
   updateFeedPost,
   deleteFeedPost,
@@ -61,6 +62,91 @@ function strippedSearch(value) {
   return trimmed(value, 100).replace(/[%_]/g, '');
 }
 
+function positiveInteger(value, fallback, min = 1, max = 1000) {
+  const number = Number.parseInt(value, 10);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(Math.max(number, min), max);
+}
+
+function pluralLabel(count, singular, plural = `${singular}s`, zero = `0 ${plural}`) {
+  if (count === 0) return zero;
+  if (count === 1) return `1 ${singular}`;
+  return `${count} ${plural}`;
+}
+
+function plainParagraphs(value) {
+  const text = String(value || '')
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+
+  if (!text) return [];
+  return text.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
+}
+
+function feedMedia(row) {
+  const media = Array.isArray(row && row.media) ? row.media : [];
+  const rows = media.length > 0
+    ? media
+    : (row && row.image_url ? [{ file_url: row.image_url, thumbnail_url: row.image_url, alt_text: null }] : []);
+
+  return rows.slice(0, 4).map((item) => {
+    const fileUrl = trimmed(item && (item.file_url || item.url));
+    const thumbnailUrl = trimmed(item && (item.thumbnail_url || item.thumbnailUrl || fileUrl));
+    return {
+      fileUrl,
+      thumbnailUrl,
+      altText: trimmed(item && (item.alt_text || item.altText), 500) || 'Image attached to this feed item'
+    };
+  }).filter((item) => item.fileUrl);
+}
+
+function normalizeFeedPost(row) {
+  const id = positiveInteger(row && row.id, 0, 0, Number.MAX_SAFE_INTEGER);
+  const likeCount = positiveInteger(row && (row.likes_count !== undefined ? row.likes_count : row.likeCount), 0, 0, Number.MAX_SAFE_INTEGER);
+  const commentCount = positiveInteger(row && (row.comments_count !== undefined ? row.comments_count : row.commentCount), 0, 0, Number.MAX_SAFE_INTEGER);
+  const author = row && row.author && typeof row.author === 'object' ? row.author : {};
+
+  return {
+    id,
+    authorName: trimmed(author.name || row && row.author_name) || 'A community member',
+    authorAvatar: trimmed(author.avatar_url || row && row.author_avatar_url),
+    createdAt: trimmed(row && (row.created_at || row.createdAt)),
+    contentParagraphs: plainParagraphs(row && row.content),
+    media: feedMedia(row),
+    likeCount,
+    commentCount,
+    likeLabel: pluralLabel(likeCount, 'like'),
+    commentLabel: pluralLabel(commentCount, 'comment'),
+    isLiked: !!(row && (row.is_liked || row.isLiked))
+  };
+}
+
+function collectionMeta(result) {
+  return result && typeof result === 'object' && result.meta && typeof result.meta === 'object'
+    ? result.meta
+    : {};
+}
+
+function feedCollectionRows(result) {
+  const data = dataFrom(result);
+  return Array.isArray(data) ? data : [];
+}
+
+function feedStatusMessage(status) {
+  const messages = {
+    'reaction-added': { type: 'success', text: 'Your reaction has been added.' },
+    'reaction-removed': { type: 'success', text: 'Your reaction has been removed.' },
+    'reaction-failed': { type: 'error', text: 'Sorry, we could not save your reaction. Try again later.' },
+    'not-interested': { type: 'success', text: 'Thank you. We will show you less like this.' },
+    'not-interested-failed': { type: 'error', text: 'Sorry, we could not record your feedback. Try again later.' },
+    'like-failed': { type: 'error', text: 'Sorry, we could not save your reaction. Try again later.' },
+    'auth-required': { type: 'error', text: 'Sign in to take part in the feed.' }
+  };
+  return messages[status] || null;
+}
+
 router.get('/hashtags', asyncRoute(async (req, res) => {
   const searchQuery = trimmed(req.query.q, 100);
   const searchTerm = strippedSearch(searchQuery);
@@ -85,6 +171,49 @@ router.get('/hashtags', asyncRoute(async (req, res) => {
     hashtags,
     searchQuery,
     isSearching,
+    errorMessage
+  });
+}));
+
+router.get('/hashtag/:tag([A-Za-z0-9_]{1,100})', asyncRoute(async (req, res) => {
+  const tag = trimmed(req.params.tag, 100).replace(/^#/, '').toLowerCase();
+  const perPage = positiveInteger(req.query.per_page, 20, 1, 50);
+  const cursor = trimmed(req.query.cursor, 500);
+  const query = { limit: perPage };
+  if (cursor) query.cursor = cursor;
+
+  let items = [];
+  let totalCount = 0;
+  let hasMore = false;
+  let nextCursor = '';
+  let errorMessage = null;
+
+  try {
+    const result = await getFeedHashtagPosts(tokenFrom(req), tag, query);
+    const meta = collectionMeta(result);
+    items = feedCollectionRows(result).map(normalizeFeedPost).filter((item) => item.id > 0);
+    totalCount = positiveInteger(meta.total_items, items.length, 0, Number.MAX_SAFE_INTEGER);
+    hasMore = !!meta.has_more;
+    nextCursor = trimmed(meta.cursor, 500);
+  } catch {
+    errorMessage = 'Sorry, there is a problem with this page. Try again later.';
+  }
+
+  res.render('feed/hashtag', {
+    title: `#${tag}`,
+    activeNav: 'feed',
+    alphaActiveNav: 'feed',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    tag,
+    items,
+    totalCount,
+    totalCountLabel: pluralLabel(totalCount, 'post', 'posts', 'No posts'),
+    hasMore,
+    nextCursor,
+    perPage,
+    nextHref: hasMore && nextCursor ? `/feed/hashtag/${encodeURIComponent(tag)}?cursor=${encodeURIComponent(nextCursor)}&per_page=${perPage}` : '',
+    requiresAuth: !tokenFrom(req),
+    statusMessage: feedStatusMessage(trimmed(req.query.status)),
     errorMessage
   });
 }));
