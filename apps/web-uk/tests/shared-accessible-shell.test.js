@@ -160,6 +160,7 @@ jest.mock('../src/lib/api', () => ({
   runSavedSearch: jest.fn().mockResolvedValue({ data: { query_params: { q: 'gardening' } } }),
   claimDailyReward: jest.fn().mockResolvedValue({ data: { claimed: true } }),
   claimGamificationChallenge: jest.fn().mockResolvedValue({ data: { claimed: true } }),
+  callGamificationApi: jest.fn().mockResolvedValue({ data: {} }),
   purchaseGamificationShopItem: jest.fn().mockResolvedValue({ data: { success: true } }),
   updateGamificationShowcase: jest.fn().mockResolvedValue({ data: { message: 'updated' } }),
   getMemberConnectionStatus: jest.fn().mockResolvedValue({ data: { status: 'none' } }),
@@ -329,6 +330,7 @@ describe('shared accessible frontend shell', () => {
     api.runSavedSearch.mockReset().mockResolvedValue({ data: { query_params: { q: 'gardening' } } });
     api.claimDailyReward.mockReset().mockResolvedValue({ data: { claimed: true } });
     api.claimGamificationChallenge.mockReset().mockResolvedValue({ data: { claimed: true } });
+    api.callGamificationApi.mockReset().mockResolvedValue({ data: {} });
     api.purchaseGamificationShopItem.mockReset().mockResolvedValue({ data: { success: true } });
     api.updateGamificationShowcase.mockReset().mockResolvedValue({ data: { message: 'updated' } });
     api.getMemberConnectionStatus.mockReset().mockResolvedValue({ data: { status: 'none' } });
@@ -1302,6 +1304,144 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Endorsed 2 times');
     expect(signed.text).toContain('Bike maintenance');
     expect(signed.text).toContain('Requesting');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the Laravel-style achievements page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token !== 'test-token' || method !== 'GET') {
+        return { data: {} };
+      }
+
+      if (pathValue === '/profile') {
+        return {
+          data: {
+            level: 4,
+            level_name: 'Neighbour champion',
+            xp: 1250,
+            badges_count: 2,
+            level_progress: {
+              progress_percentage: 65,
+              xp_for_next_level: 2000
+            }
+          }
+        };
+      }
+
+      if (pathValue === '/badges') {
+        return {
+          data: [
+            {
+              name: 'Warm welcome',
+              icon: '*',
+              msg: 'You helped a new member settle in'
+            }
+          ]
+        };
+      }
+
+      if (pathValue === '/achievements/progress') {
+        return {
+          data: {
+            progress: [
+              {
+                badge: {
+                  name: 'Connector',
+                  icon: '+'
+                },
+                percent: 40,
+                remaining: 3
+              }
+            ]
+          }
+        };
+      }
+
+      if (pathValue === '/daily-reward') {
+        return {
+          data: {
+            can_claim: true,
+            streak: 4,
+            next_xp: 10,
+            base_xp: 5
+          }
+        };
+      }
+
+      if (pathValue === '/challenges') {
+        return {
+          data: [
+            {
+              id: 7,
+              name: 'Kindness sprint',
+              description: 'Complete two helpful actions',
+              progress_percent: 100,
+              user_progress: 2,
+              target_count: 2,
+              reward_xp: 50,
+              days_remaining: 3,
+              is_completed: true,
+              reward_claimed: false
+            }
+          ]
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/achievements');
+    const signed = await request(app)
+      .get('/achievements?status=daily-reward-claimed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/profile');
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/badges');
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/achievements/progress');
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/daily-reward');
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/challenges');
+    expect(signed.text).toContain('Achievements and rewards');
+    expect(signed.text).toContain('/achievements/shop');
+    expect(signed.text).toContain('/achievements/collections');
+    expect(signed.text).toContain('/achievements/showcase');
+    expect(signed.text).toContain('/achievements/engagement');
+    expect(signed.text).toContain('Achievements');
+    expect(signed.text).toContain('Your level, experience and the badges you have earned in this community.');
+    expect(signed.text).toContain('Level');
+    expect(signed.text).toContain('4 - Neighbour champion');
+    expect(signed.text).toContain('Experience points');
+    expect(signed.text).toContain('1,250');
+    expect(signed.text).toContain('Badges earned');
+    expect(signed.text).toContain('2');
+    expect(signed.text).toContain('65% of the way to the next level');
+    expect(signed.text).toContain('Daily reward');
+    expect(signed.text).toContain('Success');
+    expect(signed.text).toContain('Daily reward claimed! You earned 5 XP.');
+    expect(signed.text).toContain('Current streak: 4 day(s)');
+    expect(signed.text).toContain('Claim today to earn 10 XP');
+    expect(signed.text).toContain('Claim daily reward');
+    expect(signed.text).toContain('/achievements/daily-reward');
+    expect(signed.text).toContain('Active challenges');
+    expect(signed.text).toContain('Kindness sprint');
+    expect(signed.text).toContain('Complete two helpful actions');
+    expect(signed.text).toContain('2 of 2');
+    expect(signed.text).toContain('Reward: 50 XP');
+    expect(signed.text).toContain('3 day(s) left');
+    expect(signed.text).toContain('Claim reward');
+    expect(signed.text).toContain('/achievements/challenges/7/claim');
+    expect(signed.text).toContain('Your badges');
+    expect(signed.text).toContain('* Warm welcome');
+    expect(signed.text).toContain('You helped a new member settle in');
+    expect(signed.text).toContain('Almost there');
+    expect(signed.text).toContain('+ Connector - 3 to go');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 

@@ -2307,6 +2307,23 @@ async function getXpHistory(token, params = {}) {
   });
 }
 
+function gamificationEndpoint(pathValue) {
+  const path = String(pathValue || '').trim();
+  if (path.startsWith('/achievements/')) {
+    return `/api${path}`;
+  }
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `/api/v2/gamification${normalized}`;
+}
+
+async function callGamificationApi(token, method = 'GET', pathValue = '', body = null) {
+  return request(gamificationEndpoint(pathValue), {
+    method,
+    headers: { Authorization: `Bearer ${token}` },
+    ...(body === null ? {} : { body: JSON.stringify(body) })
+  });
+}
+
 async function claimDailyReward(token) {
   return request('/api/v2/gamification/daily-reward', {
     method: 'POST',
@@ -2943,6 +2960,7 @@ module.exports = {
   getMyBadges,
   getLeaderboard,
   getXpHistory,
+  callGamificationApi,
   claimDailyReward,
   claimGamificationChallenge,
   purchaseGamificationShopItem,

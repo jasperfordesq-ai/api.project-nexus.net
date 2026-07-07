@@ -148,10 +148,14 @@ Search saved-search POST aliases are wired to Laravel `/api/v2/search/saved`:
 `/search/saved` stores the Laravel-normalized query allow-list, delete calls
 `DELETE /api/v2/search/saved/{id}`, and run calls
 `POST /api/v2/search/saved/{id}/run` before redirecting to `/search/advanced`.
-Achievement POST aliases are wired to Laravel `/api/v2/gamification`: daily
-reward, challenge claim, shop purchase, and showcase update preserve the
-Laravel accessible status redirects for `/achievements`, `/achievements/shop`,
-and `/achievements/showcase`.
+`/achievements` now redirects unsigned visitors to
+`/login?status=auth-required`, calls Laravel-compatible gamification profile,
+badge, progress, daily reward, and challenge endpoints, and renders the
+Blade-style achievements summary, daily reward, challenge, earned badge, and
+badge-progress sections. Achievement POST aliases are wired to Laravel
+`/api/v2/gamification`: daily reward, challenge claim, shop purchase, and
+showcase update preserve the Laravel accessible status redirects for
+`/achievements`, `/achievements/shop`, and `/achievements/showcase`.
 Member profile POST aliases are wired to Laravel v2 APIs for connection
 transitions, skill endorsements, block/unblock, profile reviews, and direct
 wallet transfers while preserving Laravel profile status redirects.
