@@ -32,6 +32,19 @@ By default, `apps/web-uk` resolves API calls to the local Laravel staging base
 URL `http://127.0.0.1:8088`. `ACCESSIBLE_BACKEND_TARGET=aspnet` remains future
 work and must not be treated as certified compatibility.
 
+Runtime smoke evidence now has a dedicated command:
+
+```bash
+npm run smoke:laravel
+```
+
+The command checks Laravel API reachability, web-uk health, unsigned `/account`
+redirects, `/login` CSRF handling, login POST redirect behavior, and a signed
+dashboard render. On 2026-07-07 the command proved the unauthenticated and CSRF
+steps locally, but did not certify auth because Laravel returned `401` for the
+documented local `member@acme.test` and `admin@acme.test` credentials. Keep this
+failure visible until a valid seeded account makes the command pass.
+
 ## Stack
 
 - Express

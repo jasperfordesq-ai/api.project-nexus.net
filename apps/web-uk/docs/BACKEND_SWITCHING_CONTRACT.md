@@ -32,6 +32,28 @@ src/lib/backend-contract.js
 | `ASPNET_BASE_URL` | `http://localhost:5080` | Future ASP.NET target when explicitly selected. Not certified. |
 | `API_BASE_URL` | unset | Explicit URL override for local testing. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
 
+## Laravel Runtime Smoke
+
+The Laravel-backed runtime proof command is:
+
+```bash
+npm run smoke:laravel
+```
+
+It runs `scripts/laravel-runtime-smoke.js` against `WEB_UK_BASE_URL`
+(`http://127.0.0.1:5180` by default) and `LARAVEL_BASE_URL`
+(`http://127.0.0.1:8088` by default). The harness checks Laravel API
+reachability, web-uk health, unsigned `/account` redirect behavior, `/login`
+CSRF rendering, login POST redirect to `/dashboard`, and a signed dashboard
+render. Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and
+`SMOKE_TENANT`.
+
+Current local result on 2026-07-07: unauthenticated and CSRF checks pass, but
+auth is not certified because the documented local Laravel accounts returned
+`401` from `/api/auth/login`; the web-uk login POST therefore returned `200`
+instead of redirecting to `/dashboard`. Do not mark Laravel runtime auth
+certified until this command exits successfully against the live Laravel backend.
+
 ## Current Page Candidates
 
 `/account` GET is a local Blade-style protected account hub candidate. Unsigned

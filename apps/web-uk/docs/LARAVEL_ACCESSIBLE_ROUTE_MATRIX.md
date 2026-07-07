@@ -53,6 +53,29 @@ set in slug and custom-domain modes, and many route families still need visual,
 workflow, auth, tenant, localization, runtime, and backend-switching
 certification.
 
+## Runtime Smoke Evidence
+
+Run the Laravel-backed runtime smoke with:
+
+```bash
+npm run smoke:laravel
+```
+
+This uses `scripts/laravel-runtime-smoke.js` to verify local Laravel API
+reachability, web-uk health, unsigned protected redirects, login CSRF handling,
+login POST redirect behavior, and a signed dashboard render. A Jest regression
+test covers the harness with fake Laravel/web-uk servers:
+
+```bash
+npm test -- --runInBand tests/laravel-runtime-smoke.test.js
+```
+
+Current local evidence from 2026-07-07: the harness passes Laravel API,
+web-health, unsigned `/account` redirect, and `/login` CSRF checks. It does not
+yet certify Laravel auth because direct Laravel `/api/auth/login` calls returned
+`401` for the documented local Acme member/admin accounts, and web-uk therefore
+did not redirect to `/dashboard`.
+
 ## Header And Footer Contract
 
 | Blade link | Laravel path | `apps/web-uk` path | Current ASP.NET status |

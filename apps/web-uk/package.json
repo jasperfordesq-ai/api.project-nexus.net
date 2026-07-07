@@ -14,7 +14,8 @@
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint src/",
-    "route:matrix": "node scripts/generate-accessible-route-matrix.js"
+    "route:matrix": "node scripts/generate-accessible-route-matrix.js",
+    "smoke:laravel": "node scripts/laravel-runtime-smoke.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",

@@ -51,16 +51,16 @@ The Laravel repo is read-only reference material from this workspace.
 
 ## Current Snapshot
 
-Snapshot captured during documentation handoff work on 2026-07-07. Regenerate
-before trusting it.
+Snapshot refreshed during runtime-smoke harness work on 2026-07-07.
+Regenerate before trusting it.
 
 | Item | Last observed state |
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
-| Head commit | `5576fa86 feat: add Laravel goal social page` |
-| Dirty files seen | The dirty set changed repeatedly during this handoff because other agents were still working. Rerun `git status --short --branch` and treat that as authoritative. Files seen during the handoff included generated route-matrix docs, `apps/web-uk/src/routes/groups.js`, `apps/web-uk/tests/shared-accessible-shell.test.js`, and new group views. |
-| Working estimate | about `660/1000` implementation parity |
-| Documentation readiness after this handoff | `1000/1000` for resuming safely, assuming agents rerun the refresh protocol |
+| Head commit | `7a124da7 feat: add Laravel group manage page` |
+| Dirty files seen | Generated route-matrix docs plus the in-progress Laravel runtime smoke harness files. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `790/1000` implementation/certification parity |
+| Documentation readiness after this handoff | Current for route declarations and runtime-smoke blocker evidence, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -71,11 +71,19 @@ The latest generated route matrix at this handoff reported:
 | Matched routes | `608` |
 | Missing Laravel routes | `0` |
 | Extra Web UK routes | `83` |
-| Generated prep-page matches | `10` rows still matched through `src/routes/laravel-prep-pages.js` |
+| Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
-Earlier test audit found Jest at `545/546` passing with one goal-related failing
-expectation. Current dirty group-invite work may have changed that. Rerun tests
-before reporting.
+Focused runtime-smoke harness test: `npm test -- --runInBand
+tests/laravel-runtime-smoke.test.js` passed with `2/2` tests after a red step
+where `scripts/laravel-runtime-smoke.js` did not exist.
+
+Live local smoke result on 2026-07-07: `npm run smoke:laravel` reached
+Laravel `/api/v2/groups?limit=1` (`200`), web-uk `/health` (`200`), unsigned
+`/account` -> `/login`, and `/login` CSRF rendering. It did not certify auth:
+the login POST returned `200` instead of redirecting to `/dashboard`, and
+direct Laravel `/api/auth/login` calls returned `401` for the documented
+`member@acme.test`/`admin@acme.test` credentials with both `Test123!` and
+`NexusV2!Demo#2026`.
 
 ## Refresh Protocol
 
@@ -90,6 +98,7 @@ cd apps\web-uk
 npm run route:matrix
 npm run lint
 npm test -- --runInBand
+npm run smoke:laravel
 ```
 
 After `npm run route:matrix`, inspect:
@@ -102,6 +111,9 @@ Select-String -Path docs\generated\accessible-route-matrix.csv -Pattern 'laravel
 The route matrix only proves method/path declarations. It does not certify
 Blade visual parity, auth redirects, tenant gates, feature gates, POST side
 effects, localization, runtime Laravel behavior, or ASP.NET backend switching.
+The smoke command is expected to fail until the local Laravel seed credentials
+or auth state are restored; treat that failure as runtime evidence, not a
+frontend parity pass.
 
 ## Documents To Trust
 
@@ -156,9 +168,9 @@ A route family is not complete until all of these are true:
 Prioritize replacing generated prep pages and certifying runtime behavior over
 adding more skeleton pages.
 
-1. Rerun the refresh protocol and identify the current failing Jest test.
-2. Replace any remaining `laravel-prep-pages.js` matches with real route modules
-   and views.
+1. Rerun the refresh protocol and confirm the current smoke/auth state.
+2. Restore or identify valid local Laravel seed credentials so
+   `npm run smoke:laravel` can certify the login/dashboard path.
 3. Convert "partial Laravel-backed candidate" route families into certified
    families using the certification table above.
 4. Add runtime smoke coverage against local Laravel for tenant/auth/feature-gate
