@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T01:23:11.989Z",
+    "generatedAt": "2026-07-07T01:30:39.247Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -7633,8 +7633,8 @@
       "gates": "feature:gamification",
       "apiNeeds": "service:CommunityDashboardService; service:LeaderboardService",
       "webUkPath": "/leaderboard",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "leaderboard/index",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\leaderboard.js"
     },
     {
       "method": "GET",

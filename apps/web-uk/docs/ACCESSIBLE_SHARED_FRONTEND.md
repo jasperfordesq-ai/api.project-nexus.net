@@ -169,6 +169,11 @@ aliases are wired to Laravel `/api/v2/gamification`: daily reward, challenge
 claim, shop purchase, and showcase update preserve the Laravel accessible status
 redirects for `/achievements`, `/achievements/shop`, and
 `/achievements/showcase`.
+`/leaderboard` now redirects unsigned visitors to
+`/login?status=auth-required`, calls Laravel-compatible gamification
+leaderboard and community-dashboard endpoints, and renders the Blade-style
+leaderboard tab strip, community impact stats, metric/period filter form, table,
+current-user tag, and empty state.
 Member profile POST aliases are wired to Laravel v2 APIs for connection
 transitions, skill endorsements, block/unblock, profile reviews, and direct
 wallet transfers while preserving Laravel profile status redirects.

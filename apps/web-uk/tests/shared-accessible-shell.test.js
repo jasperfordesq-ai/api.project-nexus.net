@@ -1787,6 +1787,94 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style leaderboard page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/leaderboard?type=credits_earned&period=month&limit=20') {
+        return {
+          data: [
+            {
+              position: 1,
+              user: { id: 77, name: 'Avery Stone' },
+              score: 42,
+              is_current_user: true
+            },
+            {
+              position: 2,
+              user: { id: 88, name: 'Morgan Lee' },
+              score: 31,
+              is_current_user: false
+            }
+          ],
+          meta: {
+            type: 'credits_earned',
+            period: 'month',
+            your_position: 1,
+            total_entries: 2
+          }
+        };
+      }
+
+      if (token === 'test-token' && method === 'GET' && pathValue === '/community-dashboard') {
+        return {
+          data: {
+            total_members: 120,
+            total_exchanges: 34,
+            total_volunteer_hours: 56.5,
+            total_listings: 18,
+            total_connections: 45,
+            total_badges_awarded: 27
+          }
+        };
+      }
+
+      return { data: {} };
+    });
+
+    const unsigned = await request(app).get('/leaderboard');
+    const signed = await request(app)
+      .get('/leaderboard?type=credits_earned&period=month')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/leaderboard?type=credits_earned&period=month&limit=20');
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/community-dashboard');
+    expect(signed.text).toContain('<span class="govuk-caption-xl">Project NEXUS Accessible</span>');
+    expect(signed.text).toContain('Leaderboard');
+    expect(signed.text).toContain('See how members are contributing to the community.');
+    expect(signed.text).toContain('Leaderboard');
+    expect(signed.text).toContain('/leaderboard/competitive');
+    expect(signed.text).toContain('/leaderboard/seasons');
+    expect(signed.text).toContain('/leaderboard/journey');
+    expect(signed.text).toContain('/leaderboard/spotlight');
+    expect(signed.text).toContain('Community impact');
+    expect(signed.text).toContain('Aggregate activity across this timebank community.');
+    expect(signed.text).toContain('Total members');
+    expect(signed.text).toContain('120');
+    expect(signed.text).toContain('Exchanges completed');
+    expect(signed.text).toContain('34');
+    expect(signed.text).toContain('Hours exchanged');
+    expect(signed.text).toContain('56.5');
+    expect(signed.text).toContain('Filter leaderboard');
+    expect(signed.text).toContain('Ranked by');
+    expect(signed.text).toContain('<option value="credits_earned" selected>Time credits earned</option>');
+    expect(signed.text).toContain('<option value="month" selected>This month</option>');
+    expect(signed.text).toContain('Update');
+    expect(signed.text).toContain('<th scope="col" class="govuk-table__header govuk-table__header--numeric">Rank</th>');
+    expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain('href="/members/77"');
+    expect(signed.text).toContain('You');
+    expect(signed.text).toContain('42');
+    expect(signed.text).toContain('Morgan Lee');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
