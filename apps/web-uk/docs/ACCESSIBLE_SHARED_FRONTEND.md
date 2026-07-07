@@ -489,7 +489,11 @@ visitors to `/login?status=auth-required`, reads Laravel
 `/api/v2/volunteering/applications`, and
 `/api/v2/volunteering/my-organisations`, and renders the Blade-style summary
 stats, by-organisation/by-month tables, log-hours form, and recent hour-log
-cards. Laravel POST aliases now
+cards. Its `/volunteering/wellbeing` page redirects unsigned visitors to
+`/login?status=auth-required`, reads Laravel
+`/api/v2/volunteering/wellbeing`, and renders the Blade-style wellbeing score,
+burnout-risk tag, hours/streak stats, warnings, mood check-in form, status
+banners, and recent check-ins table. Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert
 responses, credential delete plus safe upload proxying, wellbeing check-ins,

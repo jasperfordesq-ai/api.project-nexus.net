@@ -229,6 +229,19 @@ function hoursStatus(status) {
   return null;
 }
 
+function wellbeingStatus(status) {
+  if (status === 'checkin-saved') {
+    return { type: 'success', message: 'Your check-in has been saved.' };
+  }
+  if (status === 'mood-invalid') {
+    return { type: 'error', message: 'Choose a mood between 1 and 5.' };
+  }
+  if (status === 'checkin-failed') {
+    return { type: 'error', message: 'Your check-in could not be saved. Please try again.' };
+  }
+  return null;
+}
+
 function credentialStatus(status) {
   const messages = {
     'credential-uploaded': { type: 'success', message: 'Your credential has been uploaded and is awaiting review.' },
@@ -314,6 +327,89 @@ function normalizeHourSummary(result) {
         hoursLabel: hoursLabel(row?.hours)
       })).filter((row) => row.monthLabel)
       : []
+  };
+}
+
+function riskPresentation(value) {
+  const risk = ['low', 'moderate', 'high'].includes(trimmed(value)) ? trimmed(value) : 'low';
+  const labels = {
+    low: 'Low',
+    moderate: 'Moderate',
+    high: 'High'
+  };
+  const classNames = {
+    low: 'govuk-tag--green',
+    moderate: 'govuk-tag--yellow',
+    high: 'govuk-tag--red'
+  };
+  return {
+    value: risk,
+    label: labels[risk],
+    className: classNames[risk]
+  };
+}
+
+function warningLabel(value) {
+  const text = trimmed(value?.message ?? value?.type ?? value);
+  const labels = {
+    frequency: 'Your shift frequency is declining.',
+    cancellation: 'Your cancellation rate is higher than usual.',
+    hours: 'Your logged hours are dropping significantly.',
+    engagement: 'It has been a while since your last activity.'
+  };
+  return labels[text] || text;
+}
+
+function moodLabel(value) {
+  const mood = Number(value);
+  const labels = {
+    1: '1 - Struggling',
+    2: '2 - Low',
+    3: '3 - Okay',
+    4: '4 - Good',
+    5: '5 - Great'
+  };
+  return labels[mood] || trimmed(value);
+}
+
+function normalizeCheckin(row) {
+  const checkin = row && typeof row === 'object' ? row : {};
+  const mood = Number(checkin.mood);
+  return {
+    id: positiveInteger(checkin.id),
+    createdAtLabel: dateLabel(checkin.created_at ?? checkin.createdAt),
+    moodLabel: moodLabel(mood),
+    note: trimmed(checkin.note)
+  };
+}
+
+function normalizeWellbeingDashboard(result) {
+  const dashboard = dataFrom(result);
+  const data = dashboard && typeof dashboard === 'object' ? dashboard : {};
+  const rawScore = Number(data.score);
+  const score = Number.isFinite(rawScore) ? Math.max(0, Math.min(100, Math.round(rawScore))) : 100;
+  const warnings = Array.isArray(data.warnings)
+    ? data.warnings.map(warningLabel).filter(Boolean)
+    : [];
+  const checkins = Array.isArray(data.recent_checkins)
+    ? data.recent_checkins
+    : (Array.isArray(data.recentCheckins) ? data.recentCheckins : []);
+
+  return {
+    score,
+    risk: riskPresentation(data.burnout_risk ?? data.burnoutRisk),
+    hoursThisWeekLabel: hoursLabel(data.hours_this_week ?? data.hoursThisWeek),
+    hoursThisMonthLabel: hoursLabel(data.hours_this_month ?? data.hoursThisMonth),
+    streakDays: Number.isFinite(Number(data.streak_days ?? data.streakDays))
+      ? Number(data.streak_days ?? data.streakDays)
+      : 0,
+    warnings,
+    moodOptions: [1, 2, 3, 4, 5].map((value) => ({
+      value,
+      label: moodLabel(value),
+      checked: value === 3
+    })),
+    recentCheckins: checkins.map(normalizeCheckin)
   };
 }
 
@@ -599,6 +695,31 @@ router.get('/hours', asyncRoute(async (req, res) => {
     loadError,
     today: new Date().toISOString().slice(0, 10),
     status: hoursStatus(trimmed(req.query.status)),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { redirectOn401: loginRedirect() }));
+
+router.get('/wellbeing', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let wellbeing = normalizeWellbeingDashboard({});
+  let loadError = null;
+  try {
+    wellbeing = normalizeWellbeingDashboard(await callApi(token, 'GET', '/wellbeing'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    loadError = 'We could not load your wellbeing dashboard. Please try again.';
+  }
+
+  return res.render('volunteering/wellbeing', {
+    title: 'My wellbeing',
+    activeNav: 'volunteering',
+    wellbeing,
+    loadError,
+    status: wellbeingStatus(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));

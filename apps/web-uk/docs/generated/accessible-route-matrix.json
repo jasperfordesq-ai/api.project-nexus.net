@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generatedAt": "2026-07-07T04:25:06.295Z",
+    "generatedAt": "2026-07-07T04:32:16.872Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity",
     "laravelRoutes": 608,
@@ -12877,8 +12877,8 @@
       "gates": "feature:volunteering",
       "apiNeeds": "",
       "webUkPath": "/volunteering/wellbeing",
-      "webUkView": "static-page",
-      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\laravel-prep-pages.js"
+      "webUkView": "volunteering/wellbeing",
+      "webUkFile": "C:\\Users\\jaspe\\.config\\superpowers\\worktrees\\asp.net-backend\\codex-web-uk-laravel-parity\\apps\\web-uk\\src\\routes\\volunteering-actions.js"
     },
     {
       "method": "POST",

@@ -15902,6 +15902,79 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel volunteering wellbeing page for signed-in members', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    api.callVolunteeringApi.mockResolvedValueOnce({
+      data: {
+        score: 76,
+        hours_this_week: 4.5,
+        hours_this_month: 13.25,
+        streak_days: 3,
+        burnout_risk: 'moderate',
+        warnings: [
+          'hours',
+          'Your cancellation rate is higher than usual. Consider taking on fewer commitments.'
+        ],
+        recent_checkins: [
+          {
+            id: 8,
+            mood: 5,
+            note: 'Feeling steady after a quieter week',
+            created_at: '2026-07-06T16:15:00Z'
+          },
+          {
+            id: 7,
+            mood: 2,
+            note: '',
+            created_at: '2026-07-01T09:00:00Z'
+          }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/volunteering/wellbeing?status=checkin-saved')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/wellbeing');
+    expect(response.text).toContain('href="/volunteering"');
+    expect(response.text).toContain('Back to volunteering');
+    expect(response.text).toContain('Your check-in has been saved.');
+    expect(response.text).toContain('My wellbeing');
+    expect(response.text).toContain('A private summary of your volunteering balance, to help you avoid burnout. Only you can see this.');
+    expect(response.text).toContain('Wellbeing score');
+    expect(response.text).toContain('76 out of 100');
+    expect(response.text).toContain('id="wellbeing-score" max="100" value="76"');
+    expect(response.text).toContain('Burnout risk');
+    expect(response.text).toContain('Moderate');
+    expect(response.text).toContain('Hours this week');
+    expect(response.text).toContain('4.5');
+    expect(response.text).toContain('Hours this month');
+    expect(response.text).toContain('13.3');
+    expect(response.text).toContain('Day streak');
+    expect(response.text).toContain('3');
+    expect(response.text).toContain('Things to be aware of');
+    expect(response.text).toContain('Your logged hours are dropping significantly.');
+    expect(response.text).toContain('Your cancellation rate is higher than usual. Consider taking on fewer commitments.');
+    expect(response.text).toContain('How are you feeling?');
+    expect(response.text).toContain('method="post" action="/volunteering/wellbeing/checkin"');
+    expect(response.text).toContain('id="mood-1" name="mood" type="radio" value="1"');
+    expect(response.text).toContain('1 - Struggling');
+    expect(response.text).toContain('id="mood-3" name="mood" type="radio" value="3" checked');
+    expect(response.text).toContain('id="note" name="note" rows="3" maxlength="500"');
+    expect(response.text).toContain('Save check-in');
+    expect(response.text).toContain('Recent check-ins');
+    expect(response.text).toContain('6 July 2026');
+    expect(response.text).toContain('5 - Great');
+    expect(response.text).toContain('Feeling steady after a quieter week');
+    expect(response.text).toContain('1 July 2026');
+    expect(response.text).toContain('2 - Low');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('submits core Laravel volunteering member action aliases', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
