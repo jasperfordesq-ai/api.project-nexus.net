@@ -4349,6 +4349,25 @@ describe('shared accessible frontend shell', () => {
     expect(api.resendVerification).toHaveBeenCalledWith('ada@example.org');
   });
 
+  it('keeps Laravel public auth pages renderable for signed-in visitors', async () => {
+    const cases = [
+      { path: '/login', text: 'Sign in' },
+      { path: '/login/forgot-password', text: 'Reset your password' },
+      { path: '/password/reset?token=reset-token', text: 'Set a new password' },
+      { path: '/register', text: 'Create an account' }
+    ];
+
+    for (const authPage of cases) {
+      const response = await request(app)
+        .get(authPage.path)
+        .set('Cookie', signedCookieHeader());
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain(authPage.text);
+      expect(response.headers.location).toBeUndefined();
+    }
+  });
+
   it('renders the Laravel-style cookie banner until a cookie choice has been made', async () => {
     const response = await request(app).get('/');
 

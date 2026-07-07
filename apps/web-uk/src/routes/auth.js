@@ -10,7 +10,7 @@ const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
 
-router.get('/login', redirectIfAuthenticated, (req, res) => {
+router.get('/login', (req, res) => {
   res.render('login', {
     title: 'Sign in',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
@@ -184,7 +184,7 @@ async function verifyTurnstile(token, remoteIp) {
 }
 
 // Registration
-router.get('/register', redirectIfAuthenticated, (req, res) => {
+router.get('/register', (req, res) => {
   res.render('register', {
     title: 'Create an account',
     csrfToken: req.csrfToken ? req.csrfToken() : '',
@@ -391,7 +391,7 @@ function renderForgotPassword(req, res) {
 }
 
 router.get('/forgot-password', redirectIfAuthenticated, renderForgotPassword);
-router.get('/login/forgot-password', redirectIfAuthenticated, renderForgotPassword);
+router.get('/login/forgot-password', renderForgotPassword);
 
 async function handleForgotPasswordPost(req, res) {
   const { email, tenant_slug } = req.body;
@@ -464,7 +464,7 @@ function renderResetPassword(req, res) {
 }
 
 router.get('/reset-password', redirectIfAuthenticated, renderResetPassword);
-router.get('/password/reset', redirectIfAuthenticated, renderResetPassword);
+router.get('/password/reset', renderResetPassword);
 
 async function handleResetPasswordPost(req, res) {
   const token = req.body.token;

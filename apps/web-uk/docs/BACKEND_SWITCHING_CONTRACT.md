@@ -49,11 +49,11 @@ rendering. It also checks the default public Laravel-backed module pages
 `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and `/help`
 return successful responses through web-uk while Laravel is the backend target.
 After login, it checks the signed Laravel-backed base pages and deeper module
-pages across about/legal/support, explore, saved items, notifications, member
-discovery, resources, skills, goals, clubs, wallet, messages, connections,
-matches, activity, achievements, leaderboard, NEXUS score, profile, settings,
-federation, courses, marketplace, events, listings, jobs, groups, ideation,
-polls, search, premium, podcasts, and volunteering.
+pages across the public auth aliases, about/legal/support, explore, saved items,
+notifications, member discovery, resources, skills, goals, clubs, wallet,
+messages, connections, matches, activity, achievements, leaderboard, NEXUS
+score, profile, settings, federation, courses, marketplace, events, listings,
+jobs, groups, ideation, polls, search, premium, podcasts, and volunteering.
 Override local auth with `SMOKE_EMAIL`, `SMOKE_PASSWORD`, and `SMOKE_TENANT`;
 the defaults target the Laravel local E2E fixture:
 `e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
@@ -88,11 +88,16 @@ unavailable; a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5302` passed
 `163/163`. The feature/role-gated pages `/jobs/bias-audit`,
 `/jobs/talent-search`, and `/marketplace/coupons` are now covered as expected
 signed-session `403` checks; a later run against
-`/onboarding` and `/premium/manage` are now covered as expected signed-session
-redirect checks; a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5307`
-passed `168/168`. Local probing left signed-in auth redirect pages outside
-because Laravel renders those pages for signed sessions while web-uk currently
-redirects signed users away.
+`WEB_UK_BASE_URL=http://127.0.0.1:5306` passed `166/166`. `/onboarding` and
+`/premium/manage` are now covered as expected signed-session redirect checks; a
+later run against `WEB_UK_BASE_URL=http://127.0.0.1:5307` passed `168/168`.
+Signed public auth aliases `/login`,
+`/login/forgot-password`, `/password/reset?token=reset-token`, and `/register`
+are now covered by the default 2xx smoke scope; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5308` passed `172/172`: 6 auth/health checks,
+161 module/page checks, 3 gated-status checks, and 2 redirect-status checks.
+`/login/two-factor` remains outside the generic signed-page scope because
+Laravel redirects it without the session-backed 2FA token.
 
 ## Current Page Candidates
 

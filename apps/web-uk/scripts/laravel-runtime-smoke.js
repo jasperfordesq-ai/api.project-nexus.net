@@ -20,6 +20,10 @@ const DEFAULT_SIGNED_REDIRECT_PAGE_PATHS = [
   { path: '/premium/manage', location: '/premium?status=no-subscription' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
+  '/login',
+  '/login/forgot-password',
+  '/password/reset?token=reset-token',
+  '/register',
   '/explore',
   '/saved',
   '/notifications',

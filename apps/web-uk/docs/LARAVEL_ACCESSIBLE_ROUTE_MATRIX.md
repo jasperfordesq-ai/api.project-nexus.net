@@ -66,8 +66,10 @@ reachability, web-uk health, unsigned protected redirects, login CSRF handling,
 login POST redirect behavior, signed `/account` rendering, and the default
 public Laravel-backed module pages `/volunteering`, `/organisations`,
 `/organisations/browse`, `/kb`, and `/help`. After the login flow, it also
-checks the signed module pages `/explore`, `/saved`, `/notifications`,
-`/members/discover`, `/resources`, `/skills`, `/goals`, and `/clubs`. A Jest
+checks signed public auth aliases (`/login`, `/login/forgot-password`,
+`/password/reset?token=reset-token`, `/register`) plus the broad signed module
+set across explore, saved items, notifications, members, resources, goals,
+marketplace, volunteering, and other Laravel accessible families. A Jest
 regression test covers the harness with fake Laravel/web-uk servers:
 
 ```bash
@@ -77,16 +79,16 @@ npm test -- --runInBand tests/laravel-runtime-smoke.test.js
 Current local evidence from 2026-07-07: the harness passes end-to-end when
 web-uk is started with Laravel tenant context `TENANT_ID=2`, using the local E2E
 fixture credentials (`e2e.user.a@project-nexus.local` /
-`TestPassword123!` / `hour-timebank`) and `SMOKE_TIMEOUT_MS=30000`. Without
+`TestPassword123!` / `hour-timebank`) and `SMOKE_TIMEOUT_MS=60000`. Without
 that tenant context, Laravel rejects the same valid credentials because the
 login request is scoped to the wrong tenant.
-The same smoke now confirms the default public module pages above return 2xx
-from web-uk while it is pointed at Laravel; it does not certify their deeper
-POST workflows, auth-only views, tenant-domain aliases, localization, or ASP.NET
-backend switching. Live probing also found the signed module pages above return
-2xx after Laravel login; `/wallet`, `/messages`, and `/coupons` are excluded
-from the default signed smoke list because this local fixture returned non-2xx
-responses for them.
+The smoke confirms the default public module pages, signed public auth aliases,
+broad signed module-page scope, expected signed gated statuses, and expected
+signed redirect statuses through web-uk while it is pointed at Laravel; it does
+not certify deeper POST workflows, tenant-domain aliases, localization, or
+ASP.NET backend switching. The latest live run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5308` passed `172/172`: 6 auth/health checks,
+161 module/page checks, 3 gated-status checks, and 2 redirect-status checks.
 
 ## Header And Footer Contract
 

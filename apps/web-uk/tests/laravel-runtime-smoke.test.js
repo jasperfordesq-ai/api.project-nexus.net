@@ -84,6 +84,17 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       return;
     }
 
+    const signedPublicAuthPages = new Set([
+      '/login/forgot-password',
+      '/password/reset?token=reset-token',
+      '/register'
+    ]);
+    if (req.method === 'GET' && signedPublicAuthPages.has(req.url)) {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(`<h1>${req.url}</h1>`);
+      return;
+    }
+
     if (req.method === 'POST' && req.url === '/login') {
       const body = await readBody(req);
       const params = new URLSearchParams(body);
@@ -444,6 +455,10 @@ describe('Laravel runtime smoke harness', () => {
     const checkByName = Object.fromEntries(result.checks.map((check) => [check.name, check]));
 
     expect(checks).toEqual(expect.objectContaining({
+      'module-page-login-renders': true,
+      'module-page-login-forgot-password-renders': true,
+      'module-page-password-reset-token-reset-token-renders': true,
+      'module-page-register-renders': true,
       'module-page-explore-renders': true,
       'module-page-saved-renders': true,
       'module-page-notifications-renders': true,

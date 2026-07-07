@@ -43,7 +43,9 @@ redirects, `/login` CSRF handling, login POST redirect behavior, and a signed
 `/account` render. It also verifies the default public Laravel-backed module
 pages `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and
 `/help` return successful responses from the web-uk app while it is pointed at
-Laravel, plus the signed module pages `/explore`, `/saved`, `/notifications`,
+Laravel, plus the signed public auth aliases `/login`,
+`/login/forgot-password`, `/password/reset?token=reset-token`, `/register`, and
+the signed module pages `/explore`, `/saved`, `/notifications`,
 `/members`, `/members/discover`, `/resources`, `/skills`, `/goals`, `/clubs`,
 `/wallet`, `/messages`, `/connections`, `/connections/network`, `/matches`,
 `/matches/board`, `/activity`, `/achievements`, `/leaderboard`,
@@ -83,13 +85,17 @@ feature/role-gated pages `/jobs/bias-audit`, `/jobs/talent-search`, and
 `/marketplace/coupons` are now covered as expected signed-session `403` checks;
 `/onboarding` and `/premium/manage` are now covered as expected signed-session
 redirect checks; a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5307`
-passed `168/168` checks. The
+passed `168/168` checks. Signed public auth aliases `/login`,
+`/login/forgot-password`, `/password/reset?token=reset-token`, and `/register`
+are now covered as signed-session 2xx checks; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5308` passed `172/172`: 6 auth/health checks,
+161 module/page checks, 3 gated-status checks, and 2 redirect-status checks. The
 harness default timeout is now `60000` ms because Laravel-backed
 profile/settings and discovery pages can be slow in the local fixture. Keep the
 tenant context visible: the same Laravel E2E credentials return `401` when
 web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`. Live probing
-still leaves signed-in auth redirect pages outside because Laravel renders those
-pages for signed sessions while web-uk currently redirects signed users away.
+keeps `/login/two-factor` outside the general signed-page scope because Laravel
+redirects it without the session-backed 2FA token.
 
 ## Stack
 
