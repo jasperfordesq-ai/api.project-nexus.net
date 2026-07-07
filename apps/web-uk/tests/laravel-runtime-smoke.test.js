@@ -27,6 +27,12 @@ function readBody(req) {
   });
 }
 
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 function createLaravelServer(requests) {
   return http.createServer((req, res) => {
     requests.push({ surface: 'laravel', method: req.method, url: req.url });
@@ -42,7 +48,7 @@ function createLaravelServer(requests) {
   });
 }
 
-function createWebServer(requests, { loginRedirect = '/dashboard' } = {}) {
+function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths = {} } = {}) {
   return http.createServer(async (req, res) => {
     requests.push({
       surface: 'web',
@@ -107,8 +113,43 @@ function createWebServer(requests, { loginRedirect = '/dashboard' } = {}) {
       return;
     }
 
-    const signedModulePages = new Set(['/explore', '/saved', '/notifications', '/members/discover', '/resources', '/skills', '/goals', '/clubs', '/wallet', '/messages']);
+    const signedModulePages = new Set([
+      '/explore',
+      '/saved',
+      '/notifications',
+      '/members/discover',
+      '/resources',
+      '/skills',
+      '/goals',
+      '/clubs',
+      '/wallet',
+      '/messages',
+      '/connections/network',
+      '/matches',
+      '/matches/board',
+      '/activity',
+      '/achievements',
+      '/leaderboard',
+      '/nexus-score',
+      '/profile/settings',
+      '/settings/appearance',
+      '/settings/data-rights',
+      '/federation',
+      '/courses',
+      '/courses/mine',
+      '/marketplace',
+      '/marketplace/mine',
+      '/events',
+      '/listings',
+      '/search/advanced',
+      '/premium',
+      '/podcasts'
+    ]);
     if (req.method === 'GET' && signedModulePages.has(req.url)) {
+      if (delayedPaths[req.url]) {
+        await delay(delayedPaths[req.url]);
+      }
+
       if ((req.headers.cookie || '').includes('token=signed-token')) {
         res.writeHead(200, { 'content-type': 'text/html' });
         res.end(`<h1>${req.url}</h1>`);
@@ -252,10 +293,57 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-goals-renders': true,
       'module-page-clubs-renders': true,
       'module-page-wallet-renders': true,
-      'module-page-messages-renders': true
+      'module-page-messages-renders': true,
+      'module-page-connections-network-renders': true,
+      'module-page-matches-renders': true,
+      'module-page-matches-board-renders': true,
+      'module-page-activity-renders': true,
+      'module-page-achievements-renders': true,
+      'module-page-leaderboard-renders': true,
+      'module-page-nexus-score-renders': true,
+      'module-page-profile-settings-renders': true,
+      'module-page-settings-appearance-renders': true,
+      'module-page-settings-data-rights-renders': true,
+      'module-page-federation-renders': true,
+      'module-page-courses-renders': true,
+      'module-page-courses-mine-renders': true,
+      'module-page-marketplace-renders': true,
+      'module-page-marketplace-mine-renders': true,
+      'module-page-events-renders': true,
+      'module-page-listings-renders': true,
+      'module-page-search-advanced-renders': true,
+      'module-page-premium-renders': true,
+      'module-page-podcasts-renders': true
     }));
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/explore').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/wallet').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/messages').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/listings').at(-1).cookie).toContain('token=signed-token');
   });
+
+  it('allows slower signed module pages in the default smoke timeout budget', async () => {
+    const requests = [];
+    const laravel = createLaravelServer(requests);
+    const web = createWebServer(requests, {
+      delayedPaths: {
+        '/profile/settings': 8500
+      }
+    });
+    servers.push(laravel, web);
+
+    const [laravelBaseUrl, webBaseUrl] = await Promise.all([listen(laravel), listen(web)]);
+
+    const result = await runLaravelRuntimeSmoke({
+      laravelBaseUrl,
+      webBaseUrl,
+      modulePagePaths: ['/profile/settings']
+    });
+    const profileSettingsCheck = result.checks.find((check) => check.name === 'module-page-profile-settings-renders');
+
+    expect(result.ok).toBe(true);
+    expect(profileSettingsCheck).toEqual(expect.objectContaining({
+      ok: true,
+      status: 200
+    }));
+  }, 15000);
 });

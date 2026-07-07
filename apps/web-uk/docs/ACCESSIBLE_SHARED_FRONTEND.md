@@ -45,16 +45,23 @@ pages `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and
 `/help` return successful responses from the web-uk app while it is pointed at
 Laravel, plus the signed module pages `/explore`, `/saved`, `/notifications`,
 `/members/discover`, `/resources`, `/skills`, `/goals`, `/clubs`, `/wallet`,
-and `/messages` after the same login flow. The harness defaults to Laravel's local E2E fixture
+`/messages`, `/connections/network`, `/matches`, `/matches/board`, `/activity`,
+`/achievements`, `/leaderboard`, `/nexus-score`, `/profile/settings`,
+`/settings/appearance`, `/settings/data-rights`, `/federation`, `/courses`,
+`/courses/mine`, `/marketplace`, `/marketplace/mine`, `/events`, `/listings`,
+`/search/advanced`, `/premium`, and `/podcasts` after the same login flow. The
+harness defaults to Laravel's local E2E fixture
 (`e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`).
 
-On 2026-07-07 the command passed `21/21` checks end-to-end against a temporary
-web-uk process started with `TENANT_ID=2`. Keep the tenant context visible: the
-same Laravel E2E credentials return `401` when web-uk does not send Laravel's
-tenant id `2` as `X-Tenant-ID`. Live probing still leaves `/coupons` outside the
-default signed smoke list because the local fixture returns a feature-gated
-`403` for merchant coupons.
+On 2026-07-07 the command passed `41/41` checks end-to-end against a temporary
+web-uk process started with `TENANT_ID=2`. The harness default timeout is now
+`30000` ms because Laravel-backed profile/settings and discovery pages can be
+slow in the local fixture. Keep the tenant context visible: the same Laravel E2E
+credentials return `401` when web-uk does not send Laravel's tenant id `2` as
+`X-Tenant-ID`. Live probing still leaves `/coupons` outside the default signed
+smoke list because the local fixture returns a feature-gated `403` for merchant
+coupons.
 
 ## Stack
 

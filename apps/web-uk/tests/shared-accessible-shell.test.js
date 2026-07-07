@@ -14835,6 +14835,37 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Photo for Community garden day');
   });
 
+  it('renders the signed listing index when Laravel omits flat owner IDs', async () => {
+    const api = require('../src/lib/api');
+
+    api.getListings.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          title: 'Borrow a ladder',
+          status: 'active',
+          created_at: '2026-07-05T14:15:00Z',
+          user: { id: 303, name: 'Ada Lovelace' }
+        }
+      ],
+      meta: { per_page: 20, has_more: false }
+    });
+
+    const response = await request(app)
+      .get('/listings')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getListings).toHaveBeenCalledWith('test-token', {
+      search: undefined,
+      status: undefined,
+      page: 1,
+      limit: 20
+    });
+    expect(response.text).toContain('Borrow a ladder');
+    expect(response.text).not.toContain('href="/listings/42/edit"');
+  });
+
   it('submits Laravel listing action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

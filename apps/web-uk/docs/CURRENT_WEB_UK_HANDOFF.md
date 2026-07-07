@@ -58,9 +58,9 @@ Regenerate before trusting it.
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
-| Dirty files seen | Current in-progress edits move wallet/messages/profile helpers to Laravel v2, expand Laravel runtime smoke to `/wallet` and `/messages`, and update docs. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `845/1000` implementation/certification parity |
-| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and signed module-page smoke scope through `/wallet` and `/messages`, assuming agents rerun the refresh protocol |
+| Dirty files seen | Current in-progress edits expand Laravel runtime smoke to the broader signed page set, raise the smoke timeout default, fix the signed `/listings` owner-id render crash, and update docs. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `865/1000` implementation/certification parity |
+| Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and broader signed module-page smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
 
@@ -74,9 +74,10 @@ The latest generated route matrix at this handoff reported:
 | Generated prep-page matches | `0` rows matched through `src/routes/laravel-prep-pages.js` |
 
 Focused runtime-smoke harness test: `npm test -- --runInBand
-tests/laravel-runtime-smoke.test.js` passed with `5/5` tests after red steps
+tests/laravel-runtime-smoke.test.js` passed with `6/6` tests after red steps
 for the missing harness, stale Acme defaults, missing public module-page checks,
-and missing signed module-page checks.
+missing signed module-page checks, and a too-short default timeout for slower
+Laravel-backed signed pages.
 
 Live local smoke result on 2026-07-07: direct Laravel login succeeds for the
 E2E fixture account when `X-Tenant-ID: 2` or `X-Tenant-Slug: hour-timebank` is
@@ -88,11 +89,18 @@ signed `/account` rendered `200`. The current smoke scope also checks
 `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and `/help`
 return 2xx through web-uk while Laravel is the backend target. After the login
 flow, it checks `/explore`, `/saved`, `/notifications`, `/members/discover`,
-`/resources`, `/skills`, `/goals`, `/clubs`, `/wallet`, and `/messages`. A later
-2026-07-07 smoke run against `WEB_UK_BASE_URL=http://127.0.0.1:5186` passed
-`21/21` checks with those signed pages after moving wallet/messages/profile
-helpers to Laravel v2 endpoints. `/coupons` remains outside the default signed
-smoke list because the local fixture returns a feature-gated `403`. Without
+`/resources`, `/skills`, `/goals`, `/clubs`, `/wallet`, `/messages`,
+`/connections/network`, `/matches`, `/matches/board`, `/activity`,
+`/achievements`, `/leaderboard`, `/nexus-score`, `/profile/settings`,
+`/settings/appearance`, `/settings/data-rights`, `/federation`, `/courses`,
+`/courses/mine`, `/marketplace`, `/marketplace/mine`, `/events`, `/listings`,
+`/search/advanced`, `/premium`, and `/podcasts`. A later 2026-07-07 smoke run
+against `WEB_UK_BASE_URL=http://127.0.0.1:5189` passed `41/41` checks with those
+signed pages. `/listings` needed a Nunjucks owner-id guard because Laravel can
+return nested `user.id` without a flat `user_id`; the default smoke timeout is
+now `30000` ms for slower Laravel fixture pages. `/coupons` remains outside the
+default signed smoke list because the local fixture returns a feature-gated
+`403`. Without
 `TENANT_ID=2`, the same Laravel E2E credentials fail because web-uk does not
 send the tenant context Laravel uses to scope login.
 
@@ -123,8 +131,8 @@ The route matrix only proves method/path declarations. It does not certify
 Blade visual parity, auth redirects, tenant gates, feature gates, POST side
 effects, localization, runtime Laravel behavior, or ASP.NET backend switching.
 For local Laravel auth smoke, ensure the web-uk process was started with
-`TENANT_ID=2`. If Laravel is cold or slow, run the smoke with
-`SMOKE_TIMEOUT_MS=30000`.
+`TENANT_ID=2`. The harness default timeout is `30000` ms; keep
+`SMOKE_TIMEOUT_MS` available for exceptionally slow local runs.
 
 ## Documents To Trust
 
@@ -206,7 +214,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `845/1000`.
+Current working estimate at this handoff: `865/1000`.
 
 ## Final Handoff Checklist
 

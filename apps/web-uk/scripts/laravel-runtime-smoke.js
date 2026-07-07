@@ -8,9 +8,40 @@ const DEFAULT_LARAVEL_BASE_URL = 'http://127.0.0.1:8088';
 const DEFAULT_SMOKE_EMAIL = 'e2e.user.a@project-nexus.local';
 const DEFAULT_SMOKE_PASSWORD = 'TestPassword123!';
 const DEFAULT_SMOKE_TENANT = 'hour-timebank';
-const DEFAULT_TIMEOUT_MS = 8000;
+const DEFAULT_TIMEOUT_MS = 30000;
 const DEFAULT_PUBLIC_MODULE_PAGE_PATHS = ['/volunteering', '/organisations', '/organisations/browse', '/kb', '/help'];
-const DEFAULT_SIGNED_MODULE_PAGE_PATHS = ['/explore', '/saved', '/notifications', '/members/discover', '/resources', '/skills', '/goals', '/clubs', '/wallet', '/messages'];
+const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
+  '/explore',
+  '/saved',
+  '/notifications',
+  '/members/discover',
+  '/resources',
+  '/skills',
+  '/goals',
+  '/clubs',
+  '/wallet',
+  '/messages',
+  '/connections/network',
+  '/matches',
+  '/matches/board',
+  '/activity',
+  '/achievements',
+  '/leaderboard',
+  '/nexus-score',
+  '/profile/settings',
+  '/settings/appearance',
+  '/settings/data-rights',
+  '/federation',
+  '/courses',
+  '/courses/mine',
+  '/marketplace',
+  '/marketplace/mine',
+  '/events',
+  '/listings',
+  '/search/advanced',
+  '/premium',
+  '/podcasts'
+];
 
 class CookieJar {
   constructor() {

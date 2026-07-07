@@ -103,7 +103,9 @@
                 </td>
                 <td class="govuk-table__cell">{{ (listing.createdAt or listing.created_at) | formatDate if listing.createdAt or listing.created_at else "N/A" }}</td>
                 <td class="govuk-table__cell">
-                  {% if listing.can_edit or (currentUser and ((listing.user and (listing.user.id | string) == (currentUser.id | string)) or (listing.user_id | string) == (currentUser.id | string))) %}
+                  {% set listingOwnerId = listing.user_id or listing.userId or listing.author_id or listing.authorId or (listing.user.id if listing.user and listing.user.id else null) %}
+                  {% set currentUserId = currentUser.id if currentUser and currentUser.id else null %}
+                  {% if listing.can_edit or (listingOwnerId and currentUserId and (listingOwnerId | string) == (currentUserId | string)) %}
                     <a href="/listings/{{ listing.id }}/edit" class="govuk-link govuk-!-margin-right-2">Edit</a>
                     <a href="/listings/{{ listing.id }}/delete" class="govuk-link app-link--destructive">Delete</a>
                   {% endif %}

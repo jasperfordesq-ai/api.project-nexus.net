@@ -61,10 +61,12 @@ the correct `X-Tenant-ID` context. Current local result on 2026-07-07:
 `WEB_UK_BASE_URL=http://127.0.0.1:5181 SMOKE_TIMEOUT_MS=30000 npm run
 smoke:laravel` passed against a temporary web-uk process started with
 `TENANT_ID=2`. Without that tenant context, Laravel returns `401` for the same
-valid E2E credentials. A later 2026-07-07 smoke run passed `21/21` checks with
-`/wallet` and `/messages` in the default signed page list; `/coupons` remains
-outside that default list because the local fixture returns a feature-gated
-`403` for merchant coupons.
+valid E2E credentials. A later 2026-07-07 smoke run passed `41/41` checks with
+the broader default signed page list, including wallet, messages, connections,
+matches, activity, achievements, leaderboard, profile/settings, federation,
+courses, marketplace, events, listings, search, premium, and podcasts pages.
+`/coupons` remains outside that default list because the local fixture returns a
+feature-gated `403` for merchant coupons.
 
 ## Current Page Candidates
 
