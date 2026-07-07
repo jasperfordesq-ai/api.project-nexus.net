@@ -1,6 +1,6 @@
 # API Parity Map
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-07
 
 Laravel source of truth: `C:\platforms\htdocs\staging\openapi.json` plus route
 files under `C:\platforms\htdocs\staging\routes`.
@@ -94,6 +94,17 @@ coverage for `GET /api/v2/users/me`, `PUT /api/v2/users/me/theme`, and
 `preferred_theme` and `theme_preferences` on the profile response, persists the
 React theme payload, and returns Laravel-style `success/data` envelopes for
 theme and theme-preference updates.
+
+The Laravel React presence context slice now has a backend contract test for
+`POST /api/v2/presence/heartbeat`, `GET /api/v2/presence/online-count`,
+`GET /api/v2/presence/users?user_ids=...`, `PUT /api/v2/presence/status`, and
+`PUT /api/v2/presence/privacy`. The .NET compatibility path accepts the empty
+heartbeat body used by `PresenceContext.tsx`, persists tenant-scoped presence
+status, returns the React user-id keyed presence dictionary with
+`status`/`last_seen_at`/`custom_status`/`status_emoji`, and stores the custom
+status/privacy metadata in tenant config. Runtime test execution is still
+blocked in this Windows environment by Application Control on the copied
+`Nexus.Api.dll`; the focused test currently builds but cannot be counted as run.
 
 The latest backend-only Laravel React utility slice also covers the final
 static API parity gaps: public health, public changelog, public page/static

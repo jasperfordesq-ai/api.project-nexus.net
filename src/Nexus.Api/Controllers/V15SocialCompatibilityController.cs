@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -961,23 +962,119 @@ public class V15SocialCompatibilityController : ControllerBase
     public IActionResult PusherAuth() => Ok(new { auth = string.Empty, enabled = false });
 
     [HttpPost("/api/v2/presence/heartbeat")]
-    public IActionResult Heartbeat() => Ok(new { online = true, user_id = RequireUserId(), heartbeat_at = DateTime.UtcNow });
+    public async Task<IActionResult> Heartbeat([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JsonElement body)
+    {
+        var userId = RequireUserId();
+        var row = await UpsertPresenceAsync(
+            userId,
+            ReadString(body, "platform"),
+            status: null,
+            preserveManualStatus: true);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                ok = true,
+                status = ToLaravelPresenceStatus(row.Status),
+                last_seen_at = row.LastSeenAt.ToString("O")
+            }
+        });
+    }
 
     [HttpGet("/api/v2/presence/online-count")]
-    public IActionResult OnlineCount() => Ok(new { count = 1 });
+    public async Task<IActionResult> OnlineCount()
+    {
+        var cutoff = DateTime.UtcNow.AddMinutes(-15);
+        var count = await _db.UserPresences
+            .Where(p => p.TenantId == TenantId()
+                && p.LastSeenAt >= cutoff
+                && (p.Status == "online" || p.Status == "away" || p.Status == "dnd" || p.Status == "do_not_disturb"))
+            .CountAsync();
+
+        return Ok(new { success = true, data = new { online_count = count } });
+    }
 
     [HttpGet("/api/v2/presence/users")]
     public async Task<IActionResult> PresenceUsers()
     {
-        var user = await _db.Users.Where(u => u.Id == RequireUserId()).Select(u => new { id = u.Id, name = (u.FirstName + " " + u.LastName).Trim(), online = true }).FirstOrDefaultAsync();
-        return Ok(new { data = user == null ? Array.Empty<object>() : new object[] { user } });
+        _ = RequireUserId();
+
+        var ids = Request.Query.TryGetValue("user_ids", out var rawUserIds)
+            ? rawUserIds.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(value => int.TryParse(value, out var id) ? id : 0)
+                .Where(id => id > 0)
+                .Distinct()
+                .Take(100)
+                .ToArray()
+            : Array.Empty<int>();
+
+        if (ids.Length == 0 && !Request.Query.ContainsKey("user_ids"))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                code = "VALIDATION_REQUIRED_FIELD",
+                message = "The user_ids field is required.",
+                field = "user_ids"
+            });
+        }
+
+        var rows = await _db.UserPresences
+            .AsNoTracking()
+            .Where(p => ids.Contains(p.UserId) && p.TenantId == TenantId())
+            .ToDictionaryAsync(p => p.UserId);
+        var meta = await LoadPresenceMetadata(ids);
+        var data = ids.ToDictionary(
+            id => id.ToString(),
+            id => BuildPresencePayload(rows.TryGetValue(id, out var row) ? row : null, meta.TryGetValue(id, out var item) ? item : null));
+
+        return Ok(new { success = true, data });
     }
 
     [HttpPut("/api/v2/presence/privacy")]
     [HttpPut("/api/v2/presence/status")]
-    public IActionResult SetPresencePreference([FromBody] JsonElement body)
+    public async Task<IActionResult> SetPresencePreference([FromBody] JsonElement body)
     {
-        return Ok(new { success = true, user_id = RequireUserId(), data = JsonSerializer.Deserialize<object>(body.GetRawText(), JsonOptions) });
+        var userId = RequireUserId();
+
+        if (Request.Path.Value?.EndsWith("/privacy", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var hidePresence = ReadBool(body, "hide_presence", "hidePresence") ?? false;
+            await UpsertPresenceAsync(userId, platform: null, status: hidePresence ? "invisible" : "online", preserveManualStatus: false);
+            await SavePresenceMetadata(userId, hidePresence: hidePresence);
+
+            return Ok(new { success = true, data = new { hide_presence = hidePresence } });
+        }
+
+        var status = NormalizeLaravelPresenceStatus(ReadString(body, "status"));
+        if (status == null)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                code = "VALIDATION_INVALID",
+                message = "Invalid presence status.",
+                field = "status"
+            });
+        }
+
+        var customStatus = TruncatePresenceText(ReadString(body, "custom_status", "customStatus"), 80);
+        var emoji = TruncatePresenceText(ReadString(body, "emoji", "status_emoji", "statusEmoji"), 10);
+        var row = await UpsertPresenceAsync(userId, platform: null, status, preserveManualStatus: false);
+        await SavePresenceMetadata(userId, customStatus, emoji);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                status = ToLaravelPresenceStatus(row.Status),
+                custom_status = customStatus,
+                emoji
+            }
+        });
     }
 
     [HttpGet("/api/recommendations/groups")]
@@ -1295,6 +1392,198 @@ public class V15SocialCompatibilityController : ControllerBase
             created_at = c.CreatedAt,
             updated_at = c.UpdatedAt
         };
+    }
+
+    private async Task<UserPresence> UpsertPresenceAsync(int userId, string? platform, string? status, bool preserveManualStatus)
+    {
+        var tenantId = TenantId();
+        var now = DateTime.UtcNow;
+        var row = await _db.UserPresences.FirstOrDefaultAsync(p => p.TenantId == tenantId && p.UserId == userId);
+        var nextStatus = status;
+
+        if (row != null)
+        {
+            if (preserveManualStatus)
+            {
+                nextStatus = row.Status is "dnd" or "do_not_disturb" or "invisible"
+                    ? row.Status
+                    : "online";
+            }
+
+            row.LastSeenAt = now;
+            if (!string.IsNullOrWhiteSpace(platform))
+            {
+                row.Platform = platform;
+            }
+
+            if (!string.IsNullOrWhiteSpace(nextStatus))
+            {
+                row.Status = nextStatus;
+            }
+
+            row.UpdatedAt = now;
+            await _db.SaveChangesAsync();
+            return row;
+        }
+
+        row = new UserPresence
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            LastSeenAt = now,
+            Platform = string.IsNullOrWhiteSpace(platform) ? null : platform,
+            Status = string.IsNullOrWhiteSpace(nextStatus) ? "online" : nextStatus,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.UserPresences.Add(row);
+        await _db.SaveChangesAsync();
+        return row;
+    }
+
+    private async Task<Dictionary<int, PresenceMetadata>> LoadPresenceMetadata(IEnumerable<int> userIds)
+    {
+        var ids = userIds.Distinct().ToArray();
+        if (ids.Length == 0)
+        {
+            return new Dictionary<int, PresenceMetadata>();
+        }
+
+        var keys = ids.Select(PresenceMetadataKey).ToArray();
+        var rows = await _db.TenantConfigs
+            .AsNoTracking()
+            .Where(c => c.TenantId == TenantId() && keys.Contains(c.Key))
+            .ToListAsync();
+
+        return rows
+            .Select(row => new
+            {
+                UserId = ParsePresenceMetadataUserId(row.Key),
+                Metadata = DeserializePresenceMetadata(row.Value)
+            })
+            .Where(row => row.UserId.HasValue)
+            .ToDictionary(row => row.UserId!.Value, row => row.Metadata);
+    }
+
+    private async Task SavePresenceMetadata(int userId, string? customStatus = null, string? emoji = null, bool? hidePresence = null)
+    {
+        var existing = await LoadPresenceMetadata(new[] { userId });
+        existing.TryGetValue(userId, out var current);
+        var metadata = new PresenceMetadata
+        {
+            CustomStatus = customStatus ?? current?.CustomStatus,
+            StatusEmoji = emoji ?? current?.StatusEmoji,
+            HidePresence = hidePresence ?? current?.HidePresence ?? false
+        };
+
+        await UpsertTenantConfig(PresenceMetadataKey(userId), JsonSerializer.Serialize(metadata, StoreJsonOptions));
+        await _db.SaveChangesAsync();
+    }
+
+    private static object BuildPresencePayload(UserPresence? row, PresenceMetadata? metadata)
+    {
+        if (metadata?.HidePresence == true || row == null)
+        {
+            return OfflinePresencePayload();
+        }
+
+        var status = ToLaravelPresenceStatus(row.Status);
+        if (status != "dnd" && row.LastSeenAt < DateTime.UtcNow.AddMinutes(-15))
+        {
+            status = "offline";
+        }
+        else if (status == "online" && row.LastSeenAt < DateTime.UtcNow.AddMinutes(-5))
+        {
+            status = "away";
+        }
+
+        if (status == "offline")
+        {
+            return OfflinePresencePayload();
+        }
+
+        return new
+        {
+            status,
+            last_seen_at = row.LastSeenAt.ToString("O"),
+            custom_status = metadata?.CustomStatus,
+            status_emoji = metadata?.StatusEmoji
+        };
+    }
+
+    private static object OfflinePresencePayload() => new
+    {
+        status = "offline",
+        last_seen_at = (string?)null,
+        custom_status = (string?)null,
+        status_emoji = (string?)null
+    };
+
+    private static string? NormalizeLaravelPresenceStatus(string? status)
+    {
+        return status?.Trim().ToLowerInvariant() switch
+        {
+            "online" => "online",
+            "away" => "away",
+            "dnd" => "dnd",
+            "do_not_disturb" => "dnd",
+            "offline" => "offline",
+            _ => null
+        };
+    }
+
+    private static string ToLaravelPresenceStatus(string? status)
+    {
+        return status?.Trim().ToLowerInvariant() switch
+        {
+            "online" => "online",
+            "away" => "away",
+            "dnd" => "dnd",
+            "do_not_disturb" => "dnd",
+            "invisible" => "offline",
+            "offline" => "offline",
+            _ => "offline"
+        };
+    }
+
+    private static string? TruncatePresenceText(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private static string PresenceMetadataKey(int userId) => $"presence.metadata.{userId}";
+
+    private static int? ParsePresenceMetadataUserId(string key)
+    {
+        var prefix = PresenceMetadataKey(0)[..^1];
+        return key.StartsWith(prefix, StringComparison.Ordinal)
+            && int.TryParse(key[prefix.Length..], out var userId)
+            ? userId
+            : null;
+    }
+
+    private static PresenceMetadata DeserializePresenceMetadata(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new PresenceMetadata();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<PresenceMetadata>(raw, StoreJsonOptions) ?? new PresenceMetadata();
+        }
+        catch (JsonException)
+        {
+            return new PresenceMetadata();
+        }
     }
 
     private int RequireUserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
@@ -1652,5 +1941,12 @@ public class V15SocialCompatibilityController : ControllerBase
         public string? ClosedAt { get; set; }
         public string? CreatedAt { get; set; }
         public string? UpdatedAt { get; set; }
+    }
+
+    private sealed class PresenceMetadata
+    {
+        public string? CustomStatus { get; set; }
+        public string? StatusEmoji { get; set; }
+        public bool HidePresence { get; set; }
     }
 }
