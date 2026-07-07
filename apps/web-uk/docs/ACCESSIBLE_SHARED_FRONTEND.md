@@ -186,6 +186,9 @@ table.
 Laravel-compatible personal-journey endpoint, and renders the Blade-style
 summary list, milestones, monthly activity table, badge progression list, and
 empty states.
+`/leaderboard/spotlight` now redirects unsigned visitors, calls the
+Laravel-compatible member-spotlight endpoint, and renders the Blade-style daily
+featured-member card list and empty state.
 Member profile POST aliases are wired to Laravel v2 APIs for connection
 transitions, skill endorsements, block/unblock, profile reviews, and direct
 wallet transfers while preserving Laravel profile status redirects.

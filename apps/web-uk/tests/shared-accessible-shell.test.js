@@ -2113,6 +2113,71 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders the Laravel-style member spotlight page', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.callGamificationApi.mockImplementation(async (token, method, pathValue) => {
+      if (token === 'test-token' && method === 'GET' && pathValue === '/member-spotlight?limit=3') {
+        return {
+          data: [
+            {
+              id: 77,
+              first_name: 'Avery',
+              last_name: 'Stone',
+              bio: 'Coordinates repair cafe sessions.',
+              member_since: 'Feb 2026',
+              level: 4,
+              xp: 3400,
+              recent_activity: 'Earned 5 badges'
+            },
+            {
+              id: 88,
+              first_name: '',
+              last_name: '',
+              bio: '',
+              member_since: '',
+              level: 1,
+              xp: 0,
+              recent_activity: 'Active community member'
+            }
+          ]
+        };
+      }
+
+      return { data: [] };
+    });
+
+    const unsigned = await request(app).get('/leaderboard/spotlight');
+    const signed = await request(app)
+      .get('/leaderboard/spotlight')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+
+    expect(signed.status).toBe(200);
+    expect(api.callGamificationApi).toHaveBeenCalledWith('test-token', 'GET', '/member-spotlight?limit=3');
+    expect(signed.text).toContain('href="/leaderboard"');
+    expect(signed.text).toContain('Back to leaderboard');
+    expect(signed.text).toContain('Leaderboard at Project NEXUS Accessible');
+    expect(signed.text).toContain('Member spotlight');
+    expect(signed.text).toContain('A daily rotating look at active members of the community.');
+    expect(signed.text).toContain('aria-current="page">Member spotlight</a>');
+    expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain('Level 4');
+    expect(signed.text).toContain('3,400 XP');
+    expect(signed.text).toContain('Member since Feb 2026');
+    expect(signed.text).toContain('Coordinates repair cafe sessions.');
+    expect(signed.text).toContain('Earned 5 badges');
+    expect(signed.text).toContain('href="/members/77"');
+    expect(signed.text).toContain('View profile');
+    expect(signed.text).toContain('Community member');
+    expect(signed.text).toContain('Active community member');
+    expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
   it('renders the Laravel-style data-rights settings page', async () => {
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;

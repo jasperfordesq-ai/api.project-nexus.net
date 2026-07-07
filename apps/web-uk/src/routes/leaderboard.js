@@ -380,6 +380,28 @@ function normalizeJourney(result) {
   };
 }
 
+function normalizeSpotlightMembers(result) {
+  const payload = payloadFrom(result);
+  const rows = Array.isArray(payload) ? payload : [];
+
+  return rows.map((row) => {
+    const object = objectFrom(row);
+    const id = intFrom(object.id);
+    const fullName = `${textFrom(object.first_name)} ${textFrom(object.last_name)}`.trim();
+
+    return {
+      id,
+      name: fullName || textFrom(object.name, 'Community member'),
+      bio: textFrom(object.bio),
+      levelLabel: `Level ${Math.max(1, intFrom(object.level) || 1)}`,
+      xpLabel: `${formatInteger(object.xp)} XP`,
+      memberSince: textFrom(object.member_since),
+      recentActivity: textFrom(object.recent_activity),
+      href: id > 0 ? `/members/${id}` : ''
+    };
+  }).filter((member) => member.name);
+}
+
 function redirectAuthIfNeeded(error, res) {
   if (error instanceof ApiError && error.status === 401) {
     res.redirect(loginRedirect());
@@ -453,6 +475,28 @@ router.get('/journey', asyncRoute(async (req, res) => {
     activeNav: 'leaderboard',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     journey: normalizeJourney(journeyPayload)
+  });
+}));
+
+router.get('/spotlight', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return res.redirect(loginRedirect());
+  }
+
+  let spotlightPayload;
+  try {
+    spotlightPayload = await callGamificationApi(token, 'GET', '/member-spotlight?limit=3');
+  } catch (error) {
+    if (redirectAuthIfNeeded(error, res)) return undefined;
+    spotlightPayload = { data: [] };
+  }
+
+  return res.render('leaderboard/spotlight', {
+    title: 'Member spotlight',
+    activeNav: 'leaderboard',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    spotlightMembers: normalizeSpotlightMembers(spotlightPayload)
   });
 }));
 

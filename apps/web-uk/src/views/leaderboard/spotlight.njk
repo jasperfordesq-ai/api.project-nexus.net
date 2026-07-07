@@ -1,0 +1,58 @@
+{# Copyright (c) 2024-2026 Jasper Ford #}
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+{# Author: Jasper Ford #}
+{# See NOTICE file for attribution and acknowledgements. #}
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <a class="govuk-back-link" href="/leaderboard">Back to leaderboard</a>
+
+  <span class="govuk-caption-xl">Leaderboard at {{ communityName }}</span>
+  <h1 class="govuk-heading-xl">Member spotlight</h1>
+  <p class="govuk-body-l">A daily rotating look at active members of the community.</p>
+
+  <nav class="govuk-tabs govuk-!-margin-top-2 govuk-!-margin-bottom-4" aria-label="Leaderboard">
+    <h2 class="govuk-tabs__title">Leaderboard</h2>
+    <ul class="govuk-tabs__list">
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/leaderboard/competitive">Competitive</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/leaderboard/seasons">Seasons</a>
+      </li>
+      <li class="govuk-tabs__list-item">
+        <a class="govuk-tabs__tab" href="/leaderboard/journey">My journey</a>
+      </li>
+      <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+        <a class="govuk-tabs__tab" href="/leaderboard/spotlight" aria-current="page">Member spotlight</a>
+      </li>
+    </ul>
+  </nav>
+
+  {% if not spotlightMembers.length %}
+    <div class="govuk-inset-text">
+      <p class="govuk-body">There are no featured members to show today.</p>
+    </div>
+  {% else %}
+    <ul class="nexus-alpha-card-list govuk-list">
+      {% for member in spotlightMembers %}
+        <li class="nexus-alpha-card govuk-!-margin-bottom-4">
+          <h2 class="govuk-heading-m govuk-!-margin-bottom-1">{{ member.name }}</h2>
+          <p class="govuk-body-s nexus-alpha-meta">
+            {{ member.levelLabel }} &middot; {{ member.xpLabel }}
+            {% if member.memberSince %} &middot; Member since {{ member.memberSince }}{% endif %}
+          </p>
+          {% if member.bio %}
+            <p class="govuk-body">{{ member.bio }}</p>
+          {% endif %}
+          {% if member.recentActivity %}
+            <p class="govuk-body-s">{{ member.recentActivity }}</p>
+          {% endif %}
+          {% if member.href %}
+            <a class="govuk-link" href="{{ member.href }}">View profile</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}
