@@ -330,12 +330,13 @@ same unsigned auth-required redirect against
 `WEB_UK_BASE_URL=http://127.0.0.1:5352`. The `/blog/feed.xml` and
 `/wallet/export.csv` responses returned the expected `application/rss+xml` and
 `text/csv` content types against `WEB_UK_BASE_URL=http://127.0.0.1:5355`.
-The signed `/explore` and `/chat` pages returned the expected body markers
-`Explore` and `AI assistant` against
-`WEB_UK_BASE_URL=http://127.0.0.1:5356`. The default scope now contains `349`
+The signed `/explore`, `/chat`, `/account`, `/wallet`, `/messages`,
+`/connections`, `/resources`, `/skills`, `/goals`, `/clubs`, `/saved`, and
+`/members` hub pages returned expected body markers against
+`WEB_UK_BASE_URL=http://127.0.0.1:6200`. The default scope now contains `359`
 checks: `279` module-page checks, 14 unsigned auth-required redirect checks, 3
 unsigned login redirect checks, 22 gated-status checks, and 21 signed redirect
-checks, plus 2 content-type contract checks, 2 body-text contract checks, and
+checks, plus 2 content-type contract checks, 12 body-text contract checks, and
 the 6 auth/health checks.
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.

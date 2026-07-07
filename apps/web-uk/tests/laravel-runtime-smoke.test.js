@@ -405,15 +405,23 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       }
 
       if ((req.headers.cookie || '').includes('token=signed-token')) {
-        if (req.url === '/explore') {
+        const bodyTextFixtures = new Map([
+          ['/explore', 'Explore'],
+          ['/chat', 'AI assistant'],
+          ['/account', 'My account'],
+          ['/wallet', 'Wallet'],
+          ['/messages', 'Messages'],
+          ['/connections', 'Connections'],
+          ['/resources', 'Resources'],
+          ['/skills', 'Skills'],
+          ['/goals', 'Goals'],
+          ['/clubs', 'Clubs'],
+          ['/saved', 'Saved items'],
+          ['/members', 'Community members']
+        ]);
+        if (bodyTextFixtures.has(req.url)) {
           res.writeHead(200, { 'content-type': 'text/html' });
-          res.end('<h1>Explore</h1>');
-          return;
-        }
-
-        if (req.url === '/chat') {
-          res.writeHead(200, { 'content-type': 'text/html' });
-          res.end('<h1>AI assistant</h1>');
+          res.end(`<h1>${bodyTextFixtures.get(req.url)}</h1>`);
           return;
         }
 
@@ -936,7 +944,17 @@ describe('Laravel runtime smoke harness', () => {
 
     expect(options.bodyTextPagePaths).toEqual(expect.arrayContaining([
       { path: '/explore', text: 'Explore' },
-      { path: '/chat', text: 'AI assistant' }
+      { path: '/chat', text: 'AI assistant' },
+      { path: '/account', text: 'My account' },
+      { path: '/wallet', text: 'Wallet' },
+      { path: '/messages', text: 'Messages' },
+      { path: '/connections', text: 'Connections' },
+      { path: '/resources', text: 'Resources' },
+      { path: '/skills', text: 'Skills' },
+      { path: '/goals', text: 'Goals' },
+      { path: '/clubs', text: 'Clubs' },
+      { path: '/saved', text: 'Saved items' },
+      { path: '/members', text: 'Community members' }
     ]));
   });
 
@@ -1445,7 +1463,17 @@ describe('Laravel runtime smoke harness', () => {
 
     expect(checks).toEqual(expect.objectContaining({
       'body-text-page-explore-contains-explore': true,
-      'body-text-page-chat-contains-ai-assistant': true
+      'body-text-page-chat-contains-ai-assistant': true,
+      'body-text-page-account-contains-my-account': true,
+      'body-text-page-wallet-contains-wallet': true,
+      'body-text-page-messages-contains-messages': true,
+      'body-text-page-connections-contains-connections': true,
+      'body-text-page-resources-contains-resources': true,
+      'body-text-page-skills-contains-skills': true,
+      'body-text-page-goals-contains-goals': true,
+      'body-text-page-clubs-contains-clubs': true,
+      'body-text-page-saved-contains-saved-items': true,
+      'body-text-page-members-contains-community-members': true
     }));
     expect(checkByName['body-text-page-chat-contains-ai-assistant'].text).toBe('AI assistant');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/chat').at(-1).cookie).toContain('token=signed-token');

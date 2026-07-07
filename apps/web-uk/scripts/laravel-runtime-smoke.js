@@ -198,7 +198,17 @@ const DEFAULT_CONTENT_TYPE_PAGE_PATHS = [
 ];
 const DEFAULT_BODY_TEXT_PAGE_PATHS = [
   { path: '/explore', text: 'Explore' },
-  { path: '/chat', text: 'AI assistant' }
+  { path: '/chat', text: 'AI assistant' },
+  { path: '/account', text: 'My account' },
+  { path: '/wallet', text: 'Wallet' },
+  { path: '/messages', text: 'Messages' },
+  { path: '/connections', text: 'Connections' },
+  { path: '/resources', text: 'Resources' },
+  { path: '/skills', text: 'Skills' },
+  { path: '/goals', text: 'Goals' },
+  { path: '/clubs', text: 'Clubs' },
+  { path: '/saved', text: 'Saved items' },
+  { path: '/members', text: 'Community members' }
 ];
 const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/',
