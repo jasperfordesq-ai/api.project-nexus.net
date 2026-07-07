@@ -304,11 +304,14 @@ announcements API, so `/groups/484/announcements/1/edit` is covered as a signed
 2026-07-07 with `7/7` checks and `0` failures. The achievement badge detail
 route is now covered by the live tenant badge fixture
 `/achievements/badges/vol_1h`, which returned `200` in a targeted Laravel-backed
-smoke run against `WEB_UK_BASE_URL=http://127.0.0.1:5345`. The default scope now
-contains `325` checks: `268` module-page checks, 8 unsigned auth-required redirect
+smoke run against `WEB_UK_BASE_URL=http://127.0.0.1:5345`. The feed post detail
+route is now covered by the live post fixture `/feed/posts/796`, which returned
+`200` in a targeted Laravel-backed smoke run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5346`. The default scope now contains `326`
+checks: `269` module-page checks, 8 unsigned auth-required redirect
 checks, 22 gated-status checks, and 21 signed redirect checks, plus the 6
 auth/health checks. Parameterised matched GET route shapes without default
-runtime smoke coverage fell from 28 to 19.
+runtime smoke coverage fell from 28 to 18.
 
 ## Stack
 

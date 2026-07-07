@@ -92,6 +92,7 @@ const DEFAULT_REAL_FIXTURE_MODULE_PAGE_PATHS = [
   '/marketplace/6/edit',
   '/polls/8',
   '/polls/4',
+  '/feed/posts/796',
   '/feed/item/listing/90967',
   '/feed/item/listing/90966',
   '/feed/item/listing/90965',

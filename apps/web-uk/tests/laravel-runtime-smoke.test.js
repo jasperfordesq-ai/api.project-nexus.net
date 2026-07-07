@@ -281,6 +281,7 @@ function createWebServer(requests, { loginRedirect = '/dashboard', delayedPaths 
       '/marketplace/6/edit',
       '/polls/8',
       '/polls/4',
+      '/feed/posts/796',
       '/feed/item/listing/90967',
       '/feed/item/listing/90966',
       '/feed/item/listing/90965',
@@ -791,6 +792,7 @@ describe('Laravel runtime smoke harness', () => {
     const options = resolveOptions({}, {});
 
     expect(options.modulePagePaths).toEqual(expect.arrayContaining([
+      '/feed/posts/796',
       '/feed/item/listing/90966',
       '/feed/item/listing/90965',
       '/feed/item/listing/90964',
