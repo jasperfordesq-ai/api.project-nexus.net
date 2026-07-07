@@ -2134,6 +2134,23 @@ async function getFeedPost(token, id) {
   });
 }
 
+async function getFeedHashtags(token = '', params = {}) {
+  const query = new URLSearchParams();
+  const searchQuery = params.q !== undefined && params.q !== null ? String(params.q).trim() : '';
+  const endpoint = searchQuery
+    ? '/api/v2/feed/hashtags/search'
+    : '/api/v2/feed/hashtags/trending';
+
+  if (searchQuery) query.set('q', searchQuery);
+  if (params.limit) query.set('limit', params.limit);
+  if (!searchQuery && params.days) query.set('days', params.days);
+
+  const queryString = query.toString();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  return request(`${endpoint}${queryString ? `?${queryString}` : ''}`, { headers });
+}
+
 async function createFeedPost(token, data) {
   return request('/api/feed', {
     method: 'POST',
@@ -3045,6 +3062,7 @@ module.exports = {
   // Feed
   getFeedPosts,
   getFeedPost,
+  getFeedHashtags,
   createFeedPost,
   createFeedPostV2,
   updateFeedPost,

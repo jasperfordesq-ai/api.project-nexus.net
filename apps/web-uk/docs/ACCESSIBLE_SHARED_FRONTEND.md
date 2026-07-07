@@ -284,11 +284,13 @@ Poll POST aliases are wired to Laravel v2 poll/comment/feed-like APIs for
 standard and ranked poll creation, votes, ranked votes, poll deletion, comments,
 and likes while preserving Laravel poll, poll detail, ranked-vote, and manage
 status redirects.
-Feed POST aliases are wired to Laravel v2 feed/social APIs for post
-create/update/delete, multipart post image upload from the Blade-style compose
-form, typed likes/comments/reactions, poll votes, hide/not-interested, reports,
-shares, saves, comment update/delete/reactions, and user mute while preserving Laravel feed status redirects and
-`#feed-item-*` anchors.
+Feed GET `/feed/hashtags` is wired to Laravel v2 hashtag trending/search APIs
+and renders the Blade-style public discovery page. Feed POST aliases are wired
+to Laravel v2 feed/social APIs for post create/update/delete, multipart post
+image upload from the Blade-style compose form, typed likes/comments/reactions,
+poll votes, hide/not-interested, reports, shares, saves, comment
+update/delete/reactions, and user mute while preserving Laravel feed status
+redirects and `#feed-item-*` anchors.
 The member onboarding POST aliases now cover `/onboarding/{step}` and
 `/onboarding/avatar`: profile saves bio through the profile API, interests and
 skills are held in the Express session, safeguarding uses Laravel's Blade-style

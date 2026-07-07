@@ -7,6 +7,7 @@ const express = require('express');
 const {
   getFeedPosts,
   getFeedPost,
+  getFeedHashtags,
   createFeedPost,
   updateFeedPost,
   deleteFeedPost,
@@ -24,6 +25,69 @@ const { validateReturnUrl, validateImageUrl } = require('../lib/urlValidator');
 const { audit } = require('../lib/auditLogger');
 
 const router = express.Router();
+
+function tokenFrom(req) {
+  return req.signedCookies && req.signedCookies.token ? req.signedCookies.token : '';
+}
+
+function trimmed(value, limit = null) {
+  const text = String(value || '').trim();
+  return limit === null ? text : text.slice(0, limit);
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined
+    ? result.data
+    : result;
+}
+
+function hashtagRows(result) {
+  const data = dataFrom(result);
+  const rows = Array.isArray(data) ? data : (data && Array.isArray(data.items) ? data.items : []);
+
+  return rows.map((row) => {
+    const tag = trimmed(row && (row.tag || row.name || row.hashtag), 100).replace(/^#/, '');
+    const count = Number(row && (row.post_count !== undefined ? row.post_count : row.postCount));
+    const postCount = Number.isFinite(count) && count >= 0 ? count : 0;
+    return {
+      tag,
+      postCount,
+      postCountLabel: postCount === 0 ? 'No posts' : `${postCount} post${postCount === 1 ? '' : 's'}`
+    };
+  }).filter((row) => row.tag);
+}
+
+function strippedSearch(value) {
+  return trimmed(value, 100).replace(/[%_]/g, '');
+}
+
+router.get('/hashtags', asyncRoute(async (req, res) => {
+  const searchQuery = trimmed(req.query.q, 100);
+  const searchTerm = strippedSearch(searchQuery);
+  const isSearching = searchTerm.length >= 1;
+  let hashtags = [];
+  let errorMessage = null;
+
+  try {
+    const result = await getFeedHashtags(tokenFrom(req), isSearching
+      ? { q: searchTerm, limit: 50 }
+      : { limit: 50, days: 7 });
+    hashtags = hashtagRows(result);
+  } catch {
+    errorMessage = 'Sorry, there is a problem with this page. Try again later.';
+  }
+
+  res.render('feed/hashtags', {
+    title: 'Hashtags',
+    activeNav: 'feed',
+    alphaActiveNav: 'feed',
+    communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
+    hashtags,
+    searchQuery,
+    isSearching,
+    errorMessage
+  });
+}));
 
 router.use(requireAuth);
 

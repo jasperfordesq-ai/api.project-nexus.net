@@ -41,6 +41,7 @@ jest.mock('../src/lib/api', () => ({
   verifyEmail: jest.fn().mockResolvedValue({ data: { verified: true } }),
   callNewsletterApi: jest.fn().mockResolvedValue({ data: { success: true } }),
   getFeedPosts: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } }),
+  getFeedHashtags: jest.fn().mockResolvedValue({ data: [] }),
   getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
   updateProfile: jest.fn().mockResolvedValue({}),
   uploadProfileAvatar: jest.fn().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } }),
@@ -255,6 +256,7 @@ describe('shared accessible frontend shell', () => {
     api.getTransactions.mockReset().mockResolvedValue({ data: [] });
     api.getProfile.mockReset().mockResolvedValue({ id: 101 });
     api.getFeedPosts.mockReset().mockResolvedValue({ data: [], pagination: { page: 1, total_pages: 1 } });
+    api.getFeedHashtags.mockReset().mockResolvedValue({ data: [] });
     api.getMyGroups.mockReset().mockResolvedValue({ data: [] });
     api.updateProfile.mockReset().mockResolvedValue({});
     api.uploadProfileAvatar.mockReset().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } });
@@ -7584,6 +7586,61 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getBlogPost).not.toHaveBeenCalled();
     expect(api.createComment).not.toHaveBeenCalled();
+  });
+
+  it('renders the public Laravel feed hashtag discovery page', async () => {
+    const api = require('../src/lib/api');
+
+    api.getFeedHashtags.mockResolvedValueOnce({
+      data: [
+        { tag: 'repair', post_count: 3 },
+        { tag: 'sewing', post_count: 1 }
+      ]
+    });
+
+    const response = await request(app).get('/feed/hashtags');
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedHashtags).toHaveBeenCalledWith('', { limit: 50, days: 7 });
+    expect(response.text).toContain('href="/feed"');
+    expect(response.text).toContain('Back to the feed');
+    expect(response.text).toContain('Discover topics at');
+    expect(response.text).toContain('<h1');
+    expect(response.text).toContain('Hashtags');
+    expect(response.text).toContain('Browse trending hashtags or search for a topic.');
+    expect(response.text).toContain('method="get" action="/feed/hashtags"');
+    expect(response.text).toContain('Search hashtags');
+    expect(response.text).toContain('Enter at least one character to search by topic.');
+    expect(response.text).toContain('Trending hashtags');
+    expect(response.text).toContain('href="/feed/hashtag/repair"');
+    expect(response.text).toContain('#repair');
+    expect(response.text).toContain('3 posts');
+    expect(response.text).toContain('href="/feed/hashtag/sewing"');
+    expect(response.text).toContain('#sewing');
+    expect(response.text).toContain('1 post');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders Laravel feed hashtag search results with the original query in the form', async () => {
+    const api = require('../src/lib/api');
+
+    api.getFeedHashtags.mockResolvedValueOnce({
+      data: [
+        { tag: 'repair_cafe', post_count: 2 }
+      ]
+    });
+
+    const response = await request(app).get('/feed/hashtags?q=repair%25_cafe');
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedHashtags).toHaveBeenCalledWith('', { q: 'repaircafe', limit: 50 });
+    expect(response.text).toContain('Search results');
+    expect(response.text).toContain('value="repair%_cafe"');
+    expect(response.text).toContain('Clear search and show trending');
+    expect(response.text).toContain('href="/feed/hashtag/repair_cafe"');
+    expect(response.text).toContain('#repair_cafe');
+    expect(response.text).toContain('2 posts');
+    expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
   it('submits the Laravel feed post store route through the v2 feed API helper', async () => {
