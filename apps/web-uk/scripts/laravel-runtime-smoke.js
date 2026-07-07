@@ -21,6 +21,7 @@ const DEFAULT_SIGNED_MODULE_PAGE_PATHS = [
   '/clubs',
   '/wallet',
   '/messages',
+  '/connections',
   '/connections/network',
   '/matches',
   '/matches/board',

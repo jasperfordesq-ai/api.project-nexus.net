@@ -75,10 +75,12 @@ probe against `WEB_UK_BASE_URL=http://127.0.0.1:5294` identified another stable
 `WEB_UK_BASE_URL=http://127.0.0.1:5295`. `/feed` is now included in the default
 signed smoke list and renders a Laravel-backed feed page with an empty/error
 state when Laravel's feed collection API is unavailable; a later run against
-`WEB_UK_BASE_URL=http://127.0.0.1:5297` passed `159/159`. Local probing left
-`/connections`, `/events/new`,
-`/marketplace/onboarding`, and `/members` outside the default list because they
-currently return `404`; left
+`WEB_UK_BASE_URL=http://127.0.0.1:5297` passed `159/159`. Plain `/connections`
+is now included in the default signed smoke scope and renders with an
+empty/error state when Laravel's legacy connections API is unavailable; a later
+run against `WEB_UK_BASE_URL=http://127.0.0.1:5298` passed `160/160`. Local
+probing left `/events/new`, `/marketplace/onboarding`, and `/members` outside
+the default list because they currently return `404`; left
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
 because they return feature-gated or role-gated `403`; and left signed-in auth,
 onboarding, and premium-management redirect pages outside because they do not

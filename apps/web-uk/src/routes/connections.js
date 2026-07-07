@@ -224,8 +224,15 @@ router.get('/', asyncRoute(async (req, res) => {
   const { status } = req.query;
   const page = parseInt(req.query.page, 10) || 1;
   const limit = 20;
+  let connectionErrorMessage = null;
 
-  const result = await getConnections(req.token, status);
+  const result = await getConnections(req.token, status).catch((error) => {
+    if (error instanceof ApiError && error.status === 401) {
+      throw error;
+    }
+    connectionErrorMessage = 'Sorry, there is a problem loading connections.';
+    return { data: [] };
+  });
   const raw = result.items || result.data || result.connections || result;
   const allConnections = Array.isArray(raw) ? raw : [];
 
@@ -245,8 +252,9 @@ router.get('/', asyncRoute(async (req, res) => {
       total,
       totalPages: totalPages
     },
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    errorMessage: connectionErrorMessage || (req.flash ? req.flash('error')[0] : null)
   });
 }));
 

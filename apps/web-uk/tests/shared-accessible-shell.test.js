@@ -63,6 +63,7 @@ jest.mock('../src/lib/api', () => ({
   getMembersV2: jest.fn(),
   getMembersNearby: jest.fn(),
   getListings: jest.fn(),
+  getConnections: jest.fn().mockResolvedValue({ data: [] }),
   getConversations: jest.fn().mockResolvedValue({ data: [] }),
   getConversation: jest.fn().mockResolvedValue({ id: 77, messages: [] }),
   markConversationRead: jest.fn().mockResolvedValue({}),
@@ -287,6 +288,7 @@ describe('shared accessible frontend shell', () => {
     api.searchUsers.mockReset().mockResolvedValue({ data: { items: [] } });
     api.getMembersV2.mockReset();
     api.getMembersNearby.mockReset();
+    api.getConnections.mockReset().mockResolvedValue({ data: [] });
     api.donateCredits.mockReset().mockResolvedValue({ data: { message: 'sent' } });
     api.unsaveSavedItem.mockReset().mockResolvedValue({});
     api.getUserPublicCollections.mockReset().mockResolvedValue({ data: [] });
@@ -6785,6 +6787,25 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('No connections yet');
     expect(response.text).toContain('No pending requests');
     expect(response.text).toContain('No sent requests');
+  });
+
+  it('renders the signed Laravel connections index when the connections API is unavailable', async () => {
+    const api = require('../src/lib/api');
+    const { ApiError } = api;
+
+    api.getConnections.mockRejectedValueOnce(new ApiError('Not found', 404, {}));
+
+    const response = await request(app)
+      .get('/connections')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getConnections).toHaveBeenCalledWith('test-token', undefined);
+    expect(response.text).toContain('<h1');
+    expect(response.text).toContain('Connections');
+    expect(response.text).toContain('No connections yet');
+    expect(response.text).toContain('Sorry, there is a problem loading connections.');
+    expect(response.text).not.toContain('Page not found');
   });
 
   it('submits Laravel connection actions through the v2 connection helpers', async () => {

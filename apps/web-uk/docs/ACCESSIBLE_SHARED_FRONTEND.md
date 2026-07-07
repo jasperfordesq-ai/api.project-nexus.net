@@ -45,8 +45,9 @@ pages `/volunteering`, `/organisations`, `/organisations/browse`, `/kb`, and
 `/help` return successful responses from the web-uk app while it is pointed at
 Laravel, plus the signed module pages `/explore`, `/saved`, `/notifications`,
 `/members/discover`, `/resources`, `/skills`, `/goals`, `/clubs`, `/wallet`,
-`/messages`, `/connections/network`, `/matches`, `/matches/board`, `/activity`,
-`/achievements`, `/leaderboard`, `/nexus-score`, `/profile/settings`,
+`/messages`, `/connections`, `/connections/network`, `/matches`,
+`/matches/board`, `/activity`, `/achievements`, `/leaderboard`,
+`/nexus-score`, `/profile/settings`,
 `/settings/appearance`, `/settings/data-rights`, `/federation`, `/courses`,
 `/courses/mine`, `/marketplace`, `/marketplace/mine`, `/events`, `/listings`,
 `/search/advanced`, `/premium`, and `/podcasts`, plus deeper signed subpages
@@ -66,12 +67,16 @@ passed `158/158` checks against `WEB_UK_BASE_URL=http://127.0.0.1:5295`.
 Blade-style feed page with an empty/error state when Laravel's feed collection
 API is unavailable; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5297` passed `159/159` checks. The
+plain `/connections` index is now also in scope and renders the signed page
+with an empty/error state when Laravel's legacy connections API is unavailable,
+and a later run against `WEB_UK_BASE_URL=http://127.0.0.1:5298` passed
+`160/160` checks. The
 harness default timeout is now `30000` ms because Laravel-backed
 profile/settings and discovery pages can be slow in the local fixture. Keep the
 tenant context visible: the same Laravel E2E credentials return `401` when
 web-uk does not send Laravel's tenant id `2` as `X-Tenant-ID`. Live probing
-still leaves `/connections`, `/events/new`, `/marketplace/onboarding`, and
-`/members` outside the default list because they return `404`, leaves
+still leaves `/events/new`, `/marketplace/onboarding`, and `/members` outside
+the default list because they return `404`, leaves
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
 because they return feature-gated or role-gated `403`, and leaves signed-in
 auth, onboarding, and premium-management redirect pages outside because they do
@@ -237,7 +242,9 @@ groups. Saved-search POST aliases are wired to Laravel `/api/v2/search/saved`:
 `POST /api/v2/search/saved/{id}/run` before redirecting to `/search/advanced`.
 The saved-search delete confirmation GET reads the owner-scoped saved-search
 list from `/api/v2/search/saved` and renders the Blade-style warning form.
-`/connections/network` now redirects unsigned visitors to
+Plain `/connections` now stays renderable with the existing Blade-style empty
+state and error banner if Laravel's legacy `/api/connections` endpoint is not
+available. `/connections/network` now redirects unsigned visitors to
 `/login?status=auth-required`, calls Laravel `/api/v2/connections` for the
 accepted, pending-received, and pending-sent sections plus
 `/api/v2/connections/pending` for counts, and renders the Blade-style network

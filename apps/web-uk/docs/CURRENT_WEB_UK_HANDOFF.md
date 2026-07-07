@@ -58,8 +58,8 @@ Regenerate before trusting it.
 | --- | --- |
 | Branch | `codex/web-uk-laravel-parity` |
 | Head commit | Run `git rev-parse --short HEAD` in this worktree; this handoff may be updated before or after focused commits. |
-| Dirty files seen | Current in-progress edits add `/feed` to the default signed Laravel runtime smoke scope and keep the signed feed page renderable with an empty/error state when Laravel's feed collection API is unavailable, then update docs. Rerun `git status --short --branch` and treat that as authoritative. |
-| Working estimate | about `908/1000` implementation/certification parity |
+| Dirty files seen | Current in-progress edits add `/connections` to the default signed Laravel runtime smoke scope and keep the signed connections index renderable with an empty/error state when Laravel's legacy connections API is unavailable, then update docs. Rerun `git status --short --branch` and treat that as authoritative. |
+| Working estimate | about `911/1000` implementation/certification parity |
 | Documentation readiness after this handoff | Current for route declarations, Laravel auth-smoke tenant-context evidence, default public module-page smoke scope, and broader signed module-page smoke scope, assuming agents rerun the refresh protocol |
 
 The latest generated route matrix at this handoff reported:
@@ -90,8 +90,9 @@ signed `/account` rendered `200`. The current smoke scope also checks
 return 2xx through web-uk while Laravel is the backend target. After the login
 flow, it checks the broad signed page set covering `/explore`, `/saved`,
 `/notifications`, `/members/discover`, `/resources`, `/skills`, `/goals`,
-`/clubs`, `/wallet`, `/messages`, `/connections/network`, `/matches`,
-`/matches/board`, `/activity`, `/achievements`, `/leaderboard`, `/nexus-score`,
+`/clubs`, `/wallet`, `/messages`, `/connections`, `/connections/network`,
+`/matches`, `/matches/board`, `/activity`, `/achievements`, `/leaderboard`,
+`/nexus-score`,
 `/profile/settings`, `/settings/appearance`, `/settings/data-rights`,
 `/federation`, `/courses`, `/courses/mine`, `/marketplace`,
 `/marketplace/mine`, `/events`, `/listings`, `/search/advanced`, `/premium`,
@@ -107,12 +108,16 @@ page checks. `/feed` is now part of the default signed page scope and renders
 the local Laravel-backed feed page with an empty/error state when Laravel's feed
 collection API is unavailable; a later run against
 `WEB_UK_BASE_URL=http://127.0.0.1:5297` passed `159/159`: 6 auth/health checks
-and 153 module page checks. `/listings` needed a Nunjucks
+and 153 module page checks. Plain `/connections` is now in the default signed
+scope and renders with an empty/error state when Laravel's legacy connections
+API is unavailable; a later run against
+`WEB_UK_BASE_URL=http://127.0.0.1:5298` passed `160/160`: 6 auth/health checks
+and 154 module page checks. `/listings` needed a Nunjucks
 owner-id guard because Laravel can return nested `user.id` without a flat
 `user_id`; the default smoke timeout is now `30000` ms for slower Laravel
 fixture pages. Local probing left
-`/connections`, `/events/new`, `/marketplace/onboarding`, and `/members`
-outside the default list because they returned `404`, left
+`/events/new`, `/marketplace/onboarding`, and `/members` outside the default
+list because they returned `404`, left
 `/jobs/bias-audit`, `/jobs/talent-search`, and `/marketplace/coupons` outside
 because they returned feature-gated or role-gated `403`, and left signed-in
 auth, onboarding, and premium-management redirect pages outside because they do
@@ -230,7 +235,7 @@ criteria.
 | `800-950` | Few prep pages remain, route families mostly runtime-smoked against Laravel |
 | `950-1000` | All families certified against Laravel, ASP.NET switching proof complete, docs and tests green |
 
-Current working estimate at this handoff: `908/1000`.
+Current working estimate at this handoff: `911/1000`.
 
 ## Final Handoff Checklist
 
