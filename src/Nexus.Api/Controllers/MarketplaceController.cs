@@ -875,17 +875,27 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> PickupSlots()
     {
         var rows = await _db.MarketplacePickupSlots.Where(s => s.UserId == RequireUserId()).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        return Ok(new { success = true, data = rows.Select(MapPickupSlot), meta = new { total = rows.Count } });
     }
 
     [HttpPost("seller/pickup-slots")]
     [Authorize]
     public async Task<IActionResult> CreatePickupSlot([FromBody] PickupSlotRequest request)
     {
-        var row = new MarketplacePickupSlot { UserId = RequireUserId(), Location = request.Location ?? string.Empty, StartsAt = request.StartsAt, EndsAt = request.EndsAt, Capacity = Math.Max(1, request.Capacity) };
+        var row = new MarketplacePickupSlot
+        {
+            UserId = RequireUserId(),
+            Location = request.Location ?? string.Empty,
+            StartsAt = request.SlotStart ?? request.StartsAt,
+            EndsAt = request.SlotEnd ?? request.EndsAt,
+            Capacity = Math.Max(1, request.Capacity),
+            IsRecurring = request.IsRecurring ?? false,
+            RecurringPattern = request.RecurringPattern,
+            IsActive = request.IsActive ?? true
+        };
         _db.MarketplacePickupSlots.Add(row);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/seller/pickup-slots/{row.Id}", new { data = row });
+        return Created($"/api/marketplace/seller/pickup-slots/{row.Id}", new { success = true, data = MapPickupSlot(row) });
     }
 
     [HttpPut("seller/pickup-slots/{id:int}")]
@@ -893,14 +903,17 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> UpdatePickupSlot(int id, [FromBody] PickupSlotRequest request)
     {
         var row = await _db.MarketplacePickupSlots.FirstOrDefaultAsync(s => s.Id == id && s.UserId == RequireUserId());
-        if (row == null) return NotFound(new { error = "Pickup slot not found" });
+        if (row == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Pickup slot not found" });
         if (request.Location != null) row.Location = request.Location;
-        if (request.StartsAt != default) row.StartsAt = request.StartsAt;
-        if (request.EndsAt != default) row.EndsAt = request.EndsAt;
+        if ((request.SlotStart ?? request.StartsAt) != default) row.StartsAt = request.SlotStart ?? request.StartsAt;
+        if ((request.SlotEnd ?? request.EndsAt) != default) row.EndsAt = request.SlotEnd ?? request.EndsAt;
         if (request.Capacity > 0) row.Capacity = request.Capacity;
+        row.IsRecurring = request.IsRecurring ?? row.IsRecurring;
+        if (request.RecurringPattern != null) row.RecurringPattern = request.RecurringPattern;
         row.IsActive = request.IsActive ?? row.IsActive;
+        row.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = row });
+        return Ok(new { success = true, data = MapPickupSlot(row) });
     }
 
     [HttpDelete("seller/pickup-slots/{id:int}")]
@@ -908,10 +921,10 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> DeletePickupSlot(int id)
     {
         var row = await _db.MarketplacePickupSlots.FirstOrDefaultAsync(s => s.Id == id && s.UserId == RequireUserId());
-        if (row == null) return NotFound(new { error = "Pickup slot not found" });
+        if (row == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Pickup slot not found" });
         _db.MarketplacePickupSlots.Remove(row);
         await _db.SaveChangesAsync();
-        return NoContent();
+        return Ok(new { success = true, data = new { deleted = true } });
     }
 
     [HttpPost("seller/pickup-scan")]
@@ -924,9 +937,9 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> ListingPickupSlots(int id)
     {
         var listing = await _db.MarketplaceListings.FirstOrDefaultAsync(l => l.Id == id);
-        if (listing == null) return NotFound(new { error = "Listing not found" });
+        if (listing == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Listing not found" });
         var rows = await _db.MarketplacePickupSlots.Where(s => s.UserId == listing.UserId && s.IsActive).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        return Ok(new { success = true, data = rows.Select(MapPickupSlot), meta = new { total = rows.Count } });
     }
 
     [HttpPost("orders/{id:int}/pickup-reservation")]
@@ -1191,6 +1204,20 @@ public class MarketplaceController : ControllerBase
             }
     };
 
+    private static object MapPickupSlot(MarketplacePickupSlot slot) => new
+    {
+        id = slot.Id,
+        seller_id = slot.UserId,
+        slot_start = slot.StartsAt,
+        slot_end = slot.EndsAt,
+        capacity = slot.Capacity,
+        booked_count = slot.BookedCount,
+        remaining = Math.Max(0, slot.Capacity - slot.BookedCount),
+        is_recurring = slot.IsRecurring,
+        recurring_pattern = slot.RecurringPattern,
+        is_active = slot.IsActive
+    };
+
     private static string DisplayName(User user)
     {
         var name = $"{user.FirstName} {user.LastName}".Trim();
@@ -1312,8 +1339,17 @@ public sealed class DeliveryOfferRequest
 public record AutoReplyRequest(string? Question);
 public record CouponRequest(string? Code, string? Description, decimal DiscountAmount, string? DiscountType, DateTime? ExpiresAt);
 public record ShippingOptionRequest(string? Name, decimal Price, string? Currency, string? Region, bool? IsActive);
-public record PickupSlotRequest(string? Location, DateTime StartsAt, DateTime EndsAt, int Capacity, bool? IsActive);
-public record PickupScanRequest(string? Code);
+public record PickupSlotRequest(
+    string? Location,
+    DateTime StartsAt,
+    DateTime EndsAt,
+    [property: JsonPropertyName("slot_start")] DateTime? SlotStart,
+    [property: JsonPropertyName("slot_end")] DateTime? SlotEnd,
+    int Capacity,
+    [property: JsonPropertyName("is_recurring")] bool? IsRecurring,
+    [property: JsonPropertyName("recurring_pattern")] string? RecurringPattern,
+    [property: JsonPropertyName("is_active")] bool? IsActive);
+public record PickupScanRequest(string? Code, [property: JsonPropertyName("qr_code")] string? QrCode);
 public record PickupReservationRequest(int PickupSlotId);
 public record InventoryRequest(int Quantity);
 public record BulkActionRequest(string? Action, int[]? Ids);

@@ -242,8 +242,12 @@ public class MarketplacePickupSlot : ITenantEntity
     public DateTime StartsAt { get; set; }
     public DateTime EndsAt { get; set; }
     public int Capacity { get; set; } = 1;
+    public int BookedCount { get; set; }
+    public bool IsRecurring { get; set; }
+    public string? RecurringPattern { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class MarketplacePickupReservation : ITenantEntity
@@ -252,8 +256,12 @@ public class MarketplacePickupReservation : ITenantEntity
     public int TenantId { get; set; }
     public int MarketplaceOrderId { get; set; }
     public int MarketplacePickupSlotId { get; set; }
+    public int? MarketplaceListingId { get; set; }
     public int UserId { get; set; }
+    public string QrCode { get; set; } = string.Empty;
     public string Status { get; set; } = "reserved";
+    public DateTime? ReservedAt { get; set; }
+    public DateTime? PickedUpAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

@@ -408,6 +408,58 @@ public class MarketplaceControllerTests : IntegrationTestBase
         acceptedOffer.GetProperty("amount").GetDecimal().Should().Be(45m);
     }
 
+    [Fact]
+    public async Task MarketplacePickupSlotsV2_MatchesLaravelReactSellerContract()
+    {
+        await AuthenticateAsAdminAsync();
+        var start = DateTime.UtcNow.AddDays(2).Date.AddHours(10);
+        var end = start.AddHours(2);
+
+        var create = await Client.PostAsJsonAsync("/api/v2/marketplace/seller/pickup-slots", new
+        {
+            slot_start = start,
+            slot_end = end,
+            capacity = 3,
+            is_recurring = true,
+            is_active = true
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var created = createJson.GetProperty("data");
+        var slotId = created.GetProperty("id").GetInt32();
+        created.GetProperty("slot_start").GetString().Should().NotBeNullOrWhiteSpace();
+        created.GetProperty("slot_end").GetString().Should().NotBeNullOrWhiteSpace();
+        created.GetProperty("capacity").GetInt32().Should().Be(3);
+        created.GetProperty("booked_count").GetInt32().Should().Be(0);
+        created.GetProperty("remaining").GetInt32().Should().Be(3);
+        created.GetProperty("is_recurring").GetBoolean().Should().BeTrue();
+        created.GetProperty("is_active").GetBoolean().Should().BeTrue();
+
+        var list = await Client.GetAsync("/api/v2/marketplace/seller/pickup-slots");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var slot = listJson.GetProperty("data").EnumerateArray().Should().ContainSingle().Subject;
+        slot.GetProperty("id").GetInt32().Should().Be(slotId);
+        slot.GetProperty("slot_start").GetString().Should().NotBeNullOrWhiteSpace();
+        slot.GetProperty("slot_end").GetString().Should().NotBeNullOrWhiteSpace();
+        slot.GetProperty("capacity").GetInt32().Should().Be(3);
+        slot.GetProperty("booked_count").GetInt32().Should().Be(0);
+        slot.GetProperty("remaining").GetInt32().Should().Be(3);
+        slot.GetProperty("is_recurring").GetBoolean().Should().BeTrue();
+        slot.GetProperty("is_active").GetBoolean().Should().BeTrue();
+
+        var delete = await Client.DeleteAsync($"/api/v2/marketplace/seller/pickup-slots/{slotId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+    }
+
     private async Task<int> CreateMarketplaceListingAsync()
     {
         using var scope = Factory.Services.CreateScope();
