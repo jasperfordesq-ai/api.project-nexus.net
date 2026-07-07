@@ -295,12 +295,22 @@ public class MerchantCoupon : ITenantEntity
     public int TenantId { get; set; }
     public int SellerUserId { get; set; }
     public string Code { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal DiscountAmount { get; set; }
     public string DiscountType { get; set; } = "fixed";
+    public int? MinOrderCents { get; set; }
+    public int? MaxUses { get; set; }
+    public int MaxUsesPerMember { get; set; } = 1;
+    public DateTime? ValidFrom { get; set; }
+    public string Status { get; set; } = "draft";
+    public string AppliesTo { get; set; } = "all_listings";
+    public string? AppliesToIdsJson { get; set; }
+    public int UsageCount { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime? ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class MerchantCouponRedemption : ITenantEntity

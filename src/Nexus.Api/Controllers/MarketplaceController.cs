@@ -778,33 +778,101 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> SellerCoupons()
     {
         var userId = RequireUserId();
-        var rows = await _db.MerchantCoupons.Where(c => c.SellerUserId == userId).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        var rows = await _db.MerchantCoupons
+            .Where(c => c.SellerUserId == userId)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+        return Ok(new { success = true, data = new { items = rows.Select(MapMerchantCoupon) }, meta = new { total = rows.Count } });
     }
 
     [HttpPost("seller/coupons")]
     [Authorize]
-    public async Task<IActionResult> CreateSellerCoupon([FromBody] CouponRequest request)
+    public async Task<IActionResult> CreateSellerCoupon([FromBody] JsonElement request)
     {
-        var row = new MerchantCoupon { SellerUserId = RequireUserId(), Code = request.Code ?? Guid.NewGuid().ToString("N")[..8].ToUpperInvariant(), Description = request.Description ?? string.Empty, DiscountAmount = request.DiscountAmount, DiscountType = request.DiscountType ?? "fixed", ExpiresAt = request.ExpiresAt };
+        var code = NormalizeCouponCode(GetString(request, "code"));
+        if (string.IsNullOrWhiteSpace(code))
+            code = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+
+        if (await _db.MerchantCoupons.AnyAsync(c => c.Code == code))
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", error = "Coupon code is already in use." });
+
+        var title = GetString(request, "title");
+        if (string.IsNullOrWhiteSpace(title))
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", error = "Title is required." });
+
+        var status = NormalizeCouponStatus(GetString(request, "status") ?? "draft");
+        var discountValue = GetDecimal(request, "discount_value", "discountAmount", "discount_amount") ?? 0m;
+        var validUntil = GetDateTime(request, "valid_until", "expiresAt", "expires_at");
+
+        var row = new MerchantCoupon
+        {
+            SellerUserId = RequireUserId(),
+            Code = code,
+            Title = title.Trim(),
+            Description = GetString(request, "description") ?? string.Empty,
+            DiscountAmount = discountValue,
+            DiscountType = NormalizeDiscountType(GetString(request, "discount_type", "discountType")),
+            MinOrderCents = GetInt(request, "min_order_cents"),
+            MaxUses = GetInt(request, "max_uses"),
+            MaxUsesPerMember = Math.Max(1, GetInt(request, "max_uses_per_member") ?? 1),
+            ValidFrom = GetDateTime(request, "valid_from"),
+            ExpiresAt = validUntil,
+            Status = status,
+            IsActive = status == "active",
+            AppliesTo = NormalizeAppliesTo(GetString(request, "applies_to")),
+            AppliesToIdsJson = GetJsonArray(request, "applies_to_ids")
+        };
         _db.MerchantCoupons.Add(row);
         await _db.SaveChangesAsync();
-        return Created($"/api/marketplace/seller/coupons/{row.Id}", new { data = row });
+        return Created($"/api/marketplace/seller/coupons/{row.Id}", new { success = true, data = MapMerchantCoupon(row) });
     }
 
     [HttpPut("seller/coupons/{id:int}")]
     [Authorize]
-    public async Task<IActionResult> UpdateSellerCoupon(int id, [FromBody] CouponRequest request)
+    public async Task<IActionResult> UpdateSellerCoupon(int id, [FromBody] JsonElement request)
     {
         var row = await _db.MerchantCoupons.FirstOrDefaultAsync(c => c.Id == id && c.SellerUserId == RequireUserId());
-        if (row == null) return NotFound(new { error = "Coupon not found" });
-        if (request.Code != null) row.Code = request.Code;
-        if (request.Description != null) row.Description = request.Description;
-        if (request.DiscountAmount != 0) row.DiscountAmount = request.DiscountAmount;
-        if (request.DiscountType != null) row.DiscountType = request.DiscountType;
-        row.ExpiresAt = request.ExpiresAt;
+        if (row == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Coupon not found" });
+
+        if (HasAny(request, "code"))
+        {
+            var code = NormalizeCouponCode(GetString(request, "code"));
+            if (string.IsNullOrWhiteSpace(code))
+                return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", error = "Coupon code is required." });
+            if (await _db.MerchantCoupons.AnyAsync(c => c.Code == code && c.Id != row.Id))
+                return UnprocessableEntity(new { success = false, code = "VALIDATION_ERROR", error = "Coupon code is already in use." });
+            row.Code = code;
+        }
+        if (HasAny(request, "title"))
+            row.Title = GetString(request, "title")?.Trim() ?? string.Empty;
+        if (HasAny(request, "description"))
+            row.Description = GetString(request, "description") ?? string.Empty;
+        if (HasAny(request, "discount_value", "discountAmount", "discount_amount"))
+            row.DiscountAmount = GetDecimal(request, "discount_value", "discountAmount", "discount_amount") ?? 0m;
+        if (HasAny(request, "discount_type", "discountType"))
+            row.DiscountType = NormalizeDiscountType(GetString(request, "discount_type", "discountType"));
+        if (HasAny(request, "min_order_cents"))
+            row.MinOrderCents = GetInt(request, "min_order_cents");
+        if (HasAny(request, "max_uses"))
+            row.MaxUses = GetInt(request, "max_uses");
+        if (HasAny(request, "max_uses_per_member"))
+            row.MaxUsesPerMember = Math.Max(1, GetInt(request, "max_uses_per_member") ?? 1);
+        if (HasAny(request, "valid_from"))
+            row.ValidFrom = GetDateTime(request, "valid_from");
+        if (HasAny(request, "valid_until", "expiresAt", "expires_at"))
+            row.ExpiresAt = GetDateTime(request, "valid_until", "expiresAt", "expires_at");
+        if (HasAny(request, "status"))
+        {
+            row.Status = NormalizeCouponStatus(GetString(request, "status") ?? "draft");
+            row.IsActive = row.Status == "active";
+        }
+        if (HasAny(request, "applies_to"))
+            row.AppliesTo = NormalizeAppliesTo(GetString(request, "applies_to"));
+        if (HasAny(request, "applies_to_ids"))
+            row.AppliesToIdsJson = GetJsonArray(request, "applies_to_ids");
+        row.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return Ok(new { data = row });
+        return Ok(new { success = true, data = MapMerchantCoupon(row) });
     }
 
     [HttpDelete("seller/coupons/{id:int}")]
@@ -812,10 +880,10 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> DeleteSellerCoupon(int id)
     {
         var row = await _db.MerchantCoupons.FirstOrDefaultAsync(c => c.Id == id && c.SellerUserId == RequireUserId());
-        if (row == null) return NotFound(new { error = "Coupon not found" });
+        if (row == null) return NotFound(new { success = false, code = "NOT_FOUND", error = "Coupon not found" });
         _db.MerchantCoupons.Remove(row);
         await _db.SaveChangesAsync();
-        return NoContent();
+        return Ok(new { success = true, data = new { deleted = true } });
     }
 
     [HttpGet("seller/coupons/{id:int}/redemptions")]
@@ -1212,6 +1280,129 @@ public class MarketplaceController : ControllerBase
             }
     };
 
+    private static object MapMerchantCoupon(MerchantCoupon coupon) => new
+    {
+        id = coupon.Id,
+        seller_id = coupon.SellerUserId,
+        code = coupon.Code,
+        title = coupon.Title,
+        description = string.IsNullOrEmpty(coupon.Description) ? null : coupon.Description,
+        discount_type = coupon.DiscountType,
+        discount_value = coupon.DiscountAmount,
+        min_order_cents = coupon.MinOrderCents,
+        max_uses = coupon.MaxUses,
+        max_uses_per_member = coupon.MaxUsesPerMember <= 0 ? 1 : coupon.MaxUsesPerMember,
+        valid_from = coupon.ValidFrom,
+        valid_until = coupon.ExpiresAt,
+        status = string.IsNullOrWhiteSpace(coupon.Status)
+            ? coupon.IsActive ? "active" : "paused"
+            : coupon.Status,
+        applies_to = string.IsNullOrWhiteSpace(coupon.AppliesTo) ? "all_listings" : coupon.AppliesTo,
+        applies_to_ids = ParseJsonArray(coupon.AppliesToIdsJson),
+        usage_count = coupon.UsageCount,
+        created_at = coupon.CreatedAt,
+        updated_at = coupon.UpdatedAt
+    };
+
+    private static bool HasAny(JsonElement json, params string[] names) => TryGetAny(json, out _, names);
+
+    private static bool TryGetAny(JsonElement json, out JsonElement value, params string[] names)
+    {
+        if (json.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in json.EnumerateObject())
+            {
+                if (names.Any(name => string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static string? GetString(JsonElement json, params string[] names)
+    {
+        if (!TryGetAny(json, out var value, names) || value.ValueKind == JsonValueKind.Null)
+            return null;
+
+        return value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString();
+    }
+
+    private static decimal? GetDecimal(JsonElement json, params string[] names)
+    {
+        if (!TryGetAny(json, out var value, names) || value.ValueKind == JsonValueKind.Null)
+            return null;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var number))
+            return number;
+        return decimal.TryParse(value.ToString(), out var parsed) ? parsed : null;
+    }
+
+    private static int? GetInt(JsonElement json, params string[] names)
+    {
+        if (!TryGetAny(json, out var value, names) || value.ValueKind == JsonValueKind.Null)
+            return null;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
+            return number;
+        return int.TryParse(value.ToString(), out var parsed) ? parsed : null;
+    }
+
+    private static DateTime? GetDateTime(JsonElement json, params string[] names)
+    {
+        if (!TryGetAny(json, out var value, names) || value.ValueKind == JsonValueKind.Null)
+            return null;
+        if (value.ValueKind == JsonValueKind.String && value.TryGetDateTime(out var date))
+            return date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(date, DateTimeKind.Utc) : date.ToUniversalTime();
+        return DateTime.TryParse(value.ToString(), out var parsed)
+            ? DateTime.SpecifyKind(parsed, parsed.Kind == DateTimeKind.Unspecified ? DateTimeKind.Utc : parsed.Kind).ToUniversalTime()
+            : null;
+    }
+
+    private static string? GetJsonArray(JsonElement json, params string[] names)
+    {
+        if (!TryGetAny(json, out var value, names) || value.ValueKind == JsonValueKind.Null)
+            return null;
+        return value.ValueKind == JsonValueKind.Array ? value.GetRawText() : null;
+    }
+
+    private static object? ParseJsonArray(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<JsonElement>(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string NormalizeCouponCode(string? code) => (code ?? string.Empty).Trim().ToUpperInvariant();
+
+    private static string NormalizeDiscountType(string? type)
+    {
+        var normalized = (type ?? "percent").Trim().ToLowerInvariant();
+        return normalized is "percent" or "fixed" or "bogo" ? normalized : "percent";
+    }
+
+    private static string NormalizeCouponStatus(string? status)
+    {
+        var normalized = (status ?? "draft").Trim().ToLowerInvariant();
+        return normalized is "draft" or "active" or "paused" or "expired" ? normalized : "draft";
+    }
+
+    private static string NormalizeAppliesTo(string? appliesTo)
+    {
+        var normalized = (appliesTo ?? "all_listings").Trim().ToLowerInvariant();
+        return normalized is "all_listings" or "listing_ids" or "category_ids" ? normalized : "all_listings";
+    }
+
     private async Task<Dictionary<int, MarketplaceListing>> LoadListingsAsync(IEnumerable<int> listingIds)
     {
         var ids = listingIds.Distinct().ToArray();
@@ -1437,7 +1628,6 @@ public sealed class DeliveryOfferRequest
     public decimal TimeCreditAmount { get; set; }
 }
 public record AutoReplyRequest(string? Question);
-public record CouponRequest(string? Code, string? Description, decimal DiscountAmount, string? DiscountType, DateTime? ExpiresAt);
 public record ShippingOptionRequest(string? Name, decimal Price, string? Currency, string? Region, bool? IsActive);
 public record PickupSlotRequest(
     string? Location,

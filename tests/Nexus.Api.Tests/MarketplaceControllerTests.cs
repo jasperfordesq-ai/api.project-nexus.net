@@ -409,6 +409,92 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task MarketplaceSellerCouponsV2_MatchesLaravelReactCrudContract()
+    {
+        await AuthenticateAsAdminAsync();
+        var code = $"SAVE{Guid.NewGuid():N}"[..12].ToUpperInvariant();
+        var validFrom = DateTime.UtcNow.AddDays(1);
+        var validUntil = DateTime.UtcNow.AddDays(14);
+
+        var create = await Client.PostAsJsonAsync("/api/v2/marketplace/seller/coupons", new
+        {
+            code,
+            title = "Spring repair discount",
+            description = "Discount for repair cafe orders",
+            discount_type = "percent",
+            discount_value = 15,
+            min_order_cents = 2500,
+            max_uses = 20,
+            max_uses_per_member = 2,
+            valid_from = validFrom,
+            valid_until = validUntil,
+            status = "active",
+            applies_to = "all_listings"
+        });
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
+        createJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var created = createJson.GetProperty("data");
+        var couponId = created.GetProperty("id").GetInt32();
+        created.GetProperty("seller_id").GetInt32().Should().Be(TestData.AdminUser.Id);
+        created.GetProperty("code").GetString().Should().Be(code);
+        created.GetProperty("title").GetString().Should().Be("Spring repair discount");
+        created.GetProperty("description").GetString().Should().Be("Discount for repair cafe orders");
+        created.GetProperty("discount_type").GetString().Should().Be("percent");
+        created.GetProperty("discount_value").GetDecimal().Should().Be(15m);
+        created.GetProperty("min_order_cents").GetInt32().Should().Be(2500);
+        created.GetProperty("max_uses").GetInt32().Should().Be(20);
+        created.GetProperty("max_uses_per_member").GetInt32().Should().Be(2);
+        created.GetProperty("valid_from").GetString().Should().NotBeNullOrWhiteSpace();
+        created.GetProperty("valid_until").GetString().Should().NotBeNullOrWhiteSpace();
+        created.GetProperty("status").GetString().Should().Be("active");
+        created.GetProperty("applies_to").GetString().Should().Be("all_listings");
+        created.GetProperty("usage_count").GetInt32().Should().Be(0);
+        created.GetProperty("created_at").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var list = await Client.GetAsync("/api/v2/marketplace/seller/coupons");
+
+        list.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
+        listJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var listed = listJson.GetProperty("data").GetProperty("items").EnumerateArray()
+            .Should().ContainSingle(c => c.GetProperty("id").GetInt32() == couponId).Subject;
+        listed.GetProperty("code").GetString().Should().Be(code);
+        listed.GetProperty("title").GetString().Should().Be("Spring repair discount");
+        listed.GetProperty("status").GetString().Should().Be("active");
+
+        var update = await Client.PutAsJsonAsync($"/api/v2/marketplace/seller/coupons/{couponId}", new
+        {
+            title = "Updated repair discount",
+            discount_type = "fixed",
+            discount_value = 500,
+            max_uses_per_member = 1,
+            status = "paused",
+            applies_to = "category_ids"
+        });
+
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        var updated = updateJson.GetProperty("data");
+        updated.GetProperty("id").GetInt32().Should().Be(couponId);
+        updated.GetProperty("title").GetString().Should().Be("Updated repair discount");
+        updated.GetProperty("discount_type").GetString().Should().Be("fixed");
+        updated.GetProperty("discount_value").GetDecimal().Should().Be(500m);
+        updated.GetProperty("max_uses_per_member").GetInt32().Should().Be(1);
+        updated.GetProperty("status").GetString().Should().Be("paused");
+        updated.GetProperty("applies_to").GetString().Should().Be("category_ids");
+
+        var delete = await Client.DeleteAsync($"/api/v2/marketplace/seller/coupons/{couponId}");
+
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deleteJson = await delete.Content.ReadFromJsonAsync<JsonElement>();
+        deleteJson.GetProperty("success").GetBoolean().Should().BeTrue();
+        deleteJson.GetProperty("data").GetProperty("deleted").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
     public async Task MarketplacePickupSlotsV2_MatchesLaravelReactSellerContract()
     {
         await AuthenticateAsAdminAsync();
